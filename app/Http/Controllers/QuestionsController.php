@@ -28,8 +28,25 @@ class QuestionsController extends Controller
         try {
             $validated = $request->validate([
                 'question' => 'required|string|min:10|max:500',
+                'type' => 'required|in:free,select,radio,image',
+                'options' => 'nullable|array|required_if:type,select,radio',
+                'options.*' => 'required|string|max:255',
                 'status' => 'required|in:active,inactive',
             ]);
+
+            // If type is select or radio, ensure options array is not empty
+            if (in_array($validated['type'], ['select', 'radio']) && (empty($validated['options']) || count($validated['options']) < 2)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => ['options' => ['At least 2 options are required for select and radio types.']],
+                ], 422);
+            }
+
+            // If type is free or image, set options to null
+            if (in_array($validated['type'], ['free', 'image'])) {
+                $validated['options'] = null;
+            }
 
             $validated['user_id'] = Auth::id();
             $question = UserQuestion::create($validated);
@@ -58,8 +75,25 @@ class QuestionsController extends Controller
 
             $validated = $request->validate([
                 'question' => 'required|string|min:10|max:500',
+                'type' => 'required|in:free,select,radio,image',
+                'options' => 'nullable|array|required_if:type,select,radio',
+                'options.*' => 'required|string|max:255',
                 'status' => 'required|in:active,inactive',
             ]);
+
+            // If type is select or radio, ensure options array is not empty
+            if (in_array($validated['type'], ['select', 'radio']) && (empty($validated['options']) || count($validated['options']) < 2)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => ['options' => ['At least 2 options are required for select and radio types.']],
+                ], 422);
+            }
+
+            // If type is free or image, set options to null
+            if (in_array($validated['type'], ['free', 'image'])) {
+                $validated['options'] = null;
+            }
 
             $question->update($validated);
 

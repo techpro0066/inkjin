@@ -13,27 +13,33 @@ return new class extends Migration
     {
         Schema::create('inkjin_tattoos', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('tattoo_id')->nullable()->unique();
-            $table->string('title');
-            $table->string('image')->nullable();
-            $table->text('tags')->nullable();
-            $table->string('color')->nullable();
+            $table->string('artist_handle');
+            $table->string('type')->nullable();
+            $table->text('visibility')->nullable();
+            $table->string('filename')->nullable();
+            $table->string('ink')->nullable();
+            $table->string('ar')->nullable();
+            $table->string('repeatable')->nullable();
+            $table->string('sensitive')->nullable();
+            $table->string('title')->nullable();
+            $table->text('description')->nullable();
             $table->string('primary_style')->nullable();
-            $table->text('style')->nullable();
+            $table->text('other_styles')->nullable();
             $table->string('suggested_placement')->nullable();
-            $table->boolean('available_to_ink')->default(false);
-            $table->boolean('available_to_ar')->default(false);
-            $table->boolean('mature_content')->default(false);
-            $table->string('status')->nullable();
-            $table->boolean('liked_by_current_user')->default(false);
-            $table->unsignedBigInteger('author_id')->nullable();
-            $table->string('author_username');
-            $table->string('author_display_name')->nullable();
-            $table->string('author_profile_picture')->nullable();
+            $table->string('color')->nullable();
+            $table->text('tags')->nullable();
+            $table->string('price')->nullable();
+            $table->string('max_price')->nullable();
+            $table->string('size_height')->nullable();
+            $table->string('size_width')->nullable();
+            $table->string('cost_per_session')->nullable();
+            $table->string('min_sessions')->nullable();
+            $table->string('max_sessions')->nullable();
+            $table->string('session_time_h')->nullable();
+            $table->string('currency')->nullable();
+            $table->string('price_model')->nullable();
+            $table->text('notes')->nullable();
             $table->timestamps();
-            
-            // Add foreign key to artists table
-            $table->foreign('author_username')->references('username')->on('inkjin_artists')->onDelete('cascade');
         });
     }
 

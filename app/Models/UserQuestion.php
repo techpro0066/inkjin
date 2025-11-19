@@ -10,11 +10,14 @@ class UserQuestion extends Model
     protected $fillable = [
         'user_id',
         'question',
+        'type',
+        'options',
         'status',
     ];
 
     protected $casts = [
         'status' => 'string',
+        'options' => 'array',
     ];
 
     /**

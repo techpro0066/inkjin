@@ -426,6 +426,21 @@
                         <div class="detail-value">{{ $tattoo['field_tattoo_suggested_placement'] }}</div>
                     </div>
                     @endif
+                    
+                    <!-- Book Button -->
+                    <div class="mt-4">
+                        <a href="{{ route('public.tattoo.book', [
+                            'artist_display_name' => slugify($artist['display_name'] ?? $artist['username'] ?? ''),
+                            'tattoo_title' => slugify($tattoo['title'] ?? ''),
+                            'tattoo_id' => $tattoo['tattoo_id'] ?? $tattoo['nid'] ?? ''
+                        ]) }}" 
+                           class="btn btn-primary btn-lg">
+                            <svg style="width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            Book This Tattoo
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

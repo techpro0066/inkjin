@@ -9,38 +9,29 @@ class InkJinArtist extends Model
     protected $table = 'inkjin_artists';
 
     protected $fillable = [
-        'user_id',
-        'username',
-        'display_name',
-        'profile_id',
+        'artist_handle',
+        'visibility',
         'email',
-        'phone',
+        'first_name',
+        'last_name',
+        'mobile_phone',
+        'nickname',
+        'profile_name',
+        'city',
+        'state_province',
+        'country',
+        'style',
+        'other_styles',
+        'since',
+        'studio',
         'instagram',
         'tiktok',
         'website',
-        'studio',
-        'primary_style',
-        'style',
-        'tattooing_since',
-        'description',
-        'address_number',
-        'address_street',
-        'city',
-        'country',
-        'followers_count',
-        'tattoo_count',
-        'allow_messages',
-        'profile_picture',
-        'created_date',
+        'artist_dashboard_signup',
     ];
 
     protected $casts = [
-        'user_id' => 'integer',
-        'profile_id' => 'integer',
-        'followers_count' => 'integer',
-        'tattoo_count' => 'integer',
-        'allow_messages' => 'boolean',
-        'created_date' => 'date',
+        'artist_dashboard_signup' => 'date',
     ];
 
     /**
@@ -48,7 +39,23 @@ class InkJinArtist extends Model
      */
     public function tattoos()
     {
-        return $this->hasMany(InkJinTattoo::class, 'author_username', 'username');
+        return $this->hasMany(InkJinTattoo::class, 'artist_handle', 'artist_handle');
+    }
+
+    /**
+     * Get display name (profile_name or constructed from first_name and last_name)
+     */
+    public function getDisplayNameAttribute()
+    {
+        return $this->profile_name ?? ($this->first_name . ' ' . $this->last_name);
+    }
+
+    /**
+     * Get username (alias for artist_handle for compatibility)
+     */
+    public function getUsernameAttribute()
+    {
+        return $this->artist_handle;
     }
 }
 

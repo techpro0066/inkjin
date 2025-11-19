@@ -892,6 +892,7 @@
     $('.form-control, .form-select').removeClass('is-invalid');
 
     const formData = {
+      override_id: $('#override_id').val() || null,
       override_date: $('#override_date').val(),
       is_unavailable: $('#is_unavailable').is(':checked') ? 1 : 0,
       start_time: $('#override_start_time').val(),

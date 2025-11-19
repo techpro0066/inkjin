@@ -9,32 +9,43 @@ class InkJinTattoo extends Model
     protected $table = 'inkjin_tattoos';
 
     protected $fillable = [
-        'tattoo_id',
+        'artist_handle',
+        'type',
+        'visibility',
+        'filename',
+        'ink',
+        'ar',
+        'repeatable',
+        'sensitive',
         'title',
-        'image',
-        'tags',
-        'color',
+        'description',
         'primary_style',
-        'style',
+        'other_styles',
         'suggested_placement',
-        'available_to_ink',
-        'available_to_ar',
-        'mature_content',
-        'status',
-        'liked_by_current_user',
-        'author_id',
-        'author_username',
-        'author_display_name',
-        'author_profile_picture',
+        'color',
+        'tags',
+        'price',
+        'max_price',
+        'size_height',
+        'size_width',
+        'cost_per_session',
+        'min_sessions',
+        'max_sessions',
+        'session_time_h',
+        'currency',
+        'price_model',
+        'notes',
     ];
 
     protected $casts = [
-        'tattoo_id' => 'integer',
-        'available_to_ink' => 'boolean',
-        'available_to_ar' => 'boolean',
-        'mature_content' => 'boolean',
-        'liked_by_current_user' => 'boolean',
-        'author_id' => 'integer',
+        'size_height' => 'float',
+        'size_width' => 'float',
+        'session_time_h' => 'float',
+        'min_sessions' => 'integer',
+        'max_sessions' => 'integer',
+        'price' => 'float',
+        'max_price' => 'float',
+        'cost_per_session' => 'float',
     ];
 
     /**
@@ -42,7 +53,15 @@ class InkJinTattoo extends Model
      */
     public function artist()
     {
-        return $this->belongsTo(InkJinArtist::class, 'author_username', 'username');
+        return $this->belongsTo(InkJinArtist::class, 'artist_handle', 'artist_handle');
+    }
+
+    /**
+     * Get image URL (alias for filename for compatibility)
+     */
+    public function getImageAttribute()
+    {
+        return $this->filename;
     }
 }
 

@@ -178,6 +178,7 @@ class AvailabilityController extends Controller
     public function storeOverride(Request $request)
     {
         $request->validate([
+            'override_id' => ['nullable', 'integer', 'exists:availability_overrides,id'],
             'override_date' => ['required', 'date', 'after_or_equal:today'],
             'is_unavailable' => ['nullable', 'boolean'],
             'start_time' => ['nullable', 'required_with:end_time', 'date_format:H:i'],
@@ -206,19 +207,34 @@ class AvailabilityController extends Controller
                     ->format('H:i:s');
             }
 
-            // Update or create override
-            AvailabilityOverride::updateOrCreate(
-                [
-                    'user_id' => $user->id,
+            // If override_id is provided, update the existing record
+            if ($request->override_id) {
+                $override = AvailabilityOverride::where('id', $request->override_id)
+                    ->where('user_id', $user->id)
+                    ->firstOrFail();
+
+                $override->update([
                     'override_date' => $request->override_date,
-                ],
-                [
                     'start_time' => $startTimeUTC,
                     'end_time' => $endTimeUTC,
                     'is_unavailable' => $isUnavailable,
                     'notes' => $request->notes ?? null,
-                ]
-            );
+                ]);
+            } else {
+                // Otherwise, create a new override (or update if same date exists)
+                AvailabilityOverride::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'override_date' => $request->override_date,
+                    ],
+                    [
+                        'start_time' => $startTimeUTC,
+                        'end_time' => $endTimeUTC,
+                        'is_unavailable' => $isUnavailable,
+                        'notes' => $request->notes ?? null,
+                    ]
+                );
+            }
 
             DB::commit();
 

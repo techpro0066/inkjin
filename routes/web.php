@@ -132,6 +132,22 @@ Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}', [InkJinCo
     ->where(['tattoo_id' => '[0-9]+'])
     ->name('public.tattoo.db');
 
+Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
+    Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}/book', [InkJinController::class, 'bookTattoo'])
+        ->where(['tattoo_id' => '[0-9]+'])
+        ->name('public.tattoo.book');
+});
+
+// Public API route for getting availability slots (no auth required)
+Route::get('/api/availability/{tattoo_id}', [InkJinController::class, 'getAvailabilitySlots'])
+    ->where(['tattoo_id' => '[0-9]+'])
+    ->name('api.availability.slots');
+
+// Public API route for submitting booking (no auth required)
+Route::post('/api/booking/{tattoo_id}', [InkJinController::class, 'submitBooking'])
+    ->where(['tattoo_id' => '[0-9]+'])
+    ->name('api.booking.submit');
+
 // Public API routes (must be before catch-all routes)
 Route::get('/{username}', [InkJinController::class, 'publicArtistProfile'])
     ->where(['username' => '[a-zA-Z0-9_.-]+'])
