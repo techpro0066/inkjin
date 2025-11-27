@@ -340,6 +340,9 @@ class OnboardingController extends Controller
                 UserQuestion::create([
                     'user_id' => $user->id,
                     'question' => $defaultQuestion->question,
+                    'type' => $defaultQuestion->type ?? 'free',
+                    'options' => $defaultQuestion->options,
+                    'max_images' => $defaultQuestion->max_images,
                     'status' => 'active',
                 ]);
             }

@@ -1,0 +1,175 @@
+System Overview
+•	Inkjin is a comprehensive tattoo booking platform that enables tattoo artists to manage their business
+•	Each artist has a public booking calendar at "book.inkjin.com/a/username"
+•	Artists have a dashboard to manage clients, bookings, payments, available designs and portfolio
+•	Artists can manage their settings
+
+Artist Onboarding
+•	Create Account (email/password/verify email ownership or OAuth)
+•	Input personal information (User enters name, last name or auto populate if OAuth used. User selects username)
+•	Input Studio information (studio name, address or autocomplete with Google Maps autocomplete)
+•	Connect your calendar (connect Google Calendar or Outlook Calendar)
+•	Choose preferences
+o	Upload Avatar
+o	Currency
+o	Timezone
+o	Date and time format
+o	Minimum Deposit for Available Tattoos (flash). Can be a fixed amount or percentage.
+o	Cancelation window – the artists sets the time a user can cancel to get refund (eg. 24h, 48h, 72h).
+o	Reschedule times – the artist sets if the the user can reschedule an appointment and how many times (never, once, twice, unlimited).
+•	Payments: Artist needs to create an account with Stripe Express to start accepting payments (user can do this later, in this case we need to display a dashboard notification, if not setup)
+We need to manage onboarding sessions, if the case the artist does not complete. If the artist resumes with the same email (account) we continue where he left off. 
+ When onboarding is completed, we create the account, take the artist to their dashboard and send an email with vital information.
+ 
+ 
+
+Default settings
+•	Sessions (predefined sessions we set. The user can add new sessions, turn on/off default or delete default)
+•	Questions (predefined questions we set. The user can add new questions, turn on/off default or delete default)
+
+Custom Tattoo Booking Process
+Step 1: Client Sends a Request
+•	Alex visits Maria’s booking page and chooses “Request a Custom Tattoo.”
+•	He fills out Maria’s booking form with details:
+o	Style (eg. Old School)
+o	Size (eg. Upper arm, half sleeve)
+o	Color (eg. Black and Gray)
+o	Placement (eg. Right arm)
+o	Image References (uploads images)
+o	A description or ideas he wants for his tattoo
+o	And any other questions that artist want to ask (from default/custom questions)
+Step 2: Tattooer Reviews the Request
+•	Maria receives Alex’s request in her Inkjin dashboard.
+•	Maria reviews the details and estimates the tattoo will take about 6 hours.
+•	She sets the price at £800 and requires either:
+o	A £200 deposit now, or full £800 upfront.
+•	Maria can decide if a consultation is needed to go over placement and design.
+Step 3: Client Books a Session
+•	Maria sends Alex an email with one booking link that includes:
+o	A short consultation appointment (30 minutes, in-person or online).
+o	The tattoo session (6 hours, £800 total).
+o	Alex books both, at the same time.
+Step 4: Client makes the Payment
+•	If Alex pays a deposit only:
+o	He pays £200 online via card, Apple Pay, Google Pay, or Klarna.
+o	He pays the remaining £600 directly to Maria on the tattoo day.
+•	If Alex pays in full:
+o	He pays £800 online in one payment.
+o	There’s no balance due on tattoo day — Alex just shows up.
+Step 5: Booking Confirmed
+•	We automatically schedule both the consultation slot and the tattoo session in Maria’s calendar.
+•	Maria and Alex receive a confirmation email with:
+o	Consultation date & time
+o	Tattoo appointment details
+o	Payment receipt (deposit or full amount)
+o	Alex also receives preparation instructions (eat beforehand, avoid alcohol, bring ID)
+
+Available Tattoo (Flash Tattoo) Booking Process
+Step 1: Maria (tattoo artist) Uploads Her Available Designs
+Maria uploads her available designs to Inkjin. Now all this is in the app and we manually upload all this information for artists. But we will allow artists to manage in the dashboard.
+For each design, she adds:
+•	The image of the design
+•	Minimum Price (£200)
+•	Minimum Size (10cm x 15cm)
+•	Estimated time (4 hours)
+Step 2: Alex (client) Browses Maria’s Designs
+Alex visits Maria’s profile page in the Inkjin app.
+•	He sees all her available designs in one place.
+•	Each design shows the price, size, time required, and availability.
+Step 3: Alex Selects a Design
+Alex clicks on the design he likes.
+•	He reviews the details: £200, about 4 hours.
+•	When user click on “buy” button in app he is taken to “book.inkjin.com/a/username?flash_id=123”
+•	He chooses a date/time from Maria’s available calendar slots.
+Step 4: Alex Pays & Books
+•	Alex pays the required deposit (or full price) online with his card.
+•	Payment securely is processed.
+Step 5: Booking Confirmed (same process as custom tattoos)
+•	Maria instantly sees Alex’s booking in her Inkjin dashboard — blocked for 4 hours.
+•	Alex and Maria get a confirmation email with booking details, payment receipt, and Alex also gets any notes from Maria.
+
+Artist Public Calendar Page
+•	Display basic information about the artist
+o	If custom tattoo, display button “Request a Custom Tattoo” (user visits “book.inkjin.com/a/username)
+o	if flash tattoo, we display the Artists Calendar so the user can select day/time (user calendar appears if the user visits “book.inkjin.com/a/username?flash_id=123” – this link will on a button in the Inkjin app)
+
+Cancellations
+•	Artist set their own cancellation deadline (e.g. 24h, 48h, 72h).
+•	If a client cancels before the cancellation deadline, their deposit or full payment is refunded automatically.
+•	If the client cancels after the cancellation deadline or does a no-show, the artist keeps the deposit.
+•	If the client has paid in full but cancels after the cancellation deadline:
+o	The artist keeps at least the deposit portion.
+o	The remaining balance is refunded to the client.
+•	If the artist cancels, the client’s deposit or full payment is refunded automatically.
+Rescheduling
+The artist decides if the client can reschedule and how many times (e.g. never, once, twice, unlimited).
+•	If the client reschedules within the allowed limit and before the cancellation deadline, their booking simply moves to the new date without penalty.
+•	If the client tries to reschedule after the cancellation deadline or beyond the allowed limit, it counts as a cancellation, and the standard cancellation policy applies.
+•	If the artist needs to reschedule, they send a request to the client to find a new time for the appointment. The client has not penalty.
+
+Payouts
+•	Deposits are immediately released to the artist after your cancellation window closes.
+•	Full payments while deposit is released immediately, the remaining amount is held until the session is completed (client gives the artist a code after the tattoo session is completed). The artist enter this code for the specific tattoo session in the dashboard, and the remaining balance is released to the artist.
+No-Shows
+•	If the user does not show for the appointment, the artist can mark the session as a “no-show.”
+•	The artist keeps the deposit, while any other prepaid balance is refunded to the user.
+
+Examples for cancelations, reschedule, payouts, and no shows. 
+
+Maria sets a 72-hour (3 day) cancellation window.
+•	Alex books a £800 tattoo with a £200 deposit + £10 Inkjin fee.
+Case 1: Alex cancels 5 days before
+•	£200 deposit refunded
+•	£10 Inkjin fee refunded
+•	Alex is refunded in-full
+Case 2: Alex cancels 1 day before
+•	£200 deposit kept by Maria
+•	£10 Inkjin fee refunded
+•	Any other prepaid balance is refunded 
+•	Alex loses only his deposit
+Case 3: Alex doesn’t show up
+•	£200 deposit kept by Maria
+•	£10 Inkjin fee refunded
+•	Any other prepaid balance is refunded
+•	Alex loses only his deposit
+Case 4: Maria cancels
+•	£200 deposit refunded
+•	£10 Inkjin fee refunded
+•	Alex is refunded in-full
+
+How does Inkjin make money
+Artists keep 100% of what they charge for a tattoo.
+Clients that use Inkjin to find an artist, pay a small booking fee (£10) when they book a session with with an artist. This fee is paid from the client directly to Inkjin and never reduces the artists earnings.
+The only fee that is subtracted from artist earning is the payment processing fee (eg. Stripe).
+
+Artist Dashboard
+•	Bookings
+•	Payments
+•	Available Designs
+•	Portfolio
+•	Reports
+•	Settings
+
+Artist Dashboard Settings
+•	Profile information
+•	Studio Information
+•	Calendar connect
+•	Sessions
+•	Questions
+•	Payments (minimum deposit, Stripe Express)
+•	Other preferences (language, currency, timezone etc)
+
+Bookings
+•	For every booking the artist should be able to see all the information submitted by the user.
+•	A complete history of actions (cancelation, reschedule etc)
+•	Payment and payout information 
+•	Booking Statuses: Pending, Confirmed, Complete, Canceled
+
+Admin Dashboard (our dashboard)
+We need to be able to manage things and get reports, we can work on this last. 
+
+APIs
+Inkjin API to get user information, artist information, design information.
+How do we confirm existing artists we already have in the app?
+
+

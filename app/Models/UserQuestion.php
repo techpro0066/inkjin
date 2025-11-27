@@ -13,11 +13,13 @@ class UserQuestion extends Model
         'type',
         'options',
         'status',
+        'max_images',
     ];
 
     protected $casts = [
         'status' => 'string',
         'options' => 'array',
+        'max_images' => 'integer',
     ];
 
     /**

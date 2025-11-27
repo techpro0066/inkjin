@@ -222,6 +222,31 @@
             display: block;
         }
         
+        .image-uploads-container {
+            margin-bottom: 1rem;
+        }
+        
+        .image-upload-item {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        
+        .image-upload-item .remove-image-btn {
+            font-size: 0.875rem;
+        }
+        
+        .image-uploads-list {
+            margin-top: 0.5rem;
+        }
+        
+        .add-more-image-btn {
+            margin-top: 0.5rem;
+        }
+        
+        .image-upload-item.border-danger {
+            border-width: 2px !important;
+        }
+        
         .form-control.is-invalid,
         .form-select.is-invalid,
         .form-check-input.is-invalid {
@@ -316,29 +341,77 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Time Slots Offcanvas -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="slotsOffcanvas" aria-labelledby="slotsOffcanvasLabel">
         <div class="offcanvas-header">
             <h5 class="offcanvas-title" id="slotsOffcanvasLabel">Available Time Slots</h5>
+            <div class="d-flex gap-2">
+                {{-- <button type="button" class="btn btn-sm btn-outline-primary" id="viewDetailsSlotsBtn" onclick="showBookingDetails('slots')">
+                    <i class="ti ti-eye me-1"></i> View Details
+                </button> --}}
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
         </div>
         <div class="offcanvas-body">
             <div id="slotsContainer">
                 <!-- Time slots will be loaded here -->
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
     
     <!-- Questions Offcanvas -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="questionsOffcanvas" aria-labelledby="questionsOffcanvasLabel">
         <div class="offcanvas-header">
             <h5 class="offcanvas-title" id="questionsOffcanvasLabel">Booking Questions</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <div class="d-flex gap-2">
+                {{-- <button type="button" class="btn btn-sm btn-outline-primary" id="viewDetailsQuestionsBtn" onclick="showBookingDetails('questions')">
+                    <i class="ti ti-eye me-1"></i> View Details
+                </button> --}}
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
         </div>
         <div class="offcanvas-body">
             <div id="questionsContainer">
                 <!-- Questions form will be loaded here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Payment Offcanvas -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="paymentOffcanvas" aria-labelledby="paymentOffcanvasLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="paymentOffcanvasLabel">Complete Payment</h5>
+            <div class="d-flex gap-2">
+                {{-- <button type="button" class="btn btn-sm btn-outline-primary" id="viewDetailsPaymentBtn" onclick="showBookingDetails('payment')">
+                    <i class="ti ti-eye me-1"></i> View Details
+                </button> --}}
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+        </div>
+        <div class="offcanvas-body">
+            <div id="paymentContainer">
+                <!-- Payment form will be loaded here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Booking Details Modal -->
+    <div class="modal fade" id="bookingDetailsModal" tabindex="-1" aria-labelledby="bookingDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bookingDetailsModalLabel">
+                        <i class="ti ti-info-circle me-2"></i>Booking Details
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="bookingDetailsContent">
+                    <!-- Details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -348,8 +421,27 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Dropify JS -->
     <script src="https://cdn.jsdelivr.net/npm/dropify@0.2.2/dist/js/dropify.min.js"></script>
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
     
     <script>
+        // CSRF Token for AJAX requests
+        const csrfToken = '{{ csrf_token() }}';
+        
+        // User data (if authenticated)
+        @auth
+        const currentUser = {
+            id: {{ auth()->id() }},
+            name: @json(auth()->user()->name),
+            email: @json(auth()->user()->email),
+            isAuthenticated: true
+        };
+        @else
+        const currentUser = {
+            isAuthenticated: false
+        };
+        @endauth
+        
         // Availability data from server
         @php
             $weeklyAvailability = $availabilityData['weeklyAvailability'] ?? [];
@@ -441,6 +533,50 @@
             const today = new Date();
             let currentMonth = today.getMonth();
             let currentYear = today.getFullYear();
+            
+            // Find first available date to navigate to that month
+            if (availabilityData.availableDates && availabilityData.availableDates.length > 0) {
+                // Sort available dates to find the earliest one
+                const sortedDates = availabilityData.availableDates
+                    .filter(dateKey => {
+                        // Only consider future dates
+                        const date = new Date(dateKey + 'T00:00:00');
+                        return date >= new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                    })
+                    .sort();
+                
+                if (sortedDates.length > 0) {
+                    // Get the first available date
+                    const firstAvailableDate = new Date(sortedDates[0] + 'T00:00:00');
+                    currentMonth = firstAvailableDate.getMonth();
+                    currentYear = firstAvailableDate.getFullYear();
+                }
+            } else {
+                // Check weekly availability to find first available month
+                // Look ahead up to 12 months for availability
+                for (let monthsAhead = 0; monthsAhead < 12; monthsAhead++) {
+                    const checkDate = new Date(today.getFullYear(), today.getMonth() + monthsAhead, 1);
+                    const lastDayOfMonth = new Date(checkDate.getFullYear(), checkDate.getMonth() + 1, 0);
+                    
+                    // Check if any day in this month is available
+                    for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
+                        const testDate = new Date(checkDate.getFullYear(), checkDate.getMonth(), day);
+                        // Skip past dates
+                        if (testDate < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                            continue;
+                        }
+                        
+                        const availability = checkDateAvailability(testDate);
+                        if (availability === 'available') {
+                            currentMonth = checkDate.getMonth();
+                            currentYear = checkDate.getFullYear();
+                            monthsAhead = 12; // Break outer loop
+                            break;
+                        }
+                    }
+                    if (monthsAhead === 12) break; // Found availability, exit
+                }
+            }
             
             function renderMonth(month, year) {
                 const firstDay = new Date(year, month, 1);
@@ -550,7 +686,7 @@
         
         // Initialize calendar when page loads
         document.addEventListener('DOMContentLoaded', renderCalendar);
-
+        
         $(document).on('click', '.calendar-day.available:not([disabled])', function() {
             const date = $(this).data('date');
             if (!date) return;
@@ -607,8 +743,8 @@
                     <div class="alert alert-warning">
                         <i class="ti ti-calendar-x me-2"></i>
                         Artist is unavailable on this date.
-                    </div>
-                `;
+                </div>
+            `;
                 return;
             }
             
@@ -617,8 +753,8 @@
                     <div class="alert alert-info">
                         <i class="ti ti-info-circle me-2"></i>
                         No available time slots for this date.
-                    </div>
-                `;
+                        </div>
+                    `;
                 return;
             }
             
@@ -657,6 +793,9 @@
                 <div class="mt-3 d-none" id="nextButtonContainer">
                     <button type="button" class="btn btn-primary w-100" id="nextToQuestionsBtn">
                         Next <i class="ti ti-arrow-right ms-1"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-primary w-100 mt-2" onclick="showBookingDetails('slots')">
+                        <i class="ti ti-eye me-1"></i> View Details
                     </button>
                 </div>
             `;
@@ -717,14 +856,70 @@
             const container = document.getElementById('questionsContainer');
             
             if (!questions || questions.length === 0) {
-                // No questions, proceed to booking confirmation
+                // No questions, proceed directly to payment
+                // Submit booking with empty questions to get payment info
+                const formData = new FormData();
+                formData.append('_token', csrfToken);
+                formData.append('slot[date]', window.selectedSlot.date);
+                formData.append('slot[start_time_utc]', window.selectedSlot.slot.start_time_utc);
+                formData.append('slot[end_time_utc]', window.selectedSlot.slot.end_time_utc);
+                
+                // Show loading
                 container.innerHTML = `
-                    <div class="alert alert-info">
-                        <i class="ti ti-info-circle me-2"></i>
-                        No questions to answer. Proceeding to booking confirmation...
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                `;
-                // TODO: Proceed to booking confirmation
+                        <p>No questions to answer. Preparing payment...</p>
+                </div>
+            `;
+            
+                // Close questions offcanvas
+                const questionsOffcanvasInstance = bootstrap.Offcanvas.getInstance(document.getElementById('questionsOffcanvas'));
+                if (questionsOffcanvasInstance) {
+                    questionsOffcanvasInstance.hide();
+                }
+                
+                // Submit to get payment info
+                $.ajax({
+                    url: '{{ route('api.booking.submit', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Store booking data
+                            window.bookingData.booking = response.booking_data;
+                            
+                            // Check if payment is required
+                            if (response.payment_required && response.payment.has_stripe_account) {
+                                // Show payment step
+                                setTimeout(() => {
+                                    showPaymentForm(response.payment);
+                                }, 300);
+                            } else if (!response.payment_required) {
+                                // No payment required, booking complete
+                                alert('Booking submitted successfully!');
+                                // TODO: Redirect to confirmation page
+                } else {
+                                // Payment required but Stripe not connected
+                                alert('Payment is required but artist has not connected Stripe account. Please contact the artist.');
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('An error occurred. Please try again.');
+                        // Show slots offcanvas again
+                        setTimeout(() => {
+                            const slotsOffcanvas = new bootstrap.Offcanvas(document.getElementById('slotsOffcanvas'));
+                            slotsOffcanvas.show();
+                        }, 300);
+                    }
+                });
                 return;
             }
             
@@ -745,10 +940,10 @@
                         <p class="mb-1"><strong>Time:</strong> ${selectedSlot.slot.start_time_display} - ${selectedSlot.slot.end_time_display}</p>
                         <p class="mb-0"><strong>Duration:</strong> ${selectedSlot.slot.duration_hours} hour(s)</p>
                     </div>
-                    <div class="mb-3">
+                <div class="mb-3">
                         <h6 class="text-muted">Please answer the following questions:</h6>
-                    </div>
-            `;
+                        </div>
+                    `;
             
             questions.forEach((question, index) => {
                 const questionId = `question_${question.id}`;
@@ -804,24 +999,41 @@
                                     <label class="form-check-label" for="${radioId}">
                                         ${option}
                                     </label>
-                                </div>
-                            `;
-                        });
+                    </div>
+                `;
+            });
                     }
                     questionsHTML += `
-                        </div>
+                            </div>
                         <span class="field-error" id="${questionId}_error"></span>
                     `;
                 } else if (question.type === 'image') {
+                    const maxImages = question.max_images || 1;
+                    
                     questionsHTML += `
-                        <input 
-                            type="file" 
-                            class="dropify" 
-                            id="${questionId}" 
-                            name="questions[${question.id}]" 
-                            accept="image/*"
-                            data-height="200">
-                        <span class="field-error" id="${questionId}_error"></span>
+                        <div class="image-uploads-container" data-question-id="${question.id}" data-max-images="${maxImages}">
+                            <div class="image-upload-item mb-3" data-index="0">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <label class="form-label mb-0">Image <span class="text-danger">*</span></label>
+                                </div>
+                                <input 
+                                    type="file" 
+                                    class="dropify image-upload-input" 
+                                    id="${questionId}_0" 
+                                    name="questions[${question.id}][]" 
+                                    accept="image/*"
+                                    data-height="200"
+                                    required>
+                            </div>
+                            <div class="image-uploads-list"></div>
+                            ${maxImages > 1 ? `
+                                <button type="button" class="btn btn-sm btn-outline-primary add-more-image-btn" data-question-id="${question.id}">
+                                    <i class="ti ti-plus me-1"></i> Add More Images
+                                </button>
+                                <small class="text-muted d-block mt-2">You can upload up to ${maxImages} images</small>
+                            ` : ''}
+                            <span class="field-error" id="${questionId}_error"></span>
+                        </div>
                     `;
                 }
                 
@@ -829,16 +1041,21 @@
             });
             
             questionsHTML += `
-                    <div class="mt-4 d-flex gap-2">
-                        <button type="button" class="btn btn-outline-secondary" id="backToSlotsBtn">
-                            <i class="ti ti-arrow-left me-1"></i> Back
-                        </button>
-                        <button type="submit" class="btn btn-primary flex-grow-1" id="submitBookingBtn">
-                            Submit Booking <i class="ti ti-check ms-1"></i>
+                    <div class="mt-4 d-flex flex-column gap-2">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" id="backToSlotsBtn">
+                                <i class="ti ti-arrow-left me-1"></i> Back
+                            </button>
+                            <button type="submit" class="btn btn-primary flex-grow-1" id="submitBookingBtn">
+                                Proceed to Payment <i class="ti ti-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="showBookingDetails('questions')">
+                            <i class="ti ti-eye me-1"></i> View Details
                         </button>
                     </div>
                 </form>
-            `;
+                `;
             
             container.innerHTML = questionsHTML;
             
@@ -849,6 +1066,106 @@
                     'replace': 'Drag and drop or click to replace',
                     'remove': 'Remove',
                     'error': 'Ooops, something wrong happened.'
+                }
+            });
+            
+            // Handle "Add More Images" button
+            $(document).off('click', '.add-more-image-btn').on('click', '.add-more-image-btn', function() {
+                const questionId = $(this).data('question-id');
+                const container = $(this).closest('.image-uploads-container');
+                const maxImages = parseInt(container.data('max-images')) || 1;
+                const uploadsList = container.find('.image-uploads-list');
+                const currentCount = container.find('.image-upload-item').length;
+                
+                if (currentCount >= maxImages) {
+                    alert(`You can upload a maximum of ${maxImages} images.`);
+                    return;
+                }
+                
+                const index = currentCount;
+                const newItemHtml = `
+                    <div class="image-upload-item mb-3" data-index="${index}">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <label class="form-label mb-0">Image ${index + 1}</label>
+                            <button type="button" class="btn btn-sm btn-label-danger remove-image-btn ms-auto" data-question-id="${questionId}" data-index="${index}">
+                                <i class="ti ti-trash me-1"></i> Remove
+                            </button>
+                        </div>
+                        <input 
+                            type="file" 
+                            class="dropify image-upload-input" 
+                            id="${questionId}_${index}" 
+                            name="questions[${questionId}][]" 
+                            accept="image/*"
+                            data-height="200">
+                    </div>
+                `;
+                
+                uploadsList.append(newItemHtml);
+                
+                // Initialize Dropify for the new input
+                $(`#${questionId}_${index}`).dropify({
+                    messages: {
+                        'default': 'Drag and drop an image here or click',
+                        'replace': 'Drag and drop or click to replace',
+                        'remove': 'Remove',
+                        'error': 'Ooops, something wrong happened.'
+                    }
+                });
+                
+                // Update "Add More" button visibility
+                if (container.find('.image-upload-item').length >= maxImages) {
+                    container.find('.add-more-image-btn').hide();
+                }
+            });
+            
+            // Handle "Remove Image" button
+            $(document).off('click', '.remove-image-btn').on('click', '.remove-image-btn', function() {
+                const questionId = $(this).data('question-id');
+                const index = $(this).data('index');
+                const container = $(this).closest('.image-uploads-container');
+                const item = $(this).closest('.image-upload-item');
+                
+                // Destroy Dropify instance
+                const dropifyInput = item.find('.dropify');
+                if (dropifyInput.length) {
+                    dropifyInput.dropify('destroy');
+                }
+                
+                // Remove the item
+                item.remove();
+                
+                // Re-index remaining items
+                container.find('.image-upload-item').each(function(idx) {
+                    $(this).attr('data-index', idx);
+                    const input = $(this).find('.image-upload-input');
+                    const newId = `${questionId}_${idx}`;
+                    input.attr('id', newId);
+                    const label = $(this).find('label');
+                    if (idx === 0) {
+                        label.html('Image <span class="text-danger">*</span>');
+                        input.prop('required', true);
+                } else {
+                        label.text(`Image ${idx + 1}`);
+                        input.prop('required', false);
+                    }
+                });
+                
+                // Show "Add More" button if under limit
+                const maxImages = parseInt(container.data('max-images')) || 1;
+                if (container.find('.image-upload-item').length < maxImages) {
+                    container.find('.add-more-image-btn').show();
+                }
+            });
+            
+            // Update "Add More" button visibility on page load
+            $('.image-uploads-container').each(function() {
+                const container = $(this);
+                const maxImages = parseInt(container.data('max-images')) || 1;
+                const currentCount = container.find('.image-upload-item').length;
+                
+                if (currentCount >= maxImages) {
+                    container.find('.add-more-image-btn').hide();
                 }
             });
             
@@ -876,7 +1193,32 @@
                 $('.field-error').text('').hide();
                 $('.form-control, .form-select, .form-check-input').removeClass('is-invalid');
                 
+                // Validate image uploads - ensure first image is uploaded for image questions
+                let hasErrors = false;
+                $('.image-uploads-container').each(function() {
+                    const container = $(this);
+                    const questionId = container.data('question-id');
+                    const firstInput = container.find('.image-upload-item:first .image-upload-input');
+                    
+                    // Check if first image is uploaded
+                    if (firstInput.length && !firstInput[0].files || firstInput[0].files.length === 0) {
+                        hasErrors = true;
+                        container.find('.field-error').text('Please upload at least one image.').show();
+                        firstInput.closest('.image-upload-item').addClass('border border-danger rounded p-2');
+                    } else {
+                        container.find('.field-error').hide();
+                        firstInput.closest('.image-upload-item').removeClass('border border-danger rounded p-2');
+                    }
+                });
+                
+                if (hasErrors) {
+                    return false;
+                }
+                
                 const formData = new FormData(this);
+                
+                // Add CSRF token
+                formData.append('_token', csrfToken);
                 
                 // Add slot data
                 formData.append('slot[date]', window.selectedSlot.date);
@@ -885,7 +1227,7 @@
                 
                 // Disable submit button
                 const submitBtn = $('#submitBookingBtn');
-                submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Submitting...');
+                submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Processing...');
                 
                 // Submit via AJAX
                 $.ajax({
@@ -894,10 +1236,40 @@
                     data: formData,
                     processData: false,
                     contentType: false,
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    },
                     success: function(response) {
                         if (response.success) {
-                            alert('Booking submitted successfully!');
-                            // TODO: Redirect to confirmation page
+                            // Store booking data including answers
+                            window.bookingData.booking = response.booking_data;
+                            window.bookingData.questionsAnswers = response.booking_data.answers || {};
+                            
+                            // Store payment data
+                            if (response.payment) {
+                                window.bookingData.payment = response.payment;
+                            }
+                            
+                            // Close questions offcanvas
+                            const questionsOffcanvasInstance = bootstrap.Offcanvas.getInstance(document.getElementById('questionsOffcanvas'));
+                            if (questionsOffcanvasInstance) {
+                                questionsOffcanvasInstance.hide();
+                            }
+                            
+                            // Check if payment is required
+                            if (response.payment_required && response.payment.has_stripe_account) {
+                                // Show payment step after a short delay
+                                setTimeout(() => {
+                                    showPaymentForm(response.payment);
+                                }, 300);
+                            } else if (!response.payment_required) {
+                                // No payment required, booking complete
+                                alert('Booking submitted successfully!');
+                                // TODO: Redirect to confirmation page
+                            } else {
+                                // Payment required but Stripe not connected
+                                alert('Payment is required but artist has not connected Stripe account. Please contact the artist.');
+                            }
                         }
                     },
                     error: function(xhr) {
@@ -931,10 +1303,666 @@
                         }
                     },
                     complete: function() {
-                        submitBtn.prop('disabled', false).html('Submit Booking <i class="ti ti-check ms-1"></i>');
+                        submitBtn.prop('disabled', false).html('Proceed to Payment <i class="ti ti-arrow-right ms-1"></i>');
                     }
                 });
             });
+        }
+        
+        function showPaymentForm(paymentInfo) {
+            const container = document.getElementById('paymentContainer');
+            const currencySymbol = getCurrencySymbol(paymentInfo.currency);
+            const depositTypeText = paymentInfo.deposit_type === 'percentage' 
+                ? `${paymentInfo.deposit_value}% of ${currencySymbol}${paymentInfo.tattoo_price.toFixed(2)}` 
+                : 'Fixed amount';
+            
+            // Platform fee
+            const platformFee = paymentInfo.platform_fee || 10.00;
+            
+            // Store payment info globally for checkbox handler
+            window.paymentInfo = paymentInfo;
+            window.currentPaymentAmount = paymentInfo.deposit_amount;
+            window.platformFee = platformFee;
+            window.platformFee = platformFee;
+            
+            let paymentHTML = `
+                <div class="mb-4">
+                    <div class="alert alert-info">
+                        <h6 class="mb-2"><i class="ti ti-info-circle me-2"></i>Payment Required</h6>
+                        <p class="mb-1">A deposit is required to secure your booking.</p>
+                </div>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="card border-primary">
+                        <div class="card-body">
+                            <h6 class="card-title mb-3">Booking Summary</h6>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Tattoo Price:</span>
+                                <strong>${currencySymbol}${paymentInfo.tattoo_price.toFixed(2)}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Deposit Type:</span>
+                                <span>${depositTypeText}</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="fw-bold" id="paymentLabel">Deposit Amount:</span>
+                                <strong id="paymentAmount">${currencySymbol}${paymentInfo.deposit_amount.toFixed(2)}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Platform Fee:</span>
+                                <span>${currencySymbol}${platformFee.toFixed(2)}</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="fw-bold">Total Amount:</span>
+                                <strong class="text-primary fs-5" id="totalPaymentAmount">${currencySymbol}${(paymentInfo.deposit_amount + platformFee).toFixed(2)}</strong>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="payFullCheckbox">
+                                <label class="form-check-label" for="payFullCheckbox">
+                                    <strong>Pay Full Amount</strong> (${currencySymbol}${paymentInfo.tattoo_price.toFixed(2)})
+                                </label>
+                            </div>
+                            <small class="text-muted d-block mt-2">Currency: ${paymentInfo.currency}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="paymentForm">
+                    <div id="card-element" class="mb-3">
+                        <!-- Stripe Elements will create form elements here -->
+                    </div>
+                    <div id="card-errors" class="text-danger mb-3" role="alert"></div>
+                    
+                    <div class="d-flex flex-column gap-2">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" id="backToQuestionsBtn">
+                                <i class="ti ti-arrow-left me-1"></i> Back
+                            </button>
+                            <button type="submit" class="btn btn-primary flex-grow-1" id="submitPaymentBtn" style="display: none;">
+                                <i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${(paymentInfo.deposit_amount + platformFee).toFixed(2)}</span>
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="showBookingDetails('payment')">
+                            <i class="ti ti-eye me-1"></i> View Details
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            container.innerHTML = paymentHTML;
+            
+            // Store payment info for details view
+            if (!window.bookingData.payment) {
+                window.bookingData.payment = paymentInfo;
+            }
+            window.bookingData.payment.tattoo_price = paymentInfo.tattoo_price;
+            window.bookingData.payment.deposit_amount = paymentInfo.deposit_amount;
+            window.bookingData.payment.currency = paymentInfo.currency;
+            window.bookingData.payment.platform_fee = platformFee;
+            
+            // Handle "Pay Full" checkbox
+            $('#payFullCheckbox').on('change', function() {
+                const isChecked = $(this).is(':checked');
+                const currencySymbol = getCurrencySymbol(paymentInfo.currency);
+                const platformFee = window.platformFee || 10.00;
+                
+                // Store payment type for details view
+                window.bookingData.isPayFull = isChecked;
+                
+                if (isChecked) {
+                    window.currentPaymentAmount = paymentInfo.tattoo_price;
+                    $('#paymentLabel').text('Full Amount:');
+                    $('#paymentAmount').text(`${currencySymbol}${paymentInfo.tattoo_price.toFixed(2)}`);
+                    const totalAmount = paymentInfo.tattoo_price + platformFee;
+                    $('#totalPaymentAmount').text(`${currencySymbol}${totalAmount.toFixed(2)}`);
+                    $('#paymentButtonAmount').text(`${currencySymbol}${totalAmount.toFixed(2)}`);
+                } else {
+                    window.currentPaymentAmount = paymentInfo.deposit_amount;
+                    $('#paymentLabel').text('Deposit Amount:');
+                    $('#paymentAmount').text(`${currencySymbol}${paymentInfo.deposit_amount.toFixed(2)}`);
+                    const totalAmount = paymentInfo.deposit_amount + platformFee;
+                    $('#totalPaymentAmount').text(`${currencySymbol}${totalAmount.toFixed(2)}`);
+                    $('#paymentButtonAmount').text(`${currencySymbol}${totalAmount.toFixed(2)}`);
+                }
+                
+                // Recreate payment intent with new amount
+                createPaymentIntent();
+            });
+            
+            // Initialize Stripe
+            const stripe = Stripe('{{ env('STRIPE_KEY') }}');
+            let elements;
+            let cardElement;
+            let currentClientSecret = null;
+            
+            // Form submit handler (defined before createPaymentIntent so it's accessible)
+            const formSubmitHandler = async function(e) {
+                e.preventDefault();
+                
+                // Clear previous errors
+                $('#card-errors').text('').hide();
+                
+                if (!currentClientSecret) {
+                    $('#card-errors').text('Payment not initialized. Please wait...').show();
+                return;
+            }
+            
+                const submitBtn = $('#submitPaymentBtn');
+                const currencySymbol = getCurrencySymbol(paymentInfo.currency);
+                const amount = window.currentPaymentAmount || paymentInfo.deposit_amount;
+                const platformFee = window.platformFee || 10.00;
+                const totalAmount = amount + platformFee;
+                
+                if (!cardElement) {
+                    $('#card-errors').text('Card element not loaded. Please refresh the page.').show();
+                    submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
+                    return;
+                }
+                
+                // Verify card element container exists
+                const cardElementContainer = document.getElementById('card-element');
+                if (!cardElementContainer) {
+                    $('#card-errors').text('Card input field not found. Please refresh the page.').show();
+                    submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
+                    return;
+                }
+                
+                // Disable button and show processing
+                submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Processing...');
+                
+                try {
+                    // First, create payment method to validate card details
+                    const {error: pmError, paymentMethod} = await stripe.createPaymentMethod({
+                        type: 'card',
+                        card: cardElement,
+                    });
+                    
+                    if (pmError) {
+                        // Show validation error
+                        $('#card-errors').text(pmError.message).show();
+                        submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
+                        return;
+                    }
+                    
+                    // If payment method created successfully, confirm payment
+                    const {error, paymentIntent} = await stripe.confirmCardPayment(currentClientSecret, {
+                        payment_method: paymentMethod.id,
+                    });
+                    
+                    if (error) {
+                        // Show error to customer
+                        $('#card-errors').text(error.message).show();
+                        submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
+                    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+                        // Payment succeeded - save booking and send emails
+                        container.innerHTML = `
+                            <div class="text-center py-5">
+                <div class="mb-3">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Processing...</span>
+                </div>
+                                </div>
+                                <h5 class="mb-2">Payment Successful!</h5>
+                                <p class="text-muted mb-4">Confirming your booking...</p>
+                            </div>
+                        `;
+                        
+                        // Get customer information - use authenticated user if available
+                        let customerName, customerEmail;
+                        
+                        if (currentUser.isAuthenticated && currentUser.name && currentUser.email) {
+                            // Use authenticated user data
+                            customerName = currentUser.name;
+                            customerEmail = currentUser.email;
+                        } else {
+                            // Collect customer information via prompts (for guest users)
+                            customerName = prompt('Please enter your name:') || '';
+                            customerEmail = prompt('Please enter your email address:') || '';
+                            
+                            if (!customerName || customerName.trim() === '') {
+                                customerName = 'Guest';
+                            }
+                            
+                            if (!customerEmail || !customerEmail.includes('@')) {
+                                alert('Please provide a valid email address to receive booking confirmation.');
+                                // Retry email collection
+                                const retryEmail = prompt('Please enter your email address:') || '';
+                                if (!retryEmail || !retryEmail.includes('@')) {
+                                    container.innerHTML = `
+                        <div class="alert alert-danger">
+                                            <i class="ti ti-alert-circle me-2"></i>
+                                            Email address is required. Please contact support.
+                        </div>
+                    `;
+                                    return;
+                                }
+                                customerEmail = retryEmail;
+                            }
+                        }
+                        
+                        // Prepare booking data
+                        const bookingData = {
+                            _token: csrfToken,
+                            payment_intent_id: paymentIntent.id,
+                            slot: {
+                                date: window.selectedSlot.date,
+                                start_time_utc: window.selectedSlot.slot.start_time_utc,
+                                end_time_utc: window.selectedSlot.slot.end_time_utc,
+                            },
+                            customer_name: customerName,
+                            customer_email: customerEmail,
+                            amount: parseFloat(window.currentPaymentAmount || paymentInfo.deposit_amount),
+                            currency: paymentInfo.currency,
+                            full_amount_paid: $('#payFullCheckbox').is(':checked') ? 1 : 0, // Send as 1/0 for Laravel boolean validation
+                            questions: window.bookingData?.booking?.answers || window.bookingData?.questionsAnswers || {},
+                        };
+                        
+                        // Log booking data for debugging
+                        console.log('Booking data being sent:', bookingData);
+                        
+                        // Save booking and send emails
+                        $.ajax({
+                            url: '{{ route('api.booking.confirm', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
+                            method: 'POST',
+                            data: bookingData,
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    container.innerHTML = `
+                                        <div class="text-center py-5">
+                                            <div class="mb-3">
+                                                <i class="ti ti-circle-check text-success" style="font-size: 4rem;"></i>
+                            </div>
+                                            <h5 class="mb-2">Booking Confirmed!</h5>
+                                            <p class="text-muted mb-3">Your booking has been confirmed and confirmation emails have been sent.</p>
+                                            <p class="text-muted small mb-4">Booking ID: #${response.booking_id}</p>
+                                            <button type="button" class="btn btn-primary" onclick="location.reload()">
+                                                Done
+                                            </button>
+                        </div>
+                                    `;
+                                } else {
+                                    container.innerHTML = `
+                                        <div class="alert alert-warning">
+                                            <i class="ti ti-alert-triangle me-2"></i>
+                                            Payment successful but booking confirmation failed: ${response.message || 'Unknown error'}
+                    </div>
+                `;
+                                }
+                            },
+                            error: function(xhr) {
+                                const errorMessage = xhr.responseJSON?.message || 'Failed to confirm booking. Please contact support.';
+                                container.innerHTML = `
+                    <div class="alert alert-danger">
+                                        <i class="ti ti-alert-circle me-2"></i>
+                                        Payment successful but booking confirmation failed: ${errorMessage}
+                                        <br><br>
+                                        <small>Booking ID: ${paymentIntent.id}</small>
+                                        <br><small>Please contact support with this information.</small>
+                    </div>
+                `;
+                            }
+                        });
+                    }
+                } catch (err) {
+                    // Handle any unexpected errors
+                    $('#card-errors').text('An error occurred. Please check your card details and try again.').show();
+                    submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
+                }
+            };
+            
+            // Function to create payment intent
+            function createPaymentIntent() {
+                const amount = window.currentPaymentAmount || paymentInfo.deposit_amount;
+                const platformFee = window.platformFee || 10.00;
+                const totalAmount = amount + platformFee;
+                
+                // Hide payment button while loading
+                $('#submitPaymentBtn').hide();
+                
+                $.ajax({
+                    url: '{{ route('api.booking.payment-intent', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
+                    method: 'POST',
+                    data: {
+                        _token: csrfToken,
+                        amount: amount, // Send the base amount (deposit or full), platform fee will be added server-side
+                        currency: paymentInfo.currency
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            currentClientSecret = response.client_secret;
+                            
+                            // Unmount existing card element if it exists
+                            if (cardElement) {
+                                try {
+                                    cardElement.unmount();
+                                    cardElement = null; // Clear reference
+                                } catch(e) {
+                                    // Element might not be mounted yet or already unmounted
+                                    cardElement = null;
+                                }
+                            }
+                            
+                            // Clear the card element container to ensure clean mount
+                            const cardElementContainer = document.getElementById('card-element');
+                            if (cardElementContainer) {
+                                cardElementContainer.innerHTML = ''; // Clear any existing content
+                            }
+                            
+                            // Initialize Stripe Elements
+                            elements = stripe.elements({
+                                clientSecret: response.client_secret
+                            });
+                            
+                            cardElement = elements.create('card', {
+                                style: {
+                                    base: {
+                                        fontSize: '16px',
+                                        color: '#424770',
+                                        '::placeholder': {
+                                            color: '#aab7c4',
+                                        },
+                                    },
+                                    invalid: {
+                                        color: '#9e2146',
+                                    },
+                                },
+                            });
+                            
+                            cardElement.mount('#card-element');
+                            
+                            // Show payment button after card element is mounted
+                            $('#submitPaymentBtn').show();
+                            
+                            // Handle real-time validation errors
+                            cardElement.on('change', function(event) {
+                                const displayError = $('#card-errors');
+                                if (event.error) {
+                                    displayError.text(event.error.message).show();
+                                } else {
+                                    displayError.text('').hide();
+                                }
+                            });
+                            
+                            // Handle card completion
+                            cardElement.on('ready', function() {
+                                $('#card-errors').text('').hide();
+                            });
+                            
+                            // Remove existing form submit listener using jQuery (more reliable)
+                            // This avoids replacing the form which would unmount the Stripe element
+                            $('#paymentForm').off('submit', formSubmitHandler).on('submit', formSubmitHandler);
+                            
+                            // Ensure button is visible
+                            $('#submitPaymentBtn').show();
+                        } else {
+                            container.innerHTML = `
+                                <div class="alert alert-danger">
+                                    <i class="ti ti-alert-circle me-2"></i>
+                                    ${response.message || 'Failed to initialize payment. Please try again.'}
+                    </div>
+                `;
+                        }
+                    },
+                    error: function(xhr) {
+                        container.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="ti ti-alert-circle me-2"></i>
+                                Failed to initialize payment. Please try again.
+                            </div>
+                        `;
+                    }
+                });
+        }
+        
+            // Create initial payment intent
+            createPaymentIntent();
+            
+            // Show payment offcanvas
+            const paymentOffcanvas = new bootstrap.Offcanvas(document.getElementById('paymentOffcanvas'));
+            paymentOffcanvas.show();
+            
+            // Handle back button - check if there are questions
+            $(document).off('click', '#backToQuestionsBtn').on('click', '#backToQuestionsBtn', function() {
+                const paymentOffcanvasInstance = bootstrap.Offcanvas.getInstance(document.getElementById('paymentOffcanvas'));
+                if (paymentOffcanvasInstance) {
+                    paymentOffcanvasInstance.hide();
+                }
+                
+                const questions = window.bookingData?.questions || [];
+                
+                setTimeout(() => {
+                    if (questions && questions.length > 0) {
+                        // Go back to questions
+                        const questionsOffcanvas = new bootstrap.Offcanvas(document.getElementById('questionsOffcanvas'));
+                        questionsOffcanvas.show();
+                    } else {
+                        // No questions, go back to slots
+                        const slotsOffcanvas = new bootstrap.Offcanvas(document.getElementById('slotsOffcanvas'));
+                        slotsOffcanvas.show();
+                    }
+                }, 300);
+            });
+        }
+        
+        // Show booking details modal based on current step
+        function showBookingDetails(step) {
+            const modal = new bootstrap.Modal(document.getElementById('bookingDetailsModal'));
+            const content = document.getElementById('bookingDetailsContent');
+            let detailsHTML = '';
+            
+            // Get tattoo info (always available)
+            const tattoo = window.bookingData?.tattoo || @json($tattoo);
+            const artist = window.bookingData?.artist || @json($artist);
+            
+            detailsHTML += `
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="ti ti-palette me-2"></i>Tattoo Information</h6>
+                </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 col-md-3 text-center mb-3 mb-md-0">
+                                ${tattoo && tattoo.field_tattoo_image_preview ? `
+                                    <img src="${tattoo.field_tattoo_image_preview}" alt="${tattoo.title || 'Tattoo'}" class="img-fluid rounded" style="max-height: 150px;">
+                                ` : ''}
+                            </div>
+                            <div class="col-12 col-md-9">
+                                <h5 class="mb-2">${tattoo?.title || '{{ $tattoo['title'] ?? 'Tattoo' }}'}</h5>
+                                <p class="text-muted mb-1"><strong>Artist:</strong> ${artist?.display_name || artist?.username || '{{ $artist['display_name'] ?? $artist['username'] ?? 'Artist' }}'}</p>
+                                ${tattoo?.session_time_h ? `<p class="text-muted mb-1"><strong>Session Duration:</strong> ${tattoo.session_time_h} hour(s)</p>` : ''}
+                                ${tattoo?.cost_per_session ? `<p class="text-muted mb-0"><strong>Price:</strong> ${getCurrencySymbol(tattoo.currency || 'USD')}${tattoo.cost_per_session}</p>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Step 1: Slots - Show date if selected
+            if (step === 'slots') {
+                const date = window.bookingData?.date;
+                if (date) {
+                    const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    });
+                    detailsHTML += `
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="ti ti-calendar me-2"></i>Selected Date</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-0"><strong>Date:</strong> ${formattedDate}</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    detailsHTML += `
+                        <div class="alert alert-info">
+                            <i class="ti ti-info-circle me-2"></i>Please select a date to see booking details.
+                    </div>
+                `;
+                }
+            }
+            
+            // Step 2: Questions - Show date and time slot
+            if (step === 'questions') {
+                const selectedSlot = window.selectedSlot;
+                if (selectedSlot) {
+                    const formattedDate = new Date(selectedSlot.date + 'T00:00:00').toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    });
+                    detailsHTML += `
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="ti ti-calendar-event me-2"></i>Selected Time Slot</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-1"><strong>Date:</strong> ${formattedDate}</p>
+                                <p class="mb-1"><strong>Time:</strong> ${selectedSlot.slot.start_time_display} - ${selectedSlot.slot.end_time_display}</p>
+                                <p class="mb-0"><strong>Duration:</strong> ${selectedSlot.slot.duration_hours} hour(s)</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    detailsHTML += `
+                        <div class="alert alert-info">
+                            <i class="ti ti-info-circle me-2"></i>Please select a time slot to see booking details.
+                        </div>
+                    `;
+                }
+            }
+            
+            // Step 3: Payment - Show all details including questions answered
+            if (step === 'payment') {
+                const selectedSlot = window.selectedSlot;
+                const questionsAnswers = window.bookingData?.questionsAnswers || {};
+                
+                if (selectedSlot) {
+                    const formattedDate = new Date(selectedSlot.date + 'T00:00:00').toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    });
+                    detailsHTML += `
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="ti ti-calendar-event me-2"></i>Selected Time Slot</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-1"><strong>Date:</strong> ${formattedDate}</p>
+                                <p class="mb-1"><strong>Time:</strong> ${selectedSlot.slot.start_time_display} - ${selectedSlot.slot.end_time_display}</p>
+                                <p class="mb-0"><strong>Duration:</strong> ${selectedSlot.slot.duration_hours} hour(s)</p>
+                            </div>
+                </div>
+            `;
+                }
+                
+                // Show questions and answers if available
+                const questions = window.bookingData?.questions || [];
+                if (questions.length > 0 && Object.keys(questionsAnswers).length > 0) {
+                    detailsHTML += `
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="ti ti-question-mark me-2"></i>Questions & Answers</h6>
+                            </div>
+                            <div class="card-body">
+                    `;
+                    
+                    questions.forEach(question => {
+                        const answer = questionsAnswers[question.id];
+                        if (answer) {
+                            let answerDisplay = answer;
+                            
+                            // Handle image answers
+                            if (question.type === 'image') {
+                                if (Array.isArray(answer)) {
+                                    answerDisplay = '<div class="d-flex flex-wrap gap-2">' + answer.map(img => {
+                                        const imgUrl = img.startsWith('http') ? img : (img.startsWith('/') ? window.location.origin + img : window.location.origin + '/' + img);
+                                        return `<img src="${imgUrl}" alt="Answer" class="img-thumbnail" style="max-height: 150px; max-width: 150px; object-fit: cover; cursor: pointer;" onclick="window.open('${imgUrl}', '_blank')">`;
+                                    }).join('') + '</div>';
+                                } else if (answer) {
+                                    const imgUrl = answer.startsWith('http') ? answer : (answer.startsWith('/') ? window.location.origin + answer : window.location.origin + '/' + answer);
+                                    answerDisplay = `<img src="${imgUrl}" alt="Answer" class="img-thumbnail" style="max-height: 200px; max-width: 200px; object-fit: cover; cursor: pointer;" onclick="window.open('${imgUrl}', '_blank')">`;
+                                } else {
+                                    answerDisplay = '<span class="text-muted">No image uploaded</span>';
+                                }
+                            }
+                            
+                            detailsHTML += `
+                                <div class="mb-3 pb-3 border-bottom">
+                                    <p class="mb-1"><strong>${question.question}</strong></p>
+                                    <div class="text-muted">${answerDisplay}</div>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    detailsHTML += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Show payment details if available
+                const paymentData = window.bookingData?.payment;
+                const isPayFull = $('#payFullCheckbox').is(':checked') || window.bookingData?.isPayFull || false;
+                const currentPaymentAmount = window.currentPaymentAmount || paymentData?.deposit_amount || paymentData?.deposit || 0;
+                const platformFee = window.platformFee || paymentData?.platform_fee || 10.00;
+                const tattooPrice = paymentData?.tattoo_price || 0;
+                
+                if (paymentData) {
+                    const currencySymbol = getCurrencySymbol(paymentData.currency || 'USD');
+                    const paymentType = isPayFull ? 'Full Amount' : 'Deposit Amount';
+                    const paymentAmount = isPayFull ? tattooPrice : currentPaymentAmount;
+                    const totalAmount = paymentAmount + platformFee;
+                    
+                    detailsHTML += `
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="ti ti-currency-dollar me-2"></i>Payment Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-1"><strong>Payment Type:</strong> ${isPayFull ? '<span class="badge bg-success">Full Amount</span>' : '<span class="badge bg-info">Deposit</span>'}</p>
+                                ${tattooPrice > 0 ? `<p class="mb-1"><strong>Tattoo Price:</strong> ${currencySymbol}${tattooPrice.toFixed(2)}</p>` : ''}
+                                <p class="mb-1"><strong>${paymentType}:</strong> ${currencySymbol}${paymentAmount.toFixed(2)}</p>
+                                <p class="mb-1"><strong>Platform Fee:</strong> ${currencySymbol}${platformFee.toFixed(2)}</p>
+                                <p class="mb-0"><strong class="text-primary">Total Amount:</strong> <span class="fs-5 text-primary">${currencySymbol}${totalAmount.toFixed(2)}</span></p>
+                                ${paymentData.currency ? `<p class="mb-0 mt-2"><small class="text-muted">Currency: ${paymentData.currency}</small></p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            content.innerHTML = detailsHTML;
+            modal.show();
+        }
+        
+        function getCurrencySymbol(currency) {
+            const symbols = {
+                'USD': '$',
+                'EUR': '€',
+                'GBP': '£',
+                'AED': 'AED ',
+                'SAR': 'SAR ',
+                'INR': '₹',
+                'JPY': '¥',
+                'CAD': 'C$',
+                'AUD': 'A$',
+            };
+            return symbols[currency.toUpperCase()] || currency.toUpperCase() + ' ';
         }
     </script>
 </body>

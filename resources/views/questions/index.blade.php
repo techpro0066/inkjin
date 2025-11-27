@@ -111,6 +111,21 @@
         <div class="invalid-feedback" id="options_error"></div>
       </div>
 
+      <div class="mb-3" id="maxImagesContainer" style="display: none;">
+        <label for="max_images" class="form-label">Maximum Images Allowed <span class="text-danger">*</span></label>
+        <input 
+          type="number" 
+          class="form-control @error('max_images') is-invalid @enderror" 
+          id="max_images" 
+          name="max_images" 
+          min="1" 
+          max="20" 
+          value="1"
+          placeholder="Enter maximum number of images">
+        <small class="text-muted">Specify how many images users can upload (1-20)</small>
+        <div class="invalid-feedback" id="max_images_error"></div>
+      </div>
+
       <div class="mb-3">
         <label class="form-label">Status <span class="text-danger">*</span></label>
         <div class="form-check form-switch">
@@ -232,6 +247,7 @@
           render: function(data, type, row) {
             const questionEscaped = (row.question || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             const optionsJson = row.options ? JSON.stringify(row.options) : '[]';
+            const maxImages = row.max_images || '';
             return `
               <div class="d-flex gap-2">
                 <button type="button" class="btn btn-sm btn-label-primary edit-question-btn" 
@@ -239,6 +255,7 @@
                   data-question="${questionEscaped}" 
                   data-type="${row.type || 'free'}"
                   data-options='${optionsJson}'
+                  data-max-images="${maxImages}"
                   data-status="${row.status}">
                   <i class="ti ti-edit me-1"></i>
                 </button>
@@ -274,8 +291,9 @@
       const question = $(this).data('question');
       const type = $(this).data('type') || 'free';
       const options = $(this).data('options') || [];
+      const maxImages = $(this).data('max-images') || '';
       const status = $(this).data('status');
-      editQuestion(id, question, type, options, status);
+      editQuestion(id, question, type, options, maxImages, status);
     });
     
     $(document).on('click', '.delete-question-btn', function() {
@@ -289,21 +307,34 @@
     document.getElementById('statusLabel').textContent = this.checked ? 'Active' : 'Inactive';
   });
 
-  // Type change handler - show/hide options container
+  // Type change handler - show/hide options container and max images container
   document.getElementById('type').addEventListener('change', function() {
     const type = this.value;
     const optionsContainer = document.getElementById('optionsContainer');
+    const maxImagesContainer = document.getElementById('maxImagesContainer');
     
     if (type === 'select' || type === 'radio') {
       optionsContainer.style.display = 'block';
+      maxImagesContainer.style.display = 'none';
       // Initialize with 2 empty options if none exist
       if (document.querySelectorAll('.option-item').length === 0) {
         addOption();
         addOption();
       }
+    } else if (type === 'image') {
+      optionsContainer.style.display = 'none';
+      maxImagesContainer.style.display = 'block';
+      // Clear options when switching to image type
+      document.getElementById('optionsList').innerHTML = '';
+      // Set default max_images to 1 if not set
+      const maxImagesInput = document.getElementById('max_images');
+      if (maxImagesInput && !maxImagesInput.value) {
+        maxImagesInput.value = 1;
+      }
     } else {
       optionsContainer.style.display = 'none';
-      // Clear options when switching to free or image type
+      maxImagesContainer.style.display = 'none';
+      // Clear options when switching to free type
       document.getElementById('optionsList').innerHTML = '';
     }
   });
@@ -364,24 +395,27 @@
     document.getElementById('statusLabel').textContent = 'Active';
     document.getElementById('submitBtn').innerHTML = '<i class="ti ti-device-floppy me-2"></i>Save Question';
     
-    // Hide options container
+    // Hide options container and max images container
     document.getElementById('optionsContainer').style.display = 'none';
     document.getElementById('optionsList').innerHTML = '';
+    document.getElementById('maxImagesContainer').style.display = 'none';
     
     // Clear validation errors
     document.getElementById('question').classList.remove('is-invalid');
     document.getElementById('type').classList.remove('is-invalid');
     const optionsContainer = document.getElementById('optionsContainer');
     if (optionsContainer) optionsContainer.classList.remove('is-invalid');
+    document.getElementById('max_images').classList.remove('is-invalid');
     document.getElementById('status').classList.remove('is-invalid');
     document.getElementById('question_error').textContent = '';
     document.getElementById('type_error').textContent = '';
     document.getElementById('options_error').textContent = '';
+    document.getElementById('max_images_error').textContent = '';
     document.getElementById('status_error').textContent = '';
   }
 
   // Edit question
-  function editQuestion(id, question, type, options, status) {
+  function editQuestion(id, question, type, options, maxImages, status) {
     currentQuestionId = id;
     
     // Show offcanvas first
@@ -400,21 +434,23 @@
       const submitBtn = document.getElementById('submitBtn');
       const optionsContainer = document.getElementById('optionsContainer');
       const optionsList = document.getElementById('optionsList');
+      const maxImagesContainer = document.getElementById('maxImagesContainer');
+      const maxImagesInput = document.getElementById('max_images');
       
       if (questionLabel) questionLabel.textContent = 'Edit Question';
       if (questionIdInput) questionIdInput.value = id;
       
-      // Decode HTML entities
+    // Decode HTML entities
       if (questionTextarea) {
-        const textarea = document.createElement('textarea');
-        textarea.innerHTML = question;
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = question;
         questionTextarea.value = textarea.value;
       }
       
       // Set type and trigger change event
       if (typeSelect) {
         typeSelect.value = type || 'free';
-        // Manually trigger change to show/hide options container
+        // Manually trigger change to show/hide options container and max images container
         typeSelect.dispatchEvent(new Event('change'));
       }
       
@@ -435,24 +471,32 @@
         }
       }
       
+      // Handle max_images for image type
+      if (type === 'image' && maxImagesInput) {
+        maxImagesInput.value = maxImages || 1;
+      }
+      
       if (statusCheckbox) statusCheckbox.checked = status === 'active';
       if (statusLabel) statusLabel.textContent = status === 'active' ? 'Active' : 'Inactive';
       if (submitBtn) submitBtn.innerHTML = '<i class="ti ti-device-floppy me-2"></i>Update Question';
-      
-      // Clear validation errors
+    
+    // Clear validation errors
       if (questionTextarea) questionTextarea.classList.remove('is-invalid');
       if (typeSelect) typeSelect.classList.remove('is-invalid');
       if (optionsContainer) optionsContainer.classList.remove('is-invalid');
+      if (maxImagesInput) maxImagesInput.classList.remove('is-invalid');
       if (statusCheckbox) statusCheckbox.classList.remove('is-invalid');
       
       const questionError = document.getElementById('question_error');
       const typeError = document.getElementById('type_error');
       const optionsError = document.getElementById('options_error');
+      const maxImagesError = document.getElementById('max_images_error');
       const statusError = document.getElementById('status_error');
       
       if (questionError) questionError.textContent = '';
       if (typeError) typeError.textContent = '';
       if (optionsError) optionsError.textContent = '';
+      if (maxImagesError) maxImagesError.textContent = '';
       if (statusError) statusError.textContent = '';
       
       // Remove event listener after first use
@@ -546,15 +590,33 @@
         return;
       }
     }
+    
+    // Get max_images if type is image
+    let maxImages = null;
+    if (type === 'image') {
+      const maxImagesInput = document.getElementById('max_images');
+      maxImages = maxImagesInput ? parseInt(maxImagesInput.value) : null;
+      
+      // Validate max_images
+      if (!maxImages || maxImages < 1 || maxImages > 20) {
+        if (maxImagesInput) {
+          maxImagesInput.classList.add('is-invalid');
+          document.getElementById('max_images_error').textContent = 'Please enter a valid number between 1 and 20.';
+        }
+        return;
+      }
+    }
 
     // Clear previous validation errors
     document.getElementById('question').classList.remove('is-invalid');
     document.getElementById('type').classList.remove('is-invalid');
     document.getElementById('optionsContainer').classList.remove('is-invalid');
+    document.getElementById('max_images').classList.remove('is-invalid');
     document.getElementById('status').classList.remove('is-invalid');
     document.getElementById('question_error').textContent = '';
     document.getElementById('type_error').textContent = '';
     document.getElementById('options_error').textContent = '';
+    document.getElementById('max_images_error').textContent = '';
     document.getElementById('status_error').textContent = '';
 
     const submitBtn = document.getElementById('submitBtn');
@@ -574,6 +636,10 @@
 
       if (options !== null) {
         requestBody.options = options;
+      }
+      
+      if (maxImages !== null) {
+        requestBody.max_images = maxImages;
       }
 
       const response = await fetch(url, {
@@ -605,6 +671,12 @@
             if (field === 'options') {
               input = document.getElementById('optionsContainer');
               errorDiv = document.getElementById('options_error');
+            }
+            
+            // Handle max_images field specially
+            if (field === 'max_images') {
+              input = document.getElementById('max_images');
+              errorDiv = document.getElementById('max_images_error');
             }
             
             if (input) {
@@ -657,16 +729,19 @@
     document.getElementById('type').value = 'free';
     document.getElementById('optionsContainer').style.display = 'none';
     document.getElementById('optionsList').innerHTML = '';
+    document.getElementById('maxImagesContainer').style.display = 'none';
     currentQuestionId = null;
     
     // Clear validation errors
     document.getElementById('question').classList.remove('is-invalid');
     document.getElementById('type').classList.remove('is-invalid');
     document.getElementById('optionsContainer').classList.remove('is-invalid');
+    document.getElementById('max_images').classList.remove('is-invalid');
     document.getElementById('status').classList.remove('is-invalid');
     document.getElementById('question_error').textContent = '';
     document.getElementById('type_error').textContent = '';
     document.getElementById('options_error').textContent = '';
+    document.getElementById('max_images_error').textContent = '';
     document.getElementById('status_error').textContent = '';
   });
 </script>

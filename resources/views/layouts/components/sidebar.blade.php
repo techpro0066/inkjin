@@ -66,6 +66,14 @@
             @endif
           </ul>
       </li>
+      <!-- Bookings (for all users) -->
+      <li class="menu-item {{ request()->routeIs('bookings.*') ? 'active' : '' }}">
+        <a href="{{ route('bookings.index') }}" class="menu-link">
+          <i class="menu-icon tf-icons ti ti-calendar-check"></i>
+          <div data-i18n="Bookings">Bookings</div>
+        </a>
+      </li>
+      
       @if(auth()->user()->role === 'artist')
         <!-- Artist Menu Items -->
         <li class="menu-item {{ request()->routeIs('availability.*') ? 'active' : '' }}">

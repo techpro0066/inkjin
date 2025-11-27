@@ -46,6 +46,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
     // Dashboard route
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    
+    // Bookings route (for all authenticated users)
+    Route::get('/bookings', [\App\Http\Controllers\BookingsController::class, 'index'])->name('bookings.index');
 });
 
 // Profile routes (accessible even if email not verified, so user can update email)
@@ -133,9 +136,9 @@ Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}', [InkJinCo
     ->name('public.tattoo.db');
 
 Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
-    Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}/book', [InkJinController::class, 'bookTattoo'])
-        ->where(['tattoo_id' => '[0-9]+'])
-        ->name('public.tattoo.book');
+Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}/book', [InkJinController::class, 'bookTattoo'])
+    ->where(['tattoo_id' => '[0-9]+'])
+    ->name('public.tattoo.book');
 });
 
 // Public API route for getting availability slots (no auth required)
@@ -147,6 +150,15 @@ Route::get('/api/availability/{tattoo_id}', [InkJinController::class, 'getAvaila
 Route::post('/api/booking/{tattoo_id}', [InkJinController::class, 'submitBooking'])
     ->where(['tattoo_id' => '[0-9]+'])
     ->name('api.booking.submit');
+
+// Public API route for creating payment intent (no auth required)
+Route::post('/api/booking/{tattoo_id}/payment-intent', [InkJinController::class, 'createPaymentIntent'])
+    ->where(['tattoo_id' => '[0-9]+'])
+    ->name('api.booking.payment-intent');
+
+Route::post('/api/booking/{tattoo_id}/confirm', [InkJinController::class, 'confirmBooking'])
+    ->where(['tattoo_id' => '[0-9]+'])
+    ->name('api.booking.confirm');
 
 // Public API routes (must be before catch-all routes)
 Route::get('/{username}', [InkJinController::class, 'publicArtistProfile'])

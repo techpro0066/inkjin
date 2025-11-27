@@ -31,6 +31,7 @@ class QuestionsController extends Controller
                 'type' => 'required|in:free,select,radio,image',
                 'options' => 'nullable|array|required_if:type,select,radio',
                 'options.*' => 'required|string|max:255',
+                'max_images' => 'nullable|integer|min:1|max:20|required_if:type,image',
                 'status' => 'required|in:active,inactive',
             ]);
 
@@ -46,6 +47,11 @@ class QuestionsController extends Controller
             // If type is free or image, set options to null
             if (in_array($validated['type'], ['free', 'image'])) {
                 $validated['options'] = null;
+            }
+            
+            // If type is not image, set max_images to null
+            if ($validated['type'] !== 'image') {
+                $validated['max_images'] = null;
             }
 
             $validated['user_id'] = Auth::id();
@@ -78,6 +84,7 @@ class QuestionsController extends Controller
                 'type' => 'required|in:free,select,radio,image',
                 'options' => 'nullable|array|required_if:type,select,radio',
                 'options.*' => 'required|string|max:255',
+                'max_images' => 'nullable|integer|min:1|max:20|required_if:type,image',
                 'status' => 'required|in:active,inactive',
             ]);
 
@@ -93,6 +100,11 @@ class QuestionsController extends Controller
             // If type is free or image, set options to null
             if (in_array($validated['type'], ['free', 'image'])) {
                 $validated['options'] = null;
+            }
+            
+            // If type is not image, set max_images to null
+            if ($validated['type'] !== 'image') {
+                $validated['max_images'] = null;
             }
 
             $question->update($validated);

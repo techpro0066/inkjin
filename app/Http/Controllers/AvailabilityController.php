@@ -222,18 +222,18 @@ class AvailabilityController extends Controller
                 ]);
             } else {
                 // Otherwise, create a new override (or update if same date exists)
-                AvailabilityOverride::updateOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'override_date' => $request->override_date,
-                    ],
-                    [
-                        'start_time' => $startTimeUTC,
-                        'end_time' => $endTimeUTC,
-                        'is_unavailable' => $isUnavailable,
-                        'notes' => $request->notes ?? null,
-                    ]
-                );
+            AvailabilityOverride::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'override_date' => $request->override_date,
+                ],
+                [
+                    'start_time' => $startTimeUTC,
+                    'end_time' => $endTimeUTC,
+                    'is_unavailable' => $isUnavailable,
+                    'notes' => $request->notes ?? null,
+                ]
+            );
             }
 
             DB::commit();
