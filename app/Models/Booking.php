@@ -29,12 +29,6 @@ class Booking extends Model
         'cancellation_reason',
         'cancellation_deadline',
         'cancellation_window_hours',
-        'rescheduled_from_booking_id',
-        'rescheduled_by',
-        'rescheduled_at',
-        'reschedule_reason',
-        'reschedule_count',
-        'reschedule_limit',
         'payment_intent_id',
         'payment_status',
         'deposit_amount',
@@ -52,7 +46,11 @@ class Booking extends Model
         'refund_intent_id',
         'refunded_at',
         'refund_reason',
+        'refund_status',
+        'deposit_forfeited',
         'platform_fee_refunded',
+        'cancellation_initiated_at',
+        'cancellation_type',
         'questions_answers',
         'notes',
         'completed_at',
@@ -61,13 +59,16 @@ class Booking extends Model
         'action_history',
         'reminder_sent_at',
         'google_calendar_event_id',
+        'google_meet_link',
+        'consultation_timing_type',
+        'consultation_booking_id',
     ];
 
     protected $casts = [
         'booking_date' => 'date',
         'consultation_date' => 'date',
         'cancelled_at' => 'datetime',
-        'rescheduled_at' => 'datetime',
+        'cancellation_initiated_at' => 'datetime',
         'cancellation_deadline' => 'datetime',
         'deposit_released_at' => 'datetime',
         'remaining_amount_released_at' => 'datetime',
@@ -80,6 +81,7 @@ class Booking extends Model
         'platform_fee' => 'decimal:2',
         'total_amount_paid' => 'decimal:2',
         'refund_amount' => 'decimal:2',
+        'deposit_forfeited' => 'decimal:2',
         'full_amount_paid' => 'boolean',
         'has_consultation' => 'boolean',
         'consultation_completed' => 'boolean',
@@ -112,15 +114,6 @@ class Booking extends Model
         return $this->belongsTo(User::class, 'cancelled_by');
     }
 
-    public function rescheduledFrom(): BelongsTo
-    {
-        return $this->belongsTo(Booking::class, 'rescheduled_from_booking_id');
-    }
-
-    public function rescheduledBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'rescheduled_by');
-    }
 
     // Scopes
     public function scopeConfirmed($query)
@@ -150,8 +143,67 @@ class Booking extends Model
         return $this->status === 'confirmed';
     }
 
-    public function isRescheduled(): bool
+
+    // Accessor methods for booking and consultation times
+    public function getBookingTimeAttribute()
     {
-        return $this->status === 'rescheduled';
+        if (!$this->start_time_utc || !$this->end_time_utc) {
+            return null;
+        }
+
+        $timezone = $this->timezone ?? 'UTC';
+        $startTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $this->booking_date->format('Y-m-d') . ' ' . $this->start_time_utc, 'UTC')
+            ->setTimezone($timezone);
+        $endTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $this->booking_date->format('Y-m-d') . ' ' . $this->end_time_utc, 'UTC')
+            ->setTimezone($timezone);
+
+        // For combined consultation, calculate tattoo session time separately
+        if ($this->consultation_timing_type === 'combined' && $this->has_consultation) {
+            // Tattoo session starts after consultation
+            if ($this->consultation_end_time_utc) {
+                $tattooStart = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $this->booking_date->format('Y-m-d') . ' ' . $this->consultation_end_time_utc, 'UTC')
+                    ->setTimezone($timezone);
+                return [
+                    'start' => $tattooStart->format('g:i A'),
+                    'end' => $endTime->format('g:i A'),
+                    'start_datetime' => $tattooStart->toDateTimeString(),
+                    'end_datetime' => $endTime->toDateTimeString(),
+                    'duration_minutes' => $tattooStart->diffInMinutes($endTime),
+                    'duration_hours' => round($tattooStart->diffInMinutes($endTime) / 60, 2),
+                ];
+            }
+        }
+
+        return [
+            'start' => $startTime->format('g:i A'),
+            'end' => $endTime->format('g:i A'),
+            'start_datetime' => $startTime->toDateTimeString(),
+            'end_datetime' => $endTime->toDateTimeString(),
+            'duration_minutes' => $startTime->diffInMinutes($endTime),
+            'duration_hours' => round($startTime->diffInMinutes($endTime) / 60, 2),
+        ];
+    }
+
+    public function getConsultationTimeAttribute()
+    {
+        if (!$this->has_consultation || !$this->consultation_start_time_utc || !$this->consultation_end_time_utc) {
+            return null;
+        }
+
+        $timezone = $this->timezone ?? 'UTC';
+        $consultationDate = $this->consultation_date ?? $this->booking_date;
+        $startTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $consultationDate->format('Y-m-d') . ' ' . $this->consultation_start_time_utc, 'UTC')
+            ->setTimezone($timezone);
+        $endTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $consultationDate->format('Y-m-d') . ' ' . $this->consultation_end_time_utc, 'UTC')
+            ->setTimezone($timezone);
+
+        return [
+            'start' => $startTime->format('g:i A'),
+            'end' => $endTime->format('g:i A'),
+            'start_datetime' => $startTime->toDateTimeString(),
+            'end_datetime' => $endTime->toDateTimeString(),
+            'duration_minutes' => $startTime->diffInMinutes($endTime),
+            'duration_hours' => round($startTime->diffInMinutes($endTime) / 60, 2),
+        ];
     }
 }

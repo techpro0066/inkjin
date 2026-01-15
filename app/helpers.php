@@ -2,8 +2,6 @@
 function imageUploader($file,$path)
 {
         $extension = $file->getClientOriginalExtension();
-
-        dd($extension);
         $extension=time().'.'.$extension;
         $file->move(public_path('uploads/'.$path.'/'),$extension);
         $fileName = '/uploads/'.$path.'/'.$extension;

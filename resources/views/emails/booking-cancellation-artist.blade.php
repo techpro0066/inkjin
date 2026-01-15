@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking Confirmation</title>
+    <title>Booking Cancellation Notification</title>
     <style>
         * {
             margin: 0;
@@ -29,7 +29,7 @@
         }
         
         .email-header {
-            background: #482e92;
+            background: #dc3545;
             padding: 20px 30px;
             text-align: center;
         }
@@ -76,11 +76,11 @@
             border-radius: 8px;
             padding: 20px;
             margin: 25px 0;
-            border-left: 4px solid #482e92;
+            border-left: 4px solid #dc3545;
         }
         
         .booking-details h3 {
-            color: #482e92;
+            color: #dc3545;
             font-size: 18px;
             margin-bottom: 15px;
             font-weight: 600;
@@ -107,17 +107,47 @@
             text-align: right;
         }
         
-        .success-note {
+        @if($isNoShow)
+        .no-show-notice {
             margin-top: 25px;
             padding: 15px;
-            background-color: #d4edda;
-            border-left: 4px solid #28a745;
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
             border-radius: 4px;
         }
         
-        .success-note-text {
+        .no-show-notice-text {
             font-size: 14px;
-            color: #155724;
+            color: #856404;
+            line-height: 1.6;
+        }
+        @else
+        .cancellation-notice {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            border-radius: 4px;
+        }
+        
+        .cancellation-notice-text {
+            font-size: 14px;
+            color: #1565c0;
+            line-height: 1.6;
+        }
+        @endif
+        
+        .refund-info {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #6c757d;
+            border-radius: 4px;
+        }
+        
+        .refund-info-text {
+            font-size: 14px;
+            color: #495057;
             line-height: 1.6;
         }
         
@@ -178,22 +208,36 @@
         
         <!-- Body -->
         <div class="email-body">
-            <p class="greeting">Hello {{ $userName }},</p>
+            <p class="greeting">Hello {{ $artistName }},</p>
             
+            @if($isNoShow)
             <p class="content">
-                Your booking has been confirmed! We're excited to see you for your tattoo appointment.
+                A booking has been marked as a no-show. The customer did not attend the scheduled appointment.
             </p>
+            @elseif($cancellationType === 'artist')
+            <p class="content">
+                You have cancelled a booking. The customer has been notified and will receive a full refund.
+            </p>
+            @else
+            <p class="content">
+                A customer has cancelled their booking. Please see the details below.
+            </p>
+            @endif
             
             <!-- Booking Details -->
             <div class="booking-details">
-                <h3>📅 Booking Details</h3>
+                <h3>📅 Cancelled Booking Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Customer:</span>
+                    <span class="detail-value">{{ $customerName }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Customer Email:</span>
+                    <span class="detail-value">{{ $customerEmail }}</span>
+                </div>
                 <div class="detail-row">
                     <span class="detail-label">Tattoo:</span>
                     <span class="detail-value">{{ $tattooTitle }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Artist:</span>
-                    <span class="detail-value">{{ $artistName }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Date:</span>
@@ -204,63 +248,67 @@
                     <span class="detail-value">{{ $bookingTime }}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Duration:</span>
-                    <span class="detail-value">{{ $duration }} hour(s)</span>
+                    <span class="detail-label">Cancelled At:</span>
+                    <span class="detail-value">{{ $cancelledAt }}</span>
                 </div>
+                @if($cancellationReason)
                 <div class="detail-row">
-                    <span class="detail-label">Amount Paid:</span>
-                    <span class="detail-value">{{ $currencySymbol }}{{ number_format($totalAmount, 2) }}</span>
+                    <span class="detail-label">Reason:</span>
+                    <span class="detail-value">{{ $cancellationReason }}</span>
                 </div>
+                @endif
                 <div class="detail-row">
                     <span class="detail-label">Booking ID:</span>
                     <span class="detail-value">#{{ $bookingId }}</span>
                 </div>
             </div>
             
-            @if(!empty($meetLink))
-            <!-- Video Meeting Section -->
-            <div style="background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin: 30px 0; border-left: 4px solid #00832d;">
-                <h3 style="color: #333; margin: 0 0 15px 0; font-size: 20px;">
-                    📹 Video Meeting
-                </h3>
-                <p style="color: #666; margin-bottom: 15px; line-height: 1.6;">
-                    Join your 30-minute video consultation meeting with {{ $artistName }}:
+            @if($isNoShow)
+            <!-- No-Show Notice -->
+            <div class="no-show-notice">
+                <p class="no-show-notice-text">
+                    <strong>⚠️ No-Show</strong><br>
+                    The customer did not attend the scheduled appointment.
+                    @if($depositForfeited > 0)
+                    You will keep the deposit of {{ $currencySymbol }}{{ number_format($depositForfeited, 2) }}.
+                    @endif
                 </p>
-                <div style="background-color: #ffffff; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                    <p style="margin: 0 0 10px 0; color: #333;">
-                        <strong>Meeting Time:</strong> {{ $meetingTime }}<br>
-                        <strong>Duration:</strong> 30 minutes
-                    </p>
-                </div>
-                <a href="{{ $meetLink }}" 
-                   target="_blank"
-                   style="display: inline-block; background-color: #00832d; color: #ffffff; 
-                          padding: 14px 28px; text-decoration: none; border-radius: 6px; 
-                          font-weight: bold; margin-top: 10px; font-size: 16px;">
-                    🎥 Join Google Meet
-                </a>
-                <p style="color: #999; font-size: 13px; margin-top: 20px; line-height: 1.5;">
-                    <strong>Meeting Link:</strong><br>
-                    <a href="{{ $meetLink }}" style="color: #00832d; word-break: break-all;">
-                        {{ $meetLink }}
-                    </a>
-                </p>
-                <p style="color: #999; font-size: 12px; margin-top: 15px;">
-                    💡 Tip: Click the link above or copy it to join the meeting at the scheduled time.
+            </div>
+            @else
+            <!-- Cancellation Notice -->
+            <div class="cancellation-notice">
+                <p class="cancellation-notice-text">
+                    <strong>ℹ️ Booking Cancelled</strong><br>
+                    @if($cancellationType === 'artist')
+                    You cancelled this booking. The customer will receive a full refund.
+                    @else
+                    The customer cancelled this booking.
+                    @endif
                 </p>
             </div>
             @endif
             
-            <!-- Success Note -->
-            <div class="success-note">
-                <p class="success-note-text">
-                    <strong>✅ Payment Confirmed!</strong> Your booking is confirmed and your payment has been processed successfully. 
-                    Please arrive on time for your appointment. If you need to reschedule or cancel, please contact the artist as soon as possible.
+            <!-- Refund Information -->
+            <div class="refund-info">
+                <p class="refund-info-text">
+                    <strong>💰 Refund Status</strong><br>
+                    @if($hasRefund)
+                    Customer will receive a refund of {{ $currencySymbol }}{{ number_format($refundAmount, 2) }}.
+                    @if($depositForfeited > 0)
+                    You will keep the deposit of {{ $currencySymbol }}{{ number_format($depositForfeited, 2) }}.
+                    @endif
+                    @else
+                    @if($depositForfeited > 0)
+                    You will keep the deposit of {{ $currencySymbol }}{{ number_format($depositForfeited, 2) }} as per the cancellation policy.
+                    @else
+                    No refund will be issued to the customer.
+                    @endif
+                    @endif
                 </p>
             </div>
             
             <p class="content">
-                If you have any questions or need to make changes to your booking, please contact the artist directly.
+                You can view all your bookings and cancellations in your dashboard.
             </p>
         </div>
         

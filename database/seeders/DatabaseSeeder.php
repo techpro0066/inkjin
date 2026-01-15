@@ -26,18 +26,8 @@ class DatabaseSeeder extends Seeder
             'on_boarding' => 'yes',
             'email_verified_at' => now(),
         ]);
-
-        // Seed app_users and app_tattoos tables
-        // $this->call(AppUsersAndTattoosSeeder::class);
         
-        // Seed artists from provided data
-        $this->call(InkJinArtistsDataSeeder::class);
-        
-        // Seed tattoos from tatoo.txt file
-        $this->call(InkJinTattoosDataSeeder::class);
-        
-        // Seed artists and tattoos from Google Sheets (alternative)
-        // Uncomment the line below to import data from Google Sheets
-        // $this->call(InkJinDataSeeder::class);
+        $this->call(InkjinArtistSeeder::class);
+        $this->call(InkjinTattooSeeder::class);
     }
 }

@@ -406,13 +406,76 @@
                 <div class="col-md-6">
                   <label class="form-label">Require Consultation Session</label>
                   <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="require_consultation" name="require_consultation" value="1" {{ ($userDetail->require_consultation ?? false) ? 'checked' : '' }}>
+                    <input class="form-check-input" type="checkbox" id="require_consultation" name="require_consultation" value="1" {{ ($userDetail->require_consultation ?? false) ? 'checked' : '' }} onchange="toggleSessionFields()">
                     <label class="form-check-label" for="require_consultation">
                       Require consultation session when booking a tattoo
                     </label>
                   </div>
                   <small class="text-muted d-block mt-1">When enabled, clients must book a consultation before booking a tattoo session</small>
                   <p class="text-danger mt-1 mb-0" id="require_consultation_error" style="display: none; font-size: 0.875rem;"></p>
+                </div>
+                
+                <div class="col-md-6" id="session_type_container" style="display: {{ ($userDetail->require_consultation ?? false) ? 'block' : 'none' }};">
+                  <label for="session_type" class="form-label">Session Type <span class="text-danger">*</span></label>
+                  <select class="form-select" id="session_type" name="session_type">
+                    <option value="">Select Session Type</option>
+                    <option value="online" {{ ($userDetail->session_type ?? '') == 'online' ? 'selected' : '' }}>Online Session</option>
+                    <option value="physical" {{ ($userDetail->session_type ?? '') == 'physical' ? 'selected' : '' }}>Physical Session</option>
+                    <option value="both" {{ ($userDetail->session_type ?? '') == 'both' ? 'selected' : '' }}>Both (Online & Physical)</option>
+                  </select>
+                  <small class="text-muted d-block mt-1">Choose whether you offer online sessions, physical sessions, or both</small>
+                  <p class="text-danger mt-1 mb-0" id="session_type_error" style="display: none; font-size: 0.875rem;"></p>
+                </div>
+                
+                <div class="col-md-6" id="session_duration_container" style="display: {{ ($userDetail->require_consultation ?? false) ? 'block' : 'none' }};">
+                  <label for="session_duration_minutes" class="form-label">Session Duration (minutes) <span class="text-danger">*</span></label>
+                  <input type="number" class="form-control" id="session_duration_minutes" name="session_duration_minutes" value="{{ $userDetail->session_duration_minutes ?? '' }}" placeholder="e.g., 30, 60, 90" min="15" max="480" step="15">
+                  <small class="text-muted d-block mt-1">Duration for the consultation session (minimum 15 minutes, maximum 8 hours)</small>
+                  <p class="text-danger mt-1 mb-0" id="session_duration_minutes_error" style="display: none; font-size: 0.875rem;"></p>
+                </div>
+                
+                <div class="col-md-6" id="consultation_timing_container" style="display: {{ ($userDetail->require_consultation ?? false) ? 'block' : 'none' }};">
+                  <label for="consultation_timing" class="form-label">Consultation Timing <span class="text-danger">*</span></label>
+                  <select class="form-select" id="consultation_timing" name="consultation_timing" onchange="toggleGapFields()">
+                    <option value="">Select Timing</option>
+                    <option value="combined" {{ ($userDetail->consultation_timing ?? '') == 'combined' ? 'selected' : '' }}>Add with Tattoo Session</option>
+                    <option value="separate" {{ ($userDetail->consultation_timing ?? '') == 'separate' ? 'selected' : '' }}>Separate from Tattoo Session</option>
+                  </select>
+                  <small class="text-muted d-block mt-1">
+                    <strong>Combined:</strong> Consultation time is added to the tattoo session duration<br>
+                    <strong>Separate:</strong> Consultation is a standalone session, separate from the tattoo session
+                  </small>
+                  <p class="text-danger mt-1 mb-0" id="consultation_timing_error" style="display: none; font-size: 0.875rem;"></p>
+                </div>
+              </div>
+              
+              <!-- Gap between consultation and tattoo session (only for separate mode) -->
+              <div class="row g-3 mt-2" id="gap_fields_container" style="display: {{ (($userDetail->require_consultation ?? false) && ($userDetail->consultation_timing ?? '') == 'separate') ? 'flex' : 'none' }};">
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="require_gap_between_consultation_tattoo" name="require_gap_between_consultation_tattoo" value="1" {{ ($userDetail->require_gap_between_consultation_tattoo ?? false) ? 'checked' : '' }} onchange="toggleGapDurationFields()">
+                    <label class="form-check-label" for="require_gap_between_consultation_tattoo">
+                      Require gap/window time between consultation and tattoo session
+                    </label>
+                  </div>
+                  <small class="text-muted d-block mt-1">Enable this if you want to enforce a minimum time gap between consultation completion and tattoo session booking</small>
+                </div>
+                
+                <div class="col-md-6" id="gap_duration_container" style="display: {{ ($userDetail->require_gap_between_consultation_tattoo ?? false) ? 'block' : 'none' }};">
+                  <label for="consultation_tattoo_gap_value" class="form-label">Gap Duration <span class="text-danger">*</span></label>
+                  <input type="number" class="form-control" id="consultation_tattoo_gap_value" name="consultation_tattoo_gap_value" value="{{ $userDetail->consultation_tattoo_gap_value ?? '' }}" placeholder="e.g., 1, 2, 7" min="1">
+                  <p class="text-danger mt-1 mb-0" id="consultation_tattoo_gap_value_error" style="display: none; font-size: 0.875rem;"></p>
+                </div>
+                
+                <div class="col-md-6" id="gap_unit_container" style="display: {{ ($userDetail->require_gap_between_consultation_tattoo ?? false) ? 'block' : 'none' }};">
+                  <label for="consultation_tattoo_gap_unit" class="form-label">Gap Unit <span class="text-danger">*</span></label>
+                  <select class="form-select" id="consultation_tattoo_gap_unit" name="consultation_tattoo_gap_unit">
+                    <option value="">Select Unit</option>
+                    <option value="minutes" {{ ($userDetail->consultation_tattoo_gap_unit ?? '') == 'minutes' ? 'selected' : '' }}>Minutes</option>
+                    <option value="hours" {{ ($userDetail->consultation_tattoo_gap_unit ?? '') == 'hours' ? 'selected' : '' }}>Hours</option>
+                    <option value="days" {{ ($userDetail->consultation_tattoo_gap_unit ?? '') == 'days' ? 'selected' : '' }}>Days</option>
+                  </select>
+                  <p class="text-danger mt-1 mb-0" id="consultation_tattoo_gap_unit_error" style="display: none; font-size: 0.875rem;"></p>
                 </div>
               </div>
               
@@ -437,8 +500,8 @@
                   <div class="card border-2 {{ ($userDetail->stripe_account_id ?? null) ? 'border-success' : 'border-dashed' }}">
                     <div class="card-body text-center py-5">
                       <i class="ti ti-credit-card ti-3x {{ ($userDetail->stripe_account_id ?? null) ? 'text-success' : 'text-muted' }} mb-3"></i>
-                      <h6 class="mb-2">Connect Your Stripe Account</h6>
-                      <p class="text-muted mb-4">Connect your Stripe account to receive payments. You can set this up later.</p>
+                      <h6 class="mb-2">Connect Your Stripe Account <span class="text-danger">*</span></h6>
+                      <p class="text-muted mb-4">Please connect your Stripe account to receive payments. This is required to complete onboarding.</p>
                       
                       @if($userDetail->stripe_account_id ?? null)
                         <div class="mb-3">
@@ -469,9 +532,9 @@
                   <i class="ti ti-arrow-left me-2"></i> Previous
                 </button>
                 <div>
-                  <button type="button" class="btn btn-outline-secondary me-2" onclick="saveStep5(true)">
+                  {{-- <button type="button" class="btn btn-outline-secondary me-2" onclick="saveStep5(true)">
                     Skip for Now
-                  </button>
+                  </button> --}}
                   <button type="submit" class="btn btn-primary">
                     Complete Onboarding <i class="ti ti-check ms-2"></i>
                   </button>
@@ -544,6 +607,149 @@
 <script>
   let currentStep = {{ $currentStep }};
   let completedSteps = @json($completedSteps ?? []);
+  
+  // Toggle session type, duration, and consultation timing fields based on consultation requirement
+  function toggleSessionFields() {
+    const requireConsultation = document.getElementById('require_consultation');
+    const sessionTypeContainer = document.getElementById('session_type_container');
+    const sessionDurationContainer = document.getElementById('session_duration_container');
+    const consultationTimingContainer = document.getElementById('consultation_timing_container');
+    const sessionType = document.getElementById('session_type');
+    const sessionDuration = document.getElementById('session_duration_minutes');
+    const consultationTiming = document.getElementById('consultation_timing');
+    
+    if (!requireConsultation) {
+      return; // Element not found, might not be on current step
+    }
+    
+    if (requireConsultation.checked) {
+      // Show fields and make them required
+      if (sessionTypeContainer) {
+        sessionTypeContainer.style.display = 'block';
+      }
+      if (sessionDurationContainer) {
+        sessionDurationContainer.style.display = 'block';
+      }
+      if (consultationTimingContainer) {
+        consultationTimingContainer.style.display = 'block';
+      }
+      if (sessionType) {
+        sessionType.required = true;
+        sessionType.setAttribute('required', 'required');
+      }
+      if (sessionDuration) {
+        sessionDuration.required = true;
+        sessionDuration.setAttribute('required', 'required');
+      }
+      if (consultationTiming) {
+        consultationTiming.required = true;
+        consultationTiming.setAttribute('required', 'required');
+      }
+    } else {
+      // Hide fields and make them optional
+      if (sessionTypeContainer) {
+        sessionTypeContainer.style.display = 'none';
+      }
+      if (sessionDurationContainer) {
+        sessionDurationContainer.style.display = 'none';
+      }
+      if (consultationTimingContainer) {
+        consultationTimingContainer.style.display = 'none';
+      }
+      if (sessionType) {
+        sessionType.required = false;
+        sessionType.removeAttribute('required');
+        sessionType.value = ''; // Clear value
+      }
+      if (sessionDuration) {
+        sessionDuration.required = false;
+        sessionDuration.removeAttribute('required');
+        sessionDuration.value = ''; // Clear value
+      }
+      if (consultationTiming) {
+        consultationTiming.required = false;
+        consultationTiming.removeAttribute('required');
+        consultationTiming.value = ''; // Clear value
+      }
+      // Hide gap fields when consultation is disabled
+      toggleGapFields();
+    }
+  }
+  
+  // Toggle gap fields based on consultation timing selection
+  function toggleGapFields() {
+    const consultationTiming = document.getElementById('consultation_timing');
+    const gapFieldsContainer = document.getElementById('gap_fields_container');
+    const requireConsultation = document.getElementById('require_consultation');
+    
+    if (!consultationTiming || !gapFieldsContainer) {
+      return; // Elements not found
+    }
+    
+    // Only show gap fields if consultation is required AND timing is separate
+    if (requireConsultation && requireConsultation.checked && consultationTiming.value === 'separate') {
+      gapFieldsContainer.style.display = 'flex';
+    } else {
+      gapFieldsContainer.style.display = 'none';
+      // Reset gap fields when hidden
+      const requireGap = document.getElementById('require_gap_between_consultation_tattoo');
+      const gapValue = document.getElementById('consultation_tattoo_gap_value');
+      const gapUnit = document.getElementById('consultation_tattoo_gap_unit');
+      if (requireGap) requireGap.checked = false;
+      if (gapValue) gapValue.value = '';
+      if (gapUnit) gapUnit.value = '';
+      toggleGapDurationFields();
+    }
+  }
+  
+  // Toggle gap duration fields based on require gap checkbox
+  function toggleGapDurationFields() {
+    const requireGap = document.getElementById('require_gap_between_consultation_tattoo');
+    const gapDurationContainer = document.getElementById('gap_duration_container');
+    const gapUnitContainer = document.getElementById('gap_unit_container');
+    const gapValue = document.getElementById('consultation_tattoo_gap_value');
+    const gapUnit = document.getElementById('consultation_tattoo_gap_unit');
+    
+    if (!requireGap || !gapDurationContainer || !gapUnitContainer) {
+      return; // Elements not found
+    }
+    
+    if (requireGap.checked) {
+      gapDurationContainer.style.display = 'block';
+      gapUnitContainer.style.display = 'block';
+      if (gapValue) {
+        gapValue.required = true;
+        gapValue.setAttribute('required', 'required');
+      }
+      if (gapUnit) {
+        gapUnit.required = true;
+        gapUnit.setAttribute('required', 'required');
+      }
+    } else {
+      gapDurationContainer.style.display = 'none';
+      gapUnitContainer.style.display = 'none';
+      if (gapValue) {
+        gapValue.required = false;
+        gapValue.removeAttribute('required');
+        gapValue.value = '';
+      }
+      if (gapUnit) {
+        gapUnit.required = false;
+        gapUnit.removeAttribute('required');
+        gapUnit.value = '';
+      }
+    }
+  }
+  
+  // Make function globally accessible
+  window.toggleSessionFields = toggleSessionFields;
+  
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    toggleSessionFields();
+    toggleGapFields();
+    toggleGapDurationFields();
+  });
 
   // Show alert function
   function showAlert(type, message) {
@@ -771,6 +977,35 @@
       isValid = false;
     }
 
+    // Session Buffer Period validation (required)
+    const sessionBufferPeriod = document.getElementById('session_buffer_period').value.trim();
+    if (!sessionBufferPeriod) {
+      errors.session_buffer_period = 'This field is required.';
+      isValid = false;
+    } else if (isNaN(sessionBufferPeriod) || parseInt(sessionBufferPeriod) < 0) {
+      errors.session_buffer_period = 'Please enter a valid number (0 or greater).';
+      isValid = false;
+    }
+
+    // Session Type and Duration validation (only if consultation is required)
+    const requireConsultation = document.getElementById('require_consultation') && document.getElementById('require_consultation').checked;
+    if (requireConsultation) {
+      const sessionType = document.getElementById('session_type').value.trim();
+      if (!sessionType) {
+        errors.session_type = 'This field is required when consultation is enabled.';
+        isValid = false;
+      }
+
+      const sessionDuration = document.getElementById('session_duration_minutes').value.trim();
+      if (!sessionDuration) {
+        errors.session_duration_minutes = 'This field is required when consultation is enabled.';
+        isValid = false;
+      } else if (isNaN(sessionDuration) || parseInt(sessionDuration) < 15 || parseInt(sessionDuration) > 480) {
+        errors.session_duration_minutes = 'Please enter a valid duration between 15 and 480 minutes.';
+        isValid = false;
+      }
+    }
+
     if (!isValid) {
       displayErrors(errors);
     }
@@ -778,9 +1013,26 @@
     return isValid;
   }
 
-  // Validate Step 5 (optional, no validation needed)
+  // Validate Step 5 (Stripe connection is required)
   function validateStep5() {
-    return true;
+    clearErrors();
+    const errors = {};
+    let isValid = true;
+
+    // Check if Stripe account is connected
+    const stripeAccountId = document.getElementById('stripe_account_id').value.trim();
+    if (!stripeAccountId) {
+      errors.stripe_account_id = 'Please connect your Stripe account to proceed.';
+      isValid = false;
+      // Show error message
+      showAlert('warning', 'Please connect your Stripe account to complete onboarding.');
+    }
+
+    if (!isValid) {
+      displayErrors(errors);
+    }
+
+    return isValid;
   }
 
   // Update stepper visual
@@ -877,6 +1129,10 @@
         setTimeout(() => {
           if (typeof initializeSelect2 === 'function') {
             initializeSelect2();
+          }
+          // Initialize session fields toggle
+          if (typeof toggleSessionFields === 'function') {
+            toggleSessionFields();
           }
         }, 100);
       }
@@ -1058,6 +1314,22 @@
     }
 
     const formData = new FormData(e.target);
+    
+    // Clear session fields if consultation is not required
+    const requireConsultation = document.getElementById('require_consultation') && document.getElementById('require_consultation').checked;
+    if (!requireConsultation) {
+      const sessionType = document.getElementById('session_type');
+      const sessionDuration = document.getElementById('session_duration_minutes');
+      if (sessionType) {
+        sessionType.value = '';
+        formData.set('session_type', '');
+      }
+      if (sessionDuration) {
+        sessionDuration.value = '';
+        formData.set('session_duration_minutes', '');
+      }
+    }
+    
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
@@ -1097,13 +1369,10 @@
   });
 
   // Save Step 5
-  async function saveStep5(skip = false) {
+  async function saveStep5() {
     clearErrors();
     const form = document.getElementById('step5Form');
     const formData = new FormData(form);
-    if (skip && !formData.get('stripe_account_id')) {
-      formData.set('stripe_account_id', '');
-    }
 
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
@@ -1146,7 +1415,7 @@
   document.getElementById('step5Form').addEventListener('submit', (e) => {
     e.preventDefault();
     if (validateStep5()) {
-      saveStep5(false);
+      saveStep5();
     }
   });
 
@@ -1475,8 +1744,7 @@
     }
   }
 
-  // Store countries and cities data globally
-  let countryCityArrayOnboarding = [];
+  // Store countries data globally
   let uniqueCountriesOnboarding = [];
 
   // Initialize Country and City Select2
@@ -1498,29 +1766,14 @@
       countrySelect.prop('disabled', true);
       countrySelect.trigger('change');
 
-      // Load all countries and cities from API
+      // Load all countries from API
       $.ajax({
-        url: "https://countriesnow.space/api/v0.1/countries",
+        url: "{{ route('api.countries') }}",
         method: "GET",
         success: function(response) {
-          if (response.data && Array.isArray(response.data)) {
-            // Build country-city array
-            countryCityArrayOnboarding = [];
-            response.data.forEach(item => {
-              const country = item.country;
-              if (Array.isArray(item.cities)) {
-                item.cities.forEach(city => {
-                  countryCityArrayOnboarding.push([country, city]);
-                });
-              }
-            });
-
-            // Extract unique countries
-            const countrySet = new Set();
-            countryCityArrayOnboarding.forEach(item => {
-              countrySet.add(item[0]);
-            });
-            uniqueCountriesOnboarding = Array.from(countrySet).sort();
+          if (response.success && Array.isArray(response.data)) {
+            // Store countries
+            uniqueCountriesOnboarding = response.data;
 
             // Populate country dropdown
             countrySelect.empty().append(new Option('', ''));
@@ -1588,7 +1841,7 @@
     }
   }
 
-  // Load cities based on selected country (for onboarding) from stored array
+  // Load cities based on selected country (for onboarding) from API
   function loadCitiesForOnboarding(country, selectedCity = '') {
     const citySelect = $('#city');
     citySelect.prop('disabled', true);
@@ -1602,19 +1855,16 @@
     });
     citySelect.trigger('change');
 
-    // Filter cities for the selected country from the stored array
-    setTimeout(() => {
-      const citiesForCountry = countryCityArrayOnboarding
-        .filter(item => item[0] === country)
-        .map(item => item[1]);
-      
-      // Remove duplicates and sort
-      const uniqueCities = [...new Set(citiesForCountry)].sort();
-      
+    // Load cities from API
+    $.ajax({
+      url: "{{ url('/api/cities') }}",
+      method: "GET",
+      data: { country: country },
+      success: function(response) {
       citySelect.empty().append(new Option('', ''));
       
-      if (uniqueCities.length > 0) {
-        uniqueCities.forEach(city => {
+        if (response.success && Array.isArray(response.data) && response.data.length > 0) {
+          response.data.forEach(city => {
           const isSelected = city === selectedCity;
           citySelect.append(
             new Option(city, city, isSelected, isSelected)
@@ -1632,7 +1882,19 @@
         width: '100%'
       });
       citySelect.trigger('change');
-    }, 100); // Small delay to show loading state
+      },
+      error: function(err) {
+        console.error("API error:", err);
+        citySelect.empty().append(new Option('Error loading cities. Please try again.', ''));
+        citySelect.prop('disabled', false);
+        citySelect.select2({
+          placeholder: 'Error loading cities',
+          allowClear: true,
+          width: '100%'
+        });
+        citySelect.trigger('change');
+      }
+    });
   }
 
   // Note: Select2 initialization is now handled in the goToStep function above
@@ -1648,6 +1910,7 @@
     if (currentStep === 4) {
       setTimeout(() => {
         initializeSelect2();
+        toggleSessionFields();
       }, 500);
     }
   });

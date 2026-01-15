@@ -102,6 +102,8 @@ class BookingConfirmationMail extends Mailable
             'bookingTime' => $bookingTime,
             'duration' => $duration,
             'currencySymbol' => $currencySymbol,
+            'meetLink' => $booking->google_meet_link,
+            'meetingTime' => $bookingDate . ' at ' . $startTime,
         ];
         
         if ($this->isArtistEmail) {

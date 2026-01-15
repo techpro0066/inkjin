@@ -287,6 +287,19 @@
                 padding: 0.375rem 0.25rem;
             }
         }
+        
+        /* Booking sections */
+        .booking-card {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .booking-card.d-none {
+            display: none !important;
+        }
+        
+        #slotsContainer, #questionsContainer, #paymentContainer {
+            min-height: 200px;
+        }
     </style>
 </head>
 <body>
@@ -334,62 +347,77 @@
             </div>
         </div>
         
+        
         <!-- Calendar Section -->
-        <div class="booking-card">
+        <div class="booking-card" id="calendarSection">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0" id="calendarTitle">
+                    @if(($consultationInfo['is_separate'] ?? false))
+                        Step 1: Select Consultation Date
+                    @else
+                        Select Date
+                    @endif
+                </h5>
+                <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="backToConsultationBtn">
+                    <i class="ti ti-arrow-left me-1"></i> Back to Consultation
+                </button>
+            </div>
             <div class="calendar-container">
-                <div id="availability-calendar"></div>
-            </div>
+                <div id="availability-calendar">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading calendar...</span>
         </div>
+                        <p class="mt-2 text-muted">Loading calendar...</p>
     </div>
-
-    <!-- Time Slots Offcanvas -->
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="slotsOffcanvas" aria-labelledby="slotsOffcanvasLabel">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="slotsOffcanvasLabel">Available Time Slots</h5>
-            <div class="d-flex gap-2">
-                {{-- <button type="button" class="btn btn-sm btn-outline-primary" id="viewDetailsSlotsBtn" onclick="showBookingDetails('slots')">
-                    <i class="ti ti-eye me-1"></i> View Details
-                </button> --}}
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+                <div class="mt-3 d-none" id="calendarNextButton">
+                    <button type="button" class="btn btn-primary w-100" id="nextToSlotsBtn">
+                        Next: Select Time <i class="ti ti-arrow-right ms-1"></i>
+                    </button>
+        </div>
             </div>
         </div>
-        <div class="offcanvas-body">
+
+        <!-- Time Slots Section -->
+        <div class="booking-card d-none" id="slotsSection">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0" id="slotsTitle">Select Time Slot</h5>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="backToCalendarBtn">
+                    <i class="ti ti-arrow-left me-1"></i> Change Date
+                </button>
+            </div>
             <div id="slotsContainer">
                 <!-- Time slots will be loaded here -->
                     </div>
+            <div class="mt-3 d-none" id="slotsNextButton">
+                <button type="button" class="btn btn-primary w-100" id="nextToQuestionsFromSlotsBtn">
+                    Next: Answer Questions <i class="ti ti-arrow-right ms-1"></i>
+                </button>
                 </div>
             </div>
     
-    <!-- Questions Offcanvas -->
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="questionsOffcanvas" aria-labelledby="questionsOffcanvasLabel">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="questionsOffcanvasLabel">Booking Questions</h5>
-            <div class="d-flex gap-2">
-                {{-- <button type="button" class="btn btn-sm btn-outline-primary" id="viewDetailsQuestionsBtn" onclick="showBookingDetails('questions')">
-                    <i class="ti ti-eye me-1"></i> View Details
-                </button> --}}
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <!-- Questions Section -->
+        <div class="booking-card d-none" id="questionsSection">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Booking Questions</h5>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="backToSlotsBtn">
+                    <i class="ti ti-arrow-left me-1"></i> Change Time
+                </button>
             </div>
-        </div>
-        <div class="offcanvas-body">
             <div id="questionsContainer">
                 <!-- Questions form will be loaded here -->
-            </div>
         </div>
     </div>
     
-    <!-- Payment Offcanvas -->
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="paymentOffcanvas" aria-labelledby="paymentOffcanvasLabel">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="paymentOffcanvasLabel">Complete Payment</h5>
-            <div class="d-flex gap-2">
-                {{-- <button type="button" class="btn btn-sm btn-outline-primary" id="viewDetailsPaymentBtn" onclick="showBookingDetails('payment')">
-                    <i class="ti ti-eye me-1"></i> View Details
-                </button> --}}
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <!-- Payment Section -->
+        <div class="booking-card d-none" id="paymentSection">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Complete Payment</h5>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="backToQuestionsBtn">
+                    <i class="ti ti-arrow-left me-1"></i> Back to Questions
+                </button>
             </div>
-        </div>
-        <div class="offcanvas-body">
             <div id="paymentContainer">
                 <!-- Payment form will be loaded here -->
             </div>
@@ -442,6 +470,28 @@
         };
         @endauth
         
+        // Consultation info from server
+        @php
+            $defaultConsultationInfo = [
+            'requires_consultation' => false,
+            'consultation_timing' => null,
+            'is_separate' => false,
+            'is_combined' => false,
+            'session_duration_minutes' => null,
+            'gap_required' => false,
+            'gap_value' => null,
+            'gap_unit' => null,
+            ];
+            $finalConsultationInfo = $consultationInfo ?? $defaultConsultationInfo;
+        @endphp
+        const consultationInfo = @json($finalConsultationInfo);
+        
+        // Booking flow state
+        let bookingFlowStep = consultationInfo.is_separate ? 'consultation' : 'tattoo_session'; // 'consultation', 'tattoo_session', 'questions', 'payment'
+        let selectedConsultationSlot = null;
+        let selectedTattooSessionSlot = null;
+        let minimumTattooSessionDate = null;
+        
         // Availability data from server
         @php
             $weeklyAvailability = $availabilityData['weeklyAvailability'] ?? [];
@@ -454,6 +504,108 @@
             overrides: @json($availabilityData['overrides'] ?? []),
             artistTimezone: @json($artistTimezone),
         };
+        
+        // Cache for slot availability checks (to avoid multiple API calls for same date)
+        const dateSlotAvailabilityCache = {
+            // Format: 'date-flow': { hasSlots: boolean, checking: boolean }
+            // Example: '2025-12-17-consultation': { hasSlots: true, checking: false }
+        };
+        
+        // Function to clear slot availability cache (useful when flow changes)
+        function clearSlotAvailabilityCache() {
+            Object.keys(dateSlotAvailabilityCache).forEach(key => delete dateSlotAvailabilityCache[key]);
+        }
+        
+        // Function to check if a date has available slots
+        function checkDateSlotAvailability(dateKey, callback) {
+            // Determine which API endpoint to use based on booking flow
+            let cacheKey, apiUrl, apiData;
+            
+            if (bookingFlowStep === 'consultation') {
+                cacheKey = `${dateKey}-consultation`;
+                apiUrl = '{{ route('api.consultation.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
+                apiData = { date: dateKey };
+            } else if (bookingFlowStep === 'tattoo_session' && selectedConsultationSlot) {
+                cacheKey = `${dateKey}-tattoo_session-${selectedConsultationSlot.date}`;
+                apiUrl = '{{ route('api.tattoo-session.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
+                apiData = {
+                    date: dateKey,
+                    consultation_date: selectedConsultationSlot.date,
+                    consultation_start_time_utc: selectedConsultationSlot.start_time_utc,
+                    consultation_end_time_utc: selectedConsultationSlot.end_time_utc
+                };
+            } else {
+                // Regular booking flow
+                cacheKey = `${dateKey}-regular`;
+                apiUrl = '{{ route('api.availability.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
+                apiData = { date: dateKey };
+            }
+            
+            // Check cache first
+            if (dateSlotAvailabilityCache[cacheKey]) {
+                if (dateSlotAvailabilityCache[cacheKey].checking) {
+                    // Already checking, wait for it
+                    setTimeout(() => checkDateSlotAvailability(dateKey, callback), 100);
+                    return;
+                }
+                callback(dateSlotAvailabilityCache[cacheKey].hasSlots);
+                return;
+            }
+            
+            // Mark as checking
+            dateSlotAvailabilityCache[cacheKey] = { hasSlots: false, checking: true };
+            
+            // Make API call
+            $.ajax({
+                url: apiUrl,
+                method: 'GET',
+                data: apiData,
+                success: function(response) {
+                    // Check if response is valid
+                    if (!response || typeof response.success === 'undefined') {
+                        // Invalid response format - don't update date status
+                        console.warn('Invalid response format for date:', dateKey, response);
+                        delete dateSlotAvailabilityCache[cacheKey];
+                        return; // Don't call callback, leave date as is
+                    }
+                    
+                    // Check if response has slots
+                    const hasSlots = response.success && 
+                                    response.time_slots && 
+                                    Array.isArray(response.time_slots) && 
+                                    response.time_slots.length > 0;
+                    
+                    // Update cache
+                    dateSlotAvailabilityCache[cacheKey] = { hasSlots: hasSlots, checking: false };
+                    
+                    // Only call callback with false if we're certain there are no slots
+                    // If response.success is false but it's not an error (e.g., date unavailable), 
+                    // we should still mark as unavailable
+                    if (response.success === false) {
+                        // API explicitly says no slots available
+                        callback(false);
+                    } else if (hasSlots === false) {
+                        // Response is successful but has no slots
+                        callback(false);
+                    } else {
+                        // Has slots
+                        callback(true);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    // On error, don't mark as unavailable - keep current state
+                    // This prevents dates from turning red due to API errors
+                    console.warn('Failed to check slot availability for date:', dateKey, error);
+                    
+                    // Remove from cache so it can be retried later
+                    delete dateSlotAvailabilityCache[cacheKey];
+                    
+                    // Don't call callback with false - this would mark date as unavailable
+                    // Instead, just remove the checking flag
+                    // The date will remain in its current state (available/unavailable based on weekly schedule)
+                }
+            });
+        }
         
         // Helper function to get day of week in a specific timezone
         function getDayOfWeekInTimezone(date, timezone) {
@@ -528,7 +680,23 @@
         // Calendar implementation
         function renderCalendar() {
             const calendarEl = document.getElementById('availability-calendar');
-            if (!calendarEl) return;
+            if (!calendarEl) {
+                console.error('Calendar element not found!');
+                return;
+            }
+            
+            // Check if availability data exists
+            if (!availabilityData || (!availabilityData.availableDates && !availabilityData.weeklyAvailability)) {
+                console.error('Availability data not loaded:', availabilityData);
+                calendarEl.innerHTML = `
+                    <div class="alert alert-warning">
+                        <h6>No availability data available</h6>
+                        <p class="mb-0">Unable to load calendar. Please refresh the page or contact the artist.</p>
+                        <button class="btn btn-primary btn-sm mt-2" onclick="location.reload()">Refresh Page</button>
+                    </div>
+                `;
+                return;
+            }
             
             const today = new Date();
             let currentMonth = today.getMonth();
@@ -633,13 +801,47 @@
                         dayClass += ' past';
                         disabled = 'disabled';
                     } else {
+                        // If on tattoo session step and consultation is selected, disable dates appropriately
+                        let shouldDisable = false;
+                        if (bookingFlowStep === 'tattoo_session' && selectedConsultationSlot) {
+                            const consultationDate = new Date(selectedConsultationSlot.date + 'T00:00:00');
+                            const checkDate = new Date(dateKey + 'T00:00:00');
+                            
+                            // Always disable dates before consultation date
+                            if (checkDate < consultationDate) {
+                                shouldDisable = true;
+                            }
+                            
+                            // If gap is required, also disable dates before or equal to minimum date (which includes gap period)
+                            if (!shouldDisable && minimumTattooSessionDate) {
+                                const minDate = new Date(minimumTattooSessionDate.split(' ')[0] + 'T00:00:00');
+                                // Disable dates that are before or equal to minimum date (includes consultation date and all gap days)
+                                // For example: consultation Dec 17, gap 1 day -> minimum is Dec 18, so disable Dec 17 and Dec 18
+                                if (checkDate <= minDate) {
+                                    shouldDisable = true;
+                                }
+                            } else if (!shouldDisable && !minimumTattooSessionDate) {
+                                // No gap requirement, but still disable consultation date itself
+                                // (can't book tattoo session on same day as consultation if no gap)
+                                if (checkDate.getTime() === consultationDate.getTime()) {
+                                    shouldDisable = true;
+                                }
+                            }
+                        }
+                        
+                        if (shouldDisable) {
+                            dayClass += ' unavailable';
+                        disabled = 'disabled';
+                    } else {
                         // Check availability (works for all future dates)
                         const availability = checkDateAvailability(date);
                         if (availability === 'available') {
                             dayClass += ' available';
+                                // Note: Slot availability will be checked asynchronously after calendar renders
                         } else {
                             dayClass += ' unavailable';
                             disabled = 'disabled';
+                            }
                         }
                     }
                     
@@ -666,6 +868,78 @@
                 `;
                 
                 calendarEl.innerHTML = calendarHTML;
+                
+                // After calendar is rendered, check slot availability for visible dates
+                // This will disable dates that have no available slots
+                // TEMPORARILY DISABLED - Uncomment below to enable slot availability checking
+                // Note: This feature checks each date via API and may cause dates to turn red
+                // if API calls fail or return empty slots. Enable only after verifying API endpoints work correctly.
+                /*
+                setTimeout(function() {
+                    // Only check slot availability if we have the necessary data
+                    // Skip if we're in a flow that requires consultation slot selection
+                    if (bookingFlowStep !== 'tattoo_session' || selectedConsultationSlot) {
+                        checkSlotAvailabilityForVisibleDates();
+                    } else if (bookingFlowStep === 'consultation' || !consultationInfo.is_separate) {
+                        // For consultation or regular booking, check availability
+                        checkSlotAvailabilityForVisibleDates();
+                    }
+                }, 500);
+                */
+            }
+            
+            // Function to check slot availability for visible dates in the calendar
+            function checkSlotAvailabilityForVisibleDates() {
+                const calendarDays = document.querySelectorAll('.calendar-day:not(.empty):not(.past)');
+                const datesToCheck = [];
+                const today = new Date();
+                const maxDaysToCheck = 60; // Only check dates within next 60 days
+                
+                calendarDays.forEach(function(dayEl) {
+                    const dateKey = dayEl.getAttribute('data-date');
+                    if (dateKey && !dayEl.hasAttribute('disabled')) {
+                        // Check if date is within reasonable range (next 60 days)
+                        const dateParts = dateKey.split('-');
+                        const checkDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                        const daysDiff = Math.ceil((checkDate - today) / (1000 * 60 * 60 * 24));
+                        
+                        // Only check dates that are marked as available and within range
+                        if (dayEl.classList.contains('available') && daysDiff >= 0 && daysDiff <= maxDaysToCheck) {
+                            datesToCheck.push({ element: dayEl, dateKey: dateKey });
+                        }
+                    }
+                });
+                
+                // If no dates to check, return early
+                if (datesToCheck.length === 0) {
+                    return;
+                }
+                
+                // Check slot availability for each date
+                // Limit concurrent requests and add delays to avoid overwhelming the server
+                const maxConcurrent = 3; // Check max 3 dates at a time
+                const batchDelay = 800; // Wait 800ms between batches
+                
+                // Process dates in batches
+                for (let i = 0; i < datesToCheck.length; i += maxConcurrent) {
+                    const batch = datesToCheck.slice(i, i + maxConcurrent);
+                    
+                    batch.forEach(function(item, batchIndex) {
+                        setTimeout(function() {
+                            checkDateSlotAvailability(item.dateKey, function(hasSlots) {
+                                // Only update if callback was called with explicit false (not on error)
+                                // hasSlots will be undefined if error occurred, so we skip updating
+                                if (hasSlots === false) {
+                                    // Explicitly no slots available, disable this date
+                                    item.element.classList.remove('available');
+                                    item.element.classList.add('unavailable');
+                                    item.element.setAttribute('disabled', 'disabled');
+                                }
+                                // If hasSlots is true or undefined (error), leave date as is
+                            });
+                        }, (i * batchDelay) + (batchIndex * 150)); // Stagger within batch too
+                    });
+                }
             }
             
             window.changeMonth = function(direction) {
@@ -684,25 +958,335 @@
             renderMonth(currentMonth, currentYear);
         }
         
+        // Set up global back button handlers
+        function setupBackButtonHandlers() {
+            // Back to calendar button (from slots section)
+            $(document).off('click', '#backToCalendarBtn').on('click', '#backToCalendarBtn', function() {
+                document.getElementById('slotsSection').classList.add('d-none');
+                document.getElementById('calendarSection').classList.remove('d-none');
+                
+                // If going back to consultation calendar, clear gap restrictions and re-render
+                if (bookingFlowStep === 'consultation') {
+                    minimumTattooSessionDate = null;
+                    // Ensure booking flow step is set correctly
+                    bookingFlowStep = 'consultation';
+                    // Re-render calendar to remove gap-based date disabling
+                    renderCalendar();
+                }
+                
+                // Determine which date to highlight based on current flow step
+                let dateToHighlight = null;
+                let shouldShowNextButton = false;
+                
+                if (bookingFlowStep === 'tattoo_session') {
+                    // For tattoo session step, only highlight if tattoo session slot is selected
+                    // Don't use window.selectedDate from consultation step - user must select a new date
+                    if (selectedTattooSessionSlot) {
+                        dateToHighlight = selectedTattooSessionSlot.date;
+                        shouldShowNextButton = true;
+                    }
+                    // Note: window.selectedDate is cleared in proceedToTattooSessionStep() if no tattoo session slot exists
+                    // So we don't need to check it here - user must click a date on tattoo session calendar
+                } else if (bookingFlowStep === 'consultation') {
+                    // For consultation step, highlight if consultation slot is selected or date is selected
+                    if (selectedConsultationSlot) {
+                        dateToHighlight = selectedConsultationSlot.date;
+                        shouldShowNextButton = true;
+                    } else if (window.selectedDate) {
+                        dateToHighlight = window.selectedDate;
+                        shouldShowNextButton = true;
+                    }
+                } else {
+                    // Regular booking flow
+                    if (window.selectedDate) {
+                        dateToHighlight = window.selectedDate;
+                        shouldShowNextButton = true;
+                    }
+                }
+                
+                // Restore selected date highlight if date was previously selected
+                if (dateToHighlight) {
+                    window.selectedDate = dateToHighlight;
+                    $('.calendar-day').removeClass('border-primary');
+                    // Use setTimeout to ensure calendar is rendered before trying to highlight
+                    setTimeout(function() {
+                        const dayElement = $(`.calendar-day[data-date="${dateToHighlight}"]`);
+                        if (dayElement.length > 0 && !dayElement.hasClass('unavailable') && !dayElement.attr('disabled')) {
+                            dayElement.addClass('border-primary');
+                            if (shouldShowNextButton) {
+                                $('#calendarNextButton').removeClass('d-none');
+                            }
+                        } else {
+                            // Date is not available, clear selection
+                            window.selectedDate = null;
+                            $('#calendarNextButton').addClass('d-none');
+                        }
+                    }, 100);
+                } else {
+                    // No date selected for current step, hide Next button
+                    $('.calendar-day').removeClass('border-primary');
+                    $('#calendarNextButton').addClass('d-none');
+                }
+                
+                // Don't clear selectedSlot, selectedConsultationSlot, or selectedTattooSessionSlot
+                // They should remain so user can go back and see their selection
+                
+                document.getElementById('calendarSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            
+            // Back to slots button (from questions section)
+            $(document).off('click', '#backToSlotsBtn').on('click', '#backToSlotsBtn', function() {
+                document.getElementById('questionsSection').classList.add('d-none');
+                document.getElementById('slotsSection').classList.remove('d-none');
+                document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            
+            // Back to questions button (from payment section)
+            $(document).off('click', '#backToQuestionsBtn').on('click', '#backToQuestionsBtn', function() {
+                document.getElementById('paymentSection').classList.add('d-none');
+                document.getElementById('questionsSection').classList.remove('d-none');
+                document.getElementById('questionsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            
+            // Back to consultation button (from tattoo session date selection)
+            $(document).off('click', '#backToConsultationBtn').on('click', '#backToConsultationBtn', function() {
+                if (!selectedConsultationSlot) {
+                    alert('No consultation slot selected. Please start over.');
+                    return;
+                }
+                
+                // Reset booking flow step
+                bookingFlowStep = 'consultation';
+                
+                // Clear minimum tattoo session date so calendar doesn't disable dates
+                minimumTattooSessionDate = null;
+                
+                // Set the selected date for calendar highlighting
+                window.selectedDate = selectedConsultationSlot.date;
+                
+                // Show calendar section first so it can be re-rendered
+                document.getElementById('calendarSection').classList.remove('d-none');
+                
+                // Re-render calendar to remove gap-based date disabling
+                renderCalendar();
+                
+                // After calendar is rendered, restore selected date highlight
+                setTimeout(function() {
+                    if (window.selectedDate) {
+                        $('.calendar-day').removeClass('border-primary');
+                        $(`.calendar-day[data-date="${window.selectedDate}"]`).addClass('border-primary');
+                        $('#calendarNextButton').removeClass('d-none');
+                    }
+                }, 100);
+                
+                // Hide calendar, show slots section
+                document.getElementById('calendarSection').classList.add('d-none');
+                document.getElementById('slotsSection').classList.remove('d-none');
+                
+                // Hide back button
+                $('#backToConsultationBtn').addClass('d-none');
+                
+                // Reset calendar title
+                $('#calendarTitle').text('Step 1: Select Consultation Date');
+                
+                // Reload consultation slots for the selected consultation date
+                loadConsultationSlots(selectedConsultationSlot.date);
+            });
+        }
+        
         // Initialize calendar when page loads
-        document.addEventListener('DOMContentLoaded', renderCalendar);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up back button handlers
+            setupBackButtonHandlers();
+            try {
+                renderCalendar();
+                
+                // Check if calendar was rendered after a short delay
+                setTimeout(function() {
+                    const calendarEl = document.getElementById('availability-calendar');
+                    if (calendarEl && calendarEl.innerHTML.trim() === '') {
+                        console.error('Calendar failed to render');
+                        calendarEl.innerHTML = `
+                            <div class="alert alert-warning">
+                                <h6>Unable to load calendar</h6>
+                                <p class="mb-0">Please refresh the page or contact support if the problem persists.</p>
+                                <button class="btn btn-primary btn-sm mt-2" onclick="location.reload()">Refresh Page</button>
+                            </div>
+                        `;
+                    }
+                }, 1000);
+            } catch (error) {
+                console.error('Error rendering calendar:', error);
+                const calendarEl = document.getElementById('availability-calendar');
+                if (calendarEl) {
+                    calendarEl.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h6>Error loading calendar</h6>
+                            <p class="mb-0">${error.message}</p>
+                            <button class="btn btn-primary btn-sm mt-2" onclick="location.reload()">Refresh Page</button>
+                        </div>
+                    `;
+                }
+            }
+        });
         
         $(document).on('click', '.calendar-day.available:not([disabled])', function() {
             const date = $(this).data('date');
             if (!date) return;
             
-            // Show loading state
-            const offcanvas = new bootstrap.Offcanvas(document.getElementById('slotsOffcanvas'));
-            document.getElementById('slotsOffcanvasLabel').textContent = 'Available Time Slots';
+            // Remove previous selection highlight
+            $('.calendar-day').removeClass('border-primary');
+            // Highlight selected date
+            $(this).addClass('border-primary');
+            
+            // Store selected date
+            window.selectedDate = date;
+            
+            // Show Next button only if date is selected
+            // This ensures button is only visible when user actually selects a date
+            if (date) {
+                $('#calendarNextButton').removeClass('d-none');
+            } else {
+                $('#calendarNextButton').addClass('d-none');
+            }
+        });
+        
+        // Handle Next button from calendar
+        $(document).off('click', '#nextToSlotsBtn').on('click', '#nextToSlotsBtn', function() {
+            const date = window.selectedDate;
+            if (!date) {
+                alert('Please select a date first.');
+                return;
+            }
+            
+            // Check if separate consultation flow
+            if (consultationInfo.is_separate) {
+                if (bookingFlowStep === 'consultation') {
+                    loadConsultationSlots(date);
+                } else if (bookingFlowStep === 'tattoo_session') {
+                    // Check if date is before minimum date
+                    if (minimumTattooSessionDate) {
+                        const selectedDate = new Date(date + 'T00:00:00');
+                        const minDate = new Date(minimumTattooSessionDate.split(' ')[0] + 'T00:00:00');
+                        if (selectedDate < minDate) {
+                            alert(`Please select a date on or after ${minDate.toLocaleDateString()}. Minimum gap required: ${consultationInfo.gap_value} ${consultationInfo.gap_unit} after consultation.`);
+                            return;
+                        }
+                    }
+                    loadTattooSessionSlots(date);
+                }
+            } else {
+                // Regular flow (combined or no consultation)
+                loadRegularSlots(date);
+            }
+        });
+        
+        function loadConsultationSlots(date) {
+            // Ensure booking flow step is set to consultation
+            bookingFlowStep = 'consultation';
+            
+            // Hide calendar, show slots section
+            document.getElementById('calendarSection').classList.add('d-none');
+            document.getElementById('slotsSection').classList.remove('d-none');
+            document.getElementById('slotsTitle').textContent = 'Select Consultation Time Slot';
             document.getElementById('slotsContainer').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-            offcanvas.show();
+            document.getElementById('slotsNextButton').classList.add('d-none');
+            
+            // Scroll to slots section
+            document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            $.ajax({
+                url: '{{ route('api.consultation.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
+                method: 'GET',
+                data: { date: date },
+                success: function(response) {
+                    if (response.success) {
+                        displayConsultationSlots(response, date);
+                    } else {
+                        document.getElementById('slotsContainer').innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="ti ti-alert-triangle me-2"></i>
+                                ${response.message || 'No consultation slots available'}
+                            </div>
+                        `;
+                    }
+                },
+                error: function(xhr) {
+                    const errorMessage = xhr.responseJSON?.message || 'Failed to load consultation slots. Please try again.';
+                    document.getElementById('slotsContainer').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="ti ti-x-circle me-2"></i>
+                            ${errorMessage}
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        function loadTattooSessionSlots(date) {
+            if (!selectedConsultationSlot) {
+                alert('Please select a consultation slot first.');
+                return;
+            }
+            
+            // Hide calendar, show slots section
+            document.getElementById('calendarSection').classList.add('d-none');
+            document.getElementById('slotsSection').classList.remove('d-none');
+            document.getElementById('slotsTitle').textContent = 'Select Tattoo Session Time Slot';
+            document.getElementById('slotsContainer').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            document.getElementById('slotsNextButton').classList.add('d-none');
+            
+            // Scroll to slots section
+            document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            $.ajax({
+                url: '{{ route('api.tattoo-session.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
+                method: 'GET',
+                data: {
+                    date: date,
+                    consultation_date: selectedConsultationSlot.date,
+                    consultation_start_time_utc: selectedConsultationSlot.start_time_utc,
+                    consultation_end_time_utc: selectedConsultationSlot.end_time_utc
+                },
+                success: function(response) {
+                    if (response.success) {
+                        displayTattooSessionSlots(response, date);
+                    } else {
+                        document.getElementById('slotsContainer').innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="ti ti-alert-triangle me-2"></i>
+                                ${response.message || 'No tattoo session slots available'}
+                            </div>
+                        `;
+                    }
+                },
+                error: function(xhr) {
+                    const errorMessage = xhr.responseJSON?.message || 'Failed to load tattoo session slots. Please try again.';
+                    document.getElementById('slotsContainer').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="ti ti-x-circle me-2"></i>
+                            ${errorMessage}
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        function loadRegularSlots(date) {
+            // Hide calendar, show slots section
+            document.getElementById('calendarSection').classList.add('d-none');
+            document.getElementById('slotsSection').classList.remove('d-none');
+            document.getElementById('slotsTitle').textContent = 'Select Time Slot';
+            document.getElementById('slotsContainer').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            document.getElementById('slotsNextButton').classList.add('d-none');
+            
+            // Scroll to slots section
+            document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
             
             $.ajax({
                 url: '{{ route('api.availability.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
                 method: 'GET',
-                data: {
-                    date: date
-                },
+                data: { date: date },
                 success: function(response) {
                     if (response.success) {
                         displayTimeSlots(response, date);
@@ -725,7 +1309,7 @@
                     `;
                 }
             });
-        });
+        }
         
         function displayTimeSlots(data, date) {
             const container = document.getElementById('slotsContainer');
@@ -736,7 +1320,29 @@
                 day: 'numeric' 
             });
             
-            document.getElementById('slotsOffcanvasLabel').textContent = `Available Time Slots - ${formattedDate}`;
+            document.getElementById('slotsTitle').textContent = `Select Time Slot - ${formattedDate}`;
+            
+            // Set up back to calendar button handler
+            $(document).off('click', '#backToCalendarBtn').on('click', '#backToCalendarBtn', function() {
+                document.getElementById('slotsSection').classList.add('d-none');
+                document.getElementById('calendarSection').classList.remove('d-none');
+                
+                // Restore selected date highlight if date was previously selected
+                if (window.selectedDate) {
+                    $('.calendar-day').removeClass('border-primary');
+                    // Use setTimeout to ensure calendar is rendered before trying to highlight
+                    setTimeout(function() {
+                        $(`.calendar-day[data-date="${window.selectedDate}"]`).addClass('border-primary');
+                        $('#calendarNextButton').removeClass('d-none');
+                    }, 100);
+                } else {
+                    // Only clear if no date was selected
+                    $('.calendar-day').removeClass('border-primary');
+                    $('#calendarNextButton').addClass('d-none');
+                }
+                
+                document.getElementById('calendarSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
             
             if (data.is_unavailable) {
                 container.innerHTML = `
@@ -758,24 +1364,38 @@
                 return;
             }
             
+            let consultationDurationHTML = '';
+            if (data.consultation_info && data.consultation_info.is_combined) {
+                consultationDurationHTML = '<br><strong>Consultation Duration:</strong> ' + data.consultation_info.consultation_duration_minutes + ' minutes<br><strong>Total Duration:</strong> ' + (data.tattoo.session_time_h + (data.consultation_info.consultation_duration_minutes / 60)).toFixed(2) + ' hour(s)';
+            }
+            
+            let consultationAlertHTML = '';
+            if (data.consultation_info && data.consultation_info.is_combined) {
+                consultationAlertHTML = '<div class="alert alert-info mb-2"><i class="ti ti-info-circle me-2"></i><strong>Consultation Included:</strong> This booking includes a consultation session.</div>';
+            }
+            
             let slotsHTML = `
                 <div class="mb-3">
                     <p class="text-muted mb-2">
-                        <strong>Session Duration:</strong> ${data.tattoo.session_time_h} hour(s)<br>
-                        <strong>Timezone:</strong> ${data.timezone}
+                        <strong>Session Duration:</strong> ${data.tattoo.session_time_h} hour(s)
+                        ${consultationDurationHTML}
+                        <br><strong>Timezone:</strong> ${data.timezone}
                     </p>
+                    ${consultationAlertHTML}
                 </div>
                 <div class="row g-2">
             `;
             
             data.time_slots.forEach((slot, index) => {
+                const totalDuration = slot.total_duration_minutes ? (slot.total_duration_minutes / 60).toFixed(2) : slot.duration_hours;
+                
                 slotsHTML += `
                     <div class="col-12 col-md-6">
-                        <div class="card slot-card h-100" style="cursor: pointer;" data-slot-index="${index}">
+                        <div class="card slot-card h-100" style="cursor: pointer;" data-slot-index="${index}" data-slot-date="${date}">
                             <div class="card-body text-center">
                                 <h5 class="card-title mb-1">${slot.start_time_display}</h5>
                                 <p class="text-muted mb-0 small">to ${slot.end_time_display}</p>
-                                <p class="text-muted mb-0 small mt-1">Duration: ${slot.duration_hours} hour(s)</p>
+                                <p class="text-muted mb-0 small mt-1">Duration: ${totalDuration} hour(s)</p>
                             </div>
                         </div>
                     </div>
@@ -792,7 +1412,7 @@
                 </div>
                 <div class="mt-3 d-none" id="nextButtonContainer">
                     <button type="button" class="btn btn-primary w-100" id="nextToQuestionsBtn">
-                        Next <i class="ti ti-arrow-right ms-1"></i>
+                        ${(window.bookingData?.questions || []).length > 0 ? 'Next: Answer Questions' : 'Next: Payment'} <i class="ti ti-arrow-right ms-1"></i>
                     </button>
                     <button type="button" class="btn btn-outline-primary w-100 mt-2" onclick="showBookingDetails('slots')">
                         <i class="ti ti-eye me-1"></i> View Details
@@ -807,6 +1427,7 @@
                 questions: data.questions || [],
                 date: date,
                 tattoo: data.tattoo,
+                consultationInfo: consultationInfo,
                 artist: data.artist,
             };
             
@@ -827,7 +1448,14 @@
                     artist: data.artist
                 };
                 
-                // Show Next button
+                // Show Next button and update text based on whether questions exist
+                const questions = window.bookingData?.questions || [];
+                const nextButton = $('#nextToQuestionsBtn');
+                if (questions.length > 0) {
+                    nextButton.html('Next: Answer Questions <i class="ti ti-arrow-right ms-1"></i>');
+                } else {
+                    nextButton.html('Next: Payment <i class="ti ti-arrow-right ms-1"></i>');
+                }
                 $('#nextButtonContainer').removeClass('d-none');
             });
             
@@ -838,17 +1466,593 @@
                     return;
                 }
                 
-                // Close slots offcanvas and open questions offcanvas
-                const slotsOffcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('slotsOffcanvas'));
-                if (slotsOffcanvas) {
-                    slotsOffcanvas.hide();
+                // Check if there are questions
+                const questions = window.bookingData?.questions || [];
+                if (!questions || questions.length === 0) {
+                    // No questions, skip directly to payment
+                    proceedToPaymentStep();
+                } else {
+                    // Has questions, proceed to questions step
+                    document.getElementById('slotsSection').classList.add('d-none');
+                    proceedToQuestionsStep();
+                }
+            });
+        }
+        
+        function displayConsultationSlots(data, date) {
+            const container = document.getElementById('slotsContainer');
+            const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            document.getElementById('slotsTitle').textContent = `Select Consultation Time Slot - ${formattedDate}`;
+            
+            // Ensure back button handlers are set up
+            setupBackButtonHandlers();
+            
+            if (data.is_unavailable) {
+                container.innerHTML = `<div class="alert alert-warning"><i class="ti ti-calendar-x me-2"></i>Artist is unavailable on this date.</div>`;
+                return;
+            }
+            
+            if (!data.time_slots || data.time_slots.length === 0) {
+                container.innerHTML = `<div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>No available consultation slots for this date.</div>`;
+                return;
+            }
+            
+            const consultationDuration = consultationInfo.session_duration_minutes || 30;
+            let slotsHTML = `
+                <div class="mb-3">
+                    <p class="text-muted mb-2">
+                        <strong>Consultation Duration:</strong> ${consultationDuration} minutes<br>
+                        <strong>Timezone:</strong> ${data.timezone}
+                    </p>
+                </div>
+                <div class="row g-2">
+            `;
+            
+            data.time_slots.forEach((slot, index) => {
+                // Check if this slot matches the previously selected consultation slot
+                const isSelected = selectedConsultationSlot && 
+                    selectedConsultationSlot.date === date &&
+                    selectedConsultationSlot.start_time_utc === slot.start_time_utc &&
+                    selectedConsultationSlot.end_time_utc === slot.end_time_utc;
+                
+                const selectedClass = isSelected ? 'border-primary' : '';
+                
+                slotsHTML += `
+                    <div class="col-12 col-md-6">
+                        <div class="card slot-card h-100 ${selectedClass}" style="cursor: pointer;" data-slot-index="${index}" data-slot-date="${date}">
+                            <div class="card-body text-center">
+                                <h5 class="card-title mb-1">${slot.start_time_display}</h5>
+                                <p class="text-muted mb-0 small">to ${slot.end_time_display}</p>
+                                <p class="text-muted mb-0 small mt-1">Duration: ${consultationDuration} minutes</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Check if we have a previously selected slot to show Next button
+            const hasSelectedSlot = selectedConsultationSlot && 
+                selectedConsultationSlot.date === date &&
+                data.time_slots.some(slot => 
+                    slot.start_time_utc === selectedConsultationSlot.start_time_utc &&
+                    slot.end_time_utc === selectedConsultationSlot.end_time_utc
+                );
+            
+            slotsHTML += `
+                </div>
+                <div class="mt-3 ${hasSelectedSlot ? '' : 'd-none'}" id="nextButtonContainer">
+                    <button type="button" class="btn btn-primary w-100" id="nextToTattooSessionBtn">
+                        Next: Select Tattoo Session <i class="ti ti-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.innerHTML = slotsHTML;
+            
+            // If we have a previously selected slot, ensure minimum date is calculated
+            if (hasSelectedSlot) {
+                calculateMinimumTattooSessionDate();
+            }
+            
+            // Add click handlers
+            $(document).off('click', '.slot-card').on('click', '.slot-card', function() {
+                const slotIndex = $(this).data('slot-index');
+                const slot = data.time_slots[slotIndex];
+                
+                $('.slot-card').removeClass('border-primary');
+                $(this).addClass('border-primary');
+                
+                selectedConsultationSlot = {
+                    date: date,
+                    start_time_utc: slot.start_time_utc,
+                    end_time_utc: slot.end_time_utc,
+                    start_time_display: slot.start_time_display,
+                    end_time_display: slot.end_time_display
+                };
+                
+                calculateMinimumTattooSessionDate();
+                $('#nextButtonContainer').removeClass('d-none');
+            });
+            
+            $('#nextToTattooSessionBtn').off('click').on('click', function() {
+                if (!selectedConsultationSlot) {
+                    alert('Please select a consultation slot first.');
+                    return;
+                }
+                // Hide slots section temporarily, will show calendar again
+                document.getElementById('slotsSection').classList.add('d-none');
+                proceedToTattooSessionStep();
+            });
+        }
+        
+        function displayTattooSessionSlots(data, date) {
+            const container = document.getElementById('slotsContainer');
+            const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            document.getElementById('slotsTitle').textContent = `Select Tattoo Session Time Slot - ${formattedDate}`;
+            
+            // Ensure back button handlers are set up
+            setupBackButtonHandlers();
+            
+            if (data.is_unavailable) {
+                container.innerHTML = `<div class="alert alert-warning"><i class="ti ti-calendar-x me-2"></i>Artist is unavailable on this date.</div>`;
+                return;
+            }
+            
+            if (!data.time_slots || data.time_slots.length === 0) {
+                container.innerHTML = `<div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>No available tattoo session slots for this date.</div>`;
+                return;
+            }
+            
+            const gapInfo = data.consultation_info || {};
+            let slotsHTML = `
+                <div class="mb-3">
+                    ${selectedConsultationSlot ? `
+                    <div class="alert alert-success mb-2">
+                        <strong>Selected Consultation:</strong><br>
+                        ${new Date(selectedConsultationSlot.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}<br>
+                        ${selectedConsultationSlot.start_time_display} - ${selectedConsultationSlot.end_time_display}
+                    </div>
+                    ` : ''}
+                    ${gapInfo.gap_required ? `
+                    <div class="alert alert-info mb-2">
+                        <i class="ti ti-clock me-2"></i>
+                        <strong>Minimum gap:</strong> ${gapInfo.gap_value} ${gapInfo.gap_unit} after consultation<br>
+                        You can book from ${gapInfo.minimum_tattoo_session_date ? new Date(gapInfo.minimum_tattoo_session_date + 'T00:00:00').toLocaleDateString() : 'consultation end time'} onwards
+                    </div>
+                    ` : ''}
+                    <p class="text-muted mb-2">
+                        <strong>Tattoo Session Duration:</strong> ${data.tattoo.session_time_h} hour(s)<br>
+                        <strong>Timezone:</strong> ${data.timezone}
+                    </p>
+                </div>
+                <div class="row g-2">
+            `;
+            
+            data.time_slots.forEach((slot, index) => {
+                // Check if this slot matches the previously selected tattoo session slot
+                const isSelected = selectedTattooSessionSlot && 
+                    selectedTattooSessionSlot.date === date &&
+                    selectedTattooSessionSlot.start_time_utc === slot.start_time_utc &&
+                    selectedTattooSessionSlot.end_time_utc === slot.end_time_utc;
+                
+                const selectedClass = isSelected ? 'border-primary' : '';
+                
+                slotsHTML += `
+                    <div class="col-12 col-md-6">
+                        <div class="card slot-card h-100 ${selectedClass}" style="cursor: pointer;" data-slot-index="${index}" data-slot-date="${date}">
+                            <div class="card-body text-center">
+                                <h5 class="card-title mb-1">${slot.start_time_display}</h5>
+                                <p class="text-muted mb-0 small">to ${slot.end_time_display}</p>
+                                <p class="text-muted mb-0 small mt-1">Duration: ${slot.duration_hours} hour(s)</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Check if we have a previously selected slot to show Next button
+            const hasSelectedSlot = selectedTattooSessionSlot && 
+                selectedTattooSessionSlot.date === date &&
+                data.time_slots.some(slot => 
+                    slot.start_time_utc === selectedTattooSessionSlot.start_time_utc &&
+                    slot.end_time_utc === selectedTattooSessionSlot.end_time_utc
+                );
+            
+            const questions = data.questions || [];
+            const nextButtonText = questions.length > 0 ? 'Next: Answer Questions' : 'Next: Payment';
+            
+            slotsHTML += `
+                </div>
+                <div class="mt-3 ${hasSelectedSlot ? '' : 'd-none'}" id="nextButtonContainer">
+                    <button type="button" class="btn btn-primary w-100" id="nextToQuestionsBtn">
+                        ${nextButtonText} <i class="ti ti-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.innerHTML = slotsHTML;
+            
+            // Store questions data globally
+            if (!window.bookingData) {
+                window.bookingData = {};
+            }
+            window.bookingData.questions = data.questions || [];
+            window.bookingData.tattoo = data.tattoo;
+            window.bookingData.artist = data.artist;
+            window.bookingData.date = date;
+            
+            // Add click handlers
+            $(document).off('click', '.slot-card').on('click', '.slot-card', function() {
+                const slotIndex = $(this).data('slot-index');
+                const slot = data.time_slots[slotIndex];
+                
+                $('.slot-card').removeClass('border-primary');
+                $(this).addClass('border-primary');
+                
+                selectedTattooSessionSlot = {
+                    date: date,
+                    start_time_utc: slot.start_time_utc,
+                    end_time_utc: slot.end_time_utc,
+                    start_time_display: slot.start_time_display,
+                    end_time_display: slot.end_time_display
+                };
+                
+                // Update button text based on whether questions exist
+                const questions = window.bookingData?.questions || [];
+                const nextButton = $('#nextToQuestionsBtn');
+                if (questions.length > 0) {
+                    nextButton.html('Next: Answer Questions <i class="ti ti-arrow-right ms-1"></i>');
+                } else {
+                    nextButton.html('Next: Payment <i class="ti ti-arrow-right ms-1"></i>');
+                }
+                $('#nextButtonContainer').removeClass('d-none');
+            });
+            
+            $('#nextToQuestionsBtn').off('click').on('click', function() {
+                if (!selectedTattooSessionSlot) {
+                    alert('Please select a tattoo session slot first.');
+                    return;
                 }
                 
-                // Show questions offcanvas
-                setTimeout(() => {
-                    showQuestionsForm();
-                }, 300);
+                // Check if there are questions
+                const questions = window.bookingData?.questions || [];
+                if (!questions || questions.length === 0) {
+                    // No questions, skip directly to payment
+                    proceedToPaymentStep();
+                } else {
+                    // Has questions, proceed to questions step
+                    document.getElementById('slotsSection').classList.add('d-none');
+                proceedToQuestionsStep();
+                }
             });
+        }
+        
+        function calculateMinimumTattooSessionDate() {
+            if (!selectedConsultationSlot || !consultationInfo.gap_required) {
+                minimumTattooSessionDate = null;
+                return;
+            }
+            
+            const consultationEnd = new Date(selectedConsultationSlot.date + 'T' + selectedConsultationSlot.end_time_utc);
+            const gapValue = consultationInfo.gap_value || 0;
+            const gapUnit = consultationInfo.gap_unit || 'days';
+            
+            let gapMinutes = 0;
+            switch(gapUnit) {
+                case 'minutes':
+                    gapMinutes = gapValue;
+                    break;
+                case 'hours':
+                    gapMinutes = gapValue * 60;
+                    break;
+                case 'days':
+                    gapMinutes = gapValue * 24 * 60;
+                    break;
+            }
+            
+            const minimumDate = new Date(consultationEnd.getTime() + gapMinutes * 60000);
+            minimumTattooSessionDate = minimumDate.toISOString().slice(0, 19).replace('T', ' ');
+            
+            // Update calendar to disable dates before minimum
+            updateCalendarForGap(minimumDate);
+        }
+        
+        function updateCalendarForGap(minimumDate) {
+            // Only update calendar if we're on the tattoo session step
+            // Don't modify calendar when on consultation step
+            if (bookingFlowStep !== 'tattoo_session') {
+                return;
+            }
+            
+            const minDateStr = minimumDate.toISOString().split('T')[0];
+            $('.calendar-day').each(function() {
+                const dateStr = $(this).data('date');
+                if (dateStr && dateStr < minDateStr) {
+                    $(this).addClass('unavailable').removeClass('available');
+                    $(this).attr('disabled', 'disabled');
+                }
+            });
+        }
+        
+        function proceedToTattooSessionStep() {
+            bookingFlowStep = 'tattoo_session';
+            
+            // Clear slot availability cache since flow changed
+            clearSlotAvailabilityCache();
+            
+            // Clear selectedDate if no tattoo session date has been selected yet
+            // This ensures the Next button doesn't show until user selects a date on tattoo session calendar
+            if (!selectedTattooSessionSlot) {
+                window.selectedDate = null;
+            }
+            
+            // Explicitly hide Next button until user selects a date on tattoo session calendar
+            // This ensures it's hidden even if calendar hasn't rendered yet
+            $('#calendarNextButton').addClass('d-none');
+            
+            // Re-calculate minimum date if consultation slot is selected
+            if (selectedConsultationSlot) {
+                calculateMinimumTattooSessionDate();
+            }
+            
+            // Update UI
+            $('#calendarTitle').text('Step 2: Select Tattoo Session Date');
+            $('#backToConsultationBtn').removeClass('d-none');
+            
+            // Show calendar section again
+            document.getElementById('calendarSection').classList.remove('d-none');
+            document.getElementById('slotsSection').classList.add('d-none');
+            
+            // Re-render calendar to disable dates (before consultation date and within gap period)
+            renderCalendar();
+            
+            // Show selected consultation info
+            if (selectedConsultationSlot) {
+                const consultationDate = new Date(selectedConsultationSlot.date + 'T00:00:00').toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                // Add info card above calendar
+                if (!$('#consultationSelectedInfo').length) {
+                    $('#calendarSection .calendar-container').before(`
+                        <div class="alert alert-success mb-3" id="consultationSelectedInfo">
+                            <strong>Selected Consultation:</strong> ${consultationDate} at ${selectedConsultationSlot.start_time_display} - ${selectedConsultationSlot.end_time_display}
+                            ${consultationInfo.gap_required ? `<br><strong>Minimum gap:</strong> ${consultationInfo.gap_value} ${consultationInfo.gap_unit} - Book from ${minimumTattooSessionDate ? new Date(minimumTattooSessionDate.split(' ')[0] + 'T00:00:00').toLocaleDateString() : 'consultation end'} onwards` : ''}
+                        </div>
+                    `);
+                }
+            }
+            
+            // Scroll to calendar
+            document.getElementById('calendarSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        function proceedToQuestionsStep() {
+            // Check if there are questions first
+            const questions = window.bookingData?.questions || [];
+            if (!questions || questions.length === 0) {
+                // No questions, skip directly to payment
+                proceedToPaymentStep();
+                return;
+            }
+            
+            bookingFlowStep = 'questions';
+            
+            // Hide slots section, show questions section
+            document.getElementById('slotsSection').classList.add('d-none');
+            document.getElementById('questionsSection').classList.remove('d-none');
+            
+            // Show questions form
+            setTimeout(() => {
+                showQuestionsForm();
+            }, 300);
+            
+            // Scroll to questions section
+            document.getElementById('questionsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        function proceedToPaymentStep() {
+            bookingFlowStep = 'payment';
+            
+            // For separate consultation, we need to get payment info
+            // Submit booking data to get payment information
+            const formData = new FormData();
+            formData.append('_token', csrfToken);
+            
+            if (consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot) {
+                // Hide slots section, show payment section
+                document.getElementById('slotsSection').classList.add('d-none');
+                document.getElementById('paymentSection').classList.remove('d-none');
+                
+                // Update back button text based on whether questions exist
+                const questions = window.bookingData?.questions || [];
+                const backButton = document.getElementById('backToQuestionsBtn');
+                if (backButton) {
+                    if (questions && questions.length > 0) {
+                        backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Back to Questions';
+                    } else {
+                        backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Change Time';
+                    }
+                }
+                
+                formData.append('consultation_slot[date]', selectedConsultationSlot.date);
+                formData.append('consultation_slot[start_time_utc]', selectedConsultationSlot.start_time_utc);
+                formData.append('consultation_slot[end_time_utc]', selectedConsultationSlot.end_time_utc);
+                formData.append('tattoo_session_slot[date]', selectedTattooSessionSlot.date);
+                formData.append('tattoo_session_slot[start_time_utc]', selectedTattooSessionSlot.start_time_utc);
+                formData.append('tattoo_session_slot[end_time_utc]', selectedTattooSessionSlot.end_time_utc);
+                
+                // Add questions if any
+                const questionsForm = document.getElementById('questionsForm');
+                if (questionsForm) {
+                    const formDataFromForm = new FormData(questionsForm);
+                    for (let [key, value] of formDataFromForm.entries()) {
+                        if (key.startsWith('questions[')) {
+                            formData.append(key, value);
+                        }
+                    }
+                }
+                
+                // Show loading state
+                document.getElementById('paymentContainer').innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p>Preparing payment...</p>
+                    </div>
+                `;
+                
+                // For separate consultation, we need to calculate payment based on tattoo session slot
+                // Use the tattoo session slot to get payment info
+                const paymentFormData = new FormData();
+                paymentFormData.append('_token', csrfToken);
+                paymentFormData.append('slot[date]', selectedTattooSessionSlot.date);
+                paymentFormData.append('slot[start_time_utc]', selectedTattooSessionSlot.start_time_utc);
+                paymentFormData.append('slot[end_time_utc]', selectedTattooSessionSlot.end_time_utc);
+                
+                // Add questions if any
+                if (questionsForm) {
+                    const formDataFromForm = new FormData(questionsForm);
+                    for (let [key, value] of formDataFromForm.entries()) {
+                        if (key.startsWith('questions[')) {
+                            paymentFormData.append(key, value);
+                        }
+                    }
+                }
+                
+                // Submit to get payment info using regular submit endpoint with tattoo session slot
+                $.ajax({
+                    url: '{{ route('api.booking.submit', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
+                    method: 'POST',
+                    data: paymentFormData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    success: function(response) {
+                        if (response.success && response.payment) {
+                            window.bookingData.payment = response.payment;
+                            setTimeout(() => {
+                                showPaymentForm(response.payment);
+                            }, 300);
+                        } else {
+                            document.getElementById('paymentContainer').innerHTML = `
+                                <div class="alert alert-danger">
+                                    <i class="ti ti-alert-circle me-2"></i>
+                                    ${response.message || 'Failed to get payment information. Please try again.'}
+                                </div>
+                            `;
+                        }
+                    },
+                    error: function(xhr) {
+                        const errorMessage = xhr.responseJSON?.message || 'Failed to get payment information. Please try again.';
+                        document.getElementById('paymentContainer').innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="ti ti-x-circle me-2"></i>
+                                ${errorMessage}
+                            </div>
+                        `;
+                    }
+                });
+            } else {
+                // Regular flow (non-separate consultation)
+                // Hide slots section, show payment section
+                document.getElementById('slotsSection').classList.add('d-none');
+                document.getElementById('paymentSection').classList.remove('d-none');
+                
+                // Update back button text based on whether questions exist
+                const questions = window.bookingData?.questions || [];
+                const backButton = document.getElementById('backToQuestionsBtn');
+                if (backButton) {
+                    if (questions && questions.length > 0) {
+                        backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Back to Questions';
+                    } else {
+                        backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Change Time';
+                    }
+                }
+                
+                // Submit booking data to get payment information
+                const formData = new FormData();
+                formData.append('_token', csrfToken);
+                formData.append('slot[date]', window.selectedSlot.date);
+                formData.append('slot[start_time_utc]', window.selectedSlot.slot.start_time_utc);
+                formData.append('slot[end_time_utc]', window.selectedSlot.slot.end_time_utc);
+                
+                // Add questions if any (though there shouldn't be any if we're here)
+                const questionsForm = document.getElementById('questionsForm');
+                if (questionsForm) {
+                    const formDataFromForm = new FormData(questionsForm);
+                    for (let [key, value] of formDataFromForm.entries()) {
+                        if (key.startsWith('questions[')) {
+                            formData.append(key, value);
+                        }
+                    }
+                }
+                
+                // Show loading state
+                document.getElementById('paymentContainer').innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p>Preparing payment...</p>
+                    </div>
+                `;
+                
+                // Submit to get payment info
+                $.ajax({
+                    url: '{{ route('api.booking.submit', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    success: function(response) {
+                        if (response.success && response.payment) {
+                            window.bookingData.payment = response.payment;
+                            window.bookingData.booking = response.booking_data;
+                            setTimeout(() => {
+                                showPaymentForm(response.payment);
+                            }, 300);
+                        } else {
+                            document.getElementById('paymentContainer').innerHTML = `
+                                <div class="alert alert-danger">
+                                    <i class="ti ti-alert-circle me-2"></i>
+                                    ${response.message || 'Failed to get payment information. Please try again.'}
+                                </div>
+                            `;
+                        }
+                    },
+                    error: function(xhr) {
+                        const errorMessage = xhr.responseJSON?.message || 'Failed to get payment information. Please try again.';
+                        document.getElementById('paymentContainer').innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="ti ti-x-circle me-2"></i>
+                                ${errorMessage}
+                            </div>
+                        `;
+                    }
+                });
+            }
         }
         
         function showQuestionsForm() {
@@ -857,7 +2061,13 @@
             
             if (!questions || questions.length === 0) {
                 // No questions, proceed directly to payment
-                // Submit booking with empty questions to get payment info
+                if (consultationInfo.is_separate) {
+                    // For separate consultation, we'll handle payment after both slots are selected
+                    proceedToPaymentStep();
+                    return;
+                }
+                
+                // Regular flow - submit booking with empty questions to get payment info
                 const formData = new FormData();
                 formData.append('_token', csrfToken);
                 formData.append('slot[date]', window.selectedSlot.date);
@@ -873,12 +2083,9 @@
                         <p>No questions to answer. Preparing payment...</p>
                 </div>
             `;
-            
-                // Close questions offcanvas
-                const questionsOffcanvasInstance = bootstrap.Offcanvas.getInstance(document.getElementById('questionsOffcanvas'));
-                if (questionsOffcanvasInstance) {
-                    questionsOffcanvasInstance.hide();
-                }
+                
+                // Hide questions section, will show payment after
+                document.getElementById('questionsSection').classList.add('d-none');
                 
                 // Submit to get payment info
                 $.ajax({
@@ -913,11 +2120,9 @@
                     },
                     error: function(xhr) {
                         alert('An error occurred. Please try again.');
-                        // Show slots offcanvas again
-                        setTimeout(() => {
-                            const slotsOffcanvas = new bootstrap.Offcanvas(document.getElementById('slotsOffcanvas'));
-                            slotsOffcanvas.show();
-                        }, 300);
+                        // Show slots section again
+                        document.getElementById('questionsSection').classList.add('d-none');
+                        document.getElementById('slotsSection').classList.remove('d-none');
                     }
                 });
                 return;
@@ -1169,11 +2374,53 @@
                 }
             });
             
-            // Show questions offcanvas
-            const questionsOffcanvas = new bootstrap.Offcanvas(document.getElementById('questionsOffcanvas'));
-            questionsOffcanvas.show();
+            // Questions section is already visible
             
             // Handle back button
+            // Back to calendar button
+            $(document).off('click', '#backToCalendarBtn').on('click', '#backToCalendarBtn', function() {
+                document.getElementById('slotsSection').classList.add('d-none');
+                document.getElementById('calendarSection').classList.remove('d-none');
+                document.getElementById('calendarSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            
+            // Back to slots button
+            $(document).off('click', '#backToSlotsBtn').on('click', '#backToSlotsBtn', function() {
+                document.getElementById('questionsSection').classList.add('d-none');
+                document.getElementById('slotsSection').classList.remove('d-none');
+                document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            
+            // Back to questions button (from payment)
+            $(document).off('click', '#backToQuestionsBtn').on('click', '#backToQuestionsBtn', function() {
+                // Hide payment section
+                document.getElementById('paymentSection').classList.add('d-none');
+                
+                // Check if there are questions to determine where to go back
+                const questions = window.bookingData?.questions || [];
+                
+                if (questions && questions.length > 0) {
+                    // Go back to questions section
+                    document.getElementById('questionsSection').classList.remove('d-none');
+                    document.getElementById('questionsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    // No questions, go back to slots section
+                    document.getElementById('slotsSection').classList.remove('d-none');
+                    document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+            
+            // Calendar next button (when date is selected)
+            $(document).off('click', '#nextToSlotsBtn').on('click', '#nextToSlotsBtn', function() {
+                const selectedDate = $('.calendar-day.available.border-primary').data('date');
+                if (!selectedDate) {
+                    alert('Please select a date first.');
+                    return;
+                }
+                // Trigger date click to load slots
+                $('.calendar-day.available.border-primary').trigger('click');
+            });
+            
             $(document).off('click', '#backToSlotsBtn').on('click', '#backToSlotsBtn', function() {
                 const questionsOffcanvasInstance = bootstrap.Offcanvas.getInstance(document.getElementById('questionsOffcanvas'));
                 if (questionsOffcanvasInstance) {
@@ -1220,18 +2467,36 @@
                 // Add CSRF token
                 formData.append('_token', csrfToken);
                 
-                // Add slot data
-                formData.append('slot[date]', window.selectedSlot.date);
-                formData.append('slot[start_time_utc]', window.selectedSlot.slot.start_time_utc);
-                formData.append('slot[end_time_utc]', window.selectedSlot.slot.end_time_utc);
+                // Handle separate consultation timing
+                if (consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot) {
+                    // Add consultation slot data
+                    formData.append('consultation_slot[date]', selectedConsultationSlot.date);
+                    formData.append('consultation_slot[start_time_utc]', selectedConsultationSlot.start_time_utc);
+                    formData.append('consultation_slot[end_time_utc]', selectedConsultationSlot.end_time_utc);
+                    
+                    // Add tattoo session slot data
+                    formData.append('tattoo_session_slot[date]', selectedTattooSessionSlot.date);
+                    formData.append('tattoo_session_slot[start_time_utc]', selectedTattooSessionSlot.start_time_utc);
+                    formData.append('tattoo_session_slot[end_time_utc]', selectedTattooSessionSlot.end_time_utc);
+                } else {
+                    // Regular flow - add slot data
+                    formData.append('slot[date]', window.selectedSlot.date);
+                    formData.append('slot[start_time_utc]', window.selectedSlot.slot.start_time_utc);
+                    formData.append('slot[end_time_utc]', window.selectedSlot.slot.end_time_utc);
+                }
                 
                 // Disable submit button
                 const submitBtn = $('#submitBookingBtn');
                 submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Processing...');
                 
+                // Determine which endpoint to use
+                const submitUrl = consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot
+                    ? '{{ route('api.booking.separate', ['tattoo_id' => $tattoo['tattoo_id']]) }}'
+                    : '{{ route('api.booking.submit', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
+                
                 // Submit via AJAX
                 $.ajax({
-                    url: '{{ route('api.booking.submit', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
+                    url: submitUrl,
                     method: 'POST',
                     data: formData,
                     processData: false,
@@ -1242,8 +2507,19 @@
                     success: function(response) {
                         if (response.success) {
                             // Store booking data including answers
-                            window.bookingData.booking = response.booking_data;
-                            window.bookingData.questionsAnswers = response.booking_data.answers || {};
+                            if (consultationInfo.is_separate) {
+                                window.bookingData.consultationBooking = {
+                                    id: response.consultation_booking_id,
+                                    time: response.consultation_time
+                                };
+                                window.bookingData.tattooSessionBooking = {
+                                    id: response.tattoo_session_booking_id,
+                                    time: response.tattoo_session_time
+                                };
+                            } else {
+                                window.bookingData.booking = response.booking_data;
+                                window.bookingData.questionsAnswers = response.booking_data?.answers || {};
+                            }
                             
                             // Store payment data
                             if (response.payment) {
@@ -1256,8 +2532,10 @@
                                 questionsOffcanvasInstance.hide();
                             }
                             
-                            // Check if payment is required
-                            if (response.payment_required && response.payment.has_stripe_account) {
+                            // For separate consultation, we need to get payment info
+                            if (consultationInfo.is_separate) {
+                                proceedToPaymentStep();
+                            } else if (response.payment_required && response.payment.has_stripe_account) {
                                 // Show payment step after a short delay
                                 setTimeout(() => {
                                     showPaymentForm(response.payment);
@@ -1544,28 +2822,60 @@
                         }
                         
                         // Prepare booking data
-                        const bookingData = {
-                            _token: csrfToken,
-                            payment_intent_id: paymentIntent.id,
-                            slot: {
-                                date: window.selectedSlot.date,
-                                start_time_utc: window.selectedSlot.slot.start_time_utc,
-                                end_time_utc: window.selectedSlot.slot.end_time_utc,
-                            },
-                            customer_name: customerName,
-                            customer_email: customerEmail,
-                            amount: parseFloat(window.currentPaymentAmount || paymentInfo.deposit_amount),
-                            currency: paymentInfo.currency,
-                            full_amount_paid: $('#payFullCheckbox').is(':checked') ? 1 : 0, // Send as 1/0 for Laravel boolean validation
-                            questions: window.bookingData?.booking?.answers || window.bookingData?.questionsAnswers || {},
-                        };
+                        let bookingData;
+                        
+                        if (consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot) {
+                            // Separate consultation timing flow
+                            bookingData = {
+                                _token: csrfToken,
+                                payment_intent_id: paymentIntent.id,
+                                consultation_slot: {
+                                    date: selectedConsultationSlot.date,
+                                    start_time_utc: selectedConsultationSlot.start_time_utc,
+                                    end_time_utc: selectedConsultationSlot.end_time_utc,
+                                },
+                                tattoo_session_slot: {
+                                    date: selectedTattooSessionSlot.date,
+                                    start_time_utc: selectedTattooSessionSlot.start_time_utc,
+                                    end_time_utc: selectedTattooSessionSlot.end_time_utc,
+                                },
+                                customer_name: customerName,
+                                customer_email: customerEmail,
+                                amount: parseFloat(window.currentPaymentAmount || paymentInfo.deposit_amount),
+                                currency: paymentInfo.currency,
+                                full_amount_paid: $('#payFullCheckbox').is(':checked') ? 1 : 0,
+                                questions: window.bookingData?.questionsAnswers || {},
+                            };
+                        } else {
+                            // Regular flow
+                            bookingData = {
+                                _token: csrfToken,
+                                payment_intent_id: paymentIntent.id,
+                                slot: {
+                                    date: window.selectedSlot.date,
+                                    start_time_utc: window.selectedSlot.slot.start_time_utc,
+                                    end_time_utc: window.selectedSlot.slot.end_time_utc,
+                                },
+                                customer_name: customerName,
+                                customer_email: customerEmail,
+                                amount: parseFloat(window.currentPaymentAmount || paymentInfo.deposit_amount),
+                                currency: paymentInfo.currency,
+                                full_amount_paid: $('#payFullCheckbox').is(':checked') ? 1 : 0,
+                                questions: window.bookingData?.booking?.answers || window.bookingData?.questionsAnswers || {},
+                            };
+                        }
                         
                         // Log booking data for debugging
                         console.log('Booking data being sent:', bookingData);
                         
+                        // Determine which endpoint to use
+                        const confirmUrl = consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot
+                            ? '{{ route('api.booking.separate', ['tattoo_id' => $tattoo['tattoo_id']]) }}'
+                            : '{{ route('api.booking.confirm', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
+                        
                         // Save booking and send emails
                         $.ajax({
-                            url: '{{ route('api.booking.confirm', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
+                            url: confirmUrl,
                             method: 'POST',
                             data: bookingData,
                             headers: {
@@ -1573,26 +2883,46 @@
                             },
                             success: function(response) {
                                 if (response.success) {
-                                    container.innerHTML = `
+                                    let confirmationHTML = `
                                         <div class="text-center py-5">
                                             <div class="mb-3">
                                                 <i class="ti ti-circle-check text-success" style="font-size: 4rem;"></i>
-                            </div>
-                                            <h5 class="mb-2">Booking Confirmed!</h5>
-                                            <p class="text-muted mb-3">Your booking has been confirmed and confirmation emails have been sent.</p>
-                                            <p class="text-muted small mb-4">Booking ID: #${response.booking_id}</p>
+                                            </div>
+                                            <h5 class="mb-2">Booking${consultationInfo.is_separate ? 's' : ''} Confirmed!</h5>
+                                            <p class="text-muted mb-3">Your booking${consultationInfo.is_separate ? 's have' : ' has'} been confirmed and confirmation emails have been sent.</p>
+                                    `;
+                                    
+                                    if (consultationInfo.is_separate) {
+                                        confirmationHTML += `
+                                            <div class="alert alert-info mb-3 text-start">
+                                                <strong>Consultation Booking:</strong> #${response.consultation_booking_id}<br>
+                                                ${response.consultation_time ? `${response.consultation_time.start} - ${response.consultation_time.end}` : ''}
+                                                ${response.consultation_meet_link ? `<br><a href="${response.consultation_meet_link}" target="_blank" class="btn btn-sm btn-primary mt-2">Join Consultation Meeting</a>` : ''}
+                                            </div>
+                                            <div class="alert alert-success mb-3 text-start">
+                                                <strong>Tattoo Session Booking:</strong> #${response.tattoo_session_booking_id}<br>
+                                                ${response.tattoo_session_time ? `${response.tattoo_session_time.start} - ${response.tattoo_session_time.end}` : ''}
+                                            </div>
+                                        `;
+                                    } else {
+                                        confirmationHTML += `<p class="text-muted small mb-4">Booking ID: #${response.booking_id}</p>`;
+                                    }
+                                    
+                                    confirmationHTML += `
                                             <button type="button" class="btn btn-primary" onclick="location.reload()">
                                                 Done
                                             </button>
-                        </div>
+                                        </div>
                                     `;
+                                    
+                                    container.innerHTML = confirmationHTML;
                                 } else {
                                     container.innerHTML = `
                                         <div class="alert alert-warning">
                                             <i class="ti ti-alert-triangle me-2"></i>
                                             Payment successful but booking confirmation failed: ${response.message || 'Unknown error'}
-                    </div>
-                `;
+                                        </div>
+                                    `;
                                 }
                             },
                             error: function(xhr) {
@@ -1723,30 +3053,40 @@
             // Create initial payment intent
             createPaymentIntent();
             
-            // Show payment offcanvas
-            const paymentOffcanvas = new bootstrap.Offcanvas(document.getElementById('paymentOffcanvas'));
-            paymentOffcanvas.show();
+            // Hide questions section, show payment section
+            document.getElementById('questionsSection').classList.add('d-none');
+            document.getElementById('paymentSection').classList.remove('d-none');
+            
+            // Update back button text based on whether questions exist
+            const questions = window.bookingData?.questions || [];
+            const backButton = document.getElementById('backToQuestionsBtn');
+            if (backButton) {
+                if (questions && questions.length > 0) {
+                    backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Back to Questions';
+                } else {
+                    backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Change Time';
+                }
+            }
+            
+            // Scroll to payment section
+            document.getElementById('paymentSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
             
             // Handle back button - check if there are questions
             $(document).off('click', '#backToQuestionsBtn').on('click', '#backToQuestionsBtn', function() {
-                const paymentOffcanvasInstance = bootstrap.Offcanvas.getInstance(document.getElementById('paymentOffcanvas'));
-                if (paymentOffcanvasInstance) {
-                    paymentOffcanvasInstance.hide();
-                }
+                // Hide payment section
+                document.getElementById('paymentSection').classList.add('d-none');
                 
                 const questions = window.bookingData?.questions || [];
                 
-                setTimeout(() => {
                     if (questions && questions.length > 0) {
-                        // Go back to questions
-                        const questionsOffcanvas = new bootstrap.Offcanvas(document.getElementById('questionsOffcanvas'));
-                        questionsOffcanvas.show();
+                    // Go back to questions section
+                    document.getElementById('questionsSection').classList.remove('d-none');
+                    document.getElementById('questionsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
                     } else {
-                        // No questions, go back to slots
-                        const slotsOffcanvas = new bootstrap.Offcanvas(document.getElementById('slotsOffcanvas'));
-                        slotsOffcanvas.show();
+                    // No questions, go back to slots section
+                    document.getElementById('slotsSection').classList.remove('d-none');
+                    document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
-                }, 300);
             });
         }
         
@@ -1830,7 +3170,7 @@
                             <div class="card-body">
                                 <p class="mb-1"><strong>Date:</strong> ${formattedDate}</p>
                                 <p class="mb-1"><strong>Time:</strong> ${selectedSlot.slot.start_time_display} - ${selectedSlot.slot.end_time_display}</p>
-                                <p class="mb-0"><strong>Duration:</strong> ${selectedSlot.slot.duration_hours} hour(s)</p>
+                                <p class="mb-0"><strong>Duration:</strong> ${selectedSlot.slot.total_duration_minutes ? (selectedSlot.slot.total_duration_minutes / 60).toFixed(2) : selectedSlot.slot.duration_hours} hour(s)</p>
                             </div>
                         </div>
                     `;

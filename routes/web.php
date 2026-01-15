@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/api/tattoo/{id}', [InkJinController::class, 'getTattoo'])->name('api.tattoo.show');
 Route::get('/api/artist/{id}', [InkJinController::class, 'getArtist'])->name('api.artist.show');
 
+// Countries and Cities API routes
+Route::get('/api/countries', [\App\Http\Controllers\CountriesController::class, 'getCountries'])->name('api.countries');
+Route::get('/api/cities', [\App\Http\Controllers\CountriesController::class, 'getCities'])->name('api.cities');
+Route::get('/api/countries/all', [\App\Http\Controllers\CountriesController::class, 'getAll'])->name('api.countries.all');
+
 // Public InkJin Database routes
 Route::get('/db/tattoo/{id}', [InkJinController::class, 'getTattooFromDb'])->name('db.tattoo.show');
 Route::get('/db/artist/{id}', [InkJinController::class, 'getArtistFromDb'])->name('db.artist.show');
@@ -32,6 +37,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/auth/google-calendar/callback', [\App\Http\Controllers\GoogleCalendarController::class, 'callback'])->name('google.calendar.callback');
     // Alias route for Google callback (in case Google Console is configured with /auth/google/callback)
     Route::get('/auth/google/callback', [\App\Http\Controllers\GoogleCalendarController::class, 'callback'])->name('google.callback');
+    Route::get('/auth/google-calendar/status', [\App\Http\Controllers\GoogleCalendarController::class, 'checkStatus'])->name('google.calendar.status');
     Route::post('/auth/google-calendar/disconnect', [\App\Http\Controllers\GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect');
 
     // Stripe Connect routes
@@ -49,6 +55,12 @@ Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
     
     // Bookings route (for all authenticated users)
     Route::get('/bookings', [\App\Http\Controllers\BookingsController::class, 'index'])->name('bookings.index');
+    
+    // Booking cancellation routes
+    Route::get('/api/bookings/{id}/cancellation-info', [\App\Http\Controllers\BookingCancellationController::class, 'getCancellationInfo'])->name('api.bookings.cancellation-info');
+    Route::post('/api/bookings/{id}/cancel', [\App\Http\Controllers\BookingCancellationController::class, 'cancel'])->name('api.bookings.cancel');
+    Route::post('/api/bookings/{id}/mark-no-show', [\App\Http\Controllers\BookingCancellationController::class, 'markNoShow'])->name('api.bookings.mark-no-show');
+    
 });
 
 // Profile routes (accessible even if email not verified, so user can update email)
@@ -159,6 +171,19 @@ Route::post('/api/booking/{tattoo_id}/payment-intent', [InkJinController::class,
 Route::post('/api/booking/{tattoo_id}/confirm', [InkJinController::class, 'confirmBooking'])
     ->where(['tattoo_id' => '[0-9]+'])
     ->name('api.booking.confirm');
+
+// Separate consultation timing API routes
+Route::get('/api/tattoos/{tattoo_id}/consultation-slots', [InkJinController::class, 'getConsultationSlots'])
+    ->where(['tattoo_id' => '[0-9]+'])
+    ->name('api.consultation.slots');
+
+Route::get('/api/tattoos/{tattoo_id}/tattoo-session-slots', [InkJinController::class, 'getTattooSessionSlots'])
+    ->where(['tattoo_id' => '[0-9]+'])
+    ->name('api.tattoo-session.slots');
+
+Route::post('/api/bookings/{tattoo_id}/book-separate', [InkJinController::class, 'bookSeparateConsultation'])
+    ->where(['tattoo_id' => '[0-9]+'])
+    ->name('api.booking.separate');
 
 // Public API routes (must be before catch-all routes)
 Route::get('/{username}', [InkJinController::class, 'publicArtistProfile'])

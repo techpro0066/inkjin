@@ -12,8 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->string('google_calendar_event_id', 255)->nullable()->after('reminder_sent_at');
-            $table->index('google_calendar_event_id');
+            // Add reschedule status and requested by fields
+            $table->enum('reschedule_status', ['pending', 'accepted', 'declined', 'completed'])->nullable()->after('reschedule_limit');
+            $table->enum('reschedule_requested_by', ['client', 'artist'])->nullable()->after('reschedule_status');
         });
     }
 
@@ -23,8 +24,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->dropIndex(['google_calendar_event_id']);
-            $table->dropColumn('google_calendar_event_id');
+            $table->dropColumn(['reschedule_status', 'reschedule_requested_by']);
         });
     }
 };

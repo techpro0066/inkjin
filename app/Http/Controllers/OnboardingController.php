@@ -176,7 +176,10 @@ class OnboardingController extends Controller
             // Check if this is a preferences update from settings page
             if ($request->has('currency') || $request->has('session_buffer_period')) {
                 // This is a preferences update from settings page
-                $validated = $request->validate([
+                // Check if consultation is required
+                $requireConsultation = $request->has('require_consultation') && $request->require_consultation == '1';
+                
+                $validationRules = [
                     'currency' => ['required'],
                     'timezone' => ['required'],
                     'date_time_format' => ['required'],
@@ -186,11 +189,45 @@ class OnboardingController extends Controller
                     'reschedule_times' => ['required'],
                     'session_buffer_period' => ['required', 'integer', 'min:0'],
                     'require_consultation' => ['nullable', 'boolean'],
-                ]);
+                ];
+                
+                // Only require session type, duration, and consultation timing if consultation is required
+                if ($requireConsultation) {
+                    $validationRules['session_type'] = ['required', 'in:online,physical,both'];
+                    $validationRules['session_duration_minutes'] = ['required', 'integer', 'min:15', 'max:480'];
+                    $validationRules['consultation_timing'] = ['required', 'in:combined,separate'];
+                    
+                    // Validate gap fields if consultation timing is separate
+                    $consultationTiming = $request->input('consultation_timing');
+                    if ($consultationTiming === 'separate') {
+                        $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
+                        $requireGap = $request->has('require_gap_between_consultation_tattoo') && $request->require_gap_between_consultation_tattoo == '1';
+                        if ($requireGap) {
+                            $validationRules['consultation_tattoo_gap_value'] = ['required', 'integer', 'min:1'];
+                            $validationRules['consultation_tattoo_gap_unit'] = ['required', 'in:minutes,hours,days'];
+                        } else {
+                            $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
+                            $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
+                        }
+                    } else {
+                        $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
+                        $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
+                        $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
+                    }
+                } else {
+                    $validationRules['session_type'] = ['nullable', 'in:online,physical,both'];
+                    $validationRules['session_duration_minutes'] = ['nullable', 'integer', 'min:15', 'max:480'];
+                    $validationRules['consultation_timing'] = ['nullable', 'in:combined,separate'];
+                    $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
+                    $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
+                    $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
+                }
+                
+                $validated = $request->validate($validationRules);
 
                 $minimumDepositAmount = (float) $validated['minimum_deposit_amount'];
 
-                $userDetail->update([
+                $updateData = [
                     'currency' => $validated['currency'],
                     'timezone' => $validated['timezone'],
                     'date_time_format' => $validated['date_time_format'],
@@ -199,8 +236,44 @@ class OnboardingController extends Controller
                     'cancellation_window' => $validated['cancellation_window'],
                     'reschedule_times' => $validated['reschedule_times'],
                     'session_buffer_period' => (int) $validated['session_buffer_period'],
-                    'require_consultation' => $request->has('require_consultation') && $request->require_consultation == '1',
-                ]);
+                    'require_consultation' => $requireConsultation,
+                ];
+                
+                // Only save session type, duration, and consultation timing if consultation is required
+                if ($requireConsultation) {
+                    $updateData['session_type'] = $validated['session_type'];
+                    $updateData['session_duration_minutes'] = (int) $validated['session_duration_minutes'];
+                    $updateData['consultation_timing'] = $validated['consultation_timing'];
+                    
+                    // Handle gap fields for separate consultation timing
+                    $consultationTiming = $validated['consultation_timing'] ?? null;
+                    if ($consultationTiming === 'separate') {
+                        $requireGap = isset($validated['require_gap_between_consultation_tattoo']) && $validated['require_gap_between_consultation_tattoo'];
+                        $updateData['require_gap_between_consultation_tattoo'] = $requireGap;
+                        if ($requireGap && isset($validated['consultation_tattoo_gap_value']) && isset($validated['consultation_tattoo_gap_unit'])) {
+                            $updateData['consultation_tattoo_gap_value'] = (int) $validated['consultation_tattoo_gap_value'];
+                            $updateData['consultation_tattoo_gap_unit'] = $validated['consultation_tattoo_gap_unit'];
+                        } else {
+                            $updateData['consultation_tattoo_gap_value'] = null;
+                            $updateData['consultation_tattoo_gap_unit'] = null;
+                        }
+                    } else {
+                        // Clear gap fields when not separate
+                        $updateData['require_gap_between_consultation_tattoo'] = false;
+                        $updateData['consultation_tattoo_gap_value'] = null;
+                        $updateData['consultation_tattoo_gap_unit'] = null;
+                    }
+                } else {
+                    // Clear session type, duration, consultation timing, and gap fields when consultation is disabled
+                    $updateData['session_type'] = null;
+                    $updateData['session_duration_minutes'] = null;
+                    $updateData['consultation_timing'] = null;
+                    $updateData['require_gap_between_consultation_tattoo'] = false;
+                    $updateData['consultation_tattoo_gap_value'] = null;
+                    $updateData['consultation_tattoo_gap_unit'] = null;
+                }
+                
+                $userDetail->update($updateData);
 
                 return response()->json([
                     'success' => true,
@@ -255,7 +328,10 @@ class OnboardingController extends Controller
     public function saveStep4(Request $request)
     {
         try {
-            $validated = $request->validate([
+            // Check if consultation is required
+            $requireConsultation = $request->has('require_consultation') && $request->require_consultation == '1';
+            
+            $validationRules = [
                 'currency' => ['required'],
                 'timezone' => ['required'],
                 'date_time_format' => ['required'],
@@ -265,7 +341,41 @@ class OnboardingController extends Controller
                 'reschedule_times' => ['required'],
                 'session_buffer_period' => ['required', 'integer', 'min:0'],
                 'require_consultation' => ['nullable', 'boolean'],
-            ]);
+            ];
+            
+            // Only require session type, duration, and consultation timing if consultation is required
+            if ($requireConsultation) {
+                $validationRules['session_type'] = ['required', 'in:online,physical,both'];
+                $validationRules['session_duration_minutes'] = ['required', 'integer', 'min:15', 'max:480'];
+                $validationRules['consultation_timing'] = ['required', 'in:combined,separate'];
+                
+                // Validate gap fields if consultation timing is separate
+                $consultationTiming = $request->input('consultation_timing');
+                if ($consultationTiming === 'separate') {
+                    $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
+                    $requireGap = $request->has('require_gap_between_consultation_tattoo') && $request->require_gap_between_consultation_tattoo == '1';
+                    if ($requireGap) {
+                        $validationRules['consultation_tattoo_gap_value'] = ['required', 'integer', 'min:1'];
+                        $validationRules['consultation_tattoo_gap_unit'] = ['required', 'in:minutes,hours,days'];
+                    } else {
+                        $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
+                        $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
+                    }
+                } else {
+                    $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
+                    $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
+                    $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
+                }
+            } else {
+                $validationRules['session_type'] = ['nullable', 'in:online,physical,both'];
+                $validationRules['session_duration_minutes'] = ['nullable', 'integer', 'min:15', 'max:480'];
+                $validationRules['consultation_timing'] = ['nullable', 'in:combined,separate'];
+                $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
+                $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
+                $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
+            }
+            
+            $validated = $request->validate($validationRules);
 
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
@@ -283,8 +393,42 @@ class OnboardingController extends Controller
                 'cancellation_window' => $validated['cancellation_window'],
                 'reschedule_times' => $validated['reschedule_times'],
                 'session_buffer_period' => (int) $validated['session_buffer_period'],
-                'require_consultation' => $request->has('require_consultation') && $request->require_consultation == '1',
+                'require_consultation' => $requireConsultation,
             ];
+            
+            // Only save session type, duration, and consultation timing if consultation is required
+            if ($requireConsultation) {
+                $updateData['session_type'] = $validated['session_type'];
+                $updateData['session_duration_minutes'] = (int) $validated['session_duration_minutes'];
+                $updateData['consultation_timing'] = $validated['consultation_timing'];
+                
+                // Handle gap fields for separate consultation timing
+                $consultationTiming = $validated['consultation_timing'] ?? null;
+                if ($consultationTiming === 'separate') {
+                    $requireGap = isset($validated['require_gap_between_consultation_tattoo']) && $validated['require_gap_between_consultation_tattoo'];
+                    $updateData['require_gap_between_consultation_tattoo'] = $requireGap;
+                    if ($requireGap && isset($validated['consultation_tattoo_gap_value']) && isset($validated['consultation_tattoo_gap_unit'])) {
+                        $updateData['consultation_tattoo_gap_value'] = (int) $validated['consultation_tattoo_gap_value'];
+                        $updateData['consultation_tattoo_gap_unit'] = $validated['consultation_tattoo_gap_unit'];
+                    } else {
+                        $updateData['consultation_tattoo_gap_value'] = null;
+                        $updateData['consultation_tattoo_gap_unit'] = null;
+                    }
+                } else {
+                    // Clear gap fields when not separate
+                    $updateData['require_gap_between_consultation_tattoo'] = false;
+                    $updateData['consultation_tattoo_gap_value'] = null;
+                    $updateData['consultation_tattoo_gap_unit'] = null;
+                }
+            } else {
+                // Clear session type, duration, consultation timing, and gap fields when consultation is disabled
+                $updateData['session_type'] = null;
+                $updateData['session_duration_minutes'] = null;
+                $updateData['consultation_timing'] = null;
+                $updateData['require_gap_between_consultation_tattoo'] = false;
+                $updateData['consultation_tattoo_gap_value'] = null;
+                $updateData['consultation_tattoo_gap_unit'] = null;
+            }
             
             // Only update onboarding progress if user hasn't completed onboarding
             if ($user->on_boarding !== 'yes') {
@@ -320,14 +464,16 @@ class OnboardingController extends Controller
     {
         try {
             $request->validate([
-                'stripe_account_id' => ['nullable', 'string', 'max:255'],
+                'stripe_account_id' => ['required', 'string', 'max:255'],
+            ], [
+                'stripe_account_id.required' => 'Please connect your Stripe account to complete onboarding.',
             ]);
 
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
             $userDetail->update([
-                'stripe_account_id' => $request->stripe_account_id ?? null,
+                'stripe_account_id' => $request->stripe_account_id,
                 'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [5])),
             ]);
 

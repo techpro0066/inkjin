@@ -19,6 +19,8 @@ return new class extends Migration
             $table->string('password');
             $table->enum('role', ['admin', 'artist', 'user'])->default('user');
             $table->enum('on_boarding', ['yes', 'no'])->default('no');
+            $table->tinyInteger('on_app')->default(0);
+            $table->unsignedBigInteger('app_id')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

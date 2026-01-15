@@ -271,6 +271,38 @@
             </div>
             @endif
             
+            @if(!empty($meetLink))
+            <!-- Video Meeting Section -->
+            <div style="background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin: 30px 0; border-left: 4px solid #00832d;">
+                <h3 style="color: #333; margin: 0 0 15px 0; font-size: 20px;">
+                    📹 Video Meeting Link
+                </h3>
+                <p style="color: #666; margin-bottom: 15px; line-height: 1.6;">
+                    Meeting link for consultation with {{ $customerName }}:
+                </p>
+                <div style="background-color: #ffffff; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                    <p style="margin: 0 0 10px 0; color: #333;">
+                        <strong>Customer:</strong> {{ $customerName }} ({{ $customerEmail }})<br>
+                        <strong>Meeting Time:</strong> {{ $meetingTime }}<br>
+                        <strong>Duration:</strong> 30 minutes
+                    </p>
+                </div>
+                <a href="{{ $meetLink }}" 
+                   target="_blank"
+                   style="display: inline-block; background-color: #00832d; color: #ffffff; 
+                          padding: 14px 28px; text-decoration: none; border-radius: 6px; 
+                          font-weight: bold; margin-top: 10px; font-size: 16px;">
+                    🎥 Join Google Meet
+                </a>
+                <p style="color: #999; font-size: 13px; margin-top: 20px; line-height: 1.5;">
+                    <strong>Meeting Link:</strong><br>
+                    <a href="{{ $meetLink }}" style="color: #00832d; word-break: break-all;">
+                        {{ $meetLink }}
+                    </a>
+                </p>
+            </div>
+            @endif
+            
             <!-- Info Note -->
             <div class="info-note">
                 <p class="info-note-text">

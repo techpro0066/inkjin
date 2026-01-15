@@ -6,9 +6,9 @@ use App\Models\UserDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 use Google_Client;
 use Google_Service_Calendar;
-use Carbon\Carbon;
 
 class GoogleCalendarController extends Controller
 {
@@ -96,6 +96,31 @@ class GoogleCalendarController extends Controller
                 $userDetail = UserDetail::create(['user_id' => $user->id]);
             }
 
+            // Verify refresh_token exists - critical for long-term connection
+            if (!isset($accessToken['refresh_token'])) {
+                Log::warning('No refresh token provided by Google - user may need to reconnect later', [
+                    'user_id' => $user->id,
+                    'access_token_keys' => array_keys($accessToken),
+                    'has_refresh_token' => false
+                ]);
+                
+                // Check if we have an existing refresh token to preserve
+                $existingToken = $userDetail->google_calendar_token;
+                if ($existingToken) {
+                    $existingTokenArray = is_array($existingToken) 
+                        ? $existingToken 
+                        : json_decode($existingToken, true);
+                    
+                    if (isset($existingTokenArray['refresh_token'])) {
+                        // Preserve existing refresh token
+                        $accessToken['refresh_token'] = $existingTokenArray['refresh_token'];
+                        Log::info('Preserved existing refresh token', ['user_id' => $user->id]);
+                    }
+                }
+            } else {
+                Log::info('Refresh token received from Google', ['user_id' => $user->id]);
+            }
+
             // Store tokens and calendar ID
             $userDetail->update([
                 'google_calendar_token' => $accessToken,
@@ -108,6 +133,51 @@ class GoogleCalendarController extends Controller
             Log::error('Google Calendar callback error: ' . $e->getMessage());
             return redirect()->route('onboarding.index')
                 ->with('error', 'Failed to connect Google Calendar. Please try again.');
+        }
+    }
+
+    /**
+     * Check Google Calendar connection status
+     */
+    public function checkStatus(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated',
+                ], 401);
+            }
+
+            $userDetail = $user->userDetail;
+            if (!$userDetail) {
+                return response()->json([
+                    'success' => true,
+                    'connected' => false,
+                    'needs_reconnection' => true,
+                    'status' => 'not_connected'
+                ]);
+            }
+
+            $status = self::getConnectionStatus($userDetail);
+
+            return response()->json([
+                'success' => true,
+                'connected' => $status['connected'],
+                'needs_reconnection' => $status['needs_reconnection'],
+                'has_refresh_token' => $status['has_refresh_token'] ?? false,
+                'has_access_token' => $status['has_access_token'] ?? false,
+                'is_expired' => $status['is_expired'] ?? false,
+                'reason' => $status['reason'],
+                'status' => $status['connected'] ? 'connected' : ($status['needs_reconnection'] ? 'needs_reconnection' : 'not_connected')
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Google Calendar status check error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to check connection status',
+            ], 500);
         }
     }
 
@@ -148,11 +218,15 @@ class GoogleCalendarController extends Controller
 
     /**
      * Get refresh token if expired
+     * CRITICAL: This method preserves the refresh_token so users never need to reconnect
      */
     public function refreshToken($userDetail)
     {
         try {
             if (!$userDetail->google_calendar_token) {
+                Log::warning('No Google Calendar token found for refresh', [
+                    'user_id' => $userDetail->user_id ?? null
+                ]);
                 return null;
             }
 
@@ -160,25 +234,164 @@ class GoogleCalendarController extends Controller
                 ? $userDetail->google_calendar_token 
                 : json_decode($userDetail->google_calendar_token, true);
 
+            if (!$token) {
+                Log::warning('Invalid token format for refresh', [
+                    'user_id' => $userDetail->user_id ?? null
+                ]);
+                return null;
+            }
+
+            // CRITICAL: Check if refresh_token exists
+            if (!isset($token['refresh_token']) || empty($token['refresh_token'])) {
+                Log::error('Refresh token missing - user needs to reconnect Google Calendar', [
+                    'user_id' => $userDetail->user_id ?? null,
+                    'token_keys' => array_keys($token)
+                ]);
+                return null;
+            }
+
+            // Store refresh_token before refresh (Google doesn't return it in new token)
+            $refreshToken = $token['refresh_token'];
+
             $client = new Google_Client();
             $client->setClientId(config('services.google.client_id'));
             $client->setClientSecret(config('services.google.client_secret'));
-            $client->refreshToken($token['refresh_token'] ?? null);
 
+            // Attempt to refresh the token
+            $client->refreshToken($refreshToken);
             $newToken = $client->getAccessToken();
             
             if ($newToken) {
+                // CRITICAL: Preserve refresh_token in new token (Google doesn't return it)
+                // This ensures we can refresh again in the future
+                if (!isset($newToken['refresh_token'])) {
+                    $newToken['refresh_token'] = $refreshToken;
+                }
+
+                // Update database with new token (including preserved refresh_token)
                 $userDetail->update([
                     'google_calendar_token' => $newToken,
                 ]);
+
+                Log::info('Google Calendar token refreshed successfully', [
+                    'user_id' => $userDetail->user_id,
+                    'has_refresh_token' => isset($newToken['refresh_token'])
+                ]);
+
                 return $newToken;
+            }
+
+            Log::warning('Token refresh returned null', [
+                'user_id' => $userDetail->user_id ?? null
+            ]);
+            return null;
+        } catch (\Google_Service_Exception $e) {
+            // Handle Google API specific errors
+            $errorMessage = $e->getMessage();
+            Log::error('Google Calendar token refresh API error', [
+                'user_id' => $userDetail->user_id ?? null,
+                'error' => $errorMessage,
+                'code' => $e->getCode()
+            ]);
+            
+            // If refresh token is invalid/revoked, user needs to reconnect
+            if (strpos($errorMessage, 'invalid_grant') !== false || 
+                strpos($errorMessage, 'invalid_request') !== false) {
+                Log::error('Refresh token invalid or revoked - user must reconnect', [
+                    'user_id' => $userDetail->user_id ?? null
+                ]);
             }
 
             return null;
         } catch (\Exception $e) {
-            Log::error('Google Calendar token refresh error: ' . $e->getMessage());
+            Log::error('Google Calendar token refresh error', [
+                'user_id' => $userDetail->user_id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return null;
         }
+    }
+
+    /**
+     * Check if Google Calendar needs reconnection
+     * 
+     * @param UserDetail $userDetail
+     * @return bool True if reconnection is needed, false otherwise
+     */
+    public static function needsReconnection($userDetail): bool
+    {
+        if (!$userDetail || !$userDetail->google_calendar_token) {
+            return true;
+        }
+
+        $token = is_array($userDetail->google_calendar_token) 
+            ? $userDetail->google_calendar_token 
+            : json_decode($userDetail->google_calendar_token, true);
+
+        if (!$token) {
+            return true;
+        }
+
+        // Check if refresh_token exists
+        if (!isset($token['refresh_token']) || empty($token['refresh_token'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get connection status for Google Calendar
+     * 
+     * @param UserDetail $userDetail
+     * @return array Status information
+     */
+    public static function getConnectionStatus($userDetail): array
+    {
+        if (!$userDetail || !$userDetail->google_calendar_token) {
+            return [
+                'connected' => false,
+                'needs_reconnection' => true,
+                'reason' => 'No token found'
+            ];
+        }
+
+        $token = is_array($userDetail->google_calendar_token) 
+            ? $userDetail->google_calendar_token 
+            : json_decode($userDetail->google_calendar_token, true);
+
+        if (!$token) {
+            return [
+                'connected' => false,
+                'needs_reconnection' => true,
+                'reason' => 'Invalid token format'
+            ];
+        }
+
+        $hasRefreshToken = isset($token['refresh_token']) && !empty($token['refresh_token']);
+        $hasAccessToken = isset($token['access_token']) && !empty($token['access_token']);
+
+        // Check if access token is expired
+        $isExpired = false;
+        if ($hasAccessToken) {
+            try {
+                $client = new Google_Client();
+                $client->setAccessToken($token);
+                $isExpired = $client->isAccessTokenExpired();
+            } catch (\Exception $e) {
+                $isExpired = true;
+            }
+        }
+
+        return [
+            'connected' => $hasAccessToken && ($hasRefreshToken || !$isExpired),
+            'needs_reconnection' => !$hasRefreshToken,
+            'has_refresh_token' => $hasRefreshToken,
+            'has_access_token' => $hasAccessToken,
+            'is_expired' => $isExpired,
+            'reason' => !$hasRefreshToken ? 'Refresh token missing' : ($isExpired ? 'Access token expired (will auto-refresh)' : 'Connected')
+        ];
     }
 
     /**
@@ -193,6 +406,10 @@ class GoogleCalendarController extends Controller
     {
         try {
             if (!$userDetail || !$userDetail->google_calendar_token || !$userDetail->google_calendar_id) {
+                Log::info('Google Calendar not connected for event fetching', [
+                    'user_id' => $userDetail->user_id ?? null,
+                    'date' => $date
+                ]);
                 return [];
             }
 
@@ -201,6 +418,10 @@ class GoogleCalendarController extends Controller
                 : json_decode($userDetail->google_calendar_token, true);
 
             if (!$token) {
+                Log::warning('Invalid token format for event fetching', [
+                    'user_id' => $userDetail->user_id ?? null,
+                    'date' => $date
+                ]);
                 return [];
             }
 
@@ -215,8 +436,23 @@ class GoogleCalendarController extends Controller
                 $newToken = $calendarController->refreshToken($userDetail);
                 if ($newToken) {
                     $client->setAccessToken($newToken);
+                    Log::info('Token refreshed successfully for event fetching', [
+                        'user_id' => $userDetail->user_id,
+                        'date' => $date
+                    ]);
                 } else {
-                    Log::warning('Failed to refresh Google Calendar token for user: ' . $userDetail->user_id);
+                    // Check if refresh token is missing
+                    if (!isset($token['refresh_token']) || empty($token['refresh_token'])) {
+                        Log::error('Refresh token missing - user needs to reconnect Google Calendar for event fetching', [
+                            'user_id' => $userDetail->user_id,
+                            'date' => $date
+                        ]);
+                    } else {
+                        Log::error('Token refresh failed - refresh token may be invalid or revoked', [
+                            'user_id' => $userDetail->user_id,
+                            'date' => $date
+                        ]);
+                    }
                     return [];
                 }
             }
@@ -278,13 +514,14 @@ class GoogleCalendarController extends Controller
     }
 
     /**
-     * Create a calendar event for a booking
+     * Create a calendar event for a booking with Google Meet link
      * 
      * @param \App\Models\UserDetail $userDetail Artist's user detail
      * @param \App\Models\Booking $booking Booking instance
-     * @return string|null Google Calendar event ID or null on failure
+     * @param bool $requiresConsultation Whether to create Google Meet link
+     * @return array|null Array with 'event_id' and 'meet_link' keys, or null on failure
      */
-    public static function createCalendarEvent($userDetail, $booking)
+    public static function createCalendarEvent($userDetail, $booking, $requiresConsultation = false)
     {
         try {
             if (!$userDetail || !$userDetail->google_calendar_token || !$userDetail->google_calendar_id) {
@@ -318,11 +555,23 @@ class GoogleCalendarController extends Controller
                 $newToken = $calendarController->refreshToken($userDetail);
                 if ($newToken) {
                     $client->setAccessToken($newToken);
-                } else {
-                    Log::warning('Failed to refresh Google Calendar token for event creation', [
+                    Log::info('Token refreshed successfully for event creation', [
                         'user_id' => $userDetail->user_id,
                         'booking_id' => $booking->id,
                     ]);
+                } else {
+                    // Check if refresh token is missing
+                    if (!isset($token['refresh_token']) || empty($token['refresh_token'])) {
+                        Log::error('Refresh token missing - user needs to reconnect Google Calendar for event creation', [
+                            'user_id' => $userDetail->user_id,
+                            'booking_id' => $booking->id,
+                        ]);
+                    } else {
+                        Log::error('Token refresh failed - refresh token may be invalid or revoked', [
+                            'user_id' => $userDetail->user_id,
+                            'booking_id' => $booking->id,
+                        ]);
+                    }
                     return null;
                 }
             }
@@ -335,13 +584,35 @@ class GoogleCalendarController extends Controller
             $customer = $booking->user;
             $artist = $booking->artist;
 
-            // Format event title
+            // Format event title - include consultation info for combined mode
+            $isCombinedConsultation = $booking->consultation_timing_type === 'combined' && $booking->has_consultation;
+            if ($isCombinedConsultation) {
+                $eventTitle = 'Tattoo Session + Consultation: ' . ($tattoo->title ?? 'Custom Tattoo');
+            } else {
             $eventTitle = 'Tattoo Session: ' . ($tattoo->title ?? 'Custom Tattoo');
+            }
             
             // Format event description
             $description = "Customer: {$customer->name} ({$customer->email})\n";
             $description .= "Tattoo: " . ($tattoo->title ?? 'Custom Tattoo') . "\n";
-            $description .= "Booking ID: #{$booking->id}\n\n";
+            $description .= "Booking ID: #{$booking->id}\n";
+            
+            // Add consultation timing info for combined mode
+            if ($isCombinedConsultation) {
+                $tattooDurationHours = $tattoo->session_time_h ?? 0;
+                $consultationDurationMinutes = 0;
+                if ($booking->consultation_start_time_utc && $booking->consultation_end_time_utc) {
+                    $consultationStart = \Carbon\Carbon::createFromFormat('H:i:s', $booking->consultation_start_time_utc);
+                    $consultationEnd = \Carbon\Carbon::createFromFormat('H:i:s', $booking->consultation_end_time_utc);
+                    $consultationDurationMinutes = $consultationStart->diffInMinutes($consultationEnd);
+                }
+                $description .= "\nConsultation Timing: Combined\n";
+                $description .= "Consultation Duration: {$consultationDurationMinutes} minutes\n";
+                $description .= "Tattoo Session Duration: {$tattooDurationHours} hour(s)\n";
+                $description .= "Total Duration: " . ($tattooDurationHours + ($consultationDurationMinutes / 60)) . " hour(s)\n";
+            }
+            
+            $description .= "\n";
             
             // Add payment info
             $currencySymbol = self::getCurrencySymbol($booking->currency);
@@ -430,17 +701,48 @@ class GoogleCalendarController extends Controller
             $eventReminders->setOverrides([$reminder]);
             $event->setReminders($eventReminders);
 
-            // Insert event
-            $createdEvent = $service->events->insert($calendarId, $event);
+            // Enable Google Meet ONLY if consultation is required
+            if ($requiresConsultation) {
+                $conferenceData = new \Google_Service_Calendar_ConferenceData();
+                $createRequest = new \Google_Service_Calendar_CreateConferenceRequest();
+                $createRequest->setRequestId(uniqid()); // Unique request ID required
+                $conferenceSolutionKey = new \Google_Service_Calendar_ConferenceSolutionKey();
+                $conferenceSolutionKey->setType('hangoutsMeet');
+                $createRequest->setConferenceSolutionKey($conferenceSolutionKey);
+                $conferenceData->setCreateRequest($createRequest);
+                $event->setConferenceData($conferenceData);
+            }
+
+            // Insert event (with conferenceDataVersion only if Meet is enabled)
+            $insertParams = [];
+            if ($requiresConsultation) {
+                $insertParams['conferenceDataVersion'] = 1; // Required to enable Google Meet
+            }
+            $createdEvent = $service->events->insert($calendarId, $event, $insertParams);
             $eventId = $createdEvent->getId();
+
+            // Extract Google Meet link from the created event (only if consultation required)
+            $meetLink = null;
+            if ($requiresConsultation && $createdEvent->getConferenceData() && $createdEvent->getConferenceData()->getEntryPoints()) {
+                $entryPoints = $createdEvent->getConferenceData()->getEntryPoints();
+                if (!empty($entryPoints) && isset($entryPoints[0])) {
+                    $meetLink = $entryPoints[0]->getUri();
+                }
+            }
 
             Log::info('Google Calendar event created successfully', [
                 'booking_id' => $booking->id,
                 'event_id' => $eventId,
                 'artist_user_id' => $artist->id,
+                'requires_consultation' => $requiresConsultation,
+                'meet_link' => $meetLink,
             ]);
 
-            return $eventId;
+            // Return both event ID and Meet link (Meet link will be null if consultation not required)
+            return [
+                'event_id' => $eventId,
+                'meet_link' => $meetLink
+            ];
         } catch (\Exception $e) {
             Log::error('Failed to create Google Calendar event', [
                 'booking_id' => $booking->id ?? null,
@@ -449,6 +751,250 @@ class GoogleCalendarController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             return null;
+        }
+    }
+
+    /**
+     * Update a calendar event with new date/time
+     * 
+     * @param \App\Models\UserDetail $userDetail Artist's user detail
+     * @param \App\Models\Booking $booking Booking instance with updated date/time
+     * @param string $eventId Google Calendar event ID
+     * @param bool $requiresConsultation Whether to keep Google Meet link
+     * @return array|null Array with 'event_id' and 'meet_link' keys, or null on failure
+     */
+    public static function updateCalendarEvent($userDetail, $booking, $eventId, $requiresConsultation = false)
+    {
+        try {
+            if (!$userDetail || !$userDetail->google_calendar_token || !$userDetail->google_calendar_id) {
+                Log::info('Google Calendar not connected for artist', [
+                    'user_id' => $userDetail->user_id ?? null,
+                    'booking_id' => $booking->id ?? null,
+                ]);
+                return null;
+            }
+
+            $token = is_array($userDetail->google_calendar_token) 
+                ? $userDetail->google_calendar_token 
+                : json_decode($userDetail->google_calendar_token, true);
+
+            if (!$token) {
+                Log::warning('Invalid Google Calendar token', [
+                    'user_id' => $userDetail->user_id ?? null,
+                    'booking_id' => $booking->id ?? null,
+                ]);
+                return null;
+            }
+
+            $client = new Google_Client();
+            $client->setClientId(config('services.google.client_id'));
+            $client->setClientSecret(config('services.google.client_secret'));
+            $client->setAccessToken($token);
+
+            // Check if token is expired and refresh if needed
+            if ($client->isAccessTokenExpired()) {
+                $calendarController = new self();
+                $newToken = $calendarController->refreshToken($userDetail);
+                if ($newToken) {
+                    $client->setAccessToken($newToken);
+                } else {
+                    Log::error('Failed to refresh token for calendar event update', [
+                        'user_id' => $userDetail->user_id,
+                        'booking_id' => $booking->id,
+                    ]);
+                    return null;
+                }
+            }
+
+            $service = new \Google_Service_Calendar($client);
+            $calendarId = $userDetail->google_calendar_id;
+
+            // Get existing event
+            try {
+                $existingEvent = $service->events->get($calendarId, $eventId);
+            } catch (\Exception $e) {
+                Log::error('Failed to get existing calendar event for update', [
+                    'event_id' => $eventId,
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+                return null;
+            }
+
+            // Get booking details
+            $tattoo = $booking->tattoo;
+            $customer = $booking->user;
+            $artist = $booking->artist;
+
+            $eventTitle = $tattoo ? $tattoo->title : 'Tattoo Booking';
+            $description = "Booking with {$customer->name} ({$customer->email})";
+            if ($tattoo && $tattoo->description) {
+                $description .= "\n\n" . $tattoo->description;
+            }
+
+            // Format date and time strings
+            $bookingDateStr = $booking->booking_date instanceof \Carbon\Carbon
+                ? $booking->booking_date->format('Y-m-d')
+                : (string)$booking->booking_date;
+            $startTimeStr = $booking->start_time_utc instanceof \Carbon\Carbon
+                ? $booking->start_time_utc->format('H:i:s')
+                : (string)$booking->start_time_utc;
+            $endTimeStr = $booking->end_time_utc instanceof \Carbon\Carbon
+                ? $booking->end_time_utc->format('H:i:s')
+                : (string)$booking->end_time_utc;
+
+            // Create datetime objects
+            $startDateTime = Carbon::parse($bookingDateStr . ' ' . $startTimeStr, 'UTC');
+            $endDateTime = Carbon::parse($bookingDateStr . ' ' . $endTimeStr, 'UTC');
+
+            // Update event details
+            $existingEvent->setSummary($eventTitle);
+            $existingEvent->setDescription($description);
+
+            // Update start time
+            $start = new \Google_Service_Calendar_EventDateTime();
+            $start->setDateTime($startDateTime->toRfc3339String());
+            $start->setTimeZone('UTC');
+            $existingEvent->setStart($start);
+
+            // Update end time
+            $end = new \Google_Service_Calendar_EventDateTime();
+            $end->setDateTime($endDateTime->toRfc3339String());
+            $end->setTimeZone('UTC');
+            $existingEvent->setEnd($end);
+
+            // Update location if available
+            if ($userDetail->studio_address) {
+                $existingEvent->setLocation($userDetail->studio_address);
+            }
+
+            // Update attendees
+            $attendee = new \Google_Service_Calendar_EventAttendee();
+            $attendee->setEmail($customer->email);
+            $attendee->setDisplayName($customer->name);
+            $existingEvent->setAttendees([$attendee]);
+
+            // Update event (preserve Meet link if consultation required)
+            $updateParams = [];
+            if ($requiresConsultation && $existingEvent->getConferenceData()) {
+                $updateParams['conferenceDataVersion'] = 1; // Preserve Meet link
+            }
+
+            $updatedEvent = $service->events->update($calendarId, $eventId, $existingEvent, $updateParams);
+
+            // Extract Meet link if exists
+            $meetLink = null;
+            if ($updatedEvent->getConferenceData() && $updatedEvent->getConferenceData()->getEntryPoints()) {
+                $entryPoints = $updatedEvent->getConferenceData()->getEntryPoints();
+                if (!empty($entryPoints) && isset($entryPoints[0])) {
+                    $meetLink = $entryPoints[0]->getUri();
+                }
+            }
+
+            Log::info('Google Calendar event updated successfully', [
+                'booking_id' => $booking->id,
+                'event_id' => $eventId,
+                'artist_user_id' => $artist->id,
+            ]);
+
+            return [
+                'event_id' => $eventId,
+                'meet_link' => $meetLink
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to update Google Calendar event', [
+                'booking_id' => $booking->id ?? null,
+                'event_id' => $eventId ?? null,
+                'user_id' => $userDetail->user_id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Delete a calendar event
+     * 
+     * @param \App\Models\UserDetail $userDetail Artist's user detail
+     * @param string $eventId Google Calendar event ID
+     * @return bool Success status
+     */
+    public static function deleteCalendarEvent($userDetail, $eventId)
+    {
+        try {
+            if (!$userDetail || !$userDetail->google_calendar_token || !$userDetail->google_calendar_id) {
+                Log::info('Google Calendar not connected for event deletion', [
+                    'user_id' => $userDetail->user_id ?? null,
+                    'event_id' => $eventId,
+                ]);
+                return false;
+            }
+
+            $token = is_array($userDetail->google_calendar_token) 
+                ? $userDetail->google_calendar_token 
+                : json_decode($userDetail->google_calendar_token, true);
+
+            if (!$token) {
+                Log::warning('Invalid Google Calendar token for event deletion', [
+                    'user_id' => $userDetail->user_id ?? null,
+                    'event_id' => $eventId,
+                ]);
+                return false;
+            }
+
+            $client = new Google_Client();
+            $client->setClientId(config('services.google.client_id'));
+            $client->setClientSecret(config('services.google.client_secret'));
+            $client->setAccessToken($token);
+
+            // Check if token is expired and refresh if needed
+            if ($client->isAccessTokenExpired()) {
+                $calendarController = new self();
+                $newToken = $calendarController->refreshToken($userDetail);
+                if ($newToken) {
+                    $client->setAccessToken($newToken);
+                    Log::info('Token refreshed successfully for event deletion', [
+                        'user_id' => $userDetail->user_id,
+                        'event_id' => $eventId,
+                    ]);
+                } else {
+                    // Check if refresh token is missing
+                    if (!isset($token['refresh_token']) || empty($token['refresh_token'])) {
+                        Log::error('Refresh token missing - user needs to reconnect Google Calendar for event deletion', [
+                            'user_id' => $userDetail->user_id,
+                            'event_id' => $eventId,
+                        ]);
+                    } else {
+                        Log::error('Token refresh failed - refresh token may be invalid or revoked', [
+                            'user_id' => $userDetail->user_id,
+                            'event_id' => $eventId,
+                        ]);
+                    }
+                    return false;
+                }
+            }
+
+            $service = new Google_Service_Calendar($client);
+            $calendarId = $userDetail->google_calendar_id ?? 'primary';
+
+            // Delete event
+            $service->events->delete($calendarId, $eventId);
+
+            Log::info('Google Calendar event deleted successfully', [
+                'event_id' => $eventId,
+                'artist_user_id' => $userDetail->user_id,
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to delete Google Calendar event', [
+                'event_id' => $eventId,
+                'user_id' => $userDetail->user_id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return false;
         }
     }
 

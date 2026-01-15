@@ -46,7 +46,6 @@
               <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Confirmed</option>
               <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
               <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
-              <option value="rescheduled" {{ request('status') === 'rescheduled' ? 'selected' : '' }}>Rescheduled</option>
               <option value="no_show" {{ request('status') === 'no_show' ? 'selected' : '' }}>No Show</option>
             </select>
           </div>
@@ -244,9 +243,11 @@
                   @endif
                 </td>
                 <td>
-                  <span class="badge {{ $statusColors[$booking->status] ?? 'bg-label-secondary' }}">
-                    {{ ucfirst($booking->status) }}
-                  </span>
+                  <div class="d-flex flex-column gap-1">
+                    <span class="badge {{ $statusColors[$booking->status] ?? 'bg-label-secondary' }}">
+                      {{ ucfirst($booking->status) }}
+                    </span>
+                  </div>
                 </td>
                 <td>
                   <span class="badge {{ $paymentColors[$booking->payment_status] ?? 'bg-label-secondary' }}">
@@ -264,10 +265,24 @@
                   </div>
                 </td>
                 <td>
-                  <div class="d-flex gap-2">
+                  <div class="d-flex gap-2 flex-wrap">
                     <button type="button" class="btn btn-sm btn-label-info" data-bs-toggle="modal" data-bs-target="#bookingModal{{ $booking->id }}">
                       <i class="ti ti-eye"></i>
                     </button>
+                    @if($booking->status === 'confirmed')
+                      @if(auth()->user()->role === 'artist' && $booking->artist_user_id === auth()->id())
+                        <button type="button" class="btn btn-sm btn-label-danger" onclick="showCancelModal({{ $booking->id }})">
+                          <i class="ti ti-x"></i> Cancel
+                        </button>
+                        <button type="button" class="btn btn-sm btn-label-warning" onclick="showNoShowModal({{ $booking->id }})">
+                          <i class="ti ti-user-off"></i> No-Show
+                        </button>
+                      @elseif($booking->user_id === auth()->id())
+                        <button type="button" class="btn btn-sm btn-label-danger" onclick="showCancelModal({{ $booking->id }})">
+                          <i class="ti ti-x"></i> Cancel
+                        </button>
+                      @endif
+                    @endif
                   </div>
                 </td>
               </tr>
@@ -367,6 +382,34 @@
                         </div>
                       @endif
                       
+                      @if($booking->google_meet_link)
+                        <div class="row mb-3">
+                          <div class="col-12">
+                            <div class="card border-success">
+                              <div class="card-body">
+                                <h6 class="card-title text-success">
+                                  <i class="ti ti-video me-2"></i>Video Meeting Link
+                                </h6>
+                                <p class="text-muted mb-2">
+                                  Join your 30-minute consultation meeting
+                                </p>
+                                <a href="{{ $booking->google_meet_link }}" 
+                                   target="_blank" 
+                                   class="btn btn-success btn-sm">
+                                  <i class="ti ti-external-link me-1"></i>Join Google Meet
+                                </a>
+                                <small class="text-muted d-block mt-2">
+                                  <i class="ti ti-clock me-1"></i>
+                                  Meeting scheduled for: 
+                                  {{ $bookingDateTimeLocal->format('M j, Y') }} 
+                                  at {{ $bookingDateTimeLocal->format('g:i A') }}
+                                </small>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      @endif
+                      
                       @if($booking->questions_answers && count($booking->questions_answers) > 0)
                         <div class="row mb-3">
                           <div class="col-12">
@@ -437,5 +480,346 @@
     @endif
   </div>
 </div>
+
+<!-- Cancellation Modal -->
+<div class="modal fade" id="cancelBookingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cancel Booking</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="cancelBookingModalBody">
+        <!-- Content will be loaded dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-danger" id="confirmCancelBtn">Confirm Cancellation</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- No-Show Modal -->
+<div class="modal fade" id="noShowModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Mark as No-Show</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to mark this booking as a no-show? The customer did not attend the scheduled appointment.</p>
+        <p class="text-muted"><small>The customer's deposit will be forfeited as per the cancellation policy.</small></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-warning" id="confirmNoShowBtn">Mark as No-Show</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="ti ti-check-circle me-2"></i>Success</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="successModalBody">
+        <!-- Content will be loaded dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="location.reload()">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="ti ti-alert-circle me-2"></i>Error</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody">
+        <!-- Content will be loaded dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@push('scripts')
+<script>
+let currentBookingId = null;
+
+function showCancelModal(bookingId) {
+    currentBookingId = bookingId;
+    const modal = new bootstrap.Modal(document.getElementById('cancelBookingModal'));
+    const body = document.getElementById('cancelBookingModalBody');
+    
+    // Fetch cancellation info
+    fetch(`/api/bookings/${bookingId}/cancellation-info`, {
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const info = data.data;
+            const isBeforeDeadline = info.is_before_deadline;
+            const refundAmount = info.estimated_refund.amount;
+            const depositForfeited = info.estimated_refund.deposit_forfeited;
+            const refundEligibility = info.refund_eligibility;
+            
+            let html = '';
+            
+            if (isBeforeDeadline) {
+                html = `
+                    <div class="alert alert-info">
+                        <h6 class="mb-2"><i class="ti ti-info-circle me-2"></i>Cancellation Before Deadline</h6>
+                        <p class="mb-0">You are cancelling before the cancellation deadline.</p>
+                    </div>
+                    <div class="alert alert-success">
+                        <strong>✅ You will receive a full refund of ${info.estimated_refund.amount > 0 ? '$' + parseFloat(refundAmount).toFixed(2) : 'your payment'}</strong><br>
+                        <small>Refund will be processed within 5-10 business days.</small>
+                    </div>
+                    <p><strong>Cancellation Deadline:</strong> ${new Date(info.cancellation_deadline).toLocaleString()}</p>
+                    <p><strong>Current Time:</strong> ${new Date().toLocaleString()}</p>
+                `;
+            } else {
+                if (refundEligibility === 'no_refund') {
+                    html = `
+                        <div class="alert alert-warning">
+                            <h6 class="mb-2"><i class="ti ti-alert-triangle me-2"></i>Cancellation After Deadline</h6>
+                            <p class="mb-0">You are cancelling after the cancellation deadline.</p>
+                        </div>
+                        <div class="alert alert-danger">
+                            <strong>❌ Your deposit of $${parseFloat(depositForfeited).toFixed(2)} will be forfeited</strong><br>
+                            <small>No refund will be issued.</small>
+                        </div>
+                        <p><strong>Cancellation Deadline:</strong> ${new Date(info.cancellation_deadline).toLocaleString()} <span class="text-danger">(Passed)</span></p>
+                        <p><strong>Current Time:</strong> ${new Date().toLocaleString()}</p>
+                    `;
+                } else {
+                    html = `
+                        <div class="alert alert-warning">
+                            <h6 class="mb-2"><i class="ti ti-alert-triangle me-2"></i>Cancellation After Deadline</h6>
+                            <p class="mb-0">You are cancelling after the cancellation deadline.</p>
+                        </div>
+                        <div class="alert alert-info">
+                            <strong>💰 Your deposit of $${parseFloat(depositForfeited).toFixed(2)} will be forfeited</strong><br>
+                            <strong>✅ Remaining balance of $${parseFloat(refundAmount).toFixed(2)} will be refunded</strong><br>
+                            <small>Refund will be processed within 5-10 business days.</small>
+                        </div>
+                        <p><strong>Cancellation Deadline:</strong> ${new Date(info.cancellation_deadline).toLocaleString()} <span class="text-danger">(Passed)</span></p>
+                        <p><strong>Current Time:</strong> ${new Date().toLocaleString()}</p>
+                    `;
+                }
+            }
+            
+            html += `
+                <div class="mb-3">
+                    <label for="cancellationReason" class="form-label">Reason (optional):</label>
+                    <textarea class="form-control" id="cancellationReason" rows="3" placeholder="Please provide a reason for cancellation..."></textarea>
+                </div>
+            `;
+            
+            body.innerHTML = html;
+            modal.show();
+        } else {
+            // Show error modal
+            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+            const errorBody = document.getElementById('errorModalBody');
+            errorBody.innerHTML = '<p>Failed to load cancellation information. Please try again.</p>';
+            errorModal.show();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Show error modal
+        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+        const errorBody = document.getElementById('errorModalBody');
+        errorBody.innerHTML = '<p>An error occurred while loading cancellation information. Please try again.</p>';
+        errorModal.show();
+    });
+}
+
+function showNoShowModal(bookingId) {
+    currentBookingId = bookingId;
+    const modal = new bootstrap.Modal(document.getElementById('noShowModal'));
+    modal.show();
+}
+
+document.getElementById('confirmCancelBtn')?.addEventListener('click', function() {
+    if (!currentBookingId) return;
+    
+    const reason = document.getElementById('cancellationReason')?.value || '';
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
+    fetch(`/api/bookings/${currentBookingId}/cancel`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            reason: reason,
+            confirmed: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Hide cancellation modal
+            bootstrap.Modal.getInstance(document.getElementById('cancelBookingModal')).hide();
+            
+            // Show success modal
+            const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+            const successBody = document.getElementById('successModalBody');
+            const booking = data.booking;
+            
+            let successHtml = '<p class="mb-3">Your booking has been cancelled successfully.</p>';
+            successHtml += '<div class="card border-success">';
+            successHtml += '<div class="card-body">';
+            successHtml += '<h6 class="card-title text-success">Cancellation Details</h6>';
+            
+            if (booking.refund_amount > 0) {
+                successHtml += `<p class="mb-2"><strong>Refund Amount:</strong> $${parseFloat(booking.refund_amount).toFixed(2)}</p>`;
+                successHtml += `<p class="mb-2"><strong>Refund Status:</strong> <span class="badge bg-info">${booking.refund_status || 'Processing'}</span></p>`;
+                successHtml += '<p class="mb-0 text-muted"><small>The refund will be processed within 5-10 business days and will appear in your original payment method.</small></p>';
+            } else if (booking.deposit_forfeited > 0) {
+                successHtml += `<p class="mb-2"><strong>Deposit Forfeited:</strong> $${parseFloat(booking.deposit_forfeited).toFixed(2)}</p>`;
+                successHtml += '<p class="mb-0 text-muted"><small>Your deposit has been forfeited as per the cancellation policy.</small></p>';
+            } else {
+                successHtml += '<p class="mb-0 text-muted"><small>No refund will be issued.</small></p>';
+            }
+            
+            successHtml += '</div></div>';
+            successHtml += '<p class="mt-3 mb-0"><small>You will receive a confirmation email shortly.</small></p>';
+            
+            successBody.innerHTML = successHtml;
+            successModal.show();
+            
+            // Reload page after modal is closed
+            document.getElementById('successModal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
+        } else {
+            // Show error modal
+            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+            const errorBody = document.getElementById('errorModalBody');
+            errorBody.innerHTML = `<p>Failed to cancel booking: ${data.message || 'Unknown error'}</p>`;
+            errorModal.show();
+            
+            btn.disabled = false;
+            btn.textContent = 'Confirm Cancellation';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        
+        // Show error modal
+        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+        const errorBody = document.getElementById('errorModalBody');
+        errorBody.innerHTML = '<p>An error occurred while cancelling the booking. Please try again.</p>';
+        errorModal.show();
+        
+        btn.disabled = false;
+        btn.textContent = 'Confirm Cancellation';
+    });
+});
+
+document.getElementById('confirmNoShowBtn')?.addEventListener('click', function() {
+    if (!currentBookingId) return;
+    
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
+    fetch(`/api/bookings/${currentBookingId}/mark-no-show`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            confirmed: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Hide no-show modal
+            bootstrap.Modal.getInstance(document.getElementById('noShowModal')).hide();
+            
+            // Show success modal
+            const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+            const successBody = document.getElementById('successModalBody');
+            const booking = data.booking;
+            
+            let successHtml = '<p class="mb-3">Booking has been marked as no-show successfully.</p>';
+            successHtml += '<div class="card border-warning">';
+            successHtml += '<div class="card-body">';
+            successHtml += '<h6 class="card-title text-warning">No-Show Details</h6>';
+            
+            if (booking.deposit_forfeited > 0) {
+                successHtml += `<p class="mb-2"><strong>Deposit Forfeited:</strong> $${parseFloat(booking.deposit_forfeited).toFixed(2)}</p>`;
+                successHtml += '<p class="mb-0 text-muted"><small>The customer\'s deposit has been forfeited as per the cancellation policy.</small></p>';
+            } else {
+                successHtml += '<p class="mb-0 text-muted"><small>The customer will not receive a refund.</small></p>';
+            }
+            
+            successHtml += '</div></div>';
+            successHtml += '<p class="mt-3 mb-0"><small>Both you and the customer will receive notification emails.</small></p>';
+            
+            successBody.innerHTML = successHtml;
+            successModal.show();
+            
+            // Reload page after modal is closed
+            document.getElementById('successModal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
+        } else {
+            // Show error modal
+            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+            const errorBody = document.getElementById('errorModalBody');
+            errorBody.innerHTML = `<p>Failed to mark as no-show: ${data.message || 'Unknown error'}</p>`;
+            errorModal.show();
+            
+            btn.disabled = false;
+            btn.textContent = 'Mark as No-Show';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        
+        // Show error modal
+        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+        const errorBody = document.getElementById('errorModalBody');
+        errorBody.innerHTML = '<p>An error occurred while marking the booking as no-show. Please try again.</p>';
+        errorModal.show();
+        
+        btn.disabled = false;
+        btn.textContent = 'Mark as No-Show';
+    });
+});
+
+</script>
+@endpush
+
 @endsection
 

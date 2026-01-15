@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->text('question');
+            $table->enum('type', ['free', 'select', 'radio', 'image'])->default('free');
+            $table->json('options')->nullable();
+            $table->unsignedTinyInteger('max_images')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });

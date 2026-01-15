@@ -28,6 +28,12 @@ class UserDetail extends Model
         'reschedule_times',
         'session_buffer_period',
         'require_consultation',
+        'session_type',
+        'session_duration_minutes',
+        'consultation_timing',
+        'require_gap_between_consultation_tattoo',
+        'consultation_tattoo_gap_value',
+        'consultation_tattoo_gap_unit',
         'stripe_account_id',
         'current_step',
         'completed_steps',
@@ -37,6 +43,7 @@ class UserDetail extends Model
         'completed_steps' => 'array',
         'google_calendar_token' => 'array',
         'require_consultation' => 'boolean',
+        'require_gap_between_consultation_tattoo' => 'boolean',
     ];
 
     /**
