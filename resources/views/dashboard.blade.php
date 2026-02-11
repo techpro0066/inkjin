@@ -46,7 +46,7 @@
         </div>
       </div>
     </div>
-  @else
+  @elseif(auth()->user()->role === 'artist')
     <!-- Total Users -->
     <div class="col-lg-3 col-md-6 col-sm-6 mb-4">
       <div class="card">
@@ -134,28 +134,26 @@
         </div>
       </div>
     </div>
+    @elseif(auth()->user()->role === 'user')
+    <!-- Total Users -->
+    <div class="col-lg-3 col-md-6 col-sm-6 mb-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="fw-semibold d-block mb-1">Bookings</span>
+              <h3 class="card-title mb-2">0</h3>
+            </div>
+            <div class="avatar">
+              <div class="avatar-initial bg-label-primary rounded">
+                <i class="ti ti-calendar ti-md"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
   @endif
 </div>
-<!-- / Cards -->
-
-<!-- Welcome Card -->
-<div class="row">
-  <div class="col-12 mb-4">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title mb-3">Welcome back, {{ auth()->user()->name }}! 👋</h5>
-        <p class="card-text">
-          @if(auth()->user()->role === 'admin')
-            Manage your platform, view statistics, and oversee all activities from your admin dashboard.
-          @elseif(auth()->user()->role === 'artist')
-            Showcase your artwork, manage your portfolio, and connect with clients.
-          @else
-            Explore your dashboard and discover new features to enhance your experience.
-          @endif
-        </p>
-        </div>
-    </div>
-  </div>
-</div>
-<!-- / Welcome Card -->
 @endsection

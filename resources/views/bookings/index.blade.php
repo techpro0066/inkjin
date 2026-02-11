@@ -247,6 +247,11 @@
                     <span class="badge {{ $statusColors[$booking->status] ?? 'bg-label-secondary' }}">
                       {{ ucfirst($booking->status) }}
                     </span>
+                    @if($booking->reschedule_status === 'pending' && $booking->reschedule_requested_by === 'artist')
+                      <span class="badge bg-label-warning mt-1">
+                        <i class="ti ti-clock me-1"></i>Reschedule Requested
+                      </span>
+                    @endif
                   </div>
                 </td>
                 <td>
@@ -271,6 +276,15 @@
                     </button>
                     @if($booking->status === 'confirmed')
                       @if(auth()->user()->role === 'artist' && $booking->artist_user_id === auth()->id())
+                        @if($booking->status === 'confirmed' && $booking->reschedule_status !== 'pending')
+                          <button type="button" class="btn btn-sm btn-label-warning" onclick="showArtistRescheduleModal({{ $booking->id }})">
+                            <i class="ti ti-calendar-event"></i> Request Reschedule
+                          </button>
+                        @elseif($booking->reschedule_status === 'pending' && $booking->reschedule_requested_by === 'artist')
+                          <span class="badge bg-label-warning">
+                            <i class="ti ti-clock me-1"></i>Pending Client Response
+                          </span>
+                        @endif
                         <button type="button" class="btn btn-sm btn-label-danger" onclick="showCancelModal({{ $booking->id }})">
                           <i class="ti ti-x"></i> Cancel
                         </button>
@@ -278,6 +292,20 @@
                           <i class="ti ti-user-off"></i> No-Show
                         </button>
                       @elseif($booking->user_id === auth()->id())
+                        @if($booking->status === 'confirmed')
+                          @if($booking->reschedule_status === 'pending' && $booking->reschedule_requested_by === 'artist')
+                            <a href="{{ route('bookings.reschedule-flow', $booking->id) }}" class="btn btn-sm btn-warning">
+                              <i class="ti ti-calendar-event me-1"></i>Select New Time
+                            </a>
+                            <button type="button" class="btn btn-sm btn-label-danger" onclick="declineRescheduleRequest({{ $booking->id }})">
+                              <i class="ti ti-x"></i> Decline
+                            </button>
+                          @else
+                            <a href="{{ route('bookings.reschedule-flow', $booking->id) }}" class="btn btn-sm btn-label-primary">
+                              <i class="ti ti-calendar-event"></i> Reschedule
+                            </a>
+                          @endif
+                        @endif
                         <button type="button" class="btn btn-sm btn-label-danger" onclick="showCancelModal({{ $booking->id }})">
                           <i class="ti ti-x"></i> Cancel
                         </button>
@@ -557,6 +585,8 @@
 </div>
 
 @push('scripts')
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 let currentBookingId = null;
 
@@ -817,6 +847,186 @@ document.getElementById('confirmNoShowBtn')?.addEventListener('click', function(
         btn.textContent = 'Mark as No-Show';
     });
 });
+
+// Rescheduling functions
+function checkRescheduleEligibility(bookingId) {
+    fetch(`/api/bookings/${bookingId}/can-reschedule`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.can_reschedule) {
+                // Redirect to reschedule page
+                window.location.href = `/bookings/${bookingId}/reschedule`;
+            } else {
+                // Show message that reschedule is not available, offer cancellation
+                const message = data.data?.message || 'Cannot reschedule this booking. This will be treated as cancellation.';
+                if (confirm(message + '\n\nWould you like to cancel instead?')) {
+                    showCancelModal(bookingId);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking reschedule eligibility:', error);
+            alert('An error occurred. Please try again.');
+        });
+}
+
+function showArtistRescheduleModal(bookingId) {
+    // Use SweetAlert2 for input
+    Swal.fire({
+        title: 'Request Reschedule',
+        html: `
+            <p class="mb-3">You are requesting to reschedule this booking. The client will be notified and can select a new date/time.</p>
+            <div class="form-group">
+                <label for="reschedule-reason" class="form-label">Reason (optional):</label>
+                <textarea id="reschedule-reason" class="form-control" rows="3" placeholder="e.g., Emergency conflict, scheduling issue, etc."></textarea>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#ffc107',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Send Request',
+        cancelButtonText: 'Cancel',
+        preConfirm: () => {
+            return document.getElementById('reschedule-reason').value || null;
+        },
+        didOpen: () => {
+            // Focus on textarea
+            document.getElementById('reschedule-reason').focus();
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const reason = result.value;
+            
+            // Show loading
+            Swal.fire({
+                title: 'Sending Request...',
+                text: 'Please wait while we send the reschedule request.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            fetch(`/api/bookings/${bookingId}/artist-request-reschedule`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    reason: reason || null
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Request Sent!',
+                        html: 'The reschedule request has been sent to the client. They will be notified via email and can select a new date/time.',
+                        confirmButtonColor: '#28a745',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        location.reload(); // Refresh to show updated status
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Request Failed',
+                        text: data.message || 'Failed to send reschedule request. Please try again.',
+                        confirmButtonColor: '#dc3545'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred. Please try again.',
+                    confirmButtonColor: '#dc3545'
+                });
+            });
+        }
+    });
+}
+
+// Decline artist's reschedule request
+function declineRescheduleRequest(bookingId) {
+    Swal.fire({
+        title: 'Decline Reschedule Request?',
+        html: 'Are you sure you want to decline the artist\'s reschedule request?<br><br>You can still reschedule later if needed.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, decline',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Processing...',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            fetch(`/api/bookings/${bookingId}/decline-reschedule`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    reason: null
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Request Declined',
+                        text: 'The reschedule request has been declined. The booking remains at its original date/time.',
+                        confirmButtonColor: '#28a745',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed',
+                        text: data.message || 'Failed to decline reschedule request. Please try again.',
+                        confirmButtonColor: '#dc3545'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred. Please try again.',
+                    confirmButtonColor: '#dc3545'
+                });
+            });
+        }
+    });
+}
 
 </script>
 @endpush

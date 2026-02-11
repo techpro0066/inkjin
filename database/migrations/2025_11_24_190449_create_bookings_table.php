@@ -64,7 +64,7 @@ return new class extends Migration
             $table->integer('reschedule_limit')->nullable();
             
             // Payment
-            $table->string('payment_intent_id', 255)->nullable()->unique();
+            $table->string('payment_intent_id', 255)->nullable();
             $table->enum('payment_status', [
                 'pending',
                 'paid',
@@ -115,7 +115,6 @@ return new class extends Migration
             $table->index('tattoo_id');
             $table->index('booking_date');
             $table->index('status');
-            $table->index('payment_intent_id');
             $table->index('cancelled_by');
             $table->index('rescheduled_from_booking_id');
             $table->index('booking_type');

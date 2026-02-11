@@ -62,6 +62,14 @@ class Booking extends Model
         'google_meet_link',
         'consultation_timing_type',
         'consultation_booking_id',
+        'rescheduled_from_booking_id',
+        'rescheduled_by',
+        'rescheduled_at',
+        'reschedule_reason',
+        'reschedule_count',
+        'reschedule_limit',
+        'reschedule_status',
+        'reschedule_requested_by',
     ];
 
     protected $casts = [
@@ -77,6 +85,7 @@ class Booking extends Model
         'completed_at' => 'datetime',
         'no_show_marked_at' => 'datetime',
         'reminder_sent_at' => 'datetime',
+        'rescheduled_at' => 'datetime',
         'deposit_amount' => 'decimal:2',
         'platform_fee' => 'decimal:2',
         'total_amount_paid' => 'decimal:2',

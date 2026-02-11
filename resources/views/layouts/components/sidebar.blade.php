@@ -107,6 +107,16 @@
           </a>
         </li>
       @endif
+
+      @if(auth()->user()->role === 'user')
+        <!-- Artists (for all authenticated users) -->
+        <li class="menu-item {{ request()->routeIs('dashboard.artists') ? 'active' : '' }}">
+          <a href="{{ route('dashboard.artists') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-palette"></i>
+            <div data-i18n="Artists">Artists</div>
+          </a>
+        </li>
+      @endif
     @endauth
   </ul>
 </aside>

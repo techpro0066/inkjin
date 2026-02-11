@@ -209,6 +209,222 @@ class InkJinController extends Controller
     }
 
     /**
+     * Public API: get list of artists from live InkJin API (JSON, no auth required).
+     * URL: /api/artists
+     * Data source: live API (docs/artist/get_listing.txt, docs/DIRECT_API_CALLS.md).
+     *
+     * Query params: page (default 1), per_page (default 24, max 50), search (optional).
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getArtistsList(Request $request): JsonResponse
+    {
+        try {
+            $page = max(1, (int) $request->input('page', 1));
+            $perPage = min((int) $request->input('per_page', 24), 50);
+            $perPage = $perPage > 0 ? $perPage : 24;
+            $search = $request->input('search', '');
+
+            $result = $this->apiService->getArtistsListLive($page, $perPage, $search);
+
+            return response()->json([
+                'success' => true,
+                'source' => 'live_api',
+                'data' => $result['data'],
+                'meta' => $result['meta'],
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Live API artists list failed, falling back to database', [
+                'error' => $e->getMessage(),
+            ]);
+            $result = $this->getArtistsListFromDb($request);
+            return response()->json([
+                'success' => true,
+                'source' => 'database',
+                'data' => $result['data'],
+                'meta' => $result['meta'],
+            ]);
+        }
+    }
+
+    /**
+     * Public API: get list of tattoos from live InkJin API (JSON, no auth required).
+     * URL: /api/tattoos
+     * Data source: live API (docs/DIRECT_API_CALLS.md - api/tattoos/list).
+     *
+     * Query params: page (default 1), per_page (default 24, max 50), search (optional), artist_handle (optional).
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getTattoosList(Request $request): JsonResponse
+    {
+        try {
+            $page = max(1, (int) $request->input('page', 1));
+            $perPage = min((int) $request->input('per_page', 24), 50);
+            $perPage = $perPage > 0 ? $perPage : 24;
+            $search = $request->input('search', '');
+            $artistHandle = $request->input('artist_handle', '');
+
+            $result = $this->apiService->getTattoosListLive($page, $perPage, $search, $artistHandle);
+
+            return response()->json([
+                'success' => true,
+                'source' => 'live_api',
+                'data' => $result['data'],
+                'meta' => $result['meta'],
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Live API tattoos list failed, falling back to database', [
+                'error' => $e->getMessage(),
+            ]);
+            $result = $this->getTattoosListFromDb($request);
+            return response()->json([
+                'success' => true,
+                'source' => 'database',
+                'data' => $result['data'],
+                'meta' => $result['meta'],
+            ]);
+        }
+    }
+
+    /**
+     * Get artists list from database (fallback when live API is unavailable).
+     */
+    protected function getArtistsListFromDb(Request $request): array
+    {
+        $perPage = min((int) $request->input('per_page', 24), 100);
+        $perPage = $perPage > 0 ? $perPage : 24;
+        $search = $request->input('search', '');
+
+        $query = InkJinArtist::withCount(['tattoos' => function ($q) {
+            $q->where('visibility', 'public');
+        }])
+            ->where('visibility', 'public')
+            ->orderBy('profile_name', 'asc')
+            ->orderBy('artist_handle', 'asc');
+
+        if ($search !== '') {
+            $term = '%' . trim($search) . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('artist_handle', 'like', $term)
+                    ->orWhere('profile_name', 'like', $term)
+                    ->orWhere('first_name', 'like', $term)
+                    ->orWhere('last_name', 'like', $term)
+                    ->orWhere('studio', 'like', $term)
+                    ->orWhere('city', 'like', $term)
+                    ->orWhere('country', 'like', $term)
+                    ->orWhere('style', 'like', $term);
+            });
+        }
+
+        $paginated = $query->paginate($perPage);
+        $artistsData = $paginated->getCollection()->map(function ($artist) {
+            return [
+                'id' => $artist->id,
+                'artist_handle' => $artist->artist_handle,
+                'display_name' => $artist->display_name ?? $artist->profile_name ?? ($artist->first_name . ' ' . $artist->last_name),
+                'profile_url' => route('public.artist.db', ['username' => $artist->artist_handle]),
+                'field_profile_picture' => null,
+                'instagram' => $artist->instagram,
+                'tiktok' => $artist->tiktok,
+                'website' => $artist->website,
+                'studio' => $artist->studio,
+                'style' => $artist->style,
+                'city' => $artist->city,
+                'country' => $artist->country,
+                'tattoo_count' => $artist->tattoos_count ?? 0,
+            ];
+        })->values();
+
+        return [
+            'data' => $artistsData,
+            'meta' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ],
+        ];
+    }
+
+    /**
+     * Get tattoos list from database (fallback when live API is unavailable).
+     */
+    protected function getTattoosListFromDb(Request $request): array
+    {
+        $perPage = min((int) $request->input('per_page', 24), 100);
+        $perPage = $perPage > 0 ? $perPage : 24;
+        $search = $request->input('search', '');
+        $artistHandle = $request->input('artist_handle', '');
+
+        $query = InkJinTattoo::with('artist')
+            ->where('visibility', 'public')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc');
+
+        if ($artistHandle !== '') {
+            $query->where('artist_handle', trim($artistHandle));
+        }
+        if ($search !== '') {
+            $term = '%' . trim($search) . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('title', 'like', $term)
+                    ->orWhere('description', 'like', $term)
+                    ->orWhere('primary_style', 'like', $term)
+                    ->orWhere('tags', 'like', $term)
+                    ->orWhere('suggested_placement', 'like', $term)
+                    ->orWhere('color', 'like', $term)
+                    ->orWhere('artist_handle', 'like', $term);
+            });
+        }
+
+        $paginated = $query->paginate($perPage);
+        $tattoosData = $paginated->getCollection()->map(function ($tattoo) {
+            $artist = $tattoo->artist;
+            $artistDisplayName = $artist
+                ? ($artist->display_name ?? $artist->profile_name ?? ($artist->first_name . ' ' . $artist->last_name))
+                : null;
+            $artistSlug = $artist ? slugify($artistDisplayName ?? $artist->artist_handle) : $tattoo->artist_handle;
+            $tattooSlug = slugify($tattoo->title ?? '');
+
+            return [
+                'id' => $tattoo->id,
+                'title' => $tattoo->title,
+                'description' => $tattoo->description,
+                'filename' => $tattoo->filename,
+                'primary_style' => $tattoo->primary_style,
+                'suggested_placement' => $tattoo->suggested_placement,
+                'color' => $tattoo->color,
+                'tags' => $tattoo->tags,
+                'price' => $tattoo->price,
+                'currency' => $tattoo->currency,
+                'artist_handle' => $tattoo->artist_handle,
+                'artist_display_name' => $artistDisplayName,
+                'artist_profile_url' => $artist
+                    ? route('public.artist.db', ['username' => $artist->artist_handle])
+                    : null,
+                'tattoo_url' => route('public.tattoo.db', [
+                    'artist_display_name' => $artistSlug,
+                    'tattoo_title' => $tattooSlug,
+                    'tattoo_id' => $tattoo->id,
+                ]),
+            ];
+        })->values();
+
+        return [
+            'data' => $tattoosData,
+            'meta' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ],
+        ];
+    }
+
+    /**
      * Public artist profile page from database
      * URL: /artist/{username}
      * 
@@ -1503,36 +1719,81 @@ class InkJinController extends Controller
                 ],
             ];
             
-            // Create booking
-            $booking = Booking::create([
-                'user_id' => $customerUser->id,
-                'artist_user_id' => $artistUser->id,
-                'tattoo_id' => $tattoo->id,
-                'booking_type' => $bookingType,
-                'booking_date' => $slot['date'],
-                'start_time_utc' => $slot['start_time_utc'],
-                'end_time_utc' => $slot['end_time_utc'],
-                'timezone' => $timezone,
-                'status' => 'confirmed',
-                'payment_intent_id' => $requestData['payment_intent_id'],
-                'payment_status' => 'paid',
-                'deposit_amount' => $fullAmountPaid ? 0 : $amount,
-                'full_amount_paid' => (bool) $fullAmountPaid,
-                'platform_fee' => $platformFee,
-                'total_amount_paid' => $totalAmount,
-                'currency' => strtoupper($requestData['currency']),
-                'questions_answers' => !empty($questionsAnswers) ? $questionsAnswers : null,
-                'cancellation_deadline' => $cancellationDeadline,
-                'cancellation_window_hours' => $cancellationWindowHours,
-                'action_history' => $actionHistory,
-                'consultation_timing_type' => $consultationTiming,
-                'has_consultation' => $requiresConsultation,
-                // Store consultation times for combined mode
-                'consultation_date' => $isCombinedConsultation ? $slot['date'] : null,
-                'consultation_start_time_utc' => $isCombinedConsultation ? $bookingStartTime->format('H:i:s') : null,
-                'consultation_end_time_utc' => $isCombinedConsultation && $consultationEndTime ? $consultationEndTime->format('H:i:s') : null,
-                'consultation_completed' => false, // Will be marked complete after consultation
-            ]);
+            // Idempotency guard: if a booking with this payment_intent_id already exists,
+            // return success instead of trying to create a duplicate (Stripe may retry callbacks / client may retry).
+            $existingBooking = Booking::where('payment_intent_id', $requestData['payment_intent_id'])->first();
+            if ($existingBooking) {
+                Log::warning('Booking confirmation called with existing payment_intent_id, returning existing booking', [
+                    'payment_intent_id' => $requestData['payment_intent_id'],
+                    'booking_id' => $existingBooking->id,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Booking already confirmed',
+                    'booking' => [
+                        'id' => $existingBooking->id,
+                        'status' => $existingBooking->status,
+                    ],
+                ]);
+            }
+
+            // Create booking (handle race conditions on unique payment_intent_id)
+            try {
+                $booking = Booking::create([
+                    'user_id' => $customerUser->id,
+                    'artist_user_id' => $artistUser->id,
+                    'tattoo_id' => $tattoo->id,
+                    'booking_type' => $bookingType,
+                    'booking_date' => $slot['date'],
+                    'start_time_utc' => $slot['start_time_utc'],
+                    'end_time_utc' => $slot['end_time_utc'],
+                    'timezone' => $timezone,
+                    'status' => 'confirmed',
+                    'payment_intent_id' => $requestData['payment_intent_id'],
+                    'payment_status' => 'paid',
+                    'deposit_amount' => $fullAmountPaid ? 0 : $amount,
+                    'full_amount_paid' => (bool) $fullAmountPaid,
+                    'platform_fee' => $platformFee,
+                    'total_amount_paid' => $totalAmount,
+                    'currency' => strtoupper($requestData['currency']),
+                    'questions_answers' => !empty($questionsAnswers) ? $questionsAnswers : null,
+                    'cancellation_deadline' => $cancellationDeadline,
+                    'cancellation_window_hours' => $cancellationWindowHours,
+                    'action_history' => $actionHistory,
+                    'consultation_timing_type' => $consultationTiming,
+                    'has_consultation' => $requiresConsultation,
+                    // Store consultation times for combined mode
+                    'consultation_date' => $isCombinedConsultation ? $slot['date'] : null,
+                    'consultation_start_time_utc' => $isCombinedConsultation ? $bookingStartTime->format('H:i:s') : null,
+                    'consultation_end_time_utc' => $isCombinedConsultation && $consultationEndTime ? $consultationEndTime->format('H:i:s') : null,
+                    'consultation_completed' => false, // Will be marked complete after consultation
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // If another concurrent request inserted the same payment_intent_id first,
+                // return the existing booking instead of failing hard.
+                if ($e->getCode() === '23000') { // Integrity constraint violation
+                    $existingBooking = Booking::where('payment_intent_id', $requestData['payment_intent_id'])->first();
+                    if ($existingBooking) {
+                        Log::warning('Duplicate payment_intent_id on booking create, returning existing booking', [
+                            'payment_intent_id' => $requestData['payment_intent_id'],
+                            'booking_id' => $existingBooking->id,
+                        ]);
+
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Booking already confirmed',
+                            'booking' => [
+                                'id' => $existingBooking->id,
+                                'status' => $existingBooking->status,
+                            ],
+                        ]);
+                    }
+                }
+
+                // Re-throw for any other DB error
+                throw $e;
+            }
 
             // Create Google Calendar event for the artist (if calendar is connected)
             // Only create Meet link if artist requires consultation
@@ -2129,7 +2390,7 @@ class InkJinController extends Controller
                 $tattooSessionCancellationDeadline = $tattooSessionDateTime->copy()->subHours($cancellationWindowHours);
             }
 
-            // Create action history
+            // Create action history for the unified booking
             $actionHistory = [
                 [
                     'action' => 'created',
@@ -2149,42 +2410,23 @@ class InkJinController extends Controller
                 ],
             ];
 
-            // Create consultation booking
-            $consultationBooking = Booking::create([
-                'user_id' => $customerUser->id,
-                'artist_user_id' => $artistUser->id,
-                'tattoo_id' => $tattoo->id,
-                'booking_type' => 'flash',
-                'booking_date' => $consultationSlot['date'],
-                'start_time_utc' => $consultationSlot['start_time_utc'],
-                'end_time_utc' => $consultationSlot['end_time_utc'],
-                'timezone' => $timezone,
-                'status' => 'confirmed',
-                'payment_intent_id' => $requestData['payment_intent_id'],
-                'payment_status' => 'paid',
-                'deposit_amount' => 0, // Consultation is part of total payment
-                'full_amount_paid' => false,
-                'platform_fee' => 0, // Platform fee applied to tattoo session only
-                'total_amount_paid' => 0, // No separate payment for consultation
-                'currency' => strtoupper($requestData['currency']),
-                'questions_answers' => null,
-                'cancellation_deadline' => $consultationCancellationDeadline,
-                'cancellation_window_hours' => $cancellationWindowHours,
-                'action_history' => $actionHistory,
-                'consultation_timing_type' => 'separate',
-                'has_consultation' => true,
-                'consultation_date' => $consultationSlot['date'],
-                'consultation_start_time_utc' => $consultationSlot['start_time_utc'],
-                'consultation_end_time_utc' => $consultationSlot['end_time_utc'],
-                'consultation_completed' => false,
-            ]);
+            // Choose a single cancellation deadline (earlier of consultation / tattoo session if both exist)
+            $unifiedCancellationDeadline = $tattooSessionCancellationDeadline;
+            if ($consultationCancellationDeadline && $tattooSessionCancellationDeadline) {
+                $unifiedCancellationDeadline = $consultationCancellationDeadline->lt($tattooSessionCancellationDeadline)
+                    ? $consultationCancellationDeadline
+                    : $tattooSessionCancellationDeadline;
+            } elseif ($consultationCancellationDeadline) {
+                $unifiedCancellationDeadline = $consultationCancellationDeadline;
+            }
 
-            // Create tattoo session booking
-            $tattooSessionBooking = Booking::create([
+            // Create a single booking row containing both consultation and tattoo session times
+            $booking = Booking::create([
                 'user_id' => $customerUser->id,
                 'artist_user_id' => $artistUser->id,
                 'tattoo_id' => $tattoo->id,
                 'booking_type' => 'flash',
+                // Tattoo session as primary booking date/time
                 'booking_date' => $tattooSessionSlot['date'],
                 'start_time_utc' => $tattooSessionSlot['start_time_utc'],
                 'end_time_utc' => $tattooSessionSlot['end_time_utc'],
@@ -2198,14 +2440,18 @@ class InkJinController extends Controller
                 'total_amount_paid' => $totalAmount,
                 'currency' => strtoupper($requestData['currency']),
                 'questions_answers' => !empty($questionsAnswers) ? $questionsAnswers : null,
-                'cancellation_deadline' => $tattooSessionCancellationDeadline,
+                'cancellation_deadline' => $unifiedCancellationDeadline,
                 'cancellation_window_hours' => $cancellationWindowHours,
                 'action_history' => $actionHistory,
                 'consultation_timing_type' => 'separate',
-                'consultation_booking_id' => $consultationBooking->id,
+                'has_consultation' => true,
+                'consultation_date' => $consultationSlot['date'],
+                'consultation_start_time_utc' => $consultationSlot['start_time_utc'],
+                'consultation_end_time_utc' => $consultationSlot['end_time_utc'],
+                'consultation_completed' => false,
             ]);
 
-            // Create Google Calendar events
+            // Create Google Calendar events (one booking row, two events)
             $consultationCalendarEventId = null;
             $consultationMeetLink = null;
             $tattooSessionCalendarEventId = null;
@@ -2214,39 +2460,40 @@ class InkJinController extends Controller
                 $artistUserDetail = $artistUser->userDetail;
                 
                 if ($artistUserDetail && $artistUserDetail->google_calendar_token && $artistUserDetail->google_calendar_id) {
-                    // Create consultation calendar event with Meet link
-                    $consultationCalendarResult = GoogleCalendarController::createCalendarEvent($artistUserDetail, $consultationBooking, true);
+                    // Create consultation calendar event with Meet link using consultation times
+                    $consultationEventBooking = clone $booking;
+                    $consultationEventBooking->booking_date = $consultationSlot['date'];
+                    $consultationEventBooking->start_time_utc = $consultationSlot['start_time_utc'];
+                    $consultationEventBooking->end_time_utc = $consultationSlot['end_time_utc'];
+
+                    $consultationCalendarResult = GoogleCalendarController::createCalendarEvent($artistUserDetail, $consultationEventBooking, true);
                     
                     if ($consultationCalendarResult && isset($consultationCalendarResult['event_id'])) {
                         $consultationCalendarEventId = $consultationCalendarResult['event_id'];
                         $consultationMeetLink = $consultationCalendarResult['meet_link'] ?? null;
-                        
-                        $consultationBooking->update([
-                            'google_calendar_event_id' => $consultationCalendarEventId,
-                            'google_meet_link' => $consultationMeetLink,
-                        ]);
                     }
 
-                    // Create tattoo session calendar event (no Meet link)
-                    $tattooSessionCalendarResult = GoogleCalendarController::createCalendarEvent($artistUserDetail, $tattooSessionBooking, false);
+                    // Create tattoo session calendar event (no Meet link) using main booking times
+                    $tattooSessionCalendarResult = GoogleCalendarController::createCalendarEvent($artistUserDetail, $booking, false);
                     
                     if ($tattooSessionCalendarResult && isset($tattooSessionCalendarResult['event_id'])) {
                         $tattooSessionCalendarEventId = $tattooSessionCalendarResult['event_id'];
-                        
-                        $tattooSessionBooking->update([
-                            'google_calendar_event_id' => $tattooSessionCalendarEventId,
-                        ]);
                     }
+
+                    // Persist Google event IDs and Meet link on the single booking row
+                    $booking->update([
+                        'google_calendar_event_id' => $tattooSessionCalendarEventId,
+                        'google_meet_link' => $consultationMeetLink,
+                    ]);
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to create Google Calendar events (non-critical)', [
-                    'consultation_booking_id' => $consultationBooking->id,
-                    'tattoo_session_booking_id' => $tattooSessionBooking->id,
+                    'booking_id' => $booking->id,
                     'error' => $e->getMessage(),
                 ]);
             }
 
-            // Send confirmation emails
+            // Send confirmation emails (single booking row)
             $questionTexts = [];
             if (!empty($questionsAnswers)) {
                 $questionModels = \App\Models\UserQuestion::whereIn('id', array_keys($questionsAnswers))
@@ -2259,37 +2506,26 @@ class InkJinController extends Controller
                 }
             }
 
-            // Send consultation confirmation email
             try {
                 Mail::to($customerUser->email)->send(
-                    new BookingConfirmationMail($consultationBooking, false, $questionTexts)
+                    new BookingConfirmationMail($booking, false, $questionTexts)
                 );
             } catch (\Exception $e) {
-                Log::error('Failed to send consultation confirmation email: ' . $e->getMessage());
+                Log::error('Failed to send booking confirmation email (separate consultation): ' . $e->getMessage());
             }
 
-            sleep(2);
-
-            // Send tattoo session confirmation email
-            try {
-                Mail::to($customerUser->email)->send(
-                    new BookingConfirmationMail($tattooSessionBooking, false, $questionTexts)
-                );
-            } catch (\Exception $e) {
-                Log::error('Failed to send tattoo session confirmation email: ' . $e->getMessage());
-            }
-
-            // Refresh bookings to get accessor attributes
-            $consultationBooking->refresh();
-            $tattooSessionBooking->refresh();
+            // Refresh booking to get accessor attributes
+            $booking->refresh();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Bookings confirmed successfully',
-                'consultation_booking_id' => $consultationBooking->id,
-                'tattoo_session_booking_id' => $tattooSessionBooking->id,
-                'consultation_time' => $consultationBooking->consultation_time,
-                'tattoo_session_time' => $tattooSessionBooking->booking_time,
+                'message' => 'Booking confirmed successfully',
+                'booking_id' => $booking->id,
+                // For backward compatibility with frontend, still return consultation/tattoo session time blocks
+                'consultation_booking_id' => $booking->id,
+                'tattoo_session_booking_id' => $booking->id,
+                'consultation_time' => $booking->consultation_time,
+                'tattoo_session_time' => $booking->booking_time,
                 'consultation_meet_link' => $consultationMeetLink,
             ]);
         } catch (\Exception $e) {

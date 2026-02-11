@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Route;
 // Public InkJin API routes
 Route::get('/api/tattoo/{id}', [InkJinController::class, 'getTattoo'])->name('api.tattoo.show');
 Route::get('/api/artist/{id}', [InkJinController::class, 'getArtist'])->name('api.artist.show');
+Route::get('/api/artists', [InkJinController::class, 'getArtistsList'])->name('api.artists.list');
+Route::get('/api/tattoos', [InkJinController::class, 'getTattoosList'])->name('api.tattoos.list');
 
 // Countries and Cities API routes
 Route::get('/api/countries', [\App\Http\Controllers\CountriesController::class, 'getCountries'])->name('api.countries');
@@ -60,6 +62,14 @@ Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
     Route::get('/api/bookings/{id}/cancellation-info', [\App\Http\Controllers\BookingCancellationController::class, 'getCancellationInfo'])->name('api.bookings.cancellation-info');
     Route::post('/api/bookings/{id}/cancel', [\App\Http\Controllers\BookingCancellationController::class, 'cancel'])->name('api.bookings.cancel');
     Route::post('/api/bookings/{id}/mark-no-show', [\App\Http\Controllers\BookingCancellationController::class, 'markNoShow'])->name('api.bookings.mark-no-show');
+    
+    // Booking rescheduling routes
+    Route::get('/api/bookings/{id}/can-reschedule', [\App\Http\Controllers\ReschedulingController::class, 'checkCanReschedule'])->name('api.bookings.can-reschedule');
+    Route::post('/api/bookings/{id}/artist-request-reschedule', [\App\Http\Controllers\ReschedulingController::class, 'artistRequestReschedule'])->name('api.bookings.artist-request-reschedule');
+    Route::post('/api/bookings/{id}/reschedule', [\App\Http\Controllers\ReschedulingController::class, 'reschedule'])->name('api.bookings.reschedule');
+    Route::post('/api/bookings/{id}/decline-reschedule', [\App\Http\Controllers\ReschedulingController::class, 'declineReschedule'])->name('api.bookings.decline-reschedule');
+    Route::get('/bookings/{id}/reschedule', [\App\Http\Controllers\ReschedulingController::class, 'showReschedulePage'])->name('bookings.reschedule');
+    Route::get('/bookings/{id}/reschedule-flow', [\App\Http\Controllers\ReschedulingController::class, 'showRescheduleFlow'])->name('bookings.reschedule-flow');
     
 });
 
@@ -131,6 +141,11 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function 
 });
 
 // User routes
+Route::middleware(['auth', 'verified', 'onboarding', 'user'])->prefix('dashboard')->group(function () {
+    Route::get('/artists', [\App\Http\Controllers\DashboardController::class, 'artists'])->name('dashboard.artists');
+    Route::get('/artists/{username}', [\App\Http\Controllers\DashboardController::class, 'artistShow'])->name('dashboard.artists.show');
+    Route::get('/tattoo/{id}', [\App\Http\Controllers\DashboardController::class, 'tattooShow'])->name('dashboard.tattoo.show');
+});
 
 require __DIR__.'/auth.php';
 

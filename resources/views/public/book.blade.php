@@ -318,11 +318,7 @@
                                 <span class="fs-3 fw-bold text-dark">InkJin</span>
                             @endif
                         </a>
-                        <a href="{{ route('public.tattoo.db', [
-                            'artist_display_name' => slugify($artist['display_name'] ?? $artist['username'] ?? ''),
-                            'tattoo_title' => slugify($tattoo['title'] ?? ''),
-                            'tattoo_id' => $tattoo['tattoo_id'] ?? ''
-                        ]) }}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{{ route('dashboard.tattoo.show', ['id' => $tattoo['tattoo_id']]) }}" class="btn btn-outline-secondary btn-sm">
                             ← Back to Tattoo
                         </a>
                     </div>

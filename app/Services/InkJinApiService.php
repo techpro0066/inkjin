@@ -89,17 +89,31 @@ class InkJinApiService
         ])->{strtolower($method)}($url, $params);
 
         if ($response->successful()) {
-            return $response->json();
+            $body = $response->json();
+            if ($body === null && $response->body() !== '') {
+                Log::warning('InkJin API returned non-JSON response', [
+                    'endpoint' => $endpoint,
+                    'status' => $response->status(),
+                    'body_preview' => substr($response->body(), 0, 500),
+                ]);
+                throw new \Exception('InkJin API returned invalid JSON (status ' . $response->status() . '). Check endpoint and API availability.');
+            }
+            return is_array($body) ? $body : [];
         }
 
+        $status = $response->status();
+        $bodyPreview = substr($response->body(), 0, 300);
         Log::error('InkJin API request failed', [
             'method' => $method,
             'endpoint' => $endpoint,
-            'status' => $response->status(),
+            'status' => $status,
             'body' => $response->body(),
         ]);
-
-        throw new \Exception("InkJin API request failed: {$response->status()}");
+        $msg = "InkJin API request failed: {$status}";
+        if ($bodyPreview !== '') {
+            $msg .= ' — ' . $bodyPreview;
+        }
+        throw new \Exception($msg);
     }
 
     /**
@@ -152,6 +166,188 @@ class InkJinApiService
             ]);
             return null;
         }
+    }
+
+    /**
+     * Allowed items_per_page values for the live API (Drupal constraint).
+     */
+    protected const LIVE_API_PAGE_SIZES = [5, 10, 15, 20, 25, 50, 9999];
+
+    /**
+     * Get list of artists from live InkJin API.
+     * See docs/artist/get_listing.txt and docs/DIRECT_API_CALLS.md.
+     *
+     * @param int $page 1-based page number (converted to 0-based for API)
+     * @param int $perPage Items per page (clamped to allowed API values, max 50)
+     * @param string $search Optional search term
+     * @return array{data: array, meta: array}
+     */
+    public function getArtistsListLive(int $page = 1, int $perPage = 24, string $search = ''): array
+    {
+        $page = max(1, $page);
+        $perPage = min($perPage, 50);
+        $perPage = $this->clampToAllowedPageSize($perPage);
+        $apiPage = $page - 1; // API is 0-based
+
+        $params = [
+            'page' => $apiPage,
+            'items_per_page' => $perPage,
+        ];
+        if ($search !== '') {
+            $params['search'] = trim($search);
+        }
+
+        $response = $this->makeRequest('GET', '/api/artists', $params);
+        $rows = $response['rows'] ?? [];
+        $pager = $response['pager'] ?? [];
+
+        $totalItems = (int) ($pager['total_items'] ?? count($rows));
+        $totalPages = (int) ($pager['total_pages'] ?? 1);
+        $itemsPerPage = (int) ($pager['items_per_page'] ?? $perPage);
+
+        $data = array_map(function ($artist) {
+            $tattooCount = 0;
+            if (isset($artist['artist_tattoo_count'][0]['tattoo_count'])) {
+                $tattooCount = (int) $artist['artist_tattoo_count'][0]['tattoo_count'];
+            }
+            return [
+                'id' => (int) ($artist['uid'] ?? 0),
+                'artist_handle' => $artist['username'] ?? '',
+                'display_name' => $artist['display_name'] ?? '',
+                'profile_url' => $this->artistProfileUrlFromUsername($artist['username'] ?? ''),
+                'field_profile_picture' => $artist['field_profile_picture'] ?? null,
+                'instagram' => $artist['field_profile_instagram'] ?? null,
+                'tiktok' => $artist['field_profile_tiktok'] ?? null,
+                'website' => $artist['field_profile_website'] ?? null,
+                'studio' => $artist['field_profile_studio'] ?? null,
+                'style' => $artist['field_profile_primary_style'] ?? $artist['field_profile_style'] ?? null,
+                'city' => $artist['field_address_city'] ?? null,
+                'country' => $artist['field_address_country'] ?? null,
+                'tattoo_count' => $tattooCount,
+            ];
+        }, is_array($rows) ? $rows : []);
+
+        return [
+            'data' => array_values($data),
+            'meta' => [
+                'current_page' => $page,
+                'last_page' => max(1, $totalPages),
+                'per_page' => $itemsPerPage,
+                'total' => $totalItems,
+            ],
+        ];
+    }
+
+    /**
+     * Get list of tattoos from live InkJin API.
+     * See docs/DIRECT_API_CALLS.md (api/tattoos/list).
+     *
+     * @param int $page 1-based page number (converted to 0-based for API)
+     * @param int $perPage Items per page (clamped to allowed API values, max 50)
+     * @param string $search Optional search term
+     * @param string $authBy Optional author username(s), comma-separated
+     * @return array{data: array, meta: array}
+     */
+    public function getTattoosListLive(int $page = 1, int $perPage = 24, string $search = '', string $authBy = ''): array
+    {
+        $page = max(1, $page);
+        $perPage = min($perPage, 50);
+        $perPage = $this->clampToAllowedPageSize($perPage);
+        $apiPage = $page - 1;
+
+        $params = [
+            'page' => $apiPage,
+            'items_per_page' => $perPage,
+            'sort_by' => 'created',
+            'sort_order' => 'DESC',
+        ];
+        if ($search !== '') {
+            $params['search'] = trim($search);
+        }
+        if ($authBy !== '') {
+            $params['auth_by'] = trim($authBy);
+        }
+
+        $response = $this->makeRequest('GET', '/api/tattoos/list', $params);
+        $rows = $response['rows'] ?? [];
+        $pager = $response['pager'] ?? [];
+
+        $totalItems = (int) ($pager['total_items'] ?? count($rows));
+        $totalPages = (int) ($pager['total_pages'] ?? 1);
+        $itemsPerPage = (int) ($pager['items_per_page'] ?? $perPage);
+
+        $data = array_map(function ($tattoo) {
+            $nid = (int) ($tattoo['nid'] ?? $tattoo['id'] ?? 0);
+            $title = $tattoo['title'] ?? '';
+            $authorUsername = $tattoo['author_username'] ?? $tattoo['username'] ?? '';
+            $authorDisplayName = $tattoo['author_display_name'] ?? $tattoo['display_name'] ?? '';
+            $imageUrl = $tattoo['field_tattoo_image_preview'] ?? $tattoo['field_tattoo_image'] ?? $tattoo['filename'] ?? null;
+            $tagsNames = $tattoo['field_tags_names'] ?? $tattoo['tags'] ?? '';
+            $artistSlug = $this->slugify($authorDisplayName ?: $authorUsername);
+            $tattooSlug = $this->slugify($title);
+
+            return [
+                'id' => $nid,
+                'title' => $title,
+                'description' => $tattoo['description'] ?? $tattoo['body'] ?? null,
+                'filename' => $imageUrl,
+                'primary_style' => $tattoo['field_primary_style'] ?? $tattoo['primary_style'] ?? null,
+                'suggested_placement' => $tattoo['field_suggested_placement'] ?? $tattoo['suggested_placement'] ?? null,
+                'color' => $tattoo['field_color'] ?? $tattoo['color'] ?? null,
+                'tags' => is_array($tagsNames) ? implode(', ', $tagsNames) : $tagsNames,
+                'price' => $tattoo['field_price'] ?? $tattoo['price'] ?? null,
+                'currency' => $tattoo['field_currency'] ?? $tattoo['currency'] ?? null,
+                'artist_handle' => $authorUsername,
+                'artist_display_name' => $authorDisplayName,
+                'artist_profile_url' => $this->artistProfileUrlFromUsername($authorUsername),
+                'tattoo_url' => $this->tattooPageUrl($artistSlug, $tattooSlug, $nid),
+            ];
+        }, is_array($rows) ? $rows : []);
+
+        return [
+            'data' => array_values($data),
+            'meta' => [
+                'current_page' => $page,
+                'last_page' => max(1, $totalPages),
+                'per_page' => $itemsPerPage,
+                'total' => $totalItems,
+            ],
+        ];
+    }
+
+    protected function clampToAllowedPageSize(int $perPage): int
+    {
+        foreach (self::LIVE_API_PAGE_SIZES as $allowed) {
+            if ($perPage <= $allowed) {
+                return $allowed;
+            }
+        }
+        return 50;
+    }
+
+    protected function artistProfileUrlFromUsername(string $username): string
+    {
+        if ($username === '') {
+            return '';
+        }
+        return route('public.artist', ['username' => $username]);
+    }
+
+    protected function tattooPageUrl(string $artistSlug, string $tattooSlug, int $tattooId): string
+    {
+        return route('public.tattoo', [
+            'artist_name' => $artistSlug,
+            'tattoo_name' => $tattooSlug,
+            'tattoo_id' => $tattooId,
+        ]);
+    }
+
+    protected function slugify(string $text): string
+    {
+        $text = trim($text);
+        $text = preg_replace('/[^a-zA-Z0-9\s\-_.]/', '', $text);
+        $text = preg_replace('/[\s\-_.]+/', '-', $text);
+        return strtolower($text);
     }
 
     /**

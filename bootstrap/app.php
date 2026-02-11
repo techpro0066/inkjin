@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'onboarding' => \App\Http\Middleware\CheckOnboarding::class,
             'artist' => \App\Http\Middleware\CheckArtist::class,
             'admin' => \App\Http\Middleware\CheckAdmin::class,
+            'user' => \App\Http\Middleware\CheckUser::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
