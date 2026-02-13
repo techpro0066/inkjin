@@ -151,16 +151,16 @@ require __DIR__.'/auth.php';
 
 // Public database routes (using actual names from database)
 // These routes must be before the catch-all API routes
-Route::get('/artists', [InkJinController::class, 'publicArtistsList'])
-    ->name('public.artists.list');
+// Route::get('/artists', [InkJinController::class, 'publicArtistsList'])
+//     ->name('public.artists.list');
 
-Route::get('/artist/{username}', [InkJinController::class, 'publicArtistProfileFromDb'])
-    ->where(['username' => '[a-zA-Z0-9_.-]+'])
-    ->name('public.artist.db');
+// Route::get('/artist/{username}', [InkJinController::class, 'publicArtistProfileFromDb'])
+//     ->where(['username' => '[a-zA-Z0-9_.-]+'])
+//     ->name('public.artist.db');
 
-Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}', [InkJinController::class, 'publicTattooPageFromDb'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('public.tattoo.db');
+// Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}', [InkJinController::class, 'publicTattooPageFromDb'])
+//     ->where(['tattoo_id' => '[0-9]+'])
+//     ->name('public.tattoo.db');
 
 Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
 Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}/book', [InkJinController::class, 'bookTattoo'])
