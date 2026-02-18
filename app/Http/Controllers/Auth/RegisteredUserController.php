@@ -53,22 +53,13 @@ class RegisteredUserController extends Controller
 
         $user = User::create($userData);
 
-        event(new Registered($user));
-
         // Login user temporarily so they can access verification page
         Auth::login($user);
 
-        // Send email verification notification
-        try {
-            $user->sendEmailVerificationNotification();
-        } catch (\Symfony\Component\Mailer\Exception\UnexpectedResponseException $e) {
-            // Handle Mailtrap rate limit or other SMTP errors gracefully
-            // Email might still be sent, so we continue
-            Log::warning('Email verification notification error: ' . $e->getMessage());
-        } catch (\Exception $e) {
-            // Handle any other email errors
-            Log::error('Email verification notification failed: ' . $e->getMessage());
-        }
+        // The Registered event triggers Laravel's built-in SendEmailVerificationNotification listener,
+        // which automatically calls $user->sendEmailVerificationNotification() since User implements MustVerifyEmail.
+        // No need to call it manually — doing so would send duplicate emails.
+        event(new Registered($user));
 
         // Set session flag to indicate email was sent during registration
         $request->session()->put('email_sent_on_registration', true);
