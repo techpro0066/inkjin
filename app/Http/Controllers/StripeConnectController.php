@@ -9,8 +9,10 @@ use Stripe\Account;
 use Stripe\Exception\ApiErrorException;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Models\Studio;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 
 class StripeConnectController extends Controller
 {
@@ -277,6 +279,225 @@ class StripeConnectController extends Controller
                 'success' => false,
                 'message' => 'Failed to get account status'
             ], 500);
+        }
+    }
+
+    /**
+     * Studio Stripe Connect - Create account and redirect to onboarding
+     */
+    public function studioConnect(Request $request)
+    {
+        try {
+            // Verify signed URL
+            if (!$request->hasValidSignature()) {
+                return redirect()->route('login')
+                    ->with('error', 'Invalid or expired link. Please request a new invitation.');
+            }
+
+            $userDetailId = $request->get('user_detail_id');
+            if (!$userDetailId) {
+                return redirect()->route('login')
+                    ->with('error', 'Invalid link parameters.');
+            }
+
+            // Get the user detail (artist's record)
+            $userDetail = UserDetail::find($userDetailId);
+            if (!$userDetail) {
+                return redirect()->route('login')
+                    ->with('error', 'Artist account not found.');
+            }
+
+            // Get or create studio for this artist based on studio_email + studio_name
+            $studioName = $userDetail->studio_name ?? 'Studio';
+            $studioEmail = $userDetail->studio_email;
+
+            if (!$studioEmail) {
+                return redirect()->route('login')
+                    ->with('error', 'Studio email not found. Please contact the artist.');
+            }
+
+            $studio = \App\Models\Studio::firstOrCreate(
+                ['email' => $studioEmail],
+                ['name' => $studioName]
+            );
+
+            // If studio already has Stripe connected, just create a login link
+            if ($studio->stripe_account_id) {
+                $this->initializeStripe();
+                $loginLink = Account::createLoginLink($studio->stripe_account_id);
+
+                // Ensure artist links to this studio and mirror account/status on user_details
+                $userDetail->stripe_account_id = $studio->stripe_account_id;
+                $userDetail->studio_id = $studio->id;
+                $userDetail->studio_payment_status = 'approved';
+                $userDetail->save();
+
+                return redirect($loginLink->url);
+            }
+
+            // Initialize Stripe
+            $this->initializeStripe();
+
+            // Create Stripe Express account for studio
+            $account = Account::create([
+                'country' => 'AE', // Default country, can be made dynamic
+                'type' => 'express',
+                'capabilities' => [
+                    'transfers' => [
+                        'requested' => true,
+                    ],
+                ],
+                'email' => $studioEmail,
+            ]);
+
+            // Save the Stripe account ID on the studio record
+            $studio->stripe_account_id = $account->id;
+            $studio->save();
+
+            // Link artist to this studio
+            $userDetail->stripe_account_id = $account->id;
+            $userDetail->studio_id = $studio->id;
+            $userDetail->studio_payment_status = 'approved';
+            $userDetail->save();
+
+            Log::info('Studio Stripe account created', [
+                'user_detail_id' => $userDetailId,
+                'artist_user_id' => $userDetail->user_id,
+                'studio_id' => $studio->id,
+                'stripe_account_id' => $account->id,
+                'studio_email' => $studioEmail,
+            ]);
+
+            // Create account onboarding link with signed URLs
+            $refreshUrl = URL::signedRoute('studio.stripe.callback', [
+                'user_detail_id' => $userDetailId,
+                'status' => 'refresh',
+            ], now()->addDays(30));
+            
+            $returnUrl = URL::signedRoute('studio.stripe.callback', [
+                'user_detail_id' => $userDetailId,
+                'status' => 'success',
+            ], now()->addDays(30));
+            
+            $accountLink = AccountLink::create([
+                'account' => $account->id,
+                'refresh_url' => $refreshUrl,
+                'return_url' => $returnUrl,
+                'type' => 'account_onboarding',
+            ]);
+
+            return redirect($accountLink->url);
+        } catch (ApiErrorException $e) {
+            Log::error('Studio Stripe Connect API Error: ' . $e->getMessage(), [
+                'user_detail_id' => $request->get('user_detail_id'),
+                'error' => $e->getError()
+            ]);
+            return redirect()->route('login')
+                ->with('error', 'Stripe API error: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Studio Stripe Connect Error: ' . $e->getMessage(), [
+                'user_detail_id' => $request->get('user_detail_id')
+            ]);
+            return redirect()->route('login')
+                ->with('error', 'Failed to connect Stripe account. Please try again.');
+        }
+    }
+
+    /**
+     * Studio Stripe Callback - Handle return from Stripe onboarding
+     */
+    public function studioCallback(Request $request)
+    {
+        try {
+            // Verify signed URL
+            if (!$request->hasValidSignature()) {
+                return view('errors.stripe-callback', [
+                    'error' => 'Invalid or expired link.'
+                ]);
+            }
+
+            $userDetailId = $request->get('user_detail_id');
+            $status = $request->get('status', 'success');
+
+            if (!$userDetailId) {
+                return view('errors.stripe-callback', [
+                    'error' => 'Invalid link parameters.'
+                ]);
+            }
+
+            $userDetail = UserDetail::find($userDetailId);
+            if (!$userDetail || !$userDetail->studio_id) {
+                return view('errors.stripe-callback', [
+                    'error' => 'Studio not found. Please contact support.'
+                ]);
+            }
+
+            $studio = \App\Models\Studio::find($userDetail->studio_id);
+            if (!$studio || !$studio->stripe_account_id) {
+                return view('errors.stripe-callback', [
+                    'error' => 'Stripe account not found. Please contact support.'
+                ]);
+            }
+
+            // Initialize Stripe
+            $this->initializeStripe();
+
+            // Verify account status
+            $accountStatus = $this->verifyAccountStatus($studio->stripe_account_id);
+
+            if ($status === 'refresh') {
+                // User refreshed the page, show message
+                return view('studio.stripe-setup', [
+                    'message' => 'Please complete your Stripe account setup.',
+                    'studioName' => $studio->name ?? 'Studio',
+                ]);
+            }
+
+            // Check if account is fully onboarded
+            if ($accountStatus['charges_enabled'] && $accountStatus['payouts_enabled']) {
+                // Account is fully set up: mirror studio account ID and mark status as approved
+                $userDetail->stripe_account_id = $studio->stripe_account_id;
+                $userDetail->studio_payment_status = 'approved';
+                $userDetail->save();
+
+                $artist = $userDetail->user;
+                $artistName = trim(($artist->first_name ?? '') . ' ' . ($artist->last_name ?? ''));
+                if (empty($artistName)) {
+                    $artistName = $artist->user_name ?? $artist->email ?? 'Artist';
+                }
+                
+                return view('studio.stripe-success', [
+                    'studioName' => $studio->name ?? 'Studio',
+                    'artistName' => $artistName,
+                ]);
+            } elseif ($accountStatus['details_submitted']) {
+                // Account setup in progress
+                return view('studio.stripe-setup', [
+                    'message' => 'Stripe account setup is in progress. You will be notified once it\'s complete.',
+                    'studioName' => $studio->name ?? 'Studio',
+                ]);
+            } else {
+                // Account setup not complete
+                return view('studio.stripe-setup', [
+                    'message' => 'Stripe account setup is not complete. Please try again.',
+                    'studioName' => $studio->name ?? 'Studio',
+                ]);
+            }
+        } catch (ApiErrorException $e) {
+            Log::error('Studio Stripe Callback API Error: ' . $e->getMessage(), [
+                'user_detail_id' => $request->get('user_detail_id'),
+                'error' => $e->getError()
+            ]);
+            return view('errors.stripe-callback', [
+                'error' => 'Failed to verify Stripe account status. Please try again.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Studio Stripe Callback Error: ' . $e->getMessage(), [
+                'user_detail_id' => $request->get('user_detail_id')
+            ]);
+            return view('errors.stripe-callback', [
+                'error' => 'An error occurred. Please contact support.'
+            ]);
         }
     }
 

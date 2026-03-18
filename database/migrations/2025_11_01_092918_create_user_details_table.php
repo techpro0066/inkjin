@@ -15,41 +15,49 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->unique()->constrained()->onDelete('cascade');
             
-            // Profile Fields
+            // Step 1: Profile Fields
+            $table->string('avatar')->nullable();
             $table->string('user_name')->nullable()->unique();
             $table->string('mobile_number')->nullable()->unique();
-            $table->string('country')->nullable();
-            $table->string('city')->nullable();
             
-            // Step 1: Studio Information
+            // Step 2: Studio Information
             $table->string('studio_name')->nullable();
             $table->text('studio_address')->nullable();
+            $table->string('street_name')->nullable();
+            $table->string('street_number')->nullable();
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
+            $table->string('postal_code')->nullable();
+            $table->string('country')->nullable();
             $table->string('google_maps_link')->nullable();
-            
-            // Step 2: Calendar Connection (Optional)
+
+            // Step 3: Calendar Connection (Optional)
             $table->text('google_calendar_token')->nullable();
             $table->string('google_calendar_id')->nullable();
+            $table->enum('scheduling_type', ['auto', 'managed'])->nullable();
             
-            // Step 3: Preferences
-            $table->string('avatar')->nullable();
-            $table->string('currency')->nullable();
+            // Step 4: Preferences
             $table->string('timezone')->nullable();
             $table->string('date_time_format')->nullable();
+            $table->string('currency')->nullable();
+            $table->enum('minimum_deposit_type', ['amount', 'percentage'])->nullable();
             $table->decimal('minimum_deposit_amount', 10, 2)->nullable();
-            $table->string('minimum_deposit_type')->nullable()->comment('fixed or percentage');
-            $table->string('cancellation_window')->nullable();
+            $table->enum('booking_fee_type', ['client', 'artist', 'split'])->nullable();
             $table->string('reschedule_times')->nullable();
-            $table->integer('session_buffer_period')->nullable()->comment('Buffer period in minutes between sessions');
-            $table->boolean('require_consultation')->default(false)->comment('Require consultation session when booking a tattoo');
-            $table->enum('session_type', ['online', 'physical', 'both'])->nullable()->comment('Type of session: online, physical, or both');
-            $table->integer('session_duration_minutes')->nullable()->comment('Default session duration in minutes');
-            $table->enum('consultation_timing', ['combined', 'separate'])->nullable()->comment('Whether consultation time is combined with tattoo session or separate');
-            $table->boolean('require_gap_between_consultation_tattoo')->default(false)->comment('Whether to require a gap/window time between consultation and tattoo session');
-            $table->integer('consultation_tattoo_gap_value')->nullable()->comment('Gap duration value between consultation and tattoo session');
-            $table->enum('consultation_tattoo_gap_unit', ['minutes', 'hours', 'days'])->nullable()->comment('Gap duration unit (minutes, hours, or days)');
+            $table->string('cancellation_window')->nullable();
+            $table->integer('session_buffer_period')->nullable();
+            $table->boolean('require_consultation')->default(false);
+            $table->enum('session_type', ['online', 'physical', 'both'])->nullable();
+            $table->integer('session_duration_minutes')->nullable();
+            $table->enum('consultation_timing', ['combined', 'separate'])->nullable();
+            $table->boolean('require_gap_between_consultation_tattoo')->default(false);
+            $table->integer('consultation_tattoo_gap_value')->nullable();
+            $table->enum('consultation_tattoo_gap_unit', ['minutes', 'hours', 'days'])->nullable();
             
             // Step 4: Payments
+            $table->enum('payment_type', ['artist_account', 'studio_account', 'inkjin_account'])->nullable();
             $table->string('stripe_account_id')->nullable();
+            $table->string('studio_email')->nullable();
             
             // Progress tracking
             $table->integer('current_step')->default(1);

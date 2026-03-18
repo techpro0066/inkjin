@@ -26,6 +26,9 @@ Route::get('/', function () {
 
 // Onboarding routes (must be before other auth routes)
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Studio waiting page (accessible even if onboarding is complete)
+    Route::get('/studio/waiting', [\App\Http\Controllers\OnboardingController::class, 'studioWaiting'])->name('studio.waiting');
+    Route::post('/studio/resend-invite', [\App\Http\Controllers\OnboardingController::class, 'resendStudioInvite'])->name('studio.resend-invite');
     Route::get('/onboarding', [\App\Http\Controllers\OnboardingController::class, 'index'])->name('onboarding.index');
     Route::post('/onboarding/step/1', [\App\Http\Controllers\OnboardingController::class, 'saveStep1'])->name('onboarding.step1');
     Route::post('/onboarding/step/2', [\App\Http\Controllers\OnboardingController::class, 'saveStep2'])->name('onboarding.step2');
@@ -48,6 +51,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connect-stripe/status', [\App\Http\Controllers\StripeConnectController::class, 'getAccountStatus'])->name('connect.stripe.status');
     Route::post('/connect-stripe/disconnect', [\App\Http\Controllers\StripeConnectController::class, 'disconnect'])->name('connect.stripe.disconnect');
 });
+
+// Studio Stripe Connect routes (public, uses signed URLs)
+Route::get('/studio/stripe/connect', [\App\Http\Controllers\StripeConnectController::class, 'studioConnect'])->name('studio.stripe.connect');
+Route::get('/studio/stripe/callback', [\App\Http\Controllers\StripeConnectController::class, 'studioCallback'])->name('studio.stripe.callback');
 
 //Common routes
 
@@ -101,19 +108,15 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function 
         return view('artist.settings.studio', compact('userDetail'));
     })->name('settings.studio');
     
+    Route::post('/settings/studio', [\App\Http\Controllers\OnboardingController::class, 'updateStudio'])->name('settings.studio.update');
+    
     Route::get('/settings/calendar', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
         $userDetail = $user->userDetail;
         return view('artist.settings.calendar', compact('userDetail'));
     })->name('settings.calendar');
     
-    Route::get('/settings/profile', function (\Illuminate\Http\Request $request) {
-        $user = $request->user();
-        $userDetail = $user->userDetail;
-        return view('artist.settings.profile', compact('userDetail'));
-    })->name('settings.profile');
-    
-    Route::post('/settings/profile', [\App\Http\Controllers\OnboardingController::class, 'updateProfile'])->name('settings.profile.update');
+    Route::post('/settings/calendar', [\App\Http\Controllers\OnboardingController::class, 'updateCalendar'])->name('settings.calendar.update');
     
     Route::get('/settings/preferences', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
@@ -121,7 +124,15 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function 
         return view('artist.settings.preferences', compact('userDetail'));
     })->name('settings.preferences');
     
-    Route::post('/settings/preferences', [\App\Http\Controllers\OnboardingController::class, 'saveStep3'])->name('settings.preferences.update');
+    Route::post('/settings/preferences', [\App\Http\Controllers\OnboardingController::class, 'saveStep4'])->name('settings.preferences.update');
+
+    Route::get('/settings/payment', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $userDetail = $user->userDetail;
+        return view('artist.settings.payment', compact('userDetail'));
+    })->name('settings.payment');
+    
+    Route::post('/settings/payment', [\App\Http\Controllers\OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
     
     // Availability routes (for artists)
     Route::get('/availability', [\App\Http\Controllers\AvailabilityController::class, 'index'])->name('availability.index');

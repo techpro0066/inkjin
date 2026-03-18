@@ -4,8 +4,28 @@
 
 @push('styles')
 <style>
+  .avatar-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #e0e0e0;
+  }
+
+  .dropify-wrapper .dropify-message p {
+    font-size: 18px !important;
+  }
+</style>
+
+<!-- Dropify CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropify@0.2.2/dist/css/dropify.min.css">
+
+<style>
   .cursor-pointer {
     cursor: pointer;
+  }
+  .dropify-wrapper .dropify-message p {
+    font-size: 0.875rem;
   }
   .input-group-merge .input-group-text {
     border-left: 0;
@@ -52,47 +72,111 @@
       <div class="card">
         <div class="card-header">
           <h5 class="card-title mb-0">Profile Information</h5>
-          <p class="text-muted mb-0">Update your account's profile information and email address.</p>
+          <p class="text-muted mb-0">Update your account's basic profile information. Email cannot be changed here.</p>
         </div>
         <div class="card-body">
-          <form method="post" action="{{ route('profile.update') }}">
+          <form method="post" action="{{ route('profile.update') }}" enctype="multipart/form-data">
             @csrf
             @method('patch')
 
-            <div class="mb-3">
-              <label for="name" class="form-label">Name</label>
-              <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $user->name) }}" required autofocus>
-              @error('name')
-                <div class="invalid-feedback">{{ $message }}</div>
-              @enderror
-            </div>
+            <div class="row g-4">
+              <div class="col-md-4">
+                <label class="form-label">Profile Avatar</label>
+                <input
+                  type="file"
+                  class="dropify"
+                  id="avatar"
+                  name="avatar"
+                  data-allowed-file-extensions="jpg jpeg png heif heic"
+                  data-max-file-size="2M"
+                  data-show-errors="true"
+                  data-height="180"
+                  data-default-file="{{ $userDetail && $userDetail->avatar ? asset($userDetail->avatar) : '' }}"
+                >
+                <small class="text-muted d-block mt-2">
+                  Recommended: 400x400, Max 2MB (JPG, PNG, HEIF, HEIC)
+                </small>
+              </div>
 
-            <div class="mb-3">
-              <label for="email" class="form-label">Email</label>
-              <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $user->email) }}" required>
-              @error('email')
-                <div class="invalid-feedback">{{ $message }}</div>
-              @enderror
-              
-              @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
-                <div class="mt-2">
-                  <p class="text-sm text-muted">
-                    Your email address is unverified.
-                    <form method="post" action="{{ route('verification.send') }}" class="d-inline">
-                      @csrf
-                      <button type="submit" class="btn btn-link p-0 text-decoration-underline">
-                        Click here to re-send the verification email.
-                      </button>
-                    </form>
-                  </p>
-                  @if (session('status') === 'verification-link-sent')
-                    <p class="mt-2 text-success">A new verification link has been sent to your email address.</p>
-                  @endif
+              <div class="col-md-8">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="first_name" class="form-label">First Name</label>
+                    <input
+                      type="text"
+                      class="form-control @error('first_name') is-invalid @enderror"
+                      id="first_name"
+                      name="first_name"
+                      value="{{ old('first_name', $user->first_name) }}"
+                      required
+                      autofocus
+                    >
+                    @error('first_name')
+                      <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                  </div>
+
+                  <div class="col-md-6 mb-3">
+                    <label for="last_name" class="form-label">Last Name</label>
+                    <input
+                      type="text"
+                      class="form-control @error('last_name') is-invalid @enderror"
+                      id="last_name"
+                      name="last_name"
+                      value="{{ old('last_name', $user->last_name) }}"
+                      required
+                    >
+                    @error('last_name')
+                      <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                  </div>
+
+                  <div class="col-md-6 mb-3">
+                    <label for="user_name" class="form-label">User Name</label>
+                    <input
+                      type="text"
+                      class="form-control @error('user_name') is-invalid @enderror"
+                      id="user_name"
+                      name="user_name"
+                      value="{{ old('user_name', $userDetail->user_name ?? '') }}"
+                      required
+                    >
+                    @error('user_name')
+                      <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                  </div>
+
+                  <div class="col-md-6 mb-3">
+                    <label for="mobile_number" class="form-label">Mobile Number</label>
+                    <input
+                      type="text"
+                      class="form-control @error('mobile_number') is-invalid @enderror"
+                      id="mobile_number"
+                      name="mobile_number"
+                      value="{{ old('mobile_number', $userDetail->mobile_number ?? '') }}"
+                      required
+                    >
+                    @error('mobile_number')
+                      <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                  </div>
+
+                  <div class="col-12 mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input
+                      type="email"
+                      class="form-control bg-light"
+                      id="email"
+                      name="email"
+                      value="{{ $user->email }}"
+                      readonly
+                    >
+                  </div>
                 </div>
-              @endif
+              </div>
             </div>
 
-            <div class="d-flex justify-content-end">
+            <div class="d-flex justify-content-end mt-3">
               <button type="submit" class="btn btn-primary">
                 <i class="ti ti-device-floppy me-2"></i>
                 Save Changes
@@ -224,6 +308,8 @@
 @endsection
 
 @push('scripts')
+<!-- Dropify JS -->
+<script src="https://cdn.jsdelivr.net/npm/dropify@0.2.2/dist/js/dropify.min.js"></script>
 <script>
   // Function to scroll to first error on page
   function scrollToFirstError() {
@@ -295,6 +381,11 @@
 
   // Initialize on page load
   $(document).ready(function() {
+    // Init Dropify for avatar
+    if ($('.dropify').length) {
+      $('.dropify').dropify();
+    }
+
     initPasswordToggle();
     // Scroll to errors if page has validation errors
     scrollToFirstError();

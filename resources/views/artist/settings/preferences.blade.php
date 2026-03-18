@@ -47,155 +47,225 @@
         <div class="card-body">
           <form method="POST" action="{{ route('settings.preferences.update') }}" id="preferencesForm" enctype="multipart/form-data">
             @csrf
-            <div class="row g-3">
-              
-              <div class="col-md-6">
-                <label for="currency" class="form-label">Currency</label>
-                <select class="form-select select2" id="currency" name="currency" data-placeholder="Search and select currency">
-                  <option value=""></option>
-                </select>
-                <p class="text-danger mt-1 mb-0" id="currency_error" style="display: none; font-size: 0.875rem;"></p>
+            <!-- General Section -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">
+                  <i class="ti ti-settings me-2"></i>General
+                </h6>
               </div>
-              
-              <div class="col-md-6">
-                <label for="timezone" class="form-label">Timezone</label>
-                <select class="form-select select2" id="timezone" name="timezone" data-placeholder="Search and select timezone">
-                  <option value=""></option>
-                </select>
-                <p class="text-danger mt-1 mb-0" id="timezone_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6">
-                <label for="date_time_format" class="form-label">Date & Time Format</label>
-                <select class="form-select" id="date_time_format" name="date_time_format">
-                  <option value="">Select Format</option>
-                  <option value="MM/DD/YYYY" {{ ($userDetail && ($userDetail->date_time_format ?? '') == 'MM/DD/YYYY') ? 'selected' : '' }}>MM/DD/YYYY</option>
-                  <option value="DD/MM/YYYY" {{ ($userDetail && ($userDetail->date_time_format ?? '') == 'DD/MM/YYYY') ? 'selected' : '' }}>DD/MM/YYYY</option>
-                  <option value="YYYY-MM-DD" {{ ($userDetail && ($userDetail->date_time_format ?? '') == 'YYYY-MM-DD') ? 'selected' : '' }}>YYYY-MM-DD</option>
-                </select>
-                <p class="text-danger mt-1 mb-0" id="date_time_format_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6">
-                <label for="minimum_deposit_amount" class="form-label">Minimum Deposit Amount</label>
-                <input type="text" class="form-control" id="minimum_deposit_amount" name="minimum_deposit_amount" value="{{ $userDetail->minimum_deposit_amount ?? '' }}" placeholder="Enter amount">
-                <p class="text-danger mt-1 mb-0" id="minimum_deposit_amount_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6">
-                <label for="minimum_deposit_type" class="form-label">Deposit Type</label>
-                <select class="form-select" id="minimum_deposit_type" name="minimum_deposit_type">
-                  <option value="">Select Type</option>
-                  <option value="fixed" {{ ($userDetail && ($userDetail->minimum_deposit_type ?? '') == 'fixed') ? 'selected' : '' }}>Fixed Amount</option>
-                  <option value="percentage" {{ ($userDetail && ($userDetail->minimum_deposit_type ?? '') == 'percentage') ? 'selected' : '' }}>Percentage</option>
-                </select>
-                <p class="text-danger mt-1 mb-0" id="minimum_deposit_type_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6">
-                <label for="cancellation_window" class="form-label">Cancellation Window</label>
-                <select class="form-select" id="cancellation_window" name="cancellation_window">
-                  <option value="">Select Window</option>
-                  <option value="24h" {{ ($userDetail && ($userDetail->cancellation_window ?? '') == '24h') ? 'selected' : '' }}>24 Hours</option>
-                  <option value="48h" {{ ($userDetail && ($userDetail->cancellation_window ?? '') == '48h') ? 'selected' : '' }}>48 Hours</option>
-                  <option value="72h" {{ ($userDetail && ($userDetail->cancellation_window ?? '') == '72h') ? 'selected' : '' }}>72 Hours</option>
-                  <option value="1w" {{ ($userDetail && ($userDetail->cancellation_window ?? '') == '1w') ? 'selected' : '' }}>1 Week</option>
-                </select>
-                <p class="text-danger mt-1 mb-0" id="cancellation_window_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6">
-                <label for="reschedule_times" class="form-label">Reschedule Times</label>
-                <select class="form-select" id="reschedule_times" name="reschedule_times">
-                  <option value="">Select Option</option>
-                  <option value="never" {{ ($userDetail && ($userDetail->reschedule_times ?? '') == 'never') ? 'selected' : '' }}>Never</option>
-                  <option value="once" {{ ($userDetail && ($userDetail->reschedule_times ?? '') == 'once') ? 'selected' : '' }}>Once</option>
-                  <option value="twice" {{ ($userDetail && ($userDetail->reschedule_times ?? '') == 'twice') ? 'selected' : '' }}>Twice</option>
-                  <option value="unlimited" {{ ($userDetail && ($userDetail->reschedule_times ?? '') == 'unlimited') ? 'selected' : '' }}>Unlimited</option>
-                </select>
-                <p class="text-danger mt-1 mb-0" id="reschedule_times_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6">
-                <label for="session_buffer_period" class="form-label">Session Buffer Period (minutes)</label>
-                <input type="number" class="form-control" id="session_buffer_period" name="session_buffer_period" value="{{ $userDetail->session_buffer_period ?? '' }}" placeholder="e.g., 15, 30, 60" min="0" step="1">
-                <small class="text-muted">Time between sessions for rest, clean up, or preparation</small>
-                <p class="text-danger mt-1 mb-0" id="session_buffer_period_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6">
-                <label class="form-label">Require Consultation Session</label>
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="require_consultation" name="require_consultation" value="1" {{ ($userDetail && ($userDetail->require_consultation ?? false)) ? 'checked' : '' }} onchange="toggleSessionFields()">
-                  <label class="form-check-label" for="require_consultation">
-                    Require consultation session when booking a tattoo
-                  </label>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="timezone" class="form-label">Timezone <span class="text-danger">*</span></label>
+                    <select class="form-select select2" id="timezone" name="timezone" data-placeholder="Search and select timezone">
+                      <option value=""></option>
+                    </select>
+                    <p class="text-danger mt-1 mb-0" id="timezone_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label for="date_time_format" class="form-label">Date Format <span class="text-danger">*</span></label>
+                    <select class="form-select" id="date_time_format" name="date_time_format">
+                      <option value="">Select Format</option>
+                      <option value="MM/DD/YYYY" {{ ($userDetail && ($userDetail->date_time_format ?? '') == 'MM/DD/YYYY') ? 'selected' : '' }}>MM/DD/YYYY</option>
+                      <option value="DD/MM/YYYY" {{ ($userDetail && ($userDetail->date_time_format ?? '') == 'DD/MM/YYYY') ? 'selected' : '' }}>DD/MM/YYYY</option>
+                      <option value="YYYY-MM-DD" {{ ($userDetail && ($userDetail->date_time_format ?? '') == 'YYYY-MM-DD') ? 'selected' : '' }}>YYYY-MM-DD</option>
+                    </select>
+                    <p class="text-danger mt-1 mb-0" id="date_time_format_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
                 </div>
-                <small class="text-muted d-block mt-1">When enabled, clients must book a consultation before booking a tattoo session</small>
-                <p class="text-danger mt-1 mb-0" id="require_consultation_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6" id="session_type_container" style="display: {{ ($userDetail && ($userDetail->require_consultation ?? false)) ? 'block' : 'none' }};">
-                <label for="session_type" class="form-label">Session Type <span class="text-danger">*</span></label>
-                <select class="form-select" id="session_type" name="session_type">
-                  <option value="">Select Session Type</option>
-                  <option value="online" {{ ($userDetail && ($userDetail->session_type ?? '') == 'online') ? 'selected' : '' }}>Online Session</option>
-                  <option value="physical" {{ ($userDetail && ($userDetail->session_type ?? '') == 'physical') ? 'selected' : '' }}>Physical Session</option>
-                  <option value="both" {{ ($userDetail && ($userDetail->session_type ?? '') == 'both') ? 'selected' : '' }}>Both (Online & Physical)</option>
-                </select>
-                <small class="text-muted d-block mt-1">Choose whether you offer online sessions, physical sessions, or both</small>
-                <p class="text-danger mt-1 mb-0" id="session_type_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6" id="session_duration_container" style="display: {{ ($userDetail && ($userDetail->require_consultation ?? false)) ? 'block' : 'none' }};">
-                <label for="session_duration_minutes" class="form-label">Session Duration (minutes) <span class="text-danger">*</span></label>
-                <input type="number" class="form-control" id="session_duration_minutes" name="session_duration_minutes" value="{{ $userDetail->session_duration_minutes ?? '' }}" placeholder="e.g., 30, 60, 90" min="15" max="480" step="15">
-                <small class="text-muted d-block mt-1">Duration for the consultation session (minimum 15 minutes, maximum 8 hours)</small>
-                <p class="text-danger mt-1 mb-0" id="session_duration_minutes_error" style="display: none; font-size: 0.875rem;"></p>
-              </div>
-              
-              <div class="col-md-6" id="consultation_timing_container" style="display: {{ ($userDetail && ($userDetail->require_consultation ?? false)) ? 'block' : 'none' }};">
-                <label for="consultation_timing" class="form-label">Consultation Timing <span class="text-danger">*</span></label>
-                <select class="form-select" id="consultation_timing" name="consultation_timing" onchange="toggleGapFields()">
-                  <option value="">Select Timing</option>
-                  <option value="combined" {{ ($userDetail && ($userDetail->consultation_timing ?? '') == 'combined') ? 'selected' : '' }}>Add with Tattoo Session</option>
-                  <option value="separate" {{ ($userDetail && ($userDetail->consultation_timing ?? '') == 'separate') ? 'selected' : '' }}>Separate from Tattoo Session</option>
-                </select>
-                <small class="text-muted d-block mt-1">
-                  <strong>Combined:</strong> Consultation time is added to the tattoo session duration<br>
-                  <strong>Separate:</strong> Consultation is a standalone session, separate from the tattoo session
-                </small>
-                <p class="text-danger mt-1 mb-0" id="consultation_timing_error" style="display: none; font-size: 0.875rem;"></p>
               </div>
             </div>
-            
-            <!-- Gap between consultation and tattoo session (only for separate mode) -->
-            <div class="row g-3 mt-2" id="gap_fields_container" style="display: {{ (($userDetail && ($userDetail->require_consultation ?? false)) && ($userDetail->consultation_timing ?? '') == 'separate') ? 'flex' : 'none' }};">
-              <div class="col-12">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="require_gap_between_consultation_tattoo" name="require_gap_between_consultation_tattoo" value="1" {{ ($userDetail && ($userDetail->require_gap_between_consultation_tattoo ?? false)) ? 'checked' : '' }} onchange="toggleGapDurationFields()">
-                  <label class="form-check-label" for="require_gap_between_consultation_tattoo">
-                    Require gap/window time between consultation and tattoo session
-                  </label>
+
+            <!-- Payment Section -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">
+                  <i class="ti ti-credit-card me-2"></i>Payment
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="currency" class="form-label">Currency <span class="text-danger">*</span></label>
+                    <select class="form-select select2" id="currency" name="currency" data-placeholder="Search and select currency">
+                      <option value=""></option>
+                    </select>
+                    <p class="text-danger mt-1 mb-0" id="currency_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label for="minimum_deposit_type" class="form-label">Deposit Type <span class="text-danger">*</span></label>
+                    <select class="form-select" id="minimum_deposit_type" name="minimum_deposit_type">
+                      <option value="">Select Type</option>
+                      <option value="amount" {{ ($userDetail && ($userDetail->minimum_deposit_type ?? '') == 'amount') ? 'selected' : '' }}>Amount</option>
+                      <option value="percentage" {{ ($userDetail && ($userDetail->minimum_deposit_type ?? '') == 'percentage') ? 'selected' : '' }}>Percentage</option>
+                    </select>
+                    <p class="text-danger mt-1 mb-0" id="minimum_deposit_type_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label for="minimum_deposit_amount" class="form-label">Minimum Deposit <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="minimum_deposit_amount" name="minimum_deposit_amount" value="{{ $userDetail->minimum_deposit_amount ?? '' }}" placeholder="Enter amount" min="0" step="0.01">
+                    <small class="text-muted d-block mt-1" id="minimumDepositHelp">Enter amount</small>
+                    <p class="text-danger mt-1 mb-0" id="minimum_deposit_amount_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Inkjin Booking Fee <span class="text-danger">*</span></label>
+                    <div class="form-check mb-2">
+                      <input class="form-check-input" type="radio" name="booking_fee_type" id="booking_fee_client" value="client" {{ ($userDetail->booking_fee_type ?? '') == 'client' ? 'checked' : '' }}>
+                      <label class="form-check-label" for="booking_fee_client">
+                        <strong>Client pays</strong> – 10€ will be added to the client's total
+                      </label>
+                    </div>
+                    <div class="form-check mb-2">
+                      <input class="form-check-input" type="radio" name="booking_fee_type" id="booking_fee_artist" value="artist" {{ ($userDetail->booking_fee_type ?? '') == 'artist' ? 'checked' : '' }}>
+                      <label class="form-check-label" for="booking_fee_artist">
+                        <strong>Artist pays</strong> – 10€ will be deducted from your payout
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="booking_fee_type" id="booking_fee_split" value="split" {{ ($userDetail->booking_fee_type ?? '') == 'split' ? 'checked' : '' }}>
+                      <label class="form-check-label" for="booking_fee_split">
+                        <strong>Split</strong> – Evenly split between you and the client. 5€ will be added to your client's total and 5€ will be deducted from your payout.
+                      </label>
+                    </div>
+                    <p class="text-danger mt-2 mb-0" id="booking_fee_type_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
                 </div>
-                <small class="text-muted d-block mt-1">Enable this if you want to enforce a minimum time gap between consultation completion and tattoo session booking</small>
               </div>
-              
-              <div class="col-md-6" id="gap_duration_container" style="display: {{ ($userDetail && ($userDetail->require_gap_between_consultation_tattoo ?? false)) ? 'block' : 'none' }};">
-                <label for="consultation_tattoo_gap_value" class="form-label">Gap Duration <span class="text-danger">*</span></label>
-                <input type="number" class="form-control" id="consultation_tattoo_gap_value" name="consultation_tattoo_gap_value" value="{{ $userDetail->consultation_tattoo_gap_value ?? '' }}" placeholder="e.g., 1, 2, 7" min="1">
-                <p class="text-danger mt-1 mb-0" id="consultation_tattoo_gap_value_error" style="display: none; font-size: 0.875rem;"></p>
+            </div>
+
+            <!-- Scheduling Section -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">
+                  <i class="ti ti-calendar-time me-2"></i>Scheduling
+                </h6>
               </div>
-              
-              <div class="col-md-6" id="gap_unit_container" style="display: {{ ($userDetail && ($userDetail->require_gap_between_consultation_tattoo ?? false)) ? 'block' : 'none' }};">
-                <label for="consultation_tattoo_gap_unit" class="form-label">Gap Unit <span class="text-danger">*</span></label>
-                <select class="form-select" id="consultation_tattoo_gap_unit" name="consultation_tattoo_gap_unit">
-                  <option value="">Select Unit</option>
-                  <option value="minutes" {{ ($userDetail && ($userDetail->consultation_tattoo_gap_unit ?? '') == 'minutes') ? 'selected' : '' }}>Minutes</option>
-                  <option value="hours" {{ ($userDetail && ($userDetail->consultation_tattoo_gap_unit ?? '') == 'hours') ? 'selected' : '' }}>Hours</option>
-                  <option value="days" {{ ($userDetail && ($userDetail->consultation_tattoo_gap_unit ?? '') == 'days') ? 'selected' : '' }}>Days</option>
-                </select>
-                <p class="text-danger mt-1 mb-0" id="consultation_tattoo_gap_unit_error" style="display: none; font-size: 0.875rem;"></p>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="reschedule_times" class="form-label">Allow clients to reschedule? <span class="text-danger">*</span></label>
+                    <select class="form-select" id="reschedule_times" name="reschedule_times">
+                      <option value="">Select Option</option>
+                      <option value="never" {{ ($userDetail && ($userDetail->reschedule_times ?? '') == 'never') ? 'selected' : '' }}>Never</option>
+                      <option value="once" {{ ($userDetail && ($userDetail->reschedule_times ?? '') == 'once') ? 'selected' : '' }}>Once</option>
+                      <option value="twice" {{ ($userDetail && ($userDetail->reschedule_times ?? '') == 'twice') ? 'selected' : '' }}>Twice</option>
+                      <option value="unlimited" {{ ($userDetail && ($userDetail->reschedule_times ?? '') == 'unlimited') ? 'selected' : '' }}>Unlimited</option>
+                    </select>
+                    <p class="text-danger mt-1 mb-0" id="reschedule_times_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label for="cancellation_window" class="form-label">How long does a client have to reschedule to get a full refund? <span class="text-danger">*</span></label>
+                    <select class="form-select" id="cancellation_window" name="cancellation_window">
+                      <option value="">Select Window</option>
+                      <option value="24h" {{ ($userDetail && ($userDetail->cancellation_window ?? '') == '24h') ? 'selected' : '' }}>24 Hours</option>
+                      <option value="48h" {{ ($userDetail && ($userDetail->cancellation_window ?? '') == '48h') ? 'selected' : '' }}>48 Hours</option>
+                      <option value="72h" {{ ($userDetail && ($userDetail->cancellation_window ?? '') == '72h') ? 'selected' : '' }}>72 Hours</option>
+                      <option value="1w" {{ ($userDetail && ($userDetail->cancellation_window ?? '') == '1w') ? 'selected' : '' }}>1 Week</option>
+                    </select>
+                    <p class="text-danger mt-1 mb-0" id="cancellation_window_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label for="session_buffer_period" class="form-label">Time between sessions (minutes) <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="session_buffer_period" name="session_buffer_period" value="{{ $userDetail->session_buffer_period ?? '' }}" placeholder="e.g., 15, 30, 60" min="0" step="1">
+                    <small class="text-muted">Time between sessions for rest, clean up, or preparation</small>
+                    <p class="text-danger mt-1 mb-0" id="session_buffer_period_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- Consultation Section (Optional) -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">
+                  <i class="ti ti-message-circle me-2"></i>Consultation Settings
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">Require Consultation Session</label>
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="require_consultation" name="require_consultation" value="1" {{ ($userDetail && ($userDetail->require_consultation ?? false)) ? 'checked' : '' }} onchange="toggleSessionFields()">
+                      <label class="form-check-label" for="require_consultation">
+                        Require consultation session when booking a tattoo
+                      </label>
+                    </div>
+                    <small class="text-muted d-block mt-1">When enabled, clients must book a consultation before booking a tattoo session</small>
+                    <p class="text-danger mt-1 mb-0" id="require_consultation_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-md-6" id="session_type_container" style="display: {{ ($userDetail && ($userDetail->require_consultation ?? false)) ? 'block' : 'none' }};">
+                    <label for="session_type" class="form-label">Session Type <span class="text-danger">*</span></label>
+                    <select class="form-select" id="session_type" name="session_type">
+                      <option value="">Select Session Type</option>
+                      <option value="online" {{ ($userDetail && ($userDetail->session_type ?? '') == 'online') ? 'selected' : '' }}>Online Session</option>
+                      <option value="physical" {{ ($userDetail && ($userDetail->session_type ?? '') == 'physical') ? 'selected' : '' }}>Physical Session</option>
+                      <option value="both" {{ ($userDetail && ($userDetail->session_type ?? '') == 'both') ? 'selected' : '' }}>Both (Online & Physical)</option>
+                    </select>
+                    <small class="text-muted d-block mt-1">Choose whether you offer online sessions, physical sessions, or both</small>
+                    <p class="text-danger mt-1 mb-0" id="session_type_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-md-6" id="session_duration_container" style="display: {{ ($userDetail && ($userDetail->require_consultation ?? false)) ? 'block' : 'none' }};">
+                    <label for="session_duration_minutes" class="form-label">Session Duration (minutes) <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="session_duration_minutes" name="session_duration_minutes" value="{{ $userDetail->session_duration_minutes ?? '' }}" placeholder="e.g., 30, 60, 90" min="15" max="480" step="15">
+                    <small class="text-muted d-block mt-1">Duration for the consultation session (minimum 15 minutes, maximum 8 hours)</small>
+                    <p class="text-danger mt-1 mb-0" id="session_duration_minutes_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-md-6" id="consultation_timing_container" style="display: {{ ($userDetail && ($userDetail->require_consultation ?? false)) ? 'block' : 'none' }};">
+                    <label for="consultation_timing" class="form-label">Consultation Timing <span class="text-danger">*</span></label>
+                    <select class="form-select" id="consultation_timing" name="consultation_timing" onchange="toggleGapFields()">
+                      <option value="">Select Timing</option>
+                      <option value="combined" {{ ($userDetail && ($userDetail->consultation_timing ?? '') == 'combined') ? 'selected' : '' }}>Add with Tattoo Session</option>
+                      <option value="separate" {{ ($userDetail && ($userDetail->consultation_timing ?? '') == 'separate') ? 'selected' : '' }}>Separate from Tattoo Session</option>
+                    </select>
+                    <small class="text-muted d-block mt-1">
+                      <strong>Combined:</strong> Consultation time is added to the tattoo session duration<br>
+                      <strong>Separate:</strong> Consultation is a standalone session, separate from the tattoo session
+                    </small>
+                    <p class="text-danger mt-1 mb-0" id="consultation_timing_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+                </div>
+
+                <!-- Gap between consultation and tattoo session (only for separate mode) -->
+                <div class="row g-3 mt-2" id="gap_fields_container" style="display: {{ (($userDetail && ($userDetail->require_consultation ?? false)) && ($userDetail->consultation_timing ?? '') == 'separate') ? 'flex' : 'none' }};">
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="require_gap_between_consultation_tattoo" name="require_gap_between_consultation_tattoo" value="1" {{ ($userDetail && ($userDetail->require_gap_between_consultation_tattoo ?? false)) ? 'checked' : '' }} onchange="toggleGapDurationFields()">
+                      <label class="form-check-label" for="require_gap_between_consultation_tattoo">
+                        Require gap/window time between consultation and tattoo session
+                      </label>
+                    </div>
+                    <small class="text-muted d-block mt-1">Enable this if you want to enforce a minimum time gap between consultation completion and tattoo session booking</small>
+                  </div>
+
+                  <div class="col-md-6" id="gap_duration_container" style="display: {{ ($userDetail && ($userDetail->require_gap_between_consultation_tattoo ?? false)) ? 'block' : 'none' }};">
+                    <label for="consultation_tattoo_gap_value" class="form-label">Gap Duration <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="consultation_tattoo_gap_value" name="consultation_tattoo_gap_value" value="{{ $userDetail->consultation_tattoo_gap_value ?? '' }}" placeholder="e.g., 1, 2, 7" min="1">
+                    <p class="text-danger mt-1 mb-0" id="consultation_tattoo_gap_value_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+
+                  <div class="col-md-6" id="gap_unit_container" style="display: {{ ($userDetail && ($userDetail->require_gap_between_consultation_tattoo ?? false)) ? 'block' : 'none' }};">
+                    <label for="consultation_tattoo_gap_unit" class="form-label">Gap Unit <span class="text-danger">*</span></label>
+                    <select class="form-select" id="consultation_tattoo_gap_unit" name="consultation_tattoo_gap_unit">
+                      <option value="">Select Unit</option>
+                      <option value="minutes" {{ ($userDetail && ($userDetail->consultation_tattoo_gap_unit ?? '') == 'minutes') ? 'selected' : '' }}>Minutes</option>
+                      <option value="hours" {{ ($userDetail && ($userDetail->consultation_tattoo_gap_unit ?? '') == 'hours') ? 'selected' : '' }}>Hours</option>
+                      <option value="days" {{ ($userDetail && ($userDetail->consultation_tattoo_gap_unit ?? '') == 'days') ? 'selected' : '' }}>Days</option>
+                    </select>
+                    <p class="text-danger mt-1 mb-0" id="consultation_tattoo_gap_unit_error" style="display: none; font-size: 0.875rem;"></p>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -638,6 +708,28 @@
     initDropify();
     initializeSelect2();
     toggleSessionFields(); // Initialize session fields visibility
+    
+    // Update minimum deposit help text based on type
+    function updateMinimumDepositHelp() {
+      const typeEl = document.getElementById('minimum_deposit_type');
+      const helpEl = document.getElementById('minimumDepositHelp');
+      const amountEl = document.getElementById('minimum_deposit_amount');
+      if (!typeEl || !helpEl || !amountEl) return;
+      
+      if (typeEl.value === 'percentage') {
+        helpEl.textContent = 'Enter percentage (e.g., 10 for 10%)';
+        amountEl.step = '1';
+        amountEl.placeholder = 'Enter percentage';
+      } else {
+        helpEl.textContent = 'Enter amount';
+        amountEl.step = '0.01';
+        amountEl.placeholder = 'Enter amount';
+      }
+    }
+    
+    updateMinimumDepositHelp();
+    $(document).on('change', '#minimum_deposit_type', updateMinimumDepositHelp);
+
     // Scroll to errors if page has validation errors
     scrollToFirstError();
   });

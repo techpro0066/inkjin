@@ -15,6 +15,10 @@ class UserDetail extends Model
         'city',
         'studio_name',
         'studio_address',
+        'street_name',
+        'street_number',
+        'state',
+        'postal_code',
         'google_maps_link',
         'google_calendar_token',
         'google_calendar_id',
@@ -37,6 +41,12 @@ class UserDetail extends Model
         'stripe_account_id',
         'current_step',
         'completed_steps',
+        'scheduling_type',
+        'booking_fee_type',
+        'payment_type',
+        'studio_email',
+        'studio_id',
+        'studio_payment_status',
     ];
 
     protected $casts = [

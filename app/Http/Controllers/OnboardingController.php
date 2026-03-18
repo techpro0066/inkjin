@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\StudioStripeInviteMail;
 
 class OnboardingController extends Controller
 {
@@ -63,6 +65,8 @@ class OnboardingController extends Controller
             
             $validated = $request->validate([
                 'avatar' => array_merge($avatarRule, ['image', 'mimes:jpg,jpeg,png,heif,heic', 'max:2048']),
+                'first_name' => ['required', 'string', 'max:255'],
+                'last_name' => ['required', 'string', 'max:255'],
                 'user_name' => [
                     'required', 
                     'string', 
@@ -75,8 +79,6 @@ class OnboardingController extends Controller
                     'max:20',
                     'unique:user_details,mobile_number,' . ($userDetail ? $userDetail->id : 'NULL') . ',id'
                 ],
-                'country' => ['required', 'string', 'max:255'],
-                'city' => ['required', 'string', 'max:255'],
             ]);
 
             $userDetail = $userDetail ?? UserDetail::create(['user_id' => $user->id]);
@@ -92,12 +94,16 @@ class OnboardingController extends Controller
                 $avatarPath = $this->imageUploader($request->file('avatar'), 'avatars');
             }
 
+            // Update user's first_name and last_name
+            $user->update([
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+            ]);
+
             $userDetail->update([
                 'avatar' => $avatarPath,
                 'user_name' => $validated['user_name'],
                 'mobile_number' => $validated['mobile_number'],
-                'country' => $validated['country'],
-                'city' => $validated['city'],
                 'current_step' => 2,
                 'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [1])),
             ]);
@@ -131,6 +137,12 @@ class OnboardingController extends Controller
             $validated = $request->validate([
                 'studio_name' => ['required', 'string', 'max:255'],
                 'studio_address' => ['required', 'string'],
+                'street_name' => ['required', 'string', 'max:255'],
+                'street_number' => ['required', 'string', 'max:50'],
+                'city' => ['required', 'string', 'max:255'],
+                'state' => ['required', 'string', 'max:255'],
+                'postal_code' => ['required', 'string', 'max:50'],
+                'country' => ['required', 'string', 'max:255'],
                 'google_maps_link' => ['nullable', 'url', 'max:500'],
             ]);
 
@@ -140,6 +152,12 @@ class OnboardingController extends Controller
             $userDetail->update([
                 'studio_name' => $validated['studio_name'],
                 'studio_address' => $validated['studio_address'],
+                'street_name' => $validated['street_name'],
+                'street_number' => $validated['street_number'],
+                'city' => $validated['city'],
+                'state' => $validated['state'],
+                'postal_code' => $validated['postal_code'],
+                'country' => $validated['country'],
                 'google_maps_link' => $validated['google_maps_link'] ?? null,
                 'current_step' => 3,
                 'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [2])),
@@ -165,7 +183,207 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Save step 3: Calendar Connection or Preferences (from settings page)
+     * Update studio information (for settings page)
+     */
+    public function updateStudio(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'studio_name' => ['required', 'string', 'max:255'],
+                'studio_address' => ['required', 'string'],
+                'street_name' => ['required', 'string', 'max:255'],
+                'street_number' => ['required', 'string', 'max:50'],
+                'city' => ['required', 'string', 'max:255'],
+                'state' => ['required', 'string', 'max:255'],
+                'postal_code' => ['required', 'string', 'max:50'],
+                'country' => ['required', 'string', 'max:255'],
+                'google_maps_link' => ['nullable', 'url', 'max:500'],
+            ]);
+
+            $user = $request->user();
+            $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+            $userDetail->update([
+                'studio_name' => $validated['studio_name'],
+                'studio_address' => $validated['studio_address'],
+                'street_name' => $validated['street_name'],
+                'street_number' => $validated['street_number'],
+                'city' => $validated['city'],
+                'state' => $validated['state'],
+                'postal_code' => $validated['postal_code'],
+                'country' => $validated['country'],
+                'google_maps_link' => $validated['google_maps_link'] ?? null,
+            ]);
+
+            return redirect()->route('settings.studio')
+                ->with('success', 'Studio information updated successfully!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'An error occurred: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Update calendar/scheduling type (for settings page)
+     */
+    public function updateCalendar(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+            $validated = $request->validate([
+                'scheduling_type' => ['required', 'in:auto,managed'],
+            ]);
+
+            $schedulingType = $validated['scheduling_type'];
+
+            // If auto scheduling is selected, calendar connection is required
+            if ($schedulingType === 'auto') {
+                $calendarConnected = !empty($userDetail->google_calendar_token);
+                
+                if (!$calendarConnected) {
+                    return redirect()->back()
+                        ->with('error', 'Please connect your Google Calendar for auto scheduling.')
+                        ->withInput();
+                }
+            } else if ($schedulingType === 'managed') {
+                // Clear calendar connection when switching to managed
+                $userDetail->update([
+                    'google_calendar_token' => null,
+                    'google_calendar_id' => null,
+                ]);
+            }
+
+            $userDetail->update([
+                'scheduling_type' => $schedulingType,
+            ]);
+
+            $message = $schedulingType === 'auto'
+                ? 'Calendar settings updated successfully. Auto scheduling with Google Calendar is enabled.'
+                : 'Calendar settings updated successfully. Managed scheduling is enabled.';
+
+            return redirect()->route('settings.calendar')
+                ->with('success', $message);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'An error occurred: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Update payment settings (for settings page)
+     */
+    public function updatePayment(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+            $rules = [
+                'payment_type' => ['required', 'in:artist_account,studio_account,inkjin_account'],
+            ];
+
+            $messages = [
+                'payment_type.required' => 'Please select a payment type.',
+                'payment_type.in' => 'Invalid payment type selected.',
+            ];
+
+            $paymentType = $request->payment_type;
+            if ($paymentType === 'artist_account') {
+                $rules['stripe_account_id'] = ['required', 'string', 'max:255'];
+                $messages['stripe_account_id.required'] = 'Please connect your Stripe account to receive payments.';
+            } elseif ($paymentType === 'studio_account') {
+                $rules['studio_email'] = ['required', 'email', 'max:255'];
+                $messages['studio_email.required'] = 'Studio email is required.';
+                $messages['studio_email.email'] = 'Please enter a valid email address.';
+            }
+
+            $validated = $request->validate($rules, $messages);
+
+            // If user is switching from studio payouts to artist payouts, do not allow reusing the studio's Stripe ID
+            if (
+                $paymentType === 'artist_account' &&
+                ($userDetail->payment_type ?? null) === 'studio_account' &&
+                !empty($userDetail->stripe_account_id) &&
+                isset($validated['stripe_account_id']) &&
+                $validated['stripe_account_id'] === $userDetail->stripe_account_id
+            ) {
+                return redirect()->back()
+                    ->with('error', 'Please connect your own Stripe account for Artist payouts.')
+                    ->withInput();
+            }
+
+            $userDetail->payment_type = $validated['payment_type'];
+
+            if ($paymentType === 'artist_account') {
+                $userDetail->stripe_account_id = $validated['stripe_account_id'];
+                $userDetail->studio_id = null;
+                $userDetail->studio_email = null;
+                $userDetail->studio_payment_status = null;
+            } elseif ($paymentType === 'studio_account') {
+                $studioName = $userDetail->studio_name ?? 'Studio';
+                $studioEmail = $validated['studio_email'];
+
+                $studio = \App\Models\Studio::firstOrCreate(
+                    ['email' => $studioEmail],
+                    ['name' => $studioName]
+                );
+
+                $userDetail->studio_id = $studio->id;
+                $userDetail->studio_email = $studioEmail;
+                $userDetail->studio_payment_status = $userDetail->studio_payment_status ?? 'pending';
+                $userDetail->stripe_account_id = null; // will be set when studio connects
+            } else {
+                // inkjin_account
+                $userDetail->studio_id = null;
+                $userDetail->studio_email = null;
+                $userDetail->studio_payment_status = null;
+                $userDetail->stripe_account_id = null;
+            }
+
+            $userDetail->save();
+
+            if ($paymentType === 'studio_account' && isset($validated['studio_email'])) {
+                try {
+                    $studioName = $userDetail->studio_name ?? 'Your Studio';
+                    $artistName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+                    if (empty($artistName)) {
+                        $artistName = $user->user_name ?? $user->email;
+                    }
+
+                    Mail::to($validated['studio_email'])->send(
+                        new StudioStripeInviteMail($studioName, $artistName, $userDetail->id)
+                    );
+                } catch (\Exception $e) {
+                    Log::error('Failed to send studio Stripe invite email (settings)', [
+                        'studio_email' => $validated['studio_email'],
+                        'artist_id' => $user->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return redirect()->route('settings.payment')->with('success', 'Payment settings updated successfully!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'An error occurred: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Save step 3: Scheduling Type Selection (Auto or Managed)
      */
     public function saveStep3(Request $request)
     {
@@ -281,13 +499,33 @@ class OnboardingController extends Controller
                 ]);
             }
 
-            // Otherwise, this is calendar connection step
-            $request->validate([
-                'google_calendar_connected' => ['nullable', 'string'],
+            // This is the scheduling type selection step (onboarding step 3)
+            $validated = $request->validate([
+                'scheduling_type' => ['required', 'in:auto,managed'],
             ]);
 
-            // Check if calendar is actually connected (not just the checkbox value)
+            $schedulingType = $validated['scheduling_type'];
+
+            // If auto scheduling is selected, calendar connection is required
+            if ($schedulingType === 'auto') {
             $calendarConnected = !empty($userDetail->google_calendar_token);
+                
+                if (!$calendarConnected) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Please connect your Google Calendar for auto scheduling.',
+                        'errors' => [
+                            'google_calendar_connected' => ['Google Calendar connection is required for auto scheduling.']
+                        ],
+                    ], 422);
+                }
+            }
+            else if($schedulingType === 'managed'){
+                $userDetail->update([
+                    'google_calendar_token' => null,
+                    'google_calendar_id' => null,
+                ]);
+            }
             
             $completedSteps = $userDetail->completed_steps ?? [];
             if (!in_array(3, $completedSteps)) {
@@ -295,13 +533,14 @@ class OnboardingController extends Controller
             }
 
             $userDetail->update([
+                'scheduling_type' => $schedulingType,
                 'current_step' => 4,
                 'completed_steps' => $completedSteps,
             ]);
 
-            $message = $calendarConnected 
-                ? 'Step 3 saved successfully. Google Calendar is connected.'
-                : 'Step 3 saved successfully. You can connect Google Calendar later.';
+            $message = $schedulingType === 'auto'
+                ? 'Step 3 saved successfully. Auto scheduling with Google Calendar is enabled.'
+                : 'Step 3 saved successfully. Managed scheduling is enabled.';
 
             return response()->json([
                 'success' => true,
@@ -337,8 +576,9 @@ class OnboardingController extends Controller
                 'date_time_format' => ['required'],
                 'minimum_deposit_amount' => ['required', 'numeric', 'min:0'],
                 'minimum_deposit_type' => ['required'],
-                'cancellation_window' => ['required'],
+                'booking_fee_type' => ['required', 'in:client,artist,split'],
                 'reschedule_times' => ['required'],
+                'cancellation_window' => ['required'],
                 'session_buffer_period' => ['required', 'integer', 'min:0'],
                 'require_consultation' => ['nullable', 'boolean'],
             ];
@@ -390,8 +630,9 @@ class OnboardingController extends Controller
                 'date_time_format' => $validated['date_time_format'],
                 'minimum_deposit_amount' => $minimumDepositAmount,
                 'minimum_deposit_type' => $validated['minimum_deposit_type'],
-                'cancellation_window' => $validated['cancellation_window'],
+                'booking_fee_type' => $validated['booking_fee_type'],
                 'reschedule_times' => $validated['reschedule_times'],
+                'cancellation_window' => $validated['cancellation_window'],
                 'session_buffer_period' => (int) $validated['session_buffer_period'],
                 'require_consultation' => $requireConsultation,
             ];
@@ -463,19 +704,104 @@ class OnboardingController extends Controller
     public function saveStep5(Request $request)
     {
         try {
-            $request->validate([
-                'stripe_account_id' => ['required', 'string', 'max:255'],
-            ], [
-                'stripe_account_id.required' => 'Please connect your Stripe account to complete onboarding.',
-            ]);
-
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
-            $userDetail->update([
-                'stripe_account_id' => $request->stripe_account_id,
-                'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [5])),
-            ]);
+            // Base validation - payment_type is always required
+            $rules = [
+                'payment_type' => ['required', 'in:artist_account,studio_account,inkjin_account'],
+            ];
+
+            $messages = [
+                'payment_type.required' => 'Please select a payment type.',
+                'payment_type.in' => 'Invalid payment type selected.',
+            ];
+
+            // Conditional validation based on payment_type
+            $paymentType = $request->payment_type;
+            
+            if ($paymentType === 'artist_account') {
+                // Artist account: Stripe account ID is required
+                $rules['stripe_account_id'] = ['required', 'string', 'max:255'];
+                $messages['stripe_account_id.required'] = 'Please connect your Stripe account to complete onboarding.';
+            } elseif ($paymentType === 'studio_account') {
+                // Studio account: Studio email is required
+                $rules['studio_email'] = ['required', 'email', 'max:255'];
+                $messages['studio_email.required'] = 'Studio email is required.';
+                $messages['studio_email.email'] = 'Please enter a valid email address.';
+            }
+            // inkjin_account: No additional validation needed
+
+            $validated = $request->validate($rules, $messages);
+
+            // Always set payment_type and completed_steps
+            $userDetail->payment_type = $validated['payment_type'];
+            $userDetail->completed_steps = array_unique(array_merge($userDetail->completed_steps ?? [], [5]));
+
+            // Handle artist account: Stripe ID saved on user_details
+            if ($paymentType === 'artist_account' && isset($validated['stripe_account_id'])) {
+                $userDetail->stripe_account_id = $validated['stripe_account_id'];
+                // Clear studio-related fields
+                $userDetail->studio_id = null;
+                $userDetail->studio_email = null;
+                $userDetail->studio_payment_status = null;
+            } elseif ($paymentType === 'studio_account') {
+                // Studio account: find or create studio record
+                $studioName = $userDetail->studio_name ?? 'Studio';
+                $studioEmail = $validated['studio_email'];
+
+                $studio = \App\Models\Studio::firstOrCreate(
+                    ['email' => $studioEmail],
+                    ['name' => $studioName]
+                );
+
+                // Link artist to studio and set status to pending
+                $userDetail->studio_id = $studio->id;
+                $userDetail->studio_email = $studioEmail;
+                // If not set yet or previously something else, set to pending
+                if (!$userDetail->studio_payment_status) {
+                    $userDetail->studio_payment_status = 'pending';
+                }
+
+                // Clear artist Stripe account ID when using studio payouts
+                $userDetail->stripe_account_id = null;
+            } elseif ($paymentType === 'inkjin_account') {
+                // Inkjin account: clear studio and artist Stripe references
+                $userDetail->studio_id = null;
+                $userDetail->studio_email = null;
+                $userDetail->studio_payment_status = null;
+                $userDetail->stripe_account_id = null;
+            }
+
+            $userDetail->save();
+
+            // Send studio invite email if studio_account is selected
+            if ($paymentType === 'studio_account' && isset($validated['studio_email'])) {
+                try {
+                    $studioName = $userDetail->studio_name ?? 'Your Studio';
+                    $artistName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+                    if (empty($artistName)) {
+                        $artistName = $user->user_name ?? $user->email;
+                    }
+
+                    Mail::to($validated['studio_email'])->send(
+                        new StudioStripeInviteMail($studioName, $artistName, $userDetail->id)
+                    );
+
+                    Log::info('Studio Stripe invite email sent', [
+                        'studio_email' => $validated['studio_email'],
+                        'artist_id' => $user->id,
+                        'user_detail_id' => $userDetail->id,
+                    ]);
+                } catch (\Exception $e) {
+                    // Log error but don't fail onboarding
+                    Log::error('Failed to send studio Stripe invite email', [
+                        'studio_email' => $validated['studio_email'],
+                        'artist_id' => $user->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             // Mark onboarding as complete
             $user->update(['on_boarding' => 'yes']);
@@ -505,6 +831,11 @@ class OnboardingController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
+            Log::error('Error in saveStep5', [
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred: ' . $e->getMessage(),
@@ -534,69 +865,87 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Update profile (for settings page)
+     * Show studio waiting page - when artist selected studio account but studio hasn't connected yet
      */
-    public function updateProfile(Request $request)
+    public function studioWaiting(Request $request)
+    {
+        $user = $request->user();
+        $userDetail = $user->userDetail;
+
+        // Only show if payment type is studio_account and Stripe is not connected
+        if (!$userDetail || 
+            $userDetail->payment_type !== 'studio_account' || 
+            !empty($userDetail->stripe_account_id)) {
+            return redirect()->route('dashboard');
+        }
+
+        return view('studio.waiting', [
+            'studioName' => $userDetail->studio_name ?? 'Studio',
+            'studioEmail' => $userDetail->studio_email ?? '',
+        ]);
+    }
+
+    /**
+     * Resend studio invite email
+     */
+    public function resendStudioInvite(Request $request)
     {
         try {
             $user = $request->user();
-            $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+            $userDetail = $user->userDetail;
 
-            // Make avatar optional if user already has one
-            $avatarRule = $userDetail->avatar 
-                ? ['nullable'] 
-                : ['required'];
-            
-            $user = $request->user();
-            $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
-            
-            $validated = $request->validate([
-                'avatar' => array_merge($avatarRule, ['image', 'mimes:jpg,jpeg,png,heif,heic', 'max:2048']),
-                'user_name' => [
-                    'required', 
-                    'string', 
-                    'max:255',
-                    'unique:user_details,user_name,' . $userDetail->id . ',id'
-                ],
-                'mobile_number' => [
-                    'required', 
-                    'string', 
-                    'max:20',
-                    'unique:user_details,mobile_number,' . $userDetail->id . ',id'
-                ],
-                'country' => ['required', 'string', 'max:255'],
-                'city' => ['required', 'string', 'max:255'],
-            ]);
-
-            // Handle avatar upload using helper function
-            $avatarPath = $userDetail->avatar;
-            if ($request->hasFile('avatar')) {
-                // Delete old avatar if exists
-                if ($userDetail->avatar && file_exists(public_path($userDetail->avatar))) {
-                    File::delete(public_path($userDetail->avatar));
-                }
-                
-                $avatarPath = $this->imageUploader($request->file('avatar'), 'avatars');
+            if (!$userDetail || $userDetail->payment_type !== 'studio_account') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid request.',
+                ], 400);
             }
 
-            $userDetail->update([
-                'avatar' => $avatarPath,
-                'user_name' => $validated['user_name'],
-                'mobile_number' => $validated['mobile_number'],
-                'country' => $validated['country'],
-                'city' => $validated['city'],
+            if (empty($userDetail->studio_email)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Studio email is not set.',
+                ], 400);
+            }
+
+            // Check if already connected
+            if (!empty($userDetail->stripe_account_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Studio Stripe account is already connected.',
+                ], 400);
+            }
+
+            // Send studio invite email
+            $studioName = $userDetail->studio_name ?? 'Your Studio';
+            $artistName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+            if (empty($artistName)) {
+                $artistName = $user->user_name ?? $user->email;
+            }
+
+            Mail::to($userDetail->studio_email)->send(
+                new StudioStripeInviteMail($studioName, $artistName, $userDetail->id)
+            );
+
+            Log::info('Studio Stripe invite email resent', [
+                'studio_email' => $userDetail->studio_email,
+                'artist_id' => $user->id,
+                'user_detail_id' => $userDetail->id,
             ]);
 
-            return redirect()->route('settings.profile')
-                ->with('success', 'Profile updated successfully!');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return redirect()->back()
-                ->withErrors($e->errors())
-                ->withInput();
+            return response()->json([
+                'success' => true,
+                'message' => 'Invitation email has been resent to ' . $userDetail->studio_email,
+            ]);
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'An error occurred: ' . $e->getMessage())
-                ->withInput();
+            Log::error('Failed to resend studio Stripe invite email', [
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to resend invitation email. Please try again.',
+            ], 500);
         }
     }
 

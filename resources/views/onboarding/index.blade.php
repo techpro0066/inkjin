@@ -85,6 +85,9 @@
 
 <!-- Select2 CSS -->
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+
+<!-- Google Places API -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.place_api_key') }}&libraries=places"></script>
 @endpush
 
 @section('content')
@@ -134,7 +137,6 @@
               </div>
               <div class="text-center">
                 <small class="d-block fw-semibold">Calendar</small>
-                <small class="text-muted">(Optional)</small>
               </div>
             </div>
             
@@ -198,8 +200,20 @@
                 <div class="col-12"></div>
                 
                 <div class="col-md-6">
+                  <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="first_name" name="first_name" value="{{ Auth::user()->first_name ?? '' }}" placeholder="Enter your first name">
+                  <p class="text-danger mt-1 mb-0" id="first_name_error" style="display: none; font-size: 0.875rem;"></p>
+                </div>
+                
+                <div class="col-md-6">
+                  <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="last_name" name="last_name" value="{{ Auth::user()->last_name ?? '' }}" placeholder="Enter your last name">
+                  <p class="text-danger mt-1 mb-0" id="last_name_error" style="display: none; font-size: 0.875rem;"></p>
+                </div>
+                
+                <div class="col-md-6">
                   <label for="user_name" class="form-label">User Name <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" id="user_name" name="user_name" value="{{ $userDetail->user_name ?? '' }}" placeholder="Enter your name">
+                  <input type="text" class="form-control" id="user_name" name="user_name" value="{{ $userDetail->user_name ?? '' }}" placeholder="Enter your username">
                   <p class="text-danger mt-1 mb-0" id="user_name_error" style="display: none; font-size: 0.875rem;"></p>
                 </div>
                 
@@ -207,22 +221,6 @@
                   <label for="mobile_number" class="form-label">Mobile Number <span class="text-danger">*</span></label>
                   <input type="text" class="form-control" id="mobile_number" name="mobile_number" value="{{ $userDetail->mobile_number ?? '' }}" placeholder="Enter mobile number">
                   <p class="text-danger mt-1 mb-0" id="mobile_number_error" style="display: none; font-size: 0.875rem;"></p>
-                </div>
-                
-                <div class="col-md-6">
-                  <label for="country" class="form-label">Country <span class="text-danger">*</span></label>
-                  <select class="form-select select2" id="country" name="country" data-placeholder="Search and select country">
-                    <option value=""></option>
-                  </select>
-                  <p class="text-danger mt-1 mb-0" id="country_error" style="display: none; font-size: 0.875rem;"></p>
-                </div>
-                
-                <div class="col-md-6">
-                  <label for="city" class="form-label">City <span class="text-danger">*</span></label>
-                  <select class="form-select select2" id="city" name="city" data-placeholder="Search and select city" disabled>
-                    <option value=""></option>
-                  </select>
-                  <p class="text-danger mt-1 mb-0" id="city_error" style="display: none; font-size: 0.875rem;"></p>
                 </div>
               </div>
               
@@ -248,8 +246,45 @@
                  
                  <div class="col-12">
                    <label for="studio_address" class="form-label">Studio Address <span class="text-danger">*</span></label>
-                   <textarea class="form-control" id="studio_address" name="studio_address" rows="3">{{ $userDetail->studio_address ?? '' }}</textarea>
+                   <input type="text" class="form-control" id="studio_address" name="studio_address" value="{{ $userDetail->studio_address ?? '' }}" placeholder="Start typing your address...">
+                   <small class="text-muted d-block mt-1">Start typing and select from Google suggestions to auto-fill address fields</small>
                    <p class="text-danger mt-1 mb-0" id="studio_address_error" style="display: none; font-size: 0.875rem;"></p>
+                 </div>
+
+                 <div class="col-md-6">
+                   <label for="street_name" class="form-label">Street Name <span class="text-danger">*</span></label>
+                   <input type="text" class="form-control" id="street_name" name="street_name" value="{{ $userDetail->street_name ?? '' }}" placeholder="Enter street name">
+                   <p class="text-danger mt-1 mb-0" id="street_name_error" style="display: none; font-size: 0.875rem;"></p>
+                 </div>
+
+                 <div class="col-md-6">
+                   <label for="street_number" class="form-label">Street Number <span class="text-danger">*</span></label>
+                   <input type="text" class="form-control" id="street_number" name="street_number" value="{{ $userDetail->street_number ?? '' }}" placeholder="Enter street number">
+                   <p class="text-danger mt-1 mb-0" id="street_number_error" style="display: none; font-size: 0.875rem;"></p>
+                 </div>
+
+                 <div class="col-md-6">
+                   <label for="city" class="form-label">City <span class="text-danger">*</span></label>
+                   <input type="text" class="form-control" id="city" name="city" value="{{ $userDetail->city ?? '' }}" placeholder="Enter city">
+                   <p class="text-danger mt-1 mb-0" id="city_error" style="display: none; font-size: 0.875rem;"></p>
+                 </div>
+
+                 <div class="col-md-6">
+                   <label for="state" class="form-label">Province/State <span class="text-danger">*</span></label>
+                   <input type="text" class="form-control" id="state" name="state" value="{{ $userDetail->state ?? '' }}" placeholder="Enter state">
+                   <p class="text-danger mt-1 mb-0" id="state_error" style="display: none; font-size: 0.875rem;"></p>
+                 </div>
+
+                 <div class="col-md-6">
+                   <label for="postal_code" class="form-label">Postal Code <span class="text-danger">*</span></label>
+                   <input type="text" class="form-control" id="postal_code" name="postal_code" value="{{ $userDetail->postal_code ?? '' }}" placeholder="Enter postal code">
+                   <p class="text-danger mt-1 mb-0" id="postal_code_error" style="display: none; font-size: 0.875rem;"></p>
+                 </div>
+
+                 <div class="col-md-6">
+                   <label for="country" class="form-label">Country <span class="text-danger">*</span></label>
+                   <input type="text" class="form-control" id="country" name="country" value="{{ $userDetail->country ?? '' }}" placeholder="Enter country">
+                   <p class="text-danger mt-1 mb-0" id="country_error" style="display: none; font-size: 0.875rem;"></p>
                  </div>
                  
                  <div class="col-12">
@@ -273,16 +308,58 @@
 
           <!-- Step 3: Calendar Connection -->
           <div class="step-content {{ $currentStep == 3 ? 'active' : '' }}" id="step3">
-            <h5 class="mb-4">Calendar Connection</h5>
+            <h5 class="mb-4">Scheduling Type</h5>
+            <p class="text-muted mb-4">Choose how you want to manage your scheduling. This step is required.</p>
             <form id="step3Form">
               @csrf
-              <div class="row g-3">
+              <input type="hidden" name="scheduling_type" id="scheduling_type" value="{{ $userDetail->scheduling_type ?? '' }}">
+              
+              <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                  <div class="card border-2 h-100 cursor-pointer scheduling-option {{ ($userDetail->scheduling_type ?? '') == 'auto' ? 'border-primary' : 'border-dashed' }}" 
+                       data-scheduling-type="auto"
+                       onclick="selectSchedulingType('auto', this)" 
+                       style="cursor: pointer; transition: all 0.3s;">
+                    <div class="card-body text-center py-5">
+                      <i class="ti ti-calendar-automated ti-3x {{ ($userDetail->scheduling_type ?? '') == 'auto' ? 'text-primary' : 'text-muted' }} mb-3"></i>
+                      <h6 class="mb-2">Auto Scheduling</h6>
+                      <p class="text-muted mb-3">Connect your Google Calendar to automatically sync your availability and bookings.</p>
+                      @if(($userDetail->scheduling_type ?? '') == 'auto')
+                        <span class="badge bg-primary mb-3">
+                          <i class="ti ti-check me-1"></i> Selected
+                        </span>
+                      @endif
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="card border-2 h-100 cursor-pointer scheduling-option {{ ($userDetail->scheduling_type ?? '') == 'managed' ? 'border-primary' : 'border-dashed' }}" 
+                       data-scheduling-type="managed"
+                       onclick="selectSchedulingType('managed', this)" 
+                       style="cursor: pointer; transition: all 0.3s;">
+                    <div class="card-body text-center py-5">
+                      <i class="ti ti-calendar-user ti-3x {{ ($userDetail->scheduling_type ?? '') == 'managed' ? 'text-primary' : 'text-muted' }} mb-3"></i>
+                      <h6 class="mb-2">Managed Scheduling</h6>
+                      <p class="text-muted mb-3">Manage your schedule manually without connecting a calendar.</p>
+                      @if(($userDetail->scheduling_type ?? '') == 'managed')
+                        <span class="badge bg-primary mb-3">
+                          <i class="ti ti-check me-1"></i> Selected
+                        </span>
+                      @endif
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Calendar Connection Section (only shown for Auto Scheduling) -->
+              <div class="row g-3 mb-4" id="calendarConnectionSection" style="display: {{ ($userDetail->scheduling_type ?? '') == 'auto' ? 'flex' : 'none' }};">
                 <div class="col-12">
                   <div class="card border-2 {{ ($userDetail->google_calendar_token ?? null) ? 'border-success' : 'border-dashed' }}">
-                    <div class="card-body text-center py-5">
+                    <div class="card-body text-center py-4">
                       <i class="ti ti-calendar ti-3x {{ ($userDetail->google_calendar_token ?? null) ? 'text-success' : 'text-muted' }} mb-3"></i>
                       <h6 class="mb-2">Connect Your Google Calendar</h6>
-                      <p class="text-muted mb-4">This step is optional. You can connect your calendar later.</p>
+                      <p class="text-muted mb-4">Connect your Google Calendar to enable automatic scheduling.</p>
                       
                       @if($userDetail->google_calendar_token ?? null)
                         <div class="mb-3">
@@ -307,18 +384,15 @@
                 </div>
               </div>
               
+              <p class="text-danger mt-1 mb-3" id="scheduling_type_error" style="display: none; font-size: 0.875rem;"></p>
+              
               <div class="d-flex justify-content-between mt-4">
                 <button type="button" class="btn btn-label-secondary" onclick="goToStep(2)">
                   <i class="ti ti-arrow-left me-2"></i> Previous
                 </button>
-                <div>
-                  <button type="button" class="btn btn-outline-secondary me-2" onclick="saveStep3(true)">
-                    Skip for Now
-                  </button>
-                  <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="step3SubmitBtn">
                     Next Step <i class="ti ti-arrow-right ms-2"></i>
                   </button>
-                </div>
               </div>
             </form>
           </div>
@@ -328,66 +402,110 @@
             <h5 class="mb-4">Preferences</h5>
             <form id="step4Form">
               @csrf
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label for="currency" class="form-label">Currency <span class="text-danger">*</span></label>
-                   <select class="form-select select2" id="currency" name="currency" data-placeholder="Search and select currency">
-                     <option value=""></option>
-                   </select>
-                   <p class="text-danger mt-1 mb-0" id="currency_error" style="display: none; font-size: 0.875rem;"></p>
+              
+              <!-- General Section -->
+              <div class="card mb-4">
+                <div class="card-header bg-light">
+                  <h6 class="mb-0">
+                    <i class="ti ti-settings me-2"></i>General
+                  </h6>
                 </div>
-                
+                <div class="card-body">
+              <div class="row g-3">
                 <div class="col-md-6">
                   <label for="timezone" class="form-label">Timezone <span class="text-danger">*</span></label>
                    <select class="form-select select2" id="timezone" name="timezone" data-placeholder="Search and select timezone">
-                     <option value=""></option>
+                        <option value="" selected disabled>Select Timezone</option>
                    </select>
                    <p class="text-danger mt-1 mb-0" id="timezone_error" style="display: none; font-size: 0.875rem;"></p>
                 </div>
                 
                 <div class="col-md-6">
-                  <label for="date_time_format" class="form-label">Date & Time Format <span class="text-danger">*</span></label>
+                      <label for="date_time_format" class="form-label">Date Format <span class="text-danger">*</span></label>
                    <select class="form-select" id="date_time_format" name="date_time_format">
-                     <option value="">Select Format</option>
+                        <option value="" selected disabled>Select Format</option>
                      <option value="MM/DD/YYYY" {{ ($userDetail->date_time_format ?? '') == 'MM/DD/YYYY' ? 'selected' : '' }}>MM/DD/YYYY</option>
                      <option value="DD/MM/YYYY" {{ ($userDetail->date_time_format ?? '') == 'DD/MM/YYYY' ? 'selected' : '' }}>DD/MM/YYYY</option>
                      <option value="YYYY-MM-DD" {{ ($userDetail->date_time_format ?? '') == 'YYYY-MM-DD' ? 'selected' : '' }}>YYYY-MM-DD</option>
                    </select>
                    <p class="text-danger mt-1 mb-0" id="date_time_format_error" style="display: none; font-size: 0.875rem;"></p>
+                    </div>
+                  </div>
+                </div>
                 </div>
                 
+              <!-- Payment Section -->
+              <div class="card mb-4">
+                <div class="card-header bg-light">
+                  <h6 class="mb-0">
+                    <i class="ti ti-currency-dollar me-2"></i>Payment
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
                 <div class="col-md-6">
-                   <label for="minimum_deposit_amount" class="form-label">Minimum Deposit Amount <span class="text-danger">*</span></label>
-                   <input type="text" class="form-control" id="minimum_deposit_amount" name="minimum_deposit_amount" value="{{ $userDetail->minimum_deposit_amount ?? '' }}" placeholder="Enter amount">
-                   <p class="text-danger mt-1 mb-0" id="minimum_deposit_amount_error" style="display: none; font-size: 0.875rem;"></p>
+                      <label for="currency" class="form-label">Currency <span class="text-danger">*</span></label>
+                      <select class="form-select select2" id="currency" name="currency" data-placeholder="Search and select currency">
+                        <option value="" selected disabled>Select Currency</option>
+                      </select>
+                      <p class="text-danger mt-1 mb-0" id="currency_error" style="display: none; font-size: 0.875rem;"></p>
                 </div>
                 
                 <div class="col-md-6">
                   <label for="minimum_deposit_type" class="form-label">Deposit Type <span class="text-danger">*</span></label>
                    <select class="form-select" id="minimum_deposit_type" name="minimum_deposit_type">
-                     <option value="">Select Type</option>
-                     <option value="fixed" {{ ($userDetail->minimum_deposit_type ?? '') == 'fixed' ? 'selected' : '' }}>Fixed Amount</option>
+                        <option value="" selected disabled>Select Type</option>
+                        <option value="amount" {{ ($userDetail->minimum_deposit_type ?? '') == 'amount' ? 'selected' : '' }}>Amount</option>
                      <option value="percentage" {{ ($userDetail->minimum_deposit_type ?? '') == 'percentage' ? 'selected' : '' }}>Percentage</option>
                    </select>
                    <p class="text-danger mt-1 mb-0" id="minimum_deposit_type_error" style="display: none; font-size: 0.875rem;"></p>
                 </div>
                 
                 <div class="col-md-6">
-                  <label for="cancellation_window" class="form-label">Cancellation Window <span class="text-danger">*</span></label>
-                   <select class="form-select" id="cancellation_window" name="cancellation_window">
-                     <option value="">Select Window</option>
-                     <option value="24h" {{ ($userDetail->cancellation_window ?? '') == '24h' ? 'selected' : '' }}>24 Hours</option>
-                     <option value="48h" {{ ($userDetail->cancellation_window ?? '') == '48h' ? 'selected' : '' }}>48 Hours</option>
-                     <option value="72h" {{ ($userDetail->cancellation_window ?? '') == '72h' ? 'selected' : '' }}>72 Hours</option>
-                     <option value="1w" {{ ($userDetail->cancellation_window ?? '') == '1w' ? 'selected' : '' }}>1 Week</option>
-                   </select>
-                   <p class="text-danger mt-1 mb-0" id="cancellation_window_error" style="display: none; font-size: 0.875rem;"></p>
+                      <label for="minimum_deposit_amount" class="form-label">Minimum Deposit <span class="deposit-type-selected"></span> <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="minimum_deposit_amount" name="minimum_deposit_amount" value="{{ $userDetail->minimum_deposit_amount ?? '' }}" placeholder="Enter amount">
+                      <p class="text-danger mt-1 mb-0" id="minimum_deposit_amount_error" style="display: none; font-size: 0.875rem;"></p>
                 </div>
                 
+                    <div class="col-12">
+                      <label class="form-label">Inkjin Booking Fee <span class="text-danger">*</span></label>
+                      <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="booking_fee_type" id="booking_fee_client" value="client" {{ ($userDetail->booking_fee_type ?? '') == 'client' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="booking_fee_client">
+                          <strong>Client pays</strong> – 10€ will be added to the client's total
+                        </label>
+                      </div>
+                      <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="booking_fee_type" id="booking_fee_artist" value="artist" {{ ($userDetail->booking_fee_type ?? '') == 'artist' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="booking_fee_artist">
+                          <strong>Artist pays</strong> – 10€ will be deducted from your payout
+                        </label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="booking_fee_type" id="booking_fee_split" value="split" {{ ($userDetail->booking_fee_type ?? '') == 'split' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="booking_fee_split">
+                          <strong>Split</strong> – Evenly split between you and the client. 5€ will be added to your client's total and 5€ will be deducted from your payout.
+                        </label>
+                      </div>
+                      <p class="text-danger mt-1 mb-0" id="booking_fee_type_error" style="display: none; font-size: 0.875rem;"></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Scheduling Section -->
+              <div class="card mb-4">
+                <div class="card-header bg-light">
+                  <h6 class="mb-0">
+                    <i class="ti ti-calendar me-2"></i>Scheduling
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
                 <div class="col-md-6">
-                  <label for="reschedule_times" class="form-label">Reschedule Times <span class="text-danger">*</span></label>
+                      <label for="reschedule_times" class="form-label">Allow clients to reschedule? <span class="text-danger">*</span></label>
                    <select class="form-select" id="reschedule_times" name="reschedule_times">
-                     <option value="">Select Option</option>
+                        <option value="" selected disabled>Select Option</option>
                      <option value="never" {{ ($userDetail->reschedule_times ?? '') == 'never' ? 'selected' : '' }}>Never</option>
                      <option value="once" {{ ($userDetail->reschedule_times ?? '') == 'once' ? 'selected' : '' }}>Once</option>
                      <option value="twice" {{ ($userDetail->reschedule_times ?? '') == 'twice' ? 'selected' : '' }}>Twice</option>
@@ -397,13 +515,38 @@
                 </div>
                 
                 <div class="col-md-6">
-                  <label for="session_buffer_period" class="form-label">Session Buffer Period (minutes) <span class="text-danger">*</span></label>
+                      <label for="cancellation_window" class="form-label">How long do clients have to cancel a booking to get a full refund? <span class="text-danger">*</span></label>
+                      <select class="form-select" id="cancellation_window" name="cancellation_window">
+                        <option value="" selected disabled>Select Window</option>
+                        <option value="24h" {{ ($userDetail->cancellation_window ?? '') == '24h' ? 'selected' : '' }}>24 Hours</option>
+                        <option value="48h" {{ ($userDetail->cancellation_window ?? '') == '48h' ? 'selected' : '' }}>48 Hours</option>
+                        <option value="72h" {{ ($userDetail->cancellation_window ?? '') == '72h' ? 'selected' : '' }}>72 Hours</option>
+                        <option value="1w" {{ ($userDetail->cancellation_window ?? '') == '1w' ? 'selected' : '' }}>1 Week</option>
+                        <option value="2w" {{ ($userDetail->cancellation_window ?? '') == '2w' ? 'selected' : '' }}>2 Weeks</option>
+                      </select>
+                      <p class="text-danger mt-1 mb-0" id="cancellation_window_error" style="display: none; font-size: 0.875rem;"></p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                      <label for="session_buffer_period" class="form-label">Time between sessions (minutes) <span class="text-danger">*</span></label>
                   <input type="number" class="form-control" id="session_buffer_period" name="session_buffer_period" value="{{ $userDetail->session_buffer_period ?? '' }}" placeholder="e.g., 15, 30, 60" min="0" step="1">
                   <small class="text-muted">Time between sessions for rest, clean up, or preparation</small>
                   <p class="text-danger mt-1 mb-0" id="session_buffer_period_error" style="display: none; font-size: 0.875rem;"></p>
+                    </div>
+                  </div>
+                </div>
                 </div>
                 
-                <div class="col-md-6">
+              <!-- Consultation Section (Optional) -->
+              <div class="card mb-4">
+                <div class="card-header bg-light">
+                  <h6 class="mb-0">
+                    <i class="ti ti-message-circle me-2"></i>Consultation Settings
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12">
                   <label class="form-label">Require Consultation Session</label>
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="require_consultation" name="require_consultation" value="1" {{ ($userDetail->require_consultation ?? false) ? 'checked' : '' }} onchange="toggleSessionFields()">
@@ -418,7 +561,7 @@
                 <div class="col-md-6" id="session_type_container" style="display: {{ ($userDetail->require_consultation ?? false) ? 'block' : 'none' }};">
                   <label for="session_type" class="form-label">Session Type <span class="text-danger">*</span></label>
                   <select class="form-select" id="session_type" name="session_type">
-                    <option value="">Select Session Type</option>
+                        <option value="" selected disabled>Select Session Type</option>
                     <option value="online" {{ ($userDetail->session_type ?? '') == 'online' ? 'selected' : '' }}>Online Session</option>
                     <option value="physical" {{ ($userDetail->session_type ?? '') == 'physical' ? 'selected' : '' }}>Physical Session</option>
                     <option value="both" {{ ($userDetail->session_type ?? '') == 'both' ? 'selected' : '' }}>Both (Online & Physical)</option>
@@ -437,7 +580,7 @@
                 <div class="col-md-6" id="consultation_timing_container" style="display: {{ ($userDetail->require_consultation ?? false) ? 'block' : 'none' }};">
                   <label for="consultation_timing" class="form-label">Consultation Timing <span class="text-danger">*</span></label>
                   <select class="form-select" id="consultation_timing" name="consultation_timing" onchange="toggleGapFields()">
-                    <option value="">Select Timing</option>
+                        <option value="" selected disabled>Select Timing</option>
                     <option value="combined" {{ ($userDetail->consultation_timing ?? '') == 'combined' ? 'selected' : '' }}>Add with Tattoo Session</option>
                     <option value="separate" {{ ($userDetail->consultation_timing ?? '') == 'separate' ? 'selected' : '' }}>Separate from Tattoo Session</option>
                   </select>
@@ -470,12 +613,14 @@
                 <div class="col-md-6" id="gap_unit_container" style="display: {{ ($userDetail->require_gap_between_consultation_tattoo ?? false) ? 'block' : 'none' }};">
                   <label for="consultation_tattoo_gap_unit" class="form-label">Gap Unit <span class="text-danger">*</span></label>
                   <select class="form-select" id="consultation_tattoo_gap_unit" name="consultation_tattoo_gap_unit">
-                    <option value="">Select Unit</option>
+                        <option value="" selected disabled>Select Unit</option>
                     <option value="minutes" {{ ($userDetail->consultation_tattoo_gap_unit ?? '') == 'minutes' ? 'selected' : '' }}>Minutes</option>
                     <option value="hours" {{ ($userDetail->consultation_tattoo_gap_unit ?? '') == 'hours' ? 'selected' : '' }}>Hours</option>
                     <option value="days" {{ ($userDetail->consultation_tattoo_gap_unit ?? '') == 'days' ? 'selected' : '' }}>Days</option>
                   </select>
                   <p class="text-danger mt-1 mb-0" id="consultation_tattoo_gap_unit_error" style="display: none; font-size: 0.875rem;"></p>
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -496,7 +641,36 @@
             <form id="step5Form">
               @csrf
               <div class="row g-3">
+                <!-- Payment Type Selection -->
                 <div class="col-12">
+                  <label class="form-label">Who will receive payments? <span class="text-danger">*</span></label>
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="payment_type" id="payment_type_artist" value="artist_account" {{ ($userDetail->payment_type ?? '') == 'artist_account' ? 'checked' : '' }} onchange="handlePaymentTypeChange()">
+                        <label class="form-check-label" for="payment_type_artist">
+                          <strong>Artist</strong> — Payments go directly to you
+                        </label>
+                      </div>
+                      <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="payment_type" id="payment_type_studio" value="studio_account" {{ ($userDetail->payment_type ?? '') == 'studio_account' ? 'checked' : '' }} onchange="handlePaymentTypeChange()">
+                        <label class="form-check-label" for="payment_type_studio">
+                          <strong>Studio</strong> — Payments go to your studio
+                        </label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="payment_type" id="payment_type_inkjin" value="inkjin_account" {{ ($userDetail->payment_type ?? '') == 'inkjin_account' ? 'checked' : '' }} onchange="handlePaymentTypeChange()">
+                        <label class="form-check-label" for="payment_type_inkjin">
+                          <strong>Inkjin</strong> — Payments go to Inkjin and we pay you
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="text-danger mt-1 mb-0" id="payment_type_error" style="display: none; font-size: 0.875rem;"></p>
+                </div>
+
+                <!-- Artist Account - Stripe Connect -->
+                <div class="col-12" id="artist_stripe_section" style="display: none;">
                   <div class="card border-2 {{ ($userDetail->stripe_account_id ?? null) ? 'border-success' : 'border-dashed' }}">
                     <div class="card-body text-center py-5">
                       <i class="ti ti-credit-card ti-3x {{ ($userDetail->stripe_account_id ?? null) ? 'text-success' : 'text-muted' }} mb-3"></i>
@@ -525,6 +699,43 @@
                     </div>
                   </div>
                 </div>
+
+                <!-- Studio Account - Studio Info -->
+                <div class="col-12" id="studio_section" style="display: none;">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="alert alert-info mb-4">
+                        <i class="ti ti-info-circle me-2"></i>
+                        Payments will go to your studio's Stripe account. An email will be sent to the studio to connect their Stripe account.
+                      </div>
+                      
+                      <div class="mb-3">
+                        <label for="studio_name_display" class="form-label">Studio Name</label>
+                        <input type="text" class="form-control" id="studio_name_display" value="{{ $userDetail->studio_name ?? '' }}" readonly>
+                        <small class="text-muted">This is the studio name from step 2</small>
+                      </div>
+                      
+                      <div class="mb-3">
+                        <label for="studio_email" class="form-label">Studio Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="studio_email" name="studio_email" value="{{ $userDetail->studio_email ?? '' }}" placeholder="Enter studio email address">
+                        <small class="text-muted">The studio will receive an email to connect their Stripe account</small>
+                        <p class="text-danger mt-1 mb-0" id="studio_email_error" style="display: none; font-size: 0.875rem;"></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Inkjin Account - Info -->
+                <div class="col-12" id="inkjin_section" style="display: none;">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="alert alert-info mb-0">
+                        <i class="ti ti-info-circle me-2"></i>
+                        Payments will be processed by Inkjin and paid out to you off-platform / via manual process.
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               
               <div class="d-flex justify-content-between mt-4">
@@ -532,9 +743,6 @@
                   <i class="ti ti-arrow-left me-2"></i> Previous
                 </button>
                 <div>
-                  {{-- <button type="button" class="btn btn-outline-secondary me-2" onclick="saveStep5(true)">
-                    Skip for Now
-                  </button> --}}
                   <button type="submit" class="btn btn-primary">
                     Complete Onboarding <i class="ti ti-check ms-2"></i>
                   </button>
@@ -824,9 +1032,9 @@
     // Avatar validation (required)
     const avatarInput = document.getElementById('avatar');
     if (!avatarInput) {
-      errors.avatar = 'This field is required.';
-      isValid = false;
-    } else {
+      return true; // Not on step 1, skip validation
+    }
+    
       // Check if file is selected (either new file or existing default file)
       const hasDefaultFile = $(avatarInput).data('default-file') && $(avatarInput).data('default-file') !== '';
       const hasNewFile = avatarInput.files && avatarInput.files.length > 0;
@@ -849,38 +1057,48 @@
           errors.avatar = 'Avatar file size must not exceed 2MB.';
           isValid = false;
         }
+    }
+
+    // First name validation (required)
+    const firstNameEl = document.getElementById('first_name');
+    if (firstNameEl) {
+      const firstName = firstNameEl.value.trim();
+      if (!firstName) {
+        errors.first_name = 'This field is required.';
+        isValid = false;
+      }
+    }
+
+    // Last name validation (required)
+    const lastNameEl = document.getElementById('last_name');
+    if (lastNameEl) {
+      const lastName = lastNameEl.value.trim();
+      if (!lastName) {
+        errors.last_name = 'This field is required.';
+        isValid = false;
       }
     }
 
     // User name validation (required)
-    const userName = document.getElementById('user_name').value.trim();
+    const userNameEl = document.getElementById('user_name');
+    if (userNameEl) {
+      const userName = userNameEl.value.trim();
     if (!userName) {
       errors.user_name = 'This field is required.';
       isValid = false;
+      }
     }
 
     // Mobile number validation (required)
-    const mobileNumber = document.getElementById('mobile_number').value.trim();
+    const mobileNumberEl = document.getElementById('mobile_number');
+    if (mobileNumberEl) {
+      const mobileNumber = mobileNumberEl.value.trim();
     if (!mobileNumber) {
       errors.mobile_number = 'This field is required.';
       isValid = false;
     }
-
-    // Country validation (required)
-    const country = document.getElementById('country');
-    const countryValue = country ? (country.value || $(country).val() || '').trim() : '';
-    if (!countryValue) {
-      errors.country = 'This field is required.';
-      isValid = false;
     }
 
-    // City validation (required)
-    const city = document.getElementById('city');
-    const cityValue = city ? (city.value || $(city).val() || '').trim() : '';
-    if (!cityValue) {
-      errors.city = 'This field is required.';
-      isValid = false;
-    }
 
     if (!isValid) {
       displayErrors(errors);
@@ -895,16 +1113,78 @@
     const errors = {};
     let isValid = true;
 
-    const studioName = document.getElementById('studio_name').value.trim();
+    const studioNameEl = document.getElementById('studio_name');
+    if (!studioNameEl) {
+      return true; // Not on step 2, skip validation
+    }
+    
+    const studioName = studioNameEl.value.trim();
     if (!studioName) {
       errors.studio_name = 'This field is required.';
       isValid = false;
     }
 
-    const studioAddress = document.getElementById('studio_address').value.trim();
+    const studioAddressEl = document.getElementById('studio_address');
+    if (studioAddressEl) {
+      const studioAddress = studioAddressEl.value.trim();
     if (!studioAddress) {
       errors.studio_address = 'This field is required.';
       isValid = false;
+      }
+    }
+
+    const streetNameEl = document.getElementById('street_name');
+    if (streetNameEl) {
+      const streetName = streetNameEl.value.trim();
+      if (!streetName) {
+        errors.street_name = 'This field is required.';
+        isValid = false;
+      }
+    }
+
+    const streetNumberEl = document.getElementById('street_number');
+    if (streetNumberEl) {
+      const streetNumber = streetNumberEl.value.trim();
+      if (!streetNumber) {
+        errors.street_number = 'This field is required.';
+        isValid = false;
+      }
+    }
+
+    const cityEl = document.getElementById('city');
+    if (cityEl) {
+      const city = cityEl.value.trim();
+      if (!city) {
+        errors.city = 'This field is required.';
+        isValid = false;
+      }
+    }
+
+    const stateEl = document.getElementById('state');
+    if (stateEl) {
+      const state = stateEl.value.trim();
+      if (!state) {
+        errors.state = 'This field is required.';
+        isValid = false;
+      }
+    }
+
+    const postalCodeEl = document.getElementById('postal_code');
+    if (postalCodeEl) {
+      const postalCode = postalCodeEl.value.trim();
+      if (!postalCode) {
+        errors.postal_code = 'This field is required.';
+        isValid = false;
+      }
+    }
+
+    const countryEl = document.getElementById('country');
+    if (countryEl) {
+      const country = countryEl.value.trim();
+      if (!country) {
+        errors.country = 'This field is required.';
+        isValid = false;
+      }
     }
 
     if (!isValid) {
@@ -914,9 +1194,125 @@
     return isValid;
   }
 
-  // Validate Step 3 (optional, no validation needed)
+  // Validate Step 3 (scheduling type is required)
   function validateStep3() {
-    return true;
+    clearErrors();
+    const errors = {};
+    let isValid = true;
+
+    const schedulingTypeEl = document.getElementById('scheduling_type');
+    if (!schedulingTypeEl) {
+      return true; // Not on step 3, skip validation
+    }
+    
+    const schedulingType = schedulingTypeEl.value.trim();
+    const schedulingTypeError = document.getElementById('scheduling_type_error');
+    
+    if (!schedulingType) {
+      errors.scheduling_type = 'Please select a scheduling type.';
+      isValid = false;
+      if (schedulingTypeError) {
+        schedulingTypeError.textContent = errors.scheduling_type;
+        schedulingTypeError.style.display = 'block';
+      }
+    } else {
+      if (schedulingTypeError) {
+        schedulingTypeError.style.display = 'none';
+      }
+    }
+
+    // If auto scheduling is selected, calendar connection is required
+    if (schedulingType === 'auto') {
+      const calendarConnectedEl = document.getElementById('google_calendar_connected');
+      if (calendarConnectedEl) {
+        const calendarConnected = calendarConnectedEl.value;
+        if (calendarConnected !== '1') {
+          errors.google_calendar_connected = 'Please connect your Google Calendar for auto scheduling.';
+          isValid = false;
+        }
+      } else {
+        errors.google_calendar_connected = 'Please connect your Google Calendar for auto scheduling.';
+        isValid = false;
+      }
+    }
+
+    if (!isValid) {
+      displayErrors(errors);
+    }
+
+    return isValid;
+  }
+
+  // Handle scheduling type selection
+  function selectSchedulingType(type, element) {
+    const schedulingTypeEl = document.getElementById('scheduling_type');
+    if (!schedulingTypeEl) {
+      return; // Not on step 3, exit early
+    }
+    
+    schedulingTypeEl.value = type;
+    
+    // Update UI to show selected state
+    document.querySelectorAll('.scheduling-option').forEach(option => {
+      option.classList.remove('border-primary');
+      option.classList.add('border-dashed');
+      const icon = option.querySelector('i');
+      if (icon) {
+        icon.classList.remove('text-primary');
+        icon.classList.add('text-muted');
+      }
+      const badge = option.querySelector('.badge');
+      if (badge) {
+        badge.remove();
+      }
+    });
+
+    // Update the selected option
+    if (element) {
+      element.classList.remove('border-dashed');
+      element.classList.add('border-primary');
+      const icon = element.querySelector('i');
+      if (icon) {
+        icon.classList.remove('text-muted');
+        icon.classList.add('text-primary');
+      }
+      
+      // Add selected badge
+      const cardBody = element.querySelector('.card-body');
+      if (cardBody && !cardBody.querySelector('.badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-primary mb-3';
+        badge.innerHTML = '<i class="ti ti-check me-1"></i> Selected';
+        // Insert after the icon
+        const iconElement = cardBody.querySelector('i');
+        if (iconElement && iconElement.nextSibling) {
+          cardBody.insertBefore(badge, iconElement.nextSibling);
+        } else {
+          cardBody.insertBefore(badge, cardBody.firstChild.nextSibling);
+        }
+      }
+    }
+
+    // Show/hide calendar connection section
+    const calendarSection = document.getElementById('calendarConnectionSection');
+    if (calendarSection) {
+      if (type === 'auto') {
+        calendarSection.style.display = 'flex';
+      } else {
+        calendarSection.style.display = 'none';
+        // Clear calendar connection requirement for managed scheduling
+        const calendarConnectedEl = document.getElementById('google_calendar_connected');
+        if (calendarConnectedEl) {
+          calendarConnectedEl.value = '0';
+        }
+      }
+    }
+
+    // Clear any previous errors
+    const schedulingTypeError = document.getElementById('scheduling_type_error');
+    if (schedulingTypeError) {
+      schedulingTypeError.style.display = 'none';
+    }
   }
 
   // Validate Step 4
@@ -926,83 +1322,123 @@
     let isValid = true;
 
     // Currency validation (required)
-    const currency = document.getElementById('currency').value.trim();
+    const currencyEl = document.getElementById('currency');
+    if (!currencyEl) {
+      return true; // Not on step 4, skip validation
+    }
+    
+    const currency = currencyEl.value ? currencyEl.value.trim() : ($(currencyEl).val() ? $(currencyEl).val().trim() : '');
     if (!currency) {
       errors.currency = 'This field is required.';
       isValid = false;
     }
 
     // Timezone validation (required)
-    const timezone = document.getElementById('timezone').value.trim();
+    const timezoneEl = document.getElementById('timezone');
+    if (timezoneEl) {
+      const timezone = timezoneEl.value ? timezoneEl.value.trim() : ($(timezoneEl).val() ? $(timezoneEl).val().trim() : '');
     if (!timezone) {
       errors.timezone = 'This field is required.';
       isValid = false;
+      }
     }
 
     // Date & Time Format validation (required)
-    const dateTimeFormat = document.getElementById('date_time_format').value.trim();
+    const dateTimeFormatEl = document.getElementById('date_time_format');
+    if (dateTimeFormatEl) {
+      const dateTimeFormat = dateTimeFormatEl.value.trim();
     if (!dateTimeFormat) {
       errors.date_time_format = 'This field is required.';
       isValid = false;
+      }
     }
 
     // Minimum Deposit Amount validation (required)
-    const minDepositAmount = document.getElementById('minimum_deposit_amount').value.trim();
+    const minDepositAmountEl = document.getElementById('minimum_deposit_amount');
+    if (minDepositAmountEl) {
+      const minDepositAmount = minDepositAmountEl.value.trim();
     if (!minDepositAmount) {
       errors.minimum_deposit_amount = 'This field is required.';
       isValid = false;
     } else if (isNaN(minDepositAmount) || parseFloat(minDepositAmount) < 0) {
       errors.minimum_deposit_amount = 'Please enter a valid number (0 or greater).';
       isValid = false;
+      }
     }
 
     // Minimum Deposit Type validation (required)
-    const minDepositType = document.getElementById('minimum_deposit_type').value.trim();
+    const minDepositTypeEl = document.getElementById('minimum_deposit_type');
+    if (minDepositTypeEl) {
+      const minDepositType = minDepositTypeEl.value.trim();
     if (!minDepositType) {
       errors.minimum_deposit_type = 'This field is required.';
       isValid = false;
     }
+    }
 
-    // Cancellation Window validation (required)
-    const cancellationWindow = document.getElementById('cancellation_window').value.trim();
-    if (!cancellationWindow) {
-      errors.cancellation_window = 'This field is required.';
+    // Booking Fee Type validation (required)
+    const bookingFeeTypeEls = document.querySelectorAll('input[name="booking_fee_type"]:checked');
+    if (bookingFeeTypeEls.length === 0) {
+      errors.booking_fee_type = 'Please select a booking fee option.';
       isValid = false;
     }
 
     // Reschedule Times validation (required)
-    const rescheduleTimes = document.getElementById('reschedule_times').value.trim();
+    const rescheduleTimesEl = document.getElementById('reschedule_times');
+    if (rescheduleTimesEl) {
+      const rescheduleTimes = rescheduleTimesEl.value.trim();
     if (!rescheduleTimes) {
       errors.reschedule_times = 'This field is required.';
       isValid = false;
+      }
+    }
+
+    // Reschedule Refund Window validation (required)
+    const rescheduleRefundWindowEl = document.getElementById('cancellation_window');
+    if (rescheduleRefundWindowEl) {
+      const rescheduleRefundWindow = rescheduleRefundWindowEl.value.trim();
+      if (!rescheduleRefundWindow) {
+        errors.cancellation_window = 'This field is required.';
+        isValid = false;
+      }
     }
 
     // Session Buffer Period validation (required)
-    const sessionBufferPeriod = document.getElementById('session_buffer_period').value.trim();
+    const sessionBufferPeriodEl = document.getElementById('session_buffer_period');
+    if (sessionBufferPeriodEl) {
+      const sessionBufferPeriod = sessionBufferPeriodEl.value.trim();
     if (!sessionBufferPeriod) {
       errors.session_buffer_period = 'This field is required.';
       isValid = false;
     } else if (isNaN(sessionBufferPeriod) || parseInt(sessionBufferPeriod) < 0) {
       errors.session_buffer_period = 'Please enter a valid number (0 or greater).';
       isValid = false;
+      }
     }
 
     // Session Type and Duration validation (only if consultation is required)
-    const requireConsultation = document.getElementById('require_consultation') && document.getElementById('require_consultation').checked;
+    const requireConsultationEl = document.getElementById('require_consultation');
+    const requireConsultation = requireConsultationEl && requireConsultationEl.checked;
     if (requireConsultation) {
-      const sessionType = document.getElementById('session_type').value.trim();
+      const sessionTypeEl = document.getElementById('session_type');
+      if (sessionTypeEl) {
+        const sessionType = sessionTypeEl.value.trim();
       if (!sessionType) {
         errors.session_type = 'This field is required when consultation is enabled.';
         isValid = false;
+        }
       }
 
-      const sessionDuration = document.getElementById('session_duration_minutes').value.trim();
+      const sessionDurationEl = document.getElementById('session_duration_minutes');
+      if (sessionDurationEl) {
+        const sessionDuration = sessionDurationEl.value.trim();
       if (!sessionDuration) {
         errors.session_duration_minutes = 'This field is required when consultation is enabled.';
         isValid = false;
       } else if (isNaN(sessionDuration) || parseInt(sessionDuration) < 15 || parseInt(sessionDuration) > 480) {
         errors.session_duration_minutes = 'Please enter a valid duration between 15 and 480 minutes.';
         isValid = false;
+        }
       }
     }
 
@@ -1019,13 +1455,61 @@
     const errors = {};
     let isValid = true;
 
-    // Check if Stripe account is connected
-    const stripeAccountId = document.getElementById('stripe_account_id').value.trim();
+    // Check if we're on step 5
+    const step5Form = document.getElementById('step5Form');
+    if (!step5Form) {
+      return true; // Not on step 5, skip validation
+    }
+
+    // Check payment type is selected
+    const paymentTypeRadios = document.querySelectorAll('input[name="payment_type"]');
+    let paymentTypeSelected = false;
+    let selectedPaymentType = '';
+    
+    paymentTypeRadios.forEach(radio => {
+      if (radio.checked) {
+        paymentTypeSelected = true;
+        selectedPaymentType = radio.value;
+      }
+    });
+
+    if (!paymentTypeSelected) {
+      errors.payment_type = 'Please select a payment type.';
+      isValid = false;
+    }
+
+    // Conditional validation based on payment type
+    if (paymentTypeSelected) {
+      if (selectedPaymentType === 'artist_account') {
+        // Artist account: Stripe must be connected
+        const stripeAccountIdEl = document.getElementById('stripe_account_id');
+        if (stripeAccountIdEl) {
+          const stripeAccountId = stripeAccountIdEl.value.trim();
     if (!stripeAccountId) {
       errors.stripe_account_id = 'Please connect your Stripe account to proceed.';
       isValid = false;
-      // Show error message
       showAlert('warning', 'Please connect your Stripe account to complete onboarding.');
+          }
+        }
+      } else if (selectedPaymentType === 'studio_account') {
+        // Studio account: Email is required
+        const studioEmailEl = document.getElementById('studio_email');
+        if (studioEmailEl) {
+          const studioEmail = studioEmailEl.value.trim();
+          if (!studioEmail) {
+            errors.studio_email = 'Studio email is required.';
+            isValid = false;
+          } else {
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(studioEmail)) {
+              errors.studio_email = 'Please enter a valid email address.';
+              isValid = false;
+            }
+          }
+        }
+      }
+      // inkjin_account: No additional validation needed
     }
 
     if (!isValid) {
@@ -1034,6 +1518,44 @@
 
     return isValid;
   }
+
+  // Handle payment type change to show/hide sections
+  function handlePaymentTypeChange() {
+    const paymentTypeRadios = document.querySelectorAll('input[name="payment_type"]');
+    const artistSection = document.getElementById('artist_stripe_section');
+    const studioSection = document.getElementById('studio_section');
+    const inkjinSection = document.getElementById('inkjin_section');
+
+    // Hide all sections first
+    if (artistSection) artistSection.style.display = 'none';
+    if (studioSection) studioSection.style.display = 'none';
+    if (inkjinSection) inkjinSection.style.display = 'none';
+
+    // Show relevant section based on selection
+    paymentTypeRadios.forEach(radio => {
+      if (radio.checked) {
+        if (radio.value === 'artist_account' && artistSection) {
+          artistSection.style.display = 'block';
+        } else if (radio.value === 'studio_account' && studioSection) {
+          studioSection.style.display = 'block';
+        } else if (radio.value === 'inkjin_account' && inkjinSection) {
+          inkjinSection.style.display = 'block';
+        }
+      }
+    });
+
+    // Clear errors when switching
+    clearErrors();
+  }
+
+  // Initialize payment type sections on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Trigger initial display based on saved payment type
+    const savedPaymentType = document.querySelector('input[name="payment_type"]:checked');
+    if (savedPaymentType) {
+      handlePaymentTypeChange();
+    }
+  });
 
   // Update stepper visual
   function updateStepper(activeStep) {
@@ -1116,11 +1638,17 @@
     if (targetStep) {
       targetStep.classList.add('active');
       
-      // Re-initialize Dropify and Country/City if navigating to step 1
+      // Re-initialize Dropify if navigating to step 1
       if (step === 1) {
         setTimeout(() => {
           initDropify();
-          initializeCountryCity();
+        }, 100);
+      }
+      
+      // Initialize Google Places Autocomplete if navigating to step 2
+      if (step === 2) {
+        setTimeout(() => {
+          initializeGooglePlaces();
         }, 100);
       }
       
@@ -1251,13 +1779,16 @@
   });
 
   // Save Step 3
-  async function saveStep3(skip = false) {
+  async function saveStep3() {
     clearErrors();
+    
+    // Validate before submitting
+    if (!validateStep3()) {
+      return;
+    }
+
     const form = document.getElementById('step3Form');
     const formData = new FormData(form);
-    if (skip) {
-      formData.set('google_calendar_connected', '0');
-    }
 
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
@@ -1299,9 +1830,7 @@
 
   document.getElementById('step3Form').addEventListener('submit', (e) => {
     e.preventDefault();
-    if (validateStep3()) {
-      saveStep3(false);
-    }
+    saveStep3();
   });
 
   // Save Step 4
@@ -1744,167 +2273,142 @@
     }
   }
 
-  // Store countries data globally
-  let uniqueCountriesOnboarding = [];
-
-  // Initialize Country and City Select2
-  function initializeCountryCity() {
-    const selectedCountry = '{{ $userDetail->country ?? '' }}';
-    const selectedCity = '{{ $userDetail->city ?? '' }}';
-
-    // Initialize Country Select2
-    const countrySelect = $('#country');
-    if (countrySelect.length && !countrySelect.hasClass('select2-hidden-accessible')) {
-      countrySelect.select2({
-        placeholder: 'Loading countries...',
-        allowClear: true,
-        width: '100%'
-      });
-
-      // Show loading state
-      countrySelect.empty().append(new Option('Loading countries...', '', true, true));
-      countrySelect.prop('disabled', true);
-      countrySelect.trigger('change');
-
-      // Load all countries from API
-      $.ajax({
-        url: "{{ route('api.countries') }}",
-        method: "GET",
-        success: function(response) {
-          if (response.success && Array.isArray(response.data)) {
-            // Store countries
-            uniqueCountriesOnboarding = response.data;
-
-            // Populate country dropdown
-            countrySelect.empty().append(new Option('', ''));
-            uniqueCountriesOnboarding.forEach(country => {
-              const isSelected = country === selectedCountry;
-              countrySelect.append(
-                new Option(country, country, isSelected, isSelected)
-              );
-            });
-
-            // Enable dropdown and update placeholder
-            countrySelect.prop('disabled', false);
-            countrySelect.select2({
-              placeholder: 'Search and select country',
-              allowClear: true,
-              width: '100%'
-            });
-            countrySelect.trigger('change');
-
-            // If country is selected, load cities
-            if (selectedCountry) {
-              loadCitiesForOnboarding(selectedCountry, selectedCity);
-            }
-          } else {
-            console.error("Unexpected API format:", response);
-            countrySelect.empty().append(new Option('Error loading countries. Please refresh the page.', ''));
-            countrySelect.prop('disabled', false);
-            countrySelect.trigger('change');
-          }
-        },
-        error: function(err) {
-          console.error("API error:", err);
-          countrySelect.empty().append(new Option('Error loading countries. Please refresh the page.', ''));
-          countrySelect.prop('disabled', false);
-          countrySelect.trigger('change');
-        }
-      });
+  // Initialize Google Places Autocomplete
+  let autocomplete = null;
+  function initializeGooglePlaces() {
+    const addressInput = document.getElementById('studio_address');
+    if (!addressInput) {
+      return;
     }
 
-    // Initialize City Select2
-    const citySelect = $('#city');
-    if (citySelect.length && !citySelect.hasClass('select2-hidden-accessible')) {
-      citySelect.select2({
-        placeholder: 'Select country first',
-        allowClear: true,
-        width: '100%'
-      });
-      citySelect.prop('disabled', true);
-
-      // Handle country change
-      countrySelect.on('change', function() {
-        const country = $(this).val();
-        if (country) {
-          loadCitiesForOnboarding(country);
-        } else {
-          citySelect.empty().append(new Option('', '')).val('').trigger('change');
-          citySelect.prop('disabled', true);
-          citySelect.select2({
-            placeholder: 'Select country first',
-            allowClear: true,
-            width: '100%'
-          });
-        }
-      });
+    // Check if Google Maps API is loaded
+    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+      console.error('Google Maps API not loaded');
+      return;
     }
+
+    // Initialize autocomplete
+    autocomplete = new google.maps.places.Autocomplete(addressInput, {
+      types: ['address'],
+      componentRestrictions: { country: [] }, // Allow all countries
+      fields: ['address_components', 'formatted_address', 'geometry', 'place_id']
+    });
+
+    // Listen for place selection
+    autocomplete.addListener('place_changed', function() {
+      const place = autocomplete.getPlace();
+      
+      if (!place.address_components) {
+        return;
+      }
+
+      // Reset all address fields (with null checks)
+      const streetNameEl = document.getElementById('street_name');
+      const streetNumberEl = document.getElementById('street_number');
+      const cityEl = document.getElementById('city');
+      const stateEl = document.getElementById('state');
+      const postalCodeEl = document.getElementById('postal_code');
+      const countryEl = document.getElementById('country');
+      
+      if (streetNameEl) streetNameEl.value = '';
+      if (streetNumberEl) streetNumberEl.value = '';
+      if (cityEl) cityEl.value = '';
+      if (stateEl) stateEl.value = '';
+      if (postalCodeEl) postalCodeEl.value = '';
+      if (countryEl) countryEl.value = '';
+
+      // Parse address components
+      let streetNumber = '';
+      let streetName = '';
+      let city = '';
+      let state = '';
+      let postalCode = '';
+      let country = '';
+
+      for (const component of place.address_components) {
+        const types = component.types;
+
+        // Street number
+        if (types.includes('street_number')) {
+          streetNumber = component.long_name;
+        }
+        
+        // Street name (route)
+        if (types.includes('route')) {
+          streetName = component.long_name;
   }
 
-  // Load cities based on selected country (for onboarding) from API
-  function loadCitiesForOnboarding(country, selectedCity = '') {
-    const citySelect = $('#city');
-    citySelect.prop('disabled', true);
-    citySelect.empty().append(new Option('Loading cities...', '', true, true));
-    
-    // Update Select2 to show loading placeholder
-    citySelect.select2({
-      placeholder: 'Loading cities...',
-      allowClear: true,
-      width: '100%'
-    });
-    citySelect.trigger('change');
+        // City - try different types for different countries
+        if (types.includes('locality')) {
+          city = component.long_name;
+        } else if (types.includes('administrative_area_level_2') && !city) {
+          city = component.long_name;
+        } else if (types.includes('postal_town') && !city) {
+          city = component.long_name;
+        }
+        
+        // State/Province
+        if (types.includes('administrative_area_level_1')) {
+          state = component.short_name || component.long_name;
+        }
+        
+        // Postal code
+        if (types.includes('postal_code')) {
+          postalCode = component.long_name;
+        }
+        
+        // Country
+        if (types.includes('country')) {
+          country = component.long_name;
+        }
+      }
 
-    // Load cities from API
-    $.ajax({
-      url: "{{ url('/api/cities') }}",
-      method: "GET",
-      data: { country: country },
-      success: function(response) {
-      citySelect.empty().append(new Option('', ''));
-      
-        if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-          response.data.forEach(city => {
-          const isSelected = city === selectedCity;
-          citySelect.append(
-            new Option(city, city, isSelected, isSelected)
-          );
-        });
-      } else {
-        citySelect.append(new Option('No cities found for this country', ''));
+      // Populate form fields (with null checks)
+      if (streetNumber && streetNumberEl) {
+        streetNumberEl.value = streetNumber;
+      }
+      if (streetName && streetNameEl) {
+        streetNameEl.value = streetName;
+
+
+
+      }
+      if (city && cityEl) {
+        cityEl.value = city;
+      }
+      if (state && stateEl) {
+        stateEl.value = state;
+      }
+      if (postalCode && postalCodeEl) {
+        postalCodeEl.value = postalCode;
+      }
+      if (country && countryEl) {
+        countryEl.value = country;
       }
       
-      // Enable dropdown and update placeholder
-      citySelect.prop('disabled', false);
-      citySelect.select2({
-        placeholder: 'Search and select city',
-        allowClear: true,
-        width: '100%'
-      });
-      citySelect.trigger('change');
-      },
-      error: function(err) {
-        console.error("API error:", err);
-        citySelect.empty().append(new Option('Error loading cities. Please try again.', ''));
-        citySelect.prop('disabled', false);
-        citySelect.select2({
-          placeholder: 'Error loading cities',
-          allowClear: true,
-          width: '100%'
-        });
-        citySelect.trigger('change');
+      // Update studio_address with formatted address
+      addressInput.value = place.formatted_address;
+
+      // Update Google Maps link if available
+      if (place.place_id) {
+        const mapsLinkEl = document.getElementById('google_maps_link');
+        if (mapsLinkEl) {
+          mapsLinkEl.value = `https://www.google.com/maps/place/?q=place_id:${place.place_id}`;
+        }
       }
     });
   }
 
-  // Note: Select2 initialization is now handled in the goToStep function above
-
-  // Also initialize on page load if already on Step 1 or Step 4
+  // Also initialize on page load if already on Step 1, Step 2, or Step 4
   $(document).ready(function() {
     if (currentStep === 1) {
       setTimeout(() => {
         initDropify();
-        initializeCountryCity();
+      }, 500);
+    }
+    if (currentStep === 2) {
+      setTimeout(() => {
+        initializeGooglePlaces();
       }, 500);
     }
     if (currentStep === 4) {
@@ -1912,6 +2416,21 @@
         initializeSelect2();
         toggleSessionFields();
       }, 500);
+    }
+  });
+
+  $(document).on('change', '#minimum_deposit_type', function() {
+    const minimumDepositType = $(this).val();
+
+    $('.deposit-type-selected').text('');
+    $('#minimum_deposit_amount').attr('placeholder', '');
+
+    if (minimumDepositType === 'fixed') {
+      $('.deposit-type-selected').text(' Amount');
+      $('#minimum_deposit_amount').attr('placeholder', 'Enter amount');
+    } else if (minimumDepositType === 'percentage') {
+      $('.deposit-type-selected').text(' Percentage');
+      $('#minimum_deposit_amount').attr('placeholder', 'Enter percentage');
     }
   });
 </script>

@@ -2,6 +2,11 @@
 
 @section('title', 'Studio Information')
 
+@push('styles')
+<!-- Google Places API -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_PLACE_API_KEY') }}&libraries=places"></script>
+@endpush
+
 @section('content')
 <div class="container-xxl flex-grow-1 container-p-y">
   <h4 class="fw-bold py-3 mb-4">
@@ -32,7 +37,7 @@
           <p class="text-muted mb-0">Update your studio information</p>
         </div>
         <div class="card-body">
-          <form method="POST" action="{{ route('onboarding.step1') }}" id="studioForm">
+          <form method="POST" action="{{ route('settings.studio.update') }}" id="studioForm">
             @csrf
             <div class="row g-3">
               <div class="col-12">
@@ -45,8 +50,57 @@
               
               <div class="col-12">
                 <label for="studio_address" class="form-label">Studio Address <span class="text-danger">*</span></label>
-                <textarea class="form-control @error('studio_address') is-invalid @enderror" id="studio_address" name="studio_address" rows="3" required>{{ old('studio_address', $userDetail->studio_address ?? '') }}</textarea>
+                <input type="text" class="form-control @error('studio_address') is-invalid @enderror" id="studio_address" name="studio_address" value="{{ old('studio_address', $userDetail->studio_address ?? '') }}" placeholder="Start typing your address..." required>
+                <small class="text-muted d-block mt-1">Start typing and select from Google suggestions to auto-fill address fields</small>
                 @error('studio_address')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div class="col-md-6">
+                <label for="street_name" class="form-label">Street Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control @error('street_name') is-invalid @enderror" id="street_name" name="street_name" value="{{ old('street_name', $userDetail->street_name ?? '') }}" placeholder="Enter street name" required>
+                @error('street_name')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div class="col-md-6">
+                <label for="street_number" class="form-label">Street Number <span class="text-danger">*</span></label>
+                <input type="text" class="form-control @error('street_number') is-invalid @enderror" id="street_number" name="street_number" value="{{ old('street_number', $userDetail->street_number ?? '') }}" placeholder="Enter street number" required>
+                @error('street_number')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div class="col-md-6">
+                <label for="city" class="form-label">City <span class="text-danger">*</span></label>
+                <input type="text" class="form-control @error('city') is-invalid @enderror" id="city" name="city" value="{{ old('city', $userDetail->city ?? '') }}" placeholder="Enter city" required>
+                @error('city')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div class="col-md-6">
+                <label for="state" class="form-label">Province/State <span class="text-danger">*</span></label>
+                <input type="text" class="form-control @error('state') is-invalid @enderror" id="state" name="state" value="{{ old('state', $userDetail->state ?? '') }}" placeholder="Enter state" required>
+                @error('state')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div class="col-md-6">
+                <label for="postal_code" class="form-label">Postal Code <span class="text-danger">*</span></label>
+                <input type="text" class="form-control @error('postal_code') is-invalid @enderror" id="postal_code" name="postal_code" value="{{ old('postal_code', $userDetail->postal_code ?? '') }}" placeholder="Enter postal code" required>
+                @error('postal_code')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div class="col-md-6">
+                <label for="country" class="form-label">Country <span class="text-danger">*</span></label>
+                <input type="text" class="form-control @error('country') is-invalid @enderror" id="country" name="country" value="{{ old('country', $userDetail->country ?? '') }}" placeholder="Enter country" required>
+                @error('country')
                   <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
               </div>
@@ -73,56 +127,139 @@
     </div>
   </div>
 </div>
+@endsection
 
 @push('scripts')
 <script>
-  document.getElementById('studioForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-    
-    try {
-      const response = await fetch('{{ route("onboarding.step1") }}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]').value
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        // Show success message and reload
-        window.location.reload();
-      } else {
-        if (data.errors) {
-          // Display validation errors
-          Object.keys(data.errors).forEach(field => {
-            const input = document.getElementById(field);
-            const errorDiv = input?.nextElementSibling;
-            if (input) {
-              input.classList.add('is-invalid');
-            }
-            if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
-              errorDiv.textContent = Array.isArray(data.errors[field]) ? data.errors[field][0] : data.errors[field];
-            }
-          });
-        }
-        alert(data.message || 'Failed to save studio information');
-      }
-    } catch (error) {
-      alert('An error occurred. Please try again.');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = originalText;
+  // Initialize Google Places Autocomplete
+  let autocomplete = null;
+  
+  function initializeGooglePlaces() {
+    const addressInput = document.getElementById('studio_address');
+    if (!addressInput) {
+      return;
     }
+
+    // Check if Google Maps API is loaded
+    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+      console.error('Google Maps API not loaded');
+      return;
+    }
+
+    // Initialize autocomplete
+    autocomplete = new google.maps.places.Autocomplete(addressInput, {
+      types: ['address'],
+      componentRestrictions: { country: [] }, // Allow all countries
+      fields: ['address_components', 'formatted_address', 'geometry', 'place_id']
+    });
+
+    // Listen for place selection
+    autocomplete.addListener('place_changed', function() {
+      const place = autocomplete.getPlace();
+      
+      if (!place.address_components) {
+        return;
+      }
+
+      // Reset all address fields (with null checks)
+      const streetNameEl = document.getElementById('street_name');
+      const streetNumberEl = document.getElementById('street_number');
+      const cityEl = document.getElementById('city');
+      const stateEl = document.getElementById('state');
+      const postalCodeEl = document.getElementById('postal_code');
+      const countryEl = document.getElementById('country');
+      
+      if (streetNameEl) streetNameEl.value = '';
+      if (streetNumberEl) streetNumberEl.value = '';
+      if (cityEl) cityEl.value = '';
+      if (stateEl) stateEl.value = '';
+      if (postalCodeEl) postalCodeEl.value = '';
+      if (countryEl) countryEl.value = '';
+
+      // Parse address components
+      let streetNumber = '';
+      let streetName = '';
+      let city = '';
+      let state = '';
+      let postalCode = '';
+      let country = '';
+
+      for (const component of place.address_components) {
+        const types = component.types;
+
+        // Street number
+        if (types.includes('street_number')) {
+          streetNumber = component.long_name;
+        }
+        
+        // Street name (route)
+        if (types.includes('route')) {
+          streetName = component.long_name;
+        }
+
+        // City - try different types for different countries
+        if (types.includes('locality')) {
+          city = component.long_name;
+        } else if (types.includes('administrative_area_level_2') && !city) {
+          city = component.long_name;
+        } else if (types.includes('postal_town') && !city) {
+          city = component.long_name;
+        }
+        
+        // State/Province
+        if (types.includes('administrative_area_level_1')) {
+          state = component.short_name || component.long_name;
+        }
+        
+        // Postal code
+        if (types.includes('postal_code')) {
+          postalCode = component.long_name;
+        }
+        
+        // Country
+        if (types.includes('country')) {
+          country = component.long_name;
+        }
+      }
+
+      // Populate form fields (with null checks)
+      if (streetNumber && streetNumberEl) {
+        streetNumberEl.value = streetNumber;
+      }
+      if (streetName && streetNameEl) {
+        streetNameEl.value = streetName;
+      }
+      if (city && cityEl) {
+        cityEl.value = city;
+      }
+      if (state && stateEl) {
+        stateEl.value = state;
+      }
+      if (postalCode && postalCodeEl) {
+        postalCodeEl.value = postalCode;
+      }
+      if (country && countryEl) {
+        countryEl.value = country;
+      }
+      
+      // Update studio_address with formatted address
+      addressInput.value = place.formatted_address;
+
+      // Update Google Maps link if available
+      if (place.place_id) {
+        const mapsLinkEl = document.getElementById('google_maps_link');
+        if (mapsLinkEl) {
+          mapsLinkEl.value = `https://www.google.com/maps/place/?q=place_id:${place.place_id}`;
+        }
+      }
+    });
+  }
+
+  // Initialize on page load
+  $(document).ready(function() {
+    setTimeout(() => {
+      initializeGooglePlaces();
+    }, 500);
   });
 </script>
 @endpush
-@endsection
-

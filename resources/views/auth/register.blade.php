@@ -19,13 +19,13 @@
     <form id="formAuthentication" class="mb-3" method="POST" action="{{ route('register') }}">
       @csrf
 
-      <div class="mb-3">
+      {{-- <div class="mb-3">
         <label for="name" class="form-label">Name</label>
         <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name') }}" placeholder="Enter your name" autofocus required />
         @error('name')
           <div class="invalid-feedback">{{ $message }}</div>
         @enderror
-      </div>
+      </div> --}}
 
       <div class="mb-3">
         <label for="email" class="form-label">Email</label>

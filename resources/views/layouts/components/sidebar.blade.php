@@ -39,12 +39,6 @@
               </a>
             </li>
             @if(auth()->user()->role === 'artist')
-              <li class="menu-item {{ request()->routeIs('settings.profile') ? 'active' : '' }}">
-                <a href="{{ route('settings.profile') }}" class="menu-link">
-                  <i class="menu-icon tf-icons ti ti-user-circle me-2"></i>
-                  <div data-i18n="Profile">Profile</div>
-                </a>
-              </li>
               <li class="menu-item {{ request()->routeIs('settings.studio') ? 'active' : '' }}">
                 <a href="{{ route('settings.studio') }}" class="menu-link">
                   <i class="menu-icon tf-icons ti ti-building me-2"></i>
@@ -61,6 +55,12 @@
                 <a href="{{ route('settings.preferences') }}" class="menu-link">
                   <i class="menu-icon tf-icons ti ti-adjustments me-2"></i>
                   <div data-i18n="Preferences">Preferences</div>
+                </a>
+              </li>
+              <li class="menu-item {{ request()->routeIs('settings.payment') ? 'active' : '' }}">
+                <a href="{{ route('settings.payment') }}" class="menu-link">
+                  <i class="menu-icon tf-icons ti ti-credit-card me-2"></i>
+                  <div data-i18n="Payment">Payment</div>
                 </a>
               </li>
             @endif

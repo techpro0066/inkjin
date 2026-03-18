@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\UserDetail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,7 @@ class ProfileController extends Controller
     {
         return view('profile.edit', [
             'user' => $request->user(),
+            'userDetail' => $request->user()->userDetail,
         ]);
     }
 
@@ -27,35 +29,20 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = $request->user();
-        $emailChanged = $user->email !== $request->email;
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
         
-        $user->fill($request->validated());
+        $validated = $request->validated();
 
-        if ($emailChanged) {
-            // Clear email verification
-            $user->email_verified_at = null;
-            $user->save();
-
-            // Send verification email to new address
-            try {
-                $user->sendEmailVerificationNotification();
-            } catch (\Exception $e) {
-                // Log error but continue
-                \Log::error('Failed to send email verification: ' . $e->getMessage());
-            }
-
-            // Log out the user
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            // Redirect to login with message
-            return Redirect::route('login')
-                ->with('status', 'email-changed')
-                ->with('message', 'Your email address has been updated. Please verify your new email address before logging in again.');
-        }
-
+        // Update basic user fields
+        $user->first_name = $validated['first_name'];
+        $user->last_name = $validated['last_name'];
         $user->save();
+
+        // Update user detail fields
+        $userDetail->update([
+            'user_name' => $validated['user_name'],
+            'mobile_number' => $validated['mobile_number'],
+        ]);
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
