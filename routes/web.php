@@ -4,6 +4,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\InkJinController;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\OnboardingController;
+
 // Public InkJin API routes
 Route::get('/api/tattoo/{id}', [InkJinController::class, 'getTattoo'])->name('api.tattoo.show');
 Route::get('/api/artist/{id}', [InkJinController::class, 'getArtist'])->name('api.artist.show');
@@ -26,16 +28,20 @@ Route::get('/', function () {
 
 // Onboarding routes (must be before other auth routes)
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Studio waiting page (accessible even if onboarding is complete)
-    Route::get('/studio/waiting', [\App\Http\Controllers\OnboardingController::class, 'studioWaiting'])->name('studio.waiting');
-    Route::post('/studio/resend-invite', [\App\Http\Controllers\OnboardingController::class, 'resendStudioInvite'])->name('studio.resend-invite');
-    Route::get('/onboarding', [\App\Http\Controllers\OnboardingController::class, 'index'])->name('onboarding.index');
-    Route::post('/onboarding/step/1', [\App\Http\Controllers\OnboardingController::class, 'saveStep1'])->name('onboarding.step1');
-    Route::post('/onboarding/step/2', [\App\Http\Controllers\OnboardingController::class, 'saveStep2'])->name('onboarding.step2');
-    Route::post('/onboarding/step/3', [\App\Http\Controllers\OnboardingController::class, 'saveStep3'])->name('onboarding.step3');
-    Route::post('/onboarding/step/4', [\App\Http\Controllers\OnboardingController::class, 'saveStep4'])->name('onboarding.step4');
-    Route::post('/onboarding/step/5', [\App\Http\Controllers\OnboardingController::class, 'saveStep5'])->name('onboarding.step5');
-    Route::get('/onboarding/progress', [\App\Http\Controllers\OnboardingController::class, 'getProgress'])->name('onboarding.progress');
+    Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
+    Route::get('/onboarding/profile', [OnboardingController::class, 'profile'])->name('onboarding.profile');
+    Route::get('/onboarding/styles-social', [OnboardingController::class, 'stylesSocial'])->name('onboarding.styles-social');
+    Route::get('/onboarding/studio', [OnboardingController::class, 'studio'])->name('onboarding.studio');
+    Route::get('/onboarding/preferences', [OnboardingController::class, 'preferences'])->name('onboarding.preferences');
+    Route::get('/onboarding/calendar', [OnboardingController::class, 'calendar'])->name('onboarding.calendar');
+    Route::get('/onboarding/payment', [OnboardingController::class, 'payment'])->name('onboarding.payment');
+    Route::post('/onboarding/styles-social', [OnboardingController::class, 'saveStylesSocial'])->name('onboarding.styles-social.save');
+    Route::post('/onboarding/profile', [OnboardingController::class, 'saveProfile'])->name('onboarding.profile.save');
+    Route::post('/onboarding/studio', [OnboardingController::class, 'saveStudio'])->name('onboarding.studio.save');
+    Route::post('/onboarding/calendar', [OnboardingController::class, 'saveCalendar'])->name('onboarding.calendar.save');
+    Route::post('/onboarding/preferences', [OnboardingController::class, 'savePreferences'])->name('onboarding.preferences.save');
+    Route::post('/onboarding/payment', [OnboardingController::class, 'savePayment'])->name('onboarding.payment.save');
+    Route::get('/onboarding/progress', [OnboardingController::class, 'getProgress'])->name('onboarding.progress');
     
     // Google Calendar OAuth routes
     Route::get('/auth/google-calendar', [\App\Http\Controllers\GoogleCalendarController::class, 'redirect'])->name('google.calendar.redirect');
@@ -52,13 +58,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/connect-stripe/disconnect', [\App\Http\Controllers\StripeConnectController::class, 'disconnect'])->name('connect.stripe.disconnect');
 });
 
-// Studio Stripe Connect routes (public, uses signed URLs)
-Route::get('/studio/stripe/connect', [\App\Http\Controllers\StripeConnectController::class, 'studioConnect'])->name('studio.stripe.connect');
-Route::get('/studio/stripe/callback', [\App\Http\Controllers\StripeConnectController::class, 'studioCallback'])->name('studio.stripe.callback');
+Route::get('/studio/payment/decision/{userDetail}/{decision}', [OnboardingController::class, 'studioPaymentDecision'])
+    ->whereIn('decision', ['allow', 'decline'])
+    ->name('studio.payment.decision');
+Route::get('/studio/stripe/connect/{userDetail}', [\App\Http\Controllers\StripeConnectController::class, 'studioConnect'])
+    ->name('studio.stripe.connect');
+Route::get('/studio/stripe/callback/{userDetail}', [\App\Http\Controllers\StripeConnectController::class, 'studioCallback'])
+    ->name('studio.stripe.callback');
 
 //Common routes
 
 Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
+    Route::get('/studio/payment/status', [OnboardingController::class, 'studioPaymentStatus'])->name('studio.payment.status');
+
     // Dashboard route
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     
@@ -102,13 +114,22 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->group(function (
 // Artist routes
 Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function () {
     // Settings routes
+
+    Route::get('/settings/styles', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $userDetail = $user->userDetail;
+        return view('artist.settings.styles', compact('userDetail'));
+    })->name('settings.styles');
+    
+    Route::post('/settings/styles', [OnboardingController::class, 'updateStylesSocial'])->name('settings.styles.update');
+
     Route::get('/settings/studio', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
         $userDetail = $user->userDetail;
         return view('artist.settings.studio', compact('userDetail'));
     })->name('settings.studio');
     
-    Route::post('/settings/studio', [\App\Http\Controllers\OnboardingController::class, 'updateStudio'])->name('settings.studio.update');
+    Route::post('/settings/studio', [OnboardingController::class, 'updateStudio'])->name('settings.studio.update');
     
     Route::get('/settings/calendar', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
@@ -116,7 +137,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function 
         return view('artist.settings.calendar', compact('userDetail'));
     })->name('settings.calendar');
     
-    Route::post('/settings/calendar', [\App\Http\Controllers\OnboardingController::class, 'updateCalendar'])->name('settings.calendar.update');
+    Route::post('/settings/calendar', [OnboardingController::class, 'updateCalendar'])->name('settings.calendar.update');
     
     Route::get('/settings/preferences', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
@@ -124,7 +145,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function 
         return view('artist.settings.preferences', compact('userDetail'));
     })->name('settings.preferences');
     
-    Route::post('/settings/preferences', [\App\Http\Controllers\OnboardingController::class, 'saveStep4'])->name('settings.preferences.update');
+    Route::post('/settings/preferences', [OnboardingController::class, 'savePreferences'])->name('settings.preferences.update');
 
     Route::get('/settings/payment', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
@@ -132,7 +153,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function 
         return view('artist.settings.payment', compact('userDetail'));
     })->name('settings.payment');
     
-    Route::post('/settings/payment', [\App\Http\Controllers\OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
+    Route::post('/settings/payment', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
     
     // Availability routes (for artists)
     Route::get('/availability', [\App\Http\Controllers\AvailabilityController::class, 'index'])->name('availability.index');

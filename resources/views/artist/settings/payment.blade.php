@@ -6,7 +6,9 @@
 @php
   $currentPaymentType = $userDetail->payment_type ?? '';
   $artistStripeId = ($currentPaymentType === 'artist_account') ? ($userDetail->stripe_account_id ?? '') : '';
-  $studioLocked = ($currentPaymentType === 'studio_account' && !empty($userDetail->studio_email));
+  $studioEmail = old('studio_email', $userDetail->studio->email ?? '');
+  $studioLocked = ($currentPaymentType === 'studio_account' && !empty($userDetail->studio_id));
+  $bank = auth()->user()?->bankDetail;
 @endphp
 <div class="container-xxl flex-grow-1 container-p-y">
   <h4 class="fw-bold py-3 mb-4">
@@ -124,14 +126,14 @@
                         class="form-control {{ $studioLocked ? 'bg-light' : '' }} @error('studio_email') is-invalid @enderror"
                         id="studio_email"
                         name="studio_email"
-                        value="{{ old('studio_email', $userDetail->studio_email ?? '') }}"
+                        value="{{ $studioEmail }}"
                         placeholder="Enter studio email address"
                         {{ $studioLocked ? 'readonly' : '' }}
                       >
                       @if($studioLocked)
                         <small class="text-muted">Studio email is locked because your payments are already linked to this studio.</small>
                       @else
-                        <small class="text-muted">We’ll send an email to connect Stripe</small>
+                        <small class="text-muted">Studio email used for your studio payout profile.</small>
                       @endif
                       @error('studio_email')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -140,19 +142,9 @@
 
                     @if(($userDetail->payment_type ?? '') === 'studio_account')
                       <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <span class="badge bg-{{ ($userDetail->studio_payment_status ?? 'pending') === 'approved' ? 'success' : (($userDetail->studio_payment_status ?? 'pending') === 'declined' ? 'danger' : 'warning') }}">
-                          Status: {{ ucfirst($userDetail->studio_payment_status ?? 'pending') }}
+                        <span class="badge bg-{{ ($userDetail->payment_status ?? 'pending') === 'approved' ? 'success' : (($userDetail->payment_status ?? 'pending') === 'rejected' ? 'danger' : 'warning') }}">
+                          Status: {{ ucfirst($userDetail->payment_status ?? 'pending') }}
                         </span>
-                        @if(!empty($userDetail->studio_email))
-                          <button type="button" class="btn btn-outline-secondary btn-sm" id="resendStudioInviteBtn">
-                            <i class="ti ti-mail-forward me-1"></i> Resend invite
-                          </button>
-                        @endif
-                        @if(($userDetail->studio_payment_status ?? 'pending') !== 'approved')
-                          <a class="btn btn-outline-primary btn-sm" href="{{ route('studio.waiting') }}">
-                            <i class="ti ti-clock me-1"></i> View waiting page
-                          </a>
-                        @endif
                       </div>
                     @endif
                   </div>
@@ -163,9 +155,36 @@
               <div class="col-12" id="inkjin_section" style="display: none;">
                 <div class="card">
                   <div class="card-body">
-                    <div class="alert alert-info mb-0">
+                    <div class="alert alert-info mb-4">
                       <i class="ti ti-info-circle me-2"></i>
                       Payments will be processed by Inkjin and paid out to you off-platform / via manual process.
+                    </div>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label for="account_holder_name" class="form-label">Account Holder Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control @error('account_holder_name') is-invalid @enderror" id="account_holder_name" name="account_holder_name" value="{{ old('account_holder_name', $bank->account_holder_name ?? '') }}">
+                        @error('account_holder_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                      </div>
+                      <div class="col-md-6">
+                        <label for="bank_name" class="form-label">Bank Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control @error('bank_name') is-invalid @enderror" id="bank_name" name="bank_name" value="{{ old('bank_name', $bank->bank_name ?? '') }}">
+                        @error('bank_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                      </div>
+                      <div class="col-md-6">
+                        <label for="account_number" class="form-label">Account Number / IBAN <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control @error('account_number') is-invalid @enderror" id="account_number" name="account_number" value="{{ old('account_number', $bank->account_number ?? '') }}">
+                        @error('account_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                      </div>
+                      <div class="col-md-6">
+                        <label for="swift_bic" class="form-label">SWIFT / BIC <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control @error('swift_bic') is-invalid @enderror" id="swift_bic" name="swift_bic" value="{{ old('swift_bic', $bank->swift_bic ?? '') }}">
+                        @error('swift_bic')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                      </div>
+                      <div class="col-md-6">
+                        <label for="currency" class="form-label">Bank Currency <span class="text-danger">*</span></label>
+                        <select id="currency" name="currency" class="form-select @error('currency') is-invalid @enderror" data-selected="{{ old('currency', $bank->bank_currency ?? $userDetail->currency ?? 'USD') }}"></select>
+                        @error('currency')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -173,7 +192,7 @@
             </div>
 
             <div class="d-flex justify-content-end mt-4">
-              <button type="submit" class="btn btn-primary">
+              <button type="submit" class="btn btn-primary" id="savePaymentBtn">
                 <i class="ti ti-device-floppy me-2"></i>
                 Save Changes
               </button>
@@ -243,6 +262,10 @@
 
   // init on load
   document.addEventListener('DOMContentLoaded', () => {
+    const cur = document.getElementById('currency');
+    if (cur && typeof fillCurrencySelect === 'function') {
+      fillCurrencySelect(cur, cur.getAttribute('data-selected') || 'USD');
+    }
     handlePaymentTypeChange();
   });
 
@@ -288,35 +311,15 @@
     });
   }
 
-  // Resend studio invite
-  document.getElementById('resendStudioInviteBtn')?.addEventListener('click', async () => {
-    const btn = document.getElementById('resendStudioInviteBtn');
-    const original = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class=\"spinner-border spinner-border-sm me-2\"></span>Sending...';
-
-    try {
-      const resp = await fetch('{{ route("studio.resend-invite") }}', {
-        method: 'POST',
-        headers: {
-          'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').content,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      const data = await resp.json();
-      if (data.success) {
-        alert(data.message || 'Invite resent successfully');
-      } else {
-        alert(data.message || 'Failed to resend invite');
-      }
-    } catch (e) {
-      alert('Failed to resend invite');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = original;
-    }
-  });
+  // Disable submit button + loading text while saving
+  const paymentForm = document.getElementById('paymentForm');
+  const savePaymentBtn = document.getElementById('savePaymentBtn');
+  if (paymentForm && savePaymentBtn) {
+    paymentForm.addEventListener('submit', () => {
+      savePaymentBtn.disabled = true;
+      savePaymentBtn.textContent = 'Submitting...';
+    });
+  }
 </script>
 @endpush
 

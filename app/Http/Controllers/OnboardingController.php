@@ -3,56 +3,167 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserDetail;
+use App\Models\UserBankDetail;
+use App\Models\Studio;
 use App\Models\Question;
 use App\Models\UserQuestion;
+use App\Mail\StudioPaymentDecisionMail;
+use App\Mail\StudioFirstTimeConnectMail;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\StudioStripeInviteMail;
+use Illuminate\Support\Facades\URL;
 
 class OnboardingController extends Controller
 {
+    /** Slugs allowed for primary + other tattoo styles (must match onboarding UI). */
+    private const TATTOO_STYLE_SLUGS = [
+        'traditional', 'neo-traditional', 'japanese', 'realism', 'blackwork',
+        'minimalist', 'geometric', 'watercolor', 'tribal', 'dotwork', 'new-school', 'illustrative',
+    ];
+
     /**
-     * Display the onboarding page.
+     * Legacy entry: send users to the correct step in the multi-page onboarding flow.
      */
     public function index(Request $request)
     {
         $user = $request->user();
-        
-        // If user has already completed onboarding, redirect to dashboard
+
         if ($user->on_boarding === 'yes') {
             return redirect()->route('dashboard');
         }
 
-        // Get or create user detail
+        $step = (int) ($user->userDetail?->current_step ?? 1);
+
+        return redirect()->to($this->onboardingUrlForStep($step));
+    }
+
+    /**
+     * Resolve onboarding URL for step 1–6 (profile → … → payment).
+     */
+    protected function onboardingUrlForStep(int $step): string
+    {
+        return match ($step) {
+            1 => route('onboarding.profile'),
+            2 => route('onboarding.styles-social'),
+            3 => route('onboarding.studio'),
+            4 => route('onboarding.preferences'),
+            5 => route('onboarding.calendar'),
+            6 => route('onboarding.payment'),
+            default => route('onboarding.profile'),
+        };
+    }
+
+    /**
+     * @return \Illuminate\Http\RedirectResponse|null
+     */
+    protected function ensureOnboardingPage(Request $request, int $pageStep)
+    {
+        $user = $request->user();
+
+        if ($user->on_boarding === 'yes') {
+            return redirect()->route('dashboard');
+        }
+
+        if ($user->role !== 'artist') {
+            return redirect()->route('dashboard');
+        }
+
         $userDetail = $user->userDetail;
-        if (!$userDetail) {
+        $current = $userDetail ? (int) ($userDetail->current_step ?? 1) : 1;
+
+        if ($pageStep > $current) {
+            return redirect()->to($this->onboardingUrlForStep($current))
+                ->with('info', 'Complete the previous steps first.');
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{userDetail: UserDetail, currentStep: int, completedSteps: array}
+     */
+    protected function onboardingViewData(Request $request): array
+    {
+        $user = $request->user();
+        $userDetail = $user->userDetail;
+        if (! $userDetail) {
             $userDetail = new UserDetail();
             $userDetail->user_id = $user->id;
             $userDetail->current_step = 1;
             $userDetail->completed_steps = [];
         }
-        
-        // Get current step from user detail or default to 1
-        $currentStep = $userDetail->current_step ?? 1;
-        
-        // Get completed steps
-        $completedSteps = $userDetail->completed_steps ?? [];
 
-        return view('onboarding.index', [
+        return [
             'userDetail' => $userDetail,
-            'currentStep' => $currentStep,
-            'completedSteps' => $completedSteps,
-        ]);
+            'currentStep' => (int) ($userDetail->current_step ?? 1),
+            'completedSteps' => $userDetail->completed_steps ?? [],
+        ];
+    }
+
+    public function profile(Request $request)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 1)) {
+            return $redirect;
+        }
+
+        return view('onboarding.profile', $this->onboardingViewData($request) + ['activeNav' => 'profile']);
+    }
+
+    public function stylesSocial(Request $request)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 2)) {
+            return $redirect;
+        }
+
+        return view('onboarding.styles-social', $this->onboardingViewData($request) + ['activeNav' => 'styles-social']);
+    }
+
+    public function studio(Request $request)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 3)) {
+            return $redirect;
+        }
+
+        return view('onboarding.studio', $this->onboardingViewData($request) + ['activeNav' => 'studio']);
+    }
+
+    public function preferences(Request $request)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 4)) {
+            return $redirect;
+        }
+
+        return view('onboarding.preferences', $this->onboardingViewData($request) + ['activeNav' => 'preferences']);
+    }
+
+    public function calendar(Request $request)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 5)) {
+            return $redirect;
+        }
+
+        return view('onboarding.calendar', $this->onboardingViewData($request) + ['activeNav' => 'calendar']);
+    }
+
+    public function payment(Request $request)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+            return $redirect;
+        }
+
+        return view('onboarding.payment', $this->onboardingViewData($request) + ['activeNav' => 'payment']);
     }
 
     /**
-     * Save step 1: Complete Profile
+     * Save onboarding profile step (avatar, name, username, mobile).
      */
-    public function saveStep1(Request $request)
+    public function saveProfile(Request $request)
     {
         try {
             $user = $request->user();
@@ -110,9 +221,10 @@ class OnboardingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Step 1 saved successfully',
+                'message' => 'Profile saved',
                 'nextStep' => 2,
                 'avatar' => $avatarPath ? asset($avatarPath) : null,
+                'redirect' => route('onboarding.styles-social'),
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -129,9 +241,171 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Save step 2: Studio Information
+     * Save styles & social (step 2 of 6).
      */
-    public function saveStep2(Request $request)
+    public function saveStylesSocial(Request $request)
+    {
+        try {
+            $maxYear = (int) date('Y');
+            $validated = $request->validate([
+                'tattooing_since' => ['required', 'integer', 'min:1970', 'max:'.$maxYear],
+                'primary_style' => ['required', 'string', Rule::in(self::TATTOO_STYLE_SLUGS)],
+                'other_styles' => ['nullable', 'string', 'max:2000'],
+                'social_links' => ['nullable', 'array'],
+                'social_links.instagram' => ['nullable', 'string', 'max:255'],
+                'social_links.tiktok' => ['nullable', 'string', 'max:255'],
+                'social_links.youtube' => ['nullable', 'string', 'max:255'],
+                'social_links.facebook' => ['nullable', 'string', 'max:255'],
+                'social_links.website' => ['nullable', 'string', 'max:500'],
+            ], [
+                'tattooing_since.required' => 'Please select the year you started tattooing.',
+                'primary_style.required' => 'Please select your primary style.',
+            ]);
+
+            $other = array_filter(array_map('trim', explode(',', (string) ($validated['other_styles'] ?? ''))));
+            foreach ($other as $slug) {
+                if (! in_array($slug, self::TATTOO_STYLE_SLUGS, true)) {
+                    throw ValidationException::withMessages([
+                        'other_styles' => ['One or more additional styles are invalid. Please pick styles from the list.'],
+                    ]);
+                }
+            }
+
+            $socialIn = $validated['social_links'] ?? [];
+            $website = isset($socialIn['website']) ? trim((string) $socialIn['website']) : '';
+            if ($website !== '') {
+                if (! preg_match('#^https?://#i', $website)) {
+                    throw ValidationException::withMessages([
+                        'social_links.website' => ['Website must start with http:// or https://'],
+                    ]);
+                }
+                if (filter_var($website, FILTER_VALIDATE_URL) === false) {
+                    throw ValidationException::withMessages([
+                        'social_links.website' => ['Please enter a valid website URL.'],
+                    ]);
+                }
+            }
+
+            $user = $request->user();
+            $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+            $social = array_filter($validated['social_links'] ?? [], fn ($v) => $v !== null && $v !== '');
+
+            $stylePayload = array_filter([
+                'tattooing_since' => $validated['tattooing_since'] ?? null,
+                'primary_style' => $validated['primary_style'] ?? null,
+                'other_styles' => $other ?: null,
+            ], fn ($v) => $v !== null && $v !== [] && $v !== '');
+
+            $userDetail->update([
+                'tattoo_styles' => ! empty($stylePayload) ? $stylePayload : null,
+                'social_links' => ! empty($social) ? $social : null,
+                'current_step' => 3,
+                'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [2])),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Styles & social saved',
+                'nextStep' => 3,
+                'redirect' => route('onboarding.studio'),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please fix the validation errors',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update styles & social (artist settings page).
+     */
+    public function updateStylesSocial(Request $request)
+    {
+        try {
+            $maxYear = (int) date('Y');
+            $validated = $request->validate([
+                'tattooing_since' => ['required', 'integer', 'min:1970', 'max:'.$maxYear],
+                'primary_style' => ['required', 'string', Rule::in(self::TATTOO_STYLE_SLUGS)],
+                'other_styles' => ['nullable', 'string', 'max:2000'],
+                'social_links' => ['nullable', 'array'],
+                'social_links.instagram' => ['nullable', 'string', 'max:255'],
+                'social_links.tiktok' => ['nullable', 'string', 'max:255'],
+                'social_links.youtube' => ['nullable', 'string', 'max:255'],
+                'social_links.facebook' => ['nullable', 'string', 'max:255'],
+                'social_links.website' => ['nullable', 'string', 'max:500'],
+            ], [
+                'tattooing_since.required' => 'Please select the year you started tattooing.',
+                'primary_style.required' => 'Please select your primary style.',
+            ]);
+
+            $other = array_filter(array_map('trim', explode(',', (string) ($validated['other_styles'] ?? ''))));
+            foreach ($other as $slug) {
+                if (! in_array($slug, self::TATTOO_STYLE_SLUGS, true)) {
+                    throw ValidationException::withMessages([
+                        'other_styles' => ['One or more additional styles are invalid. Please pick styles from the list.'],
+                    ]);
+                }
+            }
+
+            $socialIn = $validated['social_links'] ?? [];
+            $website = isset($socialIn['website']) ? trim((string) $socialIn['website']) : '';
+            if ($website !== '') {
+                if (! preg_match('#^https?://#i', $website)) {
+                    throw ValidationException::withMessages([
+                        'social_links.website' => ['Website must start with http:// or https://'],
+                    ]);
+                }
+                if (filter_var($website, FILTER_VALIDATE_URL) === false) {
+                    throw ValidationException::withMessages([
+                        'social_links.website' => ['Please enter a valid website URL.'],
+                    ]);
+                }
+            }
+
+            $user = $request->user();
+            $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+            $social = array_filter($validated['social_links'] ?? [], fn ($v) => $v !== null && $v !== '');
+            $stylePayload = array_filter([
+                'tattooing_since' => $validated['tattooing_since'] ?? null,
+                'primary_style' => $validated['primary_style'] ?? null,
+                'other_styles' => $other ?: null,
+            ], fn ($v) => $v !== null && $v !== [] && $v !== '');
+
+            $userDetail->update([
+                'tattoo_styles' => ! empty($stylePayload) ? $stylePayload : null,
+                'social_links' => ! empty($social) ? $social : null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Styles & social updated successfully.',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please fix the validation errors',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Save onboarding studio / workspace address step.
+     */
+    public function saveStudio(Request $request)
     {
         try {
             $validated = $request->validate([
@@ -144,6 +418,9 @@ class OnboardingController extends Controller
                 'postal_code' => ['required', 'string', 'max:50'],
                 'country' => ['required', 'string', 'max:255'],
                 'google_maps_link' => ['nullable', 'url', 'max:500'],
+                'workspace_type' => ['required', 'string', 'max:32'],
+            ], [
+                'workspace_type.required' => 'Please select a workspace type.',
             ]);
 
             $user = $request->user();
@@ -159,14 +436,16 @@ class OnboardingController extends Controller
                 'postal_code' => $validated['postal_code'],
                 'country' => $validated['country'],
                 'google_maps_link' => $validated['google_maps_link'] ?? null,
-                'current_step' => 3,
-                'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [2])),
+                'workspace_type' => $validated['workspace_type'] ?? null,
+                'current_step' => 4,
+                'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [3])),
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Step 2 saved successfully',
-                'nextStep' => 3,
+                'message' => 'Studio information saved',
+                'nextStep' => 4,
+                'redirect' => route('onboarding.preferences'),
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -307,6 +586,18 @@ class OnboardingController extends Controller
                 $rules['studio_email'] = ['required', 'email', 'max:255'];
                 $messages['studio_email.required'] = 'Studio email is required.';
                 $messages['studio_email.email'] = 'Please enter a valid email address.';
+            } elseif ($paymentType === 'inkjin_account') {
+                $rules['account_holder_name'] = ['required', 'string', 'max:255'];
+                $rules['bank_name'] = ['required', 'string', 'max:255'];
+                $rules['account_number'] = ['required', 'string', 'max:255'];
+                $rules['swift_bic'] = ['required', 'string', 'max:50'];
+                $rules['currency'] = ['required', 'string', 'size:3'];
+
+                $messages['account_holder_name.required'] = 'Account holder name is required.';
+                $messages['bank_name.required'] = 'Bank name is required.';
+                $messages['account_number.required'] = 'Account number is required.';
+                $messages['swift_bic.required'] = 'SWIFT/BIC is required.';
+                $messages['currency.required'] = 'Please select a currency.';
             }
 
             $validated = $request->validate($rules, $messages);
@@ -329,48 +620,40 @@ class OnboardingController extends Controller
             if ($paymentType === 'artist_account') {
                 $userDetail->stripe_account_id = $validated['stripe_account_id'];
                 $userDetail->studio_id = null;
-                $userDetail->studio_email = null;
-                $userDetail->studio_payment_status = null;
+                $userDetail->payment_status = 'approved';
             } elseif ($paymentType === 'studio_account') {
                 $studioName = $userDetail->studio_name ?? 'Studio';
-                $studioEmail = $validated['studio_email'];
-
-                $studio = \App\Models\Studio::firstOrCreate(
-                    ['email' => $studioEmail],
-                    ['name' => $studioName]
-                );
+                $studioEmail = strtolower(trim($validated['studio_email']));
+                $studio = Studio::firstWhere('email', $studioEmail);
+                $existingStudio = (bool) $studio;
+                if (!$studio) {
+                    $studio = Studio::create([
+                        'name' => $studioName,
+                        'email' => $studioEmail,
+                        'stripe_account_id' => null,
+                    ]);
+                }
 
                 $userDetail->studio_id = $studio->id;
-                $userDetail->studio_email = $studioEmail;
-                $userDetail->studio_payment_status = $userDetail->studio_payment_status ?? 'pending';
-                $userDetail->stripe_account_id = null; // will be set when studio connects
+                $userDetail->stripe_account_id = $studio->stripe_account_id;
+                $userDetail->payment_status = 'pending';
             } else {
                 // inkjin_account
                 $userDetail->studio_id = null;
-                $userDetail->studio_email = null;
-                $userDetail->studio_payment_status = null;
                 $userDetail->stripe_account_id = null;
+                $userDetail->payment_status = 'approved';
+                $userDetail->currency = strtoupper($validated['currency']);
+
+                $this->upsertUserBankDetails($user, $validated);
             }
 
             $userDetail->save();
 
-            if ($paymentType === 'studio_account' && isset($validated['studio_email'])) {
-                try {
-                    $studioName = $userDetail->studio_name ?? 'Your Studio';
-                    $artistName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
-                    if (empty($artistName)) {
-                        $artistName = $user->user_name ?? $user->email;
-                    }
-
-                    Mail::to($validated['studio_email'])->send(
-                        new StudioStripeInviteMail($studioName, $artistName, $userDetail->id)
-                    );
-                } catch (\Exception $e) {
-                    Log::error('Failed to send studio Stripe invite email (settings)', [
-                        'studio_email' => $validated['studio_email'],
-                        'artist_id' => $user->id,
-                        'error' => $e->getMessage(),
-                    ]);
+            if ($paymentType === 'studio_account') {
+                if ($existingStudio) {
+                    $this->sendStudioDecisionEmail($user, $userDetail, $studio, true);
+                } else {
+                    $this->sendStudioFirstTimeConnectEmail($user, $userDetail, $studio);
                 }
             }
 
@@ -383,12 +666,12 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Save step 3: Scheduling Type Selection (Auto or Managed)
+     * Save onboarding calendar / scheduling type (auto vs managed, Google Calendar when auto).
      */
-    public function saveStep3(Request $request)
+    public function saveCalendar(Request $request)
     {
         try {
-            $user = $request->user();
+            $user = $request->user();   
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
             // Check if this is a preferences update from settings page
@@ -401,6 +684,7 @@ class OnboardingController extends Controller
                     'currency' => ['required'],
                     'timezone' => ['required'],
                     'date_time_format' => ['required'],
+                    'size_unit' => ['required'],
                     'minimum_deposit_amount' => ['required', 'numeric', 'min:0'],
                     'minimum_deposit_type' => ['required'],
                     'cancellation_window' => ['required'],
@@ -449,6 +733,7 @@ class OnboardingController extends Controller
                     'currency' => $validated['currency'],
                     'timezone' => $validated['timezone'],
                     'date_time_format' => $validated['date_time_format'],
+                    'size_unit' => $validated['size_unit'],
                     'minimum_deposit_amount' => $minimumDepositAmount,
                     'minimum_deposit_type' => $validated['minimum_deposit_type'],
                     'cancellation_window' => $validated['cancellation_window'],
@@ -528,24 +813,25 @@ class OnboardingController extends Controller
             }
             
             $completedSteps = $userDetail->completed_steps ?? [];
-            if (!in_array(3, $completedSteps)) {
-                $completedSteps[] = 3;
+            if (! in_array(5, $completedSteps)) {
+                $completedSteps[] = 5;
             }
 
             $userDetail->update([
                 'scheduling_type' => $schedulingType,
-                'current_step' => 4,
+                'current_step' => 6,
                 'completed_steps' => $completedSteps,
             ]);
 
             $message = $schedulingType === 'auto'
-                ? 'Step 3 saved successfully. Auto scheduling with Google Calendar is enabled.'
-                : 'Step 3 saved successfully. Managed scheduling is enabled.';
+                ? 'Scheduling saved. Auto scheduling with Google Calendar is enabled.'
+                : 'Scheduling saved. Managed scheduling is enabled.';
 
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'nextStep' => 4,
+                'nextStep' => 6,
+                'redirect' => route('onboarding.payment'),
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -562,9 +848,9 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Save step 4: Preferences
+     * Save onboarding preferences (currency, deposits, booking rules, consultation options).
      */
-    public function saveStep4(Request $request)
+    public function savePreferences(Request $request)
     {
         try {
             // Check if consultation is required
@@ -574,6 +860,7 @@ class OnboardingController extends Controller
                 'currency' => ['required'],
                 'timezone' => ['required'],
                 'date_time_format' => ['required'],
+                'size_unit' => ['required'],
                 'minimum_deposit_amount' => ['required', 'numeric', 'min:0'],
                 'minimum_deposit_type' => ['required'],
                 'booking_fee_type' => ['required', 'in:client,artist,split'],
@@ -628,6 +915,7 @@ class OnboardingController extends Controller
                 'currency' => $validated['currency'],
                 'timezone' => $validated['timezone'],
                 'date_time_format' => $validated['date_time_format'],
+                'size_unit' => $validated['size_unit'],
                 'minimum_deposit_amount' => $minimumDepositAmount,
                 'minimum_deposit_type' => $validated['minimum_deposit_type'],
                 'booking_fee_type' => $validated['booking_fee_type'],
@@ -681,8 +969,9 @@ class OnboardingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Step 4 saved successfully',
+                'message' => 'Preferences saved',
                 'nextStep' => 5,
+                'redirect' => route('onboarding.calendar'),
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -699,9 +988,9 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Save step 5: Payments
+     * Save onboarding payment / payout configuration (final step).
      */
-    public function saveStep5(Request $request)
+    public function savePayment(Request $request)
     {
         try {
             $user = $request->user();
@@ -729,77 +1018,64 @@ class OnboardingController extends Controller
                 $rules['studio_email'] = ['required', 'email', 'max:255'];
                 $messages['studio_email.required'] = 'Studio email is required.';
                 $messages['studio_email.email'] = 'Please enter a valid email address.';
+            } elseif ($paymentType === 'inkjin_account') {
+                $rules['account_holder_name'] = ['required', 'string', 'max:255'];
+                $rules['bank_name'] = ['required', 'string', 'max:255'];
+                $rules['account_number'] = ['required', 'string', 'max:255'];
+                $rules['swift_bic'] = ['required', 'string', 'max:50'];
+                $rules['currency'] = ['required', 'string', 'size:3'];
+                $messages['account_holder_name.required'] = 'Account holder name is required.';
+                $messages['bank_name.required'] = 'Bank name is required.';
+                $messages['account_number.required'] = 'Account number is required.';
+                $messages['swift_bic.required'] = 'SWIFT/BIC is required.';
+                $messages['currency.required'] = 'Please select a currency.';
             }
-            // inkjin_account: No additional validation needed
 
             $validated = $request->validate($rules, $messages);
 
             // Always set payment_type and completed_steps
             $userDetail->payment_type = $validated['payment_type'];
-            $userDetail->completed_steps = array_unique(array_merge($userDetail->completed_steps ?? [], [5]));
+            $userDetail->completed_steps = array_unique(array_merge($userDetail->completed_steps ?? [], [6]));
 
             // Handle artist account: Stripe ID saved on user_details
             if ($paymentType === 'artist_account' && isset($validated['stripe_account_id'])) {
                 $userDetail->stripe_account_id = $validated['stripe_account_id'];
-                // Clear studio-related fields
                 $userDetail->studio_id = null;
-                $userDetail->studio_email = null;
-                $userDetail->studio_payment_status = null;
+                $userDetail->payment_status = 'approved';
             } elseif ($paymentType === 'studio_account') {
                 // Studio account: find or create studio record
                 $studioName = $userDetail->studio_name ?? 'Studio';
-                $studioEmail = $validated['studio_email'];
-
-                $studio = \App\Models\Studio::firstOrCreate(
-                    ['email' => $studioEmail],
-                    ['name' => $studioName]
-                );
-
-                // Link artist to studio and set status to pending
-                $userDetail->studio_id = $studio->id;
-                $userDetail->studio_email = $studioEmail;
-                // If not set yet or previously something else, set to pending
-                if (!$userDetail->studio_payment_status) {
-                    $userDetail->studio_payment_status = 'pending';
+                $studioEmail = strtolower(trim($validated['studio_email']));
+                $studio = Studio::firstWhere('email', $studioEmail);
+                $existingStudio = (bool) $studio;
+                if (!$studio) {
+                    $studio = Studio::create([
+                        'name' => $studioName,
+                        'email' => $studioEmail,
+                        'stripe_account_id' => null,
+                    ]);
                 }
 
-                // Clear artist Stripe account ID when using studio payouts
-                $userDetail->stripe_account_id = null;
+                // Link artist to studio and mirror studio Stripe state
+                $userDetail->studio_id = $studio->id;
+                $userDetail->stripe_account_id = $studio->stripe_account_id;
+                $userDetail->payment_status = 'pending';
             } elseif ($paymentType === 'inkjin_account') {
                 // Inkjin account: clear studio and artist Stripe references
                 $userDetail->studio_id = null;
-                $userDetail->studio_email = null;
-                $userDetail->studio_payment_status = null;
                 $userDetail->stripe_account_id = null;
+                $userDetail->payment_status = 'approved';
+                $userDetail->currency = strtoupper($validated['currency']);
+                $this->upsertUserBankDetails($user, $validated);
             }
 
             $userDetail->save();
 
-            // Send studio invite email if studio_account is selected
-            if ($paymentType === 'studio_account' && isset($validated['studio_email'])) {
-                try {
-                    $studioName = $userDetail->studio_name ?? 'Your Studio';
-                    $artistName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
-                    if (empty($artistName)) {
-                        $artistName = $user->user_name ?? $user->email;
-                    }
-
-                    Mail::to($validated['studio_email'])->send(
-                        new StudioStripeInviteMail($studioName, $artistName, $userDetail->id)
-                    );
-
-                    Log::info('Studio Stripe invite email sent', [
-                        'studio_email' => $validated['studio_email'],
-                        'artist_id' => $user->id,
-                        'user_detail_id' => $userDetail->id,
-                    ]);
-                } catch (\Exception $e) {
-                    // Log error but don't fail onboarding
-                    Log::error('Failed to send studio Stripe invite email', [
-                        'studio_email' => $validated['studio_email'],
-                        'artist_id' => $user->id,
-                        'error' => $e->getMessage(),
-                    ]);
+            if ($paymentType === 'studio_account') {
+                if ($existingStudio) {
+                    $this->sendStudioDecisionEmail($user, $userDetail, $studio, true);
+                } else {
+                    $this->sendStudioFirstTimeConnectEmail($user, $userDetail, $studio);
                 }
             }
 
@@ -831,7 +1107,7 @@ class OnboardingController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Error in saveStep5', [
+            Log::error('Error in savePayment', [
                 'user_id' => $request->user()->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -841,6 +1117,151 @@ class OnboardingController extends Controller
                 'message' => 'An error occurred: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function studioPaymentDecision(Request $request, UserDetail $userDetail, string $decision)
+    {
+        if (!$request->hasValidSignature()) {
+            return view('studio.payment-decision-result', [
+                'status' => 'error',
+                'message' => 'Invalid or expired link.',
+            ]);
+        }
+
+        $decision = strtolower($decision);
+        if (!in_array($decision, ['allow', 'decline'], true)) {
+            return view('studio.payment-decision-result', [
+                'status' => 'error',
+                'message' => 'Invalid decision.',
+            ]);
+        }
+
+        if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
+            return view('studio.payment-decision-result', [
+                'status' => 'error',
+                'message' => 'This request is no longer active.',
+            ]);
+        }
+
+        if (in_array((string) $userDetail->payment_status, ['approved', 'rejected'], true)) {
+            return view('studio.payment-decision-result', [
+                'status' => 'locked',
+                'message' => 'Decision already submitted and cannot be changed.',
+            ]);
+        }
+
+        $studio = Studio::find($userDetail->studio_id);
+        if (!$studio) {
+            return view('studio.payment-decision-result', [
+                'status' => 'error',
+                'message' => 'Studio not found.',
+            ]);
+        }
+
+        if ($decision === 'allow') {
+            $userDetail->payment_status = 'approved';
+            $userDetail->stripe_account_id = $studio->stripe_account_id;
+            $userDetail->save();
+
+            return view('studio.payment-decision-result', [
+                'status' => 'approved',
+                'message' => 'Artist request approved successfully.',
+            ]);
+        }
+
+        $userDetail->payment_status = 'rejected';
+        $userDetail->stripe_account_id = null;
+        $userDetail->save();
+
+        return view('studio.payment-decision-result', [
+            'status' => 'rejected',
+            'message' => 'Artist request declined successfully.',
+        ]);
+    }
+
+    public function studioPaymentStatus(Request $request)
+    {
+        $user = $request->user();
+        $userDetail = $user->userDetail;
+
+        if (!$userDetail || $userDetail->payment_type !== 'studio_account') {
+            return redirect()->route('dashboard');
+        }
+
+        $status = (string) ($userDetail->payment_status ?? 'pending');
+        $message = match ($status) {
+            'approved' => 'Your studio payment request has been approved.',
+            'rejected' => 'Your studio payment request was declined. Please contact your studio or update your payment method.',
+            default => 'Your studio payment request is pending approval. You will get access after studio approval.',
+        };
+
+        return view('studio.payment-request-status', [
+            'status' => $status,
+            'message' => $message,
+            'hideSidebar' => true,
+        ]);
+    }
+
+    private function sendStudioDecisionEmail($artistUser, UserDetail $userDetail, Studio $studio, bool $existingStudio): void
+    {
+        $allowUrl = URL::temporarySignedRoute(
+            'studio.payment.decision',
+            now()->addDays(30),
+            ['userDetail' => $userDetail->id, 'decision' => 'allow']
+        );
+
+        $declineUrl = URL::temporarySignedRoute(
+            'studio.payment.decision',
+            now()->addDays(30),
+            ['userDetail' => $userDetail->id, 'decision' => 'decline']
+        );
+
+        $artistName = trim(($artistUser->first_name ?? '') . ' ' . ($artistUser->last_name ?? ''));
+        if ($artistName === '') {
+            $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
+        }
+
+        Mail::to($studio->email)->send(new StudioPaymentDecisionMail(
+            $studio->name ?? 'Studio',
+            $artistName,
+            $allowUrl,
+            $declineUrl,
+            $existingStudio
+        ));
+    }
+
+    private function sendStudioFirstTimeConnectEmail($artistUser, UserDetail $userDetail, Studio $studio): void
+    {
+        $artistName = trim(($artistUser->first_name ?? '') . ' ' . ($artistUser->last_name ?? ''));
+        if ($artistName === '') {
+            $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
+        }
+
+        $connectUrl = URL::temporarySignedRoute(
+            'studio.stripe.connect',
+            now()->addDays(30),
+            ['userDetail' => $userDetail->id]
+        );
+
+        Mail::to($studio->email)->send(new StudioFirstTimeConnectMail(
+            $studio->name ?? 'Studio',
+            $artistName,
+            $connectUrl
+        ));
+    }
+
+    private function upsertUserBankDetails($user, array $validated): void
+    {
+        UserBankDetail::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'account_holder_name' => trim((string) $validated['account_holder_name']),
+                'bank_name' => trim((string) $validated['bank_name']),
+                'account_number' => trim((string) $validated['account_number']),
+                'swift_bic' => strtoupper(trim((string) $validated['swift_bic'])),
+                'bank_currency' => strtoupper(trim((string) $validated['currency'])),
+            ]
+        );
     }
 
     /**
@@ -862,91 +1283,6 @@ class OnboardingController extends Controller
             'currentStep' => $userDetail->current_step ?? 1,
             'completedSteps' => $userDetail->completed_steps ?? [],
         ]);
-    }
-
-    /**
-     * Show studio waiting page - when artist selected studio account but studio hasn't connected yet
-     */
-    public function studioWaiting(Request $request)
-    {
-        $user = $request->user();
-        $userDetail = $user->userDetail;
-
-        // Only show if payment type is studio_account and Stripe is not connected
-        if (!$userDetail || 
-            $userDetail->payment_type !== 'studio_account' || 
-            !empty($userDetail->stripe_account_id)) {
-            return redirect()->route('dashboard');
-        }
-
-        return view('studio.waiting', [
-            'studioName' => $userDetail->studio_name ?? 'Studio',
-            'studioEmail' => $userDetail->studio_email ?? '',
-        ]);
-    }
-
-    /**
-     * Resend studio invite email
-     */
-    public function resendStudioInvite(Request $request)
-    {
-        try {
-            $user = $request->user();
-            $userDetail = $user->userDetail;
-
-            if (!$userDetail || $userDetail->payment_type !== 'studio_account') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid request.',
-                ], 400);
-            }
-
-            if (empty($userDetail->studio_email)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Studio email is not set.',
-                ], 400);
-            }
-
-            // Check if already connected
-            if (!empty($userDetail->stripe_account_id)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Studio Stripe account is already connected.',
-                ], 400);
-            }
-
-            // Send studio invite email
-            $studioName = $userDetail->studio_name ?? 'Your Studio';
-            $artistName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
-            if (empty($artistName)) {
-                $artistName = $user->user_name ?? $user->email;
-            }
-
-            Mail::to($userDetail->studio_email)->send(
-                new StudioStripeInviteMail($studioName, $artistName, $userDetail->id)
-            );
-
-            Log::info('Studio Stripe invite email resent', [
-                'studio_email' => $userDetail->studio_email,
-                'artist_id' => $user->id,
-                'user_detail_id' => $userDetail->id,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Invitation email has been resent to ' . $userDetail->studio_email,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to resend studio Stripe invite email', [
-                'user_id' => $request->user()->id,
-                'error' => $e->getMessage(),
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to resend invitation email. Please try again.',
-            ], 500);
-        }
     }
 
     public function imageUploader($file,$path)

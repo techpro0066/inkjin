@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Calendar Settings — Inkjin Book & Pay</title>
+  <meta name="description" content="Manage your scheduling model and calendar integration on Inkjin Book & Pay.">
+  <link rel="icon" href="images/favicon.png">
+  <link href="css/bookpay.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-container-high": "#ece6ef",
+            "surface-container-lowest": "#ffffff",
+            "surface-container": "#f2ecf5",
+            "background": "#fdf7ff",
+            "primary": "#310f7a",
+            "surface-dim": "#ded8e1",
+            "on-surface-variant": "#494552",
+            "secondary-fixed": "#e8ddff",
+            "on-secondary-fixed-variant": "#4a4168",
+            "inverse-surface": "#322f36",
+            "error-container": "#ffdad6",
+            "inverse-on-surface": "#f5eff8",
+            "tertiary": "#452200",
+            "surface-container-low": "#f8f1fb",
+            "surface": "#fdf7ff",
+            "secondary-fixed-dim": "#ccc0ee",
+            "on-tertiary-fixed": "#2e1500",
+            "on-error": "#ffffff",
+            "on-primary-container": "#b69fff",
+            "secondary": "#625881",
+            "inverse-primary": "#cebdff",
+            "primary-fixed": "#e8ddff",
+            "outline": "#7a7583",
+            "tertiary-fixed": "#ffdcc2",
+            "tertiary-container": "#653500",
+            "on-secondary": "#ffffff",
+            "on-primary": "#ffffff",
+            "on-tertiary-fixed-variant": "#6c3a04",
+            "error": "#ba1a1a",
+            "tertiary-fixed-dim": "#ffb77b",
+            "surface-bright": "#fdf7ff",
+            "surface-tint": "#664db1",
+            "on-error-container": "#93000a",
+            "on-primary-fixed": "#21005e",
+            "primary-fixed-dim": "#cebdff",
+            "on-tertiary-container": "#e49e62",
+            "on-primary-fixed-variant": "#4e3397",
+            "primary-container": "#482d91",
+            "on-surface": "#1c1b21",
+            "outline-variant": "#cac4d3",
+            "on-tertiary": "#ffffff",
+            "surface-container-highest": "#e6e0ea",
+            "on-background": "#1c1b21",
+            "secondary-container": "#ddd0ff",
+            "on-secondary-fixed": "#1e1539",
+            "surface-variant": "#e6e0ea",
+            "on-secondary-container": "#615780"
+          },
+          fontFamily: {
+            "headline": ["Plus Jakarta Sans"],
+            "body": ["Plus Jakarta Sans"],
+            "label": ["Plus Jakarta Sans"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+    .mobile-header { display: none; }
+    @media (max-width: 1023px) { .mobile-header { display: flex; } }
+
+    .sidebar { width: 260px; min-height: 100vh; }
+    @media (min-width: 1024px) { .sidebar { display: flex !important; } .main-content { margin-left: 260px; } }
+    @media (max-width: 1023px) { .main-content { padding-top: 70px; } }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); transition: all 0.2s; cursor: pointer; text-decoration: none; }
+    .nav-item:hover { background: rgba(255,255,255,0.1); }
+    .nav-item.active { background: #ffffff; color: #310f7a; font-weight: 600; }
+    .nav-item .material-symbols-outlined { font-size: 20px; }
+
+    .sidebar.open { display: flex !important; }
+    .main-content { padding-top: 60px !important; }
+    .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+    .sidebar-backdrop.open { display: block; }
+
+    .sub-menu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .sub-menu.open { max-height: 300px; }
+    .sub-menu-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 48px; border-radius: 10px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); transition: all 0.2s; cursor: pointer; text-decoration: none; }
+    .sub-menu-item:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.95); }
+    .sub-menu-item.active { background: rgba(255,255,255,0.15); color: #ffffff; font-weight: 600; }
+    .sub-menu-item .material-symbols-outlined { font-size: 18px; }
+
+    .content-arrow { transition: transform 0.3s ease; font-size: 18px !important; }
+    .content-arrow.rotated { transform: rotate(180deg); }
+
+    .schedule-card { border: 1.5px solid #cac4d3; border-radius: 16px; padding: 32px; cursor: pointer; transition: all 0.2s; background: white; position: relative; }
+    .schedule-card.selected { border-color: #310f7a; border-width: 2px; }
+    .schedule-card .radio-indicator { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #cac4d3; position: absolute; top: 20px; right: 20px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+    .schedule-card.selected .radio-indicator { border-color: #310f7a; background: #310f7a; }
+    .schedule-card.selected .radio-indicator::after { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; }
+
+    @media (max-width: 1023px) {
+      .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
+      body { overflow-x: hidden; }
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex">
+
+  <!-- Mobile Header -->
+  <div class="mobile-header fixed top-0 left-0 right-0 z-50 bg-primary text-white px-4 py-3 items-center justify-between">
+    <div><span class="text-lg font-bold">Inkjin</span></div>
+    <button onclick="var s=document.getElementById('mobileSidebar');var b=document.getElementById('sidebarBackdrop');s.classList.toggle('hidden');s.classList.toggle('flex');b.classList.toggle('hidden')" class="material-symbols-outlined text-white">menu</button>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar hidden lg:flex fixed top-0 left-0 bg-primary flex-col justify-between p-6 z-40" id="mobileSidebar">
+    <div>
+      <div class="mb-10">
+        <h1 class="text-white text-xl font-bold">Inkjin</h1>
+        <p class="text-white/50 text-[10px] uppercase tracking-[2px] mt-1">Book & Pay</p>
+      </div>
+      <nav class="flex flex-col gap-1">
+        <a href="dashboard.html" class="nav-item"><span class="material-symbols-outlined">home</span> Home</a>
+        <a href="#" class="nav-item"><span class="material-symbols-outlined">inbox</span> Inbox</a>
+        <a href="bookings.html" class="nav-item"><span class="material-symbols-outlined">calendar_month</span> Bookings</a>
+        <a href="requests.html" class="nav-item"><span class="material-symbols-outlined">pending_actions</span> Requests</a>
+        <a href="dashboard-payments.html" class="nav-item"><span class="material-symbols-outlined">payments</span> Payments</a>
+        <div>
+          <a href="#" class="nav-item" onclick="var s=document.getElementById('contentSub');s.classList.toggle('open');this.querySelector('.content-arrow').classList.toggle('rotated');return false;">
+            <span class="material-symbols-outlined">folder_open</span> Content
+            <span class="material-symbols-outlined content-arrow text-sm ml-auto">expand_more</span>
+          </a>
+          <div id="contentSub" class="sub-menu">
+            <a href="forms.html" class="sub-menu-item"><span class="material-symbols-outlined">description</span> Forms</a>
+            <a href="available-designs.html" class="sub-menu-item"><span class="material-symbols-outlined">palette</span> Available Designs</a>
+            <a href="portfolio.html" class="sub-menu-item"><span class="material-symbols-outlined">photo_library</span> Portfolio</a>
+            <a href="personal-page.html" class="sub-menu-item"><span class="material-symbols-outlined">web</span> Personal Page</a>
+          </div>
+        </div>
+        <div>
+          <a href="#" class="nav-item" onclick="var s=document.getElementById('settingsSub');s.classList.toggle('open');this.querySelector('.content-arrow').classList.toggle('rotated');return false;">
+            <span class="material-symbols-outlined">settings</span> Settings
+            <span class="material-symbols-outlined content-arrow rotated text-sm ml-auto">expand_more</span>
+          </a>
+          <div id="settingsSub" class="sub-menu open">
+            <a href="settings-profile.html" class="sub-menu-item"><span class="material-symbols-outlined">person</span> Profile</a>
+            <a href="settings-styles.html" class="sub-menu-item"><span class="material-symbols-outlined">brush</span> Styles & Social</a>
+            <a href="settings-studio.html" class="sub-menu-item"><span class="material-symbols-outlined">storefront</span> Studio</a>
+            <a href="settings-preferences.html" class="sub-menu-item"><span class="material-symbols-outlined">tune</span> Preferences</a>
+            <a href="settings-calendar.html" class="sub-menu-item active"><span class="material-symbols-outlined">calendar_today</span> Calendar</a>
+            <a href="settings-payments.html" class="sub-menu-item"><span class="material-symbols-outlined">payments</span> Payments</a>
+          </div>
+        </div>
+      </nav>
+    </div>
+    <div>
+      <div class="border-t border-white/10 pt-4 mt-4">
+        <a href="index.html" class="nav-item text-white/60 hover:text-white"><span class="material-symbols-outlined">logout</span> Log Out</a>
+      </div>
+      <div class="flex items-center gap-3 mt-4 pt-4 border-t border-white/10">
+        <div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-primary font-bold text-sm">JI</div>
+        <div>
+          <div class="text-white text-sm font-semibold">Julian Ink</div>
+          <div class="text-white/50 text-xs">julian@inkstudio.com</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content flex-1 min-h-screen flex flex-col">
+    <div class="flex-1 p-6 md:p-10 lg:p-12 max-w-4xl">
+
+      <!-- Page Header -->
+      <div class="mb-8">
+        <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Calendar Settings</h2>
+        <p class="text-on-surface-variant mt-1">Choose your scheduling model and manage calendar integrations.</p>
+      </div>
+
+      <!-- Schedule Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Auto Scheduling -->
+        <div class="schedule-card selected" onclick="selectSchedule('auto', this)" id="card-auto">
+          <div class="radio-indicator"></div>
+          <div class="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center mb-5">
+            <span class="material-symbols-outlined text-primary text-2xl">calendar_month</span>
+          </div>
+          <h3 class="text-xl font-bold text-on-surface mb-2">Auto Scheduling</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed mb-6">Sync your Google Calendar to automatically block off busy times and let clients book into open slots instantly.</p>
+          <span class="inline-block text-[10px] uppercase tracking-[1.5px] font-bold text-primary">Most Efficient</span>
+        </div>
+
+        <!-- Managed Scheduling -->
+        <div class="schedule-card" onclick="selectSchedule('managed', this)" id="card-managed">
+          <div class="radio-indicator"></div>
+          <div class="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center mb-5">
+            <span class="material-symbols-outlined text-primary text-2xl">edit_calendar</span>
+          </div>
+          <h3 class="text-xl font-bold text-on-surface mb-2">Managed Scheduling</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed mb-6">Total manual control. Review every request before it hits your books. Ideal for high-detail custom work.</p>
+          <span class="inline-block text-[10px] uppercase tracking-[1.5px] font-bold text-primary">Most Control</span>
+        </div>
+      </div>
+      <input type="hidden" id="scheduling_model" name="scheduling_model" value="auto">
+
+      <!-- Google Calendar Connection Status -->
+      <div id="google-calendar-status" class="bg-surface-container-low rounded-2xl p-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm border border-outline-variant/15">
+              <svg class="w-7 h-7" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="text-sm font-bold text-on-surface">Google Calendar</h4>
+                <span class="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-600"></span> Connected
+                </span>
+              </div>
+              <p class="text-on-surface-variant text-xs mt-1">Connected to <strong>john@gmail.com</strong> ✅</p>
+            </div>
+          </div>
+          <button type="button" onclick="alert('Google Calendar disconnected.')" class="text-sm font-semibold text-error hover:text-on-error-container border border-error/20 px-4 py-2 rounded-xl hover:bg-error-container/30 transition-colors">
+            Disconnect
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer: Save Changes -->
+    <div class="sticky bottom-0 bg-surface border-t border-outline-variant/10 px-6 md:px-10 lg:px-12 py-5 flex items-center justify-end">
+      <button type="button" onclick="alert('Calendar settings saved!')" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
+        <span class="material-symbols-outlined text-lg">save</span> Save Changes
+      </button>
+    </div>
+  </main>
+
+  <script>
+    function selectSchedule(type, el) {
+      document.querySelectorAll('.schedule-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('scheduling_model').value = type;
+
+      // Show/hide Google Calendar status based on selection
+      const gcStatus = document.getElementById('google-calendar-status');
+      if (type === 'auto') {
+        gcStatus.style.display = '';
+      } else {
+        gcStatus.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

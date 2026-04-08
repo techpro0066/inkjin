@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\InkJinArtist;
 use App\Models\InkJinTattoo;
-use App\Models\Studio;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -16,24 +15,7 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
-        
-        // Check if user is an artist with studio account payment type
-        if ($user->role === 'artist') {
-            $userDetail = $user->userDetail;
-            
-            // If payment type is studio_account and studio Stripe is not connected or not approved, show waiting page
-            if ($userDetail && $userDetail->payment_type === 'studio_account') {
-                $studio = $userDetail->studio_id ? Studio::find($userDetail->studio_id) : null;
-                
-                $studioConnected = $studio && $studio->stripe_account_id;
-                $studioApproved = $userDetail->studio_payment_status === 'approved';
 
-                if (!$studioConnected || !$studioApproved) {
-                    return redirect()->route('studio.waiting');
-                }
-            }
-        }
-        
         // For admin, get statistics
         if ($user->role === 'admin') {
             $stats = [

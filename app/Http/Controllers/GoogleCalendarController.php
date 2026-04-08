@@ -34,7 +34,7 @@ class GoogleCalendarController extends Controller
             return redirect($authUrl);
         } catch (\Exception $e) {
             Log::error('Google Calendar redirect error: ' . $e->getMessage());
-            return redirect()->route('onboarding.index')
+            return redirect()->route('onboarding.calendar')
                 ->with('error', 'Failed to connect to Google Calendar. Please try again.');
         }
     }
@@ -48,7 +48,7 @@ class GoogleCalendarController extends Controller
             $code = $request->get('code');
 
             if (!$code) {
-                return redirect()->route('onboarding.index')
+                return redirect()->route('onboarding.calendar')
                     ->with('error', 'Google Calendar authorization was cancelled.');
             }
 
@@ -62,7 +62,7 @@ class GoogleCalendarController extends Controller
 
             if (isset($accessToken['error'])) {
                 Log::error('Google OAuth error: ' . $accessToken['error']);
-                return redirect()->route('onboarding.index')
+                return redirect()->route('onboarding.calendar')
                     ->with('error', 'Failed to connect Google Calendar: ' . $accessToken['error']);
             }
 
@@ -127,11 +127,11 @@ class GoogleCalendarController extends Controller
                 'google_calendar_id' => $primaryCalendarId,
             ]);
 
-            return redirect()->route('onboarding.index')
+            return redirect()->route('onboarding.calendar')
                 ->with('success', 'Google Calendar connected successfully!');
         } catch (\Exception $e) {
             Log::error('Google Calendar callback error: ' . $e->getMessage());
-            return redirect()->route('onboarding.index')
+            return redirect()->route('onboarding.calendar')
                 ->with('error', 'Failed to connect Google Calendar. Please try again.');
         }
     }

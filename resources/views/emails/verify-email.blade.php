@@ -1,202 +1,142 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+  <head>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Your Email Address</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333333;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        
-        .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        .email-header {
-            background: #482e92;
-            padding: 20px 30px;
-            text-align: center;
-        }
-        
-        .logo-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        
-        .logo-text {
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: 600;
-            margin: 0;
-        }
-        
-        .email-logo {
-            max-width: 80px;
-            height: auto;
-        }
-        
-        .email-title {
-            display: none;
-        }
-        
-        .email-body {
-            padding: 40px 30px;
-        }
-        
-        .greeting {
-            font-size: 18px;
-            color: #333333;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-        
-        .content {
-            font-size: 16px;
-            color: #666666;
-            margin-bottom: 30px;
-            line-height: 1.8;
-        }
-        
-        .button-container {
-            text-align: center;
-            margin: 35px 0;
-        }
-        
-        .verify-button {
-            display: inline-block;
-            padding: 16px 40px;
-            background: linear-gradient(135deg, #482d91 0%, #5a3aa3 100%);
-            color: #ffffff !important;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(72, 45, 145, 0.3);
-        }
-        
-        .verify-button:hover {
-            background: linear-gradient(135deg, #5a3aa3 0%, #6b4ab5 100%);
-            box-shadow: 0 6px 16px rgba(72, 45, 145, 0.4);
-            transform: translateY(-2px);
-        }
-        
-        .email-footer {
-            background-color: #f8f8f8;
-            padding: 1rem;
-            text-align: center;
-            border-top: 1px solid #e0e0e0;
-        }
-        
-        .footer-text {
-            font-size: 14px;
-            color: #888888;
-            line-height: 1.6;
-        }
-        
-        .security-note {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #fff8e1;
-            border-left: 4px solid #ffc107;
-            border-radius: 4px;
-            text-align: center;
-        }
-        
-        .security-note-text {
-            font-size: 13px;
-            color: #856404;
-            line-height: 1.6;
-        }
-        
-        @media only screen and (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            
-            .email-header {
-                padding: 15px 20px;
-            }
-            
-            .logo-text {
-                font-size: 20px;
-            }
-            
-            .email-logo {
-                max-width: 60px;
-            }
-            
-            .email-body {
-                padding: 30px 20px;
-            }
-            
-            .verify-button {
-                padding: 14px 30px;
-                font-size: 15px;
-            }
-        }
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Verify your email — {{ config('app.name', 'Inkjin') }}</title>
+    <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+    <style type="text/css">
+      body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+      table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+      img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+      body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
     </style>
-</head>
-<body>
-    <div class="email-container">
-        <!-- Header -->
-        <div class="email-header">
-            <div class="logo-container">
-                <img src="{{ url('assets/img/branding/logo.png') }}" alt="{{ config('app.name', 'Inkjin') }}" class="email-logo" />
-                <span class="logo-text">{{ config('app.name', 'Inkjin') }}</span>
-            </div>
-            <h2 class="email-title">Verify Your Email Address</h2>
-        </div>
-        
-        <!-- Body -->
-        <div class="email-body">
-            <p class="greeting">Hello {{ $user->name }},</p>
-            
-            <p class="content">
-                Thank you for signing up with <strong>{{ config('app.name', 'Inkjin') }}</strong>! We're excited to have you on board.
-            </p>
-            
-            <p class="content">
-                To get started, please verify your email address by clicking the button below. This helps us ensure the security of your account.
-            </p>
-            
-            <!-- Verify Button -->
-            <div class="button-container">
-                <a href="{{ $verificationUrl }}" class="verify-button">Verify Email Address</a>
-            </div>
-            
-            <!-- Security Note -->
-            <div class="security-note">
-                <p class="security-note-text">
-                    <strong>Security Note:</strong> This verification link will expire in 60 minutes. If you didn't create an account, please ignore this email.
-                </p>
-            </div>
-        </div>
-        
-        <!-- Footer -->
-        <div class="email-footer">
-            <p class="footer-text" style="font-size: 12px; color: #aaaaaa;">
-                © {{ date('Y') }} {{ config('app.name', 'Inkjin') }}. All rights reserved.
-            </p>
-        </div>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #fdf7ff; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+    <!-- Preheader -->
+    <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
+      Verify your email to get started with {{ config('app.name', 'Inkjin') }} Book &amp; Pay.
     </div>
-</body>
+
+    <!-- Wrapper -->
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fdf7ff;">
+      <tr>
+        <td align="center" style="padding: 40px 16px;">
+          <!-- Container -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; width: 100%;">
+            <!-- Header -->
+            <tr>
+              <td align="center" style="padding: 0 0 32px 0;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 28px; font-weight: 800; color: #310f7a; letter-spacing: -0.5px;">
+                      {{ strtolower(config('app.name', 'Inkjin')) }}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Card -->
+            <tr>
+              <td style="background-color: #ffffff; border-radius: 16px; padding: 48px 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                  <!-- Monogram -->
+                  <tr>
+                    <td align="center" style="padding: 0 0 24px 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="background-color: #F8F1FB; border-radius: 12px; width: 48px; height: 48px; text-align: center; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 18px; font-weight: 800; color: #310f7a; line-height: 48px;">
+                            <img src="{{asset('design/images/icons/favicon.png')}}" alt="Inkjin" style="width: 48px; height: 48px; object-fit: cover;">
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <!-- Heading -->
+                  <tr>
+                    <td align="center" style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 24px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 12px 0;">
+                      Verify your email address
+                    </td>
+                  </tr>
+
+                  <!-- Body -->
+                  <tr>
+                    <td style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; color: #494552; line-height: 1.6; padding: 0 0 32px 0; text-align: center;">
+                      Thanks for signing up. To get started, please verify your email address by clicking the button below.
+                    </td>
+                  </tr>
+
+                  <!-- CTA Button -->
+                  <tr>
+                    <td align="center" style="padding: 0 0 32px 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td align="center" style="background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); border-radius: 12px;">
+                            <!--[if mso]>
+                            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $verificationUrl }}" style="height:52px;v-text-anchor:middle;width:240px;" arcsize="23%" fillcolor="#310f7a" stroke="f">
+                              <w:anchorlock/>
+                              <center style="color:#ffffff;font-family:'Segoe UI',sans-serif;font-size:16px;font-weight:bold;">Verify Email Address</center>
+                            </v:roundrect>
+                            <![endif]-->
+                            <!--[if !mso]><!-->
+                            <a href="{{ $verificationUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 12px; line-height: 1;">
+                              Verify Email Address
+                            </a>
+                            <!--<![endif]-->
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <!-- Expiry note -->
+                  <tr>
+                    <td style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #494552; line-height: 1.5; text-align: center; padding: 0 0 16px 0;">
+                      This verification link will expire in {{ config('auth.verification.expire', 60) }} minutes.
+                    </td>
+                  </tr>
+
+                  <!-- Divider -->
+                  <tr>
+                    <td style="padding: 8px 0 20px 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                        <tr>
+                          <td style="border-top: 1px solid #F8F1FB;"></td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <!-- Ignore note -->
+                  <tr>
+                    <td style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #494552; line-height: 1.5; text-align: center;">
+                      If you didn't create an account, you can safely ignore this email.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td align="center" style="padding: 32px 0 0 0;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 12px; color: #494552; line-height: 1.5; text-align: center;">
+                      &copy; {{ date('Y') }} {{ config('app.name', 'Inkjin') }}. All rights reserved.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+          <!-- /Container -->
+        </td>
+      </tr>
+    </table>
+  </body>
 </html>
+

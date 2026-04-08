@@ -21,6 +21,7 @@ class ProfileUpdateRequest extends FormRequest
         $userDetail = $user ? $user->userDetail : null;
 
         return [
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,heif,heic', 'max:2048'],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'user_name' => [

@@ -23,8 +23,21 @@ class CheckOnboarding
         $user = auth()->user();
 
         // If user has not completed onboarding and is not already on the onboarding page
-        if ($user->on_boarding !== 'yes' && !$request->routeIs('onboarding.*')) {
+        if ($user->on_boarding !== 'yes' && ! $request->routeIs('onboarding.*')) {
             return redirect()->route('onboarding.index');
+        }
+
+        // Artists using studio payouts cannot access the app until studio approves.
+        $userDetail = $user->userDetail;
+        if (
+            $user->on_boarding === 'yes' &&
+            $user->role === 'artist' &&
+            $userDetail &&
+            $userDetail->payment_type === 'studio_account' &&
+            in_array((string) $userDetail->payment_status, ['pending', 'rejected'], true) &&
+            ! $request->routeIs('studio.payment.status')
+        ) {
+            return redirect()->route('studio.payment.status');
         }
 
         return $next($request);

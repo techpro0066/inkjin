@@ -106,4 +106,12 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(UserQuestion::class);
     }
+
+    /**
+     * Inkjin bank details for payouts.
+     */
+    public function bankDetail()
+    {
+        return $this->hasOne(UserBankDetail::class);
+    }
 }

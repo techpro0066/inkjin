@@ -11,6 +11,8 @@ class UserDetail extends Model
         'user_id',
         'user_name',
         'mobile_number',
+        'tattoo_styles',
+        'social_links',
         'country',
         'city',
         'studio_name',
@@ -20,12 +22,14 @@ class UserDetail extends Model
         'state',
         'postal_code',
         'google_maps_link',
+        'workspace_type',
         'google_calendar_token',
         'google_calendar_id',
         'avatar',
-        'currency',
+        'currency', 
         'timezone',
         'date_time_format',
+        'size_unit',
         'minimum_deposit_amount',
         'minimum_deposit_type',
         'cancellation_window',
@@ -44,13 +48,14 @@ class UserDetail extends Model
         'scheduling_type',
         'booking_fee_type',
         'payment_type',
-        'studio_email',
         'studio_id',
-        'studio_payment_status',
+        'payment_status',
     ];
 
     protected $casts = [
         'completed_steps' => 'array',
+        'tattoo_styles' => 'array',
+        'social_links' => 'array',
         'google_calendar_token' => 'array',
         'require_consultation' => 'boolean',
         'require_gap_between_consultation_tattoo' => 'boolean',
@@ -62,5 +67,10 @@ class UserDetail extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function studio(): BelongsTo
+    {
+        return $this->belongsTo(Studio::class);
     }
 }

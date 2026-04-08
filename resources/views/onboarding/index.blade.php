@@ -185,10 +185,10 @@
             @endif
           </div>
 
-          <!-- Step 1: Complete Profile -->
-          <div class="step-content {{ $currentStep == 1 ? 'active' : '' }}" id="step1">
+          <!-- Profile -->
+          <div class="step-content {{ $currentStep == 1 ? 'active' : '' }}" id="onboarding-profile">
             <h5 class="mb-4">Complete Profile</h5>
-            <form id="step1Form" enctype="multipart/form-data">
+            <form id="profileForm" enctype="multipart/form-data">
               @csrf
               <div class="row g-3">
                 <div class="col-md-6 mb-3">
@@ -232,10 +232,10 @@
             </form>
           </div>
 
-          <!-- Step 2: Studio Information -->
-          <div class="step-content {{ $currentStep == 2 ? 'active' : '' }}" id="step2">
+          <!-- Studio -->
+          <div class="step-content {{ $currentStep == 2 ? 'active' : '' }}" id="onboarding-studio">
             <h5 class="mb-4">Studio Information</h5>
-            <form id="step2Form">
+            <form id="studioForm">
               @csrf
               <div class="row g-3">
                  <div class="col-12">
@@ -306,11 +306,11 @@
             </form>
           </div>
 
-          <!-- Step 3: Calendar Connection -->
-          <div class="step-content {{ $currentStep == 3 ? 'active' : '' }}" id="step3">
+          <!-- Calendar / scheduling -->
+          <div class="step-content {{ $currentStep == 3 ? 'active' : '' }}" id="onboarding-calendar">
             <h5 class="mb-4">Scheduling Type</h5>
             <p class="text-muted mb-4">Choose how you want to manage your scheduling. This step is required.</p>
-            <form id="step3Form">
+            <form id="calendarForm">
               @csrf
               <input type="hidden" name="scheduling_type" id="scheduling_type" value="{{ $userDetail->scheduling_type ?? '' }}">
               
@@ -390,17 +390,17 @@
                 <button type="button" class="btn btn-label-secondary" onclick="goToStep(2)">
                   <i class="ti ti-arrow-left me-2"></i> Previous
                 </button>
-                <button type="submit" class="btn btn-primary" id="step3SubmitBtn">
+                <button type="submit" class="btn btn-primary" id="calendarSubmitBtn">
                     Next Step <i class="ti ti-arrow-right ms-2"></i>
                   </button>
               </div>
             </form>
           </div>
 
-          <!-- Step 4: Preferences -->
-          <div class="step-content {{ $currentStep == 4 ? 'active' : '' }}" id="step4">
+          <!-- Preferences -->
+          <div class="step-content {{ $currentStep == 4 ? 'active' : '' }}" id="onboarding-preferences">
             <h5 class="mb-4">Preferences</h5>
-            <form id="step4Form">
+            <form id="preferencesForm">
               @csrf
               
               <!-- General Section -->
@@ -635,10 +635,10 @@
             </form>
           </div>
 
-          <!-- Step 5: Payments -->
-          <div class="step-content {{ $currentStep == 5 ? 'active' : '' }}" id="step5">
+          <!-- Payment -->
+          <div class="step-content {{ $currentStep == 5 ? 'active' : '' }}" id="onboarding-payment">
             <h5 class="mb-4">Payment Setup</h5>
-            <form id="step5Form">
+            <form id="onboardingPaymentForm">
               @csrf
               <div class="row g-3">
                 <!-- Payment Type Selection -->
@@ -1023,8 +1023,8 @@
     });
   }
 
-  // Validate Step 1
-  function validateStep1() {
+  // Validate profile step
+  function validateProfile() {
     clearErrors();
     const errors = {};
     let isValid = true;
@@ -1107,8 +1107,8 @@
     return isValid;
   }
 
-  // Validate Step 2
-  function validateStep2() {
+  // Validate studio step
+  function validateStudio() {
     clearErrors();
     const errors = {};
     let isValid = true;
@@ -1194,8 +1194,8 @@
     return isValid;
   }
 
-  // Validate Step 3 (scheduling type is required)
-  function validateStep3() {
+  // Validate calendar / scheduling step
+  function validateCalendar() {
     clearErrors();
     const errors = {};
     let isValid = true;
@@ -1315,8 +1315,8 @@
     }
   }
 
-  // Validate Step 4
-  function validateStep4() {
+  // Validate preferences step
+  function validatePreferences() {
     clearErrors();
     const errors = {};
     let isValid = true;
@@ -1449,16 +1449,16 @@
     return isValid;
   }
 
-  // Validate Step 5 (Stripe connection is required)
-  function validateStep5() {
+  // Validate payment step (Stripe connection when applicable)
+  function validatePayment() {
     clearErrors();
     const errors = {};
     let isValid = true;
 
-    // Check if we're on step 5
-    const step5Form = document.getElementById('step5Form');
-    if (!step5Form) {
-      return true; // Not on step 5, skip validation
+    // Check if we're on payment step
+    const paymentFormEl = document.getElementById('onboardingPaymentForm');
+    if (!paymentFormEl) {
+      return true; // Not on payment step, skip validation
     }
 
     // Check payment type is selected
@@ -1673,12 +1673,12 @@
     updateStepper(step);
   }
 
-  // Save Step 1
-  document.getElementById('step1Form').addEventListener('submit', async (e) => {
+  // Save profile
+  document.getElementById('profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     // Validate before submitting
-    if (!validateStep1()) {
+    if (!validateProfile()) {
       return;
     }
 
@@ -1689,7 +1689,7 @@
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
     try {
-      const response = await fetch('{{ route("onboarding.step1") }}', {
+      const response = await fetch('{{ route("onboarding.profile.save") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -1730,12 +1730,12 @@
     }
   });
 
-  // Save Step 2
-  document.getElementById('step2Form').addEventListener('submit', async (e) => {
+  // Save studio
+  document.getElementById('studioForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     // Validate before submitting
-    if (!validateStep2()) {
+    if (!validateStudio()) {
       return;
     }
 
@@ -1746,7 +1746,7 @@
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
     try {
-      const response = await fetch('{{ route("onboarding.step2") }}', {
+      const response = await fetch('{{ route("onboarding.studio.save") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -1778,16 +1778,16 @@
     }
   });
 
-  // Save Step 3
-  async function saveStep3() {
+  // Save calendar / scheduling
+  async function saveCalendar() {
     clearErrors();
     
     // Validate before submitting
-    if (!validateStep3()) {
+    if (!validateCalendar()) {
       return;
     }
 
-    const form = document.getElementById('step3Form');
+    const form = document.getElementById('calendarForm');
     const formData = new FormData(form);
 
     const submitBtn = form.querySelector('button[type="submit"]');
@@ -1796,7 +1796,7 @@
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
     try {
-      const response = await fetch('{{ route("onboarding.step3") }}', {
+      const response = await fetch('{{ route("onboarding.calendar.save") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -1828,17 +1828,17 @@
     }
   }
 
-  document.getElementById('step3Form').addEventListener('submit', (e) => {
+  document.getElementById('calendarForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    saveStep3();
+    saveCalendar();
   });
 
-  // Save Step 4
-  document.getElementById('step4Form').addEventListener('submit', async (e) => {
+  // Save preferences
+  document.getElementById('preferencesForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     // Validate before submitting
-    if (!validateStep4()) {
+    if (!validatePreferences()) {
       return;
     }
 
@@ -1865,7 +1865,7 @@
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
     try {
-      const response = await fetch('{{ route("onboarding.step4") }}', {
+      const response = await fetch('{{ route("onboarding.preferences.save") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -1897,10 +1897,10 @@
     }
   });
 
-  // Save Step 5
-  async function saveStep5() {
+  // Save payment
+  async function savePayment() {
     clearErrors();
-    const form = document.getElementById('step5Form');
+    const form = document.getElementById('onboardingPaymentForm');
     const formData = new FormData(form);
 
     const submitBtn = form.querySelector('button[type="submit"]');
@@ -1909,7 +1909,7 @@
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Completing...';
 
     try {
-      const response = await fetch('{{ route("onboarding.step5") }}', {
+      const response = await fetch('{{ route("onboarding.payment.save") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -1941,10 +1941,10 @@
     }
   }
 
-  document.getElementById('step5Form').addEventListener('submit', (e) => {
+  document.getElementById('onboardingPaymentForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    if (validateStep5()) {
-      saveStep5();
+    if (validatePayment()) {
+      savePayment();
     }
   });
 

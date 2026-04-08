@@ -1,394 +1,603 @@
-@extends('layouts.dashboard_layout')
+@extends('layouts.artist_dashboard_layout')
 
-@section('title', 'Update Profile')
-
-@push('styles')
-<style>
-  .avatar-preview {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid #e0e0e0;
+@section('styles')
+<script>
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "surface-container-high": "#ece6ef",
+          "surface-container-lowest": "#ffffff",
+          "surface-container": "#f2ecf5",
+          "background": "#fdf7ff",
+          "primary": "#310f7a",
+          "surface-dim": "#ded8e1",
+          "on-surface-variant": "#494552",
+          "secondary-fixed": "#e8ddff",
+          "on-secondary-fixed-variant": "#4a4168",
+          "inverse-surface": "#322f36",
+          "error-container": "#ffdad6",
+          "inverse-on-surface": "#f5eff8",
+          "tertiary": "#452200",
+          "surface-container-low": "#f8f1fb",
+          "surface": "#fdf7ff",
+          "secondary-fixed-dim": "#ccc0ee",
+          "on-tertiary-fixed": "#2e1500",
+          "on-error": "#ffffff",
+          "on-primary-container": "#b69fff",
+          "secondary": "#625881",
+          "inverse-primary": "#cebdff",
+          "primary-fixed": "#e8ddff",
+          "outline": "#7a7583",
+          "tertiary-fixed": "#ffdcc2",
+          "tertiary-container": "#653500",
+          "on-secondary": "#ffffff",
+          "on-primary": "#ffffff",
+          "on-tertiary-fixed-variant": "#6c3a04",
+          "error": "#ba1a1a",
+          "tertiary-fixed-dim": "#ffb77b",
+          "surface-bright": "#fdf7ff",
+          "surface-tint": "#664db1",
+          "on-error-container": "#93000a",
+          "on-primary-fixed": "#21005e",
+          "primary-fixed-dim": "#cebdff",
+          "on-tertiary-container": "#e49e62",
+          "on-primary-fixed-variant": "#4e3397",
+          "primary-container": "#482d91",
+          "on-surface": "#1c1b21",
+          "outline-variant": "#cac4d3",
+          "on-tertiary": "#ffffff",
+          "surface-container-highest": "#e6e0ea",
+          "on-background": "#1c1b21",
+          "secondary-container": "#ddd0ff",
+          "on-secondary-fixed": "#1e1539",
+          "surface-variant": "#e6e0ea",
+          "on-secondary-container": "#615780"
+        },
+        fontFamily: {
+          "headline": ["Plus Jakarta Sans"],
+          "body": ["Plus Jakarta Sans"],
+          "label": ["Plus Jakarta Sans"]
+        },
+        borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+      },
+    },
   }
+</script>
+<style>
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 
-  .dropify-wrapper .dropify-message p {
-    font-size: 18px !important;
+  .mobile-header { display: none; }
+  @media (max-width: 1023px) { .mobile-header { display: flex; } }
+
+  .sidebar { width: 260px; min-height: 100vh; }
+  @media (min-width: 1024px) { .sidebar { display: flex !important; } .main-content { margin-left: 260px; } }
+  @media (max-width: 1023px) { .main-content { padding-top: 70px; } }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); transition: all 0.2s; cursor: pointer; text-decoration: none; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); }
+  .nav-item.active { background: #ffffff; color: #310f7a; font-weight: 600; }
+  .nav-item .material-symbols-outlined { font-size: 20px; }
+
+  .sidebar.open { display: flex !important; }
+  .main-content { padding-top: 60px !important; }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+  .sidebar-backdrop.open { display: block; }
+
+  .sub-menu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .sub-menu.open { max-height: 300px; }
+  .sub-menu-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 48px; border-radius: 10px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); transition: all 0.2s; cursor: pointer; text-decoration: none; }
+  .sub-menu-item:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.95); }
+  .sub-menu-item.active { background: rgba(255,255,255,0.15); color: #ffffff; font-weight: 600; }
+  .sub-menu-item .material-symbols-outlined { font-size: 18px; }
+
+  .content-arrow { transition: transform 0.3s ease; font-size: 18px !important; }
+  .content-arrow.rotated { transform: rotate(180deg); }
+
+  @media (max-width: 1023px) {
+    .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
+    body { overflow-x: hidden; }
   }
 </style>
+@endsection
 
-<!-- Dropify CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropify@0.2.2/dist/css/dropify.min.css">
-
-<style>
-  .cursor-pointer {
-    cursor: pointer;
-  }
-  .dropify-wrapper .dropify-message p {
-    font-size: 0.875rem;
-  }
-  .input-group-merge .input-group-text {
-    border-left: 0;
-  }
-  .input-group-merge .form-control {
-    border-right: 0;
-  }
-  .input-group-merge .form-control:focus {
-    border-right: 0;
-  }
-  .input-group-merge .form-control.is-invalid {
-    border-right: 0;
-  }
-</style>
-@endpush
+@section('title', 'Profile Settings')
 
 @section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
-  <h4 class="fw-bold py-3 mb-4">
-    <span class="text-muted fw-light">Settings /</span> Update Profile
-  </h4>
-  
+<main class="main-content flex-1 min-h-screen flex flex-col">
+  <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
 
-  @if (session('status') === 'profile-updated')
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      <i class="ti ti-check-circle me-2"></i>
-      Profile updated successfully!
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  <div class="flex-1 p-6 md:p-10 lg:p-12 max-w-4xl">
+    <div class="mb-8">
+      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Profile Settings</h2>
+      <p class="text-on-surface-variant mt-1">Update your personal information and profile photo.</p>
     </div>
-  @endif
 
-  @if (session('status') === 'password-updated')
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      <i class="ti ti-check-circle me-2"></i>
-      Password updated successfully!
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  @endif
+    <div id="profile-success-alert" class="hidden mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
 
-
-  <div class="row">
-    <!-- Update Profile Information -->
-    <div class="col-12 mb-4">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title mb-0">Profile Information</h5>
-          <p class="text-muted mb-0">Update your account's basic profile information. Email cannot be changed here.</p>
-        </div>
-        <div class="card-body">
-          <form method="post" action="{{ route('profile.update') }}" enctype="multipart/form-data">
-            @csrf
-            @method('patch')
-
-            <div class="row g-4">
-              <div class="col-md-4">
-                <label class="form-label">Profile Avatar</label>
-                <input
-                  type="file"
-                  class="dropify"
-                  id="avatar"
-                  name="avatar"
-                  data-allowed-file-extensions="jpg jpeg png heif heic"
-                  data-max-file-size="2M"
-                  data-show-errors="true"
-                  data-height="180"
-                  data-default-file="{{ $userDetail && $userDetail->avatar ? asset($userDetail->avatar) : '' }}"
-                >
-                <small class="text-muted d-block mt-2">
-                  Recommended: 400x400, Max 2MB (JPG, PNG, HEIF, HEIC)
-                </small>
+    <form id="profileForm" method="post" action="{{ route('profile.update') }}" enctype="multipart/form-data">
+      @csrf
+      @method('patch')
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-10">
+        <div class="lg:col-span-3">
+          <div class="bg-surface-container-low rounded-2xl p-6 space-y-6">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="first_name" class="block text-sm font-semibold text-on-surface mb-2">First Name</label>
+                <input type="text" id="first_name" name="first_name" value="{{ old('first_name', $user->first_name) }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <p id="first_name_error" class="text-error text-xs mt-1 hidden"></p>
               </div>
-
-              <div class="col-md-8">
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label for="first_name" class="form-label">First Name</label>
-                    <input
-                      type="text"
-                      class="form-control @error('first_name') is-invalid @enderror"
-                      id="first_name"
-                      name="first_name"
-                      value="{{ old('first_name', $user->first_name) }}"
-                      required
-                      autofocus
-                    >
-                    @error('first_name')
-                      <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                  </div>
-
-                  <div class="col-md-6 mb-3">
-                    <label for="last_name" class="form-label">Last Name</label>
-                    <input
-                      type="text"
-                      class="form-control @error('last_name') is-invalid @enderror"
-                      id="last_name"
-                      name="last_name"
-                      value="{{ old('last_name', $user->last_name) }}"
-                      required
-                    >
-                    @error('last_name')
-                      <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                  </div>
-
-                  <div class="col-md-6 mb-3">
-                    <label for="user_name" class="form-label">User Name</label>
-                    <input
-                      type="text"
-                      class="form-control @error('user_name') is-invalid @enderror"
-                      id="user_name"
-                      name="user_name"
-                      value="{{ old('user_name', $userDetail->user_name ?? '') }}"
-                      required
-                    >
-                    @error('user_name')
-                      <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                  </div>
-
-                  <div class="col-md-6 mb-3">
-                    <label for="mobile_number" class="form-label">Mobile Number</label>
-                    <input
-                      type="text"
-                      class="form-control @error('mobile_number') is-invalid @enderror"
-                      id="mobile_number"
-                      name="mobile_number"
-                      value="{{ old('mobile_number', $userDetail->mobile_number ?? '') }}"
-                      required
-                    >
-                    @error('mobile_number')
-                      <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                  </div>
-
-                  <div class="col-12 mb-3">
-                    <label for="email" class="form-label">Email</label>
-                    <input
-                      type="email"
-                      class="form-control bg-light"
-                      id="email"
-                      name="email"
-                      value="{{ $user->email }}"
-                      readonly
-                    >
-                  </div>
-                </div>
+              <div>
+                <label for="last_name" class="block text-sm font-semibold text-on-surface mb-2">Last Name</label>
+                <input type="text" id="last_name" name="last_name" value="{{ old('last_name', $user->last_name) }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <p id="last_name_error" class="text-error text-xs mt-1 hidden"></p>
               </div>
             </div>
 
-            <div class="d-flex justify-content-end mt-3">
-              <button type="submit" class="btn btn-primary">
-                <i class="ti ti-device-floppy me-2"></i>
-                Save Changes
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Update Password -->
-    <div class="col-12 mb-4" id="password">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title mb-0">Update Password</h5>
-          <p class="text-muted mb-0">Ensure your account is using a long, random password to stay secure.</p>
-        </div>
-        <div class="card-body">
-          <form method="post" action="{{ route('password.update') }}">
-            @csrf
-            @method('put')
-
-            <div class="mb-3">
-              <label for="current_password" class="form-label">Current Password</label>
-              <div class="input-group input-group-merge">
-                <input type="password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" id="current_password" name="current_password" autocomplete="current-password">
-                <span class="input-group-text cursor-pointer" id="toggle-current-password">
-                  <i class="ti ti-eye eye-icon" id="eye-current-password"></i>
-                </span>
-                @error('current_password', 'updatePassword')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+            <div>
+              <label for="user_name" class="block text-sm font-semibold text-on-surface mb-2">Username</label>
+              <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-outline text-sm font-medium">@</span>
+                <input type="text" id="user_name" name="user_name" value="{{ old('user_name', $userDetail->user_name ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
               </div>
+              <p id="user_name_error" class="text-error text-xs mt-1 hidden"></p>
             </div>
 
-            <div class="mb-3">
-              <label for="password" class="form-label">New Password</label>
-              <div class="input-group input-group-merge">
-                <input type="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" id="password" name="password" autocomplete="new-password">
-                <span class="input-group-text cursor-pointer" id="toggle-password">
-                  <i class="ti ti-eye eye-icon" id="eye-password"></i>
-                </span>
-                @error('password', 'updatePassword')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-                </div>
+            <div>
+              <label for="mobile_number" class="block text-sm font-semibold text-on-surface mb-2">Mobile Number</label>
+              <input type="tel" id="mobile_number" name="mobile_number" value="{{ old('mobile_number', $userDetail->mobile_number ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p id="mobile_number_error" class="text-error text-xs mt-1 hidden"></p>
             </div>
 
-            <div class="mb-3">
-              <label for="password_confirmation" class="form-label">Confirm Password</label>
-              <div class="input-group input-group-merge">
-                <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" autocomplete="new-password">
-                <span class="input-group-text cursor-pointer" id="toggle-password-confirmation">
-                  <i class="ti ti-eye eye-icon" id="eye-password-confirmation"></i>
-                </span>
-                </div>
+            <div>
+              <label for="email" class="block text-sm font-semibold text-on-surface mb-2">Email</label>
+              <input type="email" id="email" value="{{ $user->email }}" readonly class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-surface text-on-surface-variant">
             </div>
-
-            <div class="d-flex justify-content-end">
-              <button type="submit" class="btn btn-primary">
-                <i class="ti ti-key me-2"></i>
-                Update Password
-              </button>
-            </div>
-          </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete Account -->
-    <div class="col-12 mb-4">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title mb-0 text-danger">Delete Account</h5>
-          <p class="text-muted mb-0">Once your account is deleted, all of its resources and data will be permanently deleted.</p>
-        </div>
-        <div class="card-body">
-          <p class="text-muted mb-4">
-            Before deleting your account, please download any data or information that you wish to retain. Once your account is deleted, all of its resources and data will be permanently deleted.
-          </p>
-          <button type="button" class="btn btn-danger" id="deleteAccountBtn" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
-            <i class="ti ti-trash me-2"></i>
-            Delete Account
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Delete Account Confirmation Modal -->
-<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deleteAccountModalLabel">
-          <i class="ti ti-alert-triangle text-danger me-2"></i>
-          Delete Account
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form method="post" action="{{ route('profile.destroy') }}" id="deleteAccountForm">
-        @csrf
-        @method('delete')
-        <div class="modal-body">
-          <p class="mb-3">Are you sure you want to delete your account? Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.</p>
-          
-          <div class="mb-3">
-            <label for="delete_password" class="form-label">Password</label>
-            <input type="password" class="form-control @error('password', 'userDeletion') is-invalid @enderror" id="delete_password" name="password" placeholder="Enter your password" required autofocus>
-            @error('password', 'userDeletion')
-              <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">
-            Cancel
+
+        <div class="lg:col-span-2 flex flex-col items-center">
+          <div class="w-full max-w-[240px]">
+            <div class="relative w-48 h-48 mx-auto mb-4">
+              <img id="profilePreview" src="{{ $userDetail && $userDetail->avatar ? asset($userDetail->avatar) : '' }}" alt="" class="{{ $userDetail && $userDetail->avatar ? '' : 'hidden' }} w-full h-full rounded-full object-cover border-2 border-outline-variant bg-surface-container-low">
+              <div id="uploadPlaceholder" class="{{ $userDetail && $userDetail->avatar ? 'hidden' : '' }} w-full h-full rounded-full border-2 border-dashed border-outline-variant bg-surface-container-low flex items-center justify-center">
+                <span class="material-symbols-outlined text-5xl text-primary/40">photo_camera</span>
+              </div>
+              <button type="button" id="openUploadBtn" class="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 border-2 border-white hover:opacity-90 transition-opacity">
+                <span class="material-symbols-outlined text-lg">upload</span>
+              </button>
+              <input id="profileImageInput" type="file" name="avatar" accept="image/*" class="hidden">
+            </div>
+            <p class="text-center font-semibold text-on-surface text-sm">Change Photo</p>
+            <p class="text-center text-on-surface-variant text-xs mt-1 leading-relaxed">Tip: Professional headshots increase booking conversion by 40%.</p>
+            <p id="avatar_error" class="text-error text-xs mt-2 text-center hidden"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky bottom-0 bg-surface border-t border-outline-variant/10 px-6 md:px-10 lg:px-12 py-5 flex items-center justify-end mt-8">
+        <button type="submit" id="saveProfileBtn" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
+          <span class="material-symbols-outlined text-lg">save</span> Save Changes
+        </button>
+      </div>
+    </form>
+
+    <div id="password-success-alert" class="hidden mt-8 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
+
+    <div class="mt-8 bg-surface-container-low rounded-2xl p-6" id="password-section">
+      <h3 class="text-xl font-bold text-on-surface mb-4">Update Password</h3>
+      <form id="passwordForm" method="post" action="{{ route('password.update') }}" class="space-y-4">
+        @csrf
+        @method('put')
+        <div>
+          <label for="current_password" class="block text-sm font-semibold text-on-surface mb-2">Current Password</label>
+          <div class="relative">
+            <input type="password" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-12 bg-white text-on-surface @error('current_password', 'updatePassword') border-error @enderror" id="current_password" name="current_password" autocomplete="current-password">
+            <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" data-target="current_password" aria-label="Show password">
+              <span class="material-symbols-outlined text-xl">visibility</span>
+            </button>
+          </div>
+          <p id="current_password_error" class="text-error text-xs mt-1 hidden"></p>
+          @error('current_password', 'updatePassword') <p class="text-error text-xs mt-1">{{ $message }}</p> @enderror
+        </div>
+        <div>
+          <label for="password" class="block text-sm font-semibold text-on-surface mb-2">New Password</label>
+          <div class="relative">
+            <input type="password" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-12 bg-white text-on-surface @error('password', 'updatePassword') border-error @enderror" id="password" name="password" autocomplete="new-password">
+            <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" data-target="password" aria-label="Show password">
+              <span class="material-symbols-outlined text-xl">visibility</span>
+            </button>
+          </div>
+          <p id="password_error" class="text-error text-xs mt-1 hidden"></p>
+          @error('password', 'updatePassword') <p class="text-error text-xs mt-1">{{ $message }}</p> @enderror
+        </div>
+        <div>
+          <label for="password_confirmation" class="block text-sm font-semibold text-on-surface mb-2">Confirm Password</label>
+          <div class="relative">
+            <input type="password" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-12 bg-white text-on-surface" id="password_confirmation" name="password_confirmation" autocomplete="new-password">
+            <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" data-target="password_confirmation" aria-label="Show password">
+              <span class="material-symbols-outlined text-xl">visibility</span>
+            </button>
+          </div>
+          <p id="password_confirmation_error" class="text-error text-xs mt-1 hidden"></p>
+        </div>
+        <div class="flex justify-end">
+          <button type="submit" id="updatePasswordBtn" class="inline-flex items-center gap-2 bg-primary text-white font-bold py-2.5 px-6 rounded-xl hover:opacity-90">
+            <span class="material-symbols-outlined text-lg">key</span> Update Password
           </button>
-          <button type="submit" class="btn btn-danger" id="confirmDeleteBtn">
-            <i class="ti ti-trash me-2"></i>
-            Delete Account
+        </div>
+      </form>
+    </div>
+
+    <div id="delete-success-alert" class="hidden mt-8 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
+
+    <div class="mt-8 bg-surface-container-low rounded-2xl p-6 border border-error/30">
+      <h3 class="text-xl font-bold text-error mb-2">Delete Account</h3>
+      <p class="text-on-surface-variant text-sm mb-4">This will permanently delete all account data.</p>
+      <form id="deleteAccountForm" method="post" action="{{ route('profile.destroy') }}" class="space-y-4">
+        @csrf
+        @method('delete')
+        <div>
+          <label for="delete_password" class="block text-sm font-semibold text-on-surface mb-2">Password</label>
+          <div class="relative">
+            <input type="password" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-12 bg-white text-on-surface @error('password', 'userDeletion') border-error @enderror" id="delete_password" name="password" autocomplete="current-password">
+            <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" data-target="delete_password" aria-label="Show password">
+              <span class="material-symbols-outlined text-xl">visibility</span>
+            </button>
+          </div>
+          <p id="delete_password_error" class="text-error text-xs mt-1 hidden"></p>
+          @error('password', 'userDeletion') <p class="text-error text-xs mt-1">{{ $message }}</p> @enderror
+        </div>
+        <div class="flex justify-end">
+          <button type="submit" id="deleteAccountBtn" class="inline-flex items-center gap-2 bg-error text-white font-bold py-2.5 px-6 rounded-xl hover:opacity-90">
+            <span class="material-symbols-outlined text-lg">delete</span> Delete Account
           </button>
         </div>
       </form>
     </div>
   </div>
-</div>
+
+  <div id="cropperModal" class="hidden fixed inset-0 z-[100] bg-black/70 items-center justify-center p-4">
+    <div class="w-full max-w-xl rounded-2xl bg-white p-4 md:p-6 shadow-2xl">
+      <h3 class="text-lg font-bold text-on-surface mb-2">Crop Profile Photo</h3>
+      <p class="text-sm text-on-surface-variant mb-4">Adjust your image to a square crop for a uniform profile photo.</p>
+      <div class="w-full h-[360px] bg-surface-container rounded-xl overflow-hidden">
+        <img id="cropImage" src="" alt="" class="max-w-full">
+      </div>
+      <div class="mt-5 flex items-center justify-end gap-3">
+        <button id="cancelCropBtn" type="button" class="px-4 py-2 rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-low">Cancel</button>
+        <button id="applyCropBtn" type="button" class="px-5 py-2 rounded-lg bg-primary text-white font-semibold hover:opacity-90">Use Photo</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
+  <script>
+    (function () {
+      var cropper = null;
+      var objectUrl = '';
+      var croppedBlob = null;
+
+      var profileForm = document.getElementById('profileForm');
+      var saveBtn = document.getElementById('saveProfileBtn');
+      var successAlert = document.getElementById('profile-success-alert');
+      var passwordForm = document.getElementById('passwordForm');
+      var passwordBtn = document.getElementById('updatePasswordBtn');
+      var passwordSuccessAlert = document.getElementById('password-success-alert');
+      var deleteForm = document.getElementById('deleteAccountForm');
+      var deleteBtn = document.getElementById('deleteAccountBtn');
+      var deleteSuccessAlert = document.getElementById('delete-success-alert');
+      var openUploadBtn = document.getElementById('openUploadBtn');
+      var profileImageInput = document.getElementById('profileImageInput');
+      var cropperModal = document.getElementById('cropperModal');
+      var cropImage = document.getElementById('cropImage');
+      var profilePreview = document.getElementById('profilePreview');
+      var uploadPlaceholder = document.getElementById('uploadPlaceholder');
+
+      document.querySelectorAll('.password-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var targetId = btn.getAttribute('data-target');
+          var input = document.getElementById(targetId);
+          if (!input) return;
+          var icon = btn.querySelector('.material-symbols-outlined');
+          var showing = input.type === 'text';
+          input.type = showing ? 'password' : 'text';
+          if (icon) icon.textContent = showing ? 'visibility' : 'visibility_off';
+          btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+        });
+      });
+
+      function clearFieldError(fieldName) {
+        var input = document.getElementById(fieldName);
+        var error = document.getElementById(fieldName + '_error');
+        if (input) input.classList.remove('border-error');
+        if (error) {
+          error.textContent = '';
+          error.classList.add('hidden');
+        }
+      }
+
+      function setFieldError(fieldName, message) {
+        var input = document.getElementById(fieldName);
+        var error = document.getElementById(fieldName + '_error');
+        if (input) input.classList.add('border-error');
+        if (error) {
+          error.textContent = message;
+          error.classList.remove('hidden');
+        }
+      }
+
+      function clearAllErrors() {
+        ['avatar', 'first_name', 'last_name', 'user_name', 'mobile_number'].forEach(clearFieldError);
+      }
+
+      function scrollToFirstError() {
+        var firstError = profileForm.querySelector('p[id$="_error"]:not(.hidden)');
+        if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      ['first_name', 'last_name', 'user_name', 'mobile_number'].forEach(function (field) {
+        var el = document.getElementById(field);
+        if (el) el.addEventListener('input', function () { clearFieldError(field); });
+      });
+
+      openUploadBtn.addEventListener('click', function () {
+        profileImageInput.click();
+      });
+
+      profileImageInput.addEventListener('change', function (e) {
+        clearFieldError('avatar');
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = URL.createObjectURL(file);
+        cropImage.src = objectUrl;
+        cropperModal.classList.remove('hidden');
+        cropperModal.classList.add('flex');
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(cropImage, {
+          aspectRatio: 1,
+          viewMode: 1,
+          dragMode: 'move',
+          background: false,
+          autoCropArea: 1,
+          responsive: true
+        });
+      });
+
+      function closeCropperModal() {
+        cropperModal.classList.add('hidden');
+        cropperModal.classList.remove('flex');
+        if (cropper) {
+          cropper.destroy();
+          cropper = null;
+        }
+        cropImage.src = '';
+        profileImageInput.value = '';
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = '';
+        }
+      }
+
+      document.getElementById('cancelCropBtn').addEventListener('click', closeCropperModal);
+      cropperModal.addEventListener('click', function (e) {
+        if (e.target === cropperModal) closeCropperModal();
+      });
+
+      document.getElementById('applyCropBtn').addEventListener('click', function () {
+        if (!cropper) return;
+        var canvas = cropper.getCroppedCanvas({ width: 512, height: 512, imageSmoothingQuality: 'high' });
+        canvas.toBlob(function (blob) {
+          croppedBlob = blob;
+          profilePreview.src = URL.createObjectURL(blob);
+          profilePreview.classList.remove('hidden');
+          uploadPlaceholder.classList.add('hidden');
+          clearFieldError('avatar');
+          closeCropperModal();
+        }, 'image/jpeg', 0.92);
+      });
+
+      profileForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearAllErrors();
+        successAlert.classList.add('hidden');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="material-symbols-outlined text-lg">hourglass_top</span> Saving...';
+
+        var formData = new FormData(profileForm);
+        if (croppedBlob) {
+          formData.delete('avatar');
+          formData.append('avatar', croppedBlob, 'avatar.jpg');
+        }
+
+        fetch(@json(route('profile.update')), {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': @json(csrf_token()),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
+          body: formData
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { status: response.status, ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data.success) {
+              successAlert.textContent = result.data.message || 'Profile updated successfully!';
+              successAlert.classList.remove('hidden');
+              if (result.data.avatar) {
+                profilePreview.src = result.data.avatar;
+                profilePreview.classList.remove('hidden');
+                uploadPlaceholder.classList.add('hidden');
+              }
+              return;
+            }
+            if (result.status === 422 && result.data && result.data.errors) {
+              Object.keys(result.data.errors).forEach(function (field) {
+                setFieldError(field, result.data.errors[field][0]);
+              });
+              scrollToFirstError();
+              return;
+            }
+            alert('Something went wrong. Please try again.');
+          })
+          .catch(function () {
+            alert('Network error. Please try again.');
+          })
+          .finally(function () {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<span class="material-symbols-outlined text-lg">save</span> Save Changes';
+          });
+      });
+
+      function clearPasswordErrors() {
+        ['current_password', 'password', 'password_confirmation'].forEach(function (field) {
+          var input = document.getElementById(field);
+          var error = document.getElementById(field + '_error');
+          if (input) input.classList.remove('border-error');
+          if (error) {
+            error.textContent = '';
+            error.classList.add('hidden');
+          }
+        });
+      }
+
+      function setPasswordError(field, message) {
+        var input = document.getElementById(field);
+        var error = document.getElementById(field + '_error');
+        if (input) input.classList.add('border-error');
+        if (error) {
+          error.textContent = message;
+          error.classList.remove('hidden');
+        }
+      }
+
+      ['current_password', 'password', 'password_confirmation'].forEach(function (field) {
+        var el = document.getElementById(field);
+        if (el) {
+          el.addEventListener('input', function () {
+            var error = document.getElementById(field + '_error');
+            el.classList.remove('border-error');
+            if (error) {
+              error.textContent = '';
+              error.classList.add('hidden');
+            }
+          });
+        }
+      });
+
+      passwordForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearPasswordErrors();
+        passwordSuccessAlert.classList.add('hidden');
+        passwordBtn.disabled = true;
+        passwordBtn.innerHTML = '<span class="material-symbols-outlined text-lg">hourglass_top</span> Updating...';
+
+        var formData = new FormData(passwordForm);
+
+        fetch(@json(route('password.update')), {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': @json(csrf_token()),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
+          body: formData
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { status: response.status, ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data.success) {
+              passwordSuccessAlert.textContent = result.data.message || 'Password updated successfully.';
+              passwordSuccessAlert.classList.remove('hidden');
+              passwordForm.reset();
+              return;
+            }
+            if (result.status === 422 && result.data && result.data.errors) {
+              Object.keys(result.data.errors).forEach(function (field) {
+                setPasswordError(field, result.data.errors[field][0]);
+              });
+              return;
+            }
+            alert('Something went wrong. Please try again.');
+          })
+          .catch(function () {
+            alert('Network error. Please try again.');
+          })
+          .finally(function () {
+            passwordBtn.disabled = false;
+            passwordBtn.innerHTML = '<span class="material-symbols-outlined text-lg">key</span> Update Password';
+          });
+      });
+
+      function clearDeleteError() {
+        var input = document.getElementById('delete_password');
+        var error = document.getElementById('delete_password_error');
+        if (input) input.classList.remove('border-error');
+        if (error) {
+          error.textContent = '';
+          error.classList.add('hidden');
+        }
+      }
+
+      document.getElementById('delete_password').addEventListener('input', clearDeleteError);
+
+      deleteForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearDeleteError();
+        deleteSuccessAlert.classList.add('hidden');
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<span class="material-symbols-outlined text-lg">hourglass_top</span> Deleting...';
+
+        var formData = new FormData(deleteForm);
+
+        fetch(@json(route('profile.destroy')), {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': @json(csrf_token()),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
+          body: formData
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { status: response.status, ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data.success) {
+              deleteSuccessAlert.textContent = result.data.message || 'Account deleted successfully.';
+              deleteSuccessAlert.classList.remove('hidden');
+              window.location.href = result.data.redirect || '/';
+              return;
+            }
+            if (result.status === 422 && result.data && result.data.errors && result.data.errors.password) {
+              document.getElementById('delete_password').classList.add('border-error');
+              var errorEl = document.getElementById('delete_password_error');
+              errorEl.textContent = result.data.errors.password[0];
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            alert('Something went wrong. Please try again.');
+          })
+          .catch(function () {
+            alert('Network error. Please try again.');
+          })
+          .finally(function () {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = '<span class="material-symbols-outlined text-lg">delete</span> Delete Account';
+          });
+      });
+    })();
+  </script>
+</main>
 @endsection
-
-@push('scripts')
-<!-- Dropify JS -->
-<script src="https://cdn.jsdelivr.net/npm/dropify@0.2.2/dist/js/dropify.min.js"></script>
-<script>
-  // Function to scroll to first error on page
-  function scrollToFirstError() {
-    // Check for Laravel validation errors (server-side)
-    const invalidFields = document.querySelectorAll('.is-invalid, .form-control.is-invalid, .form-select.is-invalid');
-    if (invalidFields.length > 0) {
-      setTimeout(() => {
-        const firstField = invalidFields[0];
-        firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if (firstField.focus) {
-          firstField.focus();
-        }
-      }, 100);
-    }
-  }
-
-  // Password toggle functionality
-  function initPasswordToggle() {
-    // Toggle for Current Password
-    $('.eye-icon').on('click', function() {
-      const input = $(this).closest('.input-group-merge').find('input');
-      
-      if (input.attr('type') === 'password') {
-        input.attr('type', 'text');
-        $(this).removeClass('ti-eye').addClass('ti-eye-off');
-      } else {
-        input.attr('type', 'password');
-        $(this).removeClass('ti-eye-off').addClass('ti-eye');
-      }
-    });
-  }
-
-  // Delete Account Modal Handling
-  const deleteAccountModal = document.getElementById('deleteAccountModal');
-  const deleteAccountForm = document.getElementById('deleteAccountForm');
-  
-  // Show modal if there are validation errors
-  @if($errors->userDeletion->any())
-    const modal = new bootstrap.Modal(deleteAccountModal);
-    modal.show();
-  @endif
-
-  // Reset form when modal is hidden
-  if (deleteAccountModal) {
-    deleteAccountModal.addEventListener('hidden.bs.modal', function () {
-      deleteAccountForm.reset();
-      // Clear validation errors
-      const passwordInput = document.getElementById('delete_password');
-      if (passwordInput) {
-        passwordInput.classList.remove('is-invalid');
-        const errorFeedback = passwordInput.parentElement.querySelector('.invalid-feedback');
-        if (errorFeedback) {
-          errorFeedback.remove();
-        }
-      }
-    });
-  }
-
-  // Handle form submission with loading state
-  if (deleteAccountForm) {
-    deleteAccountForm.addEventListener('submit', function(e) {
-      const confirmBtn = document.getElementById('confirmDeleteBtn');
-      if (confirmBtn) {
-        confirmBtn.disabled = true;
-        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
-      }
-    });
-  }
-
-  // Initialize on page load
-  $(document).ready(function() {
-    // Init Dropify for avatar
-    if ($('.dropify').length) {
-      $('.dropify').dropify();
-    }
-
-    initPasswordToggle();
-    // Scroll to errors if page has validation errors
-    scrollToFirstError();
-  });
-</script>
-@endpush
