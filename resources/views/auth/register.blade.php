@@ -86,26 +86,6 @@
               @enderror
             </div>
 
-            <!-- Role -->
-            <div class="space-y-2">
-              <label class="block text-sm font-semibold text-on-surface mb-2" for="signup-role">Role</label>
-              <div class="relative">
-                <select
-                  class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 appearance-none pr-10 {{ $errors->has('role') ? 'border border-error' : '' }}"
-                  id="signup-role"
-                  name="role"
-                >
-                  <option value="" disabled {{ old('role') ? '' : 'selected' }}>Select Role</option>
-                  <option value="user" {{ old('role') === 'user' ? 'selected' : '' }}>User</option>
-                  <option value="artist" {{ old('role') === 'artist' ? 'selected' : '' }}>Artist</option>
-                </select>
-                {{-- <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant">▾</span> --}}
-              </div>
-              @error('role')
-                <p class="text-sm text-error">{{ $message }}</p>
-              @enderror
-            </div>
-
             <!-- Password -->
             <div class="space-y-2">
               <label class="block text-sm font-semibold text-on-surface mb-2" for="signup-password">Password</label>

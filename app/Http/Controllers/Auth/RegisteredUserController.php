@@ -34,7 +34,6 @@ class RegisteredUserController extends Controller
         $request->validate([
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => ['required', 'in:admin,artist,user'],
         ]);
 
         // Check if email exists in inkjin_artists table
@@ -45,8 +44,8 @@ class RegisteredUserController extends Controller
             'last_name' => "",
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'on_boarding' => $request->role === 'artist' ? 'no' : 'yes',
+            'role' => 'artist',
+            'on_boarding' => 'no',
             'on_app' => $artist ? 1 : 0,
             'app_id' => $artist ? $artist->id : null,
         ];
