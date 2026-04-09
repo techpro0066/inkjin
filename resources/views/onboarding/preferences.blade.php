@@ -154,7 +154,6 @@
           $reqCons = $ud->require_consultation ?? false;
           $st = $ud->session_type ?? '';
           $ct = $ud->consultation_timing ?? '';
-          $gu = $ud->consultation_tattoo_gap_unit ?? '';
         @endphp
         <div class="bg-surface-container-low rounded-2xl p-6 space-y-6">
           <div class="flex items-center justify-between gap-6 flex-wrap">
@@ -199,28 +198,15 @@
           </div>
 
           <div id="gap_fields_container" class="space-y-4 pt-2 border-t border-outline-variant/20" style="display: {{ ($reqCons && $ct === 'separate') ? 'block' : 'none' }};">
-            <label class="flex items-start gap-3 cursor-pointer">
-              <input type="checkbox" id="require_gap_between_consultation_tattoo" name="require_gap_between_consultation_tattoo" value="1" {{ ($ud->require_gap_between_consultation_tattoo ?? false) ? 'checked' : '' }} onchange="toggleGapDurationFields()" class="mt-1 w-[18px] h-[18px] text-primary border-outline-variant rounded">
-              <span class="text-sm text-on-surface">Require gap between consultation and tattoo session</span>
-            </label>
-            <p class="text-on-surface-variant text-xs -mt-2 ml-8">Minimum time between consultation completion and tattoo booking.</p>
+            <input type="hidden" id="require_gap_between_consultation_tattoo" name="require_gap_between_consultation_tattoo" value="{{ ($reqCons && $ct === 'separate') ? '1' : '0' }}">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div id="gap_duration_container" style="display: {{ ($ud->require_gap_between_consultation_tattoo ?? false) ? 'block' : 'none' }};">
-                <label for="consultation_tattoo_gap_value" class="block text-[11px] uppercase tracking-wider text-on-surface-variant font-medium mb-2">Gap duration <span class="text-red-500">*</span></label>
+              <div id="gap_duration_container" style="display: {{ ($reqCons && $ct === 'separate') ? 'block' : 'none' }};">
+                <label for="consultation_tattoo_gap_value" class="block text-[11px] uppercase tracking-wider text-on-surface-variant font-medium mb-2">Minimum gap (in days) <span class="text-red-500">*</span></label>
                 <input type="number" id="consultation_tattoo_gap_value" name="consultation_tattoo_gap_value" value="{{ $ud->consultation_tattoo_gap_value ?? '' }}" placeholder="e.g. 1, 2, 7" min="1" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm">
                 <p id="consultation_tattoo_gap_value_error" class="text-error text-xs mt-1 hidden"></p>
               </div>
-              <div id="gap_unit_container" style="display: {{ ($ud->require_gap_between_consultation_tattoo ?? false) ? 'block' : 'none' }};">
-                <label for="consultation_tattoo_gap_unit" class="block text-[11px] uppercase tracking-wider text-on-surface-variant font-medium mb-2">Gap unit <span class="text-red-500">*</span></label>
-                <select id="consultation_tattoo_gap_unit" name="consultation_tattoo_gap_unit" class="select w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm">
-                  <option value="" disabled {{ $gu === '' ? 'selected' : '' }}>Select unit</option>
-                  <option value="minutes" {{ $gu === 'minutes' ? 'selected' : '' }}>Minutes</option>
-                  <option value="hours" {{ $gu === 'hours' ? 'selected' : '' }}>Hours</option>
-                  <option value="days" {{ $gu === 'days' ? 'selected' : '' }}>Days</option>
-                </select>
-                <p id="consultation_tattoo_gap_unit_error" class="text-error text-xs mt-1 hidden"></p>
-              </div>
             </div>
+            <p class="text-on-surface-variant text-xs">Set the minimum time between the consultation and the tattoo session</p>
           </div>
         </div>
       </section>
@@ -309,30 +295,16 @@ function toggleGapFields() {
   if (!$gap.length) return;
   if (requireConsultationEnabled() && ct === 'separate') {
     $gap.css('display', 'block');
-    initVisibleConsultationSelect2();
-  } else {
-    $gap.css('display', 'none');
-    $('#require_gap_between_consultation_tattoo').prop('checked', false);
-    $('#consultation_tattoo_gap_value').val('');
-    $('#consultation_tattoo_gap_unit').val('');
-    clearFieldError('consultation_tattoo_gap_value');
-    clearFieldError('consultation_tattoo_gap_unit');
-    toggleGapDurationFields();
-  }
-}
-function toggleGapDurationFields() {
-  var on = $('#require_gap_between_consultation_tattoo').prop('checked');
-  if (on) {
+    $('#require_gap_between_consultation_tattoo').val('1');
     $('#gap_duration_container').css('display', 'block');
     $('#gap_unit_container').css('display', 'block');
     initVisibleConsultationSelect2();
   } else {
+    $gap.css('display', 'none');
+    $('#require_gap_between_consultation_tattoo').val('0');
     $('#gap_duration_container').css('display', 'none');
-    $('#gap_unit_container').css('display', 'none');
     $('#consultation_tattoo_gap_value').val('');
-    $('#consultation_tattoo_gap_unit').val('');
     clearFieldError('consultation_tattoo_gap_value');
-    clearFieldError('consultation_tattoo_gap_unit');
   }
 }
 function toggleConsultation() {
@@ -344,23 +316,15 @@ function toggleConsultation() {
   if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('require_consultation');
   toggleSessionFields();
   toggleGapFields();
-  toggleGapDurationFields();
 }
 $(function () {
   toggleSessionFields();
   toggleGapFields();
-  toggleGapDurationFields();
 
-  $.each(['timezone', 'date_time_format', 'currency', 'cancellation_window', 'minimum_deposit_amount', 'session_type', 'consultation_timing', 'session_duration_minutes', 'consultation_tattoo_gap_value', 'consultation_tattoo_gap_unit'], function (_, id) {
+  $.each(['timezone', 'date_time_format', 'currency', 'cancellation_window', 'minimum_deposit_amount', 'session_type', 'consultation_timing', 'session_duration_minutes', 'consultation_tattoo_gap_value'], function (_, id) {
     $('#' + id).on('change input', function () {
       if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError(id);
     });
-  });
-  $('#require_gap_between_consultation_tattoo').on('change', function () {
-    if (typeof window.clearOnboardingFieldError === 'function') {
-      window.clearOnboardingFieldError('consultation_tattoo_gap_value');
-      window.clearOnboardingFieldError('consultation_tattoo_gap_unit');
-    }
   });
   $('#prefForm input[name="reschedule_times"]').on('change', function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('reschedule_times');
@@ -392,7 +356,9 @@ $(function () {
       fd.delete('consultation_timing');
       fd.delete('require_gap_between_consultation_tattoo');
       fd.delete('consultation_tattoo_gap_value');
-      fd.delete('consultation_tattoo_gap_unit');
+    } else if ($('#consultation_timing').val() !== 'separate') {
+      fd.set('require_gap_between_consultation_tattoo', '0');
+      fd.delete('consultation_tattoo_gap_value');
     }
     $.ajax({
       url: @json(route('onboarding.preferences.save')),

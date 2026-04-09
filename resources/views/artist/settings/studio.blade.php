@@ -1,265 +1,233 @@
-@extends('layouts.dashboard_layout')
+@extends('layouts.artist_dashboard_layout')
 
 @section('title', 'Studio Information')
 
-@push('styles')
-<!-- Google Places API -->
-<script src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_PLACE_API_KEY') }}&libraries=places"></script>
-@endpush
+@section('styles')
+@if(config('services.google.place_api_key'))
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.place_api_key') }}&libraries=places"></script>
+@endif
+<style>
+  /* Address autocomplete dropdown */
+  .address-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 50; margin-top: 4px; }
+  .address-dropdown.show { display: block; }
+  .address-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; transition: background 0.15s; }
+  .address-item:hover { background: #f8f1fb; }
+  .address-item:first-child { border-radius: 12px 12px 0 0; }
+  .address-item:last-child { border-radius: 0 0 12px 12px; }
 
-@section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
-  <h4 class="fw-bold py-3 mb-4">
-    <span class="text-muted fw-light">Settings /</span> Studio Information
-  </h4>
-
-  @if (session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      <i class="ti ti-check-circle me-2"></i>
-      {{ session('success') }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  @endif
-
-  @if (session('error'))
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-      <i class="ti ti-alert-circle me-2"></i>
-      {{ session('error') }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  @endif
-
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title mb-0">Studio Details</h5>
-          <p class="text-muted mb-0">Update your studio information</p>
-        </div>
-        <div class="card-body">
-          <form method="POST" action="{{ route('settings.studio.update') }}" id="studioForm">
-            @csrf
-            <div class="row g-3">
-              <div class="col-12">
-                <label for="studio_name" class="form-label">Studio Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('studio_name') is-invalid @enderror" id="studio_name" name="studio_name" value="{{ old('studio_name', $userDetail->studio_name ?? '') }}" required>
-                @error('studio_name')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-              
-              <div class="col-12">
-                <label for="studio_address" class="form-label">Studio Address <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('studio_address') is-invalid @enderror" id="studio_address" name="studio_address" value="{{ old('studio_address', $userDetail->studio_address ?? '') }}" placeholder="Start typing your address..." required>
-                <small class="text-muted d-block mt-1">Start typing and select from Google suggestions to auto-fill address fields</small>
-                @error('studio_address')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-
-              <div class="col-md-6">
-                <label for="street_name" class="form-label">Street Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('street_name') is-invalid @enderror" id="street_name" name="street_name" value="{{ old('street_name', $userDetail->street_name ?? '') }}" placeholder="Enter street name" required>
-                @error('street_name')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-
-              <div class="col-md-6">
-                <label for="street_number" class="form-label">Street Number <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('street_number') is-invalid @enderror" id="street_number" name="street_number" value="{{ old('street_number', $userDetail->street_number ?? '') }}" placeholder="Enter street number" required>
-                @error('street_number')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-
-              <div class="col-md-6">
-                <label for="city" class="form-label">City <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('city') is-invalid @enderror" id="city" name="city" value="{{ old('city', $userDetail->city ?? '') }}" placeholder="Enter city" required>
-                @error('city')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-
-              <div class="col-md-6">
-                <label for="state" class="form-label">Province/State <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('state') is-invalid @enderror" id="state" name="state" value="{{ old('state', $userDetail->state ?? '') }}" placeholder="Enter state" required>
-                @error('state')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-
-              <div class="col-md-6">
-                <label for="postal_code" class="form-label">Postal Code <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('postal_code') is-invalid @enderror" id="postal_code" name="postal_code" value="{{ old('postal_code', $userDetail->postal_code ?? '') }}" placeholder="Enter postal code" required>
-                @error('postal_code')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-
-              <div class="col-md-6">
-                <label for="country" class="form-label">Country <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('country') is-invalid @enderror" id="country" name="country" value="{{ old('country', $userDetail->country ?? '') }}" placeholder="Enter country" required>
-                @error('country')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-              
-              <div class="col-12">
-                <label for="google_maps_link" class="form-label">Google Maps Link</label>
-                <input type="text" class="form-control @error('google_maps_link') is-invalid @enderror" id="google_maps_link" name="google_maps_link" value="{{ old('google_maps_link', $userDetail->google_maps_link ?? '') }}" placeholder="https://maps.google.com/...">
-                <small class="text-muted">Optional: Add your studio's Google Maps link</small>
-                @error('google_maps_link')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-            </div>
-            
-            <div class="d-flex justify-content-end mt-4">
-              <button type="submit" class="btn btn-primary">
-                <i class="ti ti-device-floppy me-2"></i>
-                Save Changes
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+  @media (max-width: 1023px) {
+    .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
+    body { overflow-x: hidden; }
+  }
+</style>
 @endsection
 
-@push('scripts')
+@section('content')
+  <main class="main-content flex-1 min-h-screen flex flex-col">
+    <div class="flex-1 p-6 md:p-10 lg:p-12 max-w-4xl">
+
+      <!-- Settings Tabs -->
+      <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
+        <a href="{{ route('profile.edit') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Profile</a>
+        <a href="{{ route('settings.styles') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Styles &amp; Social</a>
+        <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Studio</a>
+        <a href="{{ route('settings.preferences') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Preferences</a>
+        <a href="{{ route('settings.calendar') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Calendar</a>
+        <a href="{{ route('settings.payment') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Payments</a>
+        <a href="{{ route('settings.notifications') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Notifications</a>
+      </div>
+
+
+      <!-- Page Header -->
+      <div class="mb-8">
+        <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Studio Settings</h2>
+        <p class="text-on-surface-variant mt-1">Update your studio name, location, and map link.</p>
+      </div>
+      <div id="studioSuccessAlert" class="hidden mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
+      <div id="studioErrorAlert" class="hidden mb-6 rounded-xl border border-error/30 bg-error/10 text-error px-4 py-3 text-sm"></div>
+
+      <form id="studioForm" method="POST" action="{{ route('settings.studio.update') }}">
+        @csrf
+        <div class="bg-surface-container-low rounded-2xl p-6 space-y-6">
+          <div>
+            <label for="studio_name" class="block text-sm font-semibold text-on-surface mb-2">Studio Name <span class="text-red-600">*</span></label>
+            <input type="text" id="studio_name" name="studio_name" value="{{ old('studio_name', $userDetail->studio_name ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <p id="studio_name_error" class="text-error text-xs mt-1 hidden"></p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-on-surface mb-2">Find Your Address <span class="text-red-600">*</span></label>
+            <div class="relative" id="addressSearchWrapper">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">location_on</span>
+              <input type="text" id="address_search" autocomplete="off" placeholder="Start typing your studio address..." value="{{ old('studio_address', $userDetail->studio_address ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-10 pr-4 py-3 bg-white text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/30">
+            </div>
+            <p class="text-on-surface-variant text-xs mt-1.5">Start typing and select from Google suggestions to auto-fill address fields.</p>
+          </div>
+          <input type="hidden" name="studio_address" id="studio_address" value="{{ old('studio_address', $userDetail->studio_address ?? '') }}">
+          <p id="studio_address_error" class="text-error text-xs -mt-4 hidden"></p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
+            <div class="sm:col-span-4">
+              <label for="street_number" class="block text-sm font-semibold text-on-surface mb-2">Street Number <span class="text-red-600">*</span></label>
+              <input type="text" id="street_number" name="street_number" value="{{ old('street_number', $userDetail->street_number ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p id="street_number_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+            <div class="sm:col-span-8">
+              <label for="street_name" class="block text-sm font-semibold text-on-surface mb-2">Street Name <span class="text-red-600">*</span></label>
+              <input type="text" id="street_name" name="street_name" value="{{ old('street_name', $userDetail->street_name ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p id="street_name_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="city" class="block text-sm font-semibold text-on-surface mb-2">City <span class="text-red-600">*</span></label>
+              <input type="text" id="city" name="city" value="{{ old('city', $userDetail->city ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white focus:ring-2 focus:ring-primary/30">
+              <p id="city_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+            <div>
+              <label for="state" class="block text-sm font-semibold text-on-surface mb-2">State / Province <span class="text-red-600">*</span></label>
+              <input type="text" id="state" name="state" value="{{ old('state', $userDetail->state ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white focus:ring-2 focus:ring-primary/30">
+              <p id="state_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="postal_code" class="block text-sm font-semibold text-on-surface mb-2">Postal / Zip Code <span class="text-red-600">*</span></label>
+              <input type="text" id="postal_code" name="postal_code" value="{{ old('postal_code', $userDetail->postal_code ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white focus:ring-2 focus:ring-primary/30">
+              <p id="postal_code_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+            <div>
+              <label for="country" class="block text-sm font-semibold text-on-surface mb-2">Country <span class="text-red-600">*</span></label>
+              <input type="text" id="country" name="country" value="{{ old('country', $userDetail->country ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white focus:ring-2 focus:ring-primary/30">
+              <p id="country_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+          </div>
+
+          <div>
+            <label for="google_maps_link" class="block text-sm font-semibold text-on-surface mb-2">Google Maps Link</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">location_on</span>
+              <input type="url" id="google_maps_link" name="google_maps_link" value="{{ old('google_maps_link', $userDetail->google_maps_link ?? '') }}" placeholder="Paste your Google Maps link" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-10 pr-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            </div>
+            <p class="text-on-surface-variant text-xs mt-1.5">Paste the Google Maps link to your studio so clients can find you easily.</p>
+            <p id="google_maps_link_error" class="text-error text-xs mt-1 hidden"></p>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Footer: Save Changes -->
+    <div class="sticky bottom-0 bg-surface border-t border-outline-variant/10 px-6 md:px-10 lg:px-12 py-5 flex items-center justify-end">
+      <button type="submit" id="saveStudioBtn" form="studioForm" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
+        <span class="material-symbols-outlined text-lg">save</span> Save Changes
+      </button>
+    </div>
+  </main>
+@endsection
+
+@section('scripts')
 <script>
-  // Initialize Google Places Autocomplete
-  let autocomplete = null;
-  
-  function initializeGooglePlaces() {
-    const addressInput = document.getElementById('studio_address');
-    if (!addressInput) {
-      return;
-    }
-
-    // Check if Google Maps API is loaded
-    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-      console.error('Google Maps API not loaded');
-      return;
-    }
-
-    // Initialize autocomplete
-    autocomplete = new google.maps.places.Autocomplete(addressInput, {
-      types: ['address'],
-      componentRestrictions: { country: [] }, // Allow all countries
-      fields: ['address_components', 'formatted_address', 'geometry', 'place_id']
-    });
-
-    // Listen for place selection
-    autocomplete.addListener('place_changed', function() {
-      const place = autocomplete.getPlace();
-      
-      if (!place.address_components) {
-        return;
+$(function () {
+  function clearStudioErrors() {
+    $('#studioForm [id$="_error"]').text('').addClass('hidden');
+    $('#studioForm input').removeClass('border-error');
+  }
+  function showStudioErrors(errors) {
+    $.each(errors, function (k, messages) {
+      var $err = $('#' + k + '_error');
+      if ($err.length) {
+        $err.text(messages[0]).removeClass('hidden');
       }
-
-      // Reset all address fields (with null checks)
-      const streetNameEl = document.getElementById('street_name');
-      const streetNumberEl = document.getElementById('street_number');
-      const cityEl = document.getElementById('city');
-      const stateEl = document.getElementById('state');
-      const postalCodeEl = document.getElementById('postal_code');
-      const countryEl = document.getElementById('country');
-      
-      if (streetNameEl) streetNameEl.value = '';
-      if (streetNumberEl) streetNumberEl.value = '';
-      if (cityEl) cityEl.value = '';
-      if (stateEl) stateEl.value = '';
-      if (postalCodeEl) postalCodeEl.value = '';
-      if (countryEl) countryEl.value = '';
-
-      // Parse address components
-      let streetNumber = '';
-      let streetName = '';
-      let city = '';
-      let state = '';
-      let postalCode = '';
-      let country = '';
-
-      for (const component of place.address_components) {
-        const types = component.types;
-
-        // Street number
-        if (types.includes('street_number')) {
-          streetNumber = component.long_name;
-        }
-        
-        // Street name (route)
-        if (types.includes('route')) {
-          streetName = component.long_name;
-        }
-
-        // City - try different types for different countries
-        if (types.includes('locality')) {
-          city = component.long_name;
-        } else if (types.includes('administrative_area_level_2') && !city) {
-          city = component.long_name;
-        } else if (types.includes('postal_town') && !city) {
-          city = component.long_name;
-        }
-        
-        // State/Province
-        if (types.includes('administrative_area_level_1')) {
-          state = component.short_name || component.long_name;
-        }
-        
-        // Postal code
-        if (types.includes('postal_code')) {
-          postalCode = component.long_name;
-        }
-        
-        // Country
-        if (types.includes('country')) {
-          country = component.long_name;
-        }
-      }
-
-      // Populate form fields (with null checks)
-      if (streetNumber && streetNumberEl) {
-        streetNumberEl.value = streetNumber;
-      }
-      if (streetName && streetNameEl) {
-        streetNameEl.value = streetName;
-      }
-      if (city && cityEl) {
-        cityEl.value = city;
-      }
-      if (state && stateEl) {
-        stateEl.value = state;
-      }
-      if (postalCode && postalCodeEl) {
-        postalCodeEl.value = postalCode;
-      }
-      if (country && countryEl) {
-        countryEl.value = country;
-      }
-      
-      // Update studio_address with formatted address
-      addressInput.value = place.formatted_address;
-
-      // Update Google Maps link if available
-      if (place.place_id) {
-        const mapsLinkEl = document.getElementById('google_maps_link');
-        if (mapsLinkEl) {
-          mapsLinkEl.value = `https://www.google.com/maps/place/?q=place_id:${place.place_id}`;
-        }
-      }
+      var fieldId = k === 'studio_address' ? 'address_search' : k;
+      $('#' + fieldId).addClass('border-error');
     });
   }
 
-  // Initialize on page load
-  $(document).ready(function() {
-    setTimeout(() => {
-      initializeGooglePlaces();
-    }, 500);
+@if(config('services.google.place_api_key'))
+  (function () {
+    var input = document.getElementById('address_search');
+    if (!input || typeof google === 'undefined' || !google.maps || !google.maps.places) return;
+    var ac = new google.maps.places.Autocomplete(input, { types: ['address'], fields: ['address_components', 'formatted_address', 'place_id'] });
+    ac.addListener('place_changed', function () {
+      var place = ac.getPlace();
+      if (!place.address_components) return;
+      var sn = '', st = '', city = '', state = '', zip = '', country = '';
+      for (var i = 0; i < place.address_components.length; i++) {
+        var c = place.address_components[i];
+        var t = c.types;
+        if (t.indexOf('street_number') !== -1) sn = c.long_name;
+        if (t.indexOf('route') !== -1) st = c.long_name;
+        if (t.indexOf('locality') !== -1) city = c.long_name;
+        else if (t.indexOf('postal_town') !== -1 && !city) city = c.long_name;
+        if (t.indexOf('administrative_area_level_1') !== -1) state = c.short_name || c.long_name;
+        if (t.indexOf('postal_code') !== -1) zip = c.long_name;
+        if (t.indexOf('country') !== -1) country = c.long_name;
+      }
+      $('#street_number').val(sn);
+      $('#street_name').val(st);
+      $('#city').val(city);
+      $('#state').val(state);
+      $('#postal_code').val(zip);
+      $('#country').val(country);
+      $('#studio_address').val(place.formatted_address || '');
+      if (place.place_id) {
+        $('#google_maps_link').val('https://www.google.com/maps/place/?q=place_id:' + place.place_id);
+      }
+    });
+  })();
+@endif
+  $('#address_search').on('input', function () {
+    $('#studio_address').val($(this).val());
+    $('#studio_address_error').text('').addClass('hidden');
+    $(this).removeClass('border-error');
   });
+  $.each(['studio_name', 'street_number', 'street_name', 'city', 'state', 'postal_code', 'country', 'google_maps_link'], function (_, id) {
+    $('#' + id).on('input', function () {
+      $(this).removeClass('border-error');
+      $('#' + id + '_error').text('').addClass('hidden');
+    });
+  });
+
+  $('#studioForm').on('submit', function (e) {
+    e.preventDefault();
+    clearStudioErrors();
+    $('#studioSuccessAlert').addClass('hidden').text('');
+    $('#studioErrorAlert').addClass('hidden').text('');
+    var $btn = $('#saveStudioBtn');
+    $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-lg">hourglass_top</span> Saving...');
+    var fd = new FormData(this);
+    $.ajax({
+      url: @json(route('settings.studio.update')),
+      type: 'POST',
+      data: fd,
+      processData: false,
+      contentType: false,
+      headers: {
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+        Accept: 'application/json',
+      },
+    })
+      .done(function (data) {
+        if (data.success) {
+          $('#studioSuccessAlert').text(data.message || 'Studio information updated successfully!').removeClass('hidden');
+          showSaveToast();
+          return;
+        }
+        $('#studioErrorAlert').text(data.message || 'Could not save studio settings.').removeClass('hidden');
+      })
+      .fail(function (xhr) {
+        if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+          showStudioErrors(xhr.responseJSON.errors);
+        } else {
+          $('#studioErrorAlert').text((xhr.responseJSON && xhr.responseJSON.message) || 'An error occurred while saving.').removeClass('hidden');
+        }
+      })
+      .always(function () {
+        $btn.prop('disabled', false).html('<span class="material-symbols-outlined text-lg">save</span> Save Changes');
+      });
+  });
+});
 </script>
-@endpush
+@endsection

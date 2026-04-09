@@ -5,9 +5,10 @@
 @php
   $ud = $userDetail;
   $st = $ud->scheduling_type ?? '';
-  $defaultSched = $st !== '' ? $st : 'auto';
-  $isAuto = $defaultSched === 'auto';
   $gcal = !empty($ud->google_calendar_token);
+  // If Google Calendar is connected, default to auto scheduling in the UI.
+  $defaultSched = $gcal ? 'auto' : ($st !== '' ? $st : 'auto');
+  $isAuto = $defaultSched === 'auto';
 @endphp
 
 @section('content')

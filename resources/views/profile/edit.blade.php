@@ -1,114 +1,35 @@
 @extends('layouts.artist_dashboard_layout')
 
+@section('title', 'Profile Settings')
+
 @section('styles')
-<script>
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        colors: {
-          "surface-container-high": "#ece6ef",
-          "surface-container-lowest": "#ffffff",
-          "surface-container": "#f2ecf5",
-          "background": "#fdf7ff",
-          "primary": "#310f7a",
-          "surface-dim": "#ded8e1",
-          "on-surface-variant": "#494552",
-          "secondary-fixed": "#e8ddff",
-          "on-secondary-fixed-variant": "#4a4168",
-          "inverse-surface": "#322f36",
-          "error-container": "#ffdad6",
-          "inverse-on-surface": "#f5eff8",
-          "tertiary": "#452200",
-          "surface-container-low": "#f8f1fb",
-          "surface": "#fdf7ff",
-          "secondary-fixed-dim": "#ccc0ee",
-          "on-tertiary-fixed": "#2e1500",
-          "on-error": "#ffffff",
-          "on-primary-container": "#b69fff",
-          "secondary": "#625881",
-          "inverse-primary": "#cebdff",
-          "primary-fixed": "#e8ddff",
-          "outline": "#7a7583",
-          "tertiary-fixed": "#ffdcc2",
-          "tertiary-container": "#653500",
-          "on-secondary": "#ffffff",
-          "on-primary": "#ffffff",
-          "on-tertiary-fixed-variant": "#6c3a04",
-          "error": "#ba1a1a",
-          "tertiary-fixed-dim": "#ffb77b",
-          "surface-bright": "#fdf7ff",
-          "surface-tint": "#664db1",
-          "on-error-container": "#93000a",
-          "on-primary-fixed": "#21005e",
-          "primary-fixed-dim": "#cebdff",
-          "on-tertiary-container": "#e49e62",
-          "on-primary-fixed-variant": "#4e3397",
-          "primary-container": "#482d91",
-          "on-surface": "#1c1b21",
-          "outline-variant": "#cac4d3",
-          "on-tertiary": "#ffffff",
-          "surface-container-highest": "#e6e0ea",
-          "on-background": "#1c1b21",
-          "secondary-container": "#ddd0ff",
-          "on-secondary-fixed": "#1e1539",
-          "surface-variant": "#e6e0ea",
-          "on-secondary-container": "#615780"
-        },
-        fontFamily: {
-          "headline": ["Plus Jakarta Sans"],
-          "body": ["Plus Jakarta Sans"],
-          "label": ["Plus Jakarta Sans"]
-        },
-        borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
-      },
-    },
-  }
-</script>
 <style>
-  body { font-family: 'Plus Jakarta Sans', sans-serif; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-
-  .mobile-header { display: none; }
-  @media (max-width: 1023px) { .mobile-header { display: flex; } }
-
-  .sidebar { width: 260px; min-height: 100vh; }
-  @media (min-width: 1024px) { .sidebar { display: flex !important; } .main-content { margin-left: 260px; } }
-  @media (max-width: 1023px) { .main-content { padding-top: 70px; } }
-  .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); transition: all 0.2s; cursor: pointer; text-decoration: none; }
-  .nav-item:hover { background: rgba(255,255,255,0.1); }
-  .nav-item.active { background: #ffffff; color: #310f7a; font-weight: 600; }
-  .nav-item .material-symbols-outlined { font-size: 20px; }
-
-  .sidebar.open { display: flex !important; }
-  .main-content { padding-top: 60px !important; }
-  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
-  .sidebar-backdrop.open { display: block; }
-
-  .sub-menu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-  .sub-menu.open { max-height: 300px; }
-  .sub-menu-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 48px; border-radius: 10px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); transition: all 0.2s; cursor: pointer; text-decoration: none; }
-  .sub-menu-item:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.95); }
-  .sub-menu-item.active { background: rgba(255,255,255,0.15); color: #ffffff; font-weight: 600; }
-  .sub-menu-item .material-symbols-outlined { font-size: 18px; }
-
-  .content-arrow { transition: transform 0.3s ease; font-size: 18px !important; }
-  .content-arrow.rotated { transform: rotate(180deg); }
-
   @media (max-width: 1023px) {
-    .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
-    body { overflow-x: hidden; }
-  }
+      .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
+      body { overflow-x: hidden; }
+    }
 </style>
 @endsection
 
-@section('title', 'Profile Settings')
-
 @section('content')
+
 <main class="main-content flex-1 min-h-screen flex flex-col">
   <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
 
   <div class="flex-1 p-6 md:p-10 lg:p-12 max-w-4xl">
+
+    <!-- Settings Tabs -->
+    <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
+      <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Profile</a>
+      <a href="{{ route('settings.styles') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Styles &amp; Social</a>
+      <a href="{{ route('settings.studio') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Studio</a>
+      <a href="{{ route('settings.preferences') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Preferences</a>
+      <a href="{{ route('settings.calendar') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Calendar</a>
+      <a href="{{route('settings.payment')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Payments</a>
+      <a href="{{route('settings.notifications')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Notifications</a>
+    </div>
+
+    <!-- Page Header -->
     <div class="mb-8">
       <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Profile Settings</h2>
       <p class="text-on-surface-variant mt-1">Update your personal information and profile photo.</p>
@@ -137,6 +58,7 @@
 
             <div>
               <label for="user_name" class="block text-sm font-semibold text-on-surface mb-2">Username</label>
+              <p class="text-on-surface-variant text-sm leading-relaxed mb-2">Match your Inkjin username to your Instagram handle and give your customers a better experience.</p>
               <div class="relative">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-outline text-sm font-medium">@</span>
                 <input type="text" id="user_name" name="user_name" value="{{ old('user_name', $userDetail->user_name ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
@@ -152,7 +74,7 @@
 
             <div>
               <label for="email" class="block text-sm font-semibold text-on-surface mb-2">Email</label>
-              <input type="email" id="email" value="{{ $user->email }}" readonly class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-surface text-on-surface-variant">
+              <input type="email" id="email" value="{{ $user->email }}" readonly class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-surface text-on-surface-variant" style="cursor: not-allowed; background-color: #e5e5e5;">
             </div>
           </div>
         </div>
@@ -182,80 +104,6 @@
         </button>
       </div>
     </form>
-
-    <div id="password-success-alert" class="hidden mt-8 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
-
-    <div class="mt-8 bg-surface-container-low rounded-2xl p-6" id="password-section">
-      <h3 class="text-xl font-bold text-on-surface mb-4">Update Password</h3>
-      <form id="passwordForm" method="post" action="{{ route('password.update') }}" class="space-y-4">
-        @csrf
-        @method('put')
-        <div>
-          <label for="current_password" class="block text-sm font-semibold text-on-surface mb-2">Current Password</label>
-          <div class="relative">
-            <input type="password" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-12 bg-white text-on-surface @error('current_password', 'updatePassword') border-error @enderror" id="current_password" name="current_password" autocomplete="current-password">
-            <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" data-target="current_password" aria-label="Show password">
-              <span class="material-symbols-outlined text-xl">visibility</span>
-            </button>
-          </div>
-          <p id="current_password_error" class="text-error text-xs mt-1 hidden"></p>
-          @error('current_password', 'updatePassword') <p class="text-error text-xs mt-1">{{ $message }}</p> @enderror
-        </div>
-        <div>
-          <label for="password" class="block text-sm font-semibold text-on-surface mb-2">New Password</label>
-          <div class="relative">
-            <input type="password" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-12 bg-white text-on-surface @error('password', 'updatePassword') border-error @enderror" id="password" name="password" autocomplete="new-password">
-            <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" data-target="password" aria-label="Show password">
-              <span class="material-symbols-outlined text-xl">visibility</span>
-            </button>
-          </div>
-          <p id="password_error" class="text-error text-xs mt-1 hidden"></p>
-          @error('password', 'updatePassword') <p class="text-error text-xs mt-1">{{ $message }}</p> @enderror
-        </div>
-        <div>
-          <label for="password_confirmation" class="block text-sm font-semibold text-on-surface mb-2">Confirm Password</label>
-          <div class="relative">
-            <input type="password" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-12 bg-white text-on-surface" id="password_confirmation" name="password_confirmation" autocomplete="new-password">
-            <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" data-target="password_confirmation" aria-label="Show password">
-              <span class="material-symbols-outlined text-xl">visibility</span>
-            </button>
-          </div>
-          <p id="password_confirmation_error" class="text-error text-xs mt-1 hidden"></p>
-        </div>
-        <div class="flex justify-end">
-          <button type="submit" id="updatePasswordBtn" class="inline-flex items-center gap-2 bg-primary text-white font-bold py-2.5 px-6 rounded-xl hover:opacity-90">
-            <span class="material-symbols-outlined text-lg">key</span> Update Password
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <div id="delete-success-alert" class="hidden mt-8 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
-
-    <div class="mt-8 bg-surface-container-low rounded-2xl p-6 border border-error/30">
-      <h3 class="text-xl font-bold text-error mb-2">Delete Account</h3>
-      <p class="text-on-surface-variant text-sm mb-4">This will permanently delete all account data.</p>
-      <form id="deleteAccountForm" method="post" action="{{ route('profile.destroy') }}" class="space-y-4">
-        @csrf
-        @method('delete')
-        <div>
-          <label for="delete_password" class="block text-sm font-semibold text-on-surface mb-2">Password</label>
-          <div class="relative">
-            <input type="password" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-12 bg-white text-on-surface @error('password', 'userDeletion') border-error @enderror" id="delete_password" name="password" autocomplete="current-password">
-            <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" data-target="delete_password" aria-label="Show password">
-              <span class="material-symbols-outlined text-xl">visibility</span>
-            </button>
-          </div>
-          <p id="delete_password_error" class="text-error text-xs mt-1 hidden"></p>
-          @error('password', 'userDeletion') <p class="text-error text-xs mt-1">{{ $message }}</p> @enderror
-        </div>
-        <div class="flex justify-end">
-          <button type="submit" id="deleteAccountBtn" class="inline-flex items-center gap-2 bg-error text-white font-bold py-2.5 px-6 rounded-xl hover:opacity-90">
-            <span class="material-symbols-outlined text-lg">delete</span> Delete Account
-          </button>
-        </div>
-      </form>
-    </div>
   </div>
 
   <div id="cropperModal" class="hidden fixed inset-0 z-[100] bg-black/70 items-center justify-center p-4">
@@ -282,31 +130,12 @@
       var profileForm = document.getElementById('profileForm');
       var saveBtn = document.getElementById('saveProfileBtn');
       var successAlert = document.getElementById('profile-success-alert');
-      var passwordForm = document.getElementById('passwordForm');
-      var passwordBtn = document.getElementById('updatePasswordBtn');
-      var passwordSuccessAlert = document.getElementById('password-success-alert');
-      var deleteForm = document.getElementById('deleteAccountForm');
-      var deleteBtn = document.getElementById('deleteAccountBtn');
-      var deleteSuccessAlert = document.getElementById('delete-success-alert');
       var openUploadBtn = document.getElementById('openUploadBtn');
       var profileImageInput = document.getElementById('profileImageInput');
       var cropperModal = document.getElementById('cropperModal');
       var cropImage = document.getElementById('cropImage');
       var profilePreview = document.getElementById('profilePreview');
       var uploadPlaceholder = document.getElementById('uploadPlaceholder');
-
-      document.querySelectorAll('.password-toggle').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var targetId = btn.getAttribute('data-target');
-          var input = document.getElementById(targetId);
-          if (!input) return;
-          var icon = btn.querySelector('.material-symbols-outlined');
-          var showing = input.type === 'text';
-          input.type = showing ? 'password' : 'text';
-          if (icon) icon.textContent = showing ? 'visibility' : 'visibility_off';
-          btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-        });
-      });
 
       function clearFieldError(fieldName) {
         var input = document.getElementById(fieldName);
@@ -417,7 +246,7 @@
           headers: {
             'X-CSRF-TOKEN': @json(csrf_token()),
             'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
+            Accept: 'application/json'
           },
           body: formData
         })
@@ -430,6 +259,7 @@
             if (result.ok && result.data.success) {
               successAlert.textContent = result.data.message || 'Profile updated successfully!';
               successAlert.classList.remove('hidden');
+              showSaveToast();
               if (result.data.avatar) {
                 profilePreview.src = result.data.avatar;
                 profilePreview.classList.remove('hidden');
@@ -452,149 +282,6 @@
           .finally(function () {
             saveBtn.disabled = false;
             saveBtn.innerHTML = '<span class="material-symbols-outlined text-lg">save</span> Save Changes';
-          });
-      });
-
-      function clearPasswordErrors() {
-        ['current_password', 'password', 'password_confirmation'].forEach(function (field) {
-          var input = document.getElementById(field);
-          var error = document.getElementById(field + '_error');
-          if (input) input.classList.remove('border-error');
-          if (error) {
-            error.textContent = '';
-            error.classList.add('hidden');
-          }
-        });
-      }
-
-      function setPasswordError(field, message) {
-        var input = document.getElementById(field);
-        var error = document.getElementById(field + '_error');
-        if (input) input.classList.add('border-error');
-        if (error) {
-          error.textContent = message;
-          error.classList.remove('hidden');
-        }
-      }
-
-      ['current_password', 'password', 'password_confirmation'].forEach(function (field) {
-        var el = document.getElementById(field);
-        if (el) {
-          el.addEventListener('input', function () {
-            var error = document.getElementById(field + '_error');
-            el.classList.remove('border-error');
-            if (error) {
-              error.textContent = '';
-              error.classList.add('hidden');
-            }
-          });
-        }
-      });
-
-      passwordForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        clearPasswordErrors();
-        passwordSuccessAlert.classList.add('hidden');
-        passwordBtn.disabled = true;
-        passwordBtn.innerHTML = '<span class="material-symbols-outlined text-lg">hourglass_top</span> Updating...';
-
-        var formData = new FormData(passwordForm);
-
-        fetch(@json(route('password.update')), {
-          method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': @json(csrf_token()),
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-          },
-          body: formData
-        })
-          .then(function (response) {
-            return response.json().then(function (data) {
-              return { status: response.status, ok: response.ok, data: data };
-            });
-          })
-          .then(function (result) {
-            if (result.ok && result.data.success) {
-              passwordSuccessAlert.textContent = result.data.message || 'Password updated successfully.';
-              passwordSuccessAlert.classList.remove('hidden');
-              passwordForm.reset();
-              return;
-            }
-            if (result.status === 422 && result.data && result.data.errors) {
-              Object.keys(result.data.errors).forEach(function (field) {
-                setPasswordError(field, result.data.errors[field][0]);
-              });
-              return;
-            }
-            alert('Something went wrong. Please try again.');
-          })
-          .catch(function () {
-            alert('Network error. Please try again.');
-          })
-          .finally(function () {
-            passwordBtn.disabled = false;
-            passwordBtn.innerHTML = '<span class="material-symbols-outlined text-lg">key</span> Update Password';
-          });
-      });
-
-      function clearDeleteError() {
-        var input = document.getElementById('delete_password');
-        var error = document.getElementById('delete_password_error');
-        if (input) input.classList.remove('border-error');
-        if (error) {
-          error.textContent = '';
-          error.classList.add('hidden');
-        }
-      }
-
-      document.getElementById('delete_password').addEventListener('input', clearDeleteError);
-
-      deleteForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        clearDeleteError();
-        deleteSuccessAlert.classList.add('hidden');
-        deleteBtn.disabled = true;
-        deleteBtn.innerHTML = '<span class="material-symbols-outlined text-lg">hourglass_top</span> Deleting...';
-
-        var formData = new FormData(deleteForm);
-
-        fetch(@json(route('profile.destroy')), {
-          method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': @json(csrf_token()),
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-          },
-          body: formData
-        })
-          .then(function (response) {
-            return response.json().then(function (data) {
-              return { status: response.status, ok: response.ok, data: data };
-            });
-          })
-          .then(function (result) {
-            if (result.ok && result.data.success) {
-              deleteSuccessAlert.textContent = result.data.message || 'Account deleted successfully.';
-              deleteSuccessAlert.classList.remove('hidden');
-              window.location.href = result.data.redirect || '/';
-              return;
-            }
-            if (result.status === 422 && result.data && result.data.errors && result.data.errors.password) {
-              document.getElementById('delete_password').classList.add('border-error');
-              var errorEl = document.getElementById('delete_password_error');
-              errorEl.textContent = result.data.errors.password[0];
-              errorEl.classList.remove('hidden');
-              return;
-            }
-            alert('Something went wrong. Please try again.');
-          })
-          .catch(function () {
-            alert('Network error. Please try again.');
-          })
-          .finally(function () {
-            deleteBtn.disabled = false;
-            deleteBtn.innerHTML = '<span class="material-symbols-outlined text-lg">delete</span> Delete Account';
           });
       });
     })();

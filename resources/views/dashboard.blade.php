@@ -1,143 +1,34 @@
 @extends('layouts.artist_dashboard_layout')
 
+@section('title', 'Dashboard')
+
 @section('styles')
-
-<script>
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        colors: {
-          "surface-container-high": "#ece6ef",
-          "surface-container-lowest": "#ffffff",
-          "surface-container": "#f2ecf5",
-          "background": "#fdf7ff",
-          "primary": "#310f7a",
-          "surface-dim": "#ded8e1",
-          "on-surface-variant": "#494552",
-          "secondary-fixed": "#e8ddff",
-          "on-secondary-fixed-variant": "#4a4168",
-          "inverse-surface": "#322f36",
-          "error-container": "#ffdad6",
-          "inverse-on-surface": "#f5eff8",
-          "tertiary": "#452200",
-          "surface-container-low": "#f8f1fb",
-          "surface": "#fdf7ff",
-          "secondary-fixed-dim": "#ccc0ee",
-          "on-tertiary-fixed": "#2e1500",
-          "on-error": "#ffffff",
-          "on-primary-container": "#b69fff",
-          "secondary": "#625881",
-          "inverse-primary": "#cebdff",
-          "primary-fixed": "#e8ddff",
-          "outline": "#7a7583",
-          "tertiary-fixed": "#ffdcc2",
-          "tertiary-container": "#653500",
-          "on-secondary": "#ffffff",
-          "on-primary": "#ffffff",
-          "on-tertiary-fixed-variant": "#6c3a04",
-          "error": "#ba1a1a",
-          "tertiary-fixed-dim": "#ffb77b",
-          "surface-bright": "#fdf7ff",
-          "surface-tint": "#664db1",
-          "on-error-container": "#93000a",
-          "on-primary-fixed": "#21005e",
-          "primary-fixed-dim": "#cebdff",
-          "on-tertiary-container": "#e49e62",
-          "on-primary-fixed-variant": "#4e3397",
-          "primary-container": "#482d91",
-          "on-surface": "#1c1b21",
-          "outline-variant": "#cac4d3",
-          "on-tertiary": "#ffffff",
-          "surface-container-highest": "#e6e0ea",
-          "on-background": "#1c1b21",
-          "secondary-container": "#ddd0ff",
-          "on-secondary-fixed": "#1e1539",
-          "surface-variant": "#e6e0ea",
-          "on-secondary-container": "#615780"
-        },
-        fontFamily: {
-          "headline": ["Plus Jakarta Sans"],
-          "body": ["Plus Jakarta Sans"],
-          "label": ["Plus Jakarta Sans"]
-        },
-        borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
-      },
-    },
-  }
-</script>
 <style>
-  body { font-family: 'Plus Jakarta Sans', sans-serif; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-  /* Sidebar */
-  
-  .mobile-header { display: none; }
-  @media (max-width: 1023px) { .mobile-header { display: flex; } }
-  @media (min-width: 1024px) {  }
-
-  .sidebar { width: 260px; min-height: 100vh; }
-  @media (min-width: 1024px) { .sidebar { display: flex !important; } .main-content { margin-left: 260px; } }
-  @media (max-width: 1023px) { .main-content {  padding-top: 70px; } }
-  .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); transition: all 0.2s; cursor: pointer; text-decoration: none; }
-  .nav-item:hover { background: rgba(255,255,255,0.1); }
-  .nav-item.active { background: #ffffff; color: #310f7a; font-weight: 600; }
-  .nav-item .material-symbols-outlined { font-size: 20px; }
-  /* Progress bar */
-  .progress-fill { transition: width 0.4s ease; }
-  /* Mobile sidebar — handled by Tailwind responsive classes (hidden lg:flex) */
-    .sidebar.open { display: flex !important; }
-    
-    .main-content {  padding-top: 60px !important; }
-    .sidebar-backdrop {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 99;
-    }
-    .sidebar-backdrop.open { display: block; }
-
-  /* Sub-menu */
-  .sub-menu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; display: flex; flex-direction: column; gap: 2px; margin-top: 4px; margin-left: 32px; }
-  .sub-menu.open { max-height: 500px; }
-  .sub-menu-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 48px; border-radius: 10px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); transition: all 0.2s; cursor: pointer; text-decoration: none; }
-  .sub-menu-item:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.95); }
-  .sub-menu-item.active { background: rgba(255,255,255,0.16); color: #ffffff; }
-  .sub-menu-item .material-symbols-outlined { font-size: 18px; }
-
-  
-  /* Content toggle arrow */
-  .content-arrow { transition: transform 0.3s ease; font-size: 18px !important; }
-  .content-arrow.rotated { transform: rotate(180deg); }
-
-  
   /* Stat card hover */
   .stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(49,15,122,0.1); }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(49,15,122,0.1); }
 
+    
+/* Quick action hover */
+    .quick-action { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .quick-action:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(49,15,122,0.1); }
+
+    
+/* Table row hover */
+    .booking-row { transition: background 0.15s ease; }
+    .booking-row:hover { background: #f8f1fb; }
   
-  /* Quick action hover */
-  .quick-action { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-  .quick-action:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(49,15,122,0.1); }
-
-  
-  /* Table row hover */
-  .booking-row { transition: background 0.15s ease; }
-  .booking-row:hover { background: #f8f1fb; }
-
-  /* Mobile overflow fixes */
-  @media (max-width: 1023px) {
-    .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
-    body { overflow-x: hidden; }
-  }
-  .filter-pills { flex-wrap: wrap; }
-  .request-card { overflow: hidden; word-break: break-word; }
-
+    /* Mobile overflow fixes */
+    @media (max-width: 1023px) {
+      .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
+      body { overflow-x: hidden; }
+    }
+    .filter-pills { flex-wrap: wrap; }
+    .request-card { overflow: hidden; word-break: break-word; }
 </style>
 @endsection
 
 @section('content')
-
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
 
@@ -188,16 +79,16 @@
         <p class="text-xs text-green-600 mt-1 font-medium">+12% from last month</p>
       </div>
 
-      <!-- Unread Messages -->
+      <!-- Waitlist -->
       <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
         <div class="flex items-start justify-between mb-4">
           <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
-            <span class="material-symbols-outlined text-primary">mail</span>
+            <span class="material-symbols-outlined text-primary">notifications_active</span>
           </div>
         </div>
-        <p class="text-3xl font-extrabold text-on-surface">8</p>
-        <p class="text-sm font-semibold text-on-surface mt-1">Unread Messages</p>
-        <p class="text-xs text-on-surface-variant mt-1">3 from new clients</p>
+        <p class="text-3xl font-extrabold text-on-surface">42</p>
+        <p class="text-sm font-semibold text-on-surface mt-1">Waitlist</p>
+        <p class="text-xs text-on-surface-variant mt-1">Clients waiting for books to open</p>
       </div>
     </div>
 
@@ -351,15 +242,14 @@
 
   </div>
 </main>
-
 @endsection
 
 @section('scripts')
-  <script>
-    // Set current date
-    const dateEl = document.getElementById('currentDate');
+<script>
+  // Set current date
+  const dateEl = document.getElementById('currentDate');
     const now = new Date();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     dateEl.textContent = now.toLocaleDateString('en-US', options);
-  </script>
+</script>
 @endsection

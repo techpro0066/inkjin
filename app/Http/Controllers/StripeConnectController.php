@@ -18,6 +18,16 @@ use Illuminate\Support\Facades\URL;
 class StripeConnectController extends Controller
 {
     /**
+     * Redirect users to the right payment screen based on onboarding state.
+     */
+    private function paymentRouteForUser(User $user): string
+    {
+        return $user->on_boarding === 'no'
+            ? route('onboarding.payment')
+            : route('settings.payment');
+    }
+
+    /**
      * Initialize Stripe API key
      */
     private function initializeStripe()
@@ -90,9 +100,8 @@ class StripeConnectController extends Controller
                 return redirect()->back()->with('error', 'Something went wrong. Please try again.');
             }
 
-            // Check if user is in onboarding process
-            if ($user->on_boarding === 'no') {
-                // Create account onboarding link
+            // If Stripe ID is not persisted yet, always run onboarding to ensure callback can persist it.
+            if (! $userDetail->stripe_account_id) {
                 $accountLink = AccountLink::create([
                     'account' => $accountId,
                     'refresh_url' => route('connect.stripe.callback', ['status' => 'refresh']),
@@ -102,7 +111,7 @@ class StripeConnectController extends Controller
 
                 return redirect($accountLink->url);
             } else {
-                // User already completed onboarding, create login link
+                // Existing connected account: open Stripe dashboard/login link
                 $accountLink = Account::createLoginLink($accountId);
                 return redirect($accountLink->url);
             }
@@ -136,13 +145,13 @@ class StripeConnectController extends Controller
 
             $userDetail = $user->userDetail;
             if (!$userDetail) {
-                return redirect()->route('onboarding.payment')
+                return redirect()->to($this->paymentRouteForUser($user))
                     ->with('error', 'Profile not found. Please try again.');
             }
 
             $accountId = session('stripe_connect_pending_account_id') ?? $userDetail->stripe_account_id;
             if (!$accountId) {
-                return redirect()->route('onboarding.payment')
+                return redirect()->to($this->paymentRouteForUser($user))
                     ->with('error', 'Stripe account not found. Please try connecting again.');
             }
 
@@ -154,7 +163,7 @@ class StripeConnectController extends Controller
 
             if ($status === 'refresh') {
                 // User refreshed the page, redirect back to onboarding
-                return redirect()->route('onboarding.payment')
+                return redirect()->to($this->paymentRouteForUser($user))
                     ->with('info', 'Please complete your Stripe account setup.');
             }
 
@@ -165,6 +174,11 @@ class StripeConnectController extends Controller
             // (Charges/payouts can stay pending for hours while Stripe verifies — do not wait for both or the ID never saves.)
             if ($formSubmitted || $fullyLive) {
                 $userDetail->stripe_account_id = $accountId;
+                // Stripe connect from this flow always means artist payouts.
+                // Save payout type immediately so user does not need an extra "Save" click.
+                $userDetail->payment_type = 'artist_account';
+                $userDetail->studio_id = null;
+                $userDetail->payment_status = $fullyLive ? 'approved' : ($userDetail->payment_status ?? 'pending');
                 $userDetail->save();
                 session()->forget('stripe_connect_pending_account_id');
             }
@@ -183,29 +197,29 @@ class StripeConnectController extends Controller
                     }
                 }
 
-                return redirect()->route('onboarding.payment')
+                return redirect()->to($this->paymentRouteForUser($user))
                     ->with('success', 'Stripe account connected successfully!');
             }
 
             if ($formSubmitted) {
-                return redirect()->route('onboarding.payment')
+                return redirect()->to($this->paymentRouteForUser($user))
                     ->with('info', 'Stripe account setup is in progress. You will be notified once it\'s complete.');
             }
 
-            return redirect()->route('onboarding.payment')
+            return redirect()->to($this->paymentRouteForUser($user))
                 ->with('warning', 'Stripe account setup is not complete. Please try again.');
         } catch (ApiErrorException $e) {
             Log::error('Stripe Callback API Error: ' . $e->getMessage(), [
                 'user_id' => Auth::id(),
                 'error' => $e->getError()
             ]);
-            return redirect()->route('onboarding.payment')
+            return redirect()->to($this->paymentRouteForUser($user))
                 ->with('error', 'Failed to verify Stripe account status. Please try again.');
         } catch (\Exception $e) {
             Log::error('Stripe Callback Error: ' . $e->getMessage(), [
                 'user_id' => Auth::id()
             ]);
-            return redirect()->route('onboarding.payment')
+            return redirect()->to($this->paymentRouteForUser($user))
                 ->with('error', 'An error occurred. Please try again.');
         }
     }

@@ -494,13 +494,33 @@ class OnboardingController extends Controller
                 'google_maps_link' => $validated['google_maps_link'] ?? null,
             ]);
 
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Studio information updated successfully!',
+                ]);
+            }
+
             return redirect()->route('settings.studio')
                 ->with('success', 'Studio information updated successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please fix the validation errors',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput();
         } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred: ' . $e->getMessage(),
+                ], 500);
+            }
             return redirect()->back()
                 ->with('error', 'An error occurred: ' . $e->getMessage())
                 ->withInput();
@@ -527,6 +547,13 @@ class OnboardingController extends Controller
                 $calendarConnected = !empty($userDetail->google_calendar_token);
                 
                 if (!$calendarConnected) {
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Please connect your Google Calendar for auto scheduling.',
+                            'errors' => ['google_calendar_connected' => ['Google Calendar connection is required for auto scheduling.']],
+                        ], 422);
+                    }
                     return redirect()->back()
                         ->with('error', 'Please connect your Google Calendar for auto scheduling.')
                         ->withInput();
@@ -547,13 +574,33 @@ class OnboardingController extends Controller
                 ? 'Calendar settings updated successfully. Auto scheduling with Google Calendar is enabled.'
                 : 'Calendar settings updated successfully. Managed scheduling is enabled.';
 
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                ]);
+            }
+
             return redirect()->route('settings.calendar')
                 ->with('success', $message);
         } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please fix the validation errors',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput();
         } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred: ' . $e->getMessage(),
+                ], 500);
+            }
             return redirect()->back()
                 ->with('error', 'An error occurred: ' . $e->getMessage())
                 ->withInput();
@@ -568,6 +615,28 @@ class OnboardingController extends Controller
         try {
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+            if ((int) $request->input('disconnect_studio', 0) === 1) {
+                if (($userDetail->payment_type ?? null) !== 'studio_account' || empty($userDetail->studio_id)) {
+                    $msg = 'No linked studio payout to disconnect.';
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+                    return redirect()->back()->with('error', $msg);
+                }
+
+                $userDetail->payment_type = 'artist_account';
+                $userDetail->studio_id = null;
+                $userDetail->stripe_account_id = null;
+                $userDetail->payment_status = null;
+                $userDetail->save();
+
+                $msg = 'Studio payout disconnected. Please connect another payment method.';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['success' => true, 'message' => $msg]);
+                }
+                return redirect()->route('settings.payment')->with('success', $msg);
+            }
 
             $rules = [
                 'payment_type' => ['required', 'in:artist_account,studio_account,inkjin_account'],
@@ -657,10 +726,30 @@ class OnboardingController extends Controller
                 }
             }
 
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment settings updated successfully!',
+                ]);
+            }
+
             return redirect()->route('settings.payment')->with('success', 'Payment settings updated successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please fix the validation errors',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred: ' . $e->getMessage(),
+                ], 500);
+            }
             return redirect()->back()->with('error', 'An error occurred: ' . $e->getMessage())->withInput();
         }
     }
@@ -706,15 +795,12 @@ class OnboardingController extends Controller
                         $requireGap = $request->has('require_gap_between_consultation_tattoo') && $request->require_gap_between_consultation_tattoo == '1';
                         if ($requireGap) {
                             $validationRules['consultation_tattoo_gap_value'] = ['required', 'integer', 'min:1'];
-                            $validationRules['consultation_tattoo_gap_unit'] = ['required', 'in:minutes,hours,days'];
                         } else {
                             $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                            $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
                         }
                     } else {
                         $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
                         $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                        $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
                     }
                 } else {
                     $validationRules['session_type'] = ['nullable', 'in:online,physical,both'];
@@ -722,7 +808,6 @@ class OnboardingController extends Controller
                     $validationRules['consultation_timing'] = ['nullable', 'in:combined,separate'];
                     $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
                     $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                    $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
                 }
                 
                 $validated = $request->validate($validationRules);
@@ -753,13 +838,12 @@ class OnboardingController extends Controller
                     if ($consultationTiming === 'separate') {
                         $requireGap = isset($validated['require_gap_between_consultation_tattoo']) && $validated['require_gap_between_consultation_tattoo'];
                         $updateData['require_gap_between_consultation_tattoo'] = $requireGap;
-                        if ($requireGap && isset($validated['consultation_tattoo_gap_value']) && isset($validated['consultation_tattoo_gap_unit'])) {
+                        if ($requireGap && isset($validated['consultation_tattoo_gap_value'])) {
                             $updateData['consultation_tattoo_gap_value'] = (int) $validated['consultation_tattoo_gap_value'];
-                            $updateData['consultation_tattoo_gap_unit'] = $validated['consultation_tattoo_gap_unit'];
                         } else {
                             $updateData['consultation_tattoo_gap_value'] = null;
-                            $updateData['consultation_tattoo_gap_unit'] = null;
                         }
+                        $updateData['consultation_tattoo_gap_unit'] = null;
                     } else {
                         // Clear gap fields when not separate
                         $updateData['require_gap_between_consultation_tattoo'] = false;
@@ -883,15 +967,12 @@ class OnboardingController extends Controller
                     $requireGap = $request->has('require_gap_between_consultation_tattoo') && $request->require_gap_between_consultation_tattoo == '1';
                     if ($requireGap) {
                         $validationRules['consultation_tattoo_gap_value'] = ['required', 'integer', 'min:1'];
-                        $validationRules['consultation_tattoo_gap_unit'] = ['required', 'in:minutes,hours,days'];
                     } else {
                         $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                        $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
                     }
                 } else {
                     $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
                     $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                    $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
                 }
             } else {
                 $validationRules['session_type'] = ['nullable', 'in:online,physical,both'];
@@ -899,7 +980,6 @@ class OnboardingController extends Controller
                 $validationRules['consultation_timing'] = ['nullable', 'in:combined,separate'];
                 $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
                 $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                $validationRules['consultation_tattoo_gap_unit'] = ['nullable', 'in:minutes,hours,days'];
             }
             
             $validated = $request->validate($validationRules);
@@ -936,13 +1016,12 @@ class OnboardingController extends Controller
                 if ($consultationTiming === 'separate') {
                     $requireGap = isset($validated['require_gap_between_consultation_tattoo']) && $validated['require_gap_between_consultation_tattoo'];
                     $updateData['require_gap_between_consultation_tattoo'] = $requireGap;
-                    if ($requireGap && isset($validated['consultation_tattoo_gap_value']) && isset($validated['consultation_tattoo_gap_unit'])) {
+                    if ($requireGap && isset($validated['consultation_tattoo_gap_value'])) {
                         $updateData['consultation_tattoo_gap_value'] = (int) $validated['consultation_tattoo_gap_value'];
-                        $updateData['consultation_tattoo_gap_unit'] = $validated['consultation_tattoo_gap_unit'];
                     } else {
                         $updateData['consultation_tattoo_gap_value'] = null;
-                        $updateData['consultation_tattoo_gap_unit'] = null;
                     }
+                    $updateData['consultation_tattoo_gap_unit'] = null;
                 } else {
                     // Clear gap fields when not separate
                     $updateData['require_gap_between_consultation_tattoo'] = false;
