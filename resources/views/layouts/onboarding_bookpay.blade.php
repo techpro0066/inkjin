@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}" type="image/png">
   <title>@yield('title', 'Onboarding') — {{ config('app.name', 'Inkjin') }}</title>
   <link href="{{ asset('design/css/bookpay.css') }}" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
