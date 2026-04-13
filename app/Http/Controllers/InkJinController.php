@@ -643,21 +643,17 @@ class InkJinController extends Controller
                 ->orderBy('start_time')
                 ->get();
             
-            // Get all availability overrides (get all future overrides, no date limit)
-            // This includes dates where artist marked themselves as unavailable
-            $overrides = AvailabilityOverride::where('user_id', $user->id)
-                ->where('override_date', '>=', Carbon::today())
-                ->orderBy('override_date')
+            // Full-day blocked ranges (end_date on or after today for payload size)
+            $blocks = AvailabilityOverride::where('user_id', $user->id)
+                ->where('end_date', '>=', Carbon::today())
+                ->orderBy('start_date')
                 ->get();
-            
+
             $availabilityData['availabilities'] = $availabilities;
-            // Format overrides for JSON (convert dates to strings)
-            $availabilityData['overrides'] = $overrides->map(function ($override) {
+            $availabilityData['overrides'] = $blocks->map(function ($block) {
                 return [
-                    'override_date' => $override->override_date->format('Y-m-d'),
-                    'is_unavailable' => $override->is_unavailable,
-                    'start_time' => $override->start_time,
-                    'end_time' => $override->end_time,
+                    'start_date' => $block->start_date->format('Y-m-d'),
+                    'end_date' => $block->end_date->format('Y-m-d'),
                 ];
             });
             
@@ -713,23 +709,18 @@ class InkJinController extends Controller
                 $carbonDayOfWeek = $dateInArtistTimezone->dayOfWeek; // 0 = Sunday, 6 = Saturday
                 $dayName = $dayNameMap[$carbonDayOfWeek];
                 
-                // Check for override first (overrides take precedence)
-                $override = $overrides->firstWhere('override_date', $dateKey);
-                
-                if ($override) {
-                    if ($override->is_unavailable) {
-                        $unavailableDates[] = $dateKey;
-                    } else {
-                        // Custom availability for this date
-                        $availableDates[] = $dateKey;
-                    }
+                // Blocked date ranges take precedence (full day unavailable)
+                $isBlocked = $blocks->contains(function ($block) use ($dateKey) {
+                    return $dateKey >= $block->start_date->format('Y-m-d')
+                        && $dateKey <= $block->end_date->format('Y-m-d');
+                });
+
+                if ($isBlocked) {
+                    $unavailableDates[] = $dateKey;
+                } elseif (isset($weeklyAvailability[$dayName]) && count($weeklyAvailability[$dayName]) > 0) {
+                    $availableDates[] = $dateKey;
                 } else {
-                    // Check weekly availability based on day of week in artist's timezone
-                    if (isset($weeklyAvailability[$dayName]) && count($weeklyAvailability[$dayName]) > 0) {
-                        $availableDates[] = $dateKey;
-                    } else {
-                        $unavailableDates[] = $dateKey;
-                    }
+                    $unavailableDates[] = $dateKey;
                 }
                 
                 $currentDate->addDay();
@@ -908,29 +899,17 @@ class InkJinController extends Controller
         ];
         $dayName = $dayNameMap[$dateInArtistTimezone->dayOfWeek];
 
-        // Check for date override first
-        $override = AvailabilityOverride::where('user_id', $user->id)
-            ->where('override_date', $dateKey)
+        $dayBlock = AvailabilityOverride::where('user_id', $user->id)
+            ->where('start_date', '<=', $dateKey)
+            ->where('end_date', '>=', $dateKey)
             ->first();
 
         $isUnavailable = false;
         $availabilityWindows = [];
 
-        if ($override) {
-            if ($override->is_unavailable) {
-                $isUnavailable = true;
-            } else {
-                // Custom availability for this date
-                if ($override->start_time && $override->end_time) {
-                    $availabilityWindows[] = [
-                        'start_time' => $override->start_time,
-                        'end_time' => $override->end_time,
-                        'type' => 'override',
-                    ];
-                }
-            }
+        if ($dayBlock) {
+            $isUnavailable = true;
         } else {
-            // Get weekly availability for this day from availability table
             $availabilities = Availability::where('user_id', $user->id)
                 ->where('day_of_week', $dayName)
                 ->orderBy('start_time')
@@ -1170,12 +1149,11 @@ class InkJinController extends Controller
             ],
             'time_slots' => $timeSlots,
             'questions' => $questions,
-            'override' => $override ? [
-                'id' => $override->id,
-                'is_unavailable' => $override->is_unavailable,
-                'start_time' => $override->start_time,
-                'end_time' => $override->end_time,
-                'notes' => $override->notes,
+            'override' => $dayBlock ? [
+                'id' => $dayBlock->id,
+                'start_date' => $dayBlock->start_date->format('Y-m-d'),
+                'end_date' => $dayBlock->end_date->format('Y-m-d'),
+                'reason' => $dayBlock->reason,
             ] : null,
         ]);
     }
@@ -2578,26 +2556,16 @@ class InkJinController extends Controller
         ];
         $dayName = $dayNameMap[$dateInArtistTimezone->dayOfWeek];
 
-        // Check for date override
-        $override = AvailabilityOverride::where('user_id', $user->id)
-            ->where('override_date', $dateKey)
-            ->first();
+        $isDayBlocked = AvailabilityOverride::where('user_id', $user->id)
+            ->where('start_date', '<=', $dateKey)
+            ->where('end_date', '>=', $dateKey)
+            ->exists();
 
         $isUnavailable = false;
         $availabilityWindows = [];
 
-        if ($override) {
-            if ($override->is_unavailable) {
-                $isUnavailable = true;
-            } else {
-                if ($override->start_time && $override->end_time) {
-                    $availabilityWindows[] = [
-                        'start_time' => $override->start_time,
-                        'end_time' => $override->end_time,
-                        'type' => 'override',
-                    ];
-                }
-            }
+        if ($isDayBlocked) {
+            $isUnavailable = true;
         } else {
             $availabilities = Availability::where('user_id', $user->id)
                 ->where('day_of_week', $dayName)

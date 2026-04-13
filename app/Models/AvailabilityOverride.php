@@ -9,23 +9,16 @@ class AvailabilityOverride extends Model
 {
     protected $fillable = [
         'user_id',
-        'override_date',
-        'start_time',
-        'end_time',
-        'is_unavailable',
-        'notes',
+        'start_date',
+        'end_date',
+        'reason',
     ];
 
     protected $casts = [
-        'override_date' => 'date',
-        'start_time' => 'string',
-        'end_time' => 'string',
-        'is_unavailable' => 'boolean',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
-    /**
-     * Get the user that owns the availability override.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

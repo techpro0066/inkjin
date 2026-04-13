@@ -50,6 +50,7 @@ class UserDetail extends Model
         'payment_type',
         'studio_id',
         'payment_status',
+        'availability_status',
     ];
 
     protected $casts = [

@@ -38,7 +38,13 @@
   <!-- Bottom: Log Out + Avatar (sticky, always visible) -->
   <div class="flex-shrink-0">
     <div class="border-t border-white/10 pt-4 mt-4">
-      <a href="index.html" class="nav-item text-white/60 hover:text-white"><span class="material-symbols-outlined">logout</span> Log Out</a>
+      <form method="POST" action="{{ route('logout') }}" class="m-0">
+        @csrf
+        <input type="hidden" name="_token" value="{{ csrf_token() }}">
+        <button type="submit" class="nav-item text-white/60 hover:text-white w-full text-left border-0 bg-transparent cursor-pointer font-[inherit]">
+          <span class="material-symbols-outlined">logout</span> Log Out
+        </button>
+      </form>
     </div>
     <div class="flex min-w-0 items-center gap-3 mt-4 pt-4 border-t border-white/10">
       <div class="shrink-0 w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-primary font-bold text-sm overflow-hidden">

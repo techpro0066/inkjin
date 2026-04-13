@@ -14,15 +14,10 @@ return new class extends Migration
         Schema::create('availability_overrides', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->date('override_date'); // Specific date for the override
-            $table->time('start_time')->nullable(); // Stored in UTC, null means unavailable for the day
-            $table->time('end_time')->nullable(); // Stored in UTC, null means unavailable for the day
-            $table->boolean('is_unavailable')->default(false)->comment('If true, artist is unavailable on this date');
-            $table->text('notes')->nullable()->comment('Optional notes about the override');
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->string('reason')->nullable();
             $table->timestamps();
-            
-            // Prevent duplicate entries for same user and date
-            $table->unique(['user_id', 'override_date']);
         });
     }
 

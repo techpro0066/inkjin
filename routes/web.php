@@ -165,6 +165,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function 
     
     // Availability routes (for artists)
     Route::get('/availability', [\App\Http\Controllers\AvailabilityController::class, 'index'])->name('availability.index');
+    Route::post('/availability/booking-status', [\App\Http\Controllers\AvailabilityController::class, 'saveBookingStatus'])->name('availability.booking-status');
     Route::post('/availability', [\App\Http\Controllers\AvailabilityController::class, 'store'])->name('availability.store');
     Route::delete('/availability/{id}', [\App\Http\Controllers\AvailabilityController::class, 'destroy'])->name('availability.destroy');
     

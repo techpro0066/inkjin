@@ -523,19 +523,16 @@ class ReschedulingController extends Controller
                 ->orderBy('start_time')
                 ->get();
             
-            // Get all availability overrides
-            $overrides = AvailabilityOverride::where('user_id', $artistUser->id)
-                ->where('override_date', '>=', Carbon::today())
-                ->orderBy('override_date')
+            $blocks = AvailabilityOverride::where('user_id', $artistUser->id)
+                ->where('end_date', '>=', Carbon::today())
+                ->orderBy('start_date')
                 ->get();
-            
+
             $availabilityData['availabilities'] = $availabilities;
-            $availabilityData['overrides'] = $overrides->map(function ($override) {
+            $availabilityData['overrides'] = $blocks->map(function ($block) {
                 return [
-                    'override_date' => $override->override_date->format('Y-m-d'),
-                    'is_unavailable' => $override->is_unavailable,
-                    'start_time' => $override->start_time,
-                    'end_time' => $override->end_time,
+                    'start_date' => $block->start_date->format('Y-m-d'),
+                    'end_date' => $block->end_date->format('Y-m-d'),
                 ];
             });
             
@@ -581,20 +578,17 @@ class ReschedulingController extends Controller
                 $carbonDayOfWeek = $dateInArtistTimezone->dayOfWeek;
                 $dayName = $dayNameMap[$carbonDayOfWeek];
                 
-                $override = $overrides->firstWhere('override_date', $dateKey);
-                
-                if ($override) {
-                    if ($override->is_unavailable) {
-                        $unavailableDates[] = $dateKey;
-                    } else {
-                        $availableDates[] = $dateKey;
-                    }
+                $isBlocked = $blocks->contains(function ($block) use ($dateKey) {
+                    return $dateKey >= $block->start_date->format('Y-m-d')
+                        && $dateKey <= $block->end_date->format('Y-m-d');
+                });
+
+                if ($isBlocked) {
+                    $unavailableDates[] = $dateKey;
+                } elseif (isset($weeklyAvailability[$dayName]) && count($weeklyAvailability[$dayName]) > 0) {
+                    $availableDates[] = $dateKey;
                 } else {
-                    if (isset($weeklyAvailability[$dayName]) && count($weeklyAvailability[$dayName]) > 0) {
-                        $availableDates[] = $dateKey;
-                    } else {
-                        $unavailableDates[] = $dateKey;
-                    }
+                    $unavailableDates[] = $dateKey;
                 }
                 
                 $currentDate->addDay();

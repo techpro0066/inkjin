@@ -8,6 +8,7 @@ use App\Models\UserDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 class AvailabilityController extends Controller
@@ -52,41 +53,97 @@ class AvailabilityController extends Controller
             ];
         }
 
-        // Get all date overrides for the user
-        $overrides = AvailabilityOverride::where('user_id', $user->id)
-            ->orderBy('override_date', 'desc')
+        // Blocked date ranges (full-day unavailability) — see availability_overrides migration
+        $blocks = AvailabilityOverride::where('user_id', $user->id)
+            ->orderBy('start_date', 'desc')
+            ->orderBy('id', 'desc')
             ->get();
 
-        // Convert override times to user's timezone for display
-        $overridesByDate = [];
-        foreach ($overrides as $override) {
-            $dateKey = $override->override_date->format('Y-m-d');
-            $overrideData = [
-                'id' => $override->id,
-                'is_unavailable' => $override->is_unavailable,
-                'notes' => $override->notes,
+        $blockedPeriods = $blocks->map(static function (AvailabilityOverride $b) {
+            return [
+                'id' => $b->id,
+                'start_date' => $b->start_date->format('Y-m-d'),
+                'end_date' => $b->end_date->format('Y-m-d'),
+                'reason' => $b->reason ?? '',
             ];
+        })->values()->all();
 
-            if (!$override->is_unavailable && $override->start_time && $override->end_time) {
-                // Convert UTC times to user's timezone for display
-                $startTime = Carbon::createFromFormat('Y-m-d H:i:s', $override->override_date->format('Y-m-d') . ' ' . $override->start_time, 'UTC')
-                    ->setTimezone($timezone)
-                    ->format('H:i');
-                $endTime = Carbon::createFromFormat('Y-m-d H:i:s', $override->override_date->format('Y-m-d') . ' ' . $override->end_time, 'UTC')
-                    ->setTimezone($timezone)
-                    ->format('H:i');
-                
-                $overrideData['start_time'] = $startTime;
-                $overrideData['end_time'] = $endTime;
-            }
-
-            $overridesByDate[$dateKey] = $overrideData;
-        }
+        $workingHoursInitial = self::buildWorkingHoursInitialForView($availabilityByDay);
 
         return view('artist.availability.index', [
             'availabilityByDay' => $availabilityByDay,
-            'overridesByDate' => $overridesByDate,
             'userTimezone' => $timezone,
+            'savedAvailabilityStatus' => $userDetail?->availability_status,
+            'workingHoursInitial' => $workingHoursInitial,
+            'blockedPeriods' => $blockedPeriods,
+        ]);
+    }
+
+    /**
+     * Sunday-first rows for the working-hours UI (matches JS week order).
+     *
+     * @param  array<string, list<array{id?: int, start_time: string, end_time: string}>>  $availabilityByDay
+     * @return list<array{dayKey: string, day: string, letter: string, available: bool, slots: list<array{start: string, end: string}>}>
+     */
+    protected static function buildWorkingHoursInitialForView(array $availabilityByDay): array
+    {
+        $week = [
+            ['key' => 'sunday', 'label' => 'Sunday', 'letter' => 'S'],
+            ['key' => 'monday', 'label' => 'Monday', 'letter' => 'M'],
+            ['key' => 'tuesday', 'label' => 'Tuesday', 'letter' => 'T'],
+            ['key' => 'wednesday', 'label' => 'Wednesday', 'letter' => 'W'],
+            ['key' => 'thursday', 'label' => 'Thursday', 'letter' => 'T'],
+            ['key' => 'friday', 'label' => 'Friday', 'letter' => 'F'],
+            ['key' => 'saturday', 'label' => 'Saturday', 'letter' => 'S'],
+        ];
+
+        $out = [];
+        foreach ($week as $meta) {
+            $slots = $availabilityByDay[$meta['key']] ?? [];
+            $out[] = [
+                'dayKey' => $meta['key'],
+                'day' => $meta['label'],
+                'letter' => $meta['letter'],
+                'available' => count($slots) > 0,
+                'slots' => array_map(static function (array $s) {
+                    return [
+                        'start' => $s['start_time'],
+                        'end' => $s['end_time'],
+                    ];
+                }, $slots),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Persist booking availability status (designs / custom / closed) on user_details.
+     */
+    public function saveBookingStatus(Request $request)
+    {
+        $request->validate([
+            'availability_status' => ['required', 'in:design_custom,design_only,custom_only,closed'],
+        ]);
+
+        $user = Auth::user();
+        $userDetail = $user->userDetail;
+
+        if (!$userDetail) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profile details not found.',
+            ], 422);
+        }
+
+        $userDetail->update([
+            'availability_status' => $request->availability_status,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Booking status saved successfully.',
+            'availability_status' => $userDetail->fresh()->availability_status,
         ]);
     }
 
@@ -101,6 +158,10 @@ class AvailabilityController extends Controller
             'availability.*.*.from' => 'required_with:availability.*.*.to|date_format:H:i',
             'availability.*.*.to' => 'required_with:availability.*.*.from|date_format:H:i|after:availability.*.*.from',
         ]);
+
+        if (is_array($request->availability)) {
+            $this->validateAvailabilitySlotsNoOverlap($request->availability);
+        }
 
         $user = Auth::user();
         $userDetail = $user->userDetail;
@@ -156,6 +217,54 @@ class AvailabilityController extends Controller
     }
 
     /**
+     * Ensure no two slots on the same day overlap (times in artist-local H:i).
+     *
+     * @param  array<string, array<int, array{from?: string, to?: string}>>  $availability
+     */
+    protected function validateAvailabilitySlotsNoOverlap(array $availability): void
+    {
+        foreach ($availability as $day => $slots) {
+            if (! is_array($slots)) {
+                continue;
+            }
+
+            $intervals = [];
+            foreach ($slots as $slot) {
+                if (! isset($slot['from'], $slot['to']) || $slot['from'] === '' || $slot['to'] === '') {
+                    continue;
+                }
+                $from = $this->parseHiToMinutes((string) $slot['from']);
+                $to = $this->parseHiToMinutes((string) $slot['to']);
+                if ($from >= $to) {
+                    throw ValidationException::withMessages([
+                        'availability' => ['End time must be after start time on '.ucfirst((string) $day).'.'],
+                    ]);
+                }
+                $intervals[] = ['from' => $from, 'to' => $to];
+            }
+
+            usort($intervals, fn ($a, $b) => $a['from'] <=> $b['from']);
+
+            for ($i = 0, $n = count($intervals); $i < $n - 1; $i++) {
+                if ($intervals[$i]['to'] > $intervals[$i + 1]['from']) {
+                    throw ValidationException::withMessages([
+                        'availability' => ['Overlapping time slots on '.ucfirst((string) $day).'.'],
+                    ]);
+                }
+            }
+        }
+    }
+
+    protected function parseHiToMinutes(string $time): int
+    {
+        $parts = explode(':', $time);
+        $h = (int) ($parts[0] ?? 0);
+        $m = (int) ($parts[1] ?? 0);
+
+        return $h * 60 + $m;
+    }
+
+    /**
      * Delete a specific availability.
      */
     public function destroy($id)
@@ -173,82 +282,90 @@ class AvailabilityController extends Controller
     }
 
     /**
-     * Store or update a date override.
+     * Store or update a blocked date range (full days unavailable).
      */
     public function storeOverride(Request $request)
     {
         $request->validate([
-            'override_id' => ['nullable', 'integer', 'exists:availability_overrides,id'],
-            'override_date' => ['required', 'date', 'after_or_equal:today'],
-            'is_unavailable' => ['nullable', 'boolean'],
-            'start_time' => ['nullable', 'required_with:end_time', 'date_format:H:i'],
-            'end_time' => ['nullable', 'required_with:start_time', 'date_format:H:i', 'after:start_time'],
-            'notes' => ['nullable', 'string', 'max:500'],
+            'block_id' => ['nullable', 'integer', 'exists:availability_overrides,id'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
         $user = Auth::user();
-        $userDetail = $user->userDetail;
-        $timezone = $userDetail->timezone ?? 'UTC';
+        $start = Carbon::parse($request->start_date)->format('Y-m-d');
+        $end = Carbon::parse($request->end_date)->format('Y-m-d');
+
+        if (! $request->block_id && $start < Carbon::today()->format('Y-m-d')) {
+            throw ValidationException::withMessages([
+                'start_date' => ['Start date cannot be in the past.'],
+            ]);
+        }
+
+        $this->assertBlockPeriodDoesNotOverlap($user->id, $start, $end, $request->block_id ? (int) $request->block_id : null);
 
         DB::beginTransaction();
         try {
-            $isUnavailable = $request->has('is_unavailable') && $request->is_unavailable;
-            $startTimeUTC = null;
-            $endTimeUTC = null;
-
-            // If not unavailable, convert times to UTC
-            if (!$isUnavailable && $request->start_time && $request->end_time) {
-                $overrideDate = Carbon::parse($request->override_date);
-                $startTimeUTC = Carbon::createFromFormat('Y-m-d H:i', $overrideDate->format('Y-m-d') . ' ' . $request->start_time, $timezone)
-                    ->setTimezone('UTC')
-                    ->format('H:i:s');
-                $endTimeUTC = Carbon::createFromFormat('Y-m-d H:i', $overrideDate->format('Y-m-d') . ' ' . $request->end_time, $timezone)
-                    ->setTimezone('UTC')
-                    ->format('H:i:s');
-            }
-
-            // If override_id is provided, update the existing record
-            if ($request->override_id) {
-                $override = AvailabilityOverride::where('id', $request->override_id)
+            if ($request->block_id) {
+                $block = AvailabilityOverride::where('id', $request->block_id)
                     ->where('user_id', $user->id)
                     ->firstOrFail();
 
-                $override->update([
-                    'override_date' => $request->override_date,
-                    'start_time' => $startTimeUTC,
-                    'end_time' => $endTimeUTC,
-                    'is_unavailable' => $isUnavailable,
-                    'notes' => $request->notes ?? null,
+                $block->update([
+                    'start_date' => $start,
+                    'end_date' => $end,
+                    'reason' => $request->reason,
                 ]);
+                $saved = $block->fresh();
             } else {
-                // Otherwise, create a new override (or update if same date exists)
-            AvailabilityOverride::updateOrCreate(
-                [
+                $saved = AvailabilityOverride::create([
                     'user_id' => $user->id,
-                    'override_date' => $request->override_date,
-                ],
-                [
-                    'start_time' => $startTimeUTC,
-                    'end_time' => $endTimeUTC,
-                    'is_unavailable' => $isUnavailable,
-                    'notes' => $request->notes ?? null,
-                ]
-            );
+                    'start_date' => $start,
+                    'end_date' => $end,
+                    'reason' => $request->reason,
+                ]);
             }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Date override saved successfully',
+                'message' => 'Blocked dates saved successfully.',
+                'block' => [
+                    'id' => $saved->id,
+                    'start_date' => $saved->start_date->format('Y-m-d'),
+                    'end_date' => $saved->end_date->format('Y-m-d'),
+                    'reason' => $saved->reason ?? '',
+                ],
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save date override: ' . $e->getMessage(),
+                'message' => 'Failed to save blocked dates: '.$e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * @param  int|null  $exceptBlockId  When updating, ignore this row for overlap checks
+     */
+    protected function assertBlockPeriodDoesNotOverlap(int $userId, string $start, string $end, ?int $exceptBlockId): void
+    {
+        $q = AvailabilityOverride::where('user_id', $userId)
+            ->where('start_date', '<=', $end)
+            ->where('end_date', '>=', $start);
+
+        if ($exceptBlockId !== null) {
+            $q->where('id', '!=', $exceptBlockId);
+        }
+
+        if ($q->exists()) {
+            throw ValidationException::withMessages([
+                'start_date' => ['This period overlaps another blocked range. Adjust or remove the existing block first.'],
+            ]);
         }
     }
 
@@ -270,52 +387,35 @@ class AvailabilityController extends Controller
     }
 
     /**
-     * Get override for a specific date.
+     * Get one blocked period by id (for optional client refresh).
      */
     public function getOverride(Request $request)
     {
         $request->validate([
-            'date' => ['required', 'date'],
+            'id' => ['required', 'integer'],
         ]);
 
         $user = Auth::user();
-        $userDetail = $user->userDetail;
-        $timezone = $userDetail->timezone ?? 'UTC';
 
-        $override = AvailabilityOverride::where('user_id', $user->id)
-            ->where('override_date', $request->date)
+        $block = AvailabilityOverride::where('user_id', $user->id)
+            ->where('id', $request->id)
             ->first();
 
-        if (!$override) {
+        if (! $block) {
             return response()->json([
                 'success' => true,
                 'data' => null,
             ]);
         }
 
-        $overrideData = [
-            'id' => $override->id,
-            'is_unavailable' => $override->is_unavailable,
-            'notes' => $override->notes,
-        ];
-
-        if (!$override->is_unavailable && $override->start_time && $override->end_time) {
-            // Convert UTC times to user's timezone
-            $date = Carbon::parse($override->override_date);
-            $startTime = Carbon::createFromFormat('Y-m-d H:i:s', $date->format('Y-m-d') . ' ' . $override->start_time, 'UTC')
-                ->setTimezone($timezone)
-                ->format('H:i');
-            $endTime = Carbon::createFromFormat('Y-m-d H:i:s', $date->format('Y-m-d') . ' ' . $override->end_time, 'UTC')
-                ->setTimezone($timezone)
-                ->format('H:i');
-            
-            $overrideData['start_time'] = $startTime;
-            $overrideData['end_time'] = $endTime;
-        }
-
         return response()->json([
             'success' => true,
-            'data' => $overrideData,
+            'data' => [
+                'id' => $block->id,
+                'start_date' => $block->start_date->format('Y-m-d'),
+                'end_date' => $block->end_date->format('Y-m-d'),
+                'reason' => $block->reason ?? '',
+            ],
         ]);
     }
 }

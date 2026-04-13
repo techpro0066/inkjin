@@ -639,15 +639,12 @@
             const day = String(date.getDate()).padStart(2, '0');
             const dateKey = `${year}-${month}-${day}`;
             
-            // Check overrides FIRST - they always take precedence
-            const override = availabilityData.overrides.find(o => o.override_date === dateKey);
-            if (override) {
-                // If artist marked this date as unavailable, show as red
-                if (override.is_unavailable) {
-                    return 'unavailable';
-                }
-                // If artist set custom availability for this date, show as available
-                return 'available';
+            // Blocked date ranges (full-day unavailability) take precedence
+            const inBlockedRange = availabilityData.overrides.some(o =>
+                dateKey >= o.start_date && dateKey <= o.end_date
+            );
+            if (inBlockedRange) {
+                return 'unavailable';
             }
             
             // Check if in pre-calculated lists (for dates within 2 years)
