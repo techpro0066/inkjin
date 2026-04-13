@@ -217,7 +217,7 @@
     <a href="{{ route('onboarding.studio') }}" class="inline-flex items-center gap-1 text-on-surface font-semibold hover:text-primary transition-colors">
       <span class="material-symbols-outlined text-lg">arrow_back</span> Back
     </a>
-    <button type="submit" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
+    <button type="submit" id="prefSubmit" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
       Next Step <span class="material-symbols-outlined text-lg">arrow_forward</span>
     </button>
   </div>
@@ -348,6 +348,10 @@ $(function () {
 
   $('#prefForm').on('submit', function (e) {
     e.preventDefault();
+    var $btn = $('#prefSubmit');
+    var originalBtnHtml = $btn.html();
+    $btn.prop('disabled', true);
+    $btn.text('Saving...');
     var fd = new FormData(this);
     var rc = $('#require_consultation').val() === '1';
     if (!rc) {
@@ -388,6 +392,10 @@ $(function () {
         } else {
           alert((xhr.responseJSON && xhr.responseJSON.message) || 'Error');
         }
+      })
+      .always(function () {
+        $btn.prop('disabled', false);
+        $btn.html(originalBtnHtml);
       });
   });
 });

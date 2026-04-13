@@ -151,7 +151,9 @@ $(function () {
     $errEl.addClass('hidden');
     $alertEl.addClass('hidden');
     var $btn = $('#calSubmit');
+    var originalBtnHtml = $btn.html();
     $btn.prop('disabled', true);
+    $btn.text('Saving...');
     var fd = new FormData(this);
     $.ajax({
       url: @json(route('onboarding.calendar.save')),
@@ -189,6 +191,7 @@ $(function () {
       })
       .always(function () {
         $btn.prop('disabled', false);
+        $btn.html(originalBtnHtml);
       });
   });
 });

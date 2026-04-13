@@ -312,7 +312,9 @@ $(function () {
     if (!validateStylesFormClient()) return;
     clearStylesErrors();
     var $btn = $(this).find('button[type="submit"]');
+    var originalBtnHtml = $btn.html();
     $btn.prop('disabled', true);
+    $btn.text('Saving...');
     var fd = new FormData(this);
     $.ajax({
       url: @json(route('onboarding.styles-social.save')),
@@ -357,6 +359,7 @@ $(function () {
       })
       .always(function () {
         $btn.prop('disabled', false);
+        $btn.html(originalBtnHtml);
       });
   });
 });

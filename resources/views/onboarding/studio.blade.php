@@ -127,7 +127,7 @@
     <a href="{{ route('onboarding.profile') }}" class="inline-flex items-center gap-1 text-on-surface font-semibold hover:text-primary transition-colors">
       <span class="material-symbols-outlined text-lg">arrow_back</span> Back
     </a>
-    <button type="submit" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
+    <button type="submit" id="studioSubmit" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
       Next Step <span class="material-symbols-outlined text-lg">arrow_forward</span>
     </button>
   </div>
@@ -199,6 +199,10 @@ $(function () {
 
   $('#studioForm').on('submit', function (e) {
     e.preventDefault();
+    var $btn = $('#studioSubmit');
+    var originalBtnHtml = $btn.html();
+    $btn.prop('disabled', true);
+    $btn.text('Saving...');
     var fd = new FormData(this);
     $.ajax({
       url: @json(route('onboarding.studio.save')),
@@ -226,6 +230,10 @@ $(function () {
         } else {
           alert((xhr.responseJSON && xhr.responseJSON.message) || 'Error');
         }
+      })
+      .always(function () {
+        $btn.prop('disabled', false);
+        $btn.html(originalBtnHtml);
       });
   });
 });

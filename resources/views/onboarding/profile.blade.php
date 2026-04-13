@@ -182,8 +182,10 @@ $(function () {
   $('#profileForm').on('submit', function (e) {
     e.preventDefault();
     var $btn = $('#profileNext');
+    var originalBtnHtml = $btn.html();
     $('#profileForm').find('[id$="_error"]').addClass('hidden').text('');
     $btn.prop('disabled', true);
+    $btn.text('Saving...');
     var fd = new FormData(this);
     if (croppedBlob) {
       fd.delete('avatar');
@@ -216,6 +218,7 @@ $(function () {
       })
       .always(function () {
         $btn.prop('disabled', false);
+        $btn.html(originalBtnHtml);
       });
   });
 });
