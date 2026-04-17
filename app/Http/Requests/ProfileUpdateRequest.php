@@ -2,28 +2,13 @@
 
 namespace App\Http\Requests;
 
-use App\Models\UserDetail;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\UserDetail;
 
 class ProfileUpdateRequest extends FormRequest
 {
-    protected function prepareForValidation(): void
-    {
-        $userName = ltrim(trim((string) $this->input('user_name')), '@');
-        $mobileRaw = trim((string) $this->input('mobile_number'));
-
-        $mobileNumber = $mobileRaw;
-        if ($mobileRaw !== '' && str_starts_with($mobileRaw, '+')) {
-            $mobileNumber = '+'.preg_replace('/\D/', '', substr($mobileRaw, 1));
-        }
-
-        $this->merge([
-            'user_name' => $userName,
-            'mobile_number' => $mobileNumber,
-        ]);
-    }
-
     /**
      * Get the validation rules that apply to the request.
      *
@@ -44,7 +29,7 @@ class ProfileUpdateRequest extends FormRequest
                 'string',
                 'min:1',
                 'max:30',
-                'regex:/^[a-zA-Z0-9._]+$/',
+                'regex:/^[A-Za-z0-9._]+$/',
                 Rule::unique(UserDetail::class, 'user_name')->ignore($userDetail?->id),
             ],
             'mobile_number' => [
@@ -59,9 +44,9 @@ class ProfileUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'user_name.regex' => 'Username may only contain letters, numbers, periods (.), and underscores (_), with no spaces or other symbols.',
-            'user_name.max' => 'Username may not be longer than 30 characters.',
-            'mobile_number.regex' => 'Enter a valid E.164 phone number: start with +, then country code and digits only (no spaces, dashes, or parentheses).',
+            'user_name.regex' => 'Username can only include letters, numbers, periods (.) and underscores (_).',
+            'user_name.max' => 'Username must not be greater than 30 characters.',
+            'mobile_number.regex' => 'Mobile number must be in E.164 format (example: +447911123456) with no spaces, dashes, or parentheses.',
         ];
     }
 }

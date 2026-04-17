@@ -1,12 +1,11 @@
-<!DOCTYPE html>
-
 <html class="light" lang="en">
 
 <head>
   <meta charset="utf-8" />
   <meta content="width=device-width, initial-scale=1.0" name="viewport" />
   <title>@yield('title')</title>
-  <meta name="description" content="">
+  <meta name="description"
+    content="Log in to Inkjin Book & Pay — 100% free for tattoo artists. Manage bookings, payments, and client inquiries.">
   <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   <link href="{{ asset('design/css/inkjin_main.css') }}" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -103,8 +102,13 @@
       background: linear-gradient(135deg, #111111 0%, #333333 100%);
     }
   </style>
+  @stack('styles')
 </head>
 
-@yield('content')
-
+  <body class="bg-background text-on-surface min-h-screen flex flex-col">
+    @yield('content')
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    @stack('scripts')
+  </body>
 </html>
+

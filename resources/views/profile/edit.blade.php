@@ -59,18 +59,18 @@
             <div>
               <label for="user_name" class="block text-sm font-semibold text-on-surface mb-2">Username</label>
               <p class="text-on-surface-variant text-sm leading-relaxed mb-2">Match your Inkjin username to your Instagram handle and give your customers a better experience.</p>
-              <p class="text-on-surface-variant text-xs mb-2">Use 1-30 characters: letters, numbers, periods (.), and underscores (_) only. No spaces or other symbols.</p>
               <div class="relative">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-outline text-sm font-medium">@</span>
-                <input type="text" id="user_name" name="user_name" value="{{ old('user_name', $userDetail->user_name ?? '') }}" maxlength="30" autocomplete="username" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <input type="text" id="user_name" name="user_name" value="{{ old('user_name', $userDetail->user_name ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
               </div>
+              <p class="text-on-surface-variant text-xs mt-1">Use only letters, numbers, periods (.), and underscores (_). Max 30 characters.</p>
               <p id="user_name_error" class="text-error text-xs mt-1 hidden"></p>
             </div>
 
             <div>
               <label for="mobile_number" class="block text-sm font-semibold text-on-surface mb-2">Mobile Number</label>
-              <p class="text-on-surface-variant text-xs mb-2">E.164 only: start with + and country code, then digits only (no spaces, dashes, or parentheses).</p>
-              <input type="tel" id="mobile_number" name="mobile_number" value="{{ old('mobile_number', $userDetail->mobile_number ?? '') }}" placeholder="+306912345678" inputmode="tel" autocomplete="tel" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <input type="tel" id="mobile_number" name="mobile_number" value="{{ old('mobile_number', $userDetail->mobile_number ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p class="text-on-surface-variant text-xs mt-1">Use E.164 format: starts with + and country code, no spaces or symbols.</p>
               <p id="mobile_number_error" class="text-error text-xs mt-1 hidden"></p>
             </div>
 
@@ -125,6 +125,8 @@
   <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script>
     (function () {
+      var USERNAME_PATTERN = /^[A-Za-z0-9._]{1,30}$/;
+      var E164_PATTERN = /^\+[1-9]\d{1,14}$/;
       var cropper = null;
       var objectUrl = '';
       var croppedBlob = null;
@@ -168,45 +170,41 @@
         if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
 
-      function normalizeUsername() {
-        var usernameInput = document.getElementById('user_name');
-        if (!usernameInput) return '';
-        var normalized = (usernameInput.value || '').trim().replace(/^@+/, '');
-        usernameInput.value = normalized;
-        return normalized;
-      }
+      function validateProfileClient() {
+        var ok = true;
 
-      function normalizeMobile() {
-        var mobileInput = document.getElementById('mobile_number');
-        if (!mobileInput) return '';
-        var raw = (mobileInput.value || '').trim();
-        if (raw.indexOf('+') === 0) {
-          raw = '+' + raw.slice(1).replace(/\D/g, '');
-          mobileInput.value = raw;
+        var firstName = (document.getElementById('first_name').value || '').trim();
+        var lastName = (document.getElementById('last_name').value || '').trim();
+        var userName = (document.getElementById('user_name').value || '').trim();
+        var mobile = (document.getElementById('mobile_number').value || '').trim();
+
+        if (!firstName) {
+          setFieldError('first_name', 'First name is required.');
+          ok = false;
         }
-        return (mobileInput.value || '').trim();
-      }
 
-      function validateUsernameAndMobile() {
-        var errors = {};
-        var username = normalizeUsername();
-        var mobile = normalizeMobile();
+        if (!lastName) {
+          setFieldError('last_name', 'Last name is required.');
+          ok = false;
+        }
 
-        if (!username) {
-          errors.user_name = 'Username is required.';
-        } else if (username.length > 30) {
-          errors.user_name = 'Username may not be longer than 30 characters.';
-        } else if (!/^[a-zA-Z0-9._]{1,30}$/.test(username)) {
-          errors.user_name = 'Username may only contain letters, numbers, periods (.), and underscores (_).';
+        if (!userName) {
+          setFieldError('user_name', 'Username is required.');
+          ok = false;
+        } else if (!USERNAME_PATTERN.test(userName)) {
+          setFieldError('user_name', 'Username can only include letters, numbers, periods (.) and underscores (_) and must be 1-30 characters.');
+          ok = false;
         }
 
         if (!mobile) {
-          errors.mobile_number = 'Mobile number is required.';
-        } else if (!/^\+[1-9]\d{1,14}$/.test(mobile)) {
-          errors.mobile_number = 'Use E.164 format: +, country code, then digits only (no spaces, dashes, or parentheses).';
+          setFieldError('mobile_number', 'Mobile number is required.');
+          ok = false;
+        } else if (!E164_PATTERN.test(mobile)) {
+          setFieldError('mobile_number', 'Mobile number must be in E.164 format (example: +447911123456) with no spaces, dashes, or parentheses.');
+          ok = false;
         }
 
-        return errors;
+        return ok;
       }
 
       ['first_name', 'last_name', 'user_name', 'mobile_number'].forEach(function (field) {
@@ -274,17 +272,11 @@
       profileForm.addEventListener('submit', function (e) {
         e.preventDefault();
         clearAllErrors();
-        successAlert.classList.add('hidden');
-
-        var clientErrors = validateUsernameAndMobile();
-        Object.keys(clientErrors).forEach(function (field) {
-          setFieldError(field, clientErrors[field]);
-        });
-        if (Object.keys(clientErrors).length) {
+        if (!validateProfileClient()) {
           scrollToFirstError();
           return;
         }
-
+        successAlert.classList.add('hidden');
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="material-symbols-outlined text-lg">hourglass_top</span> Saving...';
 

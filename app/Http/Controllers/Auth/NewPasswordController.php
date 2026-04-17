@@ -52,18 +52,22 @@ class NewPasswordController extends Controller
             }
         );
 
-        if ($request->expectsJson()) {
-            return $status == Password::PASSWORD_RESET
-                ? response()->json([
-                    'redirect' => route('login'),
-                    'status' => __($status),
-                ])
-                : response()->json([
+        if ($request->expectsJson() || $request->ajax()) {
+            if ($status === Password::PASSWORD_RESET) {
+                return response()->json([
+                    'success' => true,
                     'message' => __($status),
-                    'errors' => [
-                        'email' => [__($status)],
-                    ],
-                ], 422);
+                    'redirect' => route('login'),
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => __($status),
+                'errors' => [
+                    'email' => [__($status)],
+                ],
+            ], 422);
         }
 
         // If the password was successfully reset, we will redirect the user back to

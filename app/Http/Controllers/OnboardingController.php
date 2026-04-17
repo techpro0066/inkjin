@@ -168,51 +168,34 @@ class OnboardingController extends Controller
         try {
             $user = $request->user();
             $userDetail = $user->userDetail;
-
-            $userName = ltrim(trim((string) $request->input('user_name')), '@');
-            $request->merge(['user_name' => $userName]);
-
-            $mobileRaw = trim((string) $request->input('mobile_number'));
-            if ($mobileRaw !== '' && str_starts_with($mobileRaw, '+')) {
-                $request->merge([
-                    'mobile_number' => '+'.preg_replace('/\D/', '', substr($mobileRaw, 1)),
-                ]);
-            }
             
             // Make avatar optional if user already has one (for profile update)
             $avatarRule = $userDetail && $userDetail->avatar 
                 ? ['nullable'] 
                 : ['required'];
             
-            $userNameUnique = Rule::unique('user_details', 'user_name');
-            $mobileUnique = Rule::unique('user_details', 'mobile_number');
-            if ($userDetail) {
-                $userNameUnique = $userNameUnique->ignore($userDetail->id);
-                $mobileUnique = $mobileUnique->ignore($userDetail->id);
-            }
-
             $validated = $request->validate([
                 'avatar' => array_merge($avatarRule, ['image', 'mimes:jpg,jpeg,png,heif,heic', 'max:2048']),
                 'first_name' => ['required', 'string', 'max:255'],
                 'last_name' => ['required', 'string', 'max:255'],
                 'user_name' => [
-                    'required',
-                    'string',
+                    'required', 
+                    'string', 
                     'min:1',
                     'max:30',
-                    'regex:/^[a-zA-Z0-9._]+$/',
-                    $userNameUnique,
+                    'regex:/^[A-Za-z0-9._]+$/',
+                    'unique:user_details,user_name,' . ($userDetail ? $userDetail->id : 'NULL') . ',id'
                 ],
                 'mobile_number' => [
-                    'required',
-                    'string',
+                    'required', 
+                    'string', 
                     'regex:/^\+[1-9]\d{1,14}$/',
-                    $mobileUnique,
+                    'unique:user_details,mobile_number,' . ($userDetail ? $userDetail->id : 'NULL') . ',id'
                 ],
             ], [
-                'user_name.regex' => 'Username may only contain letters, numbers, periods (.), and underscores (_), with no spaces or other symbols.',
-                'user_name.max' => 'Username may not be longer than 30 characters.',
-                'mobile_number.regex' => 'Enter a valid E.164 phone number: start with +, then country code and digits only (no spaces, dashes, or parentheses).',
+                'user_name.regex' => 'Username can only include letters, numbers, periods (.) and underscores (_).',
+                'user_name.max' => 'Username must not be greater than 30 characters.',
+                'mobile_number.regex' => 'Mobile number must be in E.164 format (example: +447911123456) with no spaces, dashes, or parentheses.',
             ]);
 
             $userDetail = $userDetail ?? UserDetail::create(['user_id' => $user->id]);

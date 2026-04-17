@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +22,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse|JsonResponse
+    public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
@@ -31,24 +30,10 @@ class AuthenticatedSessionController extends Controller
 
         // Check if email is verified, if not redirect to verification notice
         if (! $request->user()->hasVerifiedEmail()) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'redirect' => route('verification.notice'),
-                ]);
-            }
-
             return redirect()->route('verification.notice');
         }
 
-        $redirectResponse = redirect()->intended(route('dashboard', absolute: false));
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'redirect' => $redirectResponse->getTargetUrl(),
-            ]);
-        }
-
-        return $redirectResponse;
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     /**

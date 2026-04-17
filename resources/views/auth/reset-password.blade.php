@@ -3,65 +3,133 @@
 @section('title', 'Reset Password')
 
 @section('content')
-<body class="bg-background text-on-surface min-h-screen flex flex-col selection:bg-primary-fixed-dim">
+  <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <div class="absolute -top-24 -right-24 w-96 h-96 brand-gradient opacity-[0.03] rounded-full blur-3xl"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[40rem] font-black text-primary-fixed-dim opacity-[0.05] select-none tracking-tighter">
+      ij
+    </div>
+  </div>
+
   <main class="flex-grow flex items-center justify-center p-6 md:p-12 relative z-10">
     <div class="w-full max-auto max-w-[440px]">
       <div class="flex flex-col items-center mb-8">
-        <span class="text-4xl font-bold text-on-surface tracking-tighter leading-none mb-1" style="font-family: 'Space Grotesk', sans-serif;">bookpay</span>
-        <span class="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest text-center leading-tight">Tattoo artist platform<br>by Inkjin</span>
+        <span class="text-4xl font-bold text-on-surface tracking-tighter leading-none mb-1" style="font-family: 'Space Grotesk', sans-serif;">
+          bookpay
+        </span>
+        <span class="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest text-center leading-tight">
+          Tattoo artist platform<br>by Inkjin
+        </span>
       </div>
 
-      <div class="bg-surface-container-lowest rounded-xl p-8 md:p-10 shadow-[0_32px_64px_-12px_rgba(49,15,122,0.06)] ring-1 ring-outline-variant/15">
-        <div class="text-center mb-8">
-          <h1 class="font-headline text-3xl font-extrabold text-on-surface tracking-tight mb-3">Create new password</h1>
-          <p class="text-on-surface-variant">Enter your email and choose a secure new password.</p>
-        </div>
-
-        <div id="reset-password-status-message" class="mb-6 rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-on-surface {{ session('status') ? '' : 'hidden' }}">{{ session('status') }}</div>
-
-        <form action="{{ route('password.store') }}" class="space-y-6" id="reset-password-form" method="POST" novalidate>
-          @csrf
-          <input type="hidden" name="token" value="{{ $request->route('token') }}">
-
-          <div class="space-y-2">
-            <label class="block text-sm font-semibold text-on-surface mb-2" for="reset-email">Email address</label>
-            <input class="form-input @error('email') border-red-500 @enderror" style="background-color:#F8F1FB;" id="reset-email" name="email" placeholder="name@company.com" type="email" value="{{ old('email', $request->email) }}" autocomplete="username" required autofocus data-error-key="email" readonly>
-            <p class="text-xs text-red-500 mt-1 @error('email') @else hidden @enderror" data-error-for="email">@error('email'){{ $message }}@enderror</p>
+      <div class="surface-container-lowest glass-panel rounded-xl shadow-[0_32px_64px_-12px_rgba(49,15,122,0.06)] p-8 md:p-10">
+        <div class="w-full max-w-md">
+          <div class="flex flex-col items-center mb-8 text-center">
+            <h1 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2" style="font-family: 'Space Grotesk', sans-serif;">
+              Reset Password
+            </h1>
+            <p class="text-on-surface-variant">
+              Set a new password for your account below.
+            </p>
           </div>
 
-          <div class="space-y-2">
-            <label class="block text-sm font-semibold text-on-surface mb-2" for="reset-password">New Password</label>
-            <div class="relative">
-              <input class="form-input @error('password') border-red-500 @enderror" style="background-color:#F8F1FB;" id="reset-password" name="password" placeholder="••••••••" type="password" autocomplete="new-password" required data-error-key="password">
-              <button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary transition-colors" type="button" onclick="togglePassword(this)">
-                <span class="material-symbols-outlined text-[20px]">visibility</span>
+          <div id="reset-success" class="hidden mb-5 rounded-xl bg-primary-container/25 border border-primary-container/40 px-4 py-3 text-sm text-on-surface"></div>
+          <div id="reset-error" class="hidden mb-5 rounded-xl bg-error-container/40 border border-error-container/60 px-4 py-3 text-sm text-error"></div>
+
+          <form id="reset-password-form" class="space-y-6" method="POST" action="{{ route('password.store') }}">
+        @csrf
+
+        <!-- Password Reset Token -->
+            <input type="hidden" name="token" value="{{ $request->route('token') }}">
+
+            <div class="space-y-2">
+              <label for="email" class="block text-sm font-semibold text-on-surface mb-2">Email Address</label>
+              <input
+                type="email"
+                class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-gray-100 focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 @error('email') border-error @enderror"
+                id="email"
+                name="email"
+                value="{{ old('email', $request->email) }}"
+                placeholder="name@company.com"
+                autofocus
+                autocomplete="username"
+                readonly
+              />
+              <p class="text-sm text-error mt-1 hidden" id="email-error"></p>
+              @error('email')
+                <p class="text-sm text-error mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-on-surface mb-2" for="password">New Password</label>
+              <div class="relative">
+                <input
+                  type="password"
+                  id="password"
+                  class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 @error('password') border-error @enderror"
+                  name="password"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+                />
+                <button
+                  class="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-on-surface-variant eye-toggle"
+                  type="button"
+                  data-target="#password"
+                  aria-label="Toggle password visibility"
+                >
+                  <span class="material-symbols-outlined text-[20px]">visibility</span>
+                </button>
+              </div>
+              <p class="text-sm text-error mt-1 hidden" id="password-error"></p>
+              @error('password')
+                <p class="text-sm text-error mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-on-surface mb-2" for="password_confirmation">Confirm Password</label>
+              <div class="relative">
+                <input
+                  type="password"
+                  id="password_confirmation"
+                  class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50"
+                  name="password_confirmation"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+                />
+                <button
+                  class="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-on-surface-variant eye-toggle"
+                  type="button"
+                  data-target="#password_confirmation"
+                  aria-label="Toggle confirm password visibility"
+                >
+                  <span class="material-symbols-outlined text-[20px]">visibility</span>
+                </button>
+              </div>
+              <p class="text-sm text-error mt-1 hidden" id="password-confirmation-error"></p>
+            </div>
+
+            <div class="pt-2">
+              <button
+                class="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]"
+                type="submit"
+                id="reset-password-submit"
+              >
+                <span>Reset Password</span>
+                <span class="material-symbols-outlined text-lg">arrow_forward</span>
               </button>
             </div>
-            <p class="text-xs text-red-500 mt-1 @error('password') @else hidden @enderror" data-error-for="password">@error('password'){{ $message }}@enderror</p>
+          </form>
+
+          <div class="mt-8 text-center">
+            <a
+              href="{{ route('login') }}"
+              class="inline-flex items-center justify-center gap-2 text-primary font-semibold hover:text-primary-container transition-colors"
+            >
+              <span class="material-symbols-outlined text-lg">keyboard_backspace</span>
+              <span>Back to Sign in</span>
+            </a>
           </div>
-
-          <div class="space-y-2">
-            <label class="block text-sm font-semibold text-on-surface mb-2" for="reset-password-confirmation">Confirm Password</label>
-            <div class="relative">
-              <input class="form-input @error('password') border-red-500 @enderror" style="background-color:#F8F1FB;" id="reset-password-confirmation" name="password_confirmation" placeholder="••••••••" type="password" autocomplete="new-password" required data-error-key="password_confirmation">
-              <button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary transition-colors" type="button" onclick="togglePassword(this)">
-                <span class="material-symbols-outlined text-[20px]">visibility</span>
-              </button>
-            </div>
-            <p class="text-xs text-red-500 mt-1 hidden" data-error-for="password_confirmation"></p>
-          </div>
-
-          <button class="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]" id="reset-password-submit" type="submit">
-            <span>Reset Password</span>
-            <span class="material-symbols-outlined text-lg">arrow_forward</span>
-          </button>
-        </form>
-
-        <div class="mt-8 text-center">
-          <a class="inline-flex items-center gap-2 text-primary font-semibold hover:text-primary-container transition-colors group" href="{{ route('login') }}">
-            <span class="material-symbols-outlined text-lg">keyboard_backspace</span>
-            <span>Back to Sign in</span>
-          </a>
         </div>
       </div>
     </div>
@@ -79,115 +147,86 @@
       <div class="text-on-surface-variant/60 font-medium">© 2026 Inkjin. All rights reserved.</div>
     </div>
   </footer>
+@endsection
 
+@push('scripts')
   <script>
-    function togglePassword(btn) {
-      const input = btn.closest('.relative').querySelector('input');
-      const icon = btn.querySelector('.material-symbols-outlined');
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.textContent = 'visibility_off';
-      } else {
-        input.type = 'password';
-        icon.textContent = 'visibility';
-      }
-    }
-
-    const resetPasswordForm = document.getElementById('reset-password-form');
-    const resetPasswordSubmitButton = document.getElementById('reset-password-submit');
-    const resetPasswordStatusMessage = document.getElementById('reset-password-status-message');
-
-    function setResetPasswordFieldError(fieldName, message) {
-      const input = resetPasswordForm.querySelector(`[data-error-key="${fieldName}"]`);
-      const errorEl = resetPasswordForm.querySelector(`[data-error-for="${fieldName}"]`);
-
-      if (input) {
-        input.classList.add('border-red-500');
+    $(function () {
+      function clearErrors() {
+        $('#reset-success, #reset-error').addClass('hidden').text('');
+        $('#email-error, #password-error, #password-confirmation-error').addClass('hidden').text('');
+        $('#email, #password, #password_confirmation').removeClass('border-error');
       }
 
-      if (errorEl) {
-        errorEl.textContent = message;
-        errorEl.classList.remove('hidden');
-      }
-    }
+      $(document).on('click', '.eye-toggle', function () {
+        var targetSelector = $(this).data('target');
+        var $input = targetSelector ? $(targetSelector) : $();
+        if (!$input.length) return;
 
-    function clearResetPasswordErrors() {
-      resetPasswordForm.querySelectorAll('[data-error-key]').forEach((input) => {
-        input.classList.remove('border-red-500');
+        var $icon = $(this).find('.material-symbols-outlined');
+        var isPassword = $input.attr('type') === 'password';
+        $input.attr('type', isPassword ? 'text' : 'password');
+        $icon.text(isPassword ? 'visibility_off' : 'visibility');
       });
 
-      resetPasswordForm.querySelectorAll('[data-error-for]').forEach((errorEl) => {
-        errorEl.textContent = '';
-        errorEl.classList.add('hidden');
-      });
-    }
+      $('#reset-password-form').on('submit', function (e) {
+        e.preventDefault();
+        clearErrors();
 
-    resetPasswordForm.querySelectorAll('[data-error-key]').forEach((input) => {
-      input.addEventListener('input', () => {
-        const errorEl = resetPasswordForm.querySelector(`[data-error-for="${input.dataset.errorKey}"]`);
-        input.classList.remove('border-red-500');
-        if (errorEl) {
-          errorEl.textContent = '';
-          errorEl.classList.add('hidden');
-        }
-      });
-    });
+        var $form = $(this);
+        var $submitBtn = $('#reset-password-submit');
+        var originalBtnHtml = $submitBtn.html();
 
-    resetPasswordForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      clearResetPasswordErrors();
-      resetPasswordStatusMessage.textContent = '';
-      resetPasswordStatusMessage.classList.add('hidden');
-      resetPasswordSubmitButton.disabled = true;
-      resetPasswordSubmitButton.classList.add('opacity-70', 'cursor-not-allowed');
+        $submitBtn.prop('disabled', true).html('<span>Updating...</span>');
 
-      try {
-        const response = await fetch(resetPasswordForm.action, {
+        $.ajax({
+          url: $form.attr('action'),
           method: 'POST',
+          data: $form.serialize(),
           headers: {
-            'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-          },
-          body: new FormData(resetPasswordForm),
-          credentials: 'same-origin',
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          if (response.status === 422 && data.errors) {
-            const firstField = Object.keys(data.errors)[0];
-
-            Object.entries(data.errors).forEach(([field, messages]) => {
-              setResetPasswordFieldError(field, messages[0]);
-            });
-
-            const firstInput = resetPasswordForm.querySelector(`[data-error-key="${firstField}"]`);
-            if (firstInput) {
-              firstInput.focus();
-            } else {
-              resetPasswordStatusMessage.textContent = data.message || 'Unable to reset your password.';
-              resetPasswordStatusMessage.classList.remove('hidden');
-            }
-            return;
+            'Accept': 'application/json'
           }
+        }).done(function (response) {
+          var successMessage = (response && response.message)
+            ? response.message
+            : 'Password reset successfully.';
 
-          resetPasswordStatusMessage.textContent = data.message || 'Unable to reset your password right now. Please try again.';
-          resetPasswordStatusMessage.classList.remove('hidden');
-          return;
-        }
+          $('#reset-success').removeClass('hidden').text(successMessage);
 
-        if (data.redirect) {
-          window.location.href = data.redirect;
-        }
-      } catch (error) {
-        resetPasswordStatusMessage.textContent = 'A network error occurred. Please try again.';
-        resetPasswordStatusMessage.classList.remove('hidden');
-      } finally {
-        resetPasswordSubmitButton.disabled = false;
-        resetPasswordSubmitButton.classList.remove('opacity-70', 'cursor-not-allowed');
-      }
+          setTimeout(function () {
+            window.location.href = (response && response.redirect) ? response.redirect : '{{ route('login') }}';
+          }, 600);
+        }).fail(function (xhr) {
+          if (xhr.status === 422 && xhr.responseJSON) {
+            var errors = xhr.responseJSON.errors || {};
+
+            if (errors.email && errors.email.length) {
+              $('#email-error').removeClass('hidden').text(errors.email[0]);
+              $('#email').addClass('border-error');
+            }
+
+            if (errors.password && errors.password.length) {
+              $('#password-error').removeClass('hidden').text(errors.password[0]);
+              $('#password').addClass('border-error');
+            }
+
+            if (errors.password_confirmation && errors.password_confirmation.length) {
+              $('#password-confirmation-error').removeClass('hidden').text(errors.password_confirmation[0]);
+              $('#password_confirmation').addClass('border-error');
+            }
+
+            if (!errors.email && !errors.password && !errors.password_confirmation) {
+              var fallbackMessage = xhr.responseJSON.message || 'Unable to reset password. Please try again.';
+              $('#reset-error').removeClass('hidden').text(fallbackMessage);
+            }
+          } else {
+            $('#reset-error').removeClass('hidden').text('Something went wrong. Please try again.');
+          }
+        }).always(function () {
+          $submitBtn.prop('disabled', false).html(originalBtnHtml);
+        });
+      });
     });
   </script>
-</body>
-@endsection
+@endpush

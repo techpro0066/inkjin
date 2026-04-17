@@ -159,7 +159,7 @@
           <div class="flex items-center justify-between gap-6 flex-wrap">
             <div>
               <h4 class="text-sm font-bold text-on-surface">Require Consultation Session</h4>
-              <p class="text-on-surface-variant text-xs mt-1">Clients will have to book a consultation before booking a tattoo session.</p>
+              <p class="text-on-surface-variant text-xs mt-1">When enabled, clients must book a consultation before booking a tattoo session.</p>
             </div>
             <div class="toggle-switch {{ $reqCons ? 'active' : '' }}" id="consultation_toggle" onclick="toggleConsultation()" role="switch" aria-checked="{{ $reqCons ? 'true' : 'false' }}"></div>
             <input type="hidden" name="require_consultation" id="require_consultation" value="{{ $reqCons ? '1' : '0' }}">
@@ -187,28 +187,18 @@
           </div>
 
           <div id="consultation_timing_container" style="display: {{ $reqCons ? 'block' : 'none' }};">
-            <label class="text-xs font-semibold text-on-surface-variant mb-3 block">Consultation Setup <span class="text-red-500">*</span></label>
-            <div class="flex flex-col gap-3">
+            <label class="block text-[11px] uppercase tracking-wider text-on-surface-variant font-medium mb-3">Consultation setup <span class="text-red-500">*</span></label>
+            <div id="consultation_timing_group" class="flex flex-col gap-3">
               <label class="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  id="consultation_timing_combined"
-                  name="consultation_timing"
-                  value="combined"
-                  class="mt-1 accent-primary"
-                  {{ $ct === 'combined' || $ct === '' ? 'checked' : '' }}>
+                <input type="radio" name="consultation_timing" value="combined" class="mt-1 accent-primary" onchange="toggleGapFields()"
+                  {{ $ct === 'combined' ? 'checked' : '' }}>
                 <div>
                   <span class="text-sm font-semibold text-on-surface block">Included in tattoo session</span>
                   <span class="text-xs text-on-surface-variant">The consultation happens during the tattoo session and counts toward the total session time.</span>
                 </div>
               </label>
               <label class="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  id="consultation_timing_separate"
-                  name="consultation_timing"
-                  value="separate"
-                  class="mt-1 accent-primary"
+                <input type="radio" name="consultation_timing" value="separate" class="mt-1 accent-primary" onchange="toggleGapFields()"
                   {{ $ct === 'separate' ? 'checked' : '' }}>
                 <div>
                   <span class="text-sm font-semibold text-on-surface block">Separate consultation session</span>
@@ -280,9 +270,6 @@ function setBuffer(btn, value) {
 function requireConsultationEnabled() {
   return $('#require_consultation').val() === '1';
 }
-function getConsultationTiming() {
-  return $('input[name="consultation_timing"]:checked').val() || '';
-}
 function isElementVisible(el) {
   var $el = $(el);
   if (!$el.length) return false;
@@ -295,7 +282,7 @@ function clearFieldError(id) {
 }
 function initVisibleConsultationSelect2() {
   if (typeof window.initOnboardingSelect2 !== 'function' || !window.jQuery) return;
-  window.initOnboardingSelect2(window.jQuery('#session_type_container, #consultation_timing_container, #gap_unit_container'));
+  window.initOnboardingSelect2(window.jQuery('#session_type_container'));
 }
 function toggleSessionFields() {
   var show = requireConsultationEnabled();
@@ -303,9 +290,6 @@ function toggleSessionFields() {
   $('#session_duration_container').css('display', show ? 'block' : 'none');
   $('#consultation_timing_container').css('display', show ? 'block' : 'none');
   if (show) {
-    if (!getConsultationTiming()) {
-      $('#consultation_timing_combined').prop('checked', true);
-    }
     initVisibleConsultationSelect2();
   } else {
     $('#session_type').val('');
@@ -318,14 +302,13 @@ function toggleSessionFields() {
   }
 }
 function toggleGapFields() {
-  var ct = getConsultationTiming();
+  var ct = $('input[name="consultation_timing"]:checked').val() || '';
   var $gap = $('#gap_fields_container');
   if (!$gap.length) return;
   if (requireConsultationEnabled() && ct === 'separate') {
     $gap.css('display', 'block');
     $('#require_gap_between_consultation_tattoo').val('1');
     $('#gap_duration_container').css('display', 'block');
-    $('#gap_unit_container').css('display', 'block');
     initVisibleConsultationSelect2();
   } else {
     $gap.css('display', 'none');
@@ -356,6 +339,7 @@ $(function () {
   });
   $('#prefForm input[name="consultation_timing"]').on('change', function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('consultation_timing');
+    $('#consultation_timing_group').removeClass('ring-2 ring-error/40 rounded-xl p-2');
     toggleGapFields();
   });
   $('#prefForm input[name="reschedule_times"]').on('change', function () {
@@ -372,6 +356,9 @@ $(function () {
         return;
       }
       $err.text(messages[0]).removeClass('hidden');
+      if (k === 'consultation_timing') {
+        $('#consultation_timing_group').addClass('ring-2 ring-error/40 rounded-xl p-2');
+      }
     });
     if (typeof window.scrollToFirstOnboardingError === 'function') {
       window.scrollToFirstOnboardingError(document.getElementById('prefForm'));
@@ -392,7 +379,7 @@ $(function () {
       fd.delete('consultation_timing');
       fd.delete('require_gap_between_consultation_tattoo');
       fd.delete('consultation_tattoo_gap_value');
-    } else if (getConsultationTiming() !== 'separate') {
+    } else if (($('input[name="consultation_timing"]:checked').val() || '') !== 'separate') {
       fd.set('require_gap_between_consultation_tattoo', '0');
       fd.delete('consultation_tattoo_gap_value');
     }

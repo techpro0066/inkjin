@@ -34,16 +34,16 @@
         <div>
           <label for="user_name" class="block text-sm font-semibold text-on-surface mb-2">Username <span class="text-red-600">*</span></label>
           <p class="text-on-surface-variant text-sm leading-relaxed mb-3">Match your Inkjin username to your Instagram handle and give your customers a better experience.</p>
-          <p class="text-on-surface-variant text-xs mb-2">Use 1–30 characters: letters, numbers, periods (.), and underscores (_) only. No spaces or other symbols.</p>
-          <input type="text" id="user_name" name="user_name" value="{{ $userDetail->user_name ?? '' }}" placeholder="your.username" maxlength="30" autocomplete="username"
+          <input type="text" id="user_name" name="user_name" value="{{ $userDetail->user_name ?? '' }}" placeholder="username"
             class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50">
+          <p class="text-on-surface-variant text-xs mt-1">Use only letters, numbers, periods (.), and underscores (_). Max 30 characters.</p>
           <p id="user_name_error" class="text-error text-xs mt-1 hidden"></p>
         </div>
         <div>
           <label for="mobile_number" class="block text-sm font-semibold text-on-surface mb-2">Mobile Number <span class="text-red-600">*</span></label>
-          <p class="text-on-surface-variant text-xs mb-2">E.164 only: start with <span class="font-mono">+</span> and your country code, then digits only (no spaces, dashes, or parentheses).</p>
-          <input type="tel" id="mobile_number" name="mobile_number" value="{{ $userDetail->mobile_number ?? '' }}" placeholder="+306912345678" inputmode="tel" autocomplete="tel"
+          <input type="tel" id="mobile_number" name="mobile_number" value="{{ $userDetail->mobile_number ?? '' }}" placeholder="+15550000000"
             class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50">
+          <p class="text-on-surface-variant text-xs mt-1">Use E.164 format: starts with + and country code, no spaces or symbols.</p>
           <p id="mobile_number_error" class="text-error text-xs mt-1 hidden"></p>
         </div>
       </div>
@@ -93,6 +93,8 @@
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script>
 $(function () {
+  var USERNAME_PATTERN = /^[A-Za-z0-9._]{1,30}$/;
+  var E164_PATTERN = /^\+[1-9]\d{1,14}$/;
   var cropper = null;
   var objectUrl = '';
   var croppedBlob = null;
@@ -175,49 +177,76 @@ $(function () {
       if ($el.length) {
         $el.text(messages[0]).removeClass('hidden');
       }
+      var $input = $('#' + k);
+      if ($input.length) {
+        $input.addClass('border-error ring-2 ring-error/40');
+      }
     });
     if (typeof window.scrollToFirstOnboardingError === 'function') {
       window.scrollToFirstOnboardingError(document.getElementById('profileForm'));
     }
   }
 
-  var USERNAME_PATTERN = /^[a-zA-Z0-9._]{1,30}$/;
-  var E164_PATTERN = /^\+[1-9]\d{1,14}$/;
-
-  function normalizeProfileUsername() {
-    var v = $('#user_name').val().trim().replace(/^@+/, '');
-    $('#user_name').val(v);
-    return v;
+  function setProfileFieldError(field, message) {
+    var $error = $('#' + field + '_error');
+    if ($error.length) {
+      $error.text(message).removeClass('hidden');
+    }
+    var $input = $('#' + field);
+    if ($input.length) {
+      $input.addClass('border-error ring-2 ring-error/40');
+    }
   }
 
-  function normalizeProfileMobile() {
-    var raw = $('#mobile_number').val().trim();
-    if (raw.indexOf('+') === 0) {
-      raw = '+' + raw.slice(1).replace(/\D/g, '');
-      $('#mobile_number').val(raw);
-    }
-    return $('#mobile_number').val().trim();
+  function hasAvatarSelected() {
+    if (croppedBlob) return true;
+    if ($profileImageInput[0] && $profileImageInput[0].files && $profileImageInput[0].files.length) return true;
+    return $profilePreview.attr('src') && !$profilePreview.hasClass('hidden');
   }
 
-  function validateProfileUsernameAndPhone() {
-    var errors = {};
-    var un = normalizeProfileUsername();
-    if (!un) {
-      errors.user_name = ['Username is required.'];
-    } else if (un.length > 30) {
-      errors.user_name = ['Username may not be longer than 30 characters.'];
-    } else if (!USERNAME_PATTERN.test(un)) {
-      errors.user_name = ['Username may only contain letters, numbers, periods (.), and underscores (_).'];
+  function validateProfileFormClient() {
+    var ok = true;
+
+    var firstName = $.trim($('#first_name').val());
+    var lastName = $.trim($('#last_name').val());
+    var userName = $.trim($('#user_name').val());
+    var mobile = $.trim($('#mobile_number').val());
+
+    if (!firstName) {
+      setProfileFieldError('first_name', 'First name is required.');
+      ok = false;
     }
-    var mob = normalizeProfileMobile();
-    if (!mob) {
-      errors.mobile_number = ['Mobile number is required.'];
-    } else if (mob.charAt(0) !== '+') {
-      errors.mobile_number = ['Phone number must start with + followed by country code and digits only.'];
-    } else if (!E164_PATTERN.test(mob)) {
-      errors.mobile_number = ['Use E.164 format: +, country code, then digits only (no spaces, dashes, or parentheses).'];
+
+    if (!lastName) {
+      setProfileFieldError('last_name', 'Last name is required.');
+      ok = false;
     }
-    return errors;
+
+    if (!userName) {
+      setProfileFieldError('user_name', 'Username is required.');
+      ok = false;
+    } else if (!USERNAME_PATTERN.test(userName)) {
+      setProfileFieldError('user_name', 'Username can only include letters, numbers, periods (.) and underscores (_) and must be 1-30 characters.');
+      ok = false;
+    }
+
+    if (!mobile) {
+      setProfileFieldError('mobile_number', 'Mobile number is required.');
+      ok = false;
+    } else if (!E164_PATTERN.test(mobile)) {
+      setProfileFieldError('mobile_number', 'Mobile number must be in E.164 format (example: +447911123456) with no spaces, dashes, or parentheses.');
+      ok = false;
+    }
+
+    if (!hasAvatarSelected()) {
+      setProfileFieldError('avatar', 'Profile photo is required.');
+      ok = false;
+    }
+
+    if (!ok && typeof window.scrollToFirstOnboardingError === 'function') {
+      window.scrollToFirstOnboardingError(document.getElementById('profileForm'));
+    }
+    return ok;
   }
 
   $('#profileForm').on('submit', function (e) {
@@ -225,15 +254,12 @@ $(function () {
     var $btn = $('#profileNext');
     var originalBtnHtml = $btn.html();
     $('#profileForm').find('[id$="_error"]').addClass('hidden').text('');
-    $btn.prop('disabled', true);
-    $btn.text('Saving...');
-    var clientErrors = validateProfileUsernameAndPhone();
-    if (Object.keys(clientErrors).length) {
-      showProfileValidationErrors(clientErrors);
-      $btn.prop('disabled', false);
-      $btn.html(originalBtnHtml);
+    $('#profileForm').find('#first_name, #last_name, #user_name, #mobile_number, #avatar').removeClass('border-error ring-2 ring-error/40');
+    if (!validateProfileFormClient()) {
       return;
     }
+    $btn.prop('disabled', true);
+    $btn.text('Saving...');
     var fd = new FormData(this);
     if (croppedBlob) {
       fd.delete('avatar');

@@ -45,21 +45,22 @@
         body { overflow-x: hidden; }
       }
 
+      /* Chrome, Safari, Edge */
       input[type="time"]::-webkit-calendar-picker-indicator {
-  display: none;
-  -webkit-appearance: none;
-}
+        display: none;
+        -webkit-appearance: none;
+      }
 
-/* Optional: remove inner spin buttons */
-input[type="time"]::-webkit-inner-spin-button {
-  display: none;
-}
+      /* Optional: remove inner spin buttons */
+      input[type="time"]::-webkit-inner-spin-button {
+        display: none;
+      }
 
-/* Firefox */
-input[type="time"] {
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
+      /* Firefox */
+      input[type="time"] {
+        appearance: textfield;
+        -moz-appearance: textfield;
+      }
     </style>
 @endsection
 

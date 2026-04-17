@@ -273,30 +273,22 @@
               </div>
             </div>
 
-            <div class="mb-4" id="consultation_timing_container">
+            <div class="mb-4">
               <label class="text-xs font-semibold text-on-surface-variant mb-3 block">Consultation Setup</label>
-              <div class="flex flex-col gap-3">
+              <div id="consultation_setup_group" class="flex flex-col gap-3">
                 <label class="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    id="consultation_timing_combined"
-                    name="consultation_timing"
-                    value="combined"
-                    class="mt-1 accent-primary"
-                    {{ ($ud->consultation_timing ?? 'combined') === 'combined' ? 'checked' : '' }}>
+                  <input type="radio" name="consultation_timing" value="combined" class="mt-1 accent-primary"
+                    {{ ($ud->consultation_timing ?? 'combined') === 'combined' ? 'checked' : '' }}
+                    onchange="toggleConsultationGap()">
                   <div>
                     <span class="text-sm font-semibold text-on-surface block">Included in tattoo session</span>
                     <span class="text-xs text-on-surface-variant">The consultation happens during the tattoo session and counts toward the total session time.</span>
                   </div>
                 </label>
                 <label class="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    id="consultation_timing_separate"
-                    name="consultation_timing"
-                    value="separate"
-                    class="mt-1 accent-primary"
-                    {{ ($ud->consultation_timing ?? '') === 'separate' ? 'checked' : '' }}>
+                  <input type="radio" name="consultation_timing" value="separate" class="mt-1 accent-primary"
+                    {{ ($ud->consultation_timing ?? '') === 'separate' ? 'checked' : '' }}
+                    onchange="toggleConsultationGap()">
                   <div>
                     <span class="text-sm font-semibold text-on-surface block">Separate consultation session</span>
                     <span class="text-xs text-on-surface-variant">The consultation is booked as its own session before the tattoo session.</span>
@@ -378,19 +370,19 @@
     if (!isActive) toggleGapFields();
   }
 
-  function getConsultationTiming() {
-    return $('input[name="consultation_timing"]:checked').val() || '';
-  }
-
   function toggleGapFields() {
     var consultationRequired = $('#require_consultation').val() === '1';
-    var val = getConsultationTiming();
+    var val = $('input[name="consultation_timing"]:checked').val() || '';
     var show = consultationRequired && val === 'separate';
     $('#consultation_gap_block').css('display', show ? 'block' : 'none');
     $('#require_gap_between_consultation_tattoo').val(show ? '1' : '0');
     if (!show) {
       $('#consultation_tattoo_gap_value').val('');
     }
+  }
+
+  function toggleConsultationGap() {
+    toggleGapFields();
   }
 
   $(function () {
@@ -405,7 +397,7 @@
     });
     $('#preferencesForm input[name="consultation_timing"]').on('change', function () {
       $('#consultation_timing_error').text('').addClass('hidden');
-      $('#consultation_timing_container').removeClass('ring-2 ring-error/40 rounded-xl');
+      $('#consultation_setup_group').removeClass('ring-2 ring-error/40 rounded-xl p-2');
       toggleGapFields();
     });
     $('#preferencesForm input[name="reschedule_times"]').on('change', function () {
@@ -420,7 +412,7 @@
       if ($('#require_consultation').val() !== '1') {
         fd.delete('session_type'); fd.delete('session_duration_minutes'); fd.delete('consultation_timing');
         fd.delete('require_gap_between_consultation_tattoo'); fd.delete('consultation_tattoo_gap_value');
-      } else if (getConsultationTiming() !== 'separate') {
+      } else if ((($('input[name="consultation_timing"]:checked').val()) || '') !== 'separate') {
         fd.set('require_gap_between_consultation_tattoo', '0');
         fd.delete('consultation_tattoo_gap_value');
       }
@@ -440,11 +432,10 @@
         } else if (data.errors) {
           $.each(data.errors, function (k, msgs) {
             $('#' + k + '_error').text(msgs[0]).removeClass('hidden');
-            var $field = $('#' + k);
-            if ($field.length) {
-              $field.addClass('border-error');
-            } else if (k === 'consultation_timing') {
-              $('#consultation_timing_container').addClass('ring-2 ring-error/40 rounded-xl');
+            if (k === 'consultation_timing') {
+              $('#consultation_setup_group').addClass('ring-2 ring-error/40 rounded-xl p-2');
+            } else {
+              $('#' + k).addClass('border-error');
             }
           });
         } else {
@@ -454,11 +445,10 @@
         if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
           $.each(xhr.responseJSON.errors, function (k, msgs) {
             $('#' + k + '_error').text(msgs[0]).removeClass('hidden');
-            var $field = $('#' + k);
-            if ($field.length) {
-              $field.addClass('border-error');
-            } else if (k === 'consultation_timing') {
-              $('#consultation_timing_container').addClass('ring-2 ring-error/40 rounded-xl');
+            if (k === 'consultation_timing') {
+              $('#consultation_setup_group').addClass('ring-2 ring-error/40 rounded-xl p-2');
+            } else {
+              $('#' + k).addClass('border-error');
             }
           });
         } else {

@@ -3,7 +3,6 @@
 @section('title', 'Verify Email')
 
 @section('content')
-  <!-- Background Decoration: The "ij" Watermark -->
   <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
     <div class="absolute -top-24 -right-24 w-96 h-96 brand-gradient opacity-[0.03] rounded-full blur-3xl"></div>
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[40rem] font-black text-primary-fixed-dim opacity-[0.05] select-none tracking-tighter">
@@ -13,77 +12,80 @@
 
   <main class="flex-grow flex items-center justify-center p-6 md:p-12 relative z-10">
     <div class="w-full max-auto max-w-[440px]">
-      <!-- Logo Section -->
-      <div class="flex justify-center mb-10">
-        <img
-          alt="Inkjin Logo"
-          class="h-16 w-auto object-contain"
-          src="{{ asset('design/images/logo-blue.png') }}"
-        />
+      <div class="flex flex-col items-center mb-8">
+        <span class="text-4xl font-bold text-on-surface tracking-tighter leading-none mb-1" style="font-family: 'Space Grotesk', sans-serif;">
+          bookpay
+        </span>
+        <span class="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest text-center leading-tight">
+          Tattoo artist platform<br>by Inkjin
+        </span>
       </div>
 
-      <!-- Card Container -->
-      <div class="bg-surface-container-lowest rounded-xl p-8 md:p-10 shadow-[0_32px_64px_-12px_rgba(49,15,122,0.06)] ring-1 ring-outline-variant/15">
-        <div class="text-center mb-8">
-          <h1 class="font-headline text-3xl font-extrabold text-on-surface tracking-tight mb-3">
-            Verify Your Email Address
-          </h1>
-          <p class="text-on-surface-variant">
-            Thanks for signing up! Before getting started, please verify your email address by clicking the link we emailed you.
-            If you didn't receive the email, you can resend it below.
-          </p>
-        </div>
-
-        @if (session('status') == 'verification-link-sent')
-          <div class="mb-5 rounded-xl bg-primary-container/25 border border-primary-container/40 px-4 py-3 text-sm text-on-surface">
-            <strong>Success!</strong> A new verification link has been sent to the email address you provided during registration.
+      <div class="surface-container-lowest glass-panel rounded-xl shadow-[0_32px_64px_-12px_rgba(49,15,122,0.06)] p-8 md:p-10">
+        <div class="w-full max-w-md">
+          <div class="flex flex-col items-center mb-8 text-center">
+            <div class="w-14 h-14 rounded-full bg-primary-container/15 flex items-center justify-center mb-4">
+              <span class="material-symbols-outlined text-primary text-[28px]">mark_email_read</span>
+            </div>
+            <h1 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2" style="font-family: 'Space Grotesk', sans-serif;">
+              Verify your email
+            </h1>
+            <p class="text-on-surface-variant">
+              Thanks for signing up. Please click the verification link sent to your inbox before continuing. If you did not receive it, resend below.
+            </p>
           </div>
-        @endif
 
-        <div id="resendMessage" class="mb-5 rounded-xl bg-primary-container/20 border border-primary-container/40 px-4 py-3 text-sm text-on-surface" style="display: none;">
-          <small><strong>Note:</strong> <span id="resendMessageText"></span></small>
-        </div>
+          @if (session('status') == 'verification-link-sent')
+            <div class="mb-5 rounded-xl bg-primary-container/25 border border-primary-container/40 px-4 py-3 text-sm text-on-surface">
+              <strong>Success:</strong> A new verification link has been sent to your email address.
+            </div>
+          @endif
 
-        <div class="space-y-4">
-          <form method="POST" action="{{ route('verification.send') }}" id="resendVerificationForm" class="mb-0">
-            @csrf
-            <button
-              type="submit"
-              id="resendButton"
-              class="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]"
-            >
-              <span id="buttonText">{{ __('Resend Verification Email') }}</span>
-              <span id="countdownText" style="display: none;"></span>
-            </button>
-          </form>
+          <div id="resendMessage" class="mb-5 rounded-xl bg-primary-container/20 border border-primary-container/40 px-4 py-3 text-sm text-on-surface hidden">
+            <strong>Note:</strong> <span id="resendMessageText"></span>
+          </div>
 
-          <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button
-              type="submit"
-              class="w-full inline-flex items-center justify-center bg-surface-container-highest text-on-surface-variant font-semibold py-3 px-8 rounded-xl border border-outline-variant/30 hover:bg-white transition-all"
-            >
-              {{ __('Log Out') }}
-            </button>
-          </form>
+          <div class="space-y-4">
+            <form method="POST" action="{{ route('verification.send') }}" id="resendVerificationForm" class="mb-0">
+              @csrf
+              <button
+                type="submit"
+                id="resendButton"
+                class="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]"
+              >
+                <span id="buttonText">{{ __('Resend Verification Email') }}</span>
+                <span id="countdownText" class="hidden"></span>
+              </button>
+            </form>
+
+            <form method="POST" action="{{ route('logout') }}">
+              @csrf
+              <button
+                type="submit"
+                class="w-full inline-flex items-center justify-center bg-surface-container-highest text-on-surface-variant font-semibold py-4 px-8 rounded-xl border border-outline-variant/30 hover:bg-white transition-all"
+              >
+                {{ __('Log Out') }}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- Footer -->
   <footer class="py-8 w-full bg-surface text-on-surface-variant text-sm">
     <div class="text-center px-6">
       <div class="flex flex-wrap justify-center gap-4 mb-3">
-        <a class="hover:text-primary transition-colors duration-300" href="#">Privacy Policy</a>
+        <a class="hover:text-primary transition-colors duration-300" href="https://inkjin.com/en/privacy.html">Privacy Policy</a>
         <span class="text-outline-variant/40">·</span>
-        <a class="hover:text-primary transition-colors duration-300" href="#">Terms of Service</a>
+        <a class="hover:text-primary transition-colors duration-300" href="artists_terms.html">Terms of Service</a>
         <span class="text-outline-variant/40">·</span>
-        <a class="hover:text-primary transition-colors duration-300" href="#">Help Center</a>
+        <a class="hover:text-primary transition-colors duration-300" href="https://help.inkjin.com/en/">Help Center</a>
       </div>
       <div class="text-on-surface-variant/60 font-medium">© 2026 Inkjin. All rights reserved.</div>
     </div>
   </footer>
+@endsection
 
 @push('scripts')
   <script>
@@ -134,7 +136,7 @@
             const storedMessage = localStorage.getItem(MESSAGE_KEY);
             if (storedMessage) {
               resendMessageText.textContent = storedMessage;
-              resendMessage.style.display = 'block';
+              resendMessage.classList.remove('hidden');
             }
             return;
           } else {
@@ -148,7 +150,7 @@
         const storedMessage = localStorage.getItem(MESSAGE_KEY);
         if (storedMessage) {
           resendMessageText.textContent = storedMessage;
-          resendMessage.style.display = 'block';
+          resendMessage.classList.remove('hidden');
         }
 
         // Check if email was just sent (either from registration or manual resend)
@@ -162,7 +164,7 @@
             const message = 'Verification email sent! Please check your inbox.';
             localStorage.setItem(MESSAGE_KEY, message);
             resendMessageText.textContent = message;
-            resendMessage.style.display = 'block';
+            resendMessage.classList.remove('hidden');
           }
 
           // Clear session flag via AJAX to prevent timer restart on refresh
@@ -189,8 +191,8 @@
 
         // Disable button
         resendButton.disabled = true;
-        buttonText.style.display = 'none';
-        countdownText.style.display = 'inline';
+        buttonText.classList.add('hidden');
+        countdownText.classList.remove('hidden');
         resendButton.classList.remove(...activeButtonClasses);
         resendButton.classList.add(...cooldownButtonClasses);
 
@@ -210,9 +212,9 @@
 
             // Enable button
             resendButton.disabled = false;
-            buttonText.style.display = 'inline';
+            buttonText.classList.remove('hidden');
             buttonText.textContent = 'Resend Verification Email';
-            countdownText.style.display = 'none';
+            countdownText.classList.add('hidden');
             resendButton.classList.remove(...cooldownButtonClasses);
             resendButton.classList.add(...activeButtonClasses);
 
@@ -220,7 +222,7 @@
             localStorage.removeItem(STORAGE_KEY);
 
             // Clear message
-            resendMessage.style.display = 'none';
+            resendMessage.classList.add('hidden');
             localStorage.removeItem(MESSAGE_KEY);
           } else {
             remaining--;
@@ -238,7 +240,7 @@
         // Check if button is disabled (cooldown active)
         if (resendButton.disabled) {
           resendMessageText.textContent = 'Email already sent, please wait before retrying.';
-          resendMessage.style.display = 'block';
+          resendMessage.classList.remove('hidden');
           localStorage.setItem(MESSAGE_KEY, 'Email already sent, please wait before retrying.');
           return;
         }
@@ -266,13 +268,13 @@
           if (response.ok) {
             const successMessage = 'Verification email sent successfully! Please check your inbox.';
             resendMessageText.textContent = successMessage;
-            resendMessage.style.display = 'block';
+            resendMessage.classList.remove('hidden');
             localStorage.setItem(MESSAGE_KEY, successMessage);
             startCooldown(COOLDOWN_DURATION);
           } else if (response.status === 429) {
             const throttleMessage = 'Too many requests. Please wait and try again.';
             resendMessageText.textContent = throttleMessage;
-            resendMessage.style.display = 'block';
+            resendMessage.classList.remove('hidden');
             localStorage.setItem(MESSAGE_KEY, throttleMessage);
             resendButton.disabled = false;
             buttonText.textContent = originalButtonText;
@@ -281,7 +283,7 @@
           } else {
             const errorMessage = 'Unable to resend verification email right now. Please try again.';
             resendMessageText.textContent = errorMessage;
-            resendMessage.style.display = 'block';
+            resendMessage.classList.remove('hidden');
             localStorage.setItem(MESSAGE_KEY, errorMessage);
             resendButton.disabled = false;
             buttonText.textContent = originalButtonText;
@@ -290,7 +292,7 @@
           }
         } catch (error) {
           resendMessageText.textContent = 'Network error. Please check your connection and try again.';
-          resendMessage.style.display = 'block';
+          resendMessage.classList.remove('hidden');
           localStorage.setItem(MESSAGE_KEY, 'Network error. Please check your connection and try again.');
           resendButton.disabled = false;
           buttonText.textContent = originalButtonText;
@@ -313,4 +315,3 @@
     })();
   </script>
 @endpush
-@endsection

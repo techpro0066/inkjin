@@ -32,10 +32,25 @@
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
 
+    @if(Auth::user()->userDetail->availability_status == 'closed')
+    <div id="booksClosedBanner" class="bg-red-50 border border-red-200 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <span class="material-symbols-outlined text-red-600 mt-0.5">event_busy</span>
+        <div>
+          <h3 class="text-sm font-bold text-red-900">Your books are currently closed</h3>
+          <p class="text-xs text-red-700 mt-1">Clients cannot book your available designs or send custom requests. When you are ready, open your books to start accepting appointments.</p>
+        </div>
+      </div>
+      <a href="{{ route('availability.index') }}" class="whitespace-nowrap px-4 py-2 bg-red-600 text-white rounded-full text-xs font-bold hover:bg-red-700 transition-colors shadow-sm">
+        Open Your Books
+      </a>
+    </div>
+    @endif
+
     <!-- Welcome Header -->
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-2">
-        <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Welcome back, Artist Name</h2>
+        <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Welcome back, {{ Auth::user()->first_name }} {{ Auth::user()->last_name }}</h2>
         <p class="text-sm text-outline font-medium" id="currentDate"></p>
       </div>
       <p class="text-on-surface-variant mt-1 max-w-lg">Here's what's happening with your bookings today.</p>
