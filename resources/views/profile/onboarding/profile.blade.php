@@ -34,13 +34,15 @@
         <div>
           <label for="user_name" class="block text-sm font-semibold text-on-surface mb-2">Username <span class="text-red-600">*</span></label>
           <p class="text-on-surface-variant text-sm leading-relaxed mb-3">Match your Inkjin username to your Instagram handle and give your customers a better experience.</p>
-          <input type="text" id="user_name" name="user_name" value="{{ $userDetail->user_name ?? '' }}" placeholder="@username"
+          <p class="text-on-surface-variant text-xs mb-2">Use 1–30 characters: letters, numbers, periods (.), and underscores (_) only. No spaces or other symbols.</p>
+          <input type="text" id="user_name" name="user_name" value="{{ $userDetail->user_name ?? '' }}" placeholder="your.username" maxlength="30" autocomplete="username"
             class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50">
           <p id="user_name_error" class="text-error text-xs mt-1 hidden"></p>
         </div>
         <div>
           <label for="mobile_number" class="block text-sm font-semibold text-on-surface mb-2">Mobile Number <span class="text-red-600">*</span></label>
-          <input type="tel" id="mobile_number" name="mobile_number" value="{{ $userDetail->mobile_number ?? '' }}" placeholder="+1 (555) 000-0000"
+          <p class="text-on-surface-variant text-xs mb-2">E.164 only: start with <span class="font-mono">+</span> and your country code, then digits only (no spaces, dashes, or parentheses).</p>
+          <input type="tel" id="mobile_number" name="mobile_number" value="{{ $userDetail->mobile_number ?? '' }}" placeholder="+306912345678" inputmode="tel" autocomplete="tel"
             class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50">
           <p id="mobile_number_error" class="text-error text-xs mt-1 hidden"></p>
         </div>
@@ -179,6 +181,45 @@ $(function () {
     }
   }
 
+  var USERNAME_PATTERN = /^[a-zA-Z0-9._]{1,30}$/;
+  var E164_PATTERN = /^\+[1-9]\d{1,14}$/;
+
+  function normalizeProfileUsername() {
+    var v = $('#user_name').val().trim().replace(/^@+/, '');
+    $('#user_name').val(v);
+    return v;
+  }
+
+  function normalizeProfileMobile() {
+    var raw = $('#mobile_number').val().trim();
+    if (raw.indexOf('+') === 0) {
+      raw = '+' + raw.slice(1).replace(/\D/g, '');
+      $('#mobile_number').val(raw);
+    }
+    return $('#mobile_number').val().trim();
+  }
+
+  function validateProfileUsernameAndPhone() {
+    var errors = {};
+    var un = normalizeProfileUsername();
+    if (!un) {
+      errors.user_name = ['Username is required.'];
+    } else if (un.length > 30) {
+      errors.user_name = ['Username may not be longer than 30 characters.'];
+    } else if (!USERNAME_PATTERN.test(un)) {
+      errors.user_name = ['Username may only contain letters, numbers, periods (.), and underscores (_).'];
+    }
+    var mob = normalizeProfileMobile();
+    if (!mob) {
+      errors.mobile_number = ['Mobile number is required.'];
+    } else if (mob.charAt(0) !== '+') {
+      errors.mobile_number = ['Phone number must start with + followed by country code and digits only.'];
+    } else if (!E164_PATTERN.test(mob)) {
+      errors.mobile_number = ['Use E.164 format: +, country code, then digits only (no spaces, dashes, or parentheses).'];
+    }
+    return errors;
+  }
+
   $('#profileForm').on('submit', function (e) {
     e.preventDefault();
     var $btn = $('#profileNext');
@@ -186,6 +227,13 @@ $(function () {
     $('#profileForm').find('[id$="_error"]').addClass('hidden').text('');
     $btn.prop('disabled', true);
     $btn.text('Saving...');
+    var clientErrors = validateProfileUsernameAndPhone();
+    if (Object.keys(clientErrors).length) {
+      showProfileValidationErrors(clientErrors);
+      $btn.prop('disabled', false);
+      $btn.html(originalBtnHtml);
+      return;
+    }
     var fd = new FormData(this);
     if (croppedBlob) {
       fd.delete('avatar');

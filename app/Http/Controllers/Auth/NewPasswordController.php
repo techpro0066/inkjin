@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -28,7 +29,7 @@ class NewPasswordController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $request->validate([
             'token' => ['required'],
@@ -50,6 +51,20 @@ class NewPasswordController extends Controller
                 event(new PasswordReset($user));
             }
         );
+
+        if ($request->expectsJson()) {
+            return $status == Password::PASSWORD_RESET
+                ? response()->json([
+                    'redirect' => route('login'),
+                    'status' => __($status),
+                ])
+                : response()->json([
+                    'message' => __($status),
+                    'errors' => [
+                        'email' => [__($status)],
+                    ],
+                ], 422);
+        }
 
         // If the password was successfully reset, we will redirect the user back to
         // the application's home authenticated view. If there is an error we can

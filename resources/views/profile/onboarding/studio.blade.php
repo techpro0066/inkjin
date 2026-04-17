@@ -112,7 +112,7 @@
       <p id="workspace_type_error" class="text-error text-xs mt-1 hidden"></p>
     </div>
 
-    <div class="mb-10 opacity-80 pointer-events-none select-none">
+    {{-- <div class="mb-10 opacity-80 pointer-events-none select-none">
       <h3 class="text-lg font-bold text-on-surface mb-1">Studio Photos <span class="text-on-surface-variant font-normal text-sm">(optional)</span></h3>
       <p class="text-on-surface-variant text-sm mb-5">Help clients know what to expect — show your setup, waiting area, or equipment.</p>
       <div class="border-2 border-dashed border-outline-variant/40 rounded-2xl p-8 text-center mb-6">
@@ -120,7 +120,7 @@
         <p class="font-semibold text-sm text-on-surface">Add photos of your workspace</p>
         <p class="text-on-surface-variant text-xs mt-1">Coming soon</p>
       </div>
-    </div>
+    </div> --}}
   </div>
 
   <div class="sticky bottom-0 bg-surface border-t border-outline-variant/10 px-8 md:px-12 py-5 flex items-center justify-between mt-auto">

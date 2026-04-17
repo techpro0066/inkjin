@@ -72,7 +72,7 @@
         <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Preferences</a>
         <a href="{{route('settings.calendar')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Calendar</a>
         <a href="{{route('settings.payment')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Payments</a>
-        <a href="{{ route('settings.notifications') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Notifications</a>
+        {{-- <a href="{{ route('settings.notifications') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Notifications</a> --}}
       </div>
 
 
@@ -273,14 +273,36 @@
               </div>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-4" id="consultation_timing_container">
               <label class="text-xs font-semibold text-on-surface-variant mb-3 block">Consultation Setup</label>
-              <select id="consultation_timing" name="consultation_timing" class="js-select2 w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" onchange="toggleGapFields()">
-                <option value="">Select timing</option>
-                <option value="combined" {{ ($ud->consultation_timing ?? 'combined') === 'combined' ? 'selected' : '' }}>Included in tattoo session</option>
-                <option value="separate" {{ ($ud->consultation_timing ?? '') === 'separate' ? 'selected' : '' }}>Separate consultation session</option>
-              </select>
-              <p class="text-xs text-on-surface-variant mt-2"><strong>Included:</strong> Consultation happens during tattoo session. <strong>Separate:</strong> Consultation is a standalone session.</p>
+              <div class="flex flex-col gap-3">
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    id="consultation_timing_combined"
+                    name="consultation_timing"
+                    value="combined"
+                    class="mt-1 accent-primary"
+                    {{ ($ud->consultation_timing ?? 'combined') === 'combined' ? 'checked' : '' }}>
+                  <div>
+                    <span class="text-sm font-semibold text-on-surface block">Included in tattoo session</span>
+                    <span class="text-xs text-on-surface-variant">The consultation happens during the tattoo session and counts toward the total session time.</span>
+                  </div>
+                </label>
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    id="consultation_timing_separate"
+                    name="consultation_timing"
+                    value="separate"
+                    class="mt-1 accent-primary"
+                    {{ ($ud->consultation_timing ?? '') === 'separate' ? 'checked' : '' }}>
+                  <div>
+                    <span class="text-sm font-semibold text-on-surface block">Separate consultation session</span>
+                    <span class="text-xs text-on-surface-variant">The consultation is booked as its own session before the tattoo session.</span>
+                  </div>
+                </label>
+              </div>
               <p id="consultation_timing_error" class="text-error text-xs mt-1 hidden"></p>
             </div>
 
@@ -356,9 +378,13 @@
     if (!isActive) toggleGapFields();
   }
 
+  function getConsultationTiming() {
+    return $('input[name="consultation_timing"]:checked').val() || '';
+  }
+
   function toggleGapFields() {
     var consultationRequired = $('#require_consultation').val() === '1';
-    var val = $('#consultation_timing').val() || '';
+    var val = getConsultationTiming();
     var show = consultationRequired && val === 'separate';
     $('#consultation_gap_block').css('display', show ? 'block' : 'none');
     $('#require_gap_between_consultation_tattoo').val(show ? '1' : '0');
@@ -373,9 +399,14 @@
       $('.js-select2').select2({ width: '100%', dropdownParent: $('body') });
     }
     toggleGapFields();
-    $('#timezone, #date_time_format, #currency, #minimum_deposit_amount, #cancellation_window, #session_type, #consultation_timing, #session_duration_minutes, #consultation_tattoo_gap_value').on('change input', function () {
+    $('#timezone, #date_time_format, #currency, #minimum_deposit_amount, #cancellation_window, #session_type, #session_duration_minutes, #consultation_tattoo_gap_value').on('change input', function () {
       $(this).removeClass('border-error');
       $('#' + this.id + '_error').text('').addClass('hidden');
+    });
+    $('#preferencesForm input[name="consultation_timing"]').on('change', function () {
+      $('#consultation_timing_error').text('').addClass('hidden');
+      $('#consultation_timing_container').removeClass('ring-2 ring-error/40 rounded-xl');
+      toggleGapFields();
     });
     $('#preferencesForm input[name="reschedule_times"]').on('change', function () {
       $('#reschedule_times_error').text('').addClass('hidden');
@@ -389,7 +420,7 @@
       if ($('#require_consultation').val() !== '1') {
         fd.delete('session_type'); fd.delete('session_duration_minutes'); fd.delete('consultation_timing');
         fd.delete('require_gap_between_consultation_tattoo'); fd.delete('consultation_tattoo_gap_value');
-      } else if (($('#consultation_timing').val() || '') !== 'separate') {
+      } else if (getConsultationTiming() !== 'separate') {
         fd.set('require_gap_between_consultation_tattoo', '0');
         fd.delete('consultation_tattoo_gap_value');
       }
@@ -407,13 +438,29 @@
           $('#prefSuccessAlert').text(data.message || 'Preferences updated successfully.').removeClass('hidden');
           showSaveToast();
         } else if (data.errors) {
-          $.each(data.errors, function (k, msgs) { $('#' + k + '_error').text(msgs[0]).removeClass('hidden'); $('#' + k).addClass('border-error'); });
+          $.each(data.errors, function (k, msgs) {
+            $('#' + k + '_error').text(msgs[0]).removeClass('hidden');
+            var $field = $('#' + k);
+            if ($field.length) {
+              $field.addClass('border-error');
+            } else if (k === 'consultation_timing') {
+              $('#consultation_timing_container').addClass('ring-2 ring-error/40 rounded-xl');
+            }
+          });
         } else {
           $('#prefErrorAlert').text(data.message || 'Could not save preferences.').removeClass('hidden');
         }
       }).fail(function (xhr) {
         if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-          $.each(xhr.responseJSON.errors, function (k, msgs) { $('#' + k + '_error').text(msgs[0]).removeClass('hidden'); $('#' + k).addClass('border-error'); });
+          $.each(xhr.responseJSON.errors, function (k, msgs) {
+            $('#' + k + '_error').text(msgs[0]).removeClass('hidden');
+            var $field = $('#' + k);
+            if ($field.length) {
+              $field.addClass('border-error');
+            } else if (k === 'consultation_timing') {
+              $('#consultation_timing_container').addClass('ring-2 ring-error/40 rounded-xl');
+            }
+          });
         } else {
           $('#prefErrorAlert').text((xhr.responseJSON && xhr.responseJSON.message) || 'Network error. Please try again.').removeClass('hidden');
         }

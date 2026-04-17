@@ -155,13 +155,13 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function 
     
     Route::post('/settings/payment', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
 
-    Route::get('/settings/notifications', function (\Illuminate\Http\Request $request) {
-        $user = $request->user();
-        $userDetail = $user->userDetail;
-        return view('artist.settings.notifications', compact('userDetail'));
-    })->name('settings.notifications');
+    // Route::get('/settings/notifications', function (\Illuminate\Http\Request $request) {
+    //     $user = $request->user();
+    //     $userDetail = $user->userDetail;
+    //     return view('artist.settings.notifications', compact('userDetail'));
+    // })->name('settings.notifications');
     
-    Route::post('/settings/notifications', [OnboardingController::class, 'updateNotifications'])->name('settings.notifications.update');
+    // Route::post('/settings/notifications', [OnboardingController::class, 'updateNotifications'])->name('settings.notifications.update');
     
     // Availability routes (for artists)
     Route::get('/availability', [\App\Http\Controllers\AvailabilityController::class, 'index'])->name('availability.index');

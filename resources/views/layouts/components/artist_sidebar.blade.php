@@ -1,8 +1,10 @@
 <aside class="sidebar hidden lg:flex fixed top-0 left-0 bg-primary flex-col p-6 z-40" id="mobileSidebar">
   <!-- Top: Logo (fixed height) -->
-  <div class="mb-6">
-    <h1 class="text-white text-xl font-bold">Inkjin</h1>
-    <p class="text-white/50 text-[10px] uppercase tracking-[2px] mt-1">Book & Pay</p>
+  <div class="mb-6 flex flex-col gap-1">
+    <span class="text-white text-2xl font-bold tracking-tighter leading-none"
+      style="font-family: 'Space Grotesk', sans-serif;">bookpay</span>
+    <span class="text-white/40 text-[8px] uppercase tracking-widest font-medium leading-tight">Tattoo artist
+      platform<br>by Inkjin</span>
   </div>
 
   <!-- Middle: Nav (scrollable) -->

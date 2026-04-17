@@ -159,7 +159,7 @@
           <div class="flex items-center justify-between gap-6 flex-wrap">
             <div>
               <h4 class="text-sm font-bold text-on-surface">Require Consultation Session</h4>
-              <p class="text-on-surface-variant text-xs mt-1">When enabled, clients must book a consultation before booking a tattoo session.</p>
+              <p class="text-on-surface-variant text-xs mt-1">Clients will have to book a consultation before booking a tattoo session.</p>
             </div>
             <div class="toggle-switch {{ $reqCons ? 'active' : '' }}" id="consultation_toggle" onclick="toggleConsultation()" role="switch" aria-checked="{{ $reqCons ? 'true' : 'false' }}"></div>
             <input type="hidden" name="require_consultation" id="require_consultation" value="{{ $reqCons ? '1' : '0' }}">
@@ -187,13 +187,35 @@
           </div>
 
           <div id="consultation_timing_container" style="display: {{ $reqCons ? 'block' : 'none' }};">
-            <label for="consultation_timing" class="block text-[11px] uppercase tracking-wider text-on-surface-variant font-medium mb-2">Consultation timing <span class="text-red-500">*</span></label>
-            <select id="consultation_timing" name="consultation_timing" class="select w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" onchange="toggleGapFields()">
-              <option value="" disabled {{ $ct === '' ? 'selected' : '' }}>Select timing</option>
-              <option value="combined" {{ $ct === 'combined' ? 'selected' : '' }}>Add with tattoo session</option>
-              <option value="separate" {{ $ct === 'separate' ? 'selected' : '' }}>Separate from tattoo session</option>
-            </select>
-            <p class="text-on-surface-variant text-xs mt-2"><strong>Combined:</strong> Consultation time is added to the tattoo session duration. <strong>Separate:</strong> Consultation is a standalone session.</p>
+            <label class="text-xs font-semibold text-on-surface-variant mb-3 block">Consultation Setup <span class="text-red-500">*</span></label>
+            <div class="flex flex-col gap-3">
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  id="consultation_timing_combined"
+                  name="consultation_timing"
+                  value="combined"
+                  class="mt-1 accent-primary"
+                  {{ $ct === 'combined' || $ct === '' ? 'checked' : '' }}>
+                <div>
+                  <span class="text-sm font-semibold text-on-surface block">Included in tattoo session</span>
+                  <span class="text-xs text-on-surface-variant">The consultation happens during the tattoo session and counts toward the total session time.</span>
+                </div>
+              </label>
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  id="consultation_timing_separate"
+                  name="consultation_timing"
+                  value="separate"
+                  class="mt-1 accent-primary"
+                  {{ $ct === 'separate' ? 'checked' : '' }}>
+                <div>
+                  <span class="text-sm font-semibold text-on-surface block">Separate consultation session</span>
+                  <span class="text-xs text-on-surface-variant">The consultation is booked as its own session before the tattoo session.</span>
+                </div>
+              </label>
+            </div>
             <p id="consultation_timing_error" class="text-error text-xs mt-1 hidden"></p>
           </div>
 
@@ -258,6 +280,9 @@ function setBuffer(btn, value) {
 function requireConsultationEnabled() {
   return $('#require_consultation').val() === '1';
 }
+function getConsultationTiming() {
+  return $('input[name="consultation_timing"]:checked').val() || '';
+}
 function isElementVisible(el) {
   var $el = $(el);
   if (!$el.length) return false;
@@ -278,11 +303,14 @@ function toggleSessionFields() {
   $('#session_duration_container').css('display', show ? 'block' : 'none');
   $('#consultation_timing_container').css('display', show ? 'block' : 'none');
   if (show) {
+    if (!getConsultationTiming()) {
+      $('#consultation_timing_combined').prop('checked', true);
+    }
     initVisibleConsultationSelect2();
   } else {
     $('#session_type').val('');
     $('#session_duration_minutes').val('');
-    $('#consultation_timing').val('');
+    $('input[name="consultation_timing"]').prop('checked', false);
     clearFieldError('session_type');
     clearFieldError('session_duration_minutes');
     clearFieldError('consultation_timing');
@@ -290,7 +318,7 @@ function toggleSessionFields() {
   }
 }
 function toggleGapFields() {
-  var ct = $('#consultation_timing').val();
+  var ct = getConsultationTiming();
   var $gap = $('#gap_fields_container');
   if (!$gap.length) return;
   if (requireConsultationEnabled() && ct === 'separate') {
@@ -321,10 +349,14 @@ $(function () {
   toggleSessionFields();
   toggleGapFields();
 
-  $.each(['timezone', 'date_time_format', 'currency', 'cancellation_window', 'minimum_deposit_amount', 'session_type', 'consultation_timing', 'session_duration_minutes', 'consultation_tattoo_gap_value'], function (_, id) {
+  $.each(['timezone', 'date_time_format', 'currency', 'cancellation_window', 'minimum_deposit_amount', 'session_type', 'session_duration_minutes', 'consultation_tattoo_gap_value'], function (_, id) {
     $('#' + id).on('change input', function () {
       if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError(id);
     });
+  });
+  $('#prefForm input[name="consultation_timing"]').on('change', function () {
+    if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('consultation_timing');
+    toggleGapFields();
   });
   $('#prefForm input[name="reschedule_times"]').on('change', function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('reschedule_times');
@@ -360,7 +392,7 @@ $(function () {
       fd.delete('consultation_timing');
       fd.delete('require_gap_between_consultation_tattoo');
       fd.delete('consultation_tattoo_gap_value');
-    } else if ($('#consultation_timing').val() !== 'separate') {
+    } else if (getConsultationTiming() !== 'separate') {
       fd.set('require_gap_between_consultation_tattoo', '0');
       fd.delete('consultation_tattoo_gap_value');
     }

@@ -26,7 +26,7 @@
       <a href="{{ route('settings.preferences') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Preferences</a>
       <a href="{{ route('settings.calendar') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Calendar</a>
       <a href="{{route('settings.payment')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Payments</a>
-      <a href="{{route('settings.notifications')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Notifications</a>
+      {{-- <a href="{{route('settings.notifications')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Notifications</a> --}}
     </div>
 
     <!-- Page Header -->
@@ -59,16 +59,18 @@
             <div>
               <label for="user_name" class="block text-sm font-semibold text-on-surface mb-2">Username</label>
               <p class="text-on-surface-variant text-sm leading-relaxed mb-2">Match your Inkjin username to your Instagram handle and give your customers a better experience.</p>
+              <p class="text-on-surface-variant text-xs mb-2">Use 1-30 characters: letters, numbers, periods (.), and underscores (_) only. No spaces or other symbols.</p>
               <div class="relative">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-outline text-sm font-medium">@</span>
-                <input type="text" id="user_name" name="user_name" value="{{ old('user_name', $userDetail->user_name ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <input type="text" id="user_name" name="user_name" value="{{ old('user_name', $userDetail->user_name ?? '') }}" maxlength="30" autocomplete="username" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
               </div>
               <p id="user_name_error" class="text-error text-xs mt-1 hidden"></p>
             </div>
 
             <div>
               <label for="mobile_number" class="block text-sm font-semibold text-on-surface mb-2">Mobile Number</label>
-              <input type="tel" id="mobile_number" name="mobile_number" value="{{ old('mobile_number', $userDetail->mobile_number ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p class="text-on-surface-variant text-xs mb-2">E.164 only: start with + and country code, then digits only (no spaces, dashes, or parentheses).</p>
+              <input type="tel" id="mobile_number" name="mobile_number" value="{{ old('mobile_number', $userDetail->mobile_number ?? '') }}" placeholder="+306912345678" inputmode="tel" autocomplete="tel" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
               <p id="mobile_number_error" class="text-error text-xs mt-1 hidden"></p>
             </div>
 
@@ -166,6 +168,47 @@
         if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
 
+      function normalizeUsername() {
+        var usernameInput = document.getElementById('user_name');
+        if (!usernameInput) return '';
+        var normalized = (usernameInput.value || '').trim().replace(/^@+/, '');
+        usernameInput.value = normalized;
+        return normalized;
+      }
+
+      function normalizeMobile() {
+        var mobileInput = document.getElementById('mobile_number');
+        if (!mobileInput) return '';
+        var raw = (mobileInput.value || '').trim();
+        if (raw.indexOf('+') === 0) {
+          raw = '+' + raw.slice(1).replace(/\D/g, '');
+          mobileInput.value = raw;
+        }
+        return (mobileInput.value || '').trim();
+      }
+
+      function validateUsernameAndMobile() {
+        var errors = {};
+        var username = normalizeUsername();
+        var mobile = normalizeMobile();
+
+        if (!username) {
+          errors.user_name = 'Username is required.';
+        } else if (username.length > 30) {
+          errors.user_name = 'Username may not be longer than 30 characters.';
+        } else if (!/^[a-zA-Z0-9._]{1,30}$/.test(username)) {
+          errors.user_name = 'Username may only contain letters, numbers, periods (.), and underscores (_).';
+        }
+
+        if (!mobile) {
+          errors.mobile_number = 'Mobile number is required.';
+        } else if (!/^\+[1-9]\d{1,14}$/.test(mobile)) {
+          errors.mobile_number = 'Use E.164 format: +, country code, then digits only (no spaces, dashes, or parentheses).';
+        }
+
+        return errors;
+      }
+
       ['first_name', 'last_name', 'user_name', 'mobile_number'].forEach(function (field) {
         var el = document.getElementById(field);
         if (el) el.addEventListener('input', function () { clearFieldError(field); });
@@ -232,6 +275,16 @@
         e.preventDefault();
         clearAllErrors();
         successAlert.classList.add('hidden');
+
+        var clientErrors = validateUsernameAndMobile();
+        Object.keys(clientErrors).forEach(function (field) {
+          setFieldError(field, clientErrors[field]);
+        });
+        if (Object.keys(clientErrors).length) {
+          scrollToFirstError();
+          return;
+        }
+
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="material-symbols-outlined text-lg">hourglass_top</span> Saving...';
 
