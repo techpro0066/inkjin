@@ -251,12 +251,12 @@
       <form id="addQuestionForm">
         <input type="hidden" id="editingQuestionId" value="">
         <p id="addQuestionGeneralError" class="hidden text-sm text-error rounded-xl bg-error-container/30 border border-error/20 px-3 py-2"></p>
-        <div>
+        <div class="mb-3">
           <label for="newQuestionText" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Question</label>
           <input type="text" id="newQuestionText" name="newQuestionText" placeholder="e.g., Preferred session length" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
           <p id="newQuestionTextError" class="hidden text-sm text-error mt-1"></p>
         </div>
-        <div>
+        <div class="mb-3">
           <input type="hidden" id="form-context" name="form_context" value="default">
           <label for="newQuestionType" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Answer type</label>
           <select id="newQuestionType" name="newQuestionType" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
@@ -382,7 +382,7 @@
 
     $addOptionsDiv.append(`
       <div class="space-y-2">
-        <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center justify-between gap-2 class="mb-3"">
           <label class="block text-xs font-semibold text-on-surface-variant">Options</label>
           <button type="button" class="btn-add-option inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-container transition-colors">
             <span class="material-symbols-outlined text-base">add_circle</span>
