@@ -1,4 +1,30 @@
 <?php
+
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+
+/**
+ * Default URL for an authenticated user (after login, guest middleware, home).
+ */
+function authenticated_home_url(?User $user = null): string
+{
+    $user ??= Auth::user();
+
+    if (! $user) {
+        return route('login', absolute: false);
+    }
+
+    if (! $user->hasVerifiedEmail()) {
+        return route('verification.notice', absolute: false);
+    }
+
+    return match ($user->role) {
+        'admin' => route('admin.dashboard', absolute: false),
+        'artist' => route('artist.dashboard', absolute: false),
+        default => route('bookings.index', absolute: false),
+    };
+}
+
 function imageUploader($file,$path)
 {
         $extension = $file->getClientOriginalExtension();

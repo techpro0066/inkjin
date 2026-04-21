@@ -28,12 +28,17 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // Check if email is verified, if not redirect to verification notice
-        if (! $request->user()->hasVerifiedEmail()) {
+        $user = $request->user();
+
+        if (! $user->hasVerifiedEmail()) {
             return redirect()->route('verification.notice');
         }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        if ($user->role !== 'admin' && $user->role !== 'artist') {
+            return abort(403, 'Access denied. You are not authorized to access this page.');
+        }
+
+        return redirect()->intended(authenticated_home_url($user));
     }
 
     /**

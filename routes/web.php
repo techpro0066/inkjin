@@ -3,8 +3,11 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\InkJinController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\Admin\FormController;
+use App\Http\Controllers\QuestionsController;
 
 // Public InkJin API routes
 Route::get('/api/tattoo/{id}', [InkJinController::class, 'getTattoo'])->name('api.tattoo.show');
@@ -22,7 +25,10 @@ Route::get('/db/tattoo/{id}', [InkJinController::class, 'getTattooFromDb'])->nam
 Route::get('/db/artist/{id}', [InkJinController::class, 'getArtistFromDb'])->name('db.artist.show');
 
 Route::get('/', function () {
-    // login page
+    if (Auth::check()) {
+        return redirect()->to(authenticated_home_url());
+    }
+
     return redirect()->route('login');
 });
 
@@ -72,7 +78,7 @@ Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
     Route::get('/studio/payment/status', [OnboardingController::class, 'studioPaymentStatus'])->name('studio.payment.status');
 
     // Dashboard route
-    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    // Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     
     // Bookings route (for all authenticated users)
     Route::get('/bookings', [\App\Http\Controllers\BookingsController::class, 'index'])->name('bookings.index');
@@ -101,18 +107,33 @@ Route::middleware(['auth', 'onboarding'])->group(function () {
 
 
 // Admin routes
-Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->group(function () {
-    Route::get('/admin/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'index'])->name('admin.questions.index');
-    Route::post('/admin/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'store'])->name('admin.questions.store');
-    Route::put('/admin/questions/{id}', [\App\Http\Controllers\Admin\QuestionController::class, 'update'])->name('admin.questions.update');
-    Route::delete('/admin/questions/{id}', [\App\Http\Controllers\Admin\QuestionController::class, 'destroy'])->name('admin.questions.destroy');
+Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('admin.dashboard');
+    })->name('admin.dashboard');
+
+    Route::get('/forms', [FormController::class, 'index'])->name('admin.forms.index');
+    Route::post('/forms/questions', [QuestionsController::class, 'store'])->name('admin.forms.questions.store');
+    Route::put('/forms/questions/{id}', [QuestionsController::class, 'update'])->name('admin.forms.questions.update');
+    Route::post('/forms/questions/reorder', [QuestionsController::class, 'reorder'])->name('admin.forms.questions.reorder');
+    Route::delete('/forms/questions/{id}', [QuestionsController::class, 'destroy'])->name('admin.forms.questions.destroy');
+
+    // Route::get('/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'index'])->name('admin.questions.index');
+    // Route::post('/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'store'])->name('admin.questions.store');
+    // Route::put('/questions/{id}', [\App\Http\Controllers\Admin\QuestionController::class, 'update'])->name('admin.questions.update');
+    // Route::delete('/questions/{id}', [\App\Http\Controllers\Admin\QuestionController::class, 'destroy'])->name('admin.questions.destroy');
     
-    Route::get('/admin/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
-    Route::get('/admin/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('admin.users.show');
+    // Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
+    // Route::get('/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('admin.users.show');
 });
 
 // Artist routes
-Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function () {
+Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist')->group(function () {
+    
+    Route::get('/dashboard', function () {
+        return view('artist.dashboard');
+    })->name('artist.dashboard');
+
     // Settings routes
 
     Route::get('/settings/styles', function (\Illuminate\Http\Request $request) {
@@ -174,19 +195,33 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->group(function 
     Route::get('/availability/override', [\App\Http\Controllers\AvailabilityController::class, 'getOverride'])->name('availability.override.get');
     Route::delete('/availability/override/{id}', [\App\Http\Controllers\AvailabilityController::class, 'destroyOverride'])->name('availability.override.destroy');
     
-    // Questions routes (for artists)
-    Route::get('/questions', [\App\Http\Controllers\QuestionsController::class, 'index'])->name('questions.index');
-    Route::post('/questions', [\App\Http\Controllers\QuestionsController::class, 'store'])->name('questions.store');
-    Route::put('/questions/{id}', [\App\Http\Controllers\QuestionsController::class, 'update'])->name('questions.update');
-    Route::delete('/questions/{id}', [\App\Http\Controllers\QuestionsController::class, 'destroy'])->name('questions.destroy');
+    // Content
+    Route::get('/personal-page', [\App\Http\Controllers\PersonalPageController::class, 'index'])->name('personal-page.index');
+    Route::post('/personal-page', [\App\Http\Controllers\PersonalPageController::class, 'update'])->name('personal-page.update');
+
+    Route::get('/portfolio', [\App\Http\Controllers\PortfolioController::class, 'index'])->name('portfolio.index');
+    Route::post('/portfolio', [\App\Http\Controllers\PortfolioController::class, 'store'])->name('portfolio.store');
+    Route::put('/portfolio/{portfolio}', [\App\Http\Controllers\PortfolioController::class, 'update'])->name('portfolio.update');
+    Route::delete('/portfolio/{portfolio}', [\App\Http\Controllers\PortfolioController::class, 'destroy'])->name('portfolio.destroy');
+
+    Route::get('/artist-designs', [\App\Http\Controllers\ArtistDesignsController::class, 'index'])->name('artist-designs.index');
+    Route::post('/artist-designs', [\App\Http\Controllers\ArtistDesignsController::class, 'store'])->name('artist-designs.store');
+    Route::put('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'update'])->name('artist-designs.update');
+    Route::delete('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'destroy'])->name('artist-designs.destroy');
+
+    Route::get('/forms', [QuestionsController::class, 'index'])->name('artist.forms.index');
+    Route::post('/forms/questions', [QuestionsController::class, 'store'])->name('artist.forms.questions.store');
+    Route::put('/forms/questions/{id}', [QuestionsController::class, 'update'])->name('artist.forms.questions.update');
+    Route::post('/forms/questions/reorder', [QuestionsController::class, 'reorder'])->name('artist.forms.questions.reorder');
+    Route::delete('/forms/questions/{id}', [QuestionsController::class, 'destroy'])->name('artist.forms.questions.destroy');
 });
 
 // User routes
-Route::middleware(['auth', 'verified', 'onboarding', 'user'])->prefix('dashboard')->group(function () {
-    Route::get('/artists', [\App\Http\Controllers\DashboardController::class, 'artists'])->name('dashboard.artists');
-    Route::get('/artists/{username}', [\App\Http\Controllers\DashboardController::class, 'artistShow'])->name('dashboard.artists.show');
-    Route::get('/tattoo/{id}', [\App\Http\Controllers\DashboardController::class, 'tattooShow'])->name('dashboard.tattoo.show');
-});
+// Route::middleware(['auth', 'verified', 'onboarding', 'user'])->prefix('dashboard')->group(function () {
+//     Route::get('/artists', [\App\Http\Controllers\DashboardController::class, 'artists'])->name('dashboard.artists');
+//     Route::get('/artists/{username}', [\App\Http\Controllers\DashboardController::class, 'artistShow'])->name('dashboard.artists.show');
+//     Route::get('/tattoo/{id}', [\App\Http\Controllers\DashboardController::class, 'tattooShow'])->name('dashboard.tattoo.show');
+// });
 
 require __DIR__.'/auth.php';
 

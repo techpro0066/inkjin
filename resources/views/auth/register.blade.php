@@ -11,7 +11,7 @@
       height: 48px;
       border-radius: 0.75rem;
       border-color: rgba(202, 196, 211, 0.5);
-      background: #F8F1FB;
+      /* background: #F8F1FB; */
       display: flex;
       align-items: center;
       padding-left: 0.5rem;
@@ -99,13 +99,13 @@
   <div id="register-alert" class="hidden rounded-xl bg-error-container/40 border border-error-container/60 px-4 py-3 text-sm text-error"></div>
   <div class="space-y-2">
   <label class="block text-sm font-semibold text-on-surface mb-2" for="email" style="">Email Address</label>
-  <input class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 " style="background-color:#F8F1FB;" id="signup-email" name="email" placeholder="name@company.com" type="email">
+  <input class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 " id="signup-email" name="email" placeholder="name@company.com" type="email">
   <p class="text-sm text-error mt-1 hidden" id="signup-email-error"></p>
   </div>
   <div class="space-y-2">
   <label class="block text-sm font-semibold text-on-surface mb-2" for="password" style="">Password</label>
   <div class="relative">
-  <input class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 " style="background-color:#F8F1FB;" id="signup-password" name="password" placeholder="••••••••" type="password">
+  <input class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 " id="signup-password" name="password" placeholder="••••••••" type="password">
   <button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary transition-colors eye-toggle" style="" type="button" data-target="#signup-password">
   <span class="material-symbols-outlined text-[20px]" style="">visibility</span>
   </button>
@@ -115,7 +115,7 @@
   <div class="space-y-2">
   <label class="block text-sm font-semibold text-on-surface mb-2" for="confirm-password" style="">Confirm Password</label>
   <div class="relative">
-  <input class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 " style="background-color:#F8F1FB;" id="signup-confirm-password" name="password_confirmation" placeholder="••••••••" type="password">
+  <input class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 " id="signup-confirm-password" name="password_confirmation" placeholder="••••••••" type="password">
   <button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary transition-colors eye-toggle" style="" type="button" data-target="#signup-confirm-password">
   <span class="material-symbols-outlined text-[20px]" style="">visibility</span>
   </button>
@@ -124,7 +124,7 @@
   </div>
   <div class="space-y-2">
     <label class="text-sm font-semibold text-on-surface-variant ml-1" for="referral_source">How did you hear about us? <span class="text-xs text-on-surface-variant font-normal">(optional)</span></label>
-    <select id="referral_source" name="referral_source" class="js-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" style="background-color:#F8F1FB;">
+    <select id="referral_source" name="referral_source" class="js-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
       <option value="">Select...</option>
       <option value="instagram">Instagram</option>
       <option value="tiktok">TikTok</option>

@@ -114,4 +114,14 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasOne(UserBankDetail::class);
     }
+
+    public function portfolios()
+    {
+        return $this->hasMany(Portfolio::class);
+    }
+
+    public function artistDesigns()
+    {
+        return $this->hasMany(ArtistDesign::class);
+    }
 }

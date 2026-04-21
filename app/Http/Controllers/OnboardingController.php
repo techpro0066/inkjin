@@ -35,7 +35,7 @@ class OnboardingController extends Controller
         $user = $request->user();
 
         if ($user->on_boarding === 'yes') {
-            return redirect()->route('dashboard');
+            return redirect()->intended(authenticated_home_url());
         }
 
         $step = (int) ($user->userDetail?->current_step ?? 1);
@@ -67,11 +67,7 @@ class OnboardingController extends Controller
         $user = $request->user();
 
         if ($user->on_boarding === 'yes') {
-            return redirect()->route('dashboard');
-        }
-
-        if ($user->role !== 'artist') {
-            return redirect()->route('dashboard');
+            return redirect()->intended(authenticated_home_url());
         }
 
         $userDetail = $user->userDetail;
@@ -1183,7 +1179,7 @@ class OnboardingController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Onboarding completed successfully!',
-                'redirect' => route('dashboard'),
+                'redirect' => authenticated_home_url(),
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -1270,7 +1266,7 @@ class OnboardingController extends Controller
         $userDetail = $user->userDetail;
 
         if (!$userDetail || $userDetail->payment_type !== 'studio_account') {
-            return redirect()->route('dashboard');
+            return redirect()->intended(authenticated_home_url());
         }
 
         $status = (string) ($userDetail->payment_status ?? 'pending');

@@ -11,15 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('questions', function (Blueprint $table) {
+        Schema::create('portfolios', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->text('question');
-            $table->enum('type', ['input', 'textarea', 'toggle', 'select', 'image', 'radio']);
-            $table->json('options')->nullable();
-            $table->unsignedTinyInteger('max_images')->nullable();
-            $table->boolean('is_required');
-            $table->string('form_context');
+            $table->string('title');
+            $table->text('description');
+            $table->boolean('is_active');
+            $table->string('image');
+            $table->string('primary_style');
+            $table->json('other_styles');
+            $table->string('color');
+            $table->json('tags');
             $table->timestamps();
         });
     }
@@ -29,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('questions');
+        Schema::dropIfExists('portfolios');
     }
 };

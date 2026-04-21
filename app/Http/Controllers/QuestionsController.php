@@ -2,151 +2,392 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\UserQuestion;
-use Illuminate\Http\Request;
+use App\Models\Question;
+use App\Models\QuestionSorting;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class QuestionsController extends Controller
 {
     /**
-     * Display a listing of the user's questions.
+     * Artist: list own questions (legacy shape for DataTables view).
      */
     public function index()
     {
-        $questions = UserQuestion::where('user_id', Auth::id())
-            ->orderBy('created_at', 'desc')
+        $system_default_questions = Question::query()
+            ->where('user_id', '1')
+            ->where('form_context', 'default')
+            ->with('sorting')
             ->get();
-        return view('questions.index', compact('questions'));
+
+            $system_default_questions = $system_default_questions
+            ->sortBy(function (Question $question) {
+                return optional($question->sorting)->order ?? $question->id;
+            })
+            ->values()
+            ->map(function (Question $question) {
+                $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
+                $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
+                return $question;
+            });
+
+        $system_custom_questions = Question::query()
+            ->where('user_id', '1')
+            ->where('form_context', 'custom')
+            ->with('sorting')
+            ->get();
+
+            $system_custom_questions = $system_custom_questions
+            ->sortBy(function (Question $question) {
+                return optional($question->sorting)->order ?? $question->id;
+            })
+            ->values()
+            ->map(function (Question $question) {
+                $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
+                $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
+                return $question;
+            });
+
+        $user_default_questions = Question::query()
+            ->where('user_id', Auth::id())
+            ->where('form_context', 'default')
+            ->with('sorting')
+            ->get();
+
+        $user_default_questions = $user_default_questions
+            ->sortBy(function (Question $question) {
+                return optional($question->sorting)->order ?? $question->id;
+            })
+            ->values()
+            ->map(function (Question $question) {
+                $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
+                $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
+                return $question;
+            });
+
+        $user_custom_questions = Question::query()
+            ->where('user_id', Auth::id())
+            ->where('form_context', 'custom')
+            ->with('sorting')
+            ->get();
+
+        $user_custom_questions = $user_custom_questions
+            ->sortBy(function (Question $question) {
+                return optional($question->sorting)->order ?? $question->id;
+            })
+            ->values()
+            ->map(function (Question $question) {
+                $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
+                $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
+                return $question;
+            });
+        
+        $default_questions = $system_default_questions->merge($user_default_questions);
+        $custom_questions = $system_custom_questions->merge($user_custom_questions);
+
+        return view('artist.forms.index', ['default_questions' => $default_questions, 'custom_questions' => $custom_questions]);
     }
 
     /**
-     * Store a newly created question.
+     * Create a question (artist booking questions or admin form templates).
      */
     public function store(Request $request): JsonResponse
     {
-        try {
-            $validated = $request->validate([
-                'question' => 'required|string|min:10|max:500',
-                'type' => 'required|in:free,select,radio,image',
-                'options' => 'nullable|array|required_if:type,select,radio',
-                'options.*' => 'required|string|max:255',
-                'max_images' => 'nullable|integer|min:1|max:20|required_if:type,image',
-                'status' => 'required|in:active,inactive',
-            ]);
+        $user = $request->user();
 
-            // If type is select or radio, ensure options array is not empty
-            if (in_array($validated['type'], ['select', 'radio']) && (empty($validated['options']) || count($validated['options']) < 2)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => ['options' => ['At least 2 options are required for select and radio types.']],
-                ], 422);
-            }
+        $rawType = (string) $request->input('type', '');
+        $normalizedType = match ($rawType) {
+            'free', 'text' => 'input',
+            'images' => 'image',
+            default => $rawType,
+        };
 
-            // If type is free or image, set options to null
-            if (in_array($validated['type'], ['free', 'image'])) {
-                $validated['options'] = null;
-            }
-            
-            // If type is not image, set max_images to null
-            if ($validated['type'] !== 'image') {
-                $validated['max_images'] = null;
-            }
-
-            $validated['user_id'] = Auth::id();
-            $question = UserQuestion::create($validated);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Question created successfully',
-                'question' => $question,
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
-            ], 422);
+        $formContext = $request->input('form_context');
+        if ($formContext === null || $formContext === '') {
+            $formContext = $user->role === 'artist' ? 'custom' : 'default';
         }
+
+        $isActive = $request->has('is_active')
+            ? $request->boolean('is_active')
+            : ($request->input('status') === 'active' || $request->input('status') === null);
+
+        $isRequired = $request->has('is_required')
+            ? $request->boolean('is_required')
+            : true;
+
+        $payload = [
+            'question' => $request->input('question'),
+            'type' => $normalizedType,
+            'form_context' => $formContext,
+            'is_active' => $isActive,
+            'is_required' => $isRequired,
+            'options' => $request->input('options'),
+            'max_images' => $request->input('max_images'),
+        ];
+
+        $validator = Validator::make($payload, [
+            'question' => ['required', 'string', 'max:10000'],
+            'type' => ['required', Rule::in(['input', 'textarea', 'toggle', 'select', 'image', 'radio'])],
+            'form_context' => ['required', 'string', 'max:255'],
+            'is_active' => ['required', 'boolean'],
+            'is_required' => ['required', 'boolean'],
+            'options' => ['nullable', 'array'],
+            'options.*' => ['nullable', 'string', 'max:500'],
+            'max_images' => ['nullable', 'integer', 'min:1', 'max:255'],
+        ]);
+
+        $validator->after(function ($validator) use ($normalizedType, $request) {
+            if (! in_array($normalizedType, ['select', 'radio'], true)) {
+                return;
+            }
+
+            $rawOptions = $request->input('options', []);
+            if (! is_array($rawOptions)) {
+                $rawOptions = [];
+            }
+
+            // First two option inputs are required for select/radio.
+            for ($i = 0; $i < 2; $i++) {
+                $value = $rawOptions[$i] ?? null;
+                if (! is_string($value) || trim($value) === '') {
+                    $validator->errors()->add("options.$i", 'This field is required.');
+                }
+            }
+
+            // Any additional option row that user keeps is also required.
+            foreach ($rawOptions as $idx => $value) {
+                if ($idx < 2) {
+                    continue;
+                }
+                if (! is_string($value) || trim($value) === '') {
+                    $validator->errors()->add("options.$idx", 'This field is required.');
+                }
+            }
+        });
+
+        $data = $validator->validate();
+
+        $options = null;
+        if (in_array($data['type'], ['select', 'radio'], true)) {
+            $opts = [];
+            foreach (($data['options'] ?? []) as $value) {
+                if (is_string($value)) {
+                    $opts[] = trim($value);
+                }
+            }
+            $options = $opts;
+        }
+
+        $maxImages = $data['type'] === 'image'
+            ? ($data['max_images'] ?? 5)
+            : null;
+
+        $question = DB::transaction(function () use ($data, $options, $maxImages) {
+            $question = Question::create([
+                'user_id' => Auth::id(),
+                'question' => $data['question'],
+                'type' => $data['type'],
+                'form_context' => $data['form_context'],
+                'options' => $options,
+                'max_images' => $maxImages,
+                'is_required' => $data['is_required'],
+            ]);
+
+            QuestionSorting::create([
+                'question_id' => $question->id,
+                'order' => $question->id,
+                'is_active' => $data['is_active'],
+            ]);
+
+            return $question;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Question saved.',
+            'question' => $question->fresh()->load('sorting'),
+        ], 201);
+    }
+
+    public function update(Request $request, string $id): JsonResponse
+    {
+        $question = Question::query()
+            ->where('user_id', Auth::id())
+            ->whereKey($id)
+            ->firstOrFail();
+
+        $rawType = (string) $request->input('type', '');
+        $normalizedType = match ($rawType) {
+            'free', 'text' => 'input',
+            'images' => 'image',
+            default => $rawType,
+        };
+
+        $payload = [
+            'question' => $request->input('question'),
+            'type' => $normalizedType,
+            'form_context' => $request->input('form_context', $question->form_context),
+            'is_active' => $request->has('is_active')
+                ? $request->boolean('is_active')
+                : $question->is_active,
+            'is_required' => $request->has('is_required')
+                ? $request->boolean('is_required')
+                : $question->is_required,
+            'options' => $request->input('options'),
+            'max_images' => $request->input('max_images'),
+        ];
+
+        $validator = Validator::make($payload, [
+            'question' => ['required', 'string', 'max:10000'],
+            'type' => ['required', Rule::in(['input', 'textarea', 'toggle', 'select', 'image', 'radio'])],
+            'form_context' => ['required', 'string', 'max:255'],
+            'is_active' => ['required', 'boolean'],
+            'is_required' => ['required', 'boolean'],
+            'options' => ['nullable', 'array'],
+            'options.*' => ['nullable', 'string', 'max:500'],
+            'max_images' => ['nullable', 'integer', 'min:1', 'max:255'],
+        ]);
+
+        $validator->after(function ($validator) use ($normalizedType, $request) {
+            if (! in_array($normalizedType, ['select', 'radio'], true)) {
+                return;
+            }
+
+            $rawOptions = $request->input('options', []);
+            if (! is_array($rawOptions)) {
+                $rawOptions = [];
+            }
+
+            for ($i = 0; $i < 2; $i++) {
+                $value = $rawOptions[$i] ?? null;
+                if (! is_string($value) || trim($value) === '') {
+                    $validator->errors()->add("options.$i", 'This field is required.');
+                }
+            }
+
+            foreach ($rawOptions as $idx => $value) {
+                if ($idx < 2) {
+                    continue;
+                }
+                if (! is_string($value) || trim($value) === '') {
+                    $validator->errors()->add("options.$idx", 'This field is required.');
+                }
+            }
+        });
+
+        $data = $validator->validate();
+
+        $options = null;
+        if (in_array($data['type'], ['select', 'radio'], true)) {
+            $opts = [];
+            foreach (($data['options'] ?? []) as $value) {
+                if (is_string($value)) {
+                    $opts[] = trim($value);
+                }
+            }
+            $options = $opts;
+        }
+
+        $maxImages = $data['type'] === 'image'
+            ? ($data['max_images'] ?? 5)
+            : null;
+
+        DB::transaction(function () use ($question, $data, $options, $maxImages) {
+            $question->update([
+                'question' => $data['question'],
+                'type' => $data['type'],
+                'form_context' => $data['form_context'],
+                'options' => $options,
+                'max_images' => $maxImages,
+                'is_required' => $data['is_required'],
+            ]);
+
+            QuestionSorting::updateOrCreate(
+                ['question_id' => $question->id],
+                [
+                    'order' => optional($question->sorting)->order ?? $question->id,
+                    'is_active' => $data['is_active'],
+                ]
+            );
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Question updated.',
+            'question' => $question->fresh()->load('sorting'),
+        ]);
+    }
+
+    public function destroy(Request $request, string $id): JsonResponse
+    {
+        $question = Question::query()
+            ->where('user_id', Auth::id())
+            ->whereKey($id)
+            ->firstOrFail();
+
+        $question->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Question deleted.',
+        ]);
     }
 
     /**
-     * Update the specified question.
+     * Persist question order after drag-drop sorting.
      */
-    public function update(Request $request, $id): JsonResponse
+    public function reorder(Request $request): JsonResponse
     {
-        try {
-            $question = UserQuestion::where('user_id', Auth::id())->findOrFail($id);
+        $data = $request->validate([
+            'form_context' => ['required', 'string', 'max:255'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id' => ['required', 'integer', 'distinct'],
+            'items.*.order' => ['required', 'integer', 'min:1'],
+        ]);
 
-            $validated = $request->validate([
-                'question' => 'required|string|min:10|max:500',
-                'type' => 'required|in:free,select,radio,image',
-                'options' => 'nullable|array|required_if:type,select,radio',
-                'options.*' => 'required|string|max:255',
-                'max_images' => 'nullable|integer|min:1|max:20|required_if:type,image',
-                'status' => 'required|in:active,inactive',
-            ]);
+        $userId = Auth::id();
+        $items = collect($data['items']);
+        $ids = $items->pluck('id')->all();
 
-            // If type is select or radio, ensure options array is not empty
-            if (in_array($validated['type'], ['select', 'radio']) && (empty($validated['options']) || count($validated['options']) < 2)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => ['options' => ['At least 2 options are required for select and radio types.']],
-                ], 422);
-            }
+        $ownedCount = Question::query()
+            ->where('user_id', $userId)
+            ->where('form_context', $data['form_context'])
+            ->whereIn('id', $ids)
+            ->count();
 
-            // If type is free or image, set options to null
-            if (in_array($validated['type'], ['free', 'image'])) {
-                $validated['options'] = null;
-            }
-            
-            // If type is not image, set max_images to null
-            if ($validated['type'] !== 'image') {
-                $validated['max_images'] = null;
-            }
-
-            $question->update($validated);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Question updated successfully',
-                'question' => $question,
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        if ($ownedCount !== count($ids)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
+                'message' => 'Some questions were not found for this form.',
             ], 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Question not found',
-            ], 404);
         }
-    }
 
-    /**
-     * Remove the specified question.
-     */
-    public function destroy($id): JsonResponse
-    {
-        try {
-            $question = UserQuestion::where('user_id', Auth::id())->findOrFail($id);
-            $question->delete();
+        DB::transaction(function () use ($items, $userId, $data) {
+            foreach ($items as $item) {
+                $question = Question::query()
+                    ->where('user_id', $userId)
+                    ->where('form_context', $data['form_context'])
+                    ->whereKey($item['id'])
+                    ->first();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Question deleted successfully',
-            ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Question not found',
-            ], 404);
-        }
+                if (! $question) {
+                    continue;
+                }
+
+                QuestionSorting::updateOrCreate(
+                    ['question_id' => $question->id],
+                    ['order' => $item['order']]
+                );
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Question order updated.',
+        ]);
     }
 }
-

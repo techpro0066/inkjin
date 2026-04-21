@@ -51,6 +51,11 @@ class UserDetail extends Model
         'studio_id',
         'payment_status',
         'availability_status',
+        'personal_page_background_image',
+        'personal_page_color',
+        'personal_page_tagline',
+        'personal_page_description',
+        'personal_page_name_alias',
     ];
 
     protected $casts = [

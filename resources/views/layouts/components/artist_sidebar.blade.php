@@ -8,7 +8,7 @@
   <!-- Middle: Nav (scrollable) -->
   <div class="flex-1 overflow-y-auto">
     <nav class="flex flex-col gap-1">
-      <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+      <a href="{{ route('artist.dashboard') }}" class="nav-item {{ request()->routeIs('artist.dashboard') ? 'active' : '' }}">
         <span class="material-symbols-outlined">dashboard</span> Dashboard
       </a>
       <a href="{{ route('bookings.index') }}" class="nav-item {{ request()->routeIs('bookings.index') ? 'active' : '' }}">
@@ -23,7 +23,7 @@
       <a href="#" class="nav-item">
         <span class="material-symbols-outlined">payments</span> Payments
       </a>
-      <a href="#" class="nav-item">
+      <a href="{{ route('artist.forms.index') }}" class="nav-item {{ request()->routeIs('personal-page.index') || request()->routeIs('artist.forms.index') || request()->routeIs('portfolio.index')  || request()->routeIs('artist-designs.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">folder_open</span> Content
       </a>
       <a href="#" class="nav-item">

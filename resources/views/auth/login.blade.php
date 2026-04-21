@@ -41,13 +41,13 @@
 
           <!-- Form -->
           <form action="{{ route('login') }}" class="space-y-6" method="POST" id="login-form">
-            @csrf
             <div id="login-alert" class="hidden rounded-xl bg-error-container/40 border border-error-container/60 px-4 py-3 text-sm text-error"></div>
 
             <!-- Email Input -->
             <div class="space-y-2">
               <label class="text-sm font-semibold text-on-surface-variant ml-1" for="login-email">Email Address</label>
               <div class="relative group">
+                <input type="hidden" name="_token" value="{{ csrf_token() }}">
                 <input
                   class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 @error('email') border-error @enderror"
                   id="login-email"
@@ -195,35 +195,35 @@
           headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
+          },
+          success: function(_response, _textStatus, xhr) {
+            window.location.href = {{ authenticated_home_url() }};
+          },
+          error: function(xhr) {
+            if (xhr.status === 422 && xhr.responseJSON) {
+              var errors = xhr.responseJSON.errors || {};
+
+              if (errors.email && errors.email.length) {
+                $('#email-error').removeClass('hidden').text(errors.email[0]);
+                $('#login-email').addClass('border-error');
+              }
+
+              if (errors.password && errors.password.length) {
+                $('#password-error').removeClass('hidden').text(errors.password[0]);
+                $('#login-password').addClass('border-error');
+              }
+
+              if (!errors.email && !errors.password) {
+                var fallbackMessage = xhr.responseJSON.message || 'Login failed. Please check your credentials.';
+                $('#login-alert').removeClass('hidden').text(fallbackMessage);
+              }
+            } else {
+              $('#login-alert')
+                .removeClass('hidden')
+                .text('Something went wrong while signing in. Please try again.');
+            }
           }
-        }).done(function (_response, _textStatus, xhr) {
-          window.location.href = xhr.responseURL || '{{ route('dashboard') }}';
-        }).fail(function (xhr) {
-          if (xhr.status === 422 && xhr.responseJSON) {
-            var errors = xhr.responseJSON.errors || {};
-
-            if (errors.email && errors.email.length) {
-              $('#email-error').removeClass('hidden').text(errors.email[0]);
-              $('#login-email').addClass('border-error');
-            }
-
-            if (errors.password && errors.password.length) {
-              $('#password-error').removeClass('hidden').text(errors.password[0]);
-              $('#login-password').addClass('border-error');
-            }
-
-            if (!errors.email && !errors.password) {
-              var fallbackMessage = xhr.responseJSON.message || 'Login failed. Please check your credentials.';
-              $('#login-alert').removeClass('hidden').text(fallbackMessage);
-            }
-          } else {
-            $('#login-alert')
-              .removeClass('hidden')
-              .text('Something went wrong while signing in. Please try again.');
-          }
-        }).always(function () {
-          $submitBtn.prop('disabled', false).html(originalBtnHtml);
-        });
+        })
       });
     });
   </script>

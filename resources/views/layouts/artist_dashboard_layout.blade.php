@@ -4,9 +4,10 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Dashboard — Inkjin Book & Pay</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="Your artist dashboard on Inkjin Book & Pay. Manage bookings, payments, and content.">
-    <link rel="icon" href="images/favicon.png">
-    <link href="css/bookpay.css" rel="stylesheet">
+    <link rel="icon" href="{{ asset('assets/img/favicon/favicon.png') }}">
+    <link href="{{ asset('assets/css/bookpay.css') }}" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
