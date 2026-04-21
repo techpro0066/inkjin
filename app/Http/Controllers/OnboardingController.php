@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\UserDetail;
 use App\Models\UserBankDetail;
 use App\Models\Studio;
-use App\Models\Question;
-use App\Models\UserQuestion;
 use App\Mail\StudioPaymentDecisionMail;
 use App\Mail\StudioFirstTimeConnectMail;
 use Illuminate\Http\Request;
@@ -1162,19 +1160,6 @@ class OnboardingController extends Controller
 
             // Mark onboarding as complete
             $user->update(['on_boarding' => 'yes']);
-
-            // Assign all default questions to the user
-            $defaultQuestions = Question::where('status', 'active')->get();
-            foreach ($defaultQuestions as $defaultQuestion) {
-                UserQuestion::create([
-                    'user_id' => $user->id,
-                    'question' => $defaultQuestion->question,
-                    'type' => $defaultQuestion->type ?? 'free',
-                    'options' => $defaultQuestion->options,
-                    'max_images' => $defaultQuestion->max_images,
-                    'status' => 'active',
-                ]);
-            }
 
             return response()->json([
                 'success' => true,
