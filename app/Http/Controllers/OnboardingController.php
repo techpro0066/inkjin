@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use App\Models\QuestionSorting;
 
 class OnboardingController extends Controller
 {
@@ -1160,6 +1161,17 @@ class OnboardingController extends Controller
 
             // Mark onboarding as complete
             $user->update(['on_boarding' => 'yes']);
+
+            $questions = QuestionSorting::where('user_id', '1')->where('is_active', true)->orderBy('order')->get();
+
+            foreach ($questions as $question) {
+                QuestionSorting::create([
+                    'user_id' => $user->id,
+                    'question_id' => $question->question_id,
+                    'order' => $question->order,
+                    'is_active' => $question->is_active,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,

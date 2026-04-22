@@ -18,78 +18,102 @@ class QuestionsController extends Controller
      */
     public function index()
     {
-        $system_default_questions = Question::query()
-            ->where('user_id', '1')
+        $userId = Auth::id();
+
+        $systemSortingRows = QuestionSorting::query()
+            ->where('user_id', 1)
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->get(['question_id', 'order']);
+
+        $systemQuestionIds = $systemSortingRows
+            ->pluck('question_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if (! empty($systemQuestionIds)) {
+            $existingSystemIdsForUser = QuestionSorting::query()
+                ->where('user_id', $userId)
+                ->whereIn('question_id', $systemQuestionIds)
+                ->pluck('question_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $missingSystemRows = $systemSortingRows->filter(function ($row) use ($existingSystemIdsForUser) {
+                return ! in_array((int) $row->question_id, $existingSystemIdsForUser, true);
+            });
+
+            if ($missingSystemRows->isNotEmpty()) {
+                $now = now();
+                QuestionSorting::insert(
+                    $missingSystemRows->map(function ($row) use ($userId, $now) {
+                        return [
+                            'user_id' => $userId,
+                            'question_id' => (int) $row->question_id,
+                            'order' => (int) $row->order,
+                            'is_active' => true,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    })->values()->all()
+                );
+            }
+        }
+
+        $active_system_question_ids = $systemQuestionIds;
+
+        $system_questions_ids = QuestionSorting::query()
+            ->where('user_id', 1)
+            ->pluck('question_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $userSortingRows = QuestionSorting::query()
+            ->where('user_id', $userId)
+            ->orderBy('order')
+            ->get(['question_id', 'order', 'is_active']);
+
+        $questionMap = Question::query()
+            ->whereIn('id', $userSortingRows->pluck('question_id'))
+            ->get()
+            ->keyBy('id');
+
+        $orderedQuestions = $userSortingRows
+            ->map(function ($sortingRow) use ($questionMap, $system_questions_ids, $active_system_question_ids) {
+                $question = $questionMap->get((int) $sortingRow->question_id);
+                if (! $question) {
+                    return null;
+                }
+
+                $isSystemQuestion = in_array((int) $question->id, $system_questions_ids, true);
+                $isActiveAtSystemLevel = in_array((int) $question->id, $active_system_question_ids, true);
+                if ($isSystemQuestion && ! $isActiveAtSystemLevel) {
+                    return null;
+                }
+
+                $question->setAttribute('order', (int) $sortingRow->order);
+                $question->setAttribute('is_active', (bool) $sortingRow->is_active);
+
+                return $question;
+            })
+            ->filter()
+            ->values();
+
+        $default_questions = $orderedQuestions
             ->where('form_context', 'default')
-            ->with('sorting')
-            ->get();
+            ->values();
 
-            $system_default_questions = $system_default_questions
-            ->sortBy(function (Question $question) {
-                return optional($question->sorting)->order ?? $question->id;
-            })
-            ->values()
-            ->map(function (Question $question) {
-                $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
-                $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
-                return $question;
-            });
-
-        $system_custom_questions = Question::query()
-            ->where('user_id', '1')
+        $custom_questions = $orderedQuestions
             ->where('form_context', 'custom')
-            ->with('sorting')
-            ->get();
+            ->values();
 
-            $system_custom_questions = $system_custom_questions
-            ->sortBy(function (Question $question) {
-                return optional($question->sorting)->order ?? $question->id;
-            })
-            ->values()
-            ->map(function (Question $question) {
-                $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
-                $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
-                return $question;
-            });
-
-        $user_default_questions = Question::query()
-            ->where('user_id', Auth::id())
-            ->where('form_context', 'default')
-            ->with('sorting')
-            ->get();
-
-        $user_default_questions = $user_default_questions
-            ->sortBy(function (Question $question) {
-                return optional($question->sorting)->order ?? $question->id;
-            })
-            ->values()
-            ->map(function (Question $question) {
-                $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
-                $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
-                return $question;
-            });
-
-        $user_custom_questions = Question::query()
-            ->where('user_id', Auth::id())
-            ->where('form_context', 'custom')
-            ->with('sorting')
-            ->get();
-
-        $user_custom_questions = $user_custom_questions
-            ->sortBy(function (Question $question) {
-                return optional($question->sorting)->order ?? $question->id;
-            })
-            ->values()
-            ->map(function (Question $question) {
-                $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
-                $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
-                return $question;
-            });
-        
-        $default_questions = $system_default_questions->merge($user_default_questions);
-        $custom_questions = $system_custom_questions->merge($user_custom_questions);
-
-        return view('artist.forms.index', ['default_questions' => $default_questions, 'custom_questions' => $custom_questions]);
+        return view('artist.forms.index', [
+            'default_questions' => $default_questions,
+            'custom_questions' => $custom_questions,
+            'system_questions_ids' => $system_questions_ids,
+        ]);
     }
 
     /**
@@ -198,6 +222,7 @@ class QuestionsController extends Controller
             ]);
 
             QuestionSorting::create([
+                'user_id' => Auth::id(),
                 'question_id' => $question->id,
                 'order' => $question->id,
                 'is_active' => $data['is_active'],
@@ -307,7 +332,7 @@ class QuestionsController extends Controller
             ]);
 
             QuestionSorting::updateOrCreate(
-                ['question_id' => $question->id],
+                ['user_id' => Auth::id(), 'question_id' => $question->id],
                 [
                     'order' => optional($question->sorting)->order ?? $question->id,
                     'is_active' => $data['is_active'],
@@ -337,6 +362,51 @@ class QuestionsController extends Controller
         ]);
     }
 
+    public function updateSystemQuestionStatus(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $question = Question::query()->whereKey($id)->firstOrFail();
+
+        $isSystemQuestion = QuestionSorting::query()
+            ->where('user_id', 1)
+            ->where('question_id', $question->id)
+            ->exists();
+
+        if (! $isSystemQuestion) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Question is not a system question.',
+            ], 422);
+        }
+
+        $userId = Auth::id();
+        $existingUserOrder = QuestionSorting::query()
+            ->where('user_id', $userId)
+            ->where('question_id', $question->id)
+            ->value('order');
+
+        $systemOrder = QuestionSorting::query()
+            ->where('user_id', 1)
+            ->where('question_id', $question->id)
+            ->value('order');
+
+        QuestionSorting::updateOrCreate(
+            ['user_id' => $userId, 'question_id' => $question->id],
+            [
+                'order' => $existingUserOrder ?? $systemOrder ?? $question->id,
+                'is_active' => $data['is_active'],
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Question status updated.',
+        ]);
+    }
+
     /**
      * Persist question order after drag-drop sorting.
      */
@@ -353,13 +423,17 @@ class QuestionsController extends Controller
         $items = collect($data['items']);
         $ids = $items->pluck('id')->all();
 
-        $ownedCount = Question::query()
+        $userSortingCount = QuestionSorting::query()
             ->where('user_id', $userId)
-            ->where('form_context', $data['form_context'])
-            ->whereIn('id', $ids)
+            ->whereIn('question_id', $ids)
             ->count();
 
-        if ($ownedCount !== count($ids)) {
+        $contextMatchCount = Question::query()
+            ->whereIn('id', $ids)
+            ->where('form_context', $data['form_context'])
+            ->count();
+
+        if ($userSortingCount !== count($ids) || $contextMatchCount !== count($ids)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Some questions were not found for this form.',
@@ -369,7 +443,6 @@ class QuestionsController extends Controller
         DB::transaction(function () use ($items, $userId, $data) {
             foreach ($items as $item) {
                 $question = Question::query()
-                    ->where('user_id', $userId)
                     ->where('form_context', $data['form_context'])
                     ->whereKey($item['id'])
                     ->first();
@@ -379,8 +452,14 @@ class QuestionsController extends Controller
                 }
 
                 QuestionSorting::updateOrCreate(
-                    ['question_id' => $question->id],
-                    ['order' => $item['order']]
+                    ['user_id' => $userId, 'question_id' => $question->id],
+                    [
+                        'order' => $item['order'],
+                        'is_active' => QuestionSorting::query()
+                            ->where('user_id', $userId)
+                            ->where('question_id', $question->id)
+                            ->value('is_active') ?? true,
+                    ]
                 );
             }
         });

@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('question_sorting', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('question_id')->constrained('questions')->onDelete('cascade');
             $table->integer('order');
             $table->boolean('is_active');

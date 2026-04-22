@@ -10,6 +10,7 @@ class QuestionSorting extends Model
     protected $table = 'question_sorting';
 
     protected $fillable = [
+        'user_id',
         'question_id',
         'order',
         'is_active',
@@ -23,6 +24,11 @@ class QuestionSorting extends Model
     public function question(): BelongsTo
     {
         return $this->belongsTo(Question::class, 'question_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }
 
