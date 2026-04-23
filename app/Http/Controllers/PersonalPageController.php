@@ -26,7 +26,7 @@ class PersonalPageController extends Controller
             'personal_page_background_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'personal_page_color' => ['required', 'string', 'max:50'],
             'personal_page_tagline' => ['required', 'string', 'max:255'],
-            'personal_page_description' => ['required', 'string', 'max:255'],
+            'personal_page_description' => ['required', 'string', 'max:500'],
             'personal_page_name_alias' => ['required', 'in:full,username,both'],
         ]);
 

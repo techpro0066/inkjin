@@ -19,6 +19,7 @@ use Carbon\Carbon;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Booking;
 use App\Mail\BookingConfirmationMail;
+use App\Models\UserDetail;
 
 class InkJinController extends Controller
 {
@@ -134,28 +135,19 @@ class InkJinController extends Controller
      */
     public function publicArtistProfile(string $username)
     {
-        // Get artist by username
-        $artist = $this->apiService->getArtistByUsername($username);
-        
-        if ($artist === null) {
+        $userDetail = UserDetail::where('user_name', $username)->first();
+
+        if ($userDetail === null || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes') {
             abort(404, 'Artist not found');
         }
-        
-        // Verify username matches (in case of redirect needed)
-        $artistUsername = $artist['username'] ?? '';
-        if ($artistUsername !== $username) {
-            return redirect()->route('public.artist', [
-                'username' => $artistUsername
-            ], 301);
-        }
-        
-        // Get all tattoos for the artist (they're already in the artist response)
-        $tattoos = $artist['artist_tattoos'] ?? [];
-        
-        // All checks passed, show the page
-        return view('public.artist', [
-            'artist' => $artist,
-            'tattoos' => $tattoos,
+
+        $artistDesigns = $userDetail->user->artistDesigns()->where('is_visible', true)->get();
+        $artistPortfolios = $userDetail->user->portfolios()->where('is_active', true)->get();
+
+        return view('artist.index', [
+            'userDetail' => $userDetail,
+            'artistDesigns' => $artistDesigns,
+            'artistPortfolios' => $artistPortfolios,
         ]);
     }
 
