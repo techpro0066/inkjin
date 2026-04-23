@@ -129,28 +129,28 @@
         <!-- Social icons -->
         <div class="flex items-center gap-2 mb-5">
             {{-- website --}}
-            @if($userDetail->social_links['website'] && $userDetail->social_links['website'] != '')
+            @if(isset($userDetail->social_links['website']) && $userDetail->social_links['website'] != '')
                 <a href="{{ $userDetail->social_links['website'] ?? 'javascript:void(0)' }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="Website">
                     <i class="fa-solid fa-globe"></i>
                 </a>
             @endif
 
-            @if($userDetail->social_links['instagram'] && $userDetail->social_links['instagram'] != '')
+            @if(isset($userDetail->social_links['instagram']) && $userDetail->social_links['instagram'] != '')
                 <a href="{{ $userDetail->social_links['instagram'] ?? 'javascript:void(0)' }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="Instagram">
                     <i class="fa-brands fa-instagram"></i>
                 </a>
             @endif
-            @if($userDetail->social_links['tiktok'] && $userDetail->social_links['tiktok'] != '')
+            @if(isset($userDetail->social_links['tiktok']) && $userDetail->social_links['tiktok'] != '')
                 <a href="{{ $userDetail->social_links['tiktok'] ?? 'javascript:void(0)' }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="TikTok">
                     <i class="fa-brands fa-tiktok"></i>
                 </a>
             @endif
-            @if($userDetail->social_links['youtube'] && $userDetail->social_links['youtube'] != '')
+            @if(isset($userDetail->social_links['youtube']) && $userDetail->social_links['youtube'] != '')
                 <a href="{{ $userDetail->social_links['youtube'] ?? 'javascript:void(0)' }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="YouTube">
                     <i class="fa-brands fa-youtube"></i>
                 </a>
             @endif
-            @if($userDetail->social_links['facebook'] && $userDetail->social_links['facebook'] != '')
+            @if(isset($userDetail->social_links['facebook']) && $userDetail->social_links['facebook'] != '')
                 <a href="{{ $userDetail->social_links['facebook'] ?? 'javascript:void(0)' }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="Facebook">
                     <i class="fa-brands fa-facebook"></i>
                 </a>
