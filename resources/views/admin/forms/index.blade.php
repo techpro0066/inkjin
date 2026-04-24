@@ -118,6 +118,8 @@
             draggable="true"
             data-question-id="{{ $question->id }}"
             data-question-text="{{ e($question->question) }}"
+            data-question-description="{{ e($question->description ?? '') }}"
+            data-question-placeholder="{{ e($question->placeholder ?? '') }}"
             data-question-type="{{ $type }}"
             data-form-context="default"
             data-is-required="{{ $question->is_required ? '1' : '0' }}"
@@ -191,6 +193,8 @@
             draggable="true"
             data-question-id="{{ $question->id }}"
             data-question-text="{{ e($question->question) }}"
+            data-question-description="{{ e($question->description ?? '') }}"
+            data-question-placeholder="{{ e($question->placeholder ?? '') }}"
             data-question-type="{{ $type }}"
             data-form-context="custom"
             data-is-required="{{ $question->is_required ? '1' : '0' }}"
@@ -257,16 +261,26 @@
           <p id="newQuestionTextError" class="hidden text-sm text-error mt-1"></p>
         </div>
         <div class="mb-3">
+          <label for="newQuestionDescription" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Description (optional)</label>
+          <textarea id="newQuestionDescription" name="newQuestionDescription" rows="2" placeholder="Add helper text for users (optional)" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
+          <p id="newQuestionDescriptionError" class="hidden text-sm text-error mt-1"></p>
+        </div>
+        <div class="mb-3">
+          <label for="newQuestionPlaceholder" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Placeholder (optional)</label>
+          <input type="text" id="newQuestionPlaceholder" name="newQuestionPlaceholder" placeholder="e.g., Enter your answer..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="newQuestionPlaceholderError" class="hidden text-sm text-error mt-1"></p>
+        </div>
+        <div class="mb-3">
           <input type="hidden" id="form-context" name="form_context" value="default">
           <label for="newQuestionType" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Answer type</label>
           <select id="newQuestionType" name="newQuestionType" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
             <option value="" selected disabled>Select answer type</option>
-            <option value="input">Input</option>
-            <option value="textarea">Textarea</option>
-            <option value="select">Select</option>
-            <option value="toggle">Toggle</option>
-            <option value="images">Images</option>
-            <option value="radio">Radio</option>
+            <option value="input">Input (a single-line field for short answers)</option>
+            <option value="textarea">Textarea (a multi-line field for longer responses)</option>
+            <option value="select">Select (a list of options where the user picks one)</option>
+            <option value="toggle">Toggle (a yes/no question)</option>
+            <option value="images">Images (a field for uploading images)</option>
+            <option value="radio">Radio (a list of options where the user picks only one)</option>
           </select>
           <p id="newQuestionTypeError" class="hidden text-sm text-error mt-1"></p>
         </div>
@@ -513,6 +527,8 @@
   // Reset all field and general error messages.
   function clearAllAddQuestionErrors() {
     clearFieldError($("#newQuestionText"), $("#newQuestionTextError"));
+    clearFieldError($("#newQuestionDescription"), $("#newQuestionDescriptionError"));
+    clearFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"));
     clearFieldError($("#newQuestionType"), $("#newQuestionTypeError"));
     clearOptionErrors();
     $("#addQuestionGeneralError").addClass("hidden").text("");
@@ -527,6 +543,8 @@
     }
 
     $("#newQuestionText").val("");
+    $("#newQuestionDescription").val("");
+    $("#newQuestionPlaceholder").val("");
     $("#newQuestionType").val("");
     $("#editingQuestionId").val("");
     $("#addQuestionModalTitle").text("Add question");
@@ -549,6 +567,8 @@
 
     const id = $row.data("question-id");
     const text = $row.data("question-text") || "";
+    const description = $row.data("question-description") || "";
+    const placeholder = $row.data("question-placeholder") || "";
     const type = $row.data("question-type") || "";
     const formContext = $row.data("form-context") || "default";
     const isRequired = String($row.data("is-required")) === "1";
@@ -558,6 +578,8 @@
 
     $("#editingQuestionId").val(id);
     $("#newQuestionText").val(text);
+    $("#newQuestionDescription").val(description);
+    $("#newQuestionPlaceholder").val(placeholder);
     $("#newQuestionType").val(type);
     $("#form-context").val(formContext);
     $("#newQuestionRequired").val(isRequired ? "true" : "false");
@@ -656,6 +678,12 @@
   $("#newQuestionText").on("input", function () {
     clearFieldError($("#newQuestionText"), $("#newQuestionTextError"));
   });
+  $("#newQuestionDescription").on("input", function () {
+    clearFieldError($("#newQuestionDescription"), $("#newQuestionDescriptionError"));
+  });
+  $("#newQuestionPlaceholder").on("input", function () {
+    clearFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"));
+  });
 
   // Add a new option row.
   $addOptionsDiv.on("click", ".btn-add-option", function () {
@@ -752,6 +780,8 @@
 
     const payload = {
       question: $.trim($("#newQuestionText").val()),
+      description: $.trim($("#newQuestionDescription").val()),
+      placeholder: $.trim($("#newQuestionPlaceholder").val()),
       type: $("#newQuestionType").val(),
       form_context: $("#form-context").val(),
       is_required: $("#newQuestionRequired").val() === "true",
@@ -794,6 +824,12 @@
 
         if (serverErrors.question && serverErrors.question[0]) {
           setFieldError($("#newQuestionText"), $("#newQuestionTextError"), serverErrors.question[0]);
+        }
+        if (serverErrors.description && serverErrors.description[0]) {
+          setFieldError($("#newQuestionDescription"), $("#newQuestionDescriptionError"), serverErrors.description[0]);
+        }
+        if (serverErrors.placeholder && serverErrors.placeholder[0]) {
+          setFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"), serverErrors.placeholder[0]);
         }
         if (serverErrors.type && serverErrors.type[0]) {
           setFieldError($("#newQuestionType"), $("#newQuestionTypeError"), serverErrors.type[0]);

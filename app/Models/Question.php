@@ -11,6 +11,8 @@ class Question extends Model
     protected $fillable = [
         'user_id',
         'question',
+        'description',
+        'placeholder',
         'type',
         'form_context',
         'options',

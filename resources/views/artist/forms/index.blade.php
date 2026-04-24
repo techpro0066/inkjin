@@ -267,6 +267,8 @@
                         data-type="{{ $typeLabel }}"
                         data-type-value="{{ $type }}"
                         data-form-context="default"
+                        data-description="{{ e($question->description ?? '') }}"
+                        data-placeholder="{{ e($question->placeholder ?? '') }}"
                         data-system="{{ $isSystem ? 'true' : 'false' }}"
                         data-enabled="{{ $isEnabled ? 'true' : 'false' }}"
                         data-required="{{ $question->is_required ? 'true' : 'false' }}"
@@ -336,6 +338,8 @@
                         data-type="{{ $typeLabel }}"
                         data-type-value="{{ $type }}"
                         data-form-context="custom"
+                        data-description="{{ e($question->description ?? '') }}"
+                        data-placeholder="{{ e($question->placeholder ?? '') }}"
                         data-system="{{ $isSystem ? 'true' : 'false' }}"
                         data-enabled="{{ $isEnabled ? 'true' : 'false' }}"
                         data-required="{{ $question->is_required ? 'true' : 'false' }}"
@@ -409,15 +413,26 @@
           <p id="newQuestionTextError" class="hidden text-sm text-error mt-1"></p>
         </div>
         <div class="mb-2">
+          <label for="newQuestionDescription" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Description (optional)</label>
+          <textarea id="newQuestionDescription" name="newQuestionDescription" rows="2" placeholder="Add helper text for clients (optional)" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
+          <p id="newQuestionDescriptionError" class="hidden text-sm text-error mt-1"></p>
+        </div>
+        <div class="mb-2">
+          <label for="newQuestionPlaceholder" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Placeholder (optional)</label>
+          <input type="text" id="newQuestionPlaceholder" name="newQuestionPlaceholder" placeholder="e.g., Tell us your tattoo idea..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="newQuestionPlaceholderError" class="hidden text-sm text-error mt-1"></p>
+        </div>
+        <div class="mb-2">
           <input type="hidden" id="form-context" name="form_context" value="default">
           <label for="newQuestionType" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Answer type</label>
           <select id="newQuestionType" name="newQuestionType" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-            <option value="input" selected>Input</option>
-            <option value="textarea">Textarea</option>
-            <option value="select">Select</option>
-            <option value="toggle">Toggle</option>
-            <option value="images">Images</option>
-            <option value="radio">Radio</option>
+            <option value="" selected disabled>Select answer type</option>
+            <option value="input" selected>Input (a single-line field for short answers)</option>
+            <option value="textarea">Textarea (a multi-line field for longer responses)</option>
+            <option value="select">Select (a list of options where the user picks one)</option>
+            <option value="toggle">Toggle (a yes/no question)</option>
+            <option value="images">Images (a field for uploading images)</option>
+            <option value="radio">Radio (a list of options where the user picks only one)</option>
           </select>
           <p id="newQuestionTypeError" class="hidden text-sm text-error mt-1"></p>
         </div>
@@ -660,6 +675,8 @@
 
   function clearAllAddQuestionErrors() {
     clearFieldError($("#newQuestionText"), $("#newQuestionTextError"));
+    clearFieldError($("#newQuestionDescription"), $("#newQuestionDescriptionError"));
+    clearFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"));
     clearFieldError($("#newQuestionType"), $("#newQuestionTypeError"));
     clearOptionErrors();
     $("#addQuestionGeneralError").addClass("hidden").text("");
@@ -670,7 +687,9 @@
     if (form) form.reset();
 
     $("#newQuestionText").val("");
-    $("#newQuestionType").val("input");
+    $("#newQuestionDescription").val("");
+    $("#newQuestionPlaceholder").val("");
+    $("#newQuestionType").val("");
     $("#editingQuestionId").val("");
     $("#form-context").val(currentFormToContext[currentFormType] || "default");
     $("#newQuestionRequired").val("true");
@@ -694,6 +713,8 @@
 
     const questionId = $row.data("id");
     const questionText = $.trim($row.find("p").first().text() || "");
+    const questionDescription = String($row.data("description") || "");
+    const questionPlaceholder = String($row.data("placeholder") || "");
     const typeValue = String($row.data("type-value") || "input");
     const formContext = String($row.data("form-context") || "default");
     const isRequired = String($row.data("required")) === "true";
@@ -703,6 +724,8 @@
 
     $("#editingQuestionId").val(String(questionId || ""));
     $("#newQuestionText").val(questionText);
+    $("#newQuestionDescription").val(questionDescription);
+    $("#newQuestionPlaceholder").val(questionPlaceholder);
     $("#newQuestionType").val(typeValue);
     $("#form-context").val(formContext);
     $("#newQuestionRequired").val(isRequired ? "true" : "false");
@@ -809,6 +832,8 @@
     } else {
       html += visibleRows.map(function (row, index) {
         const questionText = escapeHtml($.trim($(row).find("p").first().text()) || "Question");
+        const questionDescription = escapeHtml(row.dataset.description || "");
+        const questionPlaceholder = escapeHtml(row.dataset.placeholder || "");
         const type = String(row.dataset.typeValue || "input");
         const isRequired = row.dataset.required === "true";
         const optionsRaw = row.dataset.options || "[]";
@@ -824,7 +849,7 @@
 
         let inputHtml = "";
         if (type === "textarea") {
-          inputHtml = '<textarea rows="3" placeholder="Your answer..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white mt-2 resize-none" disabled></textarea>';
+          inputHtml = `<textarea rows="3" placeholder="${questionPlaceholder || "Your answer..."}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white mt-2 resize-none" disabled></textarea>`;
         } else if (type === "select") {
           const optionHtml = options
             .map(function (option) { return `<option>${escapeHtml(option)}</option>`; })
@@ -842,7 +867,7 @@
         } else if (type === "images" || type === "image") {
           inputHtml = '<div class="mt-2 border-2 border-dashed border-outline-variant/30 rounded-xl px-4 py-6 text-center"><span class="material-symbols-outlined text-outline text-3xl">upload</span><p class="text-sm text-on-surface-variant mt-1">Image upload area</p></div>';
         } else {
-          inputHtml = '<input type="text" placeholder="Your answer..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white mt-2" disabled>';
+          inputHtml = `<input type="text" placeholder="${questionPlaceholder || "Your answer..."}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white mt-2" disabled>`;
         }
 
         return `
@@ -850,6 +875,7 @@
             <label class="text-sm font-semibold text-on-surface">
               ${questionText}${isRequired ? ' <span class="text-red-500">*</span>' : ""}
             </label>
+            ${questionDescription ? `<p class="text-xs text-on-surface-variant mt-1">${questionDescription}</p>` : ""}
             ${inputHtml}
           </div>
         `;
@@ -1038,6 +1064,12 @@
   $("#newQuestionText").on("input", function () {
     clearFieldError($("#newQuestionText"), $("#newQuestionTextError"));
   });
+  $("#newQuestionDescription").on("input", function () {
+    clearFieldError($("#newQuestionDescription"), $("#newQuestionDescriptionError"));
+  });
+  $("#newQuestionPlaceholder").on("input", function () {
+    clearFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"));
+  });
 
   $addOptionsDiv.on("click", ".btn-add-option", function () {
     appendOptionField();
@@ -1063,6 +1095,8 @@
 
     const payload = {
       question: $.trim($("#newQuestionText").val()),
+      description: $.trim($("#newQuestionDescription").val()),
+      placeholder: $.trim($("#newQuestionPlaceholder").val()),
       type: $("#newQuestionType").val(),
       form_context: $("#form-context").val() || currentFormToContext[currentFormType] || "default",
       is_required: $("#newQuestionRequired").val() === "true",
@@ -1105,6 +1139,12 @@
 
         if (serverErrors.question && serverErrors.question[0]) {
           setFieldError($("#newQuestionText"), $("#newQuestionTextError"), serverErrors.question[0]);
+        }
+        if (serverErrors.description && serverErrors.description[0]) {
+          setFieldError($("#newQuestionDescription"), $("#newQuestionDescriptionError"), serverErrors.description[0]);
+        }
+        if (serverErrors.placeholder && serverErrors.placeholder[0]) {
+          setFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"), serverErrors.placeholder[0]);
         }
         if (serverErrors.type && serverErrors.type[0]) {
           setFieldError($("#newQuestionType"), $("#newQuestionTypeError"), serverErrors.type[0]);

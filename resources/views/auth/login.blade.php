@@ -168,6 +168,8 @@
       }
 
       $(document).on('click', '.eye-toggle', function () {
+
+        console.log('...');
         var targetSelector = $(this).data('target');
         var $input = targetSelector ? $(targetSelector) : $();
         if (!$input.length) return;
@@ -197,7 +199,7 @@
             'Accept': 'application/json'
           },
           success: function(_response, _textStatus, xhr) {
-            window.location.href = {{ authenticated_home_url() }};
+            window.location.href = '{{ authenticated_home_url() }}';
           },
           error: function(xhr) {
             if (xhr.status === 422 && xhr.responseJSON) {

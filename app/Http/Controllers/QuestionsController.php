@@ -145,6 +145,8 @@ class QuestionsController extends Controller
 
         $payload = [
             'question' => $request->input('question'),
+            'description' => $request->input('description'),
+            'placeholder' => $request->input('placeholder'),
             'type' => $normalizedType,
             'form_context' => $formContext,
             'is_active' => $isActive,
@@ -155,6 +157,8 @@ class QuestionsController extends Controller
 
         $validator = Validator::make($payload, [
             'question' => ['required', 'string', 'max:10000'],
+            'description' => ['nullable', 'string', 'max:10000'],
+            'placeholder' => ['nullable', 'string', 'max:10000'],
             'type' => ['required', Rule::in(['input', 'textarea', 'toggle', 'select', 'image', 'radio'])],
             'form_context' => ['required', 'string', 'max:255'],
             'is_active' => ['required', 'boolean'],
@@ -214,6 +218,8 @@ class QuestionsController extends Controller
             $question = Question::create([
                 'user_id' => Auth::id(),
                 'question' => $data['question'],
+                'description' => $data['description'] ?? null,
+                'placeholder' => $data['placeholder'] ?? null,
                 'type' => $data['type'],
                 'form_context' => $data['form_context'],
                 'options' => $options,
@@ -254,6 +260,8 @@ class QuestionsController extends Controller
 
         $payload = [
             'question' => $request->input('question'),
+            'description' => $request->input('description'),
+            'placeholder' => $request->input('placeholder'),
             'type' => $normalizedType,
             'form_context' => $request->input('form_context', $question->form_context),
             'is_active' => $request->has('is_active')
@@ -268,6 +276,8 @@ class QuestionsController extends Controller
 
         $validator = Validator::make($payload, [
             'question' => ['required', 'string', 'max:10000'],
+            'description' => ['nullable', 'string', 'max:10000'],
+            'placeholder' => ['nullable', 'string', 'max:10000'],
             'type' => ['required', Rule::in(['input', 'textarea', 'toggle', 'select', 'image', 'radio'])],
             'form_context' => ['required', 'string', 'max:255'],
             'is_active' => ['required', 'boolean'],
@@ -324,6 +334,8 @@ class QuestionsController extends Controller
         DB::transaction(function () use ($question, $data, $options, $maxImages) {
             $question->update([
                 'question' => $data['question'],
+                'description' => $data['description'] ?? null,
+                'placeholder' => $data['placeholder'] ?? null,
                 'type' => $data['type'],
                 'form_context' => $data['form_context'],
                 'options' => $options,
