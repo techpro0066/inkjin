@@ -9,21 +9,6 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Admin\FormController;
 use App\Http\Controllers\QuestionsController;
 
-// Public InkJin API routes
-Route::get('/api/tattoo/{id}', [InkJinController::class, 'getTattoo'])->name('api.tattoo.show');
-Route::get('/api/artist/{id}', [InkJinController::class, 'getArtist'])->name('api.artist.show');
-Route::get('/api/artists', [InkJinController::class, 'getArtistsList'])->name('api.artists.list');
-Route::get('/api/tattoos', [InkJinController::class, 'getTattoosList'])->name('api.tattoos.list');
-
-// Countries and Cities API routes
-Route::get('/api/countries', [\App\Http\Controllers\CountriesController::class, 'getCountries'])->name('api.countries');
-Route::get('/api/cities', [\App\Http\Controllers\CountriesController::class, 'getCities'])->name('api.cities');
-Route::get('/api/countries/all', [\App\Http\Controllers\CountriesController::class, 'getAll'])->name('api.countries.all');
-
-// Public InkJin Database routes
-Route::get('/db/tattoo/{id}', [InkJinController::class, 'getTattooFromDb'])->name('db.tattoo.show');
-Route::get('/db/artist/{id}', [InkJinController::class, 'getArtistFromDb'])->name('db.artist.show');
-
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->to(authenticated_home_url());
@@ -176,14 +161,6 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     
     Route::post('/settings/payment', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
 
-    // Route::get('/settings/notifications', function (\Illuminate\Http\Request $request) {
-    //     $user = $request->user();
-    //     $userDetail = $user->userDetail;
-    //     return view('artist.settings.notifications', compact('userDetail'));
-    // })->name('settings.notifications');
-    
-    // Route::post('/settings/notifications', [OnboardingController::class, 'updateNotifications'])->name('settings.notifications.update');
-    
     // Availability routes (for artists)
     Route::get('/availability', [\App\Http\Controllers\AvailabilityController::class, 'index'])->name('availability.index');
     Route::post('/availability/booking-status', [\App\Http\Controllers\AvailabilityController::class, 'saveBookingStatus'])->name('availability.booking-status');
@@ -217,73 +194,13 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::delete('/forms/questions/{id}', [QuestionsController::class, 'destroy'])->name('artist.forms.questions.destroy');
 });
 
-// User routes
-// Route::middleware(['auth', 'verified', 'onboarding', 'user'])->prefix('dashboard')->group(function () {
-//     Route::get('/artists', [\App\Http\Controllers\DashboardController::class, 'artists'])->name('dashboard.artists');
-//     Route::get('/artists/{username}', [\App\Http\Controllers\DashboardController::class, 'artistShow'])->name('dashboard.artists.show');
-//     Route::get('/tattoo/{id}', [\App\Http\Controllers\DashboardController::class, 'tattooShow'])->name('dashboard.tattoo.show');
-// });
-
 require __DIR__.'/auth.php';
 
-// Public database routes (using actual names from database)
-// These routes must be before the catch-all API routes
-// Route::get('/artists', [InkJinController::class, 'publicArtistsList'])
-//     ->name('public.artists.list');
+Route::get('/{username}', [InkJinController::class, 'publicArtistProfile'])->name('public.artist');
 
-// Route::get('/artist/{username}', [InkJinController::class, 'publicArtistProfileFromDb'])
-//     ->where(['username' => '[a-zA-Z0-9_.-]+'])
-//     ->name('public.artist.db');
+Route::get('/{user_name}/{tattoo_slug}', [InkJinController::class, 'publicTattooPage'])->name('public.tattoo');
 
-// Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}', [InkJinController::class, 'publicTattooPageFromDb'])
-//     ->where(['tattoo_id' => '[0-9]+'])
-//     ->name('public.tattoo.db');
-
-Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
-Route::get('/tattoo/{artist_display_name}/{tattoo_title}/{tattoo_id}/book', [InkJinController::class, 'bookTattoo'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('public.tattoo.book');
-});
-
-// Public API route for getting availability slots (no auth required)
-Route::get('/api/availability/{tattoo_id}', [InkJinController::class, 'getAvailabilitySlots'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('api.availability.slots');
-
-// Public API route for submitting booking (no auth required)
-Route::post('/api/booking/{tattoo_id}', [InkJinController::class, 'submitBooking'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('api.booking.submit');
-
-// Public API route for creating payment intent (no auth required)
-Route::post('/api/booking/{tattoo_id}/payment-intent', [InkJinController::class, 'createPaymentIntent'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('api.booking.payment-intent');
-
-Route::post('/api/booking/{tattoo_id}/confirm', [InkJinController::class, 'confirmBooking'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('api.booking.confirm');
-
-// Separate consultation timing API routes
-Route::get('/api/tattoos/{tattoo_id}/consultation-slots', [InkJinController::class, 'getConsultationSlots'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('api.consultation.slots');
-
-Route::get('/api/tattoos/{tattoo_id}/tattoo-session-slots', [InkJinController::class, 'getTattooSessionSlots'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('api.tattoo-session.slots');
-
-Route::post('/api/bookings/{tattoo_id}/book-separate', [InkJinController::class, 'bookSeparateConsultation'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('api.booking.separate');
-
-// Public API routes (must be before catch-all routes)
-Route::get('/{username}', [InkJinController::class, 'publicArtistProfile'])
-    ->where(['username' => '[a-zA-Z0-9_.-]+'])
-    ->name('public.artist');
-
-// Public tattoo page route (must be at the end to avoid conflicts with other routes)
-// Only matches if tattoo_id is numeric (prevents matching routes like /verify-email/{id}/{hash})
-Route::get('/{artist_name}/{tattoo_name}/{tattoo_id}', [InkJinController::class, 'publicTattooPage'])
-    ->where(['tattoo_id' => '[0-9]+'])
-    ->name('public.tattoo');
+Route::get('/{user_name}/{tattoo_slug}/book', [InkJinController::class, 'bookTattoo'])->name('public.tattoo.book');
+Route::get('/api/public/check-email-availability', [InkJinController::class, 'checkEmailAvailability'])->name('public.email.availability');
+Route::post('/api/public/send-booking-otp', [InkJinController::class, 'sendBookingOtp'])->name('public.booking.otp.send');
+Route::post('/api/public/verify-booking-otp', [InkJinController::class, 'verifyBookingOtp'])->name('public.booking.otp.verify');

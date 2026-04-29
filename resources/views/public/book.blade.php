@@ -1,3303 +1,1924 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Book Appointment - {{ $tattoo['title'] ?? 'Tattoo' }} | InkJin</title>
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Tabler Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-    <!-- Dropify CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropify@0.2.2/dist/css/dropify.min.css">
-    
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f8f9fa;
-        }
-        
-        .header-section {
-            background-color: #ffffff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border-bottom: 1px solid #e9ecef;
-        }
-        
-        .logo-img {
-            height: 40px;
-            width: auto;
-        }
-        
-        .booking-card {
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-        
-        .tattoo-preview {
-            width: 100%;
-            max-width: 200px;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 2px solid #e9ecef;
-        }
-        
-        .calendar-container {
-            max-width: 700px;
-            margin: 0 auto;
-        }
-        
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #e9ecef;
-        }
-        
-        .calendar-header h2 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #212529;
-            margin: 0;
-        }
-        
-        .calendar-nav-btn {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            padding: 0.5rem 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .calendar-nav-btn:hover {
-            background: #e9ecef;
-            border-color: #adb5bd;
-        }
-        
-        .calendar-grid {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-        
-        .calendar-weekdays {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        
-        .calendar-weekday {
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.75rem;
-            color: #6c757d;
-            padding: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .calendar-days {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0.5rem;
-        }
-        
-        .calendar-day {
-            aspect-ratio: 1;
-            min-height: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 2px solid transparent;
-            font-weight: 600;
-            font-size: 0.9rem;
-            position: relative;
-        }
-        
-        .calendar-day.empty {
-            cursor: default;
-            background: transparent;
-            border: none;
-        }
-        
-        .calendar-day.available {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            border-color: #28a745;
-            color: #155724;
-        }
-        
-        .calendar-day.available:hover:not([disabled]) {
-            background: linear-gradient(135deg, #c3e6cb 0%, #b1dfbb 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
-        }
-        
-        .calendar-day.unavailable {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-            border-color: #dc3545;
-            color: #721c24;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-        
-        .calendar-day.past {
-            background: #f4f4f4;
-            color: #adb5bd;
-            cursor: not-allowed;
-            opacity: 0.5;
-            border-color: #e0e0e0;
-        }
-        
-        .calendar-day:disabled,
-        .calendar-day[disabled] {
-            pointer-events: none;
-        }
-        
-        .calendar-legend {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid #e9ecef;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: #495057;
-        }
-        
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 6px;
-            border: 2px solid;
-        }
-        
-        .legend-color.available {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            border-color: #28a745;
-        }
-        
-        .legend-color.unavailable {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-            border-color: #dc3545;
-        }
-        
-        .slot-card {
-            transition: all 0.2s ease;
-            border: 2px solid #e9ecef;
-        }
-        
-        .slot-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-color: #0d6efd;
-        }
-        
-        .slot-card.border-primary {
-            border-color: #0d6efd !important;
-            background-color: #e7f1ff !important;
-        }
-        
-        .field-error {
-            color: #dc3545;
-            font-size: 0.875rem;
-            margin-top: 0.25rem;
-            display: block;
-        }
-        
-        .image-uploads-container {
-            margin-bottom: 1rem;
-        }
-        
-        .image-upload-item {
-            position: relative;
-            margin-bottom: 1rem;
-        }
-        
-        .image-upload-item .remove-image-btn {
-            font-size: 0.875rem;
-        }
-        
-        .image-uploads-list {
-            margin-top: 0.5rem;
-        }
-        
-        .add-more-image-btn {
-            margin-top: 0.5rem;
-        }
-        
-        .image-upload-item.border-danger {
-            border-width: 2px !important;
-        }
-        
-        .form-control.is-invalid,
-        .form-select.is-invalid,
-        .form-check-input.is-invalid {
-            border-color: #dc3545;
-        }
-        
-        .selected-slot-info {
-            background-color: #e7f1ff;
-            border: 1px solid #0d6efd;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        @media (max-width: 768px) {
-            .calendar-day {
-                min-height: 40px;
-                font-size: 0.8rem;
-            }
-            
-            .calendar-header h2 {
-                font-size: 1.25rem;
-            }
-            
-            .booking-card {
-                padding: 1.5rem;
-            }
-        }
-        
-        @media (max-width: 576px) {
-            .calendar-day {
-                min-height: 35px;
-                font-size: 0.75rem;
-            }
-            
-            .calendar-weekday {
-                font-size: 0.7rem;
-                padding: 0.375rem 0.25rem;
-            }
-        }
-        
-        /* Booking sections */
-        .booking-card {
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-        
-        .booking-card.d-none {
-            display: none !important;
-        }
-        
-        #slotsContainer, #questionsContainer, #paymentContainer {
-            min-height: 200px;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Book Your Tattoo | Inkjin</title>
+  <meta name="description" content="Book and pay for your tattoo design — select a date, enter your details, and secure your appointment.">
+  <link rel="icon" href="images/favicon.png">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link href="css/bookpay.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#310f7a",
+            "primary-container": "#482d91",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#b69fff",
+            "surface": "#fdf7ff",
+            "surface-container": "#f2ecf5",
+            "surface-container-high": "#ece6ef",
+            "surface-container-highest": "#e6e0ea",
+            "surface-container-low": "#f8f1fb",
+            "on-surface": "#1c1b21",
+            "on-surface-variant": "#494552",
+            "outline": "#7a7583",
+            "outline-variant": "#cac4d3",
+            "secondary": "#625881",
+            "secondary-container": "#ddd0ff",
+            "inverse-surface": "#322f36",
+            "inverse-on-surface": "#f5eff8",
+            "error": "#ba1a1a",
+          },
+          fontFamily: {
+            "sans": ["Plus Jakarta Sans", "system-ui", "sans-serif"],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .tf-progress { position: fixed; top: 0; left: 0; height: 3px; background: #310f7a; transition: width 0.4s ease; z-index: 100; }
+    .step-panel { display: none; }
+    .step-panel.active { display: block; animation: fadeUp 0.35s ease-out; }
+    .step-panel.active.reverse { animation: fadeDown 0.35s ease-out; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; transform: translateY(0); } }
+    .question-div { display: none; min-height: 60vh; align-items: center; justify-content: center; padding: 2rem 0; }
+    .question-div.active { display: flex; animation: tfSlideIn 0.4s ease-out; }
+    .question-div.active.reverse { animation: tfSlideInReverse 0.4s ease-out; }
+    @keyframes tfSlideIn { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes tfSlideInReverse { from { opacity: 0; transform: translateY(-40px); } to { opacity: 1; transform: translateY(0); } }
+    .cal-card { background: white; border-radius: 1rem; border: 1px solid #e6e0ea; overflow: hidden; box-shadow: 0 4px 24px rgba(49,15,122,0.06); }
+    .cal-day { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; cursor: pointer; transition: all 0.15s; }
+    .cal-day.available:hover { background: #ece6ef; }
+    .cal-day.available { color: #1c1b21; font-weight: 600; }
+    .cal-day.unavailable { color: #cac4d3; cursor: default; pointer-events: none; }
+    .cal-day.unavailable-future {
+      color: #ba1a1a;
+      background: #fff1f1;
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+      text-decoration-color: #ba1a1a;
+      cursor: default;
+      pointer-events: none;
+      font-weight: 600;
+    }
+    .cal-day.selected { background: #310f7a; color: white; font-weight: 700; }
+    .cal-day.today { border: 2px solid #310f7a; }
+    .cal-day.empty { pointer-events: none; }
+    .time-slot-card { padding: 0.75rem 1.25rem; border-radius: 0.75rem; border: 1.5px solid #cac4d3; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.15s; text-align: center; color: #310f7a; background: white; }
+    .time-slot-card:hover { border-color: #310f7a; background: #f8f1fb; }
+    .time-slot-card.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .time-slot-card.booked { background: #f2ecf5; color: #cac4d3; cursor: default; border-color: transparent; pointer-events: none; }
+    .time-slot-wrap { display: flex; gap: 0.5rem; align-items: stretch; }
+    .time-slot-confirm { display: none; padding: 0.75rem 1.25rem; border-radius: 0.75rem; background: #310f7a; color: white; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .time-slot-wrap.selected .time-slot-confirm { display: flex; align-items: center; gap: 0.35rem; animation: tfSlideIn 0.2s ease-out; }
+    .single-choice-radio-button { padding: 0.75rem 1.5rem; border-radius: 9999px; border: 2px solid #cac4d3; font-size: 0.95rem; font-weight: 600; color: #494552; cursor: pointer; transition: all 0.15s; background: white; }
+    .single-choice-radio-button:hover { border-color: #310f7a; color: #310f7a; }
+    .single-choice-radio-button.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .pref-block { background: white; border: 1px solid #e6e0ea; border-radius: 1rem; padding: 1.25rem; }
+    .day-pill { padding: 0.5rem 1rem; border-radius: 9999px; border: 1.5px solid #cac4d3; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; background: white; }
+    .day-pill:hover { border-color: #310f7a; color: #310f7a; }
+    .day-pill.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .time-pref-pill { padding: 0.5rem 1rem; border-radius: 9999px; border: 1.5px solid #cac4d3; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; background: white; }
+    .time-pref-pill:hover { border-color: #310f7a; color: #310f7a; }
+    .time-pref-pill.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .social-btn { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 0.875rem 1.5rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.95rem; border: 2px solid #e6e0ea; cursor: pointer; transition: all 0.15s; background: white; width: 100%; }
+    .social-btn:hover { border-color: #cac4d3; background: #f8f1fb; }
+    .auth-toggle { color: #310f7a; cursor: pointer; font-weight: 600; text-decoration: underline; }
+    .mode-toggle { display: inline-flex; background: #f2ecf5; border-radius: 9999px; padding: 3px; gap: 2px; }
+    .mode-toggle-btn { padding: 6px 16px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; color: #494552; }
+    .mode-toggle-btn.active { background: #310f7a; color: white; }
+    @keyframes checkDraw { from { stroke-dashoffset: 48; } to { stroke-dashoffset: 0; } }
+    @keyframes circleDraw { from { stroke-dashoffset: 200; } to { stroke-dashoffset: 0; } }
+    @keyframes scaleBounce { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+    .check-circle { animation: circleDraw 0.6s ease-out forwards, scaleBounce 0.5s ease-out; stroke-dasharray: 200; }
+    .check-mark { animation: checkDraw 0.4s ease-out 0.4s forwards; stroke-dasharray: 48; stroke-dashoffset: 48; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 32px; height: 32px; border: 3px solid #ece6ef; border-top-color: #310f7a; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+    @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    .slide-in-right { animation: slideInRight 0.3s ease-out; }
+    .progress-step .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid #cac4d3; color: #cac4d3; transition: all 0.3s; }
+    .progress-step.active .step-dot, .progress-step.completed .step-dot { border-color: #310f7a; background: #310f7a; color: white; }
+    .progress-step .step-label { font-size: 0.7rem; color: #7a7583; margin-top: 4px; transition: color 0.3s; white-space: nowrap; }
+    .progress-step.active .step-label { color: #310f7a; font-weight: 600; }
+    .progress-step.completed .step-label { color: #310f7a; }
+    .progress-line { height: 2px; background: #cac4d3; flex: 1; margin: 0 4px; margin-top: -12px; transition: background 0.3s; min-width: 12px; }
+    .progress-line.completed { background: #310f7a; }
+    .info-tooltip { position: relative; display: inline-flex; cursor: help; }
+    .info-tooltip .tooltip-text { visibility: hidden; opacity: 0; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #322f36; color: white; padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; width: 220px; text-align: center; transition: opacity 0.2s; z-index: 10; line-height: 1.4; }
+    .info-tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+    .card-type-icon { width: 32px; height: 20px; border-radius: 3px; background: #f2ecf5; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; color: #494552; }
+    .card-type-icon.active { background: #310f7a; color: white; }
+    .consult-type-card { padding: 1.25rem; border-radius: 1rem; border: 2px solid #cac4d3; cursor: pointer; transition: all 0.2s; background: white; text-align: left; }
+    .consult-type-card:hover { border-color: #310f7a; background: #f8f1fb; }
+    .consult-type-card.selected { border-color: #310f7a; background: #f8f1fb; box-shadow: 0 0 0 1px #310f7a; }
+    .consult-type-card .ct-icon { width: 44px; height: 44px; border-radius: 12px; background: #f2ecf5; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .consult-type-card.selected .ct-icon { background: #310f7a; }
+    .consult-type-card .ct-icon .material-symbols-outlined { color: #310f7a; font-size: 22px; }
+    .consult-type-card.selected .ct-icon .material-symbols-outlined { color: white; }
+    .confirm-chip { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; background: #310f7a; color: white; }
+    .section-disabled { opacity: 0.4; pointer-events: none; filter: grayscale(0.3); }
+    .question-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      border: 1px solid #ddd0ff;
+      background: linear-gradient(135deg, #f8f1fb 0%, #f2ecf5 100%);
+      color: #310f7a;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 2px 8px rgba(49, 15, 122, 0.08);
+    }
+    .question-kicker .dot {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 9999px;
+      background: #310f7a;
+      opacity: 0.9;
+    }
+    .select2-container--default .select2-selection--single {
+      height: 58px;
+      border: 1px solid rgba(122, 117, 131, 0.35);
+      border-radius: 1rem;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 1px 4px rgba(49, 15, 122, 0.04);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .select2-container--default.select2-container--focus .select2-selection--single {
+      border-color: rgba(49, 15, 122, 0.55);
+      box-shadow: 0 0 0 3px rgba(49, 15, 122, 0.14);
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+      color: #1c1b21;
+      line-height: 58px;
+      font-size: 1rem;
+      padding-left: 1rem;
+      padding-right: 2.2rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: 56px;
+      right: 10px;
+    }
+    .select2-dropdown {
+      border: 1px solid #ddd0ff;
+      border-radius: 0.9rem;
+      box-shadow: 0 12px 28px rgba(49, 15, 122, 0.12);
+      overflow: hidden;
+    }
+    .select2-container--default .select2-results__option {
+      padding: 0.7rem 0.9rem;
+      font-size: 0.95rem;
+    }
+    .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+      background: #310f7a;
+      color: #fff;
+    }
+    .dropify-wrapper .dropify-message p {
+      font-size: 0.78rem;
+      line-height: 1.2rem;
+    }
+    .dropify-wrapper .dropify-message span.file-icon {
+      font-size: 36px;
+    }
+    .dropify-wrapper .dropify-message {
+      text-align: center;
+    }
+    .dropify-wrapper .dropify-preview .dropify-render {
+      text-align: center;
+    }
+    .dropify-wrapper .dropify-preview .dropify-render img {
+      margin-left: auto;
+      margin-right: auto;
+      display: inline-block;
+      float: none;
+    }
+    .q-toggle-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      padding: 1rem;
+      border: 1px solid rgba(122, 117, 131, 0.32);
+      border-radius: 0.9rem;
+      background: #ffffff;
+    }
+    .q-toggle-control {
+      position: relative;
+      display: inline-flex;
+      width: 54px;
+      min-width: 54px;
+      height: 31px;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+    .q-toggle-label {
+      font-size: 0.95rem;
+      color: #1c1b21;
+      line-height: 1.45;
+      font-weight: 500;
+      flex: 1;
+      min-width: 0;
+    }
+    .q-toggle-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+    .q-toggle-ui {
+      position: relative;
+      display: inline-block;
+      width: 54px;
+      height: 31px;
+      border-radius: 9999px;
+      background: #a8c7ff;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+    }
+    .q-toggle-ui::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 7px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s ease;
+    }
+    .q-toggle-input:checked + .q-toggle-ui {
+      background: linear-gradient(90deg, #1e6bff 0%, #3f86ff 100%);
+    }
+    .q-toggle-input:checked + .q-toggle-ui::after {
+      transform: translateX(23px);
+    }
+    .q-toggle-input:focus-visible + .q-toggle-ui {
+      box-shadow: 0 0 0 3px rgba(30, 107, 255, 0.22);
+    }
+  </style>
 </head>
-<body>
-    <!-- Header -->
-    <header class="header-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <div class="d-flex align-items-center justify-content-between py-3">
-                        <a href="/" class="d-flex align-items-center gap-3 text-decoration-none">
-                            @if(file_exists(public_path('assets/img/branding/main-logo.png')))
-                                <img src="{{ asset('assets/img/branding/main-logo.png') }}" alt="InkJin" class="logo-img">
-                            @elseif(file_exists(public_path('assets/img/branding/logo.png')))
-                                <img src="{{ asset('assets/img/branding/logo.png') }}" alt="InkJin" class="logo-img">
-                            @else
-                                <span class="fs-3 fw-bold text-dark">InkJin</span>
-                            @endif
-                        </a>
-                        <a href="{{ route('dashboard.tattoo.show', ['id' => $tattoo['tattoo_id']]) }}" class="btn btn-outline-secondary btn-sm">
-                            ← Back to Tattoo
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
-    
-    <div class="container py-5">
-        <!-- Booking Info Card -->
-        <div class="booking-card">
-            <div class="row align-items-center">
-                <div class="col-12 col-md-auto text-center text-md-start mb-3 mb-md-0">
-                    @if(!empty($tattoo['field_tattoo_image_preview']))
-                        <img src="{{ $tattoo['field_tattoo_image_preview'] }}" alt="{{ $tattoo['title'] }}" class="tattoo-preview">
-                    @endif
-                </div>
-                <div class="col-12 col-md">
-                    <h1 class="h3 mb-2">{{ $tattoo['title'] ?? 'Tattoo' }}</h1>
-                    <p class="text-muted mb-0">by <strong>{{ $artist['display_name'] ?? $artist['username'] ?? 'Artist' }}</strong></p>
-                </div>
-            </div>
-        </div>
-        
-        
-        <!-- Calendar Section -->
-        <div class="booking-card" id="calendarSection">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0" id="calendarTitle">
-                    @if(($consultationInfo['is_separate'] ?? false))
-                        Step 1: Select Consultation Date
-                    @else
-                        Select Date
-                    @endif
-                </h5>
-                <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="backToConsultationBtn">
-                    <i class="ti ti-arrow-left me-1"></i> Back to Consultation
-                </button>
-            </div>
-            <div class="calendar-container">
-                <div id="availability-calendar">
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading calendar...</span>
-        </div>
-                        <p class="mt-2 text-muted">Loading calendar...</p>
+<body class="bg-surface text-on-surface min-h-screen">
+  <div class="tf-progress" id="topProgressBar" style="width: 0%"></div>
+
+  <!-- HEADER -->
+  <header class="border-b border-outline-variant/20 bg-white/70 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-2 text-primary font-extrabold text-xl tracking-tight">
+        <img src="{{ asset('design/images/inkjin_logo-p-500.png') }}" alt="inkjin" class="h-7">
+      </a>
+      <div class="flex items-center gap-3 flex-wrap justify-end">
+        <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
+          <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to artist
+        </a>
+      </div>
     </div>
-            </div>
-                <div class="mt-3 d-none" id="calendarNextButton">
-                    <button type="button" class="btn btn-primary w-100" id="nextToSlotsBtn">
-                        Next: Select Time <i class="ti ti-arrow-right ms-1"></i>
-                    </button>
+  </header>
+
+  <!-- BOOKINGS CLOSED OVERLAY (hidden by default) -->
+  <div id="bookingsClosedOverlay" class="hidden">
+    <div class="min-h-screen flex items-center justify-center p-6">
+      <div class="text-center max-w-md">
+        <span class="material-symbols-outlined text-6xl text-on-surface-variant mb-4">event_busy</span>
+        <h2 class="text-2xl font-bold text-on-surface mb-2">Bookings Are Closed</h2>
+        <p class="text-on-surface-variant mb-6">This artist is currently not accepting new bookings. Check back soon or browse their portfolio.</p>
+        <a href="artist-page.html" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors">
+          <span class="material-symbols-outlined text-lg">arrow_back</span> Back to Artist Page
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8" id="bookingMainContent">
+
+    <!-- STEP DOTS -->
+    <div class="flex items-start justify-center mb-10" id="progressDots">
+      <div class="progress-step active text-center" data-step="1"><div class="step-dot mx-auto">1</div><div class="step-label">Questions</div></div>
+      <div class="progress-line mt-4" data-line="1"></div>
+      <div class="progress-step text-center" data-step="2"><div class="step-dot mx-auto">2</div><div class="step-label" id="step2Label">Schedule</div></div>
+      <div class="progress-line mt-4" data-line="2"></div>
+      <div class="progress-step text-center" data-step="3"><div class="step-dot mx-auto">3</div><div class="step-label">Register</div></div>
+      <div class="progress-line mt-4" data-line="3"></div>
+      <div class="progress-step text-center" data-step="4"><div class="step-dot mx-auto">4</div><div class="step-label" id="step4Label">Payment</div></div>
+      <div class="progress-line mt-4" data-line="4"></div>
+      <div class="progress-step text-center" data-step="5"><div class="step-dot mx-auto">5</div><div class="step-label" id="step5Label">Confirmed</div></div>
+    </div>
+
+      <div class="bg-white rounded-2xl border border-outline-variant/20 p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+        <div class="w-full sm:w-24 h-24 sm:h-24 rounded-xl bg-surface-container flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-3xl sm:text-4xl text-outline-variant">palette</span></div>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-base sm:text-lg font-bold text-on-surface mb-1 break-words cc-designTitle">{{ $tattoo->title }}</h2>
+          <div class="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-on-surface-variant">
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> <span class="cc-designStyle">{{ ucwords(str_replace('-', ' ', $tattoo->primary_style)) }}</span></span>
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">euro</span> <span class="cc-designPrice">€{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}</span></span>
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> <span class="cc-designTime">{{ $tattoo->session_duration }} hours</span></span>
         </div>
-            </div>
+          <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0"><span class="text-white text-[10px] font-bold cc-artistAvatar">{{ strtoupper($userDetail->user->first_name[0]) }}{{ strtoupper($userDetail->user->last_name[0]) }}</span></div>
+            <span class="leading-relaxed break-words">with <strong class="cc-artistName">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</strong> at <strong class="cc-studioName">{{ $userDetail->studio_name }}</strong></span>
+      </div>
+          </div>
         </div>
 
-        <!-- Time Slots Section -->
-        <div class="booking-card d-none" id="slotsSection">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0" id="slotsTitle">Select Time Slot</h5>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="backToCalendarBtn">
-                    <i class="ti ti-arrow-left me-1"></i> Change Date
-                </button>
-            </div>
-            <div id="slotsContainer">
-                <!-- Time slots will be loaded here -->
-                    </div>
-            <div class="mt-3 d-none" id="slotsNextButton">
-                <button type="button" class="btn btn-primary w-100" id="nextToQuestionsFromSlotsBtn">
-                    Next: Answer Questions <i class="ti ti-arrow-right ms-1"></i>
-                </button>
-                </div>
-            </div>
-    
-        <!-- Questions Section -->
-        <div class="booking-card d-none" id="questionsSection">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Booking Questions</h5>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="backToSlotsBtn">
-                    <i class="ti ti-arrow-left me-1"></i> Change Time
-                </button>
-            </div>
-            <div id="questionsContainer">
-                <!-- Questions form will be loaded here -->
-        </div>
+    <!-- ══════════════════════════════════ -->
+    <!-- STEP 1: QUESTIONS (Typeform-style) -->
+    <!-- ══════════════════════════════════ -->
+    <div class="step-panel active" id="stepQuestions">
+      <div id="questionsMount"></div>
     </div>
-    
-        <!-- Payment Section -->
-        <div class="booking-card d-none" id="paymentSection">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Complete Payment</h5>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="backToQuestionsBtn">
-                    <i class="ti ti-arrow-left me-1"></i> Back to Questions
-                </button>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- STEP 2A: CALENDAR (no consultation)   -->
+    <!-- ══════════════════════════════════════ -->
+    <div class="step-panel" id="step2Calendar">
+      <button class="js-back-to-questions flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors" onclick="goToStep(1, true)"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to Questions</button>
+      <div class="cal-card">
+        <div class="flex flex-col md:flex-row">
+          <div class="flex-1 p-6 border-b md:border-b-0 md:border-r border-outline-variant/20">
+            <div class="flex items-center justify-between mb-5">
+              <button id="calPrev" class="p-1.5 rounded-lg hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-on-surface-variant">chevron_left</span></button>
+              <span class="font-bold text-base" id="calMonth"></span>
+              <button id="calNext" class="p-1.5 rounded-lg hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-on-surface-variant">chevron_right</span></button>
             </div>
-            <div id="paymentContainer">
-                <!-- Payment form will be loaded here -->
+            <div class="grid grid-cols-7 gap-1 text-center mb-2"><div class="text-xs font-semibold text-on-surface-variant py-1">Mon</div><div class="text-xs font-semibold text-on-surface-variant py-1">Tue</div><div class="text-xs font-semibold text-on-surface-variant py-1">Wed</div><div class="text-xs font-semibold text-on-surface-variant py-1">Thu</div><div class="text-xs font-semibold text-on-surface-variant py-1">Fri</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sat</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sun</div></div>
+            <div class="grid grid-cols-7 gap-1 justify-items-center" id="calGrid"></div>
+          </div>
+          <div class="md:w-[280px] p-6" id="timeSlotsPanel">
+            <div id="timeSlotsEmpty" class="flex flex-col items-center justify-center h-full min-h-[200px] text-center"><span class="material-symbols-outlined text-outline-variant text-4xl mb-2">calendar_today</span><p class="text-sm text-on-surface-variant">Select a date to see<br>available times</p></div>
+            <div id="timeSlotsContent" class="hidden slide-in-right">
+              <h3 class="font-bold text-base mb-1" id="selectedDateLabel">—</h3>
+              <p class="text-xs text-on-surface-variant mb-4">Choose a time slot</p>
+              <div class="space-y-2 max-h-[320px] overflow-y-auto pr-1" id="timeSlots"></div>
+              <p class="text-xs text-on-surface-variant mt-4 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">public</span> {{$userDetail->timezone}}</p>
             </div>
+          </div>
         </div>
-    </div>
-    
-    <!-- Booking Details Modal -->
-    <div class="modal fade" id="bookingDetailsModal" tabindex="-1" aria-labelledby="bookingDetailsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="bookingDetailsModalLabel">
-                        <i class="ti ti-info-circle me-2"></i>Booking Details
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="bookingDetailsContent">
-                    <!-- Details will be loaded here -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
+      </div>
+      <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
+        <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">{{$userDetail->studio_name}}</p>
+          <p class="text-xs text-on-surface-variant"> {{$userDetail->studio_address}} </p>
+          <a href="{{$userDetail->google_maps_link}}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
         </div>
+      </div>
+      <div id="confirmBar" class="hidden mt-6 bg-white rounded-2xl border border-primary/20 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+        <div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">event_available</span><span class="text-sm font-semibold" id="confirmBarText">—</span></div>
+        <button id="btnContinue" onclick="goToStep(3)" class="px-6 py-2.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-md shadow-primary/20 flex items-center gap-2">Continue <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>
+      </div>
     </div>
-    
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Dropify JS -->
-    <script src="https://cdn.jsdelivr.net/npm/dropify@0.2.2/dist/js/dropify.min.js"></script>
-    <!-- Stripe.js -->
-    <script src="https://js.stripe.com/v3/"></script>
-    
-    <script>
-        // CSRF Token for AJAX requests
-        const csrfToken = '{{ csrf_token() }}';
-        
-        // User data (if authenticated)
-        @auth
-        const currentUser = {
-            id: {{ auth()->id() }},
-            name: @json(auth()->user()->name),
-            email: @json(auth()->user()->email),
-            isAuthenticated: true
-        };
-        @else
-        const currentUser = {
-            isAuthenticated: false
-        };
-        @endauth
-        
-        // Consultation info from server
-        @php
-            $defaultConsultationInfo = [
-            'requires_consultation' => false,
-            'consultation_timing' => null,
-            'is_separate' => false,
-            'is_combined' => false,
-            'session_duration_minutes' => null,
-            'gap_required' => false,
-            'gap_value' => null,
-            'gap_unit' => null,
-            ];
-            $finalConsultationInfo = $consultationInfo ?? $defaultConsultationInfo;
-        @endphp
-        const consultationInfo = @json($finalConsultationInfo);
-        
-        // Booking flow state
-        let bookingFlowStep = consultationInfo.is_separate ? 'consultation' : 'tattoo_session'; // 'consultation', 'tattoo_session', 'questions', 'payment'
-        let selectedConsultationSlot = null;
-        let selectedTattooSessionSlot = null;
-        let minimumTattooSessionDate = null;
-        
-        // Availability data from server
-        @php
-            $weeklyAvailability = $availabilityData['weeklyAvailability'] ?? [];
-            $artistTimezone = $availabilityData['userTimezone'] ?? 'UTC';
-        @endphp
-        const availabilityData = {
-            availableDates: @json($availabilityData['availableDates'] ?? []),
-            unavailableDates: @json($availabilityData['unavailableDates'] ?? []),
-            weeklyAvailability: @json($weeklyAvailability),
-            overrides: @json($availabilityData['overrides'] ?? []),
-            artistTimezone: @json($artistTimezone),
-        };
-        
-        // Cache for slot availability checks (to avoid multiple API calls for same date)
-        const dateSlotAvailabilityCache = {
-            // Format: 'date-flow': { hasSlots: boolean, checking: boolean }
-            // Example: '2025-12-17-consultation': { hasSlots: true, checking: false }
-        };
-        
-        // Function to clear slot availability cache (useful when flow changes)
-        function clearSlotAvailabilityCache() {
-            Object.keys(dateSlotAvailabilityCache).forEach(key => delete dateSlotAvailabilityCache[key]);
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- STEP 2B: CALENDAR + CONSULTATION            -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="step-panel" id="step2CalendarConsult">
+      <button class="js-back-to-questions flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors" onclick="goToStep(1, true)"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to Questions</button>
+      <!-- Consultation banner -->
+      <div class="bg-gradient-to-r from-primary/5 to-secondary-container/30 rounded-2xl border border-primary/10 p-5 mb-6">
+        <div class="flex items-start gap-3">
+          <span class="material-symbols-outlined text-primary text-2xl mt-0.5">video_camera_front</span>
+          <div>
+            <h3 class="text-base font-bold text-on-surface mb-1"><span class="cc-artistName">Julian Ink</span> includes a free consultation before your tattoo session</h3>
+            <p class="text-sm text-on-surface-variant">You'll have a 15-minute call to discuss your design, placement, and any questions.</p>
+          </div>
+        </div>
+      </div>
+      <!-- Consultation type selector -->
+      <div class="mb-6" id="ccTypeSection">
+        <h3 class="text-lg font-bold text-on-surface mb-1">How would you like to have your consultation?</h3>
+        <p class="text-sm text-on-surface-variant mb-4">Choose the format that works best for you.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="ccConsultTypeCards">
+          <div class="consult-type-card" data-type="video" onclick="selectConsultType(this,'video')">
+            <div class="ct-icon mb-3"><span class="material-symbols-outlined">videocam</span></div>
+            <h4 class="font-bold text-sm text-on-surface mb-0.5">📹 Video Call</h4>
+            <p class="text-xs text-on-surface-variant">15-minute call on Inkjin</p>
+            <p class="text-xs text-on-surface-variant mt-1">Convenient — join from anywhere</p>
+          </div>
+          <div class="consult-type-card" data-type="phone" onclick="selectConsultType(this,'phone')">
+            <div class="ct-icon mb-3"><span class="material-symbols-outlined">call</span></div>
+            <h4 class="font-bold text-sm text-on-surface mb-0.5">📞 Phone Call</h4>
+            <p class="text-xs text-on-surface-variant">15-minute phone consultation</p>
+            <p class="text-xs text-on-surface-variant mt-1">Quick and easy</p>
+          </div>
+          <div class="consult-type-card" data-type="studio" onclick="selectConsultType(this,'studio')">
+            <div class="ct-icon mb-3"><span class="material-symbols-outlined">storefront</span></div>
+            <h4 class="font-bold text-sm text-on-surface mb-0.5">🏠 In-Studio Visit</h4>
+            <p class="text-xs text-on-surface-variant">Visit <span class="cc-studioName">Black Lotus Studio</span> in person</p>
+            <p class="text-xs text-on-surface-variant mt-1">Meet your artist and see the space</p>
+            <p class="text-xs text-primary font-medium mt-1 cc-studioAddress">Athens, Greece</p>
+          </div>
+        </div>
+        <p id="ccConsultTypeError" class="hidden text-sm text-error mt-3">Please select a consultation type before continuing.</p>
+      </div>
+      <!-- Section 1: Schedule Consultation (hidden until type selected) -->
+      <div id="ccConsultSection" class="mb-6 hidden">
+        <div class="flex items-center gap-2 mb-1"><span class="text-lg" id="ccConsultEmoji">📹</span><h3 class="text-lg font-bold text-on-surface" id="ccConsultTitle">Schedule Your Consultation</h3></div>
+        <p class="text-sm text-on-surface-variant mb-4" id="ccConsultSubtitle">15-minute video call on Inkjin</p>
+        <div class="cal-card mb-4">
+          <div class="flex flex-col md:flex-row">
+            <div class="flex-1 p-6 border-b md:border-b-0 md:border-r border-outline-variant/20">
+              <div class="flex items-center justify-between mb-5">
+                <button class="p-1.5 rounded-lg hover:bg-surface-container transition-colors" onclick="ccCalNav(-1)"><span class="material-symbols-outlined text-on-surface-variant">chevron_left</span></button>
+                <span class="font-bold text-base" id="ccCalMonth"></span>
+                <button class="p-1.5 rounded-lg hover:bg-surface-container transition-colors" onclick="ccCalNav(1)"><span class="material-symbols-outlined text-on-surface-variant">chevron_right</span></button>
+              </div>
+              <div class="grid grid-cols-7 gap-1 text-center mb-2"><div class="text-xs font-semibold text-on-surface-variant py-1">Mon</div><div class="text-xs font-semibold text-on-surface-variant py-1">Tue</div><div class="text-xs font-semibold text-on-surface-variant py-1">Wed</div><div class="text-xs font-semibold text-on-surface-variant py-1">Thu</div><div class="text-xs font-semibold text-on-surface-variant py-1">Fri</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sat</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sun</div></div>
+              <div class="grid grid-cols-7 gap-1 justify-items-center" id="ccCalGrid"></div>
+            </div>
+            <div class="md:w-[280px] p-6">
+              <div id="ccTimeSlotsEmpty" class="flex flex-col items-center justify-center h-full min-h-[200px] text-center"><span class="material-symbols-outlined text-outline-variant text-4xl mb-2">calendar_today</span><p class="text-sm text-on-surface-variant">Select a date to see<br>available times</p></div>
+              <div id="ccTimeSlotsContent" class="hidden slide-in-right">
+                <h3 class="font-bold text-base mb-1" id="ccSelectedDateLabel">—</h3>
+                <p class="text-xs text-on-surface-variant mb-4">Choose a time (15 min slots)</p>
+                <div class="space-y-2 max-h-[300px] overflow-y-auto" id="ccTimeSlots"></div>
+                <p class="text-xs text-on-surface-variant mt-4 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">public</span> Central European Time (CET)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="ccConsultChip" class="hidden mb-2"><div class="confirm-chip" id="ccConsultChipText">📹 Consultation: —</div></div>
+      </div>
+      <!-- Section 2: Schedule Tattoo (disabled until consultation picked) -->
+      <div id="ccTattooSection" class="mb-6 hidden">
+        <div class="flex items-center gap-2 mb-1"><span class="text-lg">🎨</span><h3 class="text-lg font-bold text-on-surface">Schedule Your Tattoo Session</h3></div>
+        <p class="text-sm text-on-surface-variant mb-4">Choose a date after your consultation</p>
+        <div id="ccTattooCalWrap">
+          <div class="cal-card mb-4">
+            <div class="flex flex-col md:flex-row">
+              <div class="flex-1 p-6 border-b md:border-b-0 md:border-r border-outline-variant/20">
+                <div class="flex items-center justify-between mb-5">
+                  <button class="p-1.5 rounded-lg hover:bg-surface-container transition-colors" onclick="ccTatCalNav(-1)"><span class="material-symbols-outlined text-on-surface-variant">chevron_left</span></button>
+                  <span class="font-bold text-base" id="ccTatCalMonth"></span>
+                  <button class="p-1.5 rounded-lg hover:bg-surface-container transition-colors" onclick="ccTatCalNav(1)"><span class="material-symbols-outlined text-on-surface-variant">chevron_right</span></button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center mb-2"><div class="text-xs font-semibold text-on-surface-variant py-1">Mon</div><div class="text-xs font-semibold text-on-surface-variant py-1">Tue</div><div class="text-xs font-semibold text-on-surface-variant py-1">Wed</div><div class="text-xs font-semibold text-on-surface-variant py-1">Thu</div><div class="text-xs font-semibold text-on-surface-variant py-1">Fri</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sat</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sun</div></div>
+                <div class="grid grid-cols-7 gap-1 justify-items-center" id="ccTatCalGrid"></div>
+              </div>
+              <div class="md:w-[280px] p-6">
+                <div id="ccTatTimeSlotsEmpty" class="flex flex-col items-center justify-center h-full min-h-[200px] text-center"><span class="material-symbols-outlined text-outline-variant text-4xl mb-2">calendar_today</span><p class="text-sm text-on-surface-variant">Select a date to see<br>available times</p></div>
+                <div id="ccTatTimeSlotsContent" class="hidden slide-in-right">
+                  <h3 class="font-bold text-base mb-1" id="ccTatSelectedDateLabel">—</h3>
+                  <p class="text-xs text-on-surface-variant mb-4">Choose a time slot</p>
+                  <div class="space-y-2 max-h-[300px] overflow-y-auto pr-1" id="ccTatTimeSlots"></div>
+                  <p class="text-xs text-on-surface-variant mt-4 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">public</span> Central European Time (CET)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="ccTattooChip" class="hidden mb-2"><div class="confirm-chip" id="ccTattooChipText">🎨 Tattoo Session: —</div></div>
+        </div>
+      </div>
+      <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
+        <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">Ink & Soul Tattoo Studio</p>
+          <p class="text-xs text-on-surface-variant">742 Evergreen Terrace, Athens, 10001, Greece</p>
+          <a href="https://maps.google.com/?q=Ink+Soul+Tattoo+Studio+Athens" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+        </div>
+      </div>
+      <!-- Bottom summary -->
+      <div id="ccBottomSummary" class="hidden mt-4 bg-white rounded-2xl border border-primary/20 p-5 shadow-sm">
+        <div class="space-y-2 mb-4">
+          <p class="text-sm font-semibold" id="ccSumConsult">📹 Consultation: —</p>
+          <p class="text-sm font-semibold" id="ccSumTattoo">🎨 Tattoo Session: —</p>
+        </div>
+        <button onclick="goToStep(3)" class="w-full py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-md shadow-primary/20 flex items-center justify-center gap-2">Continue to Registration <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- STEP 2C: MANAGED (no consultation)      -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="step-panel" id="step2Managed">
+      <button class="js-back-to-questions flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors" onclick="goToStep(1, true)"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to Questions</button>
+      <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
+        <div class="mb-6">
+          <h3 class="text-xl font-bold text-on-surface mb-1">When are you available?</h3>
+          <p class="text-sm text-on-surface-variant"><span id="managedArtistHint">Julian Ink</span> will confirm a time that works for both of you.</p>
+        </div>
+        <div id="prefBlocks" class="space-y-4 mb-6">
+          <div class="pref-block" data-pref="0">
+            <p class="text-xs font-bold text-primary uppercase tracking-wider mb-3">Preference 1 <span class="text-error">*</span></p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
+              <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div>
+            </div>
+          </div>
+          <div class="pref-block" data-pref="1">
+            <p class="text-xs font-bold text-primary uppercase tracking-wider mb-3">Preference 2 <span class="text-error">*</span></p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
+              <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div>
+            </div>
+          </div>
+        </div>
+        <button id="addPrefBtn" onclick="addPreference()" class="text-sm text-primary font-semibold flex items-center gap-1 hover:underline mb-6"><span class="material-symbols-outlined text-[18px]">add</span> Add another preference</button>
+        <div class="space-y-4">
+          <div><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Preferred days of the week</label><div class="flex flex-wrap gap-1.5" id="dayPills"><button class="day-pill" data-value="Mon" onclick="this.classList.toggle('selected')">Mon</button><button class="day-pill" data-value="Tue" onclick="this.classList.toggle('selected')">Tue</button><button class="day-pill" data-value="Wed" onclick="this.classList.toggle('selected')">Wed</button><button class="day-pill" data-value="Thu" onclick="this.classList.toggle('selected')">Thu</button><button class="day-pill" data-value="Fri" onclick="this.classList.toggle('selected')">Fri</button><button class="day-pill" data-value="Sat" onclick="this.classList.toggle('selected')">Sat</button><button class="day-pill" data-value="Sun" onclick="this.classList.toggle('selected')">Sun</button></div></div>
+          <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Any dates to avoid?</label><input type="text" id="managedAvoid" placeholder="e.g., April 10-15, May 1st" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
+          <div><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How flexible are you?</label><div class="flex flex-wrap gap-2" id="flexPills"><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="Very flexible" onclick="selectPill(this,'flexPills')">Very flexible</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="Somewhat flexible" onclick="selectPill(this,'flexPills')">Somewhat flexible</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="These are my only options" onclick="selectPill(this,'flexPills')">These are my only options</button></div></div>
+          <div><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Urgency</label><div class="flex flex-wrap gap-2" id="urgencyPills"><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="No rush" onclick="selectPill(this,'urgencyPills')">No rush</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="Within 2 weeks" onclick="selectPill(this,'urgencyPills')">Within 2 weeks</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="Within a month" onclick="selectPill(this,'urgencyPills')">Within a month</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="ASAP" onclick="selectPill(this,'urgencyPills')">ASAP</button></div></div>
+        </div>
+      </div>
+      <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
+        <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">Ink & Soul Tattoo Studio</p>
+          <p class="text-xs text-on-surface-variant">742 Evergreen Terrace, Athens, 10001, Greece</p>
+          <a href="https://maps.google.com/?q=Ink+Soul+Tattoo+Studio+Athens" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+        </div>
+      </div>
+      <button onclick="goToStep(3)" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm mt-4">Continue to Your Details</button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- STEP 2D: MANAGED + CONSULTATION             -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="step-panel" id="step2ManagedConsult">
+      <button class="js-back-to-questions flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors" onclick="goToStep(1, true)"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to Questions</button>
+      <!-- Design card -->
+      <!-- Consultation banner -->
+      <div class="bg-gradient-to-r from-primary/5 to-secondary-container/30 rounded-2xl border border-primary/10 p-5 mb-6">
+        <div class="flex items-start gap-3">
+          <span class="material-symbols-outlined text-primary text-2xl mt-0.5">video_camera_front</span>
+          <div>
+            <h3 class="text-base font-bold text-on-surface mb-1"><span class="mc-artistName">Julian Ink</span> includes a free consultation before your tattoo session</h3>
+            <p class="text-sm text-on-surface-variant">You'll have a 15-minute call to discuss your design, placement, and any questions.</p>
+          </div>
+        </div>
+      </div>
+      <!-- Consultation type selector -->
+      <div class="mb-6">
+        <h3 class="text-lg font-bold text-on-surface mb-1">How would you like to have your consultation?</h3>
+        <p class="text-sm text-on-surface-variant mb-4">Choose the format that works best for you.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="mcConsultTypeCards">
+          <div class="consult-type-card" data-type="video" onclick="selectMcConsultType(this,'video')"><div class="ct-icon mb-3"><span class="material-symbols-outlined">videocam</span></div><h4 class="font-bold text-sm text-on-surface mb-0.5">📹 Video Call</h4><p class="text-xs text-on-surface-variant">15-minute call on Inkjin</p><p class="text-xs text-on-surface-variant mt-1">Convenient — join from anywhere</p></div>
+          <div class="consult-type-card" data-type="phone" onclick="selectMcConsultType(this,'phone')"><div class="ct-icon mb-3"><span class="material-symbols-outlined">call</span></div><h4 class="font-bold text-sm text-on-surface mb-0.5">📞 Phone Call</h4><p class="text-xs text-on-surface-variant">15-minute phone consultation</p><p class="text-xs text-on-surface-variant mt-1">Quick and easy</p></div>
+          <div class="consult-type-card" data-type="studio" onclick="selectMcConsultType(this,'studio')"><div class="ct-icon mb-3"><span class="material-symbols-outlined">storefront</span></div><h4 class="font-bold text-sm text-on-surface mb-0.5">🏠 In-Studio Visit</h4><p class="text-xs text-on-surface-variant">Visit <span class="mc-studioName">Black Lotus Studio</span> in person</p><p class="text-xs text-on-surface-variant mt-1">Meet your artist and see the space</p><p class="text-xs text-primary font-medium mt-1 mc-studioAddress">Athens, Greece</p></div>
+        </div>
+      </div>
+      <!-- Single availability block (shown after type selected) -->
+      <div id="mcAvailSection" class="hidden">
+        <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
+          <div class="mb-6"><h3 class="text-xl font-bold text-on-surface mb-1">Share your availability</h3><p class="text-sm text-on-surface-variant"><span class="mc-artistName">Julian Ink</span> will schedule both your consultation and tattoo session.</p></div>
+          <div id="mcPrefBlocks" class="space-y-4 mb-6">
+            <div class="pref-block" data-pref="0">
+              <p class="text-xs font-bold text-primary uppercase tracking-wider mb-3">Preference 1 <span class="text-error">*</span></p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="mc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div></div>
+            </div>
+            <div class="pref-block" data-pref="1">
+              <p class="text-xs font-bold text-primary uppercase tracking-wider mb-3">Preference 2 <span class="text-error">*</span></p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="mc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div></div>
+            </div>
+          </div>
+          <button id="mcAddPrefBtn" onclick="addMcPreference()" class="text-sm text-primary font-semibold flex items-center gap-1 hover:underline mb-6"><span class="material-symbols-outlined text-[18px]">add</span> Add another preference</button>
+          <div class="space-y-4">
+            <div><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Preferred days of the week</label><div class="flex flex-wrap gap-1.5" id="mcDayPills"><button class="day-pill" data-value="Mon" onclick="this.classList.toggle('selected')">Mon</button><button class="day-pill" data-value="Tue" onclick="this.classList.toggle('selected')">Tue</button><button class="day-pill" data-value="Wed" onclick="this.classList.toggle('selected')">Wed</button><button class="day-pill" data-value="Thu" onclick="this.classList.toggle('selected')">Thu</button><button class="day-pill" data-value="Fri" onclick="this.classList.toggle('selected')">Fri</button><button class="day-pill" data-value="Sat" onclick="this.classList.toggle('selected')">Sat</button><button class="day-pill" data-value="Sun" onclick="this.classList.toggle('selected')">Sun</button></div></div>
+            <div><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How flexible are you?</label><div class="flex flex-wrap gap-2" id="mcFlexPills"><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="Very flexible" onclick="selectPill(this,'mcFlexPills')">Very flexible</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="Somewhat flexible" onclick="selectPill(this,'mcFlexPills')">Somewhat flexible</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="These are my only options" onclick="selectPill(this,'mcFlexPills')">These are my only options</button></div></div>
+            <div><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How soon after the consultation would you like your tattoo session?</label><div class="flex flex-wrap gap-2" id="mcGapPills"><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="Same week" onclick="selectPill(this,'mcGapPills')">Same week</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="1-2 weeks after" onclick="selectPill(this,'mcGapPills')">1-2 weeks after</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="2-4 weeks after" onclick="selectPill(this,'mcGapPills')">2-4 weeks after</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="I'm flexible" onclick="selectPill(this,'mcGapPills')">I'm flexible</button></div></div>
+          </div>
+        </div>
+        <div class="bg-surface-container-low rounded-2xl border border-outline-variant/20 p-5 mb-6">
+          <p class="text-sm text-on-surface-variant mb-3"><span class="mc-artistName">Julian Ink</span> will review your availability and schedule:</p>
+          <div class="space-y-2 mb-1">
+            <p class="text-sm font-semibold text-on-surface" id="mcSumLine1">📹 A consultation (Video Call)</p>
+            <p class="text-sm font-semibold text-on-surface">🎨 Your tattoo session</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
+          <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+          <div>
+            <p class="text-sm font-semibold text-on-surface">Ink & Soul Tattoo Studio</p>
+            <p class="text-xs text-on-surface-variant">742 Evergreen Terrace, Athens, 10001, Greece</p>
+            <a href="https://maps.google.com/?q=Ink+Soul+Tattoo+Studio+Athens" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+          </div>
+        </div>
+        <button onclick="goToStep(3)" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm flex items-center justify-center gap-2 mt-4">Continue <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════ -->
+    <!-- STEP 3: REGISTER / LOGIN   -->
+    <!-- ═══════════════════════════ -->
+    <div class="step-panel" id="stepRegister">
+      <button class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors" onclick="goToStep(2, true)"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
+      <!-- Name -->
+      <div class="question-div active" data-reg="0" id="reg-0">
+        <div class="w-full max-w-xl mx-auto">
+          <p class="text-sm font-semibold text-primary mb-2">1 →</p>
+          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your name?</h2>
+          <p class="text-on-surface-variant mb-6">So the artist knows who to expect.</p>
+          <input type="text" id="bdName" placeholder="Your full name" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="bdNameError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          <div class="flex items-center justify-between mt-6"><button onclick="nextReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button><span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span></div>
+        </div>
+      </div>
+      <!-- Email -->
+      <div class="question-div" data-reg="1" id="reg-1">
+        <div class="w-full max-w-xl mx-auto">
+          <button onclick="prevReg()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
+          <p class="text-sm font-semibold text-primary mb-2">2 →</p>
+          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your email?</h2>
+          <p class="text-on-surface-variant mb-6">We'll send your booking confirmation here.</p>
+          <input type="email" id="bdEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="bdEmailError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          <div class="flex items-center justify-between mt-6"><button onclick="nextReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button><span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span></div>
+        </div>
+      </div>
+      <!-- Phone -->
+      <div class="question-div" data-reg="2" id="reg-2">
+        <div class="w-full max-w-xl mx-auto">
+          <button onclick="prevReg()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
+          <p class="text-sm font-semibold text-primary mb-2">3 →</p>
+          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Your phone number?</h2>
+          <p class="text-on-surface-variant mb-6">In case the artist needs to reach you.</p>
+          <input type="tel" id="bdPhone" placeholder="+30 694 123 4567" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="bdPhoneError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          <div class="flex items-center justify-between mt-6"><button onclick="nextReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button><span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span></div>
+        </div>
+      </div>
+      <!-- Auth -->
+      <div class="question-div" data-reg="3" id="reg-3">
+        <div class="w-full max-w-md mx-auto">
+          <div id="bdAuthCreate">
+            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We will send a secure 4-digit code to connect your booking.</p></div>
+            <div class="mb-4">
+              <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpEmail">Email</label>
+              <input type="email" id="bdOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
+            </div>
+            <p id="bdOtpStatus" class="hidden items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3"></p>
+            <div class="mb-4">
+              <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpCode">4-digit code</label>
+              <input type="text" id="bdOtpCode" maxlength="4" inputmode="numeric" placeholder="1234" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p id="bdOtpError" class="text-sm text-error mt-2 hidden">Please enter a valid 4-digit code.</p>
+            </div>
+            <div class="mb-5">
+              <label class="text-sm font-semibold text-on-surface-variant ml-1" for="bd_referral_source">How did you hear about us? <span class="text-xs text-on-surface-variant font-normal">(optional)</span></label>
+              <select id="bd_referral_source" name="referral_source" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1.5">
+                <option value="">Select...</option>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+                <option value="google">Google Search</option>
+                <option value="friend">Friend / Referral</option>
+                <option value="convention">Tattoo Convention</option>
+                <option value="blog">Blog / Article</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <button id="bdSendOtpBtn" onclick="sendBookingOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Send email code</button>
+              <button id="bdVerifyOtpBtn" onclick="verifyBookingOtp()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Verify & Continue</button>
+            </div>
+            <p id="bdConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
+            <div class="flex items-center gap-3 mb-4"><div class="flex-1 h-px bg-outline-variant/30"></div><span class="text-sm text-on-surface-variant">or</span><div class="flex-1 h-px bg-outline-variant/30"></div></div>
+            <div class="space-y-2 mb-5 hidden">
+              <button class="social-btn" onclick="finishRegister()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google</button>
+              <button class="social-btn" onclick="finishRegister()"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Continue with Apple</button>
+            </div>
+            <p class="text-center text-sm text-on-surface-variant">Email verified once will stay connected for this booking session.</p>
+          </div>
+          <div id="bdAuthLogin" class="hidden">
+            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">waving_hand</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Welcome back!</h2><p class="text-on-surface-variant">Log in to continue with your booking.</p></div>
+            <div class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-3 mb-5"><span class="material-symbols-outlined text-primary text-[18px]">mail</span><span class="text-sm text-on-surface" id="bdAuthLoginEmail">you@example.com</span><span class="material-symbols-outlined text-green-500 text-[16px] ml-auto">check_circle</span></div>
+            <div class="mb-5"><input type="password" id="bdLoginPassword" placeholder="Enter your password" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
+            <button onclick="finishRegister()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">Log In & Continue</button>
+            <p class="text-center text-sm text-primary font-medium cursor-pointer mb-5">Forgot password?</p>
+            <div class="flex items-center gap-3 mb-4"><div class="flex-1 h-px bg-outline-variant/30"></div><span class="text-sm text-on-surface-variant">or</span><div class="flex-1 h-px bg-outline-variant/30"></div></div>
+            <div class="space-y-2 mb-5">
+              <button class="social-btn" onclick="finishRegister()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google</button>
+              <button class="social-btn" onclick="finishRegister()"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Continue with Apple</button>
+            </div>
+            <p class="text-center text-sm text-on-surface-variant">Don't have an account? <span class="auth-toggle" onclick="toggleBdAuth()">Sign up</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ -->
+    <!-- STEP 4: PAYMENT    -->
+    <!-- ═══════════════════ -->
+    <div class="step-panel" id="stepPayment">
+      <button class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-6 transition-colors" onclick="goToStep(3, true)"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
+      <!-- Calendar mode payment -->
+      <div id="paymentCalendarMode">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <div class="lg:w-[340px] lg:order-2">
+            <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 lg:sticky lg:top-24">
+              <h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">Booking Summary</h3>
+              <div class="space-y-3 text-sm">
+                <div class="flex justify-between"><span class="text-on-surface-variant">Design</span><span class="font-semibold" id="payDesign">—</span></div>
+                <div class="flex justify-between"><span class="text-on-surface-variant">Artist</span><span class="font-semibold" id="payArtist">—</span></div>
+                <div class="flex justify-between hidden" id="payConsultRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold" id="payConsultDateTime">—</span></div>
+                <div class="flex justify-between"><span class="text-on-surface-variant" id="payDateTimeLabel">Date & Time</span><span class="font-semibold" id="payDateTime">—</span></div>
+                <div class="flex justify-between"><span class="text-on-surface-variant">Placement</span><span class="font-semibold" id="payPlacement">—</span></div>
+                <div class="flex justify-between"><span class="text-on-surface-variant">Size</span><span class="font-semibold" id="paySize">—</span></div>
+                <div class="flex justify-between"><span class="text-on-surface-variant">Location</span><span class="font-semibold text-xs text-right">Ink & Soul Studio, Athens</span></div>
+              </div>
+              <hr class="border-outline-variant/20 my-4">
+              <div class="space-y-2 text-sm mb-3"><div class="flex justify-between"><span class="font-semibold text-on-surface">Price Estimate</span><span class="font-semibold text-on-surface" id="payPriceEstimate">—</span></div></div>
+              <div class="bg-surface-container-low rounded-xl p-3 mb-3">
+                <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due Now</p>
+                <div class="space-y-1.5 text-sm">
+                  <div class="flex justify-between hidden" id="payConsultFeeRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold text-green-600">Free</span></div>
+                  <div class="flex justify-between"><span class="text-on-surface-variant">Deposit (30%)</span><span class="font-semibold" id="payDeposit">—</span></div>
+                  <div class="flex justify-between items-center"><span class="text-on-surface-variant flex items-center gap-1">Inkjin Booking Fee <span class="info-tooltip"><span class="material-symbols-outlined text-[14px] text-outline">info</span><span class="tooltip-text">This fee helps us maintain the platform, provide secure payments, and offer customer support.</span></span></span><span class="font-semibold">€10</span></div>
+                  <hr class="border-outline-variant/20">
+                  <div class="flex justify-between"><span class="font-bold text-on-surface">Total Due Now</span><span class="font-bold text-primary text-lg" id="payTotal">—</span></div>
+                </div>
+              </div>
+              <div class="bg-surface-container-low rounded-xl p-3"><p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due at Studio</p><div class="space-y-1.5 text-sm"><div class="flex justify-between"><span class="text-on-surface-variant">Remaining Balance</span><span class="font-semibold" id="payBalance">—</span></div><p class="text-xs text-on-surface-variant italic mt-1">If you get this design as-is (original size, no modifications), expect to pay the minimum. Final price confirmed by the artist based on size, placement, and any customizations.</p></div></div>
+            </div>
+          </div>
+          <div class="flex-1 lg:order-1">
+            <h2 class="text-xl font-bold mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[22px] text-primary">lock</span> Secure Payment</h2>
+            <p class="text-sm text-on-surface-variant mb-6">Your payment is securely processed. You won't be charged until you confirm.</p>
+            <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
+              <div class="space-y-4">
+                <div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Card Number</label><div class="relative"><input type="text" id="inputCard" placeholder="•••• •••• •••• ••••" maxlength="19" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 pr-24 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 tracking-widest font-mono"><div class="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1"><span class="card-type-icon" id="iconVisa">VISA</span><span class="card-type-icon" id="iconMC">MC</span><span class="card-type-icon" id="iconAmex">AMEX</span></div></div></div>
+                <div class="grid grid-cols-2 gap-4"><div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Expiry</label><input type="text" id="inputExpiry" placeholder="MM / YY" maxlength="7" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">CVV</label><input type="text" id="inputCVV" placeholder="•••" maxlength="4" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"></div></div>
+                <div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Cardholder Name</label><input type="text" id="inputCardName" placeholder="Name on card" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
+                <p class="text-xs text-on-surface-variant flex items-center gap-2">Accepted: <strong>Visa</strong> · <strong>Mastercard</strong> · <strong>Amex</strong></p>
+              </div>
+              <label class="flex items-center gap-2 mt-5 cursor-pointer"><input type="checkbox" id="saveCard" class="accent-primary"><span class="text-sm text-on-surface-variant">Save this card for future bookings</span></label>
+            </div>
+            <div class="flex items-center gap-3 mb-6"><div class="flex-1 h-px bg-outline-variant/30"></div><span class="text-sm text-on-surface-variant font-medium">— or pay with —</span><div class="flex-1 h-px bg-outline-variant/30"></div></div>
+            <div class="space-y-3 mb-6">
+              <button id="applePayBtn" class="w-full py-3.5 rounded-xl font-bold text-white bg-black hover:bg-gray-800 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm" style="display:none;"><svg class="w-5 h-5" fill="white" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Pay with  Pay</button>
+              <button id="googlePayBtn" class="w-full py-3.5 rounded-xl font-bold text-on-surface bg-white border-2 border-outline-variant/40 hover:border-outline-variant hover:bg-surface-container-low transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Pay with Google Pay</button>
+            </div>
+            <div class="rounded-2xl border border-[#FFB3C7]/40 bg-gradient-to-br from-[#FFF0F5] to-[#FFE8EF] p-5 mb-6">
+              <div class="flex items-center gap-2 mb-2"><span class="text-lg font-extrabold text-[#17120F]">Klarna.</span><span class="text-xs font-semibold text-[#17120F]/60 bg-[#FFB3C7]/30 px-2 py-0.5 rounded-full">Buy now, pay later</span></div>
+              <p class="text-sm font-semibold text-[#17120F] mb-1">Pay in 3 interest-free installments</p>
+              <p class="text-lg font-bold text-[#17120F] mb-1" id="klarnaAmount">3 payments of €XX.XX/mo</p>
+              <p class="text-xs text-[#17120F]/70 mb-4">No interest. No fees. Split your payment automatically.</p>
+              <button class="w-full py-3 rounded-xl font-bold text-[#17120F] bg-[#FFB3C7] hover:bg-[#FF9CB8] transition-colors text-sm shadow-sm">Select Klarna</button>
+              <p class="text-[10px] text-[#17120F]/50 text-center mt-2">You'll be redirected to Klarna to complete your payment</p>
+              <p class="text-[10px] text-[#17120F]/40 text-center">Subject to approval. 18+ only.</p>
+            </div>
+            <div class="bg-surface-container-low rounded-2xl border border-outline-variant/20 mb-4" id="cancellationPolicySection">
+              <button onclick="toggleCancellationPolicy()" class="w-full flex items-center justify-between p-4 text-left"><span class="text-sm font-semibold text-on-surface flex items-center gap-2">📋 Cancellation Policy</span><span class="material-symbols-outlined text-on-surface-variant text-[20px] transition-transform" id="cancPolicyArrow" style="transition: transform 0.2s ease;">expand_more</span></button>
+              <div class="hidden px-4 pb-4" id="cancellationPolicyContent"><div class="text-sm text-on-surface-variant space-y-1.5"><p class="font-semibold text-on-surface mb-2">Artist's Cancellation Policy:</p><p>• Full refund if canceled up to 48 hours before your appointment</p><p>• No refund if canceled less than 48 hours before your appointment</p><p>• The artist allows you to reschedule your appointment once</p><p>• No-shows forfeit the full deposit</p></div></div>
+            </div>
+            <label class="flex items-start gap-2 mb-4 cursor-pointer"><input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary" onchange="checkPayReady()"><span class="text-xs text-on-surface-variant">I agree to the <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">cancellation policy</a> and <a href="#" class="text-primary underline">terms of service</a>.</span></label>
+            <p class="text-sm text-error hidden mb-3" id="formError"></p>
+            <button id="btnConfirmPay" disabled onclick="confirmBooking()" class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all text-base shadow-lg shadow-primary/20">Confirm & Pay <span id="btnPayTotalAmount">€250</span></button>
+          </div>
+        </div>
+      </div>
+      <!-- Managed mode -->
+      <div id="paymentManagedMode" class="hidden">
+        <div class="max-w-xl mx-auto text-center py-12">
+          <span class="material-symbols-outlined text-primary text-5xl mb-4">info</span>
+          <h2 class="text-2xl font-bold text-on-surface mb-3">No payment required yet</h2>
+          <p class="text-on-surface-variant mb-8">You'll be asked to pay a deposit once <strong id="payManagedArtist">Julian Ink</strong> confirms your appointment.</p>
+          <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 mb-8 text-left" id="managedReview"></div>
+          <button onclick="confirmBooking()" class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Submit Booking Request</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ -->
+    <!-- STEP 5: CONFIRMATION   -->
+    <!-- ═══════════════════════ -->
+    <div class="step-panel" id="stepConfirmation">
+      <div class="flex flex-col items-center justify-center py-16" id="processingView"><div class="spinner mb-4"></div><p class="text-sm text-on-surface-variant" id="processingText">Processing your payment…</p></div>
+      <!-- Calendar confirmation -->
+      <div class="hidden" id="confirmationCalendar">
+        <div class="flex justify-center mb-6"><svg width="80" height="80" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="36" stroke="#310f7a" stroke-width="3" fill="none" class="check-circle"/><path d="M24 42 L34 52 L56 30" stroke="#310f7a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="check-mark"/></svg></div>
+        <h2 class="text-2xl font-extrabold text-center mb-2">Booking Confirmed!</h2>
+        <p class="text-sm text-on-surface-variant text-center mb-8">Your deposit has been received and your appointment is secured.</p>
+        <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 mb-8">
+          <div class="space-y-2.5 text-sm">
+            <div class="flex justify-between"><span class="text-on-surface-variant">Booking Ref</span><span class="font-bold text-primary" id="confRef">#INK-000000</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Design</span><span class="font-semibold" id="confDesign">—</span></div>
+            <div class="flex justify-between hidden" id="confConsultRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold" id="confConsultDateTime">—</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant" id="confDateTimeLabel">Date & Time</span><span class="font-semibold" id="confDateTime">—</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Artist</span><span class="font-semibold" id="confArtist">—</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Studio</span><span class="font-semibold" id="confStudio">—</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Location</span><span class="font-semibold">Ink & Soul Studio</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant"></span><span class="text-xs text-on-surface-variant">742 Evergreen Terrace, Athens, 10001, Greece</span></div>
+            <div class="flex justify-between"><span></span><a href="https://maps.google.com/?q=Ink+Soul+Tattoo+Studio+Athens" target="_blank" class="text-xs text-primary font-medium hover:underline">Get Directions →</a></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Placement</span><span class="font-semibold" id="confPlacement">—</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Size</span><span class="font-semibold" id="confSize">—</span></div>
+            <hr class="border-outline-variant/20">
+            <div class="flex justify-between"><span class="text-on-surface-variant">Price Estimate</span><span class="font-semibold" id="confPriceEstimate">—</span></div>
+            <div class="flex justify-between hidden" id="confConsultFeeRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold text-green-600">Free</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Deposit (30%)</span><span class="font-semibold" id="confDeposit">—</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Inkjin Booking Fee</span><span class="font-semibold">€10</span></div>
+            <div class="flex justify-between"><span class="font-bold text-on-surface">Total Paid</span><span class="font-bold text-primary" id="confTotalPaid">—</span></div>
+            <hr class="border-outline-variant/10">
+            <div class="flex justify-between"><span class="text-on-surface-variant">Remaining Balance</span><span class="font-semibold" id="confBalance">—</span></div>
+            <p class="text-xs text-on-surface-variant italic">If you get this design as-is (original size, no modifications), expect to pay the minimum. Final price confirmed by the artist based on size, placement, and any customizations.</p>
+          </div>
+          <div class="mt-3 pt-3 border-t border-outline-variant/20"><a href="javascript:void(0)" onclick="scrollToCancellationPolicy()" class="text-xs text-primary font-medium hover:underline">View cancellation policy →</a></div>
+        </div>
+        <div class="bg-surface-container-low rounded-2xl p-5 mb-8">
+          <h3 class="text-sm font-bold mb-3">What's next?</h3>
+          <ul class="space-y-2 text-sm text-on-surface-variant" id="confWhatsNext">
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> You'll receive a confirmation email</li>
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> The artist may reach out about design details</li>
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Arrive 10 minutes early on your appointment day</li>
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Remember to bring a valid photo ID</li>
+          </ul>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <a href="#" class="flex-1 py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm text-center">View My Booking</a>
+          <a href="artist-page.html" class="flex-1 py-3.5 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">Back to Artist Page</a>
+        </div>
+      </div>
+      <!-- Managed confirmation -->
+      <div class="hidden" id="confirmationManaged">
+        <div class="flex justify-center mb-6"><svg width="80" height="80" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="36" stroke="#22c55e" stroke-width="3" fill="none" class="check-circle"/><path d="M24 42 L34 52 L56 30" stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="check-mark"/></svg></div>
+        <h2 class="text-2xl font-extrabold text-center mb-2" id="confManagedTitle">Availability Submitted! 🎉</h2>
+        <p class="text-sm text-on-surface-variant text-center mb-8" id="confManagedDesc"><span id="confManagedArtist">Julian Ink</span> will review your preferred times and confirm an appointment. You'll receive an email once your booking is confirmed.</p>
+        <div class="bg-surface-container-low rounded-2xl p-5 mb-8">
+          <h3 class="text-sm font-bold mb-3">What happens next?</h3>
+          <ul class="space-y-2 text-sm text-on-surface-variant" id="confManagedWhatsNext">
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> The artist will review your availability</li>
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> You'll receive an email with the confirmed date & time</li>
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> A deposit may be required to secure your spot</li>
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> You can message the artist if anything changes</li>
+          </ul>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <a href="artist-page.html" class="flex-1 py-3.5 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">Back to Artist Page</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- jquery-cdn -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+  <script>
+    var currentStep = 1;
+    var currentQuestionIndex = 0;
+    var currentRegIndex = 0;
+    var questionAnswers = {};
+    var bookingOtpVerified = false;
+    var bookingConnectedEmail = '';
+    var bookingConnectedName = '';
+    var bookingOtpResendRemaining = 0;
+    var bookingOtpResendEmail = '';
+    var bookingOtpResendTimer = null;
+    var csrfToken = @json(csrf_token());
+    var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
+    var questionDefinitions = (Array.isArray(serverQuestions) ? serverQuestions : []).map(function(q) {
+      var typeMap = { text: 'input', free: 'input', images: 'image', checkbox: 'toggle' };
+      var normalizedType = typeMap[q.type] || q.type || 'input';
+      var opts = Array.isArray(q.options) ? q.options : [];
+      if (normalizedType === 'toggle' && !opts.length) opts = ['Yes', 'No'];
+      return {
+        id: q.id,
+        title: q.question || 'Question',
+        subtitle: q.description || 'Please answer this question.',
+        type: normalizedType,
+        options: opts,
+        placeholder: q.placeholder || '',
+        required: !!q.is_required
+      };
+    });
+
+    function renderQuestions() {
+      var html = '';
+
+      questionDefinitions.forEach(function(q, idx) {
+        var isFirst = idx === 0;
+        var isLast = idx === questionDefinitions.length - 1;
+        var body = '';
+
+        if (q.type === 'radio') {
+          var radioButtons = q.options.map(function(opt) {
+            return '<button class="single-choice-radio-button" data-value="' + opt + '">' + opt + '</button>';
+          }).join('');
+          body = '<div class="flex flex-wrap gap-2 single-choice-group">' + radioButtons + '</div>';
+        } else if (q.type === 'select') {
+          var selectOptions = '<option value="">Choose an option</option>' + q.options.map(function(opt) {
+            return '<option value="' + opt + '">' + opt + '</option>';
+          }).join('');
+          body = '<select class="w-full js-select2-question" data-question-id="' + q.id + '">' + selectOptions + '</select>';
+        } else if (q.type === 'input') {
+          body = '<input type="text" placeholder="' + q.placeholder + '" data-question-id="' + q.id + '" class="js-question-input w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">';
+        } else if (q.type === 'textarea') {
+          body = '<textarea rows="4" placeholder="' + q.placeholder + '" data-question-id="' + q.id + '" class="js-question-input w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>';
+        } else if (q.type === 'image') {
+          body = '<div class="border-2 border-dashed border-outline-variant/40 rounded-2xl p-6 bg-white"><input type="file" accept="image/*" data-question-id="' + q.id + '" class="dropify js-question-file" data-allowed-file-extensions="jpg jpeg png webp" data-max-file-size="5M" data-show-remove="true"></div>';
+        } else if (q.type === 'toggle') {
+          body = '<label class="q-toggle-row"><span class="q-toggle-control"><input type="checkbox" data-question-id="' + q.id + '" class="q-toggle-input js-question-toggle"><span class="q-toggle-ui"></span></span><span class="q-toggle-label">' + q.subtitle + '</span></label>';
         }
-        
-        // Function to check if a date has available slots
-        function checkDateSlotAvailability(dateKey, callback) {
-            // Determine which API endpoint to use based on booking flow
-            let cacheKey, apiUrl, apiData;
-            
-            if (bookingFlowStep === 'consultation') {
-                cacheKey = `${dateKey}-consultation`;
-                apiUrl = '{{ route('api.consultation.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
-                apiData = { date: dateKey };
-            } else if (bookingFlowStep === 'tattoo_session' && selectedConsultationSlot) {
-                cacheKey = `${dateKey}-tattoo_session-${selectedConsultationSlot.date}`;
-                apiUrl = '{{ route('api.tattoo-session.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
-                apiData = {
-                    date: dateKey,
-                    consultation_date: selectedConsultationSlot.date,
-                    consultation_start_time_utc: selectedConsultationSlot.start_time_utc,
-                    consultation_end_time_utc: selectedConsultationSlot.end_time_utc
-                };
-            } else {
-                // Regular booking flow
-                cacheKey = `${dateKey}-regular`;
-                apiUrl = '{{ route('api.availability.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
-                apiData = { date: dateKey };
-            }
-            
-            // Check cache first
-            if (dateSlotAvailabilityCache[cacheKey]) {
-                if (dateSlotAvailabilityCache[cacheKey].checking) {
-                    // Already checking, wait for it
-                    setTimeout(() => checkDateSlotAvailability(dateKey, callback), 100);
-                    return;
-                }
-                callback(dateSlotAvailabilityCache[cacheKey].hasSlots);
-                return;
-            }
-            
-            // Mark as checking
-            dateSlotAvailabilityCache[cacheKey] = { hasSlots: false, checking: true };
-            
-            // Make API call
-            $.ajax({
-                url: apiUrl,
-                method: 'GET',
-                data: apiData,
-                success: function(response) {
-                    // Check if response is valid
-                    if (!response || typeof response.success === 'undefined') {
-                        // Invalid response format - don't update date status
-                        console.warn('Invalid response format for date:', dateKey, response);
-                        delete dateSlotAvailabilityCache[cacheKey];
-                        return; // Don't call callback, leave date as is
-                    }
-                    
-                    // Check if response has slots
-                    const hasSlots = response.success && 
-                                    response.time_slots && 
-                                    Array.isArray(response.time_slots) && 
-                                    response.time_slots.length > 0;
-                    
-                    // Update cache
-                    dateSlotAvailabilityCache[cacheKey] = { hasSlots: hasSlots, checking: false };
-                    
-                    // Only call callback with false if we're certain there are no slots
-                    // If response.success is false but it's not an error (e.g., date unavailable), 
-                    // we should still mark as unavailable
-                    if (response.success === false) {
-                        // API explicitly says no slots available
-                        callback(false);
-                    } else if (hasSlots === false) {
-                        // Response is successful but has no slots
-                        callback(false);
-                    } else {
-                        // Has slots
-                        callback(true);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    // On error, don't mark as unavailable - keep current state
-                    // This prevents dates from turning red due to API errors
-                    console.warn('Failed to check slot availability for date:', dateKey, error);
-                    
-                    // Remove from cache so it can be retried later
-                    delete dateSlotAvailabilityCache[cacheKey];
-                    
-                    // Don't call callback with false - this would mark date as unavailable
-                    // Instead, just remove the checking flag
-                    // The date will remain in its current state (available/unavailable based on weekly schedule)
-                }
-            });
+
+        var navButton = isLast
+          ? '<button class="js-continue-scheduling inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Continue to Scheduling <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>'
+          : '<button class="js-next-question inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>';
+
+        html +=
+          '<div class="question-div' + (isFirst ? ' active' : '') + '" data-q="' + idx + '" data-question-id="' + q.id + '" data-question-type="' + q.type + '" data-required="' + (q.required ? '1' : '0') + '">' +
+            '<div class="w-full max-w-xl mx-auto">' +
+              (isFirst ? '' : '<button class="js-prev-question flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>') +
+              '<p class="question-kicker"><span class="dot"></span>Question ' + (idx + 1) + ':</p>' +
+              '<h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">' + q.title + '</h2>' +
+              '<p class="text-on-surface-variant mb-6">' + q.subtitle + (q.required ? ' <span class="text-error">*</span>' : '') + '</p>' +
+              body +
+              '<p class="text-sm text-error hidden mt-3 js-question-error">Please answer this required question.</p>' +
+              '<div class="flex items-center justify-end mt-6">' + navButton + '</div>' +
+            '</div>' +
+          '</div>';
+      });
+
+      $('#questionsMount').html(html);
+    }
+
+    function getCurrentQuestionDiv() {
+      return $('div.question-div.active[data-q]');
+    }
+
+    function validateActiveQuestion() {
+      var $active = getCurrentQuestionDiv();
+      if (!$active.length) return true;
+
+      var isRequired = String($active.data('required')) === '1';
+      if (!isRequired) {
+        $active.find('.js-question-error').addClass('hidden');
+        return true;
+      }
+
+      var qType = String($active.data('question-type') || '');
+      var qId = $active.data('question-id');
+      var hasValue = false;
+
+      if (qType === 'radio') {
+        hasValue = !!$active.find('.single-choice-radio-button.selected').length;
+      } else if (qType === 'select') {
+        hasValue = !!String($active.find('.js-select2-question').val() || '').trim();
+      } else if (qType === 'input' || qType === 'textarea') {
+        hasValue = !!String($active.find('.js-question-input').val() || '').trim();
+      } else if (qType === 'image') {
+        var fileInput = $active.find('.js-question-file').get(0);
+        hasValue = !!(fileInput && fileInput.files && fileInput.files.length > 0);
+      } else if (qType === 'toggle') {
+        hasValue = $active.find('.js-question-toggle').is(':checked');
+      } else {
+        hasValue = !!questionAnswers[qId];
+      }
+
+      $active.find('.js-question-error').toggleClass('hidden', hasValue);
+      return hasValue;
+    }
+
+    function goToStep(step) {
+      if (step === 3 && currentStep === 2 && consultationRequired && !ccConsultType) {
+        $('#ccConsultTypeError').removeClass('hidden');
+        var typeSection = document.getElementById('ccTypeSection');
+        if (typeSection) typeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      currentStep = step;
+      $('.step-panel').removeClass('active');
+
+      if (step === 1) $('#stepQuestions').addClass('active');
+      if (step === 2) {
+        if (consultationRequired) {
+          $('#step2CalendarConsult').addClass('active');
+          if (consultationTiming === 'combined') {
+            $('#ccTattooSection, #ccTattooChip, #ccBottomSummary').addClass('hidden');
+          }
+          renderCcConsultCal();
+      } else {
+          $('#step2Calendar').addClass('active');
+          renderMainCal();
         }
-        
-        // Helper function to get day of week in a specific timezone
-        function getDayOfWeekInTimezone(date, timezone) {
-            // Create a date string in the format needed for timezone conversion
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const dateString = `${year}-${month}-${day}`;
-            
-            // Use Intl.DateTimeFormat to get day of week in the artist's timezone
-            // This ensures we check what day it is in the artist's timezone, not the browser's timezone
-            const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: timezone,
-                weekday: 'long'
-            });
-            const dayName = formatter.format(new Date(dateString + 'T12:00:00'));
-            const dayMap = {
-                'Sunday': 0,
-                'Monday': 1,
-                'Tuesday': 2,
-                'Wednesday': 3,
-                'Thursday': 4,
-                'Friday': 5,
-                'Saturday': 6
-            };
-            return dayMap[dayName];
+      }
+      if (step === 3) $('#stepRegister').addClass('active');
+      if (step === 4) $('#stepPayment').addClass('active');
+      if (step === 5) $('#stepConfirmation').addClass('active');
+      updateProgressDots();
+    }
+    window.goToStep = goToStep;
+
+    function updateProgressDots() {
+      document.querySelectorAll('.progress-step').forEach(function(el) {
+        var stepNum = parseInt(el.getAttribute('data-step') || '0', 10);
+        el.classList.remove('active', 'completed');
+        if (stepNum === currentStep) {
+          el.classList.add('active');
+        } else if (stepNum < currentStep) {
+          el.classList.add('completed');
         }
-        
-        // Helper function to check if a date is available based on weekly schedule
-        function checkDateAvailability(date) {
-            // Create date key directly from date components to avoid timezone conversion
-            // toISOString() converts to UTC which can shift the date
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const dateKey = `${year}-${month}-${day}`;
-            
-            // Blocked date ranges (full-day unavailability) take precedence
-            const inBlockedRange = availabilityData.overrides.some(o =>
-                dateKey >= o.start_date && dateKey <= o.end_date
-            );
-            if (inBlockedRange) {
-                return 'unavailable';
-            }
-            
-            // Check if in pre-calculated lists (for dates within 2 years)
-            if (availabilityData.availableDates.includes(dateKey)) {
-                return 'available';
-            }
-            if (availabilityData.unavailableDates.includes(dateKey)) {
-                return 'unavailable';
-            }
-            
-            // Check weekly availability pattern (for dates beyond pre-calculated range)
-            // Get day of week in artist's timezone, not browser's local timezone
-            const dayOfWeek = getDayOfWeekInTimezone(date, availabilityData.artistTimezone);
-            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const dayName = dayNames[dayOfWeek];
-           
-            if (availabilityData.weeklyAvailability[dayName] && 
-                availabilityData.weeklyAvailability[dayName].length > 0) {
-                return 'available';
-            }
-            
-            // Default to unavailable
-            return 'unavailable';
+      });
+      document.querySelectorAll('.progress-line').forEach(function(el) {
+        var lineNum = parseInt(el.getAttribute('data-line') || '0', 10);
+        el.classList.toggle('completed', lineNum < currentStep);
+      });
+    }
+
+    var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var today = new Date();
+    var todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+    var calYear = today.getFullYear();
+    var calMonth = today.getMonth();
+    var selectedDate = null;
+    var selectedTime = null;
+
+    var artistAvailabilitySchedule = @json($artistAvailabilitySchedule ?? []);
+    var artistTimezone = @json($artistTimezone ?? 'UTC');
+    var tattooDurationMinutes = parseInt(@json($tattooDurationMinutes ?? 120), 10) || 120;
+    var artistConsultationSettings = @json($artistConsultationSettings ?? null) || {};
+    var consultationRequired = !!artistConsultationSettings.required;
+    var consultationTiming = String(artistConsultationSettings.timing || 'combined').trim().toLowerCase();
+    if (consultationTiming !== 'separate' && consultationTiming !== 'combined') {
+      consultationTiming = 'combined';
+    }
+    var consultationSessionType = String(artistConsultationSettings.session_type || 'both').trim().toLowerCase();
+    if (consultationSessionType !== 'online' && consultationSessionType !== 'physical' && consultationSessionType !== 'both') {
+      consultationSessionType = 'both';
+    }
+    var requireConsultGap = !!artistConsultationSettings.require_gap;
+    // Gap is handled as day-based for separate consultation flow.
+    var consultGapValue = parseInt(artistConsultationSettings.gap_value || 0, 10) || 0;
+    var consultGapUnit = 'days';
+    var consultDurationMinutes = parseInt(artistConsultationSettings.session_duration_minutes || 30, 10) || 30;
+    var weekdayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    var ccConsultDate = null;
+    var ccConsultTime = null;
+    var ccTattooDate = null;
+    var ccTattooTime = null;
+    var ccConsultType = null;
+    var ccCalYear = today.getFullYear();
+    var ccCalMonth = today.getMonth();
+    var ccTatCalYear = today.getFullYear();
+    var ccTatCalMonth = today.getMonth();
+
+    function formatTo12Hour(hour, minute) {
+      var suffix = hour >= 12 ? 'PM' : 'AM';
+      var h = hour % 12;
+      if (h === 0) h = 12;
+      var mm = String(minute).padStart(2, '0');
+      return h + ':' + mm + ' ' + suffix;
+    }
+
+    function canNavigateToMonth(year, month) {
+      var firstOfTarget = new Date(year, month, 1, 0, 0, 0, 0);
+      var firstOfCurrent = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1, 0, 0, 0, 0);
+      return firstOfTarget >= firstOfCurrent;
+    }
+
+    function buildSlotsFromRanges(ranges, requiredMinutes) {
+      var slots = [];
+      if (!Array.isArray(ranges)) return slots;
+      var minRequired = Math.max(0, parseInt(requiredMinutes || 0, 10) || 0);
+
+      ranges.forEach(function(range) {
+        if (!range || !range.start || !range.end) return;
+        var startParts = String(range.start).split(':');
+        var endParts = String(range.end).split(':');
+        var startMinutes = (parseInt(startParts[0] || '0', 10) * 60) + parseInt(startParts[1] || '0', 10);
+        var endMinutes = (parseInt(endParts[0] || '0', 10) * 60) + parseInt(endParts[1] || '0', 10);
+        if (isNaN(startMinutes) || isNaN(endMinutes) || endMinutes <= startMinutes) return;
+
+        for (var m = startMinutes; m < endMinutes; m += 30) {
+          if (m + minRequired > endMinutes) break;
+          var hour = Math.floor(m / 60);
+          var minute = m % 60;
+          slots.push({
+            time: formatTo12Hour(hour, minute),
+            booked: false
+          });
         }
-        
-        // Calendar implementation
-        function renderCalendar() {
-            const calendarEl = document.getElementById('availability-calendar');
-            if (!calendarEl) {
-                console.error('Calendar element not found!');
-                return;
-            }
-            
-            // Check if availability data exists
-            if (!availabilityData || (!availabilityData.availableDates && !availabilityData.weeklyAvailability)) {
-                console.error('Availability data not loaded:', availabilityData);
-                calendarEl.innerHTML = `
-                    <div class="alert alert-warning">
-                        <h6>No availability data available</h6>
-                        <p class="mb-0">Unable to load calendar. Please refresh the page or contact the artist.</p>
-                        <button class="btn btn-primary btn-sm mt-2" onclick="location.reload()">Refresh Page</button>
-                    </div>
-                `;
-                return;
-            }
-            
-            const today = new Date();
-            let currentMonth = today.getMonth();
-            let currentYear = today.getFullYear();
-            
-            // Find first available date to navigate to that month
-            if (availabilityData.availableDates && availabilityData.availableDates.length > 0) {
-                // Sort available dates to find the earliest one
-                const sortedDates = availabilityData.availableDates
-                    .filter(dateKey => {
-                        // Only consider future dates
-                        const date = new Date(dateKey + 'T00:00:00');
-                        return date >= new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                    })
-                    .sort();
-                
-                if (sortedDates.length > 0) {
-                    // Get the first available date
-                    const firstAvailableDate = new Date(sortedDates[0] + 'T00:00:00');
-                    currentMonth = firstAvailableDate.getMonth();
-                    currentYear = firstAvailableDate.getFullYear();
-                }
-            } else {
-                // Check weekly availability to find first available month
-                // Look ahead up to 12 months for availability
-                for (let monthsAhead = 0; monthsAhead < 12; monthsAhead++) {
-                    const checkDate = new Date(today.getFullYear(), today.getMonth() + monthsAhead, 1);
-                    const lastDayOfMonth = new Date(checkDate.getFullYear(), checkDate.getMonth() + 1, 0);
-                    
-                    // Check if any day in this month is available
-                    for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
-                        const testDate = new Date(checkDate.getFullYear(), checkDate.getMonth(), day);
-                        // Skip past dates
-                        if (testDate < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
-                            continue;
-                        }
-                        
-                        const availability = checkDateAvailability(testDate);
-                        if (availability === 'available') {
-                            currentMonth = checkDate.getMonth();
-                            currentYear = checkDate.getFullYear();
-                            monthsAhead = 12; // Break outer loop
-                            break;
-                        }
-                    }
-                    if (monthsAhead === 12) break; // Found availability, exit
-                }
-            }
-            
-            function renderMonth(month, year) {
-                const firstDay = new Date(year, month, 1);
-                const lastDay = new Date(year, month + 1, 0);
-                const daysInMonth = lastDay.getDate();
-                const startingDayOfWeek = firstDay.getDay();
-                
-                let calendarHTML = `
-                    <div class="calendar-header">
-                        <button class="calendar-nav-btn" onclick="changeMonth(-1)" type="button">
-                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                            </svg>
-                        </button>
-                        <h2>${firstDay.toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
-                        <button class="calendar-nav-btn" onclick="changeMonth(1)" type="button">
-                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="calendar-grid">
-                        <div class="calendar-weekdays">
-                            <div class="calendar-weekday">Sun</div>
-                            <div class="calendar-weekday">Mon</div>
-                            <div class="calendar-weekday">Tue</div>
-                            <div class="calendar-weekday">Wed</div>
-                            <div class="calendar-weekday">Thu</div>
-                            <div class="calendar-weekday">Fri</div>
-                            <div class="calendar-weekday">Sat</div>
-                        </div>
-                        <div class="calendar-days">
-                `;
-                
-                // Empty cells for days before the first day of the month
-                for (let i = 0; i < startingDayOfWeek; i++) {
-                    calendarHTML += '<div class="calendar-day empty"></div>';
-                }
-                
-                // Days of the month
-                for (let day = 1; day <= daysInMonth; day++) {
-                    // Create date string directly from year, month, day to avoid timezone conversion issues
-                    // toISOString() converts to UTC which can shift the date by timezone offset
-                    const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    
-                    // Create date object for comparison (using local timezone)
-                    const date = new Date(year, month, day);
-                    const isPast = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                    
-                    let dayClass = 'calendar-day';
-                    let disabled = '';
-                    
-                    if (isPast) {
-                        dayClass += ' past';
-                        disabled = 'disabled';
-                    } else {
-                        // If on tattoo session step and consultation is selected, disable dates appropriately
-                        let shouldDisable = false;
-                        if (bookingFlowStep === 'tattoo_session' && selectedConsultationSlot) {
-                            const consultationDate = new Date(selectedConsultationSlot.date + 'T00:00:00');
-                            const checkDate = new Date(dateKey + 'T00:00:00');
-                            
-                            // Always disable dates before consultation date
-                            if (checkDate < consultationDate) {
-                                shouldDisable = true;
-                            }
-                            
-                            // If gap is required, also disable dates before or equal to minimum date (which includes gap period)
-                            if (!shouldDisable && minimumTattooSessionDate) {
-                                const minDate = new Date(minimumTattooSessionDate.split(' ')[0] + 'T00:00:00');
-                                // Disable dates that are before or equal to minimum date (includes consultation date and all gap days)
-                                // For example: consultation Dec 17, gap 1 day -> minimum is Dec 18, so disable Dec 17 and Dec 18
-                                if (checkDate <= minDate) {
-                                    shouldDisable = true;
-                                }
-                            } else if (!shouldDisable && !minimumTattooSessionDate) {
-                                // No gap requirement, but still disable consultation date itself
-                                // (can't book tattoo session on same day as consultation if no gap)
-                                if (checkDate.getTime() === consultationDate.getTime()) {
-                                    shouldDisable = true;
-                                }
-                            }
-                        }
-                        
-                        if (shouldDisable) {
-                            dayClass += ' unavailable';
-                        disabled = 'disabled';
-                    } else {
-                        // Check availability (works for all future dates)
-                        const availability = checkDateAvailability(date);
-                        if (availability === 'available') {
-                            dayClass += ' available';
-                                // Note: Slot availability will be checked asynchronously after calendar renders
-                        } else {
-                            dayClass += ' unavailable';
-                            disabled = 'disabled';
-                            }
-                        }
-                    }
-                    
-                    calendarHTML += `
-                        <div class="${dayClass}" ${disabled} data-date="${dateKey}">
-                            ${day}
-                        </div>
-                    `;
-                }
-                
-                calendarHTML += `
-                        </div>
-                    </div>
-                    <div class="calendar-legend">
-                        <div class="legend-item">
-                            <span class="legend-color available"></span>
-                            <span>Available</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color unavailable"></span>
-                            <span>Unavailable</span>
-                        </div>
-                    </div>
-                `;
-                
-                calendarEl.innerHTML = calendarHTML;
-                
-                // After calendar is rendered, check slot availability for visible dates
-                // This will disable dates that have no available slots
-                // TEMPORARILY DISABLED - Uncomment below to enable slot availability checking
-                // Note: This feature checks each date via API and may cause dates to turn red
-                // if API calls fail or return empty slots. Enable only after verifying API endpoints work correctly.
-                /*
-                setTimeout(function() {
-                    // Only check slot availability if we have the necessary data
-                    // Skip if we're in a flow that requires consultation slot selection
-                    if (bookingFlowStep !== 'tattoo_session' || selectedConsultationSlot) {
-                        checkSlotAvailabilityForVisibleDates();
-                    } else if (bookingFlowStep === 'consultation' || !consultationInfo.is_separate) {
-                        // For consultation or regular booking, check availability
-                        checkSlotAvailabilityForVisibleDates();
-                    }
-                }, 500);
-                */
-            }
-            
-            // Function to check slot availability for visible dates in the calendar
-            function checkSlotAvailabilityForVisibleDates() {
-                const calendarDays = document.querySelectorAll('.calendar-day:not(.empty):not(.past)');
-                const datesToCheck = [];
-                const today = new Date();
-                const maxDaysToCheck = 60; // Only check dates within next 60 days
-                
-                calendarDays.forEach(function(dayEl) {
-                    const dateKey = dayEl.getAttribute('data-date');
-                    if (dateKey && !dayEl.hasAttribute('disabled')) {
-                        // Check if date is within reasonable range (next 60 days)
-                        const dateParts = dateKey.split('-');
-                        const checkDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-                        const daysDiff = Math.ceil((checkDate - today) / (1000 * 60 * 60 * 24));
-                        
-                        // Only check dates that are marked as available and within range
-                        if (dayEl.classList.contains('available') && daysDiff >= 0 && daysDiff <= maxDaysToCheck) {
-                            datesToCheck.push({ element: dayEl, dateKey: dateKey });
-                        }
-                    }
-                });
-                
-                // If no dates to check, return early
-                if (datesToCheck.length === 0) {
-                    return;
-                }
-                
-                // Check slot availability for each date
-                // Limit concurrent requests and add delays to avoid overwhelming the server
-                const maxConcurrent = 3; // Check max 3 dates at a time
-                const batchDelay = 800; // Wait 800ms between batches
-                
-                // Process dates in batches
-                for (let i = 0; i < datesToCheck.length; i += maxConcurrent) {
-                    const batch = datesToCheck.slice(i, i + maxConcurrent);
-                    
-                    batch.forEach(function(item, batchIndex) {
-                        setTimeout(function() {
-                            checkDateSlotAvailability(item.dateKey, function(hasSlots) {
-                                // Only update if callback was called with explicit false (not on error)
-                                // hasSlots will be undefined if error occurred, so we skip updating
-                                if (hasSlots === false) {
-                                    // Explicitly no slots available, disable this date
-                                    item.element.classList.remove('available');
-                                    item.element.classList.add('unavailable');
-                                    item.element.setAttribute('disabled', 'disabled');
-                                }
-                                // If hasSlots is true or undefined (error), leave date as is
-                            });
-                        }, (i * batchDelay) + (batchIndex * 150)); // Stagger within batch too
-                    });
-                }
-            }
-            
-            window.changeMonth = function(direction) {
-                currentMonth += direction;
-                if (currentMonth < 0) {
-                    currentMonth = 11;
-                    currentYear--;
-                } else if (currentMonth > 11) {
-                    currentMonth = 0;
-                    currentYear++;
-                }
-                renderMonth(currentMonth, currentYear);
-            };
-            
-            // Initial render
-            renderMonth(currentMonth, currentYear);
-        }
-        
-        // Set up global back button handlers
-        function setupBackButtonHandlers() {
-            // Back to calendar button (from slots section)
-            $(document).off('click', '#backToCalendarBtn').on('click', '#backToCalendarBtn', function() {
-                document.getElementById('slotsSection').classList.add('d-none');
-                document.getElementById('calendarSection').classList.remove('d-none');
-                
-                // If going back to consultation calendar, clear gap restrictions and re-render
-                if (bookingFlowStep === 'consultation') {
-                    minimumTattooSessionDate = null;
-                    // Ensure booking flow step is set correctly
-                    bookingFlowStep = 'consultation';
-                    // Re-render calendar to remove gap-based date disabling
-                    renderCalendar();
-                }
-                
-                // Determine which date to highlight based on current flow step
-                let dateToHighlight = null;
-                let shouldShowNextButton = false;
-                
-                if (bookingFlowStep === 'tattoo_session') {
-                    // For tattoo session step, only highlight if tattoo session slot is selected
-                    // Don't use window.selectedDate from consultation step - user must select a new date
-                    if (selectedTattooSessionSlot) {
-                        dateToHighlight = selectedTattooSessionSlot.date;
-                        shouldShowNextButton = true;
-                    }
-                    // Note: window.selectedDate is cleared in proceedToTattooSessionStep() if no tattoo session slot exists
-                    // So we don't need to check it here - user must click a date on tattoo session calendar
-                } else if (bookingFlowStep === 'consultation') {
-                    // For consultation step, highlight if consultation slot is selected or date is selected
-                    if (selectedConsultationSlot) {
-                        dateToHighlight = selectedConsultationSlot.date;
-                        shouldShowNextButton = true;
-                    } else if (window.selectedDate) {
-                        dateToHighlight = window.selectedDate;
-                        shouldShowNextButton = true;
-                    }
-                } else {
-                    // Regular booking flow
-                    if (window.selectedDate) {
-                        dateToHighlight = window.selectedDate;
-                        shouldShowNextButton = true;
-                    }
-                }
-                
-                // Restore selected date highlight if date was previously selected
-                if (dateToHighlight) {
-                    window.selectedDate = dateToHighlight;
-                    $('.calendar-day').removeClass('border-primary');
-                    // Use setTimeout to ensure calendar is rendered before trying to highlight
-                    setTimeout(function() {
-                        const dayElement = $(`.calendar-day[data-date="${dateToHighlight}"]`);
-                        if (dayElement.length > 0 && !dayElement.hasClass('unavailable') && !dayElement.attr('disabled')) {
-                            dayElement.addClass('border-primary');
-                            if (shouldShowNextButton) {
-                                $('#calendarNextButton').removeClass('d-none');
-                            }
-                        } else {
-                            // Date is not available, clear selection
-                            window.selectedDate = null;
-                            $('#calendarNextButton').addClass('d-none');
-                        }
-                    }, 100);
-                } else {
-                    // No date selected for current step, hide Next button
-                    $('.calendar-day').removeClass('border-primary');
-                    $('#calendarNextButton').addClass('d-none');
-                }
-                
-                // Don't clear selectedSlot, selectedConsultationSlot, or selectedTattooSessionSlot
-                // They should remain so user can go back and see their selection
-                
-                document.getElementById('calendarSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-            
-            // Back to slots button (from questions section)
-            $(document).off('click', '#backToSlotsBtn').on('click', '#backToSlotsBtn', function() {
-                document.getElementById('questionsSection').classList.add('d-none');
-                document.getElementById('slotsSection').classList.remove('d-none');
-                document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-            
-            // Back to questions button (from payment section)
-            $(document).off('click', '#backToQuestionsBtn').on('click', '#backToQuestionsBtn', function() {
-                document.getElementById('paymentSection').classList.add('d-none');
-                document.getElementById('questionsSection').classList.remove('d-none');
-                document.getElementById('questionsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-            
-            // Back to consultation button (from tattoo session date selection)
-            $(document).off('click', '#backToConsultationBtn').on('click', '#backToConsultationBtn', function() {
-                if (!selectedConsultationSlot) {
-                    alert('No consultation slot selected. Please start over.');
-                    return;
-                }
-                
-                // Reset booking flow step
-                bookingFlowStep = 'consultation';
-                
-                // Clear minimum tattoo session date so calendar doesn't disable dates
-                minimumTattooSessionDate = null;
-                
-                // Set the selected date for calendar highlighting
-                window.selectedDate = selectedConsultationSlot.date;
-                
-                // Show calendar section first so it can be re-rendered
-                document.getElementById('calendarSection').classList.remove('d-none');
-                
-                // Re-render calendar to remove gap-based date disabling
-                renderCalendar();
-                
-                // After calendar is rendered, restore selected date highlight
-                setTimeout(function() {
-                    if (window.selectedDate) {
-                        $('.calendar-day').removeClass('border-primary');
-                        $(`.calendar-day[data-date="${window.selectedDate}"]`).addClass('border-primary');
-                        $('#calendarNextButton').removeClass('d-none');
-                    }
-                }, 100);
-                
-                // Hide calendar, show slots section
-                document.getElementById('calendarSection').classList.add('d-none');
-                document.getElementById('slotsSection').classList.remove('d-none');
-                
-                // Hide back button
-                $('#backToConsultationBtn').addClass('d-none');
-                
-                // Reset calendar title
-                $('#calendarTitle').text('Step 1: Select Consultation Date');
-                
-                // Reload consultation slots for the selected consultation date
-                loadConsultationSlots(selectedConsultationSlot.date);
-            });
-        }
-        
-        // Initialize calendar when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set up back button handlers
-            setupBackButtonHandlers();
-            try {
-                renderCalendar();
-                
-                // Check if calendar was rendered after a short delay
-                setTimeout(function() {
-                    const calendarEl = document.getElementById('availability-calendar');
-                    if (calendarEl && calendarEl.innerHTML.trim() === '') {
-                        console.error('Calendar failed to render');
-                        calendarEl.innerHTML = `
-                            <div class="alert alert-warning">
-                                <h6>Unable to load calendar</h6>
-                                <p class="mb-0">Please refresh the page or contact support if the problem persists.</p>
-                                <button class="btn btn-primary btn-sm mt-2" onclick="location.reload()">Refresh Page</button>
-                            </div>
-                        `;
-                    }
-                }, 1000);
-            } catch (error) {
-                console.error('Error rendering calendar:', error);
-                const calendarEl = document.getElementById('availability-calendar');
-                if (calendarEl) {
-                    calendarEl.innerHTML = `
-                        <div class="alert alert-danger">
-                            <h6>Error loading calendar</h6>
-                            <p class="mb-0">${error.message}</p>
-                            <button class="btn btn-primary btn-sm mt-2" onclick="location.reload()">Refresh Page</button>
-                        </div>
-                    `;
-                }
-            }
+      });
+
+      return slots;
+    }
+
+    function getSlotsForDate(dateObj, requiredMinutes) {
+      if (!(dateObj instanceof Date)) return [];
+      var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
+      if (dayStart < todayStart) return [];
+
+      var weekdayKey = weekdayKeys[dateObj.getDay()];
+      var dayRanges = artistAvailabilitySchedule[weekdayKey];
+      if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
+      var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
+
+      // For today, only show slots strictly after current time.
+      if (dayStart.getTime() === todayStart.getTime()) {
+        var now = new Date();
+        var nowMinutes = now.getHours() * 60 + now.getMinutes();
+        slots = slots.filter(function(slot) {
+          return parseTime12hToMinutes(slot.time) > nowMinutes;
         });
-        
-        $(document).on('click', '.calendar-day.available:not([disabled])', function() {
-            const date = $(this).data('date');
-            if (!date) return;
-            
-            // Remove previous selection highlight
-            $('.calendar-day').removeClass('border-primary');
-            // Highlight selected date
-            $(this).addClass('border-primary');
-            
-            // Store selected date
-            window.selectedDate = date;
-            
-            // Show Next button only if date is selected
-            // This ensures button is only visible when user actually selects a date
-            if (date) {
-                $('#calendarNextButton').removeClass('d-none');
-            } else {
-                $('#calendarNextButton').addClass('d-none');
-            }
+      }
+
+      return slots;
+    }
+
+    function getMainRequiredMinutes() {
+      if (!consultationRequired) return tattooDurationMinutes;
+      if (consultationTiming === 'combined') return tattooDurationMinutes + consultDurationMinutes;
+      return tattooDurationMinutes;
+    }
+
+    function getConsultSelectionRequiredMinutes() {
+      if (consultationTiming === 'combined') return tattooDurationMinutes + consultDurationMinutes;
+      return consultDurationMinutes;
+    }
+
+    function renderMainCal() {
+      var grid = document.getElementById('calGrid');
+      var label = document.getElementById('calMonth');
+      if (!grid || !label) return;
+
+      grid.innerHTML = '';
+      label.textContent = monthNames[calMonth] + ' ' + calYear;
+      var prevBtn = document.getElementById('calPrev');
+      if (prevBtn) {
+        var allowPrev = canNavigateToMonth(calYear, calMonth - 1);
+        prevBtn.disabled = !allowPrev;
+        prevBtn.classList.toggle('opacity-40', !allowPrev);
+        prevBtn.classList.toggle('cursor-not-allowed', !allowPrev);
+      }
+
+      var firstDay = new Date(calYear, calMonth, 1).getDay();
+      var startOffset = (firstDay + 6) % 7;
+      var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+      for (var i = 0; i < startOffset; i++) {
+        var empty = document.createElement('div');
+        empty.className = 'cal-day empty';
+        grid.appendChild(empty);
+      }
+
+      for (var d = 1; d <= daysInMonth; d++) {
+        (function(day) {
+          var dt = new Date(calYear, calMonth, day);
+          var div = document.createElement('div');
+          div.textContent = day;
+
+          var isAvail = getSlotsForDate(dt, getMainRequiredMinutes()).length > 0;
+          var isSel = selectedDate && dt.toDateString() === selectedDate.toDateString();
+          var isToday = dt.toDateString() === today.toDateString();
+          var isFuture = dt > today;
+
+          var cls = 'cal-day';
+          if (isSel) cls += ' selected';
+          else if (isAvail) cls += ' available';
+          else if (isFuture || isToday) cls += ' unavailable-future';
+          else cls += ' unavailable';
+          if (isToday && !isSel) cls += ' today';
+          div.className = cls;
+
+          if (isAvail) {
+            div.addEventListener('click', function() {
+              selectedDate = dt;
+              selectedTime = null;
+              renderMainCal();
+              showMainTimeSlots();
+            });
+          }
+          grid.appendChild(div);
+        })(d);
+      }
+    }
+
+    function showMainTimeSlots() {
+      if (!selectedDate) return;
+      $('#timeSlotsEmpty').addClass('hidden');
+      $('#timeSlotsContent').removeClass('hidden');
+      $('#selectedDateLabel').text(selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }));
+
+      var slots = getSlotsForDate(selectedDate, getMainRequiredMinutes());
+      var html = '';
+      slots.forEach(function(slot) {
+        var bookedClass = slot.booked ? ' booked' : '';
+        var bookedText = slot.booked ? ' — Booked' : '';
+        if (slot.booked) {
+          html += '<button class="time-slot-card w-full' + bookedClass + '" data-time="' + slot.time + '" disabled>' + slot.time + bookedText + '</button>';
+          } else {
+          html += '<div class="time-slot-wrap">' +
+            '<button class="time-slot-card flex-1" data-time="' + slot.time + '">' + slot.time + '</button>' +
+            '<button class="time-slot-confirm js-time-slot-continue">Continue <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button>' +
+          '</div>';
+        }
+      });
+      $('#timeSlots').html(html);
+      $('#confirmBar').addClass('hidden');
+    }
+
+    function parseTime12hToMinutes(timeLabel) {
+      var match = String(timeLabel || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (!match) return 0;
+      var h = parseInt(match[1], 10);
+      var m = parseInt(match[2], 10);
+      var meridiem = match[3].toUpperCase();
+      if (meridiem === 'PM' && h !== 12) h += 12;
+      if (meridiem === 'AM' && h === 12) h = 0;
+      return h * 60 + m;
+    }
+
+    function buildDateTime(dateObj, timeLabel) {
+      var mins = parseTime12hToMinutes(timeLabel);
+      var dt = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
+      dt.setMinutes(mins);
+      return dt;
+    }
+
+    function addGapToDateTime(dateObj, value, unit) {
+      var dt = new Date(dateObj.getTime());
+      if (!value || value <= 0) return dt;
+      if (unit === 'minutes') dt.setMinutes(dt.getMinutes() + value);
+      else if (unit === 'hours') dt.setHours(dt.getHours() + value);
+      else if (unit === 'days') dt.setDate(dt.getDate() + value);
+      return dt;
+    }
+
+    function renderCalendarInto(gridId, labelId, year, month, selectedDateObj, minDateObj, clickCb, requiredMinutes) {
+      var grid = document.getElementById(gridId);
+      var label = document.getElementById(labelId);
+      if (!grid || !label) return;
+      grid.innerHTML = '';
+      label.textContent = monthNames[month] + ' ' + year;
+
+      var firstDay = new Date(year, month, 1).getDay();
+      var startOffset = (firstDay + 6) % 7;
+      var daysInMonth = new Date(year, month + 1, 0).getDate();
+      for (var i = 0; i < startOffset; i++) {
+        var empty = document.createElement('div');
+        empty.className = 'cal-day empty';
+        grid.appendChild(empty);
+      }
+
+      var minDay = null;
+      if (minDateObj instanceof Date) {
+        minDay = new Date(minDateObj.getFullYear(), minDateObj.getMonth(), minDateObj.getDate(), 0, 0, 0, 0);
+      }
+
+      for (var d = 1; d <= daysInMonth; d++) {
+        (function(day) {
+          var dt = new Date(year, month, day);
+          var div = document.createElement('div');
+          div.textContent = day;
+          var isAvail = getSlotsForDate(dt, requiredMinutes).length > 0;
+          var isSel = selectedDateObj && dt.toDateString() === selectedDateObj.toDateString();
+          var isToday = dt.toDateString() === today.toDateString();
+          var isFuture = dt > today;
+          var isBeforeMin = minDay && dt < minDay;
+
+          var cls = 'cal-day';
+        if (isSel) cls += ' selected';
+          else if (isAvail && !isBeforeMin) cls += ' available';
+          else if (isFuture || isToday) cls += ' unavailable-future';
+        else cls += ' unavailable';
+        if (isToday && !isSel) cls += ' today';
+        div.className = cls;
+
+          if (isAvail && !isBeforeMin) {
+            div.addEventListener('click', function() { clickCb(dt); });
+          }
+        grid.appendChild(div);
+        })(d);
+      }
+    }
+
+    function renderCcConsultCal() {
+      renderCalendarInto('ccCalGrid', 'ccCalMonth', ccCalYear, ccCalMonth, ccConsultDate, null, function(dt) {
+        ccConsultDate = dt;
+        ccConsultTime = null;
+        ccTattooDate = null;
+        ccTattooTime = null;
+        $('#ccTattooChip, #ccBottomSummary').addClass('hidden');
+        renderCcConsultCal();
+        showCcConsultSlots();
+      }, getConsultSelectionRequiredMinutes());
+    }
+
+    function showCcConsultSlots() {
+      if (!ccConsultDate) return;
+      $('#ccTimeSlotsEmpty').addClass('hidden');
+      $('#ccTimeSlotsContent').removeClass('hidden');
+      $('#ccSelectedDateLabel').text(ccConsultDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }));
+
+      var slots = getSlotsForDate(ccConsultDate, getConsultSelectionRequiredMinutes());
+      var html = '';
+      slots.forEach(function(slot) {
+        if (slot.booked) return;
+        html += '<button class="time-slot-card w-full js-cc-consult-slot" data-time="' + slot.time + '">' + slot.time + '</button>';
+      });
+      $('#ccTimeSlots').html(html);
+    }
+
+    function getTattooMinDateTime() {
+      if (!ccConsultDate || !ccConsultTime) return null;
+      // Separate mode: disable consultation day plus full gap days after it.
+      // Example: consultation 1-May, gap=2 => earliest tattoo date is 4-May.
+      if (consultationTiming === 'separate') {
+        var gapDays = Math.max(0, consultGapValue);
+        var minDate = new Date(ccConsultDate.getFullYear(), ccConsultDate.getMonth(), ccConsultDate.getDate(), 0, 0, 0, 0);
+        minDate.setDate(minDate.getDate() + gapDays + 1);
+        return minDate;
+      }
+
+      var base = buildDateTime(ccConsultDate, ccConsultTime);
+      if (requireConsultGap && consultGapValue > 0) {
+        return addGapToDateTime(base, consultGapValue, consultGapUnit);
+      }
+      return base;
+    }
+
+    function renderCcTattooCal() {
+      var minDt = getTattooMinDateTime();
+      renderCalendarInto('ccTatCalGrid', 'ccTatCalMonth', ccTatCalYear, ccTatCalMonth, ccTattooDate, minDt, function(dt) {
+        ccTattooDate = dt;
+        ccTattooTime = null;
+        renderCcTattooCal();
+        showCcTattooSlots();
+      }, tattooDurationMinutes);
+    }
+
+    function showCcTattooSlots() {
+      if (!ccTattooDate) return;
+      $('#ccTatTimeSlotsEmpty').addClass('hidden');
+      $('#ccTatTimeSlotsContent').removeClass('hidden');
+      $('#ccTatSelectedDateLabel').text(ccTattooDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }));
+
+      var minDt = getTattooMinDateTime();
+      var slots = getSlotsForDate(ccTattooDate, tattooDurationMinutes);
+      var html = '';
+      slots.forEach(function(slot) {
+        if (slot.booked) return;
+        var slotDt = buildDateTime(ccTattooDate, slot.time);
+        if (minDt && slotDt < minDt) return;
+        html += '<button class="time-slot-card w-full js-cc-tattoo-slot" data-time="' + slot.time + '">' + slot.time + '</button>';
+      });
+      $('#ccTatTimeSlots').html(html);
+    }
+
+    function showQuestion(index) {
+      var questions = $('div.question-div[data-q]');
+      if (!questions.length) return;
+
+      if (index < 0) index = 0;
+      if (index >= questions.length) index = questions.length - 1;
+
+      questions.removeClass('active');
+      questions.filter('[data-q="' + index + '"]').addClass('active');
+      currentQuestionIndex = index;
+    }
+
+    function moveQuestion(step) {
+      var nextIndex = currentQuestionIndex + step;
+      var questions = $('div.question-div[data-q]');
+
+      if (nextIndex < 0) nextIndex = 0;
+      if (nextIndex >= questions.length) {
+        goToStep(2);
+        return;
+      }
+
+      showQuestion(nextIndex);
+    }
+
+    function nextQuestion(current_index) {
+      if (!isNaN(current_index)) {
+        currentQuestionIndex = current_index;
+      } else {
+        var activeIndex = parseInt($('div.question-div.active[data-q]').data('q'), 10);
+        if (!isNaN(activeIndex)) currentQuestionIndex = activeIndex;
+      }
+      if (!validateActiveQuestion()) return;
+      moveQuestion(1);
+    }
+    window.nextQuestion = nextQuestion;
+
+    function prevQuestion() {
+      var activeIndex = parseInt($('div.question-div.active[data-q]').data('q'), 10);
+      if (!isNaN(activeIndex)) currentQuestionIndex = activeIndex;
+      moveQuestion(-1);
+    }
+    window.prevQuestion = prevQuestion;
+
+    function showReg(index) {
+      var regs = $('div.question-div[data-reg]');
+      if (!regs.length) return;
+
+      if (index < 0) index = 0;
+      if (index >= regs.length) index = regs.length - 1;
+
+      regs.removeClass('active');
+      regs.filter('[data-reg="' + index + '"]').addClass('active');
+      currentRegIndex = index;
+
+      if (index === 3) {
+        var currentEmail = String($('#bdEmail').val() || '').trim();
+        if (currentEmail && !$('#bdOtpEmail').val().trim()) {
+          $('#bdOtpEmail').val(currentEmail);
+        }
+        updateConnectedUi();
+      }
+    }
+
+    function clearRegError(inputId, errorId) {
+      $('#' + inputId).removeClass('border-error ring-1 ring-error/40');
+      $('#' + errorId).addClass('hidden').text('This field is required.');
+    }
+
+    function setRegError(inputId, errorId, message) {
+      $('#' + inputId).addClass('border-error ring-1 ring-error/40');
+      $('#' + errorId).removeClass('hidden').text(message);
+    }
+
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+    }
+
+    function isValidPhoneWithCountryCode(phone) {
+      return /^\+[0-9][0-9\s\-()]{5,}$/.test(String(phone || '').trim());
+    }
+
+    async function validateBookingEmailRole(email) {
+      var res = await fetch('/api/public/check-email-availability?email=' + encodeURIComponent(email), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (!res.ok) {
+        throw new Error('Unable to validate email right now. Please try again.');
+      }
+
+      var data = await res.json();
+      // Allowed when email does not exist OR exists with role user.
+      if (typeof data.allowed === 'boolean') return data.allowed;
+      if (!data.exists) return true;
+      return !!data.is_user;
+    }
+
+    async function nextReg() {
+      var regs = $('div.question-div[data-reg]');
+      var activeIndex = parseInt($('div.question-div.active[data-reg]').data('reg'), 10);
+      if (!isNaN(activeIndex)) currentRegIndex = activeIndex;
+
+      clearRegError('bdName', 'bdNameError');
+      clearRegError('bdEmail', 'bdEmailError');
+      clearRegError('bdPhone', 'bdPhoneError');
+
+      if (currentRegIndex === 0) {
+        var nameVal = $('#bdName').val().trim();
+        if (!nameVal) {
+          setRegError('bdName', 'bdNameError', 'This field is required.');
+          return;
+        }
+      }
+
+      if (currentRegIndex === 1) {
+        var emailVal = $('#bdEmail').val().trim();
+        if (!emailVal) {
+          setRegError('bdEmail', 'bdEmailError', 'This field is required.');
+          return;
+        }
+        if (!isValidEmail(emailVal)) {
+          setRegError('bdEmail', 'bdEmailError', 'Please enter a valid email address.');
+          return;
+        }
+        try {
+          var allowed = await validateBookingEmailRole(emailVal);
+          if (!allowed) {
+            setRegError('bdEmail', 'bdEmailError', 'Please use another email.');
+            return;
+          }
+        } catch (err) {
+          setRegError('bdEmail', 'bdEmailError', err.message || 'Unable to validate email right now. Please try again.');
+          return;
+        }
+      }
+
+      if (currentRegIndex === 2) {
+        var phoneVal = $('#bdPhone').val().trim();
+        if (!phoneVal) {
+          setRegError('bdPhone', 'bdPhoneError', 'This field is required.');
+          return;
+        }
+        if (!isValidPhoneWithCountryCode(phoneVal)) {
+          setRegError('bdPhone', 'bdPhoneError', 'Phone must start with country code, e.g. +30 694 123 4567.');
+          return;
+        }
+      }
+
+      var nextIndex = currentRegIndex + 1;
+      if (nextIndex >= regs.length) {
+        goToStep(4);
+        return;
+      }
+      showReg(nextIndex);
+    }
+    window.nextReg = nextReg;
+
+    function prevReg() {
+      var activeIndex = parseInt($('div.question-div.active[data-reg]').data('reg'), 10);
+      if (!isNaN(activeIndex)) currentRegIndex = activeIndex;
+
+      if (currentRegIndex <= 0) {
+        goToStep(2);
+        return;
+      }
+      showReg(currentRegIndex - 1);
+    }
+    window.prevReg = prevReg;
+
+    function updateConnectedUi() {
+      if (bookingOtpVerified) {
+        var label = bookingConnectedName ? bookingConnectedName + ' (' + bookingConnectedEmail + ')' : bookingConnectedEmail;
+        $('#bdConnectedUser').removeClass('hidden').text('Already connected user: ' + label);
+        $('#bdOtpStatus').removeClass('hidden').addClass('flex').html('<span class="material-symbols-outlined text-[18px] text-green-600">verified</span><span>Email already verified for this booking.</span>');
+        $('#bdOtpCode').closest('.mb-4').addClass('hidden');
+        $('#bdSendOtpBtn').addClass('hidden');
+        $('#bdVerifyOtpBtn').text('Continue').prop('disabled', false);
+      } else {
+        $('#bdConnectedUser').addClass('hidden').text('Already connected user.');
+        $('#bdOtpCode').closest('.mb-4').removeClass('hidden');
+        $('#bdSendOtpBtn').removeClass('hidden');
+        $('#bdVerifyOtpBtn').text('Verify & Continue');
+      }
+    }
+
+    function formatSecondsToMMSS(seconds) {
+      var s = Math.max(0, parseInt(seconds || 0, 10) || 0);
+      var mm = String(Math.floor(s / 60)).padStart(2, '0');
+      var ss = String(s % 60).padStart(2, '0');
+      return mm + ':' + ss;
+    }
+
+    function applyOtpResendUi() {
+      var currentEmail = String($('#bdOtpEmail').val() || '').trim().toLowerCase();
+      if (bookingOtpResendRemaining > 0 && bookingOtpResendEmail && bookingOtpResendEmail === currentEmail) {
+        $('#bdSendOtpBtn').prop('disabled', true).text('Resend in ' + formatSecondsToMMSS(bookingOtpResendRemaining));
+      } else {
+        $('#bdSendOtpBtn').prop('disabled', false).text('Send email code');
+      }
+    }
+
+    function startOtpResendCountdown(seconds) {
+      bookingOtpResendRemaining = Math.max(0, parseInt(seconds || 0, 10) || 0);
+      if (bookingOtpResendTimer) {
+        clearInterval(bookingOtpResendTimer);
+        bookingOtpResendTimer = null;
+      }
+      applyOtpResendUi();
+      if (bookingOtpResendRemaining <= 0) return;
+
+      bookingOtpResendTimer = setInterval(function() {
+        bookingOtpResendRemaining = Math.max(0, bookingOtpResendRemaining - 1);
+        applyOtpResendUi();
+        if (bookingOtpResendRemaining <= 0 && bookingOtpResendTimer) {
+          clearInterval(bookingOtpResendTimer);
+          bookingOtpResendTimer = null;
+        }
+      }, 1000);
+    }
+
+    async function sendBookingOtp() {
+      var email = String($('#bdOtpEmail').val() || '').trim();
+      $('#bdOtpError').addClass('hidden');
+      if (bookingOtpResendRemaining > 0 && bookingOtpResendEmail === email.toLowerCase()) {
+        $('#bdOtpError').removeClass('hidden').text('Please wait ' + formatSecondsToMMSS(bookingOtpResendRemaining) + ' before requesting another code.');
+        return;
+      }
+      if (!isValidEmail(email)) {
+        $('#bdOtpError').removeClass('hidden').text('Please enter a valid email first.');
+        return;
+      }
+
+      $('#bdSendOtpBtn').prop('disabled', true).text('Sending...');
+      try {
+        var res = await fetch('/api/public/send-booking-otp', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+          },
+          body: JSON.stringify({ email: email })
         });
-        
-        // Handle Next button from calendar
-        $(document).off('click', '#nextToSlotsBtn').on('click', '#nextToSlotsBtn', function() {
-            const date = window.selectedDate;
-            if (!date) {
-                alert('Please select a date first.');
-                return;
-            }
-            
-            // Check if separate consultation flow
-            if (consultationInfo.is_separate) {
-                if (bookingFlowStep === 'consultation') {
-                    loadConsultationSlots(date);
-                } else if (bookingFlowStep === 'tattoo_session') {
-                    // Check if date is before minimum date
-                    if (minimumTattooSessionDate) {
-                        const selectedDate = new Date(date + 'T00:00:00');
-                        const minDate = new Date(minimumTattooSessionDate.split(' ')[0] + 'T00:00:00');
-                        if (selectedDate < minDate) {
-                            alert(`Please select a date on or after ${minDate.toLocaleDateString()}. Minimum gap required: ${consultationInfo.gap_value} ${consultationInfo.gap_unit} after consultation.`);
-                            return;
-                        }
-                    }
-                    loadTattooSessionSlots(date);
-                }
-            } else {
-                // Regular flow (combined or no consultation)
-                loadRegularSlots(date);
-            }
+        var data = await res.json();
+        if (!res.ok) {
+          if (data && data.resend_available_in_seconds) {
+            bookingOtpResendEmail = email.toLowerCase();
+            startOtpResendCountdown(data.resend_available_in_seconds);
+          }
+          throw new Error((data && data.message) || 'Could not send verification code.');
+        }
+        $('#bdOtpStatus').removeClass('hidden').addClass('flex').html('<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>4-digit code sent to ' + email + '.</span>');
+        bookingOtpResendEmail = email.toLowerCase();
+        startOtpResendCountdown(data && data.resend_available_in_seconds ? data.resend_available_in_seconds : 60);
+      } catch (err) {
+        $('#bdOtpError').removeClass('hidden').text(err.message || 'Could not send verification code.');
+      } finally {
+        if (bookingOtpResendRemaining <= 0) {
+          $('#bdSendOtpBtn').prop('disabled', false).text('Send email code');
+        } else {
+          applyOtpResendUi();
+        }
+      }
+    }
+    window.sendBookingOtp = sendBookingOtp;
+
+    async function verifyBookingOtp() {
+      if (bookingOtpVerified) {
+        finishRegister();
+        return;
+      }
+
+      var email = String($('#bdOtpEmail').val() || '').trim();
+      var code = String($('#bdOtpCode').val() || '').trim();
+      var name = String($('#bdName').val() || '').trim();
+      $('#bdOtpError').addClass('hidden');
+
+      if (!isValidEmail(email)) {
+        $('#bdOtpError').removeClass('hidden').text('Please enter a valid email.');
+        return;
+      }
+      if (!/^\d{4}$/.test(code)) {
+        $('#bdOtpError').removeClass('hidden').text('Please enter a valid 4-digit code.');
+        return;
+      }
+
+      $('#bdVerifyOtpBtn').prop('disabled', true).text('Verifying...');
+      try {
+        var res = await fetch('/api/public/verify-booking-otp', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+          },
+          body: JSON.stringify({ email: email, code: code, name: name })
         });
-        
-        function loadConsultationSlots(date) {
-            // Ensure booking flow step is set to consultation
-            bookingFlowStep = 'consultation';
-            
-            // Hide calendar, show slots section
-            document.getElementById('calendarSection').classList.add('d-none');
-            document.getElementById('slotsSection').classList.remove('d-none');
-            document.getElementById('slotsTitle').textContent = 'Select Consultation Time Slot';
-            document.getElementById('slotsContainer').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-            document.getElementById('slotsNextButton').classList.add('d-none');
-            
-            // Scroll to slots section
-            document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            $.ajax({
-                url: '{{ route('api.consultation.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
-                method: 'GET',
-                data: { date: date },
-                success: function(response) {
-                    if (response.success) {
-                        displayConsultationSlots(response, date);
-                    } else {
-                        document.getElementById('slotsContainer').innerHTML = `
-                            <div class="alert alert-warning">
-                                <i class="ti ti-alert-triangle me-2"></i>
-                                ${response.message || 'No consultation slots available'}
-                            </div>
-                        `;
-                    }
-                },
-                error: function(xhr) {
-                    const errorMessage = xhr.responseJSON?.message || 'Failed to load consultation slots. Please try again.';
-                    document.getElementById('slotsContainer').innerHTML = `
-                        <div class="alert alert-danger">
-                            <i class="ti ti-x-circle me-2"></i>
-                            ${errorMessage}
-                        </div>
-                    `;
-                }
-            });
+        var data = await res.json();
+        if (!res.ok || !data || !data.verified) {
+          throw new Error((data && data.message) || 'Verification failed.');
         }
-        
-        function loadTattooSessionSlots(date) {
-            if (!selectedConsultationSlot) {
-                alert('Please select a consultation slot first.');
-                return;
-            }
-            
-            // Hide calendar, show slots section
-            document.getElementById('calendarSection').classList.add('d-none');
-            document.getElementById('slotsSection').classList.remove('d-none');
-            document.getElementById('slotsTitle').textContent = 'Select Tattoo Session Time Slot';
-            document.getElementById('slotsContainer').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-            document.getElementById('slotsNextButton').classList.add('d-none');
-            
-            // Scroll to slots section
-            document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            $.ajax({
-                url: '{{ route('api.tattoo-session.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
-                method: 'GET',
-                data: {
-                    date: date,
-                    consultation_date: selectedConsultationSlot.date,
-                    consultation_start_time_utc: selectedConsultationSlot.start_time_utc,
-                    consultation_end_time_utc: selectedConsultationSlot.end_time_utc
-                },
-                success: function(response) {
-                    if (response.success) {
-                        displayTattooSessionSlots(response, date);
-                    } else {
-                        document.getElementById('slotsContainer').innerHTML = `
-                            <div class="alert alert-warning">
-                                <i class="ti ti-alert-triangle me-2"></i>
-                                ${response.message || 'No tattoo session slots available'}
-                            </div>
-                        `;
-                    }
-                },
-                error: function(xhr) {
-                    const errorMessage = xhr.responseJSON?.message || 'Failed to load tattoo session slots. Please try again.';
-                    document.getElementById('slotsContainer').innerHTML = `
-                        <div class="alert alert-danger">
-                            <i class="ti ti-x-circle me-2"></i>
-                            ${errorMessage}
-                        </div>
-                    `;
-                }
-            });
-        }
-        
-        function loadRegularSlots(date) {
-            // Hide calendar, show slots section
-            document.getElementById('calendarSection').classList.add('d-none');
-            document.getElementById('slotsSection').classList.remove('d-none');
-            document.getElementById('slotsTitle').textContent = 'Select Time Slot';
-            document.getElementById('slotsContainer').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-            document.getElementById('slotsNextButton').classList.add('d-none');
-            
-            // Scroll to slots section
-            document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            $.ajax({
-                url: '{{ route('api.availability.slots', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
-                method: 'GET',
-                data: { date: date },
-                success: function(response) {
-                    if (response.success) {
-                        displayTimeSlots(response, date);
-                    } else {
-                        document.getElementById('slotsContainer').innerHTML = `
-                            <div class="alert alert-warning">
-                                <i class="ti ti-alert-triangle me-2"></i>
-                                ${response.message || 'No availability data found'}
-                            </div>
-                        `;
-                    }
-                },
-                error: function(xhr) {
-                    const errorMessage = xhr.responseJSON?.message || 'Failed to load available slots. Please try again.';
-                    document.getElementById('slotsContainer').innerHTML = `
-                        <div class="alert alert-danger">
-                            <i class="ti ti-x-circle me-2"></i>
-                            ${errorMessage}
-                        </div>
-                    `;
-                }
-            });
-        }
-        
-        function displayTimeSlots(data, date) {
-            const container = document.getElementById('slotsContainer');
-            const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-            
-            document.getElementById('slotsTitle').textContent = `Select Time Slot - ${formattedDate}`;
-            
-            // Set up back to calendar button handler
-            $(document).off('click', '#backToCalendarBtn').on('click', '#backToCalendarBtn', function() {
-                document.getElementById('slotsSection').classList.add('d-none');
-                document.getElementById('calendarSection').classList.remove('d-none');
-                
-                // Restore selected date highlight if date was previously selected
-                if (window.selectedDate) {
-                    $('.calendar-day').removeClass('border-primary');
-                    // Use setTimeout to ensure calendar is rendered before trying to highlight
-                    setTimeout(function() {
-                        $(`.calendar-day[data-date="${window.selectedDate}"]`).addClass('border-primary');
-                        $('#calendarNextButton').removeClass('d-none');
-                    }, 100);
-                } else {
-                    // Only clear if no date was selected
-                    $('.calendar-day').removeClass('border-primary');
-                    $('#calendarNextButton').addClass('d-none');
-                }
-                
-                document.getElementById('calendarSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-            
-            if (data.is_unavailable) {
-                container.innerHTML = `
-                    <div class="alert alert-warning">
-                        <i class="ti ti-calendar-x me-2"></i>
-                        Artist is unavailable on this date.
-                </div>
-            `;
-                return;
-            }
-            
-            if (!data.time_slots || data.time_slots.length === 0) {
-                container.innerHTML = `
-                    <div class="alert alert-info">
-                        <i class="ti ti-info-circle me-2"></i>
-                        No available time slots for this date.
-                        </div>
-                    `;
-                return;
-            }
-            
-            let consultationDurationHTML = '';
-            if (data.consultation_info && data.consultation_info.is_combined) {
-                consultationDurationHTML = '<br><strong>Consultation Duration:</strong> ' + data.consultation_info.consultation_duration_minutes + ' minutes<br><strong>Total Duration:</strong> ' + (data.tattoo.session_time_h + (data.consultation_info.consultation_duration_minutes / 60)).toFixed(2) + ' hour(s)';
-            }
-            
-            let consultationAlertHTML = '';
-            if (data.consultation_info && data.consultation_info.is_combined) {
-                consultationAlertHTML = '<div class="alert alert-info mb-2"><i class="ti ti-info-circle me-2"></i><strong>Consultation Included:</strong> This booking includes a consultation session.</div>';
-            }
-            
-            let slotsHTML = `
-                <div class="mb-3">
-                    <p class="text-muted mb-2">
-                        <strong>Session Duration:</strong> ${data.tattoo.session_time_h} hour(s)
-                        ${consultationDurationHTML}
-                        <br><strong>Timezone:</strong> ${data.timezone}
-                    </p>
-                    ${consultationAlertHTML}
-                </div>
-                <div class="row g-2">
-            `;
-            
-            data.time_slots.forEach((slot, index) => {
-                const totalDuration = slot.total_duration_minutes ? (slot.total_duration_minutes / 60).toFixed(2) : slot.duration_hours;
-                
-                slotsHTML += `
-                    <div class="col-12 col-md-6">
-                        <div class="card slot-card h-100" style="cursor: pointer;" data-slot-index="${index}" data-slot-date="${date}">
-                            <div class="card-body text-center">
-                                <h5 class="card-title mb-1">${slot.start_time_display}</h5>
-                                <p class="text-muted mb-0 small">to ${slot.end_time_display}</p>
-                                <p class="text-muted mb-0 small mt-1">Duration: ${totalDuration} hour(s)</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            slotsHTML += `
-                </div>
-                <div class="mt-3">
-                    <p class="text-muted small">
-                        <i class="ti ti-info-circle me-1"></i>
-                        Select a time slot to proceed with booking.
-                    </p>
-                </div>
-                <div class="mt-3 d-none" id="nextButtonContainer">
-                    <button type="button" class="btn btn-primary w-100" id="nextToQuestionsBtn">
-                        ${(window.bookingData?.questions || []).length > 0 ? 'Next: Answer Questions' : 'Next: Payment'} <i class="ti ti-arrow-right ms-1"></i>
-                    </button>
-                    <button type="button" class="btn btn-outline-primary w-100 mt-2" onclick="showBookingDetails('slots')">
-                        <i class="ti ti-eye me-1"></i> View Details
-                    </button>
-                </div>
-            `;
-            
-            container.innerHTML = slotsHTML;
-            
-            // Store questions data globally
-            window.bookingData = {
-                questions: data.questions || [],
-                date: date,
-                tattoo: data.tattoo,
-                consultationInfo: consultationInfo,
-                artist: data.artist,
-            };
-            
-            // Add click handlers to slot cards
-            $(document).off('click', '.slot-card').on('click', '.slot-card', function() {
-                const slotIndex = $(this).data('slot-index');
-                const selectedSlot = data.time_slots[slotIndex];
-                
-                // Highlight selected slot
-                $('.slot-card').removeClass('border-primary bg-light');
-                $(this).addClass('border-primary bg-light');
-                
-                // Store selected slot data
-                window.selectedSlot = {
-                    date: date,
-                    slot: selectedSlot,
-                    tattoo: data.tattoo,
-                    artist: data.artist
-                };
-                
-                // Show Next button and update text based on whether questions exist
-                const questions = window.bookingData?.questions || [];
-                const nextButton = $('#nextToQuestionsBtn');
-                if (questions.length > 0) {
-                    nextButton.html('Next: Answer Questions <i class="ti ti-arrow-right ms-1"></i>');
-                } else {
-                    nextButton.html('Next: Payment <i class="ti ti-arrow-right ms-1"></i>');
-                }
-                $('#nextButtonContainer').removeClass('d-none');
-            });
-            
-            // Handle Next button click
-            $(document).off('click', '#nextToQuestionsBtn').on('click', '#nextToQuestionsBtn', function() {
-                if (!window.selectedSlot) {
-                    alert('Please select a time slot first.');
-                    return;
-                }
-                
-                // Check if there are questions
-                const questions = window.bookingData?.questions || [];
-                if (!questions || questions.length === 0) {
-                    // No questions, skip directly to payment
-                    proceedToPaymentStep();
-                } else {
-                    // Has questions, proceed to questions step
-                    document.getElementById('slotsSection').classList.add('d-none');
-                    proceedToQuestionsStep();
-                }
-            });
-        }
-        
-        function displayConsultationSlots(data, date) {
-            const container = document.getElementById('slotsContainer');
-            const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-            
-            document.getElementById('slotsTitle').textContent = `Select Consultation Time Slot - ${formattedDate}`;
-            
-            // Ensure back button handlers are set up
-            setupBackButtonHandlers();
-            
-            if (data.is_unavailable) {
-                container.innerHTML = `<div class="alert alert-warning"><i class="ti ti-calendar-x me-2"></i>Artist is unavailable on this date.</div>`;
-                return;
-            }
-            
-            if (!data.time_slots || data.time_slots.length === 0) {
-                container.innerHTML = `<div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>No available consultation slots for this date.</div>`;
-                return;
-            }
-            
-            const consultationDuration = consultationInfo.session_duration_minutes || 30;
-            let slotsHTML = `
-                <div class="mb-3">
-                    <p class="text-muted mb-2">
-                        <strong>Consultation Duration:</strong> ${consultationDuration} minutes<br>
-                        <strong>Timezone:</strong> ${data.timezone}
-                    </p>
-                </div>
-                <div class="row g-2">
-            `;
-            
-            data.time_slots.forEach((slot, index) => {
-                // Check if this slot matches the previously selected consultation slot
-                const isSelected = selectedConsultationSlot && 
-                    selectedConsultationSlot.date === date &&
-                    selectedConsultationSlot.start_time_utc === slot.start_time_utc &&
-                    selectedConsultationSlot.end_time_utc === slot.end_time_utc;
-                
-                const selectedClass = isSelected ? 'border-primary' : '';
-                
-                slotsHTML += `
-                    <div class="col-12 col-md-6">
-                        <div class="card slot-card h-100 ${selectedClass}" style="cursor: pointer;" data-slot-index="${index}" data-slot-date="${date}">
-                            <div class="card-body text-center">
-                                <h5 class="card-title mb-1">${slot.start_time_display}</h5>
-                                <p class="text-muted mb-0 small">to ${slot.end_time_display}</p>
-                                <p class="text-muted mb-0 small mt-1">Duration: ${consultationDuration} minutes</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            // Check if we have a previously selected slot to show Next button
-            const hasSelectedSlot = selectedConsultationSlot && 
-                selectedConsultationSlot.date === date &&
-                data.time_slots.some(slot => 
-                    slot.start_time_utc === selectedConsultationSlot.start_time_utc &&
-                    slot.end_time_utc === selectedConsultationSlot.end_time_utc
-                );
-            
-            slotsHTML += `
-                </div>
-                <div class="mt-3 ${hasSelectedSlot ? '' : 'd-none'}" id="nextButtonContainer">
-                    <button type="button" class="btn btn-primary w-100" id="nextToTattooSessionBtn">
-                        Next: Select Tattoo Session <i class="ti ti-arrow-right ms-1"></i>
-                    </button>
-                </div>
-            `;
-            
-            container.innerHTML = slotsHTML;
-            
-            // If we have a previously selected slot, ensure minimum date is calculated
-            if (hasSelectedSlot) {
-                calculateMinimumTattooSessionDate();
-            }
-            
-            // Add click handlers
-            $(document).off('click', '.slot-card').on('click', '.slot-card', function() {
-                const slotIndex = $(this).data('slot-index');
-                const slot = data.time_slots[slotIndex];
-                
-                $('.slot-card').removeClass('border-primary');
-                $(this).addClass('border-primary');
-                
-                selectedConsultationSlot = {
-                    date: date,
-                    start_time_utc: slot.start_time_utc,
-                    end_time_utc: slot.end_time_utc,
-                    start_time_display: slot.start_time_display,
-                    end_time_display: slot.end_time_display
-                };
-                
-                calculateMinimumTattooSessionDate();
-                $('#nextButtonContainer').removeClass('d-none');
-            });
-            
-            $('#nextToTattooSessionBtn').off('click').on('click', function() {
-                if (!selectedConsultationSlot) {
-                    alert('Please select a consultation slot first.');
-                    return;
-                }
-                // Hide slots section temporarily, will show calendar again
-                document.getElementById('slotsSection').classList.add('d-none');
-                proceedToTattooSessionStep();
-            });
-        }
-        
-        function displayTattooSessionSlots(data, date) {
-            const container = document.getElementById('slotsContainer');
-            const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-            
-            document.getElementById('slotsTitle').textContent = `Select Tattoo Session Time Slot - ${formattedDate}`;
-            
-            // Ensure back button handlers are set up
-            setupBackButtonHandlers();
-            
-            if (data.is_unavailable) {
-                container.innerHTML = `<div class="alert alert-warning"><i class="ti ti-calendar-x me-2"></i>Artist is unavailable on this date.</div>`;
-                return;
-            }
-            
-            if (!data.time_slots || data.time_slots.length === 0) {
-                container.innerHTML = `<div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>No available tattoo session slots for this date.</div>`;
-                return;
-            }
-            
-            const gapInfo = data.consultation_info || {};
-            let slotsHTML = `
-                <div class="mb-3">
-                    ${selectedConsultationSlot ? `
-                    <div class="alert alert-success mb-2">
-                        <strong>Selected Consultation:</strong><br>
-                        ${new Date(selectedConsultationSlot.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}<br>
-                        ${selectedConsultationSlot.start_time_display} - ${selectedConsultationSlot.end_time_display}
-                    </div>
-                    ` : ''}
-                    ${gapInfo.gap_required ? `
-                    <div class="alert alert-info mb-2">
-                        <i class="ti ti-clock me-2"></i>
-                        <strong>Minimum gap:</strong> ${gapInfo.gap_value} ${gapInfo.gap_unit} after consultation<br>
-                        You can book from ${gapInfo.minimum_tattoo_session_date ? new Date(gapInfo.minimum_tattoo_session_date + 'T00:00:00').toLocaleDateString() : 'consultation end time'} onwards
-                    </div>
-                    ` : ''}
-                    <p class="text-muted mb-2">
-                        <strong>Tattoo Session Duration:</strong> ${data.tattoo.session_time_h} hour(s)<br>
-                        <strong>Timezone:</strong> ${data.timezone}
-                    </p>
-                </div>
-                <div class="row g-2">
-            `;
-            
-            data.time_slots.forEach((slot, index) => {
-                // Check if this slot matches the previously selected tattoo session slot
-                const isSelected = selectedTattooSessionSlot && 
-                    selectedTattooSessionSlot.date === date &&
-                    selectedTattooSessionSlot.start_time_utc === slot.start_time_utc &&
-                    selectedTattooSessionSlot.end_time_utc === slot.end_time_utc;
-                
-                const selectedClass = isSelected ? 'border-primary' : '';
-                
-                slotsHTML += `
-                    <div class="col-12 col-md-6">
-                        <div class="card slot-card h-100 ${selectedClass}" style="cursor: pointer;" data-slot-index="${index}" data-slot-date="${date}">
-                            <div class="card-body text-center">
-                                <h5 class="card-title mb-1">${slot.start_time_display}</h5>
-                                <p class="text-muted mb-0 small">to ${slot.end_time_display}</p>
-                                <p class="text-muted mb-0 small mt-1">Duration: ${slot.duration_hours} hour(s)</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            // Check if we have a previously selected slot to show Next button
-            const hasSelectedSlot = selectedTattooSessionSlot && 
-                selectedTattooSessionSlot.date === date &&
-                data.time_slots.some(slot => 
-                    slot.start_time_utc === selectedTattooSessionSlot.start_time_utc &&
-                    slot.end_time_utc === selectedTattooSessionSlot.end_time_utc
-                );
-            
-            const questions = data.questions || [];
-            const nextButtonText = questions.length > 0 ? 'Next: Answer Questions' : 'Next: Payment';
-            
-            slotsHTML += `
-                </div>
-                <div class="mt-3 ${hasSelectedSlot ? '' : 'd-none'}" id="nextButtonContainer">
-                    <button type="button" class="btn btn-primary w-100" id="nextToQuestionsBtn">
-                        ${nextButtonText} <i class="ti ti-arrow-right ms-1"></i>
-                    </button>
-                </div>
-            `;
-            
-            container.innerHTML = slotsHTML;
-            
-            // Store questions data globally
-            if (!window.bookingData) {
-                window.bookingData = {};
-            }
-            window.bookingData.questions = data.questions || [];
-            window.bookingData.tattoo = data.tattoo;
-            window.bookingData.artist = data.artist;
-            window.bookingData.date = date;
-            
-            // Add click handlers
-            $(document).off('click', '.slot-card').on('click', '.slot-card', function() {
-                const slotIndex = $(this).data('slot-index');
-                const slot = data.time_slots[slotIndex];
-                
-                $('.slot-card').removeClass('border-primary');
-                $(this).addClass('border-primary');
-                
-                selectedTattooSessionSlot = {
-                    date: date,
-                    start_time_utc: slot.start_time_utc,
-                    end_time_utc: slot.end_time_utc,
-                    start_time_display: slot.start_time_display,
-                    end_time_display: slot.end_time_display
-                };
-                
-                // Update button text based on whether questions exist
-                const questions = window.bookingData?.questions || [];
-                const nextButton = $('#nextToQuestionsBtn');
-                if (questions.length > 0) {
-                    nextButton.html('Next: Answer Questions <i class="ti ti-arrow-right ms-1"></i>');
-                } else {
-                    nextButton.html('Next: Payment <i class="ti ti-arrow-right ms-1"></i>');
-                }
-                $('#nextButtonContainer').removeClass('d-none');
-            });
-            
-            $('#nextToQuestionsBtn').off('click').on('click', function() {
-                if (!selectedTattooSessionSlot) {
-                    alert('Please select a tattoo session slot first.');
-                    return;
-                }
-                
-                // Check if there are questions
-                const questions = window.bookingData?.questions || [];
-                if (!questions || questions.length === 0) {
-                    // No questions, skip directly to payment
-                    proceedToPaymentStep();
-                } else {
-                    // Has questions, proceed to questions step
-                    document.getElementById('slotsSection').classList.add('d-none');
-                proceedToQuestionsStep();
-                }
-            });
-        }
-        
-        function calculateMinimumTattooSessionDate() {
-            if (!selectedConsultationSlot || !consultationInfo.gap_required) {
-                minimumTattooSessionDate = null;
-                return;
-            }
-            
-            const consultationEnd = new Date(selectedConsultationSlot.date + 'T' + selectedConsultationSlot.end_time_utc);
-            const gapValue = consultationInfo.gap_value || 0;
-            const gapUnit = consultationInfo.gap_unit || 'days';
-            
-            let gapMinutes = 0;
-            switch(gapUnit) {
-                case 'minutes':
-                    gapMinutes = gapValue;
-                    break;
-                case 'hours':
-                    gapMinutes = gapValue * 60;
-                    break;
-                case 'days':
-                    gapMinutes = gapValue * 24 * 60;
-                    break;
-            }
-            
-            const minimumDate = new Date(consultationEnd.getTime() + gapMinutes * 60000);
-            minimumTattooSessionDate = minimumDate.toISOString().slice(0, 19).replace('T', ' ');
-            
-            // Update calendar to disable dates before minimum
-            updateCalendarForGap(minimumDate);
-        }
-        
-        function updateCalendarForGap(minimumDate) {
-            // Only update calendar if we're on the tattoo session step
-            // Don't modify calendar when on consultation step
-            if (bookingFlowStep !== 'tattoo_session') {
-                return;
-            }
-            
-            const minDateStr = minimumDate.toISOString().split('T')[0];
-            $('.calendar-day').each(function() {
-                const dateStr = $(this).data('date');
-                if (dateStr && dateStr < minDateStr) {
-                    $(this).addClass('unavailable').removeClass('available');
-                    $(this).attr('disabled', 'disabled');
-                }
-            });
-        }
-        
-        function proceedToTattooSessionStep() {
-            bookingFlowStep = 'tattoo_session';
-            
-            // Clear slot availability cache since flow changed
-            clearSlotAvailabilityCache();
-            
-            // Clear selectedDate if no tattoo session date has been selected yet
-            // This ensures the Next button doesn't show until user selects a date on tattoo session calendar
-            if (!selectedTattooSessionSlot) {
-                window.selectedDate = null;
-            }
-            
-            // Explicitly hide Next button until user selects a date on tattoo session calendar
-            // This ensures it's hidden even if calendar hasn't rendered yet
-            $('#calendarNextButton').addClass('d-none');
-            
-            // Re-calculate minimum date if consultation slot is selected
-            if (selectedConsultationSlot) {
-                calculateMinimumTattooSessionDate();
-            }
-            
-            // Update UI
-            $('#calendarTitle').text('Step 2: Select Tattoo Session Date');
-            $('#backToConsultationBtn').removeClass('d-none');
-            
-            // Show calendar section again
-            document.getElementById('calendarSection').classList.remove('d-none');
-            document.getElementById('slotsSection').classList.add('d-none');
-            
-            // Re-render calendar to disable dates (before consultation date and within gap period)
-            renderCalendar();
-            
-            // Show selected consultation info
-            if (selectedConsultationSlot) {
-                const consultationDate = new Date(selectedConsultationSlot.date + 'T00:00:00').toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                });
-                
-                // Add info card above calendar
-                if (!$('#consultationSelectedInfo').length) {
-                    $('#calendarSection .calendar-container').before(`
-                        <div class="alert alert-success mb-3" id="consultationSelectedInfo">
-                            <strong>Selected Consultation:</strong> ${consultationDate} at ${selectedConsultationSlot.start_time_display} - ${selectedConsultationSlot.end_time_display}
-                            ${consultationInfo.gap_required ? `<br><strong>Minimum gap:</strong> ${consultationInfo.gap_value} ${consultationInfo.gap_unit} - Book from ${minimumTattooSessionDate ? new Date(minimumTattooSessionDate.split(' ')[0] + 'T00:00:00').toLocaleDateString() : 'consultation end'} onwards` : ''}
-                        </div>
-                    `);
-                }
-            }
-            
-            // Scroll to calendar
-            document.getElementById('calendarSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        
-        function proceedToQuestionsStep() {
-            // Check if there are questions first
-            const questions = window.bookingData?.questions || [];
-            if (!questions || questions.length === 0) {
-                // No questions, skip directly to payment
-                proceedToPaymentStep();
-                return;
-            }
-            
-            bookingFlowStep = 'questions';
-            
-            // Hide slots section, show questions section
-            document.getElementById('slotsSection').classList.add('d-none');
-            document.getElementById('questionsSection').classList.remove('d-none');
-            
-            // Show questions form
-            setTimeout(() => {
-                showQuestionsForm();
-            }, 300);
-            
-            // Scroll to questions section
-            document.getElementById('questionsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        
-        function proceedToPaymentStep() {
-            bookingFlowStep = 'payment';
-            
-            // For separate consultation, we need to get payment info
-            // Submit booking data to get payment information
-            const formData = new FormData();
-            formData.append('_token', csrfToken);
-            
-            if (consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot) {
-                // Hide slots section, show payment section
-                document.getElementById('slotsSection').classList.add('d-none');
-                document.getElementById('paymentSection').classList.remove('d-none');
-                
-                // Update back button text based on whether questions exist
-                const questions = window.bookingData?.questions || [];
-                const backButton = document.getElementById('backToQuestionsBtn');
-                if (backButton) {
-                    if (questions && questions.length > 0) {
-                        backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Back to Questions';
-                    } else {
-                        backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Change Time';
-                    }
-                }
-                
-                formData.append('consultation_slot[date]', selectedConsultationSlot.date);
-                formData.append('consultation_slot[start_time_utc]', selectedConsultationSlot.start_time_utc);
-                formData.append('consultation_slot[end_time_utc]', selectedConsultationSlot.end_time_utc);
-                formData.append('tattoo_session_slot[date]', selectedTattooSessionSlot.date);
-                formData.append('tattoo_session_slot[start_time_utc]', selectedTattooSessionSlot.start_time_utc);
-                formData.append('tattoo_session_slot[end_time_utc]', selectedTattooSessionSlot.end_time_utc);
-                
-                // Add questions if any
-                const questionsForm = document.getElementById('questionsForm');
-                if (questionsForm) {
-                    const formDataFromForm = new FormData(questionsForm);
-                    for (let [key, value] of formDataFromForm.entries()) {
-                        if (key.startsWith('questions[')) {
-                            formData.append(key, value);
-                        }
-                    }
-                }
-                
-                // Show loading state
-                document.getElementById('paymentContainer').innerHTML = `
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary mb-3" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p>Preparing payment...</p>
-                    </div>
-                `;
-                
-                // For separate consultation, we need to calculate payment based on tattoo session slot
-                // Use the tattoo session slot to get payment info
-                const paymentFormData = new FormData();
-                paymentFormData.append('_token', csrfToken);
-                paymentFormData.append('slot[date]', selectedTattooSessionSlot.date);
-                paymentFormData.append('slot[start_time_utc]', selectedTattooSessionSlot.start_time_utc);
-                paymentFormData.append('slot[end_time_utc]', selectedTattooSessionSlot.end_time_utc);
-                
-                // Add questions if any
-                if (questionsForm) {
-                    const formDataFromForm = new FormData(questionsForm);
-                    for (let [key, value] of formDataFromForm.entries()) {
-                        if (key.startsWith('questions[')) {
-                            paymentFormData.append(key, value);
-                        }
-                    }
-                }
-                
-                // Submit to get payment info using regular submit endpoint with tattoo session slot
-                $.ajax({
-                    url: '{{ route('api.booking.submit', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
-                    method: 'POST',
-                    data: paymentFormData,
-                    processData: false,
-                    contentType: false,
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken
-                    },
-                    success: function(response) {
-                        if (response.success && response.payment) {
-                            window.bookingData.payment = response.payment;
-                            setTimeout(() => {
-                                showPaymentForm(response.payment);
-                            }, 300);
-                        } else {
-                            document.getElementById('paymentContainer').innerHTML = `
-                                <div class="alert alert-danger">
-                                    <i class="ti ti-alert-circle me-2"></i>
-                                    ${response.message || 'Failed to get payment information. Please try again.'}
-                                </div>
-                            `;
-                        }
-                    },
-                    error: function(xhr) {
-                        const errorMessage = xhr.responseJSON?.message || 'Failed to get payment information. Please try again.';
-                        document.getElementById('paymentContainer').innerHTML = `
-                            <div class="alert alert-danger">
-                                <i class="ti ti-x-circle me-2"></i>
-                                ${errorMessage}
-                            </div>
-                        `;
-                    }
-                });
+
+        bookingOtpVerified = true;
+        bookingConnectedEmail = (data.user && data.user.email) ? data.user.email : email;
+        bookingConnectedName = (data.user && data.user.name) ? data.user.name : '';
+        $('#bdEmail').val(bookingConnectedEmail);
+        updateConnectedUi();
+        finishRegister();
+      } catch (err) {
+        $('#bdOtpError').removeClass('hidden').text(err.message || 'Verification failed.');
+      } finally {
+        $('#bdVerifyOtpBtn').prop('disabled', false).text('Verify & Continue');
+      }
+    }
+    window.verifyBookingOtp = verifyBookingOtp;
+
+    function finishRegister() {
+      if (!bookingOtpVerified) {
+        $('#bdOtpError').removeClass('hidden').text('Please verify your email to continue.');
+        return;
+      }
+      goToStep(4);
+    }
+    window.finishRegister = finishRegister;
+
+    function toggleBdAuth() {}
+    window.toggleBdAuth = toggleBdAuth;
+
+    $(document).on('click', '.single-choice-radio-button', function() {
+      var choice_group = $(this).closest('div.single-choice-group');
+      choice_group.find('.single-choice-radio-button').removeClass('selected');
+
+      var main_div = $(this).closest('div.question-div');
+      var current_question = parseInt(main_div.data('q'), 10);
+
+      $(this).addClass('selected');
+      main_div.find('.js-question-error').addClass('hidden');
+
+      if (isNaN(current_question)) return;
+
+      // Move to the next question with a small delay.
+      setTimeout(function() {
+        nextQuestion(current_question);
+      }, 180);
+    });
+
+    $(document).on('click', '.js-prev-question', function() {
+      prevQuestion();
+    });
+
+    $(document).on('click', '.js-next-question', function() {
+      nextQuestion();
+    });
+
+    $(document).on('click', '.js-continue-scheduling', function() {
+      if (!validateActiveQuestion()) return;
+      goToStep(2);
+    });
+
+    $(document).on('change', '.js-select2-question, .js-question-file, .js-question-toggle', function() {
+      var $question = $(this).closest('.question-div');
+      var qId = $question.data('question-id');
+      if (!qId) return;
+      if ($(this).hasClass('js-question-toggle')) {
+        questionAnswers[qId] = $(this).is(':checked');
+      } else if ($(this).hasClass('js-question-file')) {
+        questionAnswers[qId] = this.files && this.files.length ? this.files[0].name : '';
+      } else {
+        questionAnswers[qId] = String($(this).val() || '').trim();
+      }
+      $question.find('.js-question-error').addClass('hidden');
+    });
+
+    $(document).on('input', '.js-question-input', function() {
+      var $question = $(this).closest('.question-div');
+      var qId = $question.data('question-id');
+      if (!qId) return;
+      questionAnswers[qId] = String($(this).val() || '').trim();
+      $question.find('.js-question-error').addClass('hidden');
+    });
+    $('#bdName').on('input', function() { clearRegError('bdName', 'bdNameError'); });
+    $('#bdEmail').on('input', function() { clearRegError('bdEmail', 'bdEmailError'); });
+    $('#bdPhone').on('input', function() { clearRegError('bdPhone', 'bdPhoneError'); });
+    $('#bdOtpEmail').on('input', function() {
+      $('#bdOtpError').addClass('hidden');
+      $('#bdOtpStatus').text('').addClass('hidden').removeClass('flex');
+      applyOtpResendUi();
+      if (String($(this).val() || '').trim().toLowerCase() !== String(bookingConnectedEmail || '').toLowerCase()) {
+        bookingOtpVerified = false;
+        bookingConnectedEmail = '';
+        bookingConnectedName = '';
+      }
+      updateConnectedUi();
+    });
+    $('#bdOtpCode').on('input', function() {
+      this.value = String(this.value || '').replace(/\D/g, '').slice(0, 4);
+      $('#bdOtpError').addClass('hidden');
+    });
+
+    $(function() {
+      renderQuestions();
+      updateProgressDots();
+
+      if (!Array.isArray(questionDefinitions) || questionDefinitions.length === 0) {
+        $('.js-back-to-questions').addClass('hidden');
+        goToStep(2);
+      }
+
+      $('.js-select2-question').select2({
+        width: '100%',
+        minimumResultsForSearch: Infinity
+      });
+      $('.dropify').dropify();
+
+      if (consultationRequired) {
+        // Phone option is not part of current artist preference matrix.
+        $('#ccConsultTypeCards .consult-type-card[data-type="phone"]').addClass('hidden');
+
+        var allowedTypes = [];
+        if (consultationSessionType === 'online') {
+          allowedTypes = ['video'];
+        } else if (consultationSessionType === 'physical') {
+          allowedTypes = ['studio'];
             } else {
-                // Regular flow (non-separate consultation)
-                // Hide slots section, show payment section
-                document.getElementById('slotsSection').classList.add('d-none');
-                document.getElementById('paymentSection').classList.remove('d-none');
-                
-                // Update back button text based on whether questions exist
-                const questions = window.bookingData?.questions || [];
-                const backButton = document.getElementById('backToQuestionsBtn');
-                if (backButton) {
-                    if (questions && questions.length > 0) {
-                        backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Back to Questions';
-                    } else {
-                        backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Change Time';
-                    }
-                }
-                
-                // Submit booking data to get payment information
-                const formData = new FormData();
-                formData.append('_token', csrfToken);
-                formData.append('slot[date]', window.selectedSlot.date);
-                formData.append('slot[start_time_utc]', window.selectedSlot.slot.start_time_utc);
-                formData.append('slot[end_time_utc]', window.selectedSlot.slot.end_time_utc);
-                
-                // Add questions if any (though there shouldn't be any if we're here)
-                const questionsForm = document.getElementById('questionsForm');
-                if (questionsForm) {
-                    const formDataFromForm = new FormData(questionsForm);
-                    for (let [key, value] of formDataFromForm.entries()) {
-                        if (key.startsWith('questions[')) {
-                            formData.append(key, value);
-                        }
-                    }
-                }
-                
-                // Show loading state
-                document.getElementById('paymentContainer').innerHTML = `
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary mb-3" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p>Preparing payment...</p>
-                    </div>
-                `;
-                
-                // Submit to get payment info
-                $.ajax({
-                    url: '{{ route('api.booking.submit', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
-                    method: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken
-                    },
-                    success: function(response) {
-                        if (response.success && response.payment) {
-                            window.bookingData.payment = response.payment;
-                            window.bookingData.booking = response.booking_data;
-                            setTimeout(() => {
-                                showPaymentForm(response.payment);
-                            }, 300);
-                        } else {
-                            document.getElementById('paymentContainer').innerHTML = `
-                                <div class="alert alert-danger">
-                                    <i class="ti ti-alert-circle me-2"></i>
-                                    ${response.message || 'Failed to get payment information. Please try again.'}
-                                </div>
-                            `;
-                        }
-                    },
-                    error: function(xhr) {
-                        const errorMessage = xhr.responseJSON?.message || 'Failed to get payment information. Please try again.';
-                        document.getElementById('paymentContainer').innerHTML = `
-                            <div class="alert alert-danger">
-                                <i class="ti ti-x-circle me-2"></i>
-                                ${errorMessage}
-                            </div>
-                        `;
-                    }
-                });
-            }
+          allowedTypes = ['video', 'studio'];
         }
-        
-        function showQuestionsForm() {
-            const questions = window.bookingData?.questions || [];
-            const container = document.getElementById('questionsContainer');
-            
-            if (!questions || questions.length === 0) {
-                // No questions, proceed directly to payment
-                if (consultationInfo.is_separate) {
-                    // For separate consultation, we'll handle payment after both slots are selected
-                    proceedToPaymentStep();
-                    return;
-                }
-                
-                // Regular flow - submit booking with empty questions to get payment info
-                const formData = new FormData();
-                formData.append('_token', csrfToken);
-                formData.append('slot[date]', window.selectedSlot.date);
-                formData.append('slot[start_time_utc]', window.selectedSlot.slot.start_time_utc);
-                formData.append('slot[end_time_utc]', window.selectedSlot.slot.end_time_utc);
-                
-                // Show loading
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                        <p>No questions to answer. Preparing payment...</p>
-                </div>
-            `;
-                
-                // Hide questions section, will show payment after
-                document.getElementById('questionsSection').classList.add('d-none');
-                
-                // Submit to get payment info
-                $.ajax({
-                    url: '{{ route('api.booking.submit', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
-                    method: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                headers: {
-                        'X-CSRF-TOKEN': csrfToken
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            // Store booking data
-                            window.bookingData.booking = response.booking_data;
-                            
-                            // Check if payment is required
-                            if (response.payment_required && response.payment.has_stripe_account) {
-                                // Show payment step
-                                setTimeout(() => {
-                                    showPaymentForm(response.payment);
-                                }, 300);
-                            } else if (!response.payment_required) {
-                                // No payment required, booking complete
-                                alert('Booking submitted successfully!');
-                                // TODO: Redirect to confirmation page
-                } else {
-                                // Payment required but Stripe not connected
-                                alert('Payment is required but artist has not connected Stripe account. Please contact the artist.');
-                            }
-                        }
-                    },
-                    error: function(xhr) {
-                        alert('An error occurred. Please try again.');
-                        // Show slots section again
-                        document.getElementById('questionsSection').classList.add('d-none');
-                        document.getElementById('slotsSection').classList.remove('d-none');
-                    }
-                });
-                return;
-            }
-            
-            // Show selected time slot info
-            const selectedSlot = window.selectedSlot;
-            const formattedDate = new Date(selectedSlot.date + 'T00:00:00').toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-            
-            let questionsHTML = `
-                <form id="questionsForm">
-                    <div class="selected-slot-info">
-                        <h6 class="mb-2"><i class="ti ti-calendar-event me-2"></i>Selected Time Slot</h6>
-                        <p class="mb-1"><strong>Date:</strong> ${formattedDate}</p>
-                        <p class="mb-1"><strong>Time:</strong> ${selectedSlot.slot.start_time_display} - ${selectedSlot.slot.end_time_display}</p>
-                        <p class="mb-0"><strong>Duration:</strong> ${selectedSlot.slot.duration_hours} hour(s)</p>
-                    </div>
-                <div class="mb-3">
-                        <h6 class="text-muted">Please answer the following questions:</h6>
-                        </div>
-                    `;
-            
-            questions.forEach((question, index) => {
-                const questionId = `question_${question.id}`;
-                
-                questionsHTML += `
-                    <div class="mb-4">
-                        <label for="${questionId}" class="form-label fw-semibold">
-                            ${question.question}
-                            <span class="text-danger">*</span>
-                        </label>
-                `;
-                
-                if (question.type === 'free') {
-                    questionsHTML += `
-                        <textarea 
-                            class="form-control" 
-                            id="${questionId}" 
-                            name="questions[${question.id}]" 
-                            rows="3" 
-                            placeholder="Enter your answer..."></textarea>
-                        <span class="field-error" id="${questionId}_error"></span>
-                    `;
-                } else if (question.type === 'select') {
-                    questionsHTML += `
-                        <select 
-                            class="form-select" 
-                            id="${questionId}" 
-                            name="questions[${question.id}]">
-                            <option value="">Select an option...</option>
-                    `;
-                    if (question.options && Array.isArray(question.options)) {
-                        question.options.forEach(option => {
-                            questionsHTML += `<option value="${option}">${option}</option>`;
-                        });
-                    }
-                    questionsHTML += `
-                        </select>
-                        <span class="field-error" id="${questionId}_error"></span>
-                    `;
-                } else if (question.type === 'radio') {
-                    questionsHTML += `<div class="mt-2">`;
-                    if (question.options && Array.isArray(question.options)) {
-                        question.options.forEach((option, optIndex) => {
-                            const radioId = `${questionId}_${optIndex}`;
-                            questionsHTML += `
-                                <div class="form-check mb-2">
-                                    <input 
-                                        class="form-check-input" 
-                                        type="radio" 
-                                        name="questions[${question.id}]" 
-                                        id="${radioId}" 
-                                        value="${option}">
-                                    <label class="form-check-label" for="${radioId}">
-                                        ${option}
-                                    </label>
-                    </div>
-                `;
-            });
-                    }
-                    questionsHTML += `
-                            </div>
-                        <span class="field-error" id="${questionId}_error"></span>
-                    `;
-                } else if (question.type === 'image') {
-                    const maxImages = question.max_images || 1;
-                    
-                    questionsHTML += `
-                        <div class="image-uploads-container" data-question-id="${question.id}" data-max-images="${maxImages}">
-                            <div class="image-upload-item mb-3" data-index="0">
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <label class="form-label mb-0">Image <span class="text-danger">*</span></label>
-                                </div>
-                                <input 
-                                    type="file" 
-                                    class="dropify image-upload-input" 
-                                    id="${questionId}_0" 
-                                    name="questions[${question.id}][]" 
-                                    accept="image/*"
-                                    data-height="200"
-                                    required>
-                            </div>
-                            <div class="image-uploads-list"></div>
-                            ${maxImages > 1 ? `
-                                <button type="button" class="btn btn-sm btn-outline-primary add-more-image-btn" data-question-id="${question.id}">
-                                    <i class="ti ti-plus me-1"></i> Add More Images
-                                </button>
-                                <small class="text-muted d-block mt-2">You can upload up to ${maxImages} images</small>
-                            ` : ''}
-                            <span class="field-error" id="${questionId}_error"></span>
-                        </div>
-                    `;
-                }
-                
-                questionsHTML += `</div>`;
-            });
-            
-            questionsHTML += `
-                    <div class="mt-4 d-flex flex-column gap-2">
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-secondary" id="backToSlotsBtn">
-                                <i class="ti ti-arrow-left me-1"></i> Back
-                            </button>
-                            <button type="submit" class="btn btn-primary flex-grow-1" id="submitBookingBtn">
-                                Proceed to Payment <i class="ti ti-arrow-right ms-1"></i>
-                            </button>
-                        </div>
-                        <button type="button" class="btn btn-outline-primary w-100" onclick="showBookingDetails('questions')">
-                            <i class="ti ti-eye me-1"></i> View Details
-                        </button>
-                    </div>
-                </form>
-                `;
-            
-            container.innerHTML = questionsHTML;
-            
-            // Initialize Dropify for image inputs
-            $('.dropify').dropify({
-                messages: {
-                    'default': 'Drag and drop an image here or click',
-                    'replace': 'Drag and drop or click to replace',
-                    'remove': 'Remove',
-                    'error': 'Ooops, something wrong happened.'
-                }
-            });
-            
-            // Handle "Add More Images" button
-            $(document).off('click', '.add-more-image-btn').on('click', '.add-more-image-btn', function() {
-                const questionId = $(this).data('question-id');
-                const container = $(this).closest('.image-uploads-container');
-                const maxImages = parseInt(container.data('max-images')) || 1;
-                const uploadsList = container.find('.image-uploads-list');
-                const currentCount = container.find('.image-upload-item').length;
-                
-                if (currentCount >= maxImages) {
-                    alert(`You can upload a maximum of ${maxImages} images.`);
-                    return;
-                }
-                
-                const index = currentCount;
-                const newItemHtml = `
-                    <div class="image-upload-item mb-3" data-index="${index}">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <label class="form-label mb-0">Image ${index + 1}</label>
-                            <button type="button" class="btn btn-sm btn-label-danger remove-image-btn ms-auto" data-question-id="${questionId}" data-index="${index}">
-                                <i class="ti ti-trash me-1"></i> Remove
-                            </button>
-                        </div>
-                        <input 
-                            type="file" 
-                            class="dropify image-upload-input" 
-                            id="${questionId}_${index}" 
-                            name="questions[${questionId}][]" 
-                            accept="image/*"
-                            data-height="200">
-                    </div>
-                `;
-                
-                uploadsList.append(newItemHtml);
-                
-                // Initialize Dropify for the new input
-                $(`#${questionId}_${index}`).dropify({
-                    messages: {
-                        'default': 'Drag and drop an image here or click',
-                        'replace': 'Drag and drop or click to replace',
-                        'remove': 'Remove',
-                        'error': 'Ooops, something wrong happened.'
-                    }
-                });
-                
-                // Update "Add More" button visibility
-                if (container.find('.image-upload-item').length >= maxImages) {
-                    container.find('.add-more-image-btn').hide();
-                }
-            });
-            
-            // Handle "Remove Image" button
-            $(document).off('click', '.remove-image-btn').on('click', '.remove-image-btn', function() {
-                const questionId = $(this).data('question-id');
-                const index = $(this).data('index');
-                const container = $(this).closest('.image-uploads-container');
-                const item = $(this).closest('.image-upload-item');
-                
-                // Destroy Dropify instance
-                const dropifyInput = item.find('.dropify');
-                if (dropifyInput.length) {
-                    dropifyInput.dropify('destroy');
-                }
-                
-                // Remove the item
-                item.remove();
-                
-                // Re-index remaining items
-                container.find('.image-upload-item').each(function(idx) {
-                    $(this).attr('data-index', idx);
-                    const input = $(this).find('.image-upload-input');
-                    const newId = `${questionId}_${idx}`;
-                    input.attr('id', newId);
-                    const label = $(this).find('label');
-                    if (idx === 0) {
-                        label.html('Image <span class="text-danger">*</span>');
-                        input.prop('required', true);
-                } else {
-                        label.text(`Image ${idx + 1}`);
-                        input.prop('required', false);
-                    }
-                });
-                
-                // Show "Add More" button if under limit
-                const maxImages = parseInt(container.data('max-images')) || 1;
-                if (container.find('.image-upload-item').length < maxImages) {
-                    container.find('.add-more-image-btn').show();
-                }
-            });
-            
-            // Update "Add More" button visibility on page load
-            $('.image-uploads-container').each(function() {
-                const container = $(this);
-                const maxImages = parseInt(container.data('max-images')) || 1;
-                const currentCount = container.find('.image-upload-item').length;
-                
-                if (currentCount >= maxImages) {
-                    container.find('.add-more-image-btn').hide();
-                }
-            });
-            
-            // Questions section is already visible
-            
-            // Handle back button
-            // Back to calendar button
-            $(document).off('click', '#backToCalendarBtn').on('click', '#backToCalendarBtn', function() {
-                document.getElementById('slotsSection').classList.add('d-none');
-                document.getElementById('calendarSection').classList.remove('d-none');
-                document.getElementById('calendarSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-            
-            // Back to slots button
-            $(document).off('click', '#backToSlotsBtn').on('click', '#backToSlotsBtn', function() {
-                document.getElementById('questionsSection').classList.add('d-none');
-                document.getElementById('slotsSection').classList.remove('d-none');
-                document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-            
-            // Back to questions button (from payment)
-            $(document).off('click', '#backToQuestionsBtn').on('click', '#backToQuestionsBtn', function() {
-                // Hide payment section
-                document.getElementById('paymentSection').classList.add('d-none');
-                
-                // Check if there are questions to determine where to go back
-                const questions = window.bookingData?.questions || [];
-                
-                if (questions && questions.length > 0) {
-                    // Go back to questions section
-                    document.getElementById('questionsSection').classList.remove('d-none');
-                    document.getElementById('questionsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
-                    // No questions, go back to slots section
-                    document.getElementById('slotsSection').classList.remove('d-none');
-                    document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-            
-            // Calendar next button (when date is selected)
-            $(document).off('click', '#nextToSlotsBtn').on('click', '#nextToSlotsBtn', function() {
-                const selectedDate = $('.calendar-day.available.border-primary').data('date');
-                if (!selectedDate) {
-                    alert('Please select a date first.');
-                    return;
-                }
-                // Trigger date click to load slots
-                $('.calendar-day.available.border-primary').trigger('click');
-            });
-            
-            $(document).off('click', '#backToSlotsBtn').on('click', '#backToSlotsBtn', function() {
-                const questionsOffcanvasInstance = bootstrap.Offcanvas.getInstance(document.getElementById('questionsOffcanvas'));
-                if (questionsOffcanvasInstance) {
-                    questionsOffcanvasInstance.hide();
-                }
-                setTimeout(() => {
-                    const slotsOffcanvas = new bootstrap.Offcanvas(document.getElementById('slotsOffcanvas'));
-                    slotsOffcanvas.show();
-                }, 300);
-            });
-            
-            // Handle form submission
-            $(document).off('submit', '#questionsForm').on('submit', '#questionsForm', function(e) {
-                e.preventDefault();
-                
-                // Clear previous errors
-                $('.field-error').text('').hide();
-                $('.form-control, .form-select, .form-check-input').removeClass('is-invalid');
-                
-                // Validate image uploads - ensure first image is uploaded for image questions
-                let hasErrors = false;
-                $('.image-uploads-container').each(function() {
-                    const container = $(this);
-                    const questionId = container.data('question-id');
-                    const firstInput = container.find('.image-upload-item:first .image-upload-input');
-                    
-                    // Check if first image is uploaded
-                    if (firstInput.length && !firstInput[0].files || firstInput[0].files.length === 0) {
-                        hasErrors = true;
-                        container.find('.field-error').text('Please upload at least one image.').show();
-                        firstInput.closest('.image-upload-item').addClass('border border-danger rounded p-2');
-                    } else {
-                        container.find('.field-error').hide();
-                        firstInput.closest('.image-upload-item').removeClass('border border-danger rounded p-2');
-                    }
-                });
-                
-                if (hasErrors) {
-                    return false;
-                }
-                
-                const formData = new FormData(this);
-                
-                // Add CSRF token
-                formData.append('_token', csrfToken);
-                
-                // Handle separate consultation timing
-                if (consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot) {
-                    // Add consultation slot data
-                    formData.append('consultation_slot[date]', selectedConsultationSlot.date);
-                    formData.append('consultation_slot[start_time_utc]', selectedConsultationSlot.start_time_utc);
-                    formData.append('consultation_slot[end_time_utc]', selectedConsultationSlot.end_time_utc);
-                    
-                    // Add tattoo session slot data
-                    formData.append('tattoo_session_slot[date]', selectedTattooSessionSlot.date);
-                    formData.append('tattoo_session_slot[start_time_utc]', selectedTattooSessionSlot.start_time_utc);
-                    formData.append('tattoo_session_slot[end_time_utc]', selectedTattooSessionSlot.end_time_utc);
-                } else {
-                    // Regular flow - add slot data
-                    formData.append('slot[date]', window.selectedSlot.date);
-                    formData.append('slot[start_time_utc]', window.selectedSlot.slot.start_time_utc);
-                    formData.append('slot[end_time_utc]', window.selectedSlot.slot.end_time_utc);
-                }
-                
-                // Disable submit button
-                const submitBtn = $('#submitBookingBtn');
-                submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Processing...');
-                
-                // Determine which endpoint to use
-                const submitUrl = consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot
-                    ? '{{ route('api.booking.separate', ['tattoo_id' => $tattoo['tattoo_id']]) }}'
-                    : '{{ route('api.booking.submit', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
-                
-                // Submit via AJAX
-                $.ajax({
-                    url: submitUrl,
-                    method: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            // Store booking data including answers
-                            if (consultationInfo.is_separate) {
-                                window.bookingData.consultationBooking = {
-                                    id: response.consultation_booking_id,
-                                    time: response.consultation_time
-                                };
-                                window.bookingData.tattooSessionBooking = {
-                                    id: response.tattoo_session_booking_id,
-                                    time: response.tattoo_session_time
-                                };
-                            } else {
-                                window.bookingData.booking = response.booking_data;
-                                window.bookingData.questionsAnswers = response.booking_data?.answers || {};
-                            }
-                            
-                            // Store payment data
-                            if (response.payment) {
-                                window.bookingData.payment = response.payment;
-                            }
-                            
-                            // Close questions offcanvas
-                            const questionsOffcanvasInstance = bootstrap.Offcanvas.getInstance(document.getElementById('questionsOffcanvas'));
-                            if (questionsOffcanvasInstance) {
-                                questionsOffcanvasInstance.hide();
-                            }
-                            
-                            // For separate consultation, we need to get payment info
-                            if (consultationInfo.is_separate) {
-                                proceedToPaymentStep();
-                            } else if (response.payment_required && response.payment.has_stripe_account) {
-                                // Show payment step after a short delay
-                                setTimeout(() => {
-                                    showPaymentForm(response.payment);
-                                }, 300);
-                            } else if (!response.payment_required) {
-                                // No payment required, booking complete
-                                alert('Booking submitted successfully!');
-                                // TODO: Redirect to confirmation page
-                            } else {
-                                // Payment required but Stripe not connected
-                                alert('Payment is required but artist has not connected Stripe account. Please contact the artist.');
-                            }
-                        }
-                    },
-                    error: function(xhr) {
-                        if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-                            // Display validation errors
-                            const errors = xhr.responseJSON.errors;
-                            $.each(errors, function(field, messages) {
-                                if (field.startsWith('questions.')) {
-                                    const questionId = field.replace('questions.', '');
-                                    const errorElement = $(`#question_${questionId}_error`);
-                                    
-                                    // Find input element(s) - could be textarea, select, file input, or radio buttons
-                                    const inputElement = $(`#question_${questionId}`);
-                                    const radioElements = $(`input[name="questions[${questionId}]"]`);
-                                    
-                                    if (errorElement.length) {
-                                        errorElement.text(messages[0]).show();
-                                    }
-                                    
-                                    // Mark input as invalid
-                                    if (inputElement.length) {
-                                        inputElement.addClass('is-invalid');
-                                    } else if (radioElements.length) {
-                                        // For radio buttons, mark all as invalid
-                                        radioElements.addClass('is-invalid');
-                                    }
-                                }
-                            });
-                        } else {
-                            alert('An error occurred. Please try again.');
-                        }
-                    },
-                    complete: function() {
-                        submitBtn.prop('disabled', false).html('Proceed to Payment <i class="ti ti-arrow-right ms-1"></i>');
-                    }
-                });
-            });
+
+        $('#ccConsultTypeCards .consult-type-card').each(function() {
+          var type = String($(this).data('type') || '');
+          if (allowedTypes.indexOf(type) === -1) {
+            $(this).addClass('hidden');
+          }
+        });
+
+        if (allowedTypes.length === 1) {
+          var onlyType = allowedTypes[0];
+          var onlyCard = $('#ccConsultTypeCards .consult-type-card[data-type="' + onlyType + '"]').get(0);
+          if (onlyCard) {
+            selectConsultType(onlyCard, onlyType);
+          }
         }
-        
-        function showPaymentForm(paymentInfo) {
-            const container = document.getElementById('paymentContainer');
-            const currencySymbol = getCurrencySymbol(paymentInfo.currency);
-            const depositTypeText = paymentInfo.deposit_type === 'percentage' 
-                ? `${paymentInfo.deposit_value}% of ${currencySymbol}${paymentInfo.tattoo_price.toFixed(2)}` 
-                : 'Fixed amount';
-            
-            // Platform fee
-            const platformFee = paymentInfo.platform_fee || 10.00;
-            
-            // Store payment info globally for checkbox handler
-            window.paymentInfo = paymentInfo;
-            window.currentPaymentAmount = paymentInfo.deposit_amount;
-            window.platformFee = platformFee;
-            window.platformFee = platformFee;
-            
-            let paymentHTML = `
-                <div class="mb-4">
-                    <div class="alert alert-info">
-                        <h6 class="mb-2"><i class="ti ti-info-circle me-2"></i>Payment Required</h6>
-                        <p class="mb-1">A deposit is required to secure your booking.</p>
-                </div>
-                </div>
-                
-                <div class="mb-4">
-                    <div class="card border-primary">
-                        <div class="card-body">
-                            <h6 class="card-title mb-3">Booking Summary</h6>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="text-muted">Tattoo Price:</span>
-                                <strong>${currencySymbol}${paymentInfo.tattoo_price.toFixed(2)}</strong>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="text-muted">Deposit Type:</span>
-                                <span>${depositTypeText}</span>
-                            </div>
-                            <hr>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="fw-bold" id="paymentLabel">Deposit Amount:</span>
-                                <strong id="paymentAmount">${currencySymbol}${paymentInfo.deposit_amount.toFixed(2)}</strong>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="text-muted">Platform Fee:</span>
-                                <span>${currencySymbol}${platformFee.toFixed(2)}</span>
-                            </div>
-                            <hr>
-                            <div class="d-flex justify-content-between mb-3">
-                                <span class="fw-bold">Total Amount:</span>
-                                <strong class="text-primary fs-5" id="totalPaymentAmount">${currencySymbol}${(paymentInfo.deposit_amount + platformFee).toFixed(2)}</strong>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="payFullCheckbox">
-                                <label class="form-check-label" for="payFullCheckbox">
-                                    <strong>Pay Full Amount</strong> (${currencySymbol}${paymentInfo.tattoo_price.toFixed(2)})
-                                </label>
-                            </div>
-                            <small class="text-muted d-block mt-2">Currency: ${paymentInfo.currency}</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <form id="paymentForm">
-                    <div id="card-element" class="mb-3">
-                        <!-- Stripe Elements will create form elements here -->
-                    </div>
-                    <div id="card-errors" class="text-danger mb-3" role="alert"></div>
-                    
-                    <div class="d-flex flex-column gap-2">
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-secondary" id="backToQuestionsBtn">
-                                <i class="ti ti-arrow-left me-1"></i> Back
-                            </button>
-                            <button type="submit" class="btn btn-primary flex-grow-1" id="submitPaymentBtn" style="display: none;">
-                                <i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${(paymentInfo.deposit_amount + platformFee).toFixed(2)}</span>
-                            </button>
-                        </div>
-                        <button type="button" class="btn btn-outline-primary w-100" onclick="showBookingDetails('payment')">
-                            <i class="ti ti-eye me-1"></i> View Details
-                        </button>
-                    </div>
-                </form>
-            `;
-            
-            container.innerHTML = paymentHTML;
-            
-            // Store payment info for details view
-            if (!window.bookingData.payment) {
-                window.bookingData.payment = paymentInfo;
-            }
-            window.bookingData.payment.tattoo_price = paymentInfo.tattoo_price;
-            window.bookingData.payment.deposit_amount = paymentInfo.deposit_amount;
-            window.bookingData.payment.currency = paymentInfo.currency;
-            window.bookingData.payment.platform_fee = platformFee;
-            
-            // Handle "Pay Full" checkbox
-            $('#payFullCheckbox').on('change', function() {
-                const isChecked = $(this).is(':checked');
-                const currencySymbol = getCurrencySymbol(paymentInfo.currency);
-                const platformFee = window.platformFee || 10.00;
-                
-                // Store payment type for details view
-                window.bookingData.isPayFull = isChecked;
-                
-                if (isChecked) {
-                    window.currentPaymentAmount = paymentInfo.tattoo_price;
-                    $('#paymentLabel').text('Full Amount:');
-                    $('#paymentAmount').text(`${currencySymbol}${paymentInfo.tattoo_price.toFixed(2)}`);
-                    const totalAmount = paymentInfo.tattoo_price + platformFee;
-                    $('#totalPaymentAmount').text(`${currencySymbol}${totalAmount.toFixed(2)}`);
-                    $('#paymentButtonAmount').text(`${currencySymbol}${totalAmount.toFixed(2)}`);
-                } else {
-                    window.currentPaymentAmount = paymentInfo.deposit_amount;
-                    $('#paymentLabel').text('Deposit Amount:');
-                    $('#paymentAmount').text(`${currencySymbol}${paymentInfo.deposit_amount.toFixed(2)}`);
-                    const totalAmount = paymentInfo.deposit_amount + platformFee;
-                    $('#totalPaymentAmount').text(`${currencySymbol}${totalAmount.toFixed(2)}`);
-                    $('#paymentButtonAmount').text(`${currencySymbol}${totalAmount.toFixed(2)}`);
-                }
-                
-                // Recreate payment intent with new amount
-                createPaymentIntent();
-            });
-            
-            // Initialize Stripe
-            const stripe = Stripe('{{ env('STRIPE_KEY') }}');
-            let elements;
-            let cardElement;
-            let currentClientSecret = null;
-            
-            // Form submit handler (defined before createPaymentIntent so it's accessible)
-            const formSubmitHandler = async function(e) {
-                e.preventDefault();
-                
-                // Clear previous errors
-                $('#card-errors').text('').hide();
-                
-                if (!currentClientSecret) {
-                    $('#card-errors').text('Payment not initialized. Please wait...').show();
-                return;
-            }
-            
-                const submitBtn = $('#submitPaymentBtn');
-                const currencySymbol = getCurrencySymbol(paymentInfo.currency);
-                const amount = window.currentPaymentAmount || paymentInfo.deposit_amount;
-                const platformFee = window.platformFee || 10.00;
-                const totalAmount = amount + platformFee;
-                
-                if (!cardElement) {
-                    $('#card-errors').text('Card element not loaded. Please refresh the page.').show();
-                    submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
-                    return;
-                }
-                
-                // Verify card element container exists
-                const cardElementContainer = document.getElementById('card-element');
-                if (!cardElementContainer) {
-                    $('#card-errors').text('Card input field not found. Please refresh the page.').show();
-                    submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
-                    return;
-                }
-                
-                // Disable button and show processing
-                submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Processing...');
-                
-                try {
-                    // First, create payment method to validate card details
-                    const {error: pmError, paymentMethod} = await stripe.createPaymentMethod({
-                        type: 'card',
-                        card: cardElement,
-                    });
-                    
-                    if (pmError) {
-                        // Show validation error
-                        $('#card-errors').text(pmError.message).show();
-                        submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
-                        return;
-                    }
-                    
-                    // If payment method created successfully, confirm payment
-                    const {error, paymentIntent} = await stripe.confirmCardPayment(currentClientSecret, {
-                        payment_method: paymentMethod.id,
-                    });
-                    
-                    if (error) {
-                        // Show error to customer
-                        $('#card-errors').text(error.message).show();
-                        submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
-                    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-                        // Payment succeeded - save booking and send emails
-                        container.innerHTML = `
-                            <div class="text-center py-5">
-                <div class="mb-3">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Processing...</span>
-                </div>
-                                </div>
-                                <h5 class="mb-2">Payment Successful!</h5>
-                                <p class="text-muted mb-4">Confirming your booking...</p>
-                            </div>
-                        `;
-                        
-                        // Get customer information - use authenticated user if available
-                        let customerName, customerEmail;
-                        
-                        if (currentUser.isAuthenticated && currentUser.name && currentUser.email) {
-                            // Use authenticated user data
-                            customerName = currentUser.name;
-                            customerEmail = currentUser.email;
-                        } else {
-                            // Collect customer information via prompts (for guest users)
-                            customerName = prompt('Please enter your name:') || '';
-                            customerEmail = prompt('Please enter your email address:') || '';
-                            
-                            if (!customerName || customerName.trim() === '') {
-                                customerName = 'Guest';
-                            }
-                            
-                            if (!customerEmail || !customerEmail.includes('@')) {
-                                alert('Please provide a valid email address to receive booking confirmation.');
-                                // Retry email collection
-                                const retryEmail = prompt('Please enter your email address:') || '';
-                                if (!retryEmail || !retryEmail.includes('@')) {
-                                    container.innerHTML = `
-                        <div class="alert alert-danger">
-                                            <i class="ti ti-alert-circle me-2"></i>
-                                            Email address is required. Please contact support.
-                        </div>
-                    `;
-                                    return;
-                                }
-                                customerEmail = retryEmail;
-                            }
-                        }
-                        
-                        // Prepare booking data
-                        let bookingData;
-                        
-                        if (consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot) {
-                            // Separate consultation timing flow
-                            bookingData = {
-                                _token: csrfToken,
-                                payment_intent_id: paymentIntent.id,
-                                consultation_slot: {
-                                    date: selectedConsultationSlot.date,
-                                    start_time_utc: selectedConsultationSlot.start_time_utc,
-                                    end_time_utc: selectedConsultationSlot.end_time_utc,
-                                },
-                                tattoo_session_slot: {
-                                    date: selectedTattooSessionSlot.date,
-                                    start_time_utc: selectedTattooSessionSlot.start_time_utc,
-                                    end_time_utc: selectedTattooSessionSlot.end_time_utc,
-                                },
-                                customer_name: customerName,
-                                customer_email: customerEmail,
-                                amount: parseFloat(window.currentPaymentAmount || paymentInfo.deposit_amount),
-                                currency: paymentInfo.currency,
-                                full_amount_paid: $('#payFullCheckbox').is(':checked') ? 1 : 0,
-                                questions: window.bookingData?.questionsAnswers || {},
-                            };
-                        } else {
-                            // Regular flow
-                            bookingData = {
-                                _token: csrfToken,
-                                payment_intent_id: paymentIntent.id,
-                                slot: {
-                                    date: window.selectedSlot.date,
-                                    start_time_utc: window.selectedSlot.slot.start_time_utc,
-                                    end_time_utc: window.selectedSlot.slot.end_time_utc,
-                                },
-                                customer_name: customerName,
-                                customer_email: customerEmail,
-                                amount: parseFloat(window.currentPaymentAmount || paymentInfo.deposit_amount),
-                                currency: paymentInfo.currency,
-                                full_amount_paid: $('#payFullCheckbox').is(':checked') ? 1 : 0,
-                                questions: window.bookingData?.booking?.answers || window.bookingData?.questionsAnswers || {},
-                            };
-                        }
-                        
-                        // Log booking data for debugging
-                        console.log('Booking data being sent:', bookingData);
-                        
-                        // Determine which endpoint to use
-                        const confirmUrl = consultationInfo.is_separate && selectedConsultationSlot && selectedTattooSessionSlot
-                            ? '{{ route('api.booking.separate', ['tattoo_id' => $tattoo['tattoo_id']]) }}'
-                            : '{{ route('api.booking.confirm', ['tattoo_id' => $tattoo['tattoo_id']]) }}';
-                        
-                        // Save booking and send emails
-                        $.ajax({
-                            url: confirmUrl,
-                            method: 'POST',
-                            data: bookingData,
-                            headers: {
-                                'X-CSRF-TOKEN': csrfToken
-                            },
-                            success: function(response) {
-                                if (response.success) {
-                                    let confirmationHTML = `
-                                        <div class="text-center py-5">
-                                            <div class="mb-3">
-                                                <i class="ti ti-circle-check text-success" style="font-size: 4rem;"></i>
-                                            </div>
-                                            <h5 class="mb-2">Booking${consultationInfo.is_separate ? 's' : ''} Confirmed!</h5>
-                                            <p class="text-muted mb-3">Your booking${consultationInfo.is_separate ? 's have' : ' has'} been confirmed and confirmation emails have been sent.</p>
-                                    `;
-                                    
-                                    if (consultationInfo.is_separate) {
-                                        confirmationHTML += `
-                                            <div class="alert alert-info mb-3 text-start">
-                                                <strong>Consultation Booking:</strong> #${response.consultation_booking_id}<br>
-                                                ${response.consultation_time ? `${response.consultation_time.start} - ${response.consultation_time.end}` : ''}
-                                                ${response.consultation_meet_link ? `<br><a href="${response.consultation_meet_link}" target="_blank" class="btn btn-sm btn-primary mt-2">Join Consultation Meeting</a>` : ''}
-                                            </div>
-                                            <div class="alert alert-success mb-3 text-start">
-                                                <strong>Tattoo Session Booking:</strong> #${response.tattoo_session_booking_id}<br>
-                                                ${response.tattoo_session_time ? `${response.tattoo_session_time.start} - ${response.tattoo_session_time.end}` : ''}
-                                            </div>
-                                        `;
-                                    } else {
-                                        confirmationHTML += `<p class="text-muted small mb-4">Booking ID: #${response.booking_id}</p>`;
-                                    }
-                                    
-                                    confirmationHTML += `
-                                            <button type="button" class="btn btn-primary" onclick="location.reload()">
-                                                Done
-                                            </button>
-                                        </div>
-                                    `;
-                                    
-                                    container.innerHTML = confirmationHTML;
-                                } else {
-                                    container.innerHTML = `
-                                        <div class="alert alert-warning">
-                                            <i class="ti ti-alert-triangle me-2"></i>
-                                            Payment successful but booking confirmation failed: ${response.message || 'Unknown error'}
-                                        </div>
-                                    `;
-                                }
-                            },
-                            error: function(xhr) {
-                                const errorMessage = xhr.responseJSON?.message || 'Failed to confirm booking. Please contact support.';
-                                container.innerHTML = `
-                    <div class="alert alert-danger">
-                                        <i class="ti ti-alert-circle me-2"></i>
-                                        Payment successful but booking confirmation failed: ${errorMessage}
-                                        <br><br>
-                                        <small>Booking ID: ${paymentIntent.id}</small>
-                                        <br><small>Please contact support with this information.</small>
-                    </div>
-                `;
-                            }
-                        });
-                    }
-                } catch (err) {
-                    // Handle any unexpected errors
-                    $('#card-errors').text('An error occurred. Please check your card details and try again.').show();
-                    submitBtn.prop('disabled', false).html(`<i class="ti ti-credit-card me-1"></i> Pay <span id="paymentButtonAmount">${currencySymbol}${totalAmount.toFixed(2)}</span>`);
-                }
-            };
-            
-            // Function to create payment intent
-            function createPaymentIntent() {
-                const amount = window.currentPaymentAmount || paymentInfo.deposit_amount;
-                const platformFee = window.platformFee || 10.00;
-                const totalAmount = amount + platformFee;
-                
-                // Hide payment button while loading
-                $('#submitPaymentBtn').hide();
-                
-                $.ajax({
-                    url: '{{ route('api.booking.payment-intent', ['tattoo_id' => $tattoo['tattoo_id']]) }}',
-                    method: 'POST',
-                    data: {
-                        _token: csrfToken,
-                        amount: amount, // Send the base amount (deposit or full), platform fee will be added server-side
-                        currency: paymentInfo.currency
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            currentClientSecret = response.client_secret;
-                            
-                            // Unmount existing card element if it exists
-                            if (cardElement) {
-                                try {
-                                    cardElement.unmount();
-                                    cardElement = null; // Clear reference
-                                } catch(e) {
-                                    // Element might not be mounted yet or already unmounted
-                                    cardElement = null;
-                                }
-                            }
-                            
-                            // Clear the card element container to ensure clean mount
-                            const cardElementContainer = document.getElementById('card-element');
-                            if (cardElementContainer) {
-                                cardElementContainer.innerHTML = ''; // Clear any existing content
-                            }
-                            
-                            // Initialize Stripe Elements
-                            elements = stripe.elements({
-                                clientSecret: response.client_secret
-                            });
-                            
-                            cardElement = elements.create('card', {
-                                style: {
-                                    base: {
-                                        fontSize: '16px',
-                                        color: '#424770',
-                                        '::placeholder': {
-                                            color: '#aab7c4',
-                                        },
-                                    },
-                                    invalid: {
-                                        color: '#9e2146',
-                                    },
-                                },
-                            });
-                            
-                            cardElement.mount('#card-element');
-                            
-                            // Show payment button after card element is mounted
-                            $('#submitPaymentBtn').show();
-                            
-                            // Handle real-time validation errors
-                            cardElement.on('change', function(event) {
-                                const displayError = $('#card-errors');
-                                if (event.error) {
-                                    displayError.text(event.error.message).show();
-                                } else {
-                                    displayError.text('').hide();
-                                }
-                            });
-                            
-                            // Handle card completion
-                            cardElement.on('ready', function() {
-                                $('#card-errors').text('').hide();
-                            });
-                            
-                            // Remove existing form submit listener using jQuery (more reliable)
-                            // This avoids replacing the form which would unmount the Stripe element
-                            $('#paymentForm').off('submit', formSubmitHandler).on('submit', formSubmitHandler);
-                            
-                            // Ensure button is visible
-                            $('#submitPaymentBtn').show();
-                        } else {
-                            container.innerHTML = `
-                                <div class="alert alert-danger">
-                                    <i class="ti ti-alert-circle me-2"></i>
-                                    ${response.message || 'Failed to initialize payment. Please try again.'}
-                    </div>
-                `;
-                        }
-                    },
-                    error: function(xhr) {
-                        container.innerHTML = `
-                            <div class="alert alert-danger">
-                                <i class="ti ti-alert-circle me-2"></i>
-                                Failed to initialize payment. Please try again.
-                            </div>
-                        `;
-                    }
-                });
-        }
-        
-            // Create initial payment intent
-            createPaymentIntent();
-            
-            // Hide questions section, show payment section
-            document.getElementById('questionsSection').classList.add('d-none');
-            document.getElementById('paymentSection').classList.remove('d-none');
-            
-            // Update back button text based on whether questions exist
-            const questions = window.bookingData?.questions || [];
-            const backButton = document.getElementById('backToQuestionsBtn');
-            if (backButton) {
-                if (questions && questions.length > 0) {
-                    backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Back to Questions';
-                } else {
-                    backButton.innerHTML = '<i class="ti ti-arrow-left me-1"></i> Change Time';
-                }
-            }
-            
-            // Scroll to payment section
-            document.getElementById('paymentSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            // Handle back button - check if there are questions
-            $(document).off('click', '#backToQuestionsBtn').on('click', '#backToQuestionsBtn', function() {
-                // Hide payment section
-                document.getElementById('paymentSection').classList.add('d-none');
-                
-                const questions = window.bookingData?.questions || [];
-                
-                    if (questions && questions.length > 0) {
-                    // Go back to questions section
-                    document.getElementById('questionsSection').classList.remove('d-none');
-                    document.getElementById('questionsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    } else {
-                    // No questions, go back to slots section
-                    document.getElementById('slotsSection').classList.remove('d-none');
-                    document.getElementById('slotsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-            });
-        }
-        
-        // Show booking details modal based on current step
-        function showBookingDetails(step) {
-            const modal = new bootstrap.Modal(document.getElementById('bookingDetailsModal'));
-            const content = document.getElementById('bookingDetailsContent');
-            let detailsHTML = '';
-            
-            // Get tattoo info (always available)
-            const tattoo = window.bookingData?.tattoo || @json($tattoo);
-            const artist = window.bookingData?.artist || @json($artist);
-            
-            detailsHTML += `
-                <div class="card mb-3">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="ti ti-palette me-2"></i>Tattoo Information</h6>
-                </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 col-md-3 text-center mb-3 mb-md-0">
-                                ${tattoo && tattoo.field_tattoo_image_preview ? `
-                                    <img src="${tattoo.field_tattoo_image_preview}" alt="${tattoo.title || 'Tattoo'}" class="img-fluid rounded" style="max-height: 150px;">
-                                ` : ''}
-                            </div>
-                            <div class="col-12 col-md-9">
-                                <h5 class="mb-2">${tattoo?.title || '{{ $tattoo['title'] ?? 'Tattoo' }}'}</h5>
-                                <p class="text-muted mb-1"><strong>Artist:</strong> ${artist?.display_name || artist?.username || '{{ $artist['display_name'] ?? $artist['username'] ?? 'Artist' }}'}</p>
-                                ${tattoo?.session_time_h ? `<p class="text-muted mb-1"><strong>Session Duration:</strong> ${tattoo.session_time_h} hour(s)</p>` : ''}
-                                ${tattoo?.cost_per_session ? `<p class="text-muted mb-0"><strong>Price:</strong> ${getCurrencySymbol(tattoo.currency || 'USD')}${tattoo.cost_per_session}</p>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Step 1: Slots - Show date if selected
-            if (step === 'slots') {
-                const date = window.bookingData?.date;
-                if (date) {
-                    const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                    });
-                    detailsHTML += `
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="ti ti-calendar me-2"></i>Selected Date</h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-0"><strong>Date:</strong> ${formattedDate}</p>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    detailsHTML += `
-                        <div class="alert alert-info">
-                            <i class="ti ti-info-circle me-2"></i>Please select a date to see booking details.
-                    </div>
-                `;
-                }
-            }
-            
-            // Step 2: Questions - Show date and time slot
-            if (step === 'questions') {
-                const selectedSlot = window.selectedSlot;
-                if (selectedSlot) {
-                    const formattedDate = new Date(selectedSlot.date + 'T00:00:00').toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                    });
-                    detailsHTML += `
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="ti ti-calendar-event me-2"></i>Selected Time Slot</h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-1"><strong>Date:</strong> ${formattedDate}</p>
-                                <p class="mb-1"><strong>Time:</strong> ${selectedSlot.slot.start_time_display} - ${selectedSlot.slot.end_time_display}</p>
-                                <p class="mb-0"><strong>Duration:</strong> ${selectedSlot.slot.total_duration_minutes ? (selectedSlot.slot.total_duration_minutes / 60).toFixed(2) : selectedSlot.slot.duration_hours} hour(s)</p>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    detailsHTML += `
-                        <div class="alert alert-info">
-                            <i class="ti ti-info-circle me-2"></i>Please select a time slot to see booking details.
-                        </div>
-                    `;
-                }
-            }
-            
-            // Step 3: Payment - Show all details including questions answered
-            if (step === 'payment') {
-                const selectedSlot = window.selectedSlot;
-                const questionsAnswers = window.bookingData?.questionsAnswers || {};
-                
-                if (selectedSlot) {
-                    const formattedDate = new Date(selectedSlot.date + 'T00:00:00').toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                    });
-                    detailsHTML += `
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="ti ti-calendar-event me-2"></i>Selected Time Slot</h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-1"><strong>Date:</strong> ${formattedDate}</p>
-                                <p class="mb-1"><strong>Time:</strong> ${selectedSlot.slot.start_time_display} - ${selectedSlot.slot.end_time_display}</p>
-                                <p class="mb-0"><strong>Duration:</strong> ${selectedSlot.slot.duration_hours} hour(s)</p>
-                            </div>
-                </div>
-            `;
-                }
-                
-                // Show questions and answers if available
-                const questions = window.bookingData?.questions || [];
-                if (questions.length > 0 && Object.keys(questionsAnswers).length > 0) {
-                    detailsHTML += `
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="ti ti-question-mark me-2"></i>Questions & Answers</h6>
-                            </div>
-                            <div class="card-body">
-                    `;
-                    
-                    questions.forEach(question => {
-                        const answer = questionsAnswers[question.id];
-                        if (answer) {
-                            let answerDisplay = answer;
-                            
-                            // Handle image answers
-                            if (question.type === 'image') {
-                                if (Array.isArray(answer)) {
-                                    answerDisplay = '<div class="d-flex flex-wrap gap-2">' + answer.map(img => {
-                                        const imgUrl = img.startsWith('http') ? img : (img.startsWith('/') ? window.location.origin + img : window.location.origin + '/' + img);
-                                        return `<img src="${imgUrl}" alt="Answer" class="img-thumbnail" style="max-height: 150px; max-width: 150px; object-fit: cover; cursor: pointer;" onclick="window.open('${imgUrl}', '_blank')">`;
-                                    }).join('') + '</div>';
-                                } else if (answer) {
-                                    const imgUrl = answer.startsWith('http') ? answer : (answer.startsWith('/') ? window.location.origin + answer : window.location.origin + '/' + answer);
-                                    answerDisplay = `<img src="${imgUrl}" alt="Answer" class="img-thumbnail" style="max-height: 200px; max-width: 200px; object-fit: cover; cursor: pointer;" onclick="window.open('${imgUrl}', '_blank')">`;
-                                } else {
-                                    answerDisplay = '<span class="text-muted">No image uploaded</span>';
-                                }
-                            }
-                            
-                            detailsHTML += `
-                                <div class="mb-3 pb-3 border-bottom">
-                                    <p class="mb-1"><strong>${question.question}</strong></p>
-                                    <div class="text-muted">${answerDisplay}</div>
-                                </div>
-                            `;
-                        }
-                    });
-                    
-                    detailsHTML += `
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                // Show payment details if available
-                const paymentData = window.bookingData?.payment;
-                const isPayFull = $('#payFullCheckbox').is(':checked') || window.bookingData?.isPayFull || false;
-                const currentPaymentAmount = window.currentPaymentAmount || paymentData?.deposit_amount || paymentData?.deposit || 0;
-                const platformFee = window.platformFee || paymentData?.platform_fee || 10.00;
-                const tattooPrice = paymentData?.tattoo_price || 0;
-                
-                if (paymentData) {
-                    const currencySymbol = getCurrencySymbol(paymentData.currency || 'USD');
-                    const paymentType = isPayFull ? 'Full Amount' : 'Deposit Amount';
-                    const paymentAmount = isPayFull ? tattooPrice : currentPaymentAmount;
-                    const totalAmount = paymentAmount + platformFee;
-                    
-                    detailsHTML += `
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="ti ti-currency-dollar me-2"></i>Payment Information</h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-1"><strong>Payment Type:</strong> ${isPayFull ? '<span class="badge bg-success">Full Amount</span>' : '<span class="badge bg-info">Deposit</span>'}</p>
-                                ${tattooPrice > 0 ? `<p class="mb-1"><strong>Tattoo Price:</strong> ${currencySymbol}${tattooPrice.toFixed(2)}</p>` : ''}
-                                <p class="mb-1"><strong>${paymentType}:</strong> ${currencySymbol}${paymentAmount.toFixed(2)}</p>
-                                <p class="mb-1"><strong>Platform Fee:</strong> ${currencySymbol}${platformFee.toFixed(2)}</p>
-                                <p class="mb-0"><strong class="text-primary">Total Amount:</strong> <span class="fs-5 text-primary">${currencySymbol}${totalAmount.toFixed(2)}</span></p>
-                                ${paymentData.currency ? `<p class="mb-0 mt-2"><small class="text-muted">Currency: ${paymentData.currency}</small></p>` : ''}
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-            
-            content.innerHTML = detailsHTML;
-            modal.show();
-        }
-        
-        function getCurrencySymbol(currency) {
-            const symbols = {
-                'USD': '$',
-                'EUR': '€',
-                'GBP': '£',
-                'AED': 'AED ',
-                'SAR': 'SAR ',
-                'INR': '₹',
-                'JPY': '¥',
-                'CAD': 'C$',
-                'AUD': 'A$',
-            };
-            return symbols[currency.toUpperCase()] || currency.toUpperCase() + ' ';
-        }
-    </script>
+      }
+
+      var q0 = parseInt($('div.question-div.active[data-q]').data('q'), 10);
+      if (!isNaN(q0)) currentQuestionIndex = q0;
+
+      var r0 = parseInt($('div.question-div.active[data-reg]').data('reg'), 10);
+      if (!isNaN(r0)) currentRegIndex = r0;
+      if ($('#bdEmail').length && $('#bdOtpEmail').length) {
+        $('#bdOtpEmail').val(String($('#bdEmail').val() || '').trim());
+        updateConnectedUi();
+      }
+
+      $('#calPrev').on('click', function() {
+        if (!canNavigateToMonth(calYear, calMonth - 1)) return;
+        calMonth--;
+        if (calMonth < 0) { calMonth = 11; calYear--; }
+        renderMainCal();
+      });
+      $('#calNext').on('click', function() {
+        calMonth++;
+        if (calMonth > 11) { calMonth = 0; calYear++; }
+        renderMainCal();
+      });
+      $(document).on('click', '#timeSlots .time-slot-card:not(.booked)', function() {
+        $('#timeSlots .time-slot-card').removeClass('selected');
+        $('#timeSlots .time-slot-wrap').removeClass('selected');
+        $(this).addClass('selected');
+        $(this).closest('.time-slot-wrap').addClass('selected');
+        selectedTime = $(this).data('time');
+        $('#confirmBarText').text('📅 ' + selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ' at ' + selectedTime);
+        $('#confirmBar').removeClass('hidden');
+      });
+      $(document).on('click', '#timeSlots .js-time-slot-continue', function() {
+        if (!selectedDate || !selectedTime) return;
+        goToStep(3);
+      });
+    function selectConsultType(card, type) {
+      ccConsultType = type;
+      $('#ccConsultTypeError').addClass('hidden');
+      $('#ccConsultTypeCards .consult-type-card').removeClass('selected');
+      $(card).addClass('selected');
+      $('#ccConsultSection').removeClass('hidden');
+      if (consultationTiming === 'separate') {
+        $('#ccTattooSection').addClass('hidden');
+      }
+      $('#ccConsultChip, #ccTattooChip, #ccBottomSummary').addClass('hidden');
+      ccConsultDate = null;
+      ccConsultTime = null;
+      ccTattooDate = null;
+      ccTattooTime = null;
+      renderCcConsultCal();
+    }
+    window.selectConsultType = selectConsultType;
+    window.ccCalNav = function(dir) {
+      if (dir < 0 && !canNavigateToMonth(ccCalYear, ccCalMonth - 1)) return;
+      ccCalMonth += dir;
+      if (ccCalMonth < 0) { ccCalMonth = 11; ccCalYear--; }
+      if (ccCalMonth > 11) { ccCalMonth = 0; ccCalYear++; }
+      renderCcConsultCal();
+    };
+    window.ccTatCalNav = function(dir) {
+      if (dir < 0 && !canNavigateToMonth(ccTatCalYear, ccTatCalMonth - 1)) return;
+      ccTatCalMonth += dir;
+      if (ccTatCalMonth < 0) { ccTatCalMonth = 11; ccTatCalYear--; }
+      if (ccTatCalMonth > 11) { ccTatCalMonth = 0; ccTatCalYear++; }
+      renderCcTattooCal();
+    };
+    $(document).on('click', '.js-cc-consult-slot', function() {
+      $('.js-cc-consult-slot').removeClass('selected');
+      $(this).addClass('selected');
+      ccConsultTime = $(this).data('time');
+      $('#ccConsultChip').removeClass('hidden');
+      $('#ccConsultChipText').text('📹 Consultation: ' + ccConsultDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccConsultTime);
+      if (consultationTiming === 'separate') {
+        $('#ccTattooSection').removeClass('hidden');
+        ccTatCalYear = ccConsultDate.getFullYear();
+        ccTatCalMonth = ccConsultDate.getMonth();
+        renderCcTattooCal();
+    } else {
+        var consultStartDt = buildDateTime(ccConsultDate, ccConsultTime);
+        var tattooStartDt = addGapToDateTime(consultStartDt, consultDurationMinutes, 'minutes');
+        ccTattooDate = new Date(tattooStartDt.getFullYear(), tattooStartDt.getMonth(), tattooStartDt.getDate());
+        ccTattooTime = formatTo12Hour(tattooStartDt.getHours(), tattooStartDt.getMinutes());
+        $('#ccTattooSection, #ccTattooChip').addClass('hidden');
+        $('#ccSumConsult').text('📹 Consultation: ' + ccConsultDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccConsultTime + ' (' + consultDurationMinutes + ' min)');
+        $('#ccSumTattoo').text('🎨 Tattoo Session: ' + ccTattooDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccTattooTime);
+        $('#ccBottomSummary').removeClass('hidden');
+      }
+    });
+    $(document).on('click', '.js-cc-tattoo-slot', function() {
+      $('.js-cc-tattoo-slot').removeClass('selected');
+      $(this).addClass('selected');
+      ccTattooTime = $(this).data('time');
+      $('#ccTattooChip').removeClass('hidden');
+      $('#ccTattooChipText').text('🎨 Tattoo Session: ' + ccTattooDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccTattooTime);
+      $('#ccSumConsult').text('📹 Consultation: ' + ccConsultDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccConsultTime + (ccConsultType ? ' (' + ccConsultType + ')' : ''));
+      $('#ccSumTattoo').text('🎨 Tattoo Session: ' + ccTattooDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccTattooTime);
+      $('#ccBottomSummary').removeClass('hidden');
+    });
+
+      renderMainCal();
+    });
+  </script>
 </body>
 </html>
-

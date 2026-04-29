@@ -224,6 +224,8 @@
                 .removeClass('hidden')
                 .text('Something went wrong while signing in. Please try again.');
             }
+
+            $submitBtn.prop('disabled', false).html(originalBtnHtml);
           }
         })
       });

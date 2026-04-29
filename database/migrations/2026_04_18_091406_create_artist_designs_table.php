@@ -32,6 +32,7 @@ return new class extends Migration
             $table->integer('min_sessions');
             $table->integer('max_sessions');
             $table->string('session_duration');
+            $table->string('slug');
             $table->timestamps();
         });
     }

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class ArtistDesignsController extends Controller
 {
@@ -137,6 +138,7 @@ class ArtistDesignsController extends Controller
             'min_sessions' => $validated['min_sessions'],
             'max_sessions' => $validated['max_sessions'],
             'session_duration' => $validated['session_duration'],
+            'slug' => Str::slug($validated['title']),
         ]);
 
         return response()->json([
@@ -176,6 +178,7 @@ class ArtistDesignsController extends Controller
             'min_sessions' => $validated['min_sessions'],
             'max_sessions' => $validated['max_sessions'],
             'session_duration' => $validated['session_duration'],
+            'slug' => Str::slug($validated['title']),
         ]);
 
         return response()->json([

@@ -1,3 +1,157 @@
+# Inkjin Website Review
+
+Date: 2026-04-26  
+Scope: Current Laravel web app (`public`, `artist`, `admin`, booking/payment-related flows)
+
+## Executive Summary
+
+The project has a strong foundation and clear separation between public and authenticated areas, but key production flows are still partly in demo/prototype state.
+
+Most important gaps:
+- Public booking UI still uses simulated availability and confirmation behavior in the browser.
+- Public routing/controller consistency has at least one likely broken route target.
+- Data model transition appears incomplete (`ArtistDesign` vs `InkJinTattoo` in bookings).
+- Some sensitive configuration defaults are hardcoded in repo config.
+
+## Current Website Structure
+
+### 1) Public Website
+
+Primary routes:
+- `/{username}` -> public artist profile
+- `/{user_name}/{tattoo_slug}` -> tattoo details
+- `/{user_name}/{tattoo_slug}/book` -> booking flow
+
+Main files:
+- `routes/web.php`
+- `app/Http/Controllers/InkJinController.php`
+- `resources/views/public/artist.blade.php`
+- `resources/views/public/tattoo.blade.php`
+- `resources/views/public/book.blade.php`
+
+### 2) Authenticated Areas
+
+#### Artist Area (`/artist/*`)
+- Dashboard
+- Settings (styles, studio, calendar, preferences, payment)
+- Availability management
+- Portfolio and available designs
+- Form builder (booking/custom request questions)
+
+#### Admin Area (`/admin/*`)
+- Dashboard
+- Form/questions management
+
+Main files:
+- `routes/web.php`
+- `app/Http/Controllers/QuestionsController.php`
+- `resources/views/artist/*`
+- `resources/views/admin/*`
+
+### 3) Booking & Payment Related
+
+Implemented:
+- Booking listing/cancellation/rescheduling APIs and views
+- Stripe Connect onboarding logic for artist payouts
+- Cancellation refund logic against Stripe payment intents
+
+Partly implemented / prototype:
+- Public booking page confirmation/payment submit behavior (client-side simulated in `book.blade.php`)
+
+## Key Findings (Prioritized)
+
+## P0 - Critical
+
+- **Booking flow is not fully server-backed in public booking page**
+  - `resources/views/public/book.blade.php` uses front-end generated availability and confirmation-like behavior.
+  - Random slot generation exists (`Math.random`) and booking reference is generated in browser (`#INK-...`).
+  - Impact: users can get fake confidence of successful booking/payment if backend endpoint integration is missing.
+
+- **Hardcoded sensitive fallback values in config**
+  - `config/inkjin.php` contains fallback values for:
+    - `INKJIN_CLIENT_ID`
+    - `INKJIN_CLIENT_SECRET`
+  - Impact: credential exposure risk and poor secret hygiene.
+
+## P1 - High
+
+- **Potential broken public route target**
+  - Route references `InkJinController::publicArtistProfile` in `routes/web.php`.
+  - That method was not found in the inspected `app/Http/Controllers/InkJinController.php`.
+  - Impact: public artist profile route likely breaks unless another controller copy is being loaded unexpectedly.
+
+- **Booking model uses legacy tattoo relation**
+  - `app/Models/Booking.php` references `InkJinTattoo`/`tattoo_id`.
+  - Meanwhile current public flow/design management uses `ArtistDesign`.
+  - Impact: data inconsistency and integration complexity between old/new design systems.
+
+## P2 - Medium
+
+- **Placeholder links still present on public booking page**
+  - `artist-page.html` appears multiple times in `resources/views/public/book.blade.php`.
+  - Impact: broken navigation and poor UX.
+
+- **Route ordering risk with catch-all slugs**
+  - Public slug routes are at bottom (good), but `/{username}` can shadow future plain routes if route order changes carelessly.
+  - Impact: regression risk during future routing updates.
+
+- **Dashboard pages still look demo-heavy**
+  - Artist/admin dashboard views appear to include static/demo metric content.
+  - Impact: lower operational usefulness and credibility.
+
+## What Is Working Well
+
+- Clean high-level role separation (`artist`, `admin`) and onboarding gating.
+- Good effort on reusable form/question system for artist-configurable booking questions.
+- Availability, cancellation, and rescheduling lifecycle has clear route/controller structure.
+- Stripe Connect onboarding/payout logic exists and appears thoughtfully structured.
+
+## Recommended Action Plan
+
+### Phase 1 (Immediate: 1-3 days)
+- Remove secret fallbacks from `config/inkjin.php`; require env-based secrets only.
+- Fix public route/controller mismatch for artist profile.
+- Replace `artist-page.html` links with proper Laravel route links.
+
+### Phase 2 (Core Product Reliability: 3-7 days)
+- Convert public booking flow from UI simulation to backend-backed operations:
+  - Fetch real availability slots from database/service.
+  - Persist booking request on submit.
+  - Generate booking reference server-side.
+  - Integrate real payment intent/confirmation path.
+- Add request validation + error display path for public booking submit.
+
+### Phase 3 (Data Consistency: 1-2 weeks)
+- Complete migration strategy from `InkJinTattoo` to `ArtistDesign` in booking domain:
+  - Update booking relationships/migrations or establish compatibility layer.
+  - Backfill/transform historical data where needed.
+- Add integration tests for:
+  - Public artist -> tattoo -> book path
+  - Booking creation + payment
+  - Cancellation/refund
+
+## Suggested Test Checklist
+
+- Public URLs:
+  - artist page loads
+  - tattoo page loads
+  - book page loads
+- Booking:
+  - artist questions render correctly from DB
+  - required question validation blocks progression
+  - submit creates booking record
+  - booking ref/email are generated server-side
+- Payments:
+  - card path success/failure handling
+  - cancellation refund behavior
+- Routing:
+  - ensure slug routes do not break auth/admin/artist routes
+
+## Notes
+
+This review is based on current repository code and route/controller/view inspection.  
+If desired, a follow-up can produce a technical remediation PR plan file with task-by-task implementation breakdown.
+
 # InkJin Website Review (Working Draft)
 
 Reviewed on: 2026-04-17  

@@ -27,6 +27,7 @@ class ArtistDesign extends Model
         'min_sessions',
         'max_sessions',
         'session_duration',
+        'slug',
     ];
 
     protected function casts(): array

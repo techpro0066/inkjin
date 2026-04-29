@@ -1,453 +1,347 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="{{ $tattoo['title'] ?? 'Tattoo' }} by {{ $artist['display_name'] ?? $artist['username'] ?? 'Artist' }}">
-    <title>{{ $tattoo['title'] ?? 'Tattoo' }} by {{ $artist['display_name'] ?? $artist['username'] ?? 'Artist' }} | InkJin</title>
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f8f9fa;
-        }
-        
-        .header-section {
-            background-color: #ffffff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border-bottom: 1px solid #e9ecef;
-        }
-        
-        .logo-img {
-            height: 40px;
-            width: auto;
-        }
-        
-        .artist-card, .tattoo-card {
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-        
-        .artist-avatar {
-            width: 128px;
-            height: 128px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid #e9ecef;
-        }
-        
-        .artist-avatar-placeholder {
-            width: 128px;
-            height: 128px;
-            border-radius: 50%;
-            background-color: #e9ecef;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            color: #adb5bd;
-        }
-        
-        .artist-name {
-            font-size: 1.875rem;
-            font-weight: 700;
-            color: #212529;
-            margin-bottom: 0.5rem;
-        }
-        
-        .location-text {
-            color: #6c757d;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        
-        .location-icon {
-            width: 20px;
-            height: 20px;
-        }
-        
-        .social-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            align-items: center;
-        }
-        
-        .social-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 500;
-            text-decoration: none;
-            transition: transform 0.2s;
-        }
-        
-        .social-link:hover {
-            transform: scale(1.1);
-            text-decoration: none;
-        }
-        
-        .social-link.instagram {
-            color: #e4405f;
-        }
-        
-        .social-link.instagram:hover {
-            color: #c13584;
-        }
-        
-        .social-link.tiktok {
-            color: #000000;
-        }
-        
-        .social-link.tiktok:hover {
-            color: #333333;
-        }
-        
-        .social-link.website {
-            color: #0d6efd;
-        }
-        
-        .social-link.website:hover {
-            color: #0a58ca;
-        }
-        
-        .social-icon {
-            width: 20px;
-            height: 20px;
-        }
-        
-        .tattoo-image-container {
-            width: 100%;
-            height: 500px;
-            overflow: hidden;
-            border-radius: 8px;
-            background-color: #e9ecef;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .tattoo-image {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 8px;
-        }
-        
-        .tattoo-image-placeholder {
-            color: #adb5bd;
-            font-size: 1.25rem;
-        }
-        
-        .tattoo-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #212529;
-            margin-bottom: 1rem;
-        }
-        
-        .tattoo-description {
-            color: #495057;
-            line-height: 1.75;
-            margin-bottom: 1.5rem;
-        }
-        
-        .detail-label {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #6c757d;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.25rem;
-        }
-        
-        .detail-value {
-            font-size: 1.125rem;
-            color: #212529;
-            margin-bottom: 1rem;
-        }
-        
-        .tag-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            background-color: #f8f9fa;
-            color: #495057;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            margin: 0.25rem;
-        }
-        
-        .price-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #212529;
-            margin-bottom: 1rem;
-        }
-        
-        @media (max-width: 991.98px) {
-            .artist-info {
-                text-align: center;
-            }
-            
-            .social-links {
-                justify-content: center;
-            }
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Inkjin | {{ $tattoo->title }}</title>
+  <meta name="description" content="View tattoo design details and book your session with Inkjin Book & Pay.">
+  <link rel="icon" href="{{asset('design/images/icons/favicon.png')}}">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link href="{{asset('design/css/inkjin_bookpay.css')}}" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#310f7a",
+            "primary-container": "#482d91",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#b69fff",
+            "surface": "#fdf7ff",
+            "surface-container": "#f2ecf5",
+            "surface-container-high": "#ece6ef",
+            "surface-container-highest": "#e6e0ea",
+            "surface-container-low": "#f8f1fb",
+            "on-surface": "#1c1b21",
+            "on-surface-variant": "#494552",
+            "outline": "#7a7583",
+            "outline-variant": "#cac4d3",
+            "secondary": "#625881",
+            "secondary-container": "#ddd0ff",
+            "inverse-surface": "#322f36",
+            "inverse-on-surface": "#f5eff8",
+            "error": "#ba1a1a",
+          },
+          fontFamily: {
+            "sans": ["Plus Jakarta Sans", "system-ui", "sans-serif"],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .aspect-4-5 { aspect-ratio: 4/5; }
+    .design-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .design-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(49,15,122,0.12); }
+  </style>
 </head>
-<body>
-    <!-- Header with InkJin Logo -->
-    <header class="header-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <div class="d-flex align-items-center justify-content-between py-3">
-                        <a href="/" class="d-flex align-items-center gap-3 text-decoration-none">
-                            @if(file_exists(public_path('assets/img/branding/main-logo.png')))
-                                <img src="{{ asset('assets/img/branding/main-logo.png') }}" 
-                                     alt="InkJin" 
-                                     class="logo-img">
-                            @elseif(file_exists(public_path('assets/img/branding/logo.png')))
-                                <img src="{{ asset('assets/img/branding/logo.png') }}" 
-                                     alt="InkJin" 
-                                     class="logo-img">
-                            @elseif(file_exists(public_path('main-logo.png')))
-                                <img src="{{ asset('main-logo.png') }}" 
-                                     alt="InkJin" 
-                                     class="logo-img">
-                            @elseif(file_exists(public_path('logo.png')))
-                                <img src="{{ asset('logo.png') }}" 
-                                     alt="InkJin" 
-                                     class="logo-img">
-                            @else
-                                <span class="fs-3 fw-bold text-dark">InkJin</span>
-                            @endif
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
-    
-    <div class="container py-5">
-        <!-- Artist Profile Section -->
-        <div class="artist-card">
-            <div class="row align-items-center">
-                <div class="col-12 col-md-auto text-center text-md-start mb-3 mb-md-0">
-                    <!-- Artist Profile Picture -->
-                    @if(!empty($artist['field_profile_picture']))
-                    <img src="{{ $artist['field_profile_picture'] }}" 
-                         alt="{{ $artist['display_name'] ?? $artist['username'] ?? 'Artist' }}" 
-                         class="artist-avatar">
-                    @else
-                    <div class="artist-avatar-placeholder">
-                        <span>👤</span>
-                    </div>
-                    @endif
-                </div>
-                
-                <!-- Artist Info -->
-                <div class="col-12 col-md artist-info">
-                    <h1 class="artist-name">
-                        {{ $artist['display_name'] ?? $artist['username'] ?? 'Artist' }}
-                    </h1>
-                    
-                    <!-- Location -->
-                    @if(!empty($artist['field_address_city']) || !empty($artist['field_address_country']))
-                    <div class="location-text">
-                        <svg class="location-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                        <span>
-                            @if(!empty($artist['field_address_city']))
-                                {{ $artist['field_address_city'] }}
-                            @endif
-                            @if(!empty($artist['field_address_city']) && !empty($artist['field_address_country']))
-                                , 
-                            @endif
-                            @if(!empty($artist['field_address_country']))
-                                {{ $artist['field_address_country'] }}
-                            @endif
-                        </span>
-                    </div>
-                    @endif
-                    
-                    <!-- Social Links -->
-                    <div class="social-links">
-                        @if(!empty($artist['field_profile_instagram']))
-                        <a href="{{ $artist['field_profile_instagram'] }}" 
-                           target="_blank" 
-                           rel="noopener noreferrer"
-                           class="social-link instagram">
-                            <svg class="social-icon" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                            </svg>
-                            Instagram
-                        </a>
-                        @endif
-                        
-                        @if(!empty($artist['field_profile_tiktok']))
-                        <a href="{{ $artist['field_profile_tiktok'] }}" 
-                           target="_blank" 
-                           rel="noopener noreferrer"
-                           class="social-link tiktok">
-                            <svg class="social-icon" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-                            </svg>
-                            TikTok
-                        </a>
-                        @endif
-                        
-                        @if(!empty($artist['field_profile_website']))
-                        <a href="{{ $artist['field_profile_website'] }}" 
-                           target="_blank" 
-                           rel="noopener noreferrer"
-                           class="social-link website">
-                            <svg class="social-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
-                            </svg>
-                            Website
-                        </a>
-                        @endif
-                    </div>
-                    
-                    <!-- View Profile Button -->
-                    @if(!empty($artist['username']))
-                    <div class="mt-3">
-                        <a href="{{ route('public.artist', ['username' => $artist['username']]) }}" 
-                           class="btn btn-primary">
-                            <svg style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
-                            View Main Profile
-                        </a>
-                    </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-        
-        <!-- Tattoo Section -->
-        <div class="tattoo-card">
-            <div class="row">
-                <!-- Tattoo Image -->
-                <div class="col-12 col-lg-6 mb-4 mb-lg-0">
-                    @if(!empty($tattoo['field_tattoo_image_preview']))
-                    <div class="tattoo-image-container">
-                        <img src="{{ $tattoo['field_tattoo_image_preview'] }}" 
-                             alt="{{ $tattoo['title'] ?? 'Tattoo' }}" 
-                             class="tattoo-image">
-                    </div>
-                    @else
-                    <div class="tattoo-image-container">
-                        <span class="tattoo-image-placeholder">No Image Available</span>
-                    </div>
-                    @endif
-                </div>
-                
-                <!-- Tattoo Details -->
-                <div class="col-12 col-lg-6">
-                    <h2 class="tattoo-title">
-                        {{ $tattoo['title'] ?? 'Untitled Tattoo' }}
-                    </h2>
-                    
-                    <!-- Description -->
-                    @if(!empty($tattoo['field_tattoo_description']))
-                    <div class="tattoo-description">
-                        {!! nl2br(e($tattoo['field_tattoo_description'])) !!}
-                    </div>
-                    @endif
-                    
-                    <!-- Style -->
-                    @if(!empty($tattoo['field_tattoo_style']))
-                    <div>
-                        <div class="detail-label">Style</div>
-                        <div class="detail-value">{{ $tattoo['field_tattoo_style'] }}</div>
-                    </div>
-                    @endif
-                    
-                    <!-- Color -->
-                    @if(!empty($tattoo['field_tattoo_color']))
-                    <div>
-                        <div class="detail-label">Color</div>
-                        <div class="detail-value">{{ $tattoo['field_tattoo_color'] }}</div>
-                    </div>
-                    @endif
-                    
-                    <!-- Tags -->
-                    @if(!empty($tattoo['field_tags_names']))
-                    <div>
-                        <div class="detail-label">Tags</div>
-                        <div class="mt-2">
-                            @foreach(explode(', ', $tattoo['field_tags_names']) as $tag)
-                            <span class="tag-badge">{{ trim($tag) }}</span>
-                            @endforeach
-                        </div>
-                    </div>
-                    @endif
-                    
-                    <!-- Dimensions -->
-                    @if(!empty($tattoo['field_tattoo_width']) || !empty($tattoo['field_tattoo_height']))
-                    <div>
-                        <div class="detail-label">Dimensions</div>
-                        <div class="detail-value">
-                            @if(!empty($tattoo['field_tattoo_width']) && !empty($tattoo['field_tattoo_height']))
-                                {{ $tattoo['field_tattoo_width'] }}cm × {{ $tattoo['field_tattoo_height'] }}cm
-                            @elseif(!empty($tattoo['field_tattoo_width']))
-                                Width: {{ $tattoo['field_tattoo_width'] }}cm
-                            @elseif(!empty($tattoo['field_tattoo_height']))
-                                Height: {{ $tattoo['field_tattoo_height'] }}cm
-                            @endif
-                        </div>
-                    </div>
-                    @endif
-                    
-                    <!-- Price -->
-                    @if(!empty($tattoo['field_tattoo_price']))
-                    <div>
-                        <div class="detail-label">Price</div>
-                        <div class="price-value">${{ number_format($tattoo['field_tattoo_price'], 2) }}</div>
-                    </div>
-                    @endif
-                    
-                    <!-- Suggested Placement -->
-                    @if(!empty($tattoo['field_tattoo_suggested_placement']))
-                    <div>
-                        <div class="detail-label">Suggested Placement</div>
-                        <div class="detail-value">{{ $tattoo['field_tattoo_suggested_placement'] }}</div>
-                    </div>
-                    @endif
-                    
-                    <!-- Book Button -->
-                    <div class="mt-4">
-                        <a href="{{ route('public.tattoo.book', [
-                            'artist_display_name' => slugify($artist['display_name'] ?? $artist['username'] ?? ''),
-                            'tattoo_title' => slugify($tattoo['title'] ?? ''),
-                            'tattoo_id' => $tattoo['tattoo_id'] ?? $tattoo['nid'] ?? ''
-                        ]) }}" 
-                           class="btn btn-primary btn-lg">
-                            <svg style="width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
-                            Book This Tattoo
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
+<body class="bg-surface text-on-surface min-h-screen pb-24 md:pb-0">
+
+  <!-- STICKY HEADER -->
+  <header class="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm border-b border-outline-variant">
+    <div class="max-w-[900px] mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
+      <div class="flex items-center gap-3">
+        <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-container transition-colors">
+          <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+          <span class="hidden sm:inline">Back to {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</span>
+          <span class="sm:hidden">Back</span>
+        </a>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="shareDesign()" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="Share">
+          <span class="material-symbols-outlined text-[20px] text-on-surface-variant">share</span>
+        </button>
+        <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="w-7 h-7 rounded bg-primary flex items-center justify-center" title="Inkjin">
+          <span class="text-white text-[9px] font-extrabold">{{ strtoupper($userDetail->user->first_name[0]) }}{{ strtoupper($userDetail->user->last_name[0]) }}</span>
+        </a>
+      </div>
     </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="max-w-[900px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+    <!-- HERO SECTION: Image + Details -->
+    <div class="flex flex-col md:flex-row gap-6 md:gap-8 mb-10">
+      <!-- Design Image -->
+      <div class="w-full md:w-1/2 flex-shrink-0">
+        <div id="heroImage" class="aspect-4-5 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 rounded-2xl relative overflow-hidden">
+          <div class="absolute inset-0 flex items-center justify-center">
+            {{-- <span class="material-symbols-outlined text-gray-400 text-6xl">palette</span> --}}
+            <img src="{{asset($tattoo->image)}}" alt="{{ $tattoo->title }}" class="w-full h-full object-cover">
+          </div>
+        </div>
+      </div>
+
+      <!-- Design Details -->
+      <div class="w-full md:w-1/2 flex flex-col">
+        <!-- Title -->
+        <h1 id="designTitle" class="text-2xl sm:text-3xl font-extrabold text-on-surface mb-3">{{ $tattoo->title }}</h1>
+
+        <!-- Artist -->
+        <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-2.5 mb-4 group">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
+            <span class="text-white text-xs font-bold">{{ strtoupper($userDetail->user->first_name[0]) }}{{ strtoupper($userDetail->user->last_name[0]) }}</span>
+          </div>
+          <span class="text-sm text-on-surface-variant group-hover:text-primary transition-colors">by <strong class="text-on-surface group-hover:text-primary">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</strong></span>
+        </a>
+
+        <!-- Price -->
+        <p id="designPrice" class="text-xl font-bold text-primary mb-3">€{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}</p>
+
+        <!-- Rating -->
+        {{-- <div class="flex items-center gap-1.5 mb-6">
+          <div class="flex text-amber-400 text-sm">
+            <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+          </div>
+          <span class="text-sm text-on-surface-variant font-medium">4.9</span>
+        </div> --}}
+
+        <!-- Desktop CTA -->
+        <div class="hidden md:block mt-auto">
+          <a id="ctaDesktop" href="{{route('public.tattoo.book', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug])}}" class="block w-full py-3.5 bg-primary text-on-primary rounded-full text-base font-semibold hover:bg-primary-container transition-colors text-center shadow-md shadow-primary/20">
+            Book Now — €{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}
+          </a>
+          <p class="text-xs text-on-surface-variant text-center mt-2">30% deposit required to secure your booking</p>
+          <!-- Cancellation Policy (expandable) -->
+          <div class="mt-3" id="detailCancPolicySection">
+            <button onclick="toggleDetailCancPolicy()" class="text-xs text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 mx-auto">
+              📋 Cancellation Policy
+              <span class="material-symbols-outlined text-[16px] transition-transform" id="detailCancArrow" style="transition: transform 0.2s ease;">expand_more</span>
+            </button>
+            <div class="hidden mt-2 bg-surface-container-low rounded-xl p-3 text-left" id="detailCancContent">
+              <div class="text-xs text-on-surface-variant space-y-1">
+                <p class="font-semibold text-on-surface mb-1.5">Artist's Cancellation Policy:</p>
+                <p>• Full refund if canceled up to 48 hours before your appointment</p>
+                <p>• No refund if canceled less than 48 hours before your appointment</p>
+                <p>• The artist allows you to reschedule your appointment once</p>
+                <p>• No-shows forfeit the full deposit</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INFO GRID -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-10">
+      <div class="bg-surface-container-low rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="material-symbols-outlined text-[18px] text-primary">brush</span>
+          <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Style</span>
+        </div>
+        <p id="infoStyle" class="text-sm font-semibold text-on-surface">{{ ucfirst($tattoo->primary_style) }}</p>
+      </div>
+      <div class="bg-surface-container-low rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="material-symbols-outlined text-[18px] text-primary">palette</span>
+          <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Colors</span>
+        </div>
+        <p id="infoColors" class="text-sm font-semibold text-on-surface">{{ ucfirst($tattoo->color) }}</p>
+      </div>
+      <div class="bg-surface-container-low rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="material-symbols-outlined text-[18px] text-primary">straighten</span>
+          <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Size</span>
+        </div>
+        <p id="infoSize" class="text-sm font-semibold text-on-surface">{{ $tattoo->min_size }} cm - {{ $tattoo->max_size }} cm</p>
+      </div>
+      <div class="bg-surface-container-low rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="material-symbols-outlined text-[18px] text-primary">schedule</span>
+          <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Est. Time</span>
+        </div>
+        <p id="infoTime" class="text-sm font-semibold text-on-surface">{{ $tattoo->session_duration }} hour(s)</p>
+      </div>
+      <div class="bg-surface-container-low rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="material-symbols-outlined text-[18px] text-primary">event_repeat</span>
+          <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Sessions</span>
+        </div>
+        <p id="infoSessions" class="text-sm font-semibold text-on-surface">{{ $tattoo->min_sessions }} - {{ $tattoo->max_sessions }}</p>
+      </div>
+      <div class="bg-surface-container-low rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="material-symbols-outlined text-[18px] text-primary">body_system</span>
+          <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Placement</span>
+        </div>
+        <p id="infoPlacement" class="text-sm font-semibold text-on-surface">{{ $tattoo->suggested_placement }}</p>
+      </div>
+    </div>
+
+    <!-- DESCRIPTION -->
+    <section class="mb-8">
+      <h2 class="text-lg font-bold text-on-surface mb-3">About This Design</h2>
+      <p id="designDesc" class="text-on-surface-variant leading-relaxed text-[15px]">
+        {!! $tattoo->description !!}
+      </p>
+    </section>
+
+    <!-- TAGS -->
+    <div id="designTags" class="flex flex-wrap gap-2 mb-10">
+        {{-- array of tags --}}
+        @foreach($tattoo->tags as $tag)
+            <span class="text-xs px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-medium">#{{ $tag }}</span>
+        @endforeach
+    </div>
+
+    <!-- AR TRY-ON -->
+    <section class="mb-10 bg-gradient-to-br from-primary via-primary-container to-primary rounded-2xl p-6 relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+      <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+      <div class="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xl">📲</span>
+            <h2 class="text-lg font-bold text-white">See this on your body</h2>
+          </div>
+          <p class="text-white/80 text-sm mb-4 max-w-md">Use AR try-on in the Inkjin app to preview this design on your skin. Move it around, resize it, and find the perfect placement.</p>
+          <a href="#" class="inline-flex items-center gap-2 bg-white text-primary font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-white/90 transition-colors shadow-md">
+            <span class="material-symbols-outlined text-lg">phone_iphone</span> Open in App
+          </a>
+        </div>
+        <div class="hidden sm:flex flex-col items-center gap-1.5 bg-white/10 rounded-2xl p-5 border border-white/15">
+          <span class="material-symbols-outlined text-white text-3xl">view_in_ar</span>
+          <div class="flex items-center gap-1">
+            <span class="material-symbols-outlined text-amber-300 text-sm">auto_awesome</span>
+            <span class="text-xs font-bold text-white uppercase tracking-wide">AR Try-On</span>
+            <span class="material-symbols-outlined text-amber-300 text-sm">auto_awesome</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT'S INCLUDED -->
+    <section class="mb-10 bg-surface-container-low rounded-2xl p-6">
+      <h2 class="text-lg font-bold text-on-surface mb-4">What's Included</h2>
+      <ul class="space-y-3 text-[15px] text-on-surface-variant">
+        <li class="flex items-start gap-2.5">
+          <span class="text-primary mt-0.5">✦</span>
+          <span>Custom sizing consultation</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <span class="text-primary mt-0.5">✦</span>
+          <span>Design placement guidance</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <span class="text-primary mt-0.5">✦</span>
+          <span>Touch-up session within 3 months</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <span class="text-primary mt-0.5">✦</span>
+          <span>Aftercare instructions</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- YOU MIGHT ALSO LIKE -->
+    @if($relatedTattoos->count() > 0)
+        <section class="mb-8">
+            <h2 class="text-lg font-bold text-on-surface mb-4">You Might Also Like</h2>
+            <div id="alsoLike" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                @foreach($relatedTattoos as $relatedTattoo)
+                    <a href="{{route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $relatedTattoo->slug])}}" class="design-card bg-white rounded-xl overflow-hidden shadow-sm border border-outline-variant/50 flex sm:flex-col">
+                        <div class="w-28 sm:w-full aspect-square sm:aspect-4-5 bg-gradient-to-br from-amber-100 via-amber-200 to-amber-300 relative flex-shrink-0">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <img src="{{ asset($relatedTattoo->image) }}" alt="{{ $relatedTattoo->title }}" class="w-full h-full object-cover">
+                            </div>
+                        </div>
+                        <div class="p-3 sm:p-4 flex flex-col justify-center">
+                            <h3 class="font-bold text-on-surface text-sm mb-1">{{ $relatedTattoo->title }}</h3>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-secondary-container text-secondary font-medium w-fit mb-1.5">{{ ucwords(str_replace('-', ' ', $relatedTattoo->primary_style)) }}</span>
+                            <p class="text-sm font-semibold text-primary">€{{ $relatedTattoo->min_price }} — €{{ $relatedTattoo->max_price }}</p>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-outline-variant py-8">
+    <div class="max-w-[900px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2 text-on-surface-variant text-sm">
+        <div class="w-6 h-6 rounded bg-primary flex items-center justify-center">
+          <span class="text-white text-[10px] font-extrabold">IJ</span>
+        </div>
+        <span>Powered by <strong class="text-on-surface">Inkjin</strong></span>
+        <span class="text-outline">·</span>
+        <span>Book & Pay</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm text-on-surface-variant">
+        <a href="#" class="hover:text-primary transition-colors">Privacy</a>
+        <a href="#" class="hover:text-primary transition-colors">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MOBILE STICKY CTA -->
+  <div class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-sm border-t border-outline-variant px-4 py-3">
+    <a id="ctaMobile" href="{{route('public.tattoo.book', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug])}}" class="block w-full py-3.5 bg-primary text-on-primary rounded-full text-base font-semibold hover:bg-primary-container transition-colors text-center shadow-lg shadow-primary/25">
+      Book Now — €{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}
+    </a>
+    <p class="text-[11px] text-on-surface-variant text-center mt-1.5">30% deposit required to secure your booking</p>
+    <button onclick="toggleDetailCancPolicy()" class="text-[11px] text-on-surface-variant hover:text-primary transition-colors flex items-center gap-0.5 mx-auto mt-1">
+      📋 Cancellation Policy
+    </button>
+  </div>
+
+  <!-- SHARE TOAST -->
+  <div id="shareToast" class="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-50 bg-inverse-surface text-inverse-on-surface px-5 py-2.5 rounded-full text-sm font-medium shadow-xl transition-all duration-300 opacity-0 pointer-events-none translate-y-2">
+    Link copied to clipboard!
+  </div>
+
+  <script>
+    function shareDesign() {
+      const url = window.location.href;
+      if (navigator.share) {
+        navigator.share({ title: '{{ $tattoo->title }} — {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}', url: url }).catch(() => {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => showToast());
+      }
+    }
     
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    function toggleDetailCancPolicy() {
+      const content = document.getElementById('detailCancContent');
+      const arrow = document.getElementById('detailCancArrow');
+      if (!content) return;
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+        content.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        content.classList.add('hidden');
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    function showToast() {
+      const toast = document.getElementById('shareToast');
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2000);
+    }
+  </script>
 </body>
 </html>
-
