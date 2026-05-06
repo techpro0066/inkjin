@@ -115,10 +115,44 @@
 
         <!-- Desktop CTA -->
         <div class="hidden md:block mt-auto">
+          @php
+            $cwRaw = strtolower(trim((string) ($userDetail->cancellation_window ?? '48h')));
+            if (str_contains($cwRaw, 'w')) {
+                preg_match('/(\d+)/', $cwRaw, $m);
+                $n = (int) ($m[1] ?? 1);
+                $cancelWindowHuman = $n === 1 ? '1 week' : $n.' weeks';
+            } elseif (str_contains($cwRaw, 'day')) {
+                preg_match('/(\d+)/', $cwRaw, $m);
+                $n = (int) ($m[1] ?? 1);
+                $cancelWindowHuman = $n === 1 ? '1 day' : $n.' days';
+            } else {
+                preg_match('/(\d+)/', $cwRaw, $m);
+                $n = (int) ($m[1] ?? 48);
+                $cancelWindowHuman = $n === 1 ? '1 hour' : $n.' hours';
+            }
+
+            $reschedulePolicy = strtolower((string) ($userDetail->reschedule_times ?? 'never'));
+            $rescheduleText = match ($reschedulePolicy) {
+                'once' => 'The artist allows you to reschedule your appointment once',
+                'twice' => 'The artist allows you to reschedule your appointment twice',
+                'unlimited' => 'The artist allows unlimited reschedules before the cancellation deadline',
+                default => 'Rescheduling is not allowed for this artist',
+            };
+          @endphp
           <a id="ctaDesktop" href="{{route('public.tattoo.book', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug])}}" class="block w-full py-3.5 bg-primary text-on-primary rounded-full text-base font-semibold hover:bg-primary-container transition-colors text-center shadow-md shadow-primary/20">
             Book Now — €{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}
           </a>
-          <p class="text-xs text-on-surface-variant text-center mt-2">30% deposit required to secure your booking</p>
+          @php
+            $depositType = (string) ($userDetail->minimum_deposit_type ?? 'percentage');
+            $depositAmountRaw = (float) ($userDetail->minimum_deposit_amount ?? 30);
+            if ($depositType === 'amount') {
+                $depositLabel = 'EUR '.number_format(max(0, $depositAmountRaw), 2);
+            } else {
+                $depositType = 'percentage';
+                $depositLabel = rtrim(rtrim(number_format(max(0, $depositAmountRaw), 2, '.', ''), '0'), '.').'%';
+            }
+          @endphp
+          <p class="text-xs text-on-surface-variant text-center mt-2">{{ $depositLabel }} deposit required to secure your booking</p>
           <!-- Cancellation Policy (expandable) -->
           <div class="mt-3" id="detailCancPolicySection">
             <button onclick="toggleDetailCancPolicy()" class="text-xs text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 mx-auto">
@@ -128,9 +162,9 @@
             <div class="hidden mt-2 bg-surface-container-low rounded-xl p-3 text-left" id="detailCancContent">
               <div class="text-xs text-on-surface-variant space-y-1">
                 <p class="font-semibold text-on-surface mb-1.5">Artist's Cancellation Policy:</p>
-                <p>• Full refund if canceled up to 48 hours before your appointment</p>
-                <p>• No refund if canceled less than 48 hours before your appointment</p>
-                <p>• The artist allows you to reschedule your appointment once</p>
+                <p>• Full refund if canceled at least {{ $cancelWindowHuman }} before your appointment</p>
+                <p>• No refund if canceled less than {{ $cancelWindowHuman }} before your appointment</p>
+                <p>• {{ $rescheduleText }}</p>
                 <p>• No-shows forfeit the full deposit</p>
               </div>
             </div>

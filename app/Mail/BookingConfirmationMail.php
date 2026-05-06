@@ -97,6 +97,7 @@ class BookingConfirmationMail extends Mailable
         
         $baseData = [
             'bookingId' => $booking->id,
+            'completionCode' => (string) ($booking->completion_code ?? ''),
             'tattooTitle' => $tattoo->title,
             'bookingDate' => $bookingDate,
             'bookingTime' => $bookingTime,
@@ -109,9 +110,8 @@ class BookingConfirmationMail extends Mailable
         if ($this->isArtistEmail) {
             // Artist email data
             return array_merge($baseData, [
-                'artistName' => $artist->name,
-                'customerName' => $customer->name,
-                'customerEmail' => $customer->email,
+                'artistName' => ucfirst($artist->first_name).' '.ucfirst($artist->last_name),
+                'customerName' => ucfirst($customer->first_name).' '.ucfirst($customer->last_name),
                 'amountReceived' => $booking->total_amount_paid - $booking->platform_fee, // Amount after platform fee
                 'questionsAnswers' => $booking->questions_answers ?? [],
                 'questions' => $this->questions,
@@ -119,8 +119,8 @@ class BookingConfirmationMail extends Mailable
         } else {
             // Customer email data
             return array_merge($baseData, [
-                'userName' => $customer->name,
-                'artistName' => $artist->name,
+                'userName' => ucfirst($customer->first_name).' '.ucfirst($customer->last_name),
+                'artistName' => ucfirst($artist->first_name).' '.ucfirst($artist->last_name),
                 'totalAmount' => $booking->total_amount_paid,
             ]);
         }

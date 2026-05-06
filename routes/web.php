@@ -9,6 +9,10 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Admin\FormController;
 use App\Http\Controllers\QuestionsController;
 
+use App\Http\Controllers\UserController\BookingsController;
+use App\Http\Controllers\BookingsController as ArtistBookingsController;
+
+
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->to(authenticated_home_url());
@@ -66,12 +70,14 @@ Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
     // Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     
     // Bookings route (for all authenticated users)
-    Route::get('/bookings', [\App\Http\Controllers\BookingsController::class, 'index'])->name('bookings.index');
+    // Route::get('/bookings', [\App\Http\Controllers\BookingsController::class, 'index'])->name('bookings.index');
     
     // Booking cancellation routes
     Route::get('/api/bookings/{id}/cancellation-info', [\App\Http\Controllers\BookingCancellationController::class, 'getCancellationInfo'])->name('api.bookings.cancellation-info');
     Route::post('/api/bookings/{id}/cancel', [\App\Http\Controllers\BookingCancellationController::class, 'cancel'])->name('api.bookings.cancel');
     Route::post('/api/bookings/{id}/mark-no-show', [\App\Http\Controllers\BookingCancellationController::class, 'markNoShow'])->name('api.bookings.mark-no-show');
+    Route::post('/api/bookings/{id}/send-completion-code', [\App\Http\Controllers\BookingsController::class, 'sendCompletionCode'])->name('api.bookings.send-completion-code');
+    Route::post('/api/bookings/{id}/mark-completed', [\App\Http\Controllers\BookingsController::class, 'markCompleted'])->name('api.bookings.mark-completed');
     
     // Booking rescheduling routes
     Route::get('/api/bookings/{id}/can-reschedule', [\App\Http\Controllers\ReschedulingController::class, 'checkCanReschedule'])->name('api.bookings.can-reschedule');
@@ -192,10 +198,26 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::patch('/forms/questions/{id}/status', [QuestionsController::class, 'updateSystemQuestionStatus'])->name('artist.forms.questions.status');
     Route::post('/forms/questions/reorder', [QuestionsController::class, 'reorder'])->name('artist.forms.questions.reorder');
     Route::delete('/forms/questions/{id}', [QuestionsController::class, 'destroy'])->name('artist.forms.questions.destroy');
+
+    // Booking routes
+    Route::get('/bookings', [ArtistBookingsController::class, 'index'])->name('artist.bookings.index');
+});
+
+// User routes
+Route::middleware(['auth', 'verified', 'onboarding', 'user'])->prefix('user')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('user.dashboard');
+    })->name('user.dashboard');
+
+    // Bookings
+    Route::get('/bookings', [BookingsController::class, 'index'])->name('user.bookings.index');
+    Route::get('/bookings/{booking_id}/reschedule-calendar-data', [BookingsController::class, 'rescheduleCalendarData'])
+        ->name('user.bookings.reschedule-calendar-data');
 });
 
 require __DIR__.'/auth.php';
 
+Route::get('/artists', [InkJinController::class, 'publicArtistsList'])->name('public.artists.list');
 Route::get('/{username}', [InkJinController::class, 'publicArtistProfile'])->name('public.artist');
 
 Route::get('/{user_name}/{tattoo_slug}', [InkJinController::class, 'publicTattooPage'])->name('public.tattoo');
@@ -204,3 +226,6 @@ Route::get('/{user_name}/{tattoo_slug}/book', [InkJinController::class, 'bookTat
 Route::get('/api/public/check-email-availability', [InkJinController::class, 'checkEmailAvailability'])->name('public.email.availability');
 Route::post('/api/public/send-booking-otp', [InkJinController::class, 'sendBookingOtp'])->name('public.booking.otp.send');
 Route::post('/api/public/verify-booking-otp', [InkJinController::class, 'verifyBookingOtp'])->name('public.booking.otp.verify');
+Route::post('/api/public/upload-booking-question-image', [InkJinController::class, 'uploadBookingQuestionImage'])->name('public.booking.question_image.upload');
+Route::post('/api/public/create-booking-payment-intent', [InkJinController::class, 'createBookingPaymentIntent'])->name('public.booking.payment_intent.create');
+Route::post('/api/public/confirm-booking-payment', [InkJinController::class, 'confirmBookingAfterPayment'])->name('public.booking.payment.confirm');

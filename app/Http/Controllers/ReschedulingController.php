@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Availability;
 use App\Models\AvailabilityOverride;
 use App\Models\User;
+use App\Services\BookingCalendarAvailabilityService;
 use App\Services\ReschedulingService;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Mail\RescheduleRequestMail;
@@ -21,10 +22,15 @@ use Carbon\Carbon;
 class ReschedulingController extends Controller
 {
     protected $reschedulingService;
-    
-    public function __construct(ReschedulingService $reschedulingService)
-    {
+
+    protected BookingCalendarAvailabilityService $bookingCalendarAvailability;
+
+    public function __construct(
+        ReschedulingService $reschedulingService,
+        BookingCalendarAvailabilityService $bookingCalendarAvailability
+    ) {
         $this->reschedulingService = $reschedulingService;
+        $this->bookingCalendarAvailability = $bookingCalendarAvailability;
     }
     
     /**
@@ -90,7 +96,7 @@ class ReschedulingController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'reason' => 'nullable|string|max:1000',
+                'reason' => 'required|string|min:3|max:1000',
             ]);
             
             if ($validator->fails()) {
@@ -167,28 +173,9 @@ class ReschedulingController extends Controller
     public function reschedule(Request $request, $id)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'new_date' => 'required|date',
-                'new_start_time_utc' => 'required|date_format:H:i:s',
-                'new_end_time_utc' => 'required|date_format:H:i:s',
-                'reason' => 'nullable|string|max:1000',
-                // Optional fields for separate consultation rescheduling
-                'consultation_date' => 'nullable|date',
-                'consultation_start_time_utc' => 'nullable|date_format:H:i:s',
-                'consultation_end_time_utc' => 'nullable|date_format:H:i:s',
-            ]);
-            
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors(),
-                ], 422);
-            }
-            
-            $booking = Booking::with(['user', 'artist.userDetail'])->findOrFail($id);
+            $booking = Booking::with(['user', 'artist.userDetail', 'tattoo'])->findOrFail($id);
             $user = Auth::user();
-            
+
             // Check authorization
             if ($booking->user_id !== $user->id && $booking->artist_user_id !== $user->id) {
                 return response()->json([
@@ -196,18 +183,63 @@ class ReschedulingController extends Controller
                     'message' => 'Unauthorized access to booking',
                 ], 403);
             }
-            
+
             // Check booking status
-            if ($booking->status !== 'confirmed') {
+            $isArtistRequested = $booking->reschedule_status === 'pending'
+                && $booking->reschedule_requested_by === 'artist';
+
+            if ($booking->status !== 'confirmed' && ! $isArtistRequested) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Only confirmed bookings can be rescheduled',
                 ], 400);
             }
-            
-            // Check if this is artist-requested reschedule
-            $isArtistRequested = $booking->reschedule_status === 'pending' 
-                && $booking->reschedule_requested_by === 'artist';
+
+            $this->mergeRescheduleUtcFromLocalFields($request, $booking);
+
+            $validator = Validator::make($request->all(), [
+                'new_date' => 'required|date',
+                'new_start_time_utc' => 'required|date_format:H:i:s',
+                'new_end_time_utc' => 'required|date_format:H:i:s',
+                'reason' => 'nullable|string|max:1000',
+                'new_start_local' => 'nullable|string|max:32',
+                'consultation_date' => 'nullable|date',
+                'consultation_start_time_utc' => 'nullable|date_format:H:i:s',
+                'consultation_end_time_utc' => 'nullable|date_format:H:i:s',
+                'consultation_start_local' => 'nullable|string|max:32',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $timing = strtolower((string) ($booking->consultation_timing_type ?? 'combined'));
+            if ($timing !== 'separate') {
+                $timing = 'combined';
+            }
+            if (
+                ! $isArtistRequested
+                && $booking->has_consultation
+                && $timing === 'separate'
+                && ! $booking->consultation_booking_id
+            ) {
+                $vConsult = Validator::make($request->all(), [
+                    'consultation_date' => 'required|date',
+                    'consultation_start_time_utc' => 'required|date_format:H:i:s',
+                    'consultation_end_time_utc' => 'required|date_format:H:i:s',
+                ]);
+                if ($vConsult->fails()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Consultation date and time are required for this booking.',
+                        'errors' => $vConsult->errors(),
+                    ], 422);
+                }
+            }
             
             if ($isArtistRequested) {
                 // Process artist-requested reschedule (doesn't count against limit)
@@ -233,10 +265,10 @@ class ReschedulingController extends Controller
             
             // If separate consultation, also reschedule the consultation booking
             $consultationBooking = null;
-            if ($request->has('consultation_date') && 
-                $request->has('consultation_start_time_utc') && 
+            if ($request->has('consultation_date') &&
+                $request->has('consultation_start_time_utc') &&
                 $request->has('consultation_end_time_utc') &&
-                $booking->consultation_timing_type === 'separate' &&
+                strtolower((string) $booking->consultation_timing_type) === 'separate' &&
                 $booking->consultation_booking_id) {
                 
                 $consultationBooking = Booking::find($booking->consultation_booking_id);
@@ -274,7 +306,23 @@ class ReschedulingController extends Controller
                     $consultationBooking->refresh();
                 }
             }
-            
+
+            // Separate consultation stored on the same booking row (no linked consultation_booking_id)
+            if (
+                $request->filled('consultation_date')
+                && $request->filled('consultation_start_time_utc')
+                && $request->filled('consultation_end_time_utc')
+                && strtolower((string) $booking->consultation_timing_type) === 'separate'
+                && $booking->has_consultation
+                && ! $booking->consultation_booking_id
+            ) {
+                $booking->update([
+                    'consultation_date' => $request->consultation_date,
+                    'consultation_start_time_utc' => $request->consultation_start_time_utc,
+                    'consultation_end_time_utc' => $request->consultation_end_time_utc,
+                ]);
+            }
+
             // Update Google Calendar event for tattoo session
             if ($booking->google_calendar_event_id) {
                 try {
@@ -362,77 +410,10 @@ class ReschedulingController extends Controller
      */
     public function declineReschedule(Request $request, $id)
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'reason' => 'nullable|string|max:1000',
-            ]);
-            
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors(),
-                ], 422);
-            }
-            
-            $booking = Booking::with(['user', 'artist'])->findOrFail($id);
-            $user = Auth::user();
-            
-            // Check authorization (client only)
-            if ($booking->user_id !== $user->id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Only the client can decline reschedule request',
-                ], 403);
-            }
-            
-            // Check if there's a pending artist reschedule request
-            if ($booking->reschedule_status !== 'pending' || $booking->reschedule_requested_by !== 'artist') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No pending artist reschedule request found',
-                ], 400);
-            }
-            
-            // Process decline
-            $result = $this->reschedulingService->processDeclineReschedule(
-                $booking,
-                $request->reason
-            );
-            
-            // Send notification to artist
-            try {
-                Mail::to($booking->artist->email)->send(
-                    new RescheduleDeclinedMail($booking, $request->reason)
-                );
-            } catch (\Exception $e) {
-                Log::error('Failed to send reschedule declined email', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-            
-            Log::info('Reschedule request declined', [
-                'booking_id' => $booking->id,
-                'client_id' => $user->id,
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Reschedule request declined. Booking will be cancelled.',
-                'data' => $result,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to decline reschedule request', [
-                'booking_id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to decline reschedule request',
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Declining an artist reschedule request is not allowed. Please choose a new date and time.',
+        ], 403);
     }
     
     /**
@@ -654,5 +635,73 @@ class ReschedulingController extends Controller
             'isArtistRequested' => $isArtistRequested,
             'consultationBooking' => $consultationBooking,
         ]);
+    }
+
+    /**
+     * Merge artist-local 12h times into UTC fields expected by reschedule persistence.
+     */
+    private function mergeRescheduleUtcFromLocalFields(Request $request, Booking $booking): void
+    {
+        $booking->loadMissing(['tattoo', 'artist.userDetail']);
+        $ud = $booking->artist?->userDetail;
+        if (! $ud) {
+            return;
+        }
+
+        $tz = $booking->timezone ?: ($ud->timezone ?: 'UTC');
+        $tattooMin = $this->bookingCalendarAvailability->resolveTattooDurationMinutes($booking->tattoo);
+        $consultMin = (int) ($ud->session_duration_minutes ?: 30);
+
+        $hasC = (bool) $booking->has_consultation;
+        $timing = strtolower((string) ($booking->consultation_timing_type ?? 'combined'));
+        if ($timing !== 'separate') {
+            $timing = 'combined';
+        }
+
+        if (
+            $request->filled('consultation_start_local')
+            && $request->filled('consultation_date')
+            && $hasC
+            && $timing === 'separate'
+            && ! $booking->consultation_booking_id
+        ) {
+            try {
+                $cStart = Carbon::createFromFormat(
+                    'Y-m-d g:i A',
+                    trim((string) $request->consultation_date).' '.trim((string) $request->consultation_start_local),
+                    $tz
+                )->utc();
+                $cEnd = $cStart->copy()->addMinutes($consultMin);
+                $request->merge([
+                    'consultation_start_time_utc' => $cStart->format('H:i:s'),
+                    'consultation_end_time_utc' => $cEnd->format('H:i:s'),
+                ]);
+            } catch (\Throwable) {
+            }
+        }
+
+        if (! $request->filled('new_start_local') || ! $request->filled('new_date')) {
+            return;
+        }
+
+        $totalForTattooRow = $tattooMin;
+        if ($hasC && $timing === 'combined') {
+            $totalForTattooRow = $tattooMin + $consultMin;
+        }
+
+        try {
+            $startArtist = Carbon::createFromFormat(
+                'Y-m-d g:i A',
+                trim((string) $request->input('new_date')).' '.trim((string) $request->input('new_start_local')),
+                $tz
+            );
+            $startUtc = $startArtist->utc();
+            $endUtc = $startUtc->copy()->addMinutes($totalForTattooRow);
+            $request->merge([
+                'new_start_time_utc' => $startUtc->format('H:i:s'),
+                'new_end_time_utc' => $endUtc->format('H:i:s'),
+            ]);
+        } catch (\Throwable) {
+        }
     }
 }

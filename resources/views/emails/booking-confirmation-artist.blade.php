@@ -1,324 +1,150 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Booking Notification</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333333;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        
-        .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        .email-header {
-            background: #482e92;
-            padding: 20px 30px;
-            text-align: center;
-        }
-        
-        .logo-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        
-        .logo-text {
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: 600;
-            margin: 0;
-        }
-        
-        .email-logo {
-            max-width: 80px;
-            height: auto;
-        }
-        
-        .email-body {
-            padding: 40px 30px;
-        }
-        
-        .greeting {
-            font-size: 18px;
-            color: #333333;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-        
-        .content {
-            font-size: 16px;
-            color: #666666;
-            margin-bottom: 30px;
-            line-height: 1.8;
-        }
-        
-        .booking-details {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 25px 0;
-            border-left: 4px solid #482e92;
-        }
-        
-        .booking-details h3 {
-            color: #482e92;
-            font-size: 18px;
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
-        
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-        
-        .detail-label {
-            font-weight: 600;
-            color: #333333;
-        }
-        
-        .detail-value {
-            color: #666666;
-            text-align: right;
-        }
-        
-        .questions-section {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #fff8e1;
-            border-left: 4px solid #ffc107;
-            border-radius: 4px;
-        }
-        
-        .questions-section h4 {
-            color: #856404;
-            font-size: 16px;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-        
-        .question-item {
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #ffe082;
-        }
-        
-        .question-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-        
-        .question-text {
-            font-weight: 600;
-            color: #856404;
-            margin-bottom: 5px;
-        }
-        
-        .answer-text {
-            color: #666666;
-        }
-        
-        .info-note {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #e3f2fd;
-            border-left: 4px solid #2196f3;
-            border-radius: 4px;
-        }
-        
-        .info-note-text {
-            font-size: 14px;
-            color: #1565c0;
-            line-height: 1.6;
-        }
-        
-        .email-footer {
-            background-color: #f8f8f8;
-            padding: 1rem;
-            text-align: center;
-            border-top: 1px solid #e0e0e0;
-        }
-        
-        .footer-text {
-            font-size: 14px;
-            color: #888888;
-            line-height: 1.6;
-        }
-        
-        @media only screen and (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            
-            .email-header {
-                padding: 15px 20px;
-            }
-            
-            .logo-text {
-                font-size: 20px;
-            }
-            
-            .email-logo {
-                max-width: 60px;
-            }
-            
-            .email-body {
-                padding: 30px 20px;
-            }
-            
-            .detail-row {
-                flex-direction: column;
-            }
-            
-            .detail-value {
-                text-align: left;
-                margin-top: 5px;
-            }
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>New booking from {{ $customerName }} - Inkjin</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+  </style>
 </head>
-<body>
-    <div class="email-container">
-        <!-- Header -->
-        <div class="email-header">
-            <div class="logo-container">
-                <img src="{{ url('assets/img/branding/logo.png') }}" alt="{{ config('app.name', 'Inkjin') }}" class="email-logo" />
-                <span class="logo-text">{{ config('app.name', 'Inkjin') }}</span>
-            </div>
-        </div>
-        
-        <!-- Body -->
-        <div class="email-body">
-            <p class="greeting">Hello {{ $artistName }},</p>
-            
-            <p class="content">
-                You have a new booking! A customer has booked an appointment with you. See the details below.
-            </p>
-            
-            <!-- Booking Details -->
-            <div class="booking-details">
-                <h3>📅 Booking Details</h3>
-                <div class="detail-row">
-                    <span class="detail-label">Customer:</span>
-                    <span class="detail-value">{{ $customerName }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Customer Email:</span>
-                    <span class="detail-value">{{ $customerEmail }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Tattoo:</span>
-                    <span class="detail-value">{{ $tattooTitle }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Date:</span>
-                    <span class="detail-value">{{ $bookingDate }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Time:</span>
-                    <span class="detail-value">{{ $bookingTime }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Duration:</span>
-                    <span class="detail-value">{{ $duration }} hour(s)</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Amount Received:</span>
-                    <span class="detail-value">{{ $currencySymbol }}{{ number_format($amountReceived, 2) }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Booking ID:</span>
-                    <span class="detail-value">#{{ $bookingId }}</span>
-                </div>
-            </div>
-            
-            @if(!empty($questionsAnswers))
-            <!-- Questions & Answers -->
-            <div class="questions-section">
-                <h4>📝 Customer Answers</h4>
-                @foreach($questionsAnswers as $questionId => $answer)
-                <div class="question-item">
-                    <div class="question-text">Q: {{ $questions[$questionId] ?? 'Question #' . $questionId }}</div>
-                    <div class="answer-text">A: {{ is_array($answer) ? json_encode($answer) : $answer }}</div>
-                </div>
-                @endforeach
-            </div>
-            @endif
-            
-            @if(!empty($meetLink))
-            <!-- Video Meeting Section -->
-            <div style="background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin: 30px 0; border-left: 4px solid #00832d;">
-                <h3 style="color: #333; margin: 0 0 15px 0; font-size: 20px;">
-                    📹 Video Meeting Link
-                </h3>
-                <p style="color: #666; margin-bottom: 15px; line-height: 1.6;">
-                    Meeting link for consultation with {{ $customerName }}:
-                </p>
-                <div style="background-color: #ffffff; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                    <p style="margin: 0 0 10px 0; color: #333;">
-                        <strong>Customer:</strong> {{ $customerName }} ({{ $customerEmail }})<br>
-                        <strong>Meeting Time:</strong> {{ $meetingTime }}<br>
-                        <strong>Duration:</strong> 30 minutes
-                    </p>
-                </div>
-                <a href="{{ $meetLink }}" 
-                   target="_blank"
-                   style="display: inline-block; background-color: #00832d; color: #ffffff; 
-                          padding: 14px 28px; text-decoration: none; border-radius: 6px; 
-                          font-weight: bold; margin-top: 10px; font-size: 16px;">
-                    🎥 Join Google Meet
-                </a>
-                <p style="color: #999; font-size: 13px; margin-top: 20px; line-height: 1.5;">
-                    <strong>Meeting Link:</strong><br>
-                    <a href="{{ $meetLink }}" style="color: #00832d; word-break: break-all;">
-                        {{ $meetLink }}
-                    </a>
-                </p>
-            </div>
-            @endif
-            
-            <!-- Info Note -->
-            <div class="info-note">
-                <p class="info-note-text">
-                    <strong>💡 Reminder:</strong> Please make sure you're available at the scheduled time. 
-                    You can manage this booking from your dashboard. Payment has been processed and will be transferred to your account.
-                </p>
-            </div>
-        </div>
-        
-        <!-- Footer -->
-        <div class="email-footer">
-            <p class="footer-text" style="font-size: 12px; color: #aaaaaa;">
-                © {{ date('Y') }} {{ config('app.name', 'Inkjin') }}. All rights reserved.
-            </p>
-        </div>
-    </div>
+<body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    You have a new booking from {{ $customerName }}. Review details and prepare for the appointment.
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf7ff;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+          <tr>
+            <td align="center" style="padding:0 0 32px 0;font-size:28px;font-weight:800;color:#310f7a;letter-spacing:-0.5px;">
+              inkjin
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#ffffff;border-radius:16px;padding:48px 40px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding:0 0 24px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="background-color:#F8F1FB;border-radius:12px;width:48px;height:48px;text-align:center;font-size:18px;font-weight:800;color:#310f7a;line-height:48px;">
+                          ij
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td align="center" style="font-size:24px;font-weight:700;color:#1c1b21;line-height:1.3;padding:0 0 12px 0;">
+                    You have a new booking!
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 28px 0;text-align:center;">
+                    Hi {{ $artistName }}, a client has booked a session with you. Here are the details:
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:0 0 22px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#F8F1FB;border-radius:12px;">
+                      <tr>
+                        <td style="padding:24px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Client</td></tr>
+                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;padding:0 0 10px 0;">{{ $customerName }}</td></tr>
+                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Tattoo</td></tr>
+                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;padding:0 0 10px 0;">{{ $tattooTitle }}</td></tr>
+                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Date &amp; Time</td></tr>
+                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;padding:0 0 10px 0;">{{ $bookingDate }} at {{ $bookingTime }}</td></tr>
+                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Estimated Duration</td></tr>
+                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;padding:0 0 10px 0;">{{ $duration }} hour(s)</td></tr>
+                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Amount Received</td></tr>
+                            <tr><td style="font-size:18px;font-weight:700;color:#310f7a;padding:0 0 10px 0;">{{ $currencySymbol }}{{ number_format($amountReceived, 2) }}</td></tr>
+                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Booking ID</td></tr>
+                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;">#{{ $bookingId }}</td></tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                @if(!empty($questionsAnswers))
+                <tr>
+                  <td style="padding:0 0 22px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fff8e1;border-radius:12px;">
+                      <tr>
+                        <td style="padding:20px 24px;">
+                          <p style="margin:0 0 12px 0;font-size:14px;font-weight:700;color:#7a5c00;text-transform:uppercase;letter-spacing:.5px;">Client Answers</p>
+                          @foreach($questionsAnswers as $questionId => $answer)
+                            @php
+                              $answerPayload = is_array($answer) ? $answer : ['answer' => $answer];
+                              $questionText = (string) ($answerPayload['question'] ?? ($questions[$questionId] ?? ('Question #' . $questionId)));
+                              $answerType = (string) ($answerPayload['type'] ?? '');
+                              $answerValue = $answerPayload['answer'] ?? '';
+                              $isImageAnswer = $answerType === 'image'
+                                  || (is_string($answerValue) && (str_starts_with($answerValue, 'http://') || str_starts_with($answerValue, 'https://') || str_starts_with($answerValue, '/uploads/')));
+                            @endphp
+                            <p style="margin:0 0 4px 0;font-size:13px;font-weight:700;color:#6a5000;">Q: {{ $questionText }}</p>
+                            @if($isImageAnswer)
+                              <p style="margin:0 0 12px 0;font-size:14px;color:#4d4d4d;">
+                                A:
+                                <a href="{{ str_starts_with((string) $answerValue, 'http') ? $answerValue : url((string) $answerValue) }}" target="_blank" style="color:#310f7a;text-decoration:underline;">View uploaded image</a>
+                              </p>
+                            @else
+                              <p style="margin:0 0 12px 0;font-size:14px;color:#4d4d4d;">A: {{ is_array($answerValue) ? implode(', ', $answerValue) : $answerValue }}</p>
+                            @endif
+                          @endforeach
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                @endif
+
+                @if(!empty($meetLink))
+                <tr>
+                  <td style="padding:0 0 22px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef8ff;border-radius:12px;">
+                      <tr>
+                        <td style="padding:20px 24px;">
+                          <p style="margin:0 0 8px 0;font-size:16px;font-weight:700;color:#0f4c81;">Video Meeting</p>
+                          <p style="margin:0 0 12px 0;font-size:14px;color:#1b3e5c;">Meeting time: {{ $meetingTime }}</p>
+                          <a href="{{ $meetLink }}" target="_blank" style="display:inline-block;background-color:#0f6bbf;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:10px 16px;border-radius:8px;">Join Google Meet</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                @endif
+
+                <tr>
+                  <td style="font-size:13px;color:#494552;line-height:1.5;text-align:center;">
+                    Please review this booking in your dashboard and be ready for the scheduled time.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:24px 0 0 0;font-size:12px;color:#494552;line-height:1.5;">
+              © {{ date('Y') }} Inkjin · All rights reserved
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
 

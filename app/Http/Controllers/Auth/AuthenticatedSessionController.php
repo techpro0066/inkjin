@@ -34,7 +34,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('verification.notice');
         }
 
-        if ($user->role !== 'admin' && $user->role !== 'artist') {
+        if ($user->role !== 'admin' && $user->role !== 'artist' && $user->role !== 'user') {
             return abort(403, 'Access denied. You are not authorized to access this page.');
         }
 

@@ -11,7 +11,7 @@
       <a href="{{ route('artist.dashboard') }}" class="nav-item {{ request()->routeIs('artist.dashboard') ? 'active' : '' }}">
         <span class="material-symbols-outlined">dashboard</span> Dashboard
       </a>
-      <a href="{{ route('bookings.index') }}" class="nav-item {{ request()->routeIs('bookings.index') ? 'active' : '' }}">
+      <a href="{{ route('artist.bookings.index') }}" class="nav-item {{ request()->routeIs('artist.bookings.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">calendar_month</span> Bookings
       </a>
       <a href="{{ route('availability.index') }}" class="nav-item {{ request()->routeIs('availability.index') ? 'active' : '' }}">

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\InkJinTattoo;
+use App\Models\ArtistDesign;
 
 class Booking extends Model
 {
@@ -115,7 +115,7 @@ class Booking extends Model
 
     public function tattoo(): BelongsTo
     {
-        return $this->belongsTo(InkJinTattoo::class, 'tattoo_id');
+        return $this->belongsTo(ArtistDesign::class, 'tattoo_id');
     }
 
     public function cancelledBy(): BelongsTo

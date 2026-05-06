@@ -144,6 +144,7 @@ class ReschedulingService
     {
         // Update booking status
         $booking->update([
+            'status' => 'pending',
             'reschedule_status' => 'pending',
             'reschedule_requested_by' => 'artist',
             'reschedule_reason' => $reason,
@@ -190,6 +191,7 @@ class ReschedulingService
         
         // Update booking (do NOT increment reschedule_count)
         $booking->update([
+            'status' => 'confirmed',
             'booking_date' => $newDate,
             'start_time_utc' => $newStartTimeUtc,
             'end_time_utc' => $newEndTimeUtc,

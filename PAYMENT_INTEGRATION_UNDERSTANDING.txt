@@ -1,0 +1,93 @@
+Payment Integration Understanding (before implementation)
+Date: 2026-04-29
+File scope requested by user: resources/views/public/book.blade.php
+
+1) What you asked
+- Integrate the payment part in booking flow UI (same design).
+- User enters:
+  - Card number
+  - CVV
+  - Expiry
+  - Card holder name
+- Routing of payment destination based on artist payment setup:
+  - If payment_type = inkjin_account: charge should go to Inkjin Stripe account (credentials in .env).
+  - If payment_type = studio_account or artist_account: use connected Stripe account ID from database.
+
+2) Existing system I found
+- Booking page already has payment step UI in:
+  - resources/views/public/book.blade.php
+  - It includes card inputs and payment summary, but appears mostly frontend/static now.
+- Artist payout settings are stored on user_details:
+  - payment_type enum: artist_account, studio_account, inkjin_account
+  - stripe_account_id (for artist account or mirrored studio account)
+- Studio payout model exists:
+  - studios.stripe_account_id
+  - user_details.studio_id links artist to studio
+- Controllers already support configuring payout preference and stripe connections during onboarding/settings.
+- No complete booking charge flow was identified in the reviewed booking page JS yet (needs backend endpoint + Stripe PaymentIntent flow).
+
+3) My implementation interpretation
+- Keep current booking UI design and behavior in book.blade.php.
+- Replace "manual fake card processing" style with real Stripe flow while keeping same visible form.
+- On payment submit:
+  A) Determine destination account using artist's userDetail:
+     - inkjin_account:
+       - charge on platform Stripe account (env STRIPE_SECRET)
+       - no connected account transfer destination
+     - artist_account:
+       - use userDetail.stripe_account_id as connected account destination
+     - studio_account:
+       - use userDetail.stripe_account_id (already synced from studio) as connected account destination
+- Create backend endpoint(s) for booking payment intent creation and confirmation.
+- Use Stripe.js + PaymentMethod creation from entered card fields.
+  Important: For PCI-safe implementation, Stripe Elements is preferred over raw card fields.
+  I can keep the same visual design while using Stripe Elements inputs styled similarly.
+
+4) Proposed technical flow (safe and production-leaning)
+- Frontend (book.blade.php):
+  - Keep same section layout.
+  - Convert card fields to Stripe Elements mounts (card number, expiry, cvc) and keep separate cardholder name input.
+  - On confirm:
+    1) Request backend to create PaymentIntent with deposit amount.
+    2) Receive client_secret.
+    3) Confirm card payment with Stripe.js.
+    4) On success, continue booking confirmation step.
+
+- Backend:
+  - New controller action(s), e.g. BookingPaymentController:
+    - createIntent()
+    - optional finalize() or webhook-based finalization.
+  - Determine payout routing by payment_type:
+    - inkjin_account -> platform charge only.
+    - artist/studio -> destination charges using connected account id.
+  - Save transaction references on booking/payment record (PaymentIntent ID, status, amount, currency, destination type/account).
+
+5) Amount handling understanding
+- Current UI shows:
+  - Deposit (30% of min price)
+  - Inkjin Booking Fee (€10)
+  - Due today = deposit + fee
+- My understanding: charge total due today from card now.
+- Remaining balance is paid at studio (not charged now).
+
+6) Important assumptions to confirm before coding
+- A1: Stripe Elements is acceptable even though you requested "enter card number/cvv/expiry/name" (user will still enter these, but through secure Stripe fields).
+- A2: "add payment into stripe account" for inkjin_account means charge on platform account (not transfer to connected account).
+- A3: For artist/studio account, funds should go to connected account ID in user_details.stripe_account_id.
+- A4: Currency should remain EUR (based on UI symbols).
+- A5: Booking should be marked confirmed only after successful Stripe payment status.
+
+7) Edge cases I will handle
+- Missing/invalid connected Stripe account ID for artist/studio payment_type.
+- payment_type is null or unsupported.
+- Stripe API failure, 3DS authentication requirement, or card decline.
+- Frontend retries without double-charging (idempotency at backend).
+
+8) Deliverables I plan after your approval
+- book.blade.php payment section integration with Stripe.js/Elements (same design style).
+- New backend payment endpoints + route entries.
+- Payment routing logic based on payment_type and stripe_account_id.
+- Booking/payment persistence updates (if existing tables support, otherwise minimal migration).
+- Error/success states in UI.
+
+End of understanding document.

@@ -74,6 +74,22 @@
       pointer-events: none;
       font-weight: 600;
     }
+    .cal-day.blocked-by-artist {
+      color: #5c4033;
+      background: #f4ebe4;
+      cursor: default;
+      pointer-events: none;
+      font-weight: 600;
+      font-size: 0.72rem;
+    }
+    .cal-day.fully-booked-day {
+      color: #494552;
+      background: #ece8f0;
+      cursor: default;
+      pointer-events: none;
+      font-weight: 600;
+      font-size: 0.72rem;
+    }
     .cal-day.selected { background: #310f7a; color: white; font-weight: 700; }
     .cal-day.today { border: 2px solid #310f7a; }
     .cal-day.empty { pointer-events: none; }
@@ -326,12 +342,14 @@
     </div>
 
       <div class="bg-white rounded-2xl border border-outline-variant/20 p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
-        <div class="w-full sm:w-24 h-24 sm:h-24 rounded-xl bg-surface-container flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-3xl sm:text-4xl text-outline-variant">palette</span></div>
+        <div class="w-full sm:w-24 h-24 sm:h-24 rounded-xl bg-surface-container flex items-center justify-center flex-shrink-0">
+          <img src="{{asset($tattoo->image)}}" alt="{{ $tattoo->title }}" class="w-full h-full object-cover">
+        </div>
         <div class="flex-1 min-w-0">
           <h2 class="text-base sm:text-lg font-bold text-on-surface mb-1 break-words cc-designTitle">{{ $tattoo->title }}</h2>
           <div class="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-on-surface-variant">
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> <span class="cc-designStyle">{{ ucwords(str_replace('-', ' ', $tattoo->primary_style)) }}</span></span>
-            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">euro</span> <span class="cc-designPrice">€{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}</span></span>
+            <span class="flex items-center gap-1"> <span class="cc-designPrice">€{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}</span></span>
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> <span class="cc-designTime">{{ $tattoo->session_duration }} hours</span></span>
         </div>
           <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
@@ -731,9 +749,9 @@
                 <div class="flex justify-between"><span class="text-on-surface-variant">Artist</span><span class="font-semibold" id="payArtist">—</span></div>
                 <div class="flex justify-between hidden" id="payConsultRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold" id="payConsultDateTime">—</span></div>
                 <div class="flex justify-between"><span class="text-on-surface-variant" id="payDateTimeLabel">Date & Time</span><span class="font-semibold" id="payDateTime">—</span></div>
-                <div class="flex justify-between"><span class="text-on-surface-variant">Placement</span><span class="font-semibold" id="payPlacement">—</span></div>
+                <div class="flex justify-between"><span class="text-on-surface-variant">Duration</span><span class="font-semibold" id="payDuration">—</span></div>
                 <div class="flex justify-between"><span class="text-on-surface-variant">Size</span><span class="font-semibold" id="paySize">—</span></div>
-                <div class="flex justify-between"><span class="text-on-surface-variant">Location</span><span class="font-semibold text-xs text-right">Ink & Soul Studio, Athens</span></div>
+                <div class="flex justify-between"><span class="text-on-surface-variant">Location</span><span class="font-semibold text-xs text-right" id="payLocation">—</span></div>
               </div>
               <hr class="border-outline-variant/20 my-4">
               <div class="space-y-2 text-sm mb-3"><div class="flex justify-between"><span class="font-semibold text-on-surface">Price Estimate</span><span class="font-semibold text-on-surface" id="payPriceEstimate">—</span></div></div>
@@ -741,8 +759,8 @@
                 <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due Now</p>
                 <div class="space-y-1.5 text-sm">
                   <div class="flex justify-between hidden" id="payConsultFeeRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold text-green-600">Free</span></div>
-                  <div class="flex justify-between"><span class="text-on-surface-variant">Deposit (30%)</span><span class="font-semibold" id="payDeposit">—</span></div>
-                  <div class="flex justify-between items-center"><span class="text-on-surface-variant flex items-center gap-1">Inkjin Booking Fee <span class="info-tooltip"><span class="material-symbols-outlined text-[14px] text-outline">info</span><span class="tooltip-text">This fee helps us maintain the platform, provide secure payments, and offer customer support.</span></span></span><span class="font-semibold">€10</span></div>
+                  <div class="flex justify-between"><span class="text-on-surface-variant" id="payDepositLabel">Deposit</span><span class="font-semibold" id="payDeposit">—</span></div>
+                  <div class="flex justify-between items-center"><span class="text-on-surface-variant flex items-center gap-1">Inkjin Booking Fee <span class="info-tooltip"><span class="material-symbols-outlined text-[14px] text-outline">info</span><span class="tooltip-text">This fee helps us maintain the platform, provide secure payments, and offer customer support.</span></span></span><span class="font-semibold" id="payBookingFee">—</span></div>
                   <hr class="border-outline-variant/20">
                   <div class="flex justify-between"><span class="font-bold text-on-surface">Total Due Now</span><span class="font-bold text-primary text-lg" id="payTotal">—</span></div>
                 </div>
@@ -755,15 +773,24 @@
             <p class="text-sm text-on-surface-variant mb-6">Your payment is securely processed. You won't be charged until you confirm.</p>
             <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
               <div class="space-y-4">
-                <div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Card Number</label><div class="relative"><input type="text" id="inputCard" placeholder="•••• •••• •••• ••••" maxlength="19" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 pr-24 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 tracking-widest font-mono"><div class="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1"><span class="card-type-icon" id="iconVisa">VISA</span><span class="card-type-icon" id="iconMC">MC</span><span class="card-type-icon" id="iconAmex">AMEX</span></div></div></div>
-                <div class="grid grid-cols-2 gap-4"><div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Expiry</label><input type="text" id="inputExpiry" placeholder="MM / YY" maxlength="7" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">CVV</label><input type="text" id="inputCVV" placeholder="•••" maxlength="4" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"></div></div>
+                <div>
+                  <label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Card Number</label>
+                  <div class="relative">
+                    <div id="stripeCardNumber" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 pr-24 text-sm"></div>
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1"><span class="card-type-icon" id="iconVisa">VISA</span><span class="card-type-icon" id="iconMC">MC</span><span class="card-type-icon" id="iconAmex">AMEX</span></div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Expiry</label><div id="stripeCardExpiry" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm"></div></div>
+                  <div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">CVV</label><div id="stripeCardCvc" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm"></div></div>
+                </div>
                 <div><label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Cardholder Name</label><input type="text" id="inputCardName" placeholder="Name on card" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
                 <p class="text-xs text-on-surface-variant flex items-center gap-2">Accepted: <strong>Visa</strong> · <strong>Mastercard</strong> · <strong>Amex</strong></p>
               </div>
-              <label class="flex items-center gap-2 mt-5 cursor-pointer"><input type="checkbox" id="saveCard" class="accent-primary"><span class="text-sm text-on-surface-variant">Save this card for future bookings</span></label>
+              {{-- <label class="flex items-center gap-2 mt-5 cursor-pointer"><input type="checkbox" id="saveCard" class="accent-primary"><span class="text-sm text-on-surface-variant">Save this card for future bookings</span></label> --}}
             </div>
-            <div class="flex items-center gap-3 mb-6"><div class="flex-1 h-px bg-outline-variant/30"></div><span class="text-sm text-on-surface-variant font-medium">— or pay with —</span><div class="flex-1 h-px bg-outline-variant/30"></div></div>
-            <div class="space-y-3 mb-6">
+            {{-- <div class="flex items-center gap-3 mb-6"><div class="flex-1 h-px bg-outline-variant/30"></div><span class="text-sm text-on-surface-variant font-medium">— or pay with —</span><div class="flex-1 h-px bg-outline-variant/30"></div></div> --}}
+            {{-- <div class="space-y-3 mb-6">
               <button id="applePayBtn" class="w-full py-3.5 rounded-xl font-bold text-white bg-black hover:bg-gray-800 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm" style="display:none;"><svg class="w-5 h-5" fill="white" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Pay with  Pay</button>
               <button id="googlePayBtn" class="w-full py-3.5 rounded-xl font-bold text-on-surface bg-white border-2 border-outline-variant/40 hover:border-outline-variant hover:bg-surface-container-low transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Pay with Google Pay</button>
             </div>
@@ -775,10 +802,34 @@
               <button class="w-full py-3 rounded-xl font-bold text-[#17120F] bg-[#FFB3C7] hover:bg-[#FF9CB8] transition-colors text-sm shadow-sm">Select Klarna</button>
               <p class="text-[10px] text-[#17120F]/50 text-center mt-2">You'll be redirected to Klarna to complete your payment</p>
               <p class="text-[10px] text-[#17120F]/40 text-center">Subject to approval. 18+ only.</p>
-            </div>
+            </div> --}}
+            @php
+              $cwRaw = strtolower(trim((string) ($userDetail->cancellation_window ?? '48h')));
+              if (str_contains($cwRaw, 'w')) {
+                  preg_match('/(\d+)/', $cwRaw, $m);
+                  $n = (int) ($m[1] ?? 1);
+                  $cancelWindowHuman = $n === 1 ? '1 week' : $n.' weeks';
+              } elseif (str_contains($cwRaw, 'day')) {
+                  preg_match('/(\d+)/', $cwRaw, $m);
+                  $n = (int) ($m[1] ?? 1);
+                  $cancelWindowHuman = $n === 1 ? '1 day' : $n.' days';
+              } else {
+                  preg_match('/(\d+)/', $cwRaw, $m);
+                  $n = (int) ($m[1] ?? 48);
+                  $cancelWindowHuman = $n === 1 ? '1 hour' : $n.' hours';
+              }
+
+              $reschedulePolicy = strtolower((string) ($userDetail->reschedule_times ?? 'never'));
+              $rescheduleText = match ($reschedulePolicy) {
+                  'once' => 'The artist allows you to reschedule your appointment once',
+                  'twice' => 'The artist allows you to reschedule your appointment twice',
+                  'unlimited' => 'The artist allows unlimited reschedules before the cancellation deadline',
+                  default => 'Rescheduling is not allowed for this artist',
+              };
+            @endphp
             <div class="bg-surface-container-low rounded-2xl border border-outline-variant/20 mb-4" id="cancellationPolicySection">
               <button onclick="toggleCancellationPolicy()" class="w-full flex items-center justify-between p-4 text-left"><span class="text-sm font-semibold text-on-surface flex items-center gap-2">📋 Cancellation Policy</span><span class="material-symbols-outlined text-on-surface-variant text-[20px] transition-transform" id="cancPolicyArrow" style="transition: transform 0.2s ease;">expand_more</span></button>
-              <div class="hidden px-4 pb-4" id="cancellationPolicyContent"><div class="text-sm text-on-surface-variant space-y-1.5"><p class="font-semibold text-on-surface mb-2">Artist's Cancellation Policy:</p><p>• Full refund if canceled up to 48 hours before your appointment</p><p>• No refund if canceled less than 48 hours before your appointment</p><p>• The artist allows you to reschedule your appointment once</p><p>• No-shows forfeit the full deposit</p></div></div>
+              <div class="hidden px-4 pb-4" id="cancellationPolicyContent"><div class="text-sm text-on-surface-variant space-y-1.5"><p class="font-semibold text-on-surface mb-2">Artist's Cancellation Policy:</p><p>• Full refund if canceled at least {{ $cancelWindowHuman }} before your appointment</p><p>• No refund if canceled less than {{ $cancelWindowHuman }} before your appointment</p><p>• {{ $rescheduleText }}</p><p>• No-shows forfeit the full deposit</p></div></div>
             </div>
             <label class="flex items-start gap-2 mb-4 cursor-pointer"><input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary" onchange="checkPayReady()"><span class="text-xs text-on-surface-variant">I agree to the <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">cancellation policy</a> and <a href="#" class="text-primary underline">terms of service</a>.</span></label>
             <p class="text-sm text-error hidden mb-3" id="formError"></p>
@@ -816,16 +867,16 @@
             <div class="flex justify-between"><span class="text-on-surface-variant" id="confDateTimeLabel">Date & Time</span><span class="font-semibold" id="confDateTime">—</span></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Artist</span><span class="font-semibold" id="confArtist">—</span></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Studio</span><span class="font-semibold" id="confStudio">—</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Location</span><span class="font-semibold">Ink & Soul Studio</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant"></span><span class="text-xs text-on-surface-variant">742 Evergreen Terrace, Athens, 10001, Greece</span></div>
-            <div class="flex justify-between"><span></span><a href="https://maps.google.com/?q=Ink+Soul+Tattoo+Studio+Athens" target="_blank" class="text-xs text-primary font-medium hover:underline">Get Directions →</a></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Location</span><span class="font-semibold" id="confLocationName">—</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant"></span><span class="text-xs text-on-surface-variant" id="confLocationAddress">—</span></div>
+            <div class="flex justify-between"><span></span><a href="#" id="confDirectionsLink" target="_blank" class="text-xs text-primary font-medium hover:underline">Get Directions →</a></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Placement</span><span class="font-semibold" id="confPlacement">—</span></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Size</span><span class="font-semibold" id="confSize">—</span></div>
             <hr class="border-outline-variant/20">
             <div class="flex justify-between"><span class="text-on-surface-variant">Price Estimate</span><span class="font-semibold" id="confPriceEstimate">—</span></div>
             <div class="flex justify-between hidden" id="confConsultFeeRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold text-green-600">Free</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Deposit (30%)</span><span class="font-semibold" id="confDeposit">—</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Inkjin Booking Fee</span><span class="font-semibold">€10</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant" id="confDepositLabel">Deposit</span><span class="font-semibold" id="confDeposit">—</span></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Inkjin Booking Fee</span><span class="font-semibold" id="confBookingFee">—</span></div>
             <div class="flex justify-between"><span class="font-bold text-on-surface">Total Paid</span><span class="font-bold text-primary" id="confTotalPaid">—</span></div>
             <hr class="border-outline-variant/10">
             <div class="flex justify-between"><span class="text-on-surface-variant">Remaining Balance</span><span class="font-semibold" id="confBalance">—</span></div>
@@ -843,8 +894,8 @@
           </ul>
         </div>
         <div class="flex flex-col sm:flex-row gap-3">
-          <a href="#" class="flex-1 py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm text-center">View My Booking</a>
-          <a href="artist-page.html" class="flex-1 py-3.5 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">Back to Artist Page</a>
+          <a href="{{ route('user.bookings.index') }}" class="flex-1 py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm text-center">View My Booking</a>
+          <a href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}" class="flex-1 py-3.5 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">Back to Artist Page</a>
         </div>
       </div>
       <!-- Managed confirmation -->
@@ -872,6 +923,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+  <script src="https://js.stripe.com/v3/"></script>
   <script>
     var currentStep = 1;
     var currentQuestionIndex = 0;
@@ -884,6 +936,19 @@
     var bookingOtpResendEmail = '';
     var bookingOtpResendTimer = null;
     var csrfToken = @json(csrf_token());
+    var stripePublishableKey = @json($stripePublishableKey ?? '');
+    var minimumDepositType = @json($minimumDepositType ?? 'percentage');
+    var minimumDepositAmount = parseFloat(@json($minimumDepositAmount ?? 30)) || 0;
+    var bookingFeeType = @json($bookingFeeType ?? 'client');
+    var bookingArtistUsername = @json($userDetail->user_name ?? '');
+    var bookingTattooSlug = @json($tattoo->slug ?? '');
+    var stripe = null;
+    var stripeElements = null;
+    var stripeCardNumber = null;
+    var stripeCardExpiry = null;
+    var stripeCardCvc = null;
+    var isStripeMounted = false;
+    var stripeCardComplete = { number: false, expiry: false, cvc: false };
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
     var questionDefinitions = (Array.isArray(serverQuestions) ? serverQuestions : []).map(function(q) {
       var typeMap = { text: 'input', free: 'input', images: 'image', checkbox: 'toggle' };
@@ -900,6 +965,437 @@
         required: !!q.is_required
       };
     });
+
+    function getBookingDeposit() {
+      var minPrice = parseFloat(@json($tattoo->min_price ?? 0)) || 0;
+      if (minimumDepositType === 'amount') {
+        return Math.min(minPrice, Math.max(0, minimumDepositAmount));
+      }
+      var percentage = Math.max(0, minimumDepositAmount);
+      return Math.round((minPrice * (percentage / 100)) * 100) / 100;
+    }
+
+    function getDepositLabel() {
+      if (minimumDepositType === 'amount') {
+        return 'Deposit (Fixed)';
+      }
+      var pct = Number(minimumDepositAmount || 0);
+      return 'Deposit (' + (Number.isInteger(pct) ? String(pct) : pct.toFixed(2).replace(/\.00$/, '')) + '%)';
+    }
+
+    function getBookingFee() {
+      var baseFee = 10.00;
+      if (bookingFeeType === 'artist') return 0.00;
+      if (bookingFeeType === 'split') return baseFee / 2;
+      return baseFee;
+    }
+
+    function getDueNow() {
+      return Math.round((getBookingDeposit() + getBookingFee()) * 100) / 100;
+    }
+
+    function formatEUR(amount) {
+      return '€' + Number(amount || 0).toFixed(2);
+    }
+
+    function formatDateTimeLabel(dateObj, timeLabel) {
+      if (!(dateObj instanceof Date) || !timeLabel) return '—';
+      return dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + timeLabel;
+    }
+
+    function formatDurationLabel(minutes) {
+      var mins = Math.max(0, parseInt(minutes || 0, 10) || 0);
+      var hrs = Math.floor(mins / 60);
+      var rem = mins % 60;
+      if (hrs > 0 && rem > 0) return hrs + 'h ' + rem + 'm';
+      if (hrs > 0) return hrs + 'h';
+      return rem + 'm';
+    }
+
+    function getAnswerByKeywords(keywords) {
+      var defs = Array.isArray(questionDefinitions) ? questionDefinitions : [];
+      for (var i = 0; i < defs.length; i++) {
+        var q = defs[i] || {};
+        var title = String(q.title || '').toLowerCase();
+        var subtitle = String(q.subtitle || '').toLowerCase();
+        var matched = keywords.some(function(k) {
+          return title.indexOf(k) !== -1 || subtitle.indexOf(k) !== -1;
+        });
+        if (matched) {
+          var val = questionAnswers[q.id];
+          if (typeof val === 'string' && val.trim()) return val.trim();
+          if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+        }
+      }
+      return '';
+    }
+
+    function updatePaymentSummary() {
+      var minPrice = parseFloat(@json($tattoo->min_price ?? 0)) || 0;
+      var maxPrice = parseFloat(@json($tattoo->max_price ?? 0)) || 0;
+      var deposit = getBookingDeposit();
+      var total = getDueNow();
+      var minBalance = Math.max(0, minPrice - deposit);
+      var maxBalance = Math.max(0, maxPrice - deposit);
+      var balanceLabel = formatEUR(minBalance) + ' - ' + formatEUR(maxBalance);
+      var artistName = @json(($userDetail->user->first_name ?? '') . ' ' . ($userDetail->user->last_name ?? ''));
+      var studioName = @json($userDetail->studio_name ?? 'Studio');
+      var studioAddress = @json($userDetail->studio_address ?? '');
+      var mapsLink = @json($userDetail->google_maps_link ?? '');
+
+      var mainDateTime = '—';
+      var consultDateTime = '—';
+      var durationLabel = formatDurationLabel(tattooDurationMinutes);
+
+      if (consultationRequired) {
+        if (ccConsultDate && ccConsultTime) {
+          consultDateTime = formatDateTimeLabel(ccConsultDate, ccConsultTime);
+        }
+
+        if (consultationTiming === 'combined') {
+          mainDateTime = consultDateTime;
+          durationLabel = formatDurationLabel(tattooDurationMinutes + consultDurationMinutes);
+          $('#payDateTimeLabel').text('Date & Time');
+          $('#payConsultRow').addClass('hidden');
+        } else {
+          mainDateTime = (ccTattooDate && ccTattooTime) ? formatDateTimeLabel(ccTattooDate, ccTattooTime) : '—';
+          durationLabel = formatDurationLabel(tattooDurationMinutes + consultDurationMinutes) + ' total';
+          $('#payDateTimeLabel').text('Tattoo Date & Time');
+          $('#payConsultDateTime').text(consultDateTime);
+          $('#payConsultRow').removeClass('hidden');
+        }
+      } else {
+        mainDateTime = (selectedDate && selectedTime) ? formatDateTimeLabel(selectedDate, selectedTime) : '—';
+        $('#payDateTimeLabel').text('Date & Time');
+        $('#payConsultRow').addClass('hidden');
+      }
+
+      var placement = getAnswerByKeywords(['placement', 'body part', 'where']);
+      var requestedSize = getAnswerByKeywords(['size', 'cm', 'inch']);
+      var sizeLabel = requestedSize || ((parseInt(@json($tattoo->min_size ?? 0), 10) || 0) + ' - ' + (parseInt(@json($tattoo->max_size ?? 0), 10) || 0) + ' cm');
+      var locationLabel = studioAddress ? (studioName + ', ' + studioAddress) : studioName;
+
+      $('#payDesign').text(@json($tattoo->title ?? '—'));
+      $('#payArtist').text(artistName);
+      $('#payDateTime').text(mainDateTime);
+      $('#payDuration').text(durationLabel);
+      $('#payPlacement').text(placement || 'To be confirmed');
+      $('#paySize').text(sizeLabel);
+      $('#payLocation').text(locationLabel || '—');
+      $('#payPriceEstimate').text(formatEUR(minPrice) + ' - ' + formatEUR(maxPrice));
+      $('#payDepositLabel').text(getDepositLabel());
+      $('#payDeposit').text(formatEUR(deposit));
+      $('#payBookingFee').text(formatEUR(getBookingFee()));
+      $('#payTotal').text(formatEUR(total));
+      $('#payBalance').text(balanceLabel);
+      $('#btnPayTotalAmount').text(formatEUR(total));
+      $('#confPriceEstimate').text(formatEUR(minPrice) + ' - ' + formatEUR(maxPrice));
+      $('#confDepositLabel').text(getDepositLabel());
+      $('#confDeposit').text(formatEUR(deposit));
+      $('#confBookingFee').text(formatEUR(getBookingFee()));
+      $('#confTotalPaid').text(formatEUR(total));
+      $('#confBalance').text(balanceLabel);
+      $('#confDesign').text(@json($tattoo->title ?? '—'));
+      $('#confArtist').text(artistName);
+      $('#confDateTime').text(mainDateTime);
+      $('#confPlacement').text(placement || 'To be confirmed');
+      $('#confSize').text(sizeLabel);
+      $('#confStudio').text(studioName);
+      $('#confLocationName').text(studioName || '—');
+      $('#confLocationAddress').text(studioAddress || '—');
+      if (mapsLink) {
+        $('#confDirectionsLink').attr('href', mapsLink).removeClass('pointer-events-none opacity-50');
+      } else {
+        $('#confDirectionsLink').attr('href', '#').addClass('pointer-events-none opacity-50');
+      }
+      $('#payManagedArtist, #confManagedArtist').text(artistName);
+
+      if (consultationRequired) {
+        if (consultationTiming === 'separate') {
+          $('#confDateTimeLabel').text('Tattoo Date & Time');
+          $('#confConsultDateTime').text(consultDateTime);
+          $('#confConsultRow').removeClass('hidden');
+        } else {
+          $('#confDateTimeLabel').text('Date & Time');
+          $('#confConsultRow').addClass('hidden');
+        }
+      } else {
+        $('#confDateTimeLabel').text('Date & Time');
+        $('#confConsultRow').addClass('hidden');
+      }
+    }
+
+    function mountStripeElements() {
+      if (!stripePublishableKey || isStripeMounted || typeof Stripe === 'undefined') return;
+
+      stripe = Stripe(stripePublishableKey);
+      stripeElements = stripe.elements();
+      var baseStyle = {
+        base: {
+          color: '#1c1b21',
+          fontFamily: 'Plus Jakarta Sans, system-ui, sans-serif',
+          fontSize: '14px',
+          '::placeholder': { color: '#7a7583' }
+        },
+        invalid: { color: '#ba1a1a' }
+      };
+
+      stripeCardNumber = stripeElements.create('cardNumber', { style: baseStyle });
+      stripeCardExpiry = stripeElements.create('cardExpiry', { style: baseStyle });
+      stripeCardCvc = stripeElements.create('cardCvc', { style: baseStyle });
+
+      stripeCardNumber.mount('#stripeCardNumber');
+      stripeCardExpiry.mount('#stripeCardExpiry');
+      stripeCardCvc.mount('#stripeCardCvc');
+      isStripeMounted = true;
+
+      stripeCardNumber.on('change', function(event) {
+        stripeCardComplete.number = !!event.complete;
+        highlightCardBrand(event.brand || '');
+        if (event.error) $('#formError').removeClass('hidden').text(event.error.message);
+        else $('#formError').addClass('hidden').text('');
+        checkPayReady();
+      });
+      stripeCardExpiry.on('change', function(event) {
+        stripeCardComplete.expiry = !!event.complete;
+        if (event.error) $('#formError').removeClass('hidden').text(event.error.message);
+        else $('#formError').addClass('hidden').text('');
+        checkPayReady();
+      });
+      stripeCardCvc.on('change', function(event) {
+        stripeCardComplete.cvc = !!event.complete;
+        if (event.error) $('#formError').removeClass('hidden').text(event.error.message);
+        else $('#formError').addClass('hidden').text('');
+        checkPayReady();
+      });
+    }
+
+    function highlightCardBrand(brand) {
+      $('#iconVisa, #iconMC, #iconAmex').removeClass('active');
+      if (brand === 'visa') $('#iconVisa').addClass('active');
+      if (brand === 'mastercard') $('#iconMC').addClass('active');
+      if (brand === 'amex') $('#iconAmex').addClass('active');
+    }
+
+    function isPaymentCardReady() {
+      return !!(stripeCardComplete.number && stripeCardComplete.expiry && stripeCardComplete.cvc);
+    }
+
+    function checkPayReady() {
+      var agreed = $('#agreePolicy').is(':checked');
+      var hasCardName = String($('#inputCardName').val() || '').trim().length > 1;
+      var ready = agreed && hasCardName && isPaymentCardReady();
+      $('#btnConfirmPay').prop('disabled', !ready);
+    }
+    window.checkPayReady = checkPayReady;
+
+    function toggleCancellationPolicy() {
+      var $content = $('#cancellationPolicyContent');
+      var $arrow = $('#cancPolicyArrow');
+      var isOpen = !$content.hasClass('hidden');
+      if (isOpen) {
+        $content.addClass('hidden');
+        $arrow.css('transform', 'rotate(0deg)');
+      } else {
+        $content.removeClass('hidden');
+        $arrow.css('transform', 'rotate(180deg)');
+      }
+    }
+    window.toggleCancellationPolicy = toggleCancellationPolicy;
+
+    function expandCancellationPolicy() {
+      if ($('#cancellationPolicyContent').hasClass('hidden')) {
+        toggleCancellationPolicy();
+      }
+      var el = document.getElementById('cancellationPolicySection');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    window.expandCancellationPolicy = expandCancellationPolicy;
+
+    async function createBookingPaymentIntent() {
+      var response = await fetch('/api/public/create-booking-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({
+          artist_username: bookingArtistUsername,
+          tattoo_slug: bookingTattooSlug,
+          cardholder_name: String($('#inputCardName').val() || '').trim()
+        })
+      });
+      var data = await response.json();
+      if (!response.ok || !data || !data.client_secret) {
+        throw new Error((data && data.message) || 'Unable to initialize payment.');
+      }
+      return data.client_secret;
+    }
+
+    function formatDateToIso(dateObj) {
+      if (!(dateObj instanceof Date)) return '';
+      // Match slot / blocked-day logic (artist timezone calendar day).
+      return formatYmdArtistLocal(dateObj);
+    }
+
+    function buildStructuredQuestionAnswers() {
+      var defs = Array.isArray(questionDefinitions) ? questionDefinitions : [];
+      var output = {};
+      defs.forEach(function(q) {
+        if (!q || typeof q.id === 'undefined' || q.id === null) return;
+        var qId = String(q.id);
+        var rawAnswer = questionAnswers[q.id];
+        var answer = rawAnswer;
+        if (typeof answer === 'string') answer = answer.trim();
+        if (typeof answer === 'undefined' || answer === null || answer === '') return;
+        output[qId] = {
+          id: q.id,
+          question: String(q.title || ''),
+          type: String(q.type || 'input'),
+          answer: answer,
+        };
+      });
+      return output;
+    }
+
+    function buildBookingPayload() {
+      var isConsultRequired = !!consultationRequired;
+      var timing = consultationTiming === 'separate' ? 'separate' : 'combined';
+      var payload = {
+        email: String(bookingConnectedEmail || $('#bdEmail').val() || '').trim(),
+        phone: String($('#bdPhone').val() || '').trim(),
+        name: String($('#bdName').val() || '').trim(),
+        consultation_required: isConsultRequired,
+        consultation_timing: timing,
+        consult_duration_minutes: parseInt(consultDurationMinutes || 30, 10) || 30,
+        tattoo_duration_minutes: parseInt(tattooDurationMinutes || 120, 10) || 120,
+        questions_answers: buildStructuredQuestionAnswers(),
+        notes: [
+          getAnswerByKeywords(['placement', 'body part', 'where']),
+          getAnswerByKeywords(['size', 'cm', 'inch'])
+        ].filter(Boolean).join(' | ')
+      };
+
+      if (isConsultRequired) {
+        if (timing === 'separate') {
+          payload.consultation_date = formatDateToIso(ccConsultDate);
+          payload.consultation_time = String(ccConsultTime || '');
+          payload.tattoo_date = formatDateToIso(ccTattooDate);
+          payload.tattoo_time = String(ccTattooTime || '');
+        } else {
+          payload.date = formatDateToIso(ccConsultDate);
+          payload.time = String(ccConsultTime || '');
+        }
+      } else {
+        payload.date = formatDateToIso(selectedDate);
+        payload.time = String(selectedTime || '');
+      }
+
+      return payload;
+    }
+
+    async function persistBookingRecord(paymentIntentId) {
+      var response = await fetch('/api/public/confirm-booking-payment', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({
+          artist_username: bookingArtistUsername,
+          tattoo_slug: bookingTattooSlug,
+          payment_intent_id: paymentIntentId,
+          booking_payload: buildBookingPayload()
+        })
+      });
+      var data = await response.json();
+      if (!response.ok || !data || !data.saved) {
+        throw new Error((data && data.message) || 'Payment succeeded but booking could not be saved.');
+      }
+      return data;
+    }
+
+    async function uploadQuestionImage(file, questionId) {
+      var formData = new FormData();
+      formData.append('image', file);
+      formData.append('question_id', String(questionId || ''));
+      formData.append('artist_username', bookingArtistUsername);
+      formData.append('tattoo_slug', bookingTattooSlug);
+
+      var response = await fetch('/api/public/upload-booking-question-image', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': csrfToken
+        },
+        body: formData
+      });
+      var data = await response.json();
+      if (!response.ok || !data || !data.success || !data.file_url) {
+        throw new Error((data && data.message) || 'Unable to upload image.');
+      }
+      return data.file_url;
+    }
+
+    async function confirmBooking() {
+      $('#formError').addClass('hidden').text('');
+      if (!$('#paymentManagedMode').hasClass('hidden')) {
+        goToStep(5);
+        $('#processingView').addClass('hidden');
+        $('#confirmationCalendar').addClass('hidden');
+        $('#confirmationManaged').removeClass('hidden');
+        return;
+      }
+      if (!$('#agreePolicy').is(':checked')) {
+        $('#formError').removeClass('hidden').text('Please accept the cancellation policy and terms.');
+        return;
+      }
+      var cardholderName = String($('#inputCardName').val() || '').trim();
+      if (!cardholderName) {
+        $('#formError').removeClass('hidden').text('Please enter cardholder name.');
+        return;
+      }
+      if (!isPaymentCardReady()) {
+        $('#formError').removeClass('hidden').text('Please complete card details.');
+        return;
+      }
+
+      $('#btnConfirmPay').prop('disabled', true).text('Processing...');
+      goToStep(5);
+      $('#processingView').removeClass('hidden');
+      $('#confirmationCalendar, #confirmationManaged').addClass('hidden');
+      $('#processingText').text('Processing your payment...');
+
+      try {
+        var clientSecret = await createBookingPaymentIntent();
+        var confirmResult = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: stripeCardNumber,
+            billing_details: { name: cardholderName }
+          }
+        });
+        if (confirmResult.error) {
+          throw new Error(confirmResult.error.message || 'Payment failed.');
+        }
+        if (!confirmResult.paymentIntent || confirmResult.paymentIntent.status !== 'succeeded') {
+          throw new Error('Payment was not completed. Please try again.');
+        }
+
+        var savedBooking = await persistBookingRecord(confirmResult.paymentIntent.id);
+        $('#confRef').text(savedBooking.booking_reference || ('#INK-' + String(confirmResult.paymentIntent.id || '').replace('pi_', '').slice(-6).toUpperCase()));
+        $('#processingView').addClass('hidden');
+        $('#confirmationCalendar').removeClass('hidden');
+      } catch (error) {
+        goToStep(4);
+        $('#formError').removeClass('hidden').text(error.message || 'Payment failed. Please try again.');
+      } finally {
+        $('#btnConfirmPay').prop('disabled', false).html('Confirm & Pay <span id="btnPayTotalAmount">' + formatEUR(getDueNow()) + '</span>');
+        checkPayReady();
+      }
+    }
+    window.confirmBooking = confirmBooking;
 
     function renderQuestions() {
       var html = '';
@@ -975,8 +1471,7 @@
       } else if (qType === 'input' || qType === 'textarea') {
         hasValue = !!String($active.find('.js-question-input').val() || '').trim();
       } else if (qType === 'image') {
-        var fileInput = $active.find('.js-question-file').get(0);
-        hasValue = !!(fileInput && fileInput.files && fileInput.files.length > 0);
+        hasValue = !!String(questionAnswers[qId] || '').trim();
       } else if (qType === 'toggle') {
         hasValue = $active.find('.js-question-toggle').is(':checked');
       } else {
@@ -1012,7 +1507,10 @@
         }
       }
       if (step === 3) $('#stepRegister').addClass('active');
-      if (step === 4) $('#stepPayment').addClass('active');
+      if (step === 4) {
+        $('#stepPayment').addClass('active');
+        updatePaymentSummary();
+      }
       if (step === 5) $('#stepConfirmation').addClass('active');
       updateProgressDots();
     }
@@ -1044,6 +1542,8 @@
 
     var artistAvailabilitySchedule = @json($artistAvailabilitySchedule ?? []);
     var artistTimezone = @json($artistTimezone ?? 'UTC');
+    var artistBlockedPeriods = @json($artistBlockedPeriods ?? []);
+    var artistBusyIntervalsByDate = @json($artistBusyIntervalsByDate ?? []);
     var tattooDurationMinutes = parseInt(@json($tattooDurationMinutes ?? 120), 10) || 120;
     var artistConsultationSettings = @json($artistConsultationSettings ?? null) || {};
     var consultationRequired = !!artistConsultationSettings.required;
@@ -1077,6 +1577,44 @@
       if (h === 0) h = 12;
       var mm = String(minute).padStart(2, '0');
       return h + ':' + mm + ' ' + suffix;
+    }
+
+    function formatYmdArtistLocal(dateObj) {
+      if (!(dateObj instanceof Date)) return '';
+      try {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: artistTimezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(dateObj);
+      } catch (e) {
+        var y = dateObj.getFullYear();
+        var m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        var d = String(dateObj.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+    }
+
+    function isArtistDateBlocked(ymd) {
+      if (!ymd || !Array.isArray(artistBlockedPeriods) || !artistBlockedPeriods.length) return false;
+      for (var i = 0; i < artistBlockedPeriods.length; i++) {
+        var p = artistBlockedPeriods[i];
+        if (!p) continue;
+        var s = String(p.start_date || '');
+        var e = String(p.end_date || '');
+        if (ymd >= s && ymd <= e) return true;
+      }
+      return false;
+    }
+
+    function slotOverlapsExistingBooking(ymd, slotStartMin, requiredMinutes) {
+      var slotEndMin = slotStartMin + requiredMinutes;
+      var list = artistBusyIntervalsByDate[ymd];
+      if (!Array.isArray(list) || !list.length) return false;
+      for (var i = 0; i < list.length; i++) {
+        var b = list[i];
+        var bs = parseInt(b.start, 10);
+        var be = parseInt(b.end, 10);
+        if (isNaN(bs) || isNaN(be)) continue;
+        if (slotStartMin < be && slotEndMin > bs) return true;
+      }
+      return false;
     }
 
     function canNavigateToMonth(year, month) {
@@ -1117,6 +1655,11 @@
       var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
       if (dayStart < todayStart) return [];
 
+      var ymdArtist = formatYmdArtistLocal(dateObj);
+      if (ymdArtist && isArtistDateBlocked(ymdArtist)) {
+        return [];
+      }
+
       var weekdayKey = weekdayKeys[dateObj.getDay()];
       var dayRanges = artistAvailabilitySchedule[weekdayKey];
       if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
@@ -1131,7 +1674,54 @@
         });
       }
 
+      var minRequired = Math.max(0, parseInt(requiredMinutes || 0, 10) || 0);
+      if (ymdArtist && minRequired > 0) {
+        slots = slots.filter(function(slot) {
+          var sm = parseTime12hToMinutes(slot.time);
+          return !slotOverlapsExistingBooking(ymdArtist, sm, minRequired);
+        });
+      }
+
       return slots;
+    }
+
+    /** Slots that could exist from weekly hours only (ignores existing bookings). Same “today” filter as getSlotsForDate. */
+    function getHypotheticalSlotsForDate(dateObj, requiredMinutes) {
+      if (!(dateObj instanceof Date)) return [];
+      var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
+      if (dayStart < todayStart) return [];
+
+      var ymdArtist = formatYmdArtistLocal(dateObj);
+      if (ymdArtist && isArtistDateBlocked(ymdArtist)) {
+        return [];
+      }
+
+      var weekdayKey = weekdayKeys[dateObj.getDay()];
+      var dayRanges = artistAvailabilitySchedule[weekdayKey];
+      if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
+      var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
+
+      if (dayStart.getTime() === todayStart.getTime()) {
+        var now = new Date();
+        var nowMinutes = now.getHours() * 60 + now.getMinutes();
+        slots = slots.filter(function(slot) {
+          return parseTime12hToMinutes(slot.time) > nowMinutes;
+        });
+      }
+
+      return slots;
+    }
+
+    /** Weekly hours allow at least one slot, but none remain after bookings + buffer. */
+    function isDateFullyBookedOut(dateObj, requiredMinutes) {
+      if (!(dateObj instanceof Date)) return false;
+      var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
+      if (dayStart < todayStart) return false;
+      var ymd = formatYmdArtistLocal(dateObj);
+      if (ymd && isArtistDateBlocked(ymd)) return false;
+      var hypo = getHypotheticalSlotsForDate(dateObj, requiredMinutes);
+      if (!hypo.length) return false;
+      return getSlotsForDate(dateObj, requiredMinutes).length === 0;
     }
 
     function getMainRequiredMinutes() {
@@ -1176,7 +1766,11 @@
           var div = document.createElement('div');
           div.textContent = day;
 
-          var isAvail = getSlotsForDate(dt, getMainRequiredMinutes()).length > 0;
+          var ymdCell = formatYmdArtistLocal(dt);
+          var isBlockedDay = !!(ymdCell && isArtistDateBlocked(ymdCell));
+          var reqMinMain = getMainRequiredMinutes();
+          var isAvail = getSlotsForDate(dt, reqMinMain).length > 0;
+          var isFullyBooked = !isAvail && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, reqMinMain);
           var isSel = selectedDate && dt.toDateString() === selectedDate.toDateString();
           var isToday = dt.toDateString() === today.toDateString();
           var isFuture = dt > today;
@@ -1184,7 +1778,13 @@
           var cls = 'cal-day';
           if (isSel) cls += ' selected';
           else if (isAvail) cls += ' available';
-          else if (isFuture || isToday) cls += ' unavailable-future';
+          else if (isBlockedDay && (isFuture || isToday)) {
+            cls += ' blocked-by-artist';
+            div.title = 'Artist unavailable';
+          } else if (isFullyBooked) {
+            cls += ' fully-booked-day';
+            div.title = 'Fully booked';
+          } else if (isFuture || isToday) cls += ' unavailable-future';
           else cls += ' unavailable';
           if (isToday && !isSel) cls += ' today';
           div.className = cls;
@@ -1279,16 +1879,25 @@
           var dt = new Date(year, month, day);
           var div = document.createElement('div');
           div.textContent = day;
-          var isAvail = getSlotsForDate(dt, requiredMinutes).length > 0;
+          var ymdCell = formatYmdArtistLocal(dt);
+          var isBlockedDay = !!(ymdCell && isArtistDateBlocked(ymdCell));
           var isSel = selectedDateObj && dt.toDateString() === selectedDateObj.toDateString();
           var isToday = dt.toDateString() === today.toDateString();
           var isFuture = dt > today;
           var isBeforeMin = minDay && dt < minDay;
+          var isAvail = getSlotsForDate(dt, requiredMinutes).length > 0;
+          var isFullyBooked = !isBeforeMin && !isAvail && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, requiredMinutes);
 
           var cls = 'cal-day';
         if (isSel) cls += ' selected';
           else if (isAvail && !isBeforeMin) cls += ' available';
-          else if (isFuture || isToday) cls += ' unavailable-future';
+          else if (!isBeforeMin && isBlockedDay && (isFuture || isToday)) {
+            cls += ' blocked-by-artist';
+            div.title = 'Artist unavailable';
+          } else if (isFullyBooked) {
+            cls += ' fully-booked-day';
+            div.title = 'Fully booked';
+          } else if (isFuture || isToday) cls += ' unavailable-future';
         else cls += ' unavailable';
         if (isToday && !isSel) cls += ' today';
         div.className = cls;
@@ -1735,14 +2344,24 @@
       goToStep(2);
     });
 
-    $(document).on('change', '.js-select2-question, .js-question-file, .js-question-toggle', function() {
+    $(document).on('change', '.js-select2-question, .js-question-file, .js-question-toggle', async function() {
       var $question = $(this).closest('.question-div');
       var qId = $question.data('question-id');
       if (!qId) return;
       if ($(this).hasClass('js-question-toggle')) {
         questionAnswers[qId] = $(this).is(':checked');
       } else if ($(this).hasClass('js-question-file')) {
-        questionAnswers[qId] = this.files && this.files.length ? this.files[0].name : '';
+        var file = this.files && this.files.length ? this.files[0] : null;
+        questionAnswers[qId] = '';
+        if (file) {
+          try {
+            var imageUrl = await uploadQuestionImage(file, qId);
+            questionAnswers[qId] = imageUrl;
+          } catch (error) {
+            $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed. Please try again.');
+            return;
+          }
+        }
       } else {
         questionAnswers[qId] = String($(this).val() || '').trim();
       }
@@ -1789,6 +2408,10 @@
         minimumResultsForSearch: Infinity
       });
       $('.dropify').dropify();
+      updatePaymentSummary();
+      mountStripeElements();
+      checkPayReady();
+      $('#inputCardName').on('input', checkPayReady);
 
       if (consultationRequired) {
         // Phone option is not part of current artist preference matrix.

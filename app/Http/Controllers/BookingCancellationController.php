@@ -63,26 +63,6 @@ class BookingCancellationController extends Controller
     public function cancel(Request $request, $id)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'reason' => 'nullable|string|max:1000',
-                'confirmed' => 'required|boolean',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors(),
-                ], 422);
-            }
-
-            if (!$request->confirmed) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cancellation must be confirmed',
-                ], 400);
-            }
-
             $booking = Booking::findOrFail($id);
             $user = Auth::user();
 
@@ -95,15 +75,43 @@ class BookingCancellationController extends Controller
             }
 
             // Check if booking can be cancelled
-            if ($booking->status !== 'confirmed') {
+            $isArtistRequestedPending = (
+                $booking->status === 'pending'
+                && $booking->reschedule_status === 'pending'
+                && $booking->reschedule_requested_by === 'artist'
+            );
+            if ($booking->status !== 'confirmed' && ! $isArtistRequestedPending) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Booking cannot be cancelled. Current status: ' . $booking->status,
                 ], 400);
             }
 
+            $isClient = (int) $booking->user_id === (int) $user->id;
+            $validator = Validator::make($request->all(), [
+                'reason' => $isClient
+                    ? 'required|string|min:3|max:1000'
+                    : 'nullable|string|max:1000',
+                'confirmed' => 'required|boolean',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            if (!$request->boolean('confirmed')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cancellation must be confirmed',
+                ], 400);
+            }
+
             // Determine cancellation type
-            $cancellationType = $booking->user_id === $user->id ? 'client' : 'artist';
+            $cancellationType = $isClient ? 'client' : 'artist';
             $cancelledBy = $user->id;
 
             // Calculate refund
@@ -116,7 +124,7 @@ class BookingCancellationController extends Controller
                 'user_id' => $cancelledBy,
                 'user_type' => $cancellationType,
                 'timestamp' => now()->toDateTimeString(),
-                'reason' => $request->reason,
+                'reason' => $request->input('reason'),
                 'refund_amount' => $refundData['refund_amount'],
                 'deposit_forfeited' => $refundData['deposit_forfeited'],
             ];
@@ -126,7 +134,7 @@ class BookingCancellationController extends Controller
                 'cancelled_by' => $cancelledBy,
                 'cancelled_at' => now(),
                 'cancellation_initiated_at' => now(),
-                'cancellation_reason' => $request->reason,
+                'cancellation_reason' => $request->input('reason'),
                 'cancellation_type' => $cancellationType,
                 'refund_amount' => $refundData['refund_amount'],
                 'deposit_forfeited' => $refundData['deposit_forfeited'],
@@ -152,6 +160,8 @@ class BookingCancellationController extends Controller
                     // Continue with cancellation even if refund fails
                 }
             }
+
+            $booking->refresh();
 
             // Cancel Google Calendar event
             if ($booking->google_calendar_event_id) {

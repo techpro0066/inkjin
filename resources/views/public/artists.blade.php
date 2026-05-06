@@ -1,384 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Browse all tattoo artists on InkJin">
-    <title>All Artists | InkJin</title>
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f8f9fa;
-        }
-        
-        .header-section {
-            background-color: #ffffff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border-bottom: 1px solid #e9ecef;
-        }
-        
-        .logo-img {
-            height: 40px;
-            width: auto;
-        }
-        
-        .page-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #212529;
-            margin-bottom: 2rem;
-        }
-        
-        .artists-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 2rem;
-            margin-bottom: 3rem;
-        }
-        
-        .artist-card {
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        
-        .artist-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-        }
-        
-        .artist-card-link {
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        
-        .artist-card-link:hover {
-            text-decoration: none;
-            color: inherit;
-        }
-        
-        .artist-card-image-wrapper {
-            width: 100%;
-            height: 280px;
-            overflow: hidden;
-            background-color: #e9ecef;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .artist-card-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .artist-card-avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid #ffffff;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        .artist-card-avatar-placeholder {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background-color: #e9ecef;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-            color: #adb5bd;
-        }
-        
-        .artist-card-body {
-            padding: 1.5rem;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .artist-card-name {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #212529;
-            margin-bottom: 0.5rem;
-            line-height: 1.3;
-            min-height: 2.6rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        
-        .artist-card-location {
-            color: #6c757d;
-            font-size: 0.9rem;
-            margin-bottom: 0.75rem;
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            min-height: 1.5rem;
-        }
-        
-        .location-icon {
-            width: 16px;
-            height: 16px;
-        }
-        
-        .artist-card-studio {
-            color: #6c757d;
-            font-size: 0.85rem;
-            margin-bottom: 0.75rem;
-            min-height: 1.2rem;
-        }
-        
-        .artist-card-style {
-            color: #495057;
-            font-size: 0.85rem;
-            margin-bottom: 1rem;
-            min-height: 1.2rem;
-        }
-        
-        .artist-card-description {
-            color: #6c757d;
-            font-size: 0.875rem;
-            line-height: 1.5;
-            margin-bottom: 1rem;
-            flex-grow: 1;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        
-        .artist-card-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 1rem;
-            border-top: 1px solid #e9ecef;
-            margin-top: auto;
-        }
-        
-        .artist-card-stats {
-            display: flex;
-            gap: 1rem;
-            font-size: 0.875rem;
-            color: #6c757d;
-        }
-        
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-        }
-        
-        .social-links-mini {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .social-link-mini {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            transition: transform 0.2s;
-            font-size: 0.875rem;
-        }
-        
-        .social-link-mini:hover {
-            transform: scale(1.1);
-            text-decoration: none;
-        }
-        
-        .social-link-mini.instagram {
-            background-color: #e4405f;
-            color: #ffffff;
-        }
-        
-        .social-link-mini.tiktok {
-            background-color: #000000;
-            color: #ffffff;
-        }
-        
-        .social-link-mini.website {
-            background-color: #6c757d;
-            color: #ffffff;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: #6c757d;
-        }
-        
-        .empty-state-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Browse all tattoo artists on Inkjin">
+  <title>All Artists | Inkjin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#310f7a",
+            "primary-container": "#482d91",
+            "on-primary": "#ffffff",
+            "surface": "#fdf7ff",
+            "surface-container": "#f2ecf5",
+            "surface-container-low": "#f8f1fb",
+            "on-surface": "#1c1b21",
+            "on-surface-variant": "#494552",
+            "outline-variant": "#cac4d3",
+          },
+          fontFamily: {
+            "sans": ["Plus Jakarta Sans", "system-ui", "sans-serif"],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
 </head>
-<body>
-    <!-- Header -->
-    <header class="header-section">
-        <div class="container py-3">
-            <div class="d-flex align-items-center justify-content-between">
-                <a href="/" class="navbar-brand">
-                    <img src="{{ asset('images/logo.png') }}" alt="InkJin" class="logo-img" onerror="this.style.display='none'">
-                    <span class="fw-bold">InkJin</span>
-                </a>
-                <nav class="d-flex gap-3">
-                    <a href="{{ route('public.artists.list') }}" class="text-decoration-none text-dark fw-medium">Artists</a>
-                </nav>
-            </div>
-        </div>
-    </header>
-    
-    <div class="container py-5">
-        <h1 class="page-title">All Artists</h1>
-        
-        @if(count($artists) > 0)
-        <div class="artists-grid">
-            @foreach($artists as $artist)
-            <div class="artist-card">
-                <a href="{{ route('public.artist.db', ['username' => $artist['username']]) }}" class="artist-card-link">
-                    <div class="artist-card-image-wrapper">
-                        @if(!empty($artist['field_profile_picture']))
-                        <img src="{{ $artist['field_profile_picture'] }}" 
-                             alt="{{ $artist['display_name'] ?? $artist['username'] ?? 'Artist' }}" 
-                             class="artist-card-avatar">
-                        @else
-                        <div class="artist-card-avatar-placeholder">
-                            <span>👤</span>
-                        </div>
-                        @endif
-                    </div>
-                    
-                    <div class="artist-card-body">
-                        <h3 class="artist-card-name">
-                            {{ $artist['display_name'] ?? $artist['username'] ?? 'Artist' }}
-                        </h3>
-                        
-                        @if(!empty($artist['field_address_city']) || !empty($artist['field_address_country']))
-                        <div class="artist-card-location">
-                            <svg class="location-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            <span>
-                                @if(!empty($artist['field_address_city']))
-                                    {{ $artist['field_address_city'] }}
-                                @endif
-                                @if(!empty($artist['field_address_city']) && !empty($artist['field_address_country']))
-                                    , 
-                                @endif
-                                @if(!empty($artist['field_address_country']))
-                                    {{ $artist['field_address_country'] }}
-                                @endif
-                            </span>
-                        </div>
-                        @endif
-                        
-                        @if(!empty($artist['field_profile_studio']))
-                        <div class="artist-card-studio">
-                            📍 {{ $artist['field_profile_studio'] }}
-                        </div>
-                        @endif
-                        
-                        @if(!empty($artist['field_profile_primary_style']))
-                        <div class="artist-card-style">
-                            🎨 {{ $artist['field_profile_primary_style'] }}
-                        </div>
-                        @endif
-                        
-                        @if(!empty($artist['field_profile_description']))
-                        <div class="artist-card-description">
-                            {{ $artist['field_profile_description'] }}
-                        </div>
-                        @endif
-                        
-                        <div class="artist-card-footer">
-                            <div class="artist-card-stats">
-                                @if(isset($artist['tattoo_count']) && $artist['tattoo_count'] > 0)
-                                <div class="stat-item">
-                                    <span>🖼️</span>
-                                    <span>{{ $artist['tattoo_count'] }}</span>
-                                </div>
-                                @endif
-                                @if(isset($artist['followed_count']) && $artist['followed_count'] > 0)
-                                <div class="stat-item">
-                                    <span>👥</span>
-                                    <span>{{ $artist['followed_count'] }}</span>
-                                </div>
-                                @endif
-                            </div>
-                            
-                            <div class="social-links-mini">
-                                @if(!empty($artist['field_profile_instagram']))
-                                <a href="{{ $artist['field_profile_instagram'] }}" 
-                                   target="_blank" 
-                                   rel="noopener noreferrer"
-                                   class="social-link-mini instagram"
-                                   onclick="event.stopPropagation();">
-                                    📷
-                                </a>
-                                @endif
-                                @if(!empty($artist['field_profile_tiktok']))
-                                <a href="{{ $artist['field_profile_tiktok'] }}" 
-                                   target="_blank" 
-                                   rel="noopener noreferrer"
-                                   class="social-link-mini tiktok"
-                                   onclick="event.stopPropagation();">
-                                    🎵
-                                </a>
-                                @endif
-                                @if(!empty($artist['field_profile_website']))
-                                <a href="{{ $artist['field_profile_website'] }}" 
-                                   target="_blank" 
-                                   rel="noopener noreferrer"
-                                   class="social-link-mini website"
-                                   onclick="event.stopPropagation();">
-                                    🌐
-                                </a>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            @endforeach
-        </div>
-        @else
-        <div class="empty-state">
-            <div class="empty-state-icon">🎨</div>
-            <h3>No artists found</h3>
-            <p>There are no artists available at the moment.</p>
-        </div>
-        @endif
+<body class="bg-surface text-on-surface min-h-screen">
+  <header class="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <a href="{{ route('public.artists.list') }}" class="text-xl font-extrabold tracking-tight text-primary">inkjin</a>
+      <a href="{{ url('/') }}" class="inline-flex items-center gap-1 text-sm font-semibold text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined text-[18px]">{{Auth::check() ? 'home' : 'login'}}</span>
+        {{Auth::check() ? 'Dashboard' : 'Login'}}
+      </a>
     </div>
-    
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+    <section class="mb-8">
+      <div class="rounded-3xl border border-outline-variant/30 bg-gradient-to-br from-primary/95 to-primary-container text-white p-6 sm:p-8">
+        <p class="text-xs uppercase tracking-[0.16em] text-white/70 mb-2">Explore</p>
+        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">Discover Tattoo Artists</h1>
+        <p class="mt-2 text-sm sm:text-base text-white/85">Find artists by style, city, and studio in one place.</p>
+      </div>
+    </section>
+
+    <section class="mb-8">
+      <form method="GET" action="{{ route('public.artists.list') }}" class="bg-white border border-outline-variant/30 rounded-2xl p-4 sm:p-5">
+        <label for="q" class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Search artists</label>
+        <div class="mt-2 flex gap-2">
+          <input
+            id="q"
+            name="q"
+            value="{{ $search }}"
+            type="text"
+            placeholder="Name, username, studio, city..."
+            class="flex-1 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 text-sm focus:border-primary focus:ring-primary/30">
+          <button type="submit" class="rounded-xl bg-primary text-on-primary px-4 py-2.5 text-sm font-semibold hover:bg-primary-container">Search</button>
+        </div>
+      </form>
+    </section>
+
+    @if($artists->isEmpty())
+      <section class="rounded-2xl border border-outline-variant/30 bg-white p-10 text-center">
+        <p class="text-lg font-bold text-on-surface mb-1">No artists found</p>
+        <p class="text-sm text-on-surface-variant">Try changing your search and check again.</p>
+      </section>
+    @else
+      <section class="mb-4 flex items-center justify-between">
+        <p class="text-sm text-on-surface-variant">
+          <span class="font-semibold text-on-surface">{{ $artists->count() }}</span>
+          {{ \Illuminate\Support\Str::plural('artist', $artists->count()) }} available
+        </p>
+      </section>
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        @foreach($artists as $artist)
+          @php
+            $avatar = !empty($artist['avatar']) ? asset(ltrim((string) $artist['avatar'], '/')) : '';
+            $initials = strtoupper(substr((string) ($artist['display_name'] ?? 'A'), 0, 1));
+            $location = trim(collect([$artist['city'] ?? '', $artist['country'] ?? ''])->filter()->join(', '));
+            $status = (string) ($artist['availability_status'] ?? 'closed');
+            $statusLabel = match ($status) {
+              'design_custom' => 'Design + Custom',
+              'design_only' => 'Design Only',
+              'custom_only' => 'Custom Only',
+              default => 'Closed',
+            };
+            $statusCls = $status === 'closed'
+              ? 'bg-red-50 text-red-700 ring-red-200'
+              : 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+          @endphp
+          <a href="{{ route('public.artist', ['username' => $artist['username']]) }}"
+             class="group rounded-2xl border border-outline-variant/30 bg-white p-5 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 transition-all">
+            <div class="flex items-start gap-4">
+              @if($avatar !== '')
+                <img src="{{ $avatar }}" alt="{{ $artist['display_name'] }}" class="w-16 h-16 rounded-2xl object-cover border border-outline-variant/20">
+              @else
+                <div class="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-primary font-extrabold text-xl border border-outline-variant/20">{{ $initials }}</div>
+              @endif
+              <div class="min-w-0 flex-1">
+                <h3 class="text-base font-extrabold text-on-surface group-hover:text-primary transition-colors truncate">{{ $artist['display_name'] }}</h3>
+                <p class="text-xs text-on-surface-variant mt-0.5 truncate">{{ '@'.$artist['username'] }}</p>
+                <div class="mt-2">
+                  <span class="inline-flex items-center text-[11px] font-semibold px-2 py-1 rounded-full ring-1 ring-inset {{ $statusCls }}">{{ $statusLabel }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 space-y-1.5">
+              @if(!empty($artist['studio_name']))
+                <p class="text-sm text-on-surface truncate"><span class="text-on-surface-variant">Studio:</span> {{ $artist['studio_name'] }}</p>
+              @endif
+              @if($location !== '')
+                <p class="text-sm text-on-surface truncate"><span class="text-on-surface-variant">Location:</span> {{ $location }}</p>
+              @endif
+              @if(!empty($artist['primary_style']))
+                <p class="text-sm text-on-surface truncate"><span class="text-on-surface-variant">Style:</span> {{ $artist['primary_style'] }}</p>
+              @endif
+            </div>
+
+            @if(!empty($artist['tagline']) || !empty($artist['description']))
+              <p class="mt-4 text-sm text-on-surface-variant line-clamp-2">{{ $artist['tagline'] ?: $artist['description'] }}</p>
+            @endif
+
+            <div class="mt-4 pt-4 border-t border-outline-variant/20 flex items-center justify-between">
+              <p class="text-xs text-on-surface-variant">
+                <span class="font-semibold text-on-surface">{{ (int) ($artist['tattoo_count'] ?? 0) }}</span>
+                designs
+              </p>
+              <span class="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                View profile
+                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </span>
+            </div>
+          </a>
+        @endforeach
+      </section>
+    @endif
+  </main>
 </body>
 </html>
 

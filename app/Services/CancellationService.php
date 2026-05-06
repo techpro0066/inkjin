@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
 use Stripe\Refund;
@@ -11,6 +12,40 @@ use Stripe\Exception\ApiErrorException;
 
 class CancellationService
 {
+    /**
+     * Parse artist cancellation_window string (e.g. 48h, 1w, 2 days) into hours.
+     */
+    public static function hoursFromArtistWindow(?string $cancellationWindow): int
+    {
+        $cwRaw = strtolower(trim((string) ($cancellationWindow ?? '48h')));
+        if (str_contains($cwRaw, 'w')) {
+            preg_match('/(\d+)/', $cwRaw, $cwM);
+
+            return (int) (($cwM[1] ?? 1) * 168);
+        }
+        if (str_contains($cwRaw, 'day')) {
+            preg_match('/(\d+)/', $cwRaw, $cwM);
+
+            return (int) (($cwM[1] ?? 1) * 24);
+        }
+        preg_match('/(\d+)/', $cwRaw, $cwM);
+
+        return (int) ($cwM[1] ?? 48);
+    }
+
+    /**
+     * Hours used for deadline: stored on booking when set, otherwise from artist preferences.
+     */
+    public function effectiveCancellationWindowHours(Booking $booking): int
+    {
+        if ($booking->cancellation_window_hours !== null && (int) $booking->cancellation_window_hours > 0) {
+            return (int) $booking->cancellation_window_hours;
+        }
+        $booking->loadMissing('artist.userDetail');
+
+        return self::hoursFromArtistWindow($booking->artist?->userDetail?->cancellation_window);
+    }
+
     /**
      * Initialize Stripe API key
      */
@@ -30,7 +65,8 @@ class CancellationService
     {
         $now = now();
         $bookingDateTime = Carbon::parse($booking->booking_date->format('Y-m-d') . ' ' . $booking->start_time_utc);
-        $cancellationDeadline = $bookingDateTime->copy()->subHours($booking->cancellation_window_hours ?? 24);
+        $windowHours = $this->effectiveCancellationWindowHours($booking);
+        $cancellationDeadline = $bookingDateTime->copy()->subHours($windowHours);
         
         // Artist cancellation = full refund always
         if ($cancelledBy === $booking->artist_user_id) {
@@ -43,7 +79,7 @@ class CancellationService
                 'is_before_deadline' => true, // Always true for artist cancellation
             ];
         }
-        
+
         // Client cancellation before deadline = full refund
         if ($now->lt($cancellationDeadline)) {
             return [
@@ -195,13 +231,19 @@ class CancellationService
      */
     public function getCancellationInfo(Booking $booking): array
     {
+        $isArtistRequestedPending = (
+            $booking->status === 'pending'
+            && $booking->reschedule_status === 'pending'
+            && $booking->reschedule_requested_by === 'artist'
+        );
         $bookingDateTime = Carbon::parse($booking->booking_date->format('Y-m-d') . ' ' . $booking->start_time_utc);
-        $cancellationDeadline = $bookingDateTime->copy()->subHours($booking->cancellation_window_hours ?? 24);
+        $windowHours = $this->effectiveCancellationWindowHours($booking);
+        $cancellationDeadline = $bookingDateTime->copy()->subHours($windowHours);
         $now = now();
         $isBeforeDeadline = $now->lt($cancellationDeadline);
         
         // Calculate estimated refund
-        $estimatedRefund = $this->calculateRefund($booking, auth()->id());
+        $estimatedRefund = $this->calculateRefund($booking, (int) Auth::id());
         
         // Determine refund eligibility
         $refundEligibility = 'no_refund';
@@ -216,13 +258,14 @@ class CancellationService
         return [
             'booking_id' => $booking->id,
             'booking_date' => $bookingDateTime->toDateTimeString(),
-            'cancellation_window_hours' => $booking->cancellation_window_hours ?? 24,
+            'cancellation_window_hours' => $windowHours,
             'cancellation_deadline' => $cancellationDeadline->toDateTimeString(),
-            'can_cancel' => $booking->status === 'confirmed',
+            'can_cancel' => $booking->status === 'confirmed' || $isArtistRequestedPending,
             'is_before_deadline' => $isBeforeDeadline,
+            'currency' => strtoupper((string) ($booking->currency ?: 'EUR')),
             'estimated_refund' => [
-                'amount' => $estimatedRefund['refund_amount'],
-                'deposit_forfeited' => $estimatedRefund['deposit_forfeited'],
+                'amount' => round((float) $estimatedRefund['refund_amount'], 2),
+                'deposit_forfeited' => round((float) ($estimatedRefund['deposit_forfeited'] ?? 0), 2),
                 'platform_fee_refunded' => $estimatedRefund['platform_fee_refunded'],
             ],
             'refund_eligibility' => $refundEligibility,

@@ -26,6 +26,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'on_boarding',
         'on_app',
         'app_id',
+        'email_verified_at',
     ];
 
     /**
