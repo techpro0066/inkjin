@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Booking;
 use App\Mail\BookingConfirmationMail;
+use App\Mail\UserWelcomeMail;
 use App\Services\CancellationService;
 use App\Models\UserDetail;
 use App\Models\Question;
@@ -906,6 +907,33 @@ class InkJinController extends Controller
                         ]);
                         break;
                     }
+                }
+            }
+        }
+
+        if ($bookingUser->role === 'user' && $clientEmail !== '') {
+            $isFirstPaidBooking = Booking::query()
+                ->where('user_id', $bookingUser->id)
+                ->where('payment_status', 'paid')
+                ->count() === 1;
+
+            if ($isFirstPaidBooking) {
+                try {
+                    $recipientName = trim(implode(' ', array_filter([
+                        (string) ($bookingUser->first_name ?? ''),
+                        (string) ($bookingUser->last_name ?? ''),
+                    ])));
+                    Mail::to($clientEmail)->send(new UserWelcomeMail(
+                        url(route('user.bookings.index')),
+                        $recipientName,
+                    ));
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send user welcome email', [
+                        'booking_id' => $booking->id,
+                        'user_id' => $bookingUser->id,
+                        'email' => $clientEmail,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }

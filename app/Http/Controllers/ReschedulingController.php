@@ -12,6 +12,8 @@ use App\Http\Controllers\GoogleCalendarController;
 use App\Mail\RescheduleRequestMail;
 use App\Mail\RescheduleConfirmationMail;
 use App\Mail\RescheduleDeclinedMail;
+use App\Mail\RescheduleToArtistMail;
+use App\Mail\RescheduleToClientMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -368,11 +370,17 @@ class ReschedulingController extends Controller
             // Send confirmation emails
             try {
                 Mail::to($booking->user->email)->send(
-                    new RescheduleConfirmationMail($booking, false)
+                    new RescheduleToClientMail($booking, $isArtistRequested)
                 );
-                Mail::to($booking->artist->email)->send(
-                    new RescheduleConfirmationMail($booking, true)
-                );
+                if ($isArtistRequested) {
+                    Mail::to($booking->artist->email)->send(
+                        new RescheduleConfirmationMail($booking, true)
+                    );
+                } else {
+                    Mail::to($booking->artist->email)->send(
+                        new RescheduleToArtistMail($booking, $request->reason)
+                    );
+                }
             } catch (\Exception $e) {
                 Log::error('Failed to send reschedule confirmation emails', [
                     'booking_id' => $booking->id,
