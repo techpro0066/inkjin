@@ -330,7 +330,7 @@
             </div>
             <!-- Description -->
             <div class="design-field-section scroll-mt-6" data-design-field="description">
-              <label for="designDescription" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Description</label>
+              <label for="designDescription" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Description <span class="text-outline font-normal">(optional)</span></label>
               <textarea id="designDescription" name="designDescription" rows="3" placeholder="Describe this design…" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="description"></p>
             </div>
@@ -874,9 +874,7 @@
           errors.title = 'Title must not exceed 255 characters.';
         }
         var desc = $.trim($('#designDescription').val());
-        if (!desc) {
-          errors.description = 'Please enter a description.';
-        } else if (desc.length > 255) {
+        if (desc.length > 255) {
           errors.description = 'Description must not exceed 255 characters.';
         }
         var primary = $('#designPrimaryStyle').val();

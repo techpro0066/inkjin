@@ -38,6 +38,10 @@ class AuthenticatedSessionController extends Controller
             return abort(403, 'Access denied. You are not authorized to access this page.');
         }
 
+        if ($user->role === 'user' && $user->must_set_password) {
+            return redirect()->intended(route('user.bookings.index', ['set_password' => '1']));
+        }
+
         return redirect()->intended(authenticated_home_url($user));
     }
 

@@ -135,6 +135,8 @@
   <!-- Main Content -->
   @yield('content')
 
+  @include('components.user_set_password_modal')
+
   @yield('modals')
   
   {{-- jquery cdn --}}

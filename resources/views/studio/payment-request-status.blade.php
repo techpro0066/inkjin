@@ -11,14 +11,14 @@
 
 <div class="flex-1 p-8 md:p-12 max-w-2xl w-full mx-auto">
   <div class="mb-10 text-center md:text-left">
-    <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Studio payout access</h2>
+    <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Studio payout setup</h2>
     <p class="text-on-surface-variant mt-2 text-sm md:text-base max-w-lg mx-auto md:mx-0">
       @if($isApproved)
-        Your studio has approved payouts for your account.
+        Your studio has submitted bank payout details for your account.
       @elseif($isRejected)
-        Your studio did not approve this payout setup.
+        Payout setup for this studio path could not be completed.
       @else
-        We are waiting for your studio to complete approval or Stripe setup.
+        We are waiting for your studio to complete the secure payout form from the email we sent them.
       @endif
     </p>
   </div>
@@ -36,11 +36,11 @@
     </div>
 
     @if($isApproved)
-      <h3 class="text-xl font-bold text-on-surface mb-3">Approved</h3>
+      <h3 class="text-xl font-bold text-on-surface mb-3">Payout details on file</h3>
     @elseif($isRejected)
-      <h3 class="text-xl font-bold text-on-surface mb-3">Not approved</h3>
+      <h3 class="text-xl font-bold text-on-surface mb-3">Setup not completed</h3>
     @else
-      <h3 class="text-xl font-bold text-on-surface mb-3">Pending approval</h3>
+      <h3 class="text-xl font-bold text-on-surface mb-3">Waiting for studio</h3>
     @endif
 
     <p class="text-on-surface-variant text-sm leading-relaxed mb-6">{{ $message }}</p>
@@ -51,7 +51,7 @@
       </p>
     @elseif($isPending)
       <p class="text-on-surface-variant/90 text-sm mb-8">
-        Other areas of the app stay locked until your studio approves or finishes Stripe onboarding.
+        Other areas of the app stay locked until your studio completes the email we sent (bank form, or approve/decline if they already have payout details on file). You can resend from payment settings if needed.
       </p>
     @else
       <p class="text-on-surface-variant/90 text-sm mb-8">

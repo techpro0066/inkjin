@@ -2007,64 +2007,7 @@
     });
   }
 
-  // Connect Stripe - Redirect to Stripe Connect
-  document.getElementById('connectStripeBtn')?.addEventListener('click', () => {
-    window.location.href = '{{ route("connect.stripe") }}';
-  });
-
-  // Disconnect Stripe - Show Modal
-  const disconnectStripeBtn = document.getElementById('disconnectStripeBtn');
-  const disconnectStripeModal = document.getElementById('disconnectStripeModal');
-  const confirmDisconnectStripeBtn = document.getElementById('confirmDisconnectStripeBtn');
-  
-  if (disconnectStripeBtn) {
-    disconnectStripeBtn.addEventListener('click', () => {
-      const modal = new bootstrap.Modal(disconnectStripeModal);
-      modal.show();
-    });
-  }
-
-  // Confirm Disconnect Stripe from Modal
-  if (confirmDisconnectStripeBtn) {
-    confirmDisconnectStripeBtn.addEventListener('click', async () => {
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(disconnectStripeModal);
-      modal.hide();
-
-      const btn = document.getElementById('disconnectStripeBtn');
-      const originalText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Disconnecting...';
-
-      try {
-        const response = await fetch('{{ route("connect.stripe.disconnect") }}', {
-          method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-            'Content-Type': 'application/json',
-          }
-        });
-
-        const data = await response.json();
-        
-        if (data.success) {
-          showAlert('success', 'Stripe account disconnected successfully');
-          // Reload page to update UI
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        } else {
-          showAlert('danger', data.message || 'Failed to disconnect Stripe account');
-          btn.disabled = false;
-          btn.innerHTML = originalText;
-        }
-      } catch (error) {
-        showAlert('danger', 'An error occurred while disconnecting. Please try again.');
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      }
-    });
-  }
+  // Stripe Connect onboarding has been removed from this flow.
 
   // Add click handlers to stepper items
   document.querySelectorAll('.step-item').forEach((item, index) => {

@@ -78,6 +78,34 @@
       <p class="text-on-surface-variant mt-1">Manage your booking status and blocked dates.</p>
     </div>
 
+    @if(!empty($needsWeeklyAvailabilitySetup))
+    <div class="mb-8 rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-amber-100/40 p-5 sm:p-6 shadow-sm" role="alert">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+        <div class="w-11 h-11 rounded-xl bg-amber-100 border border-amber-200/60 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-amber-800 text-2xl">event_available</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <h3 class="text-sm font-bold text-amber-950">Weekly hours not configured</h3>
+          <p class="text-xs text-amber-900/90 mt-1.5 leading-relaxed">Add at least one working time in Working Hours below and save. Until you do, clients cannot complete bookings with you.</p>
+        </div>
+        <button type="button" id="availabilityPageScrollToHoursBtn" class="self-start sm:self-center shrink-0 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 px-4 py-2.5 rounded-xl shadow-sm transition-colors">
+          <span class="material-symbols-outlined text-base">edit_calendar</span>
+          Go to weekly hours
+        </button>
+      </div>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('availabilityPageScrollToHoursBtn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          var el = document.getElementById('weeklyHoursSection');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    </script>
+    @endif
+
     <div class="space-y-10">
 
       <!-- ══════════════════════════════════ -->
@@ -253,7 +281,7 @@
       <!-- ══════════════════════════════════ -->
       <!-- Section 3: Working Hours           -->
       <!-- ══════════════════════════════════ -->
-      <section>
+      <section id="weeklyHoursSection">
         <h3 class="text-lg font-bold text-on-surface mb-1">Working Hours</h3>
         <p class="text-on-surface-variant text-sm mb-1">Set your regular weekly availability</p>
         <div class="h-px bg-outline-variant/30 mb-5"></div>
@@ -274,6 +302,9 @@
     </div>
   </div>
 </main>
+@if(!empty($needsWeeklyAvailabilitySetup))
+  @include('components.artist_availability_setup_modal', ['context' => 'availability'])
+@endif
 
 <!-- Block a date modal -->
 <div id="blockDateModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 block-modal-backdrop" onclick="closeBlockDateModal()">
@@ -1439,6 +1470,13 @@
             errEl.classList.add('hidden');
             errEl.textContent = '';
           }
+          var setupAlert = document.getElementById('availabilityPageSetupAlert');
+          if (setupAlert) {
+            setupAlert.classList.add('hidden');
+          }
+          try {
+            sessionStorage.removeItem('inkjin_dismiss_availability_page_alert');
+          } catch (e) {}
           if (typeof showSaveToast === 'function') showSaveToast();
           return;
         }

@@ -22,6 +22,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_name',
         'email',
         'password',
+        'must_set_password',
         'role',
         'on_boarding',
         'on_app',
@@ -49,6 +50,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_set_password' => 'boolean',
             'on_app' => 'boolean',
         ];
     }
@@ -98,6 +100,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function availabilities()
     {
         return $this->hasMany(Availability::class);
+    }
+
+    /**
+     * Whether the artist has saved at least one weekly availability slot (required before clients can book).
+     */
+    public function hasWeeklyAvailabilitySlots(): bool
+    {
+        return $this->availabilities()->exists();
     }
 
     /**

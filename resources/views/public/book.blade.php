@@ -680,7 +680,7 @@
       <div class="question-div" data-reg="3" id="reg-3">
         <div class="w-full max-w-md mx-auto">
           <div id="bdAuthCreate">
-            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We will send a secure 4-digit code to connect your booking.</p></div>
+            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We are sending a secure 4-digit code to your email—check your inbox (and spam). You can resend below if you need a new code.</p></div>
             <div class="mb-4">
               <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpEmail">Email</label>
               <input type="email" id="bdOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
@@ -705,7 +705,7 @@
               </select>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-              <button id="bdSendOtpBtn" onclick="sendBookingOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Send email code</button>
+              <button id="bdSendOtpBtn" onclick="sendBookingOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Resend code</button>
               <button id="bdVerifyOtpBtn" onclick="verifyBookingOtp()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Verify & Continue</button>
             </div>
             <p id="bdConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
@@ -894,7 +894,7 @@
           </ul>
         </div>
         <div class="flex flex-col sm:flex-row gap-3">
-          <a href="{{ route('user.bookings.index') }}" class="flex-1 py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm text-center">View My Booking</a>
+          <a id="viewMyBookingPostLoginLink" href="{{ route('login') }}" class="flex-1 py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm text-center">View My Booking</a>
           <a href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}" class="flex-1 py-3.5 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">Back to Artist Page</a>
         </div>
       </div>
@@ -1385,6 +1385,8 @@
 
         var savedBooking = await persistBookingRecord(confirmResult.paymentIntent.id);
         $('#confRef').text(savedBooking.booking_reference || ('#INK-' + String(confirmResult.paymentIntent.id || '').replace('pi_', '').slice(-6).toUpperCase()));
+        var bookingLink = (savedBooking && savedBooking.post_booking_login_url) ? savedBooking.post_booking_login_url : @json(route('login'));
+        $('#viewMyBookingPostLoginLink').attr('href', bookingLink);
         $('#processingView').addClass('hidden');
         $('#confirmationCalendar').removeClass('hidden');
       } catch (error) {
@@ -2139,6 +2141,9 @@
         return;
       }
       showReg(nextIndex);
+      if (nextIndex === 3 && !bookingOtpVerified) {
+        await sendBookingOtp();
+      }
     }
     window.nextReg = nextReg;
 
@@ -2182,7 +2187,7 @@
       if (bookingOtpResendRemaining > 0 && bookingOtpResendEmail && bookingOtpResendEmail === currentEmail) {
         $('#bdSendOtpBtn').prop('disabled', true).text('Resend in ' + formatSecondsToMMSS(bookingOtpResendRemaining));
       } else {
-        $('#bdSendOtpBtn').prop('disabled', false).text('Send email code');
+        $('#bdSendOtpBtn').prop('disabled', false).text('Resend code');
       }
     }
 
@@ -2243,7 +2248,7 @@
         $('#bdOtpError').removeClass('hidden').text(err.message || 'Could not send verification code.');
       } finally {
         if (bookingOtpResendRemaining <= 0) {
-          $('#bdSendOtpBtn').prop('disabled', false).text('Send email code');
+          $('#bdSendOtpBtn').prop('disabled', false).text('Resend code');
         } else {
           applyOtpResendUi();
         }

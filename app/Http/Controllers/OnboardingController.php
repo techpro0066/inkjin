@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserBankDetail;
 use App\Models\Studio;
-use App\Mail\StudioPaymentDecisionMail;
-use App\Mail\StudioFirstTimeConnectMail;
+use App\Mail\StudioPayoutInfoRequestMail;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Validator;
 use App\Models\QuestionSorting;
 
 class OnboardingController extends Controller
@@ -640,7 +641,7 @@ class OnboardingController extends Controller
             }
 
             $rules = [
-                'payment_type' => ['required', 'in:artist_account,studio_account,inkjin_account'],
+                'payment_type' => ['required', 'in:artist_account,studio_account'],
             ];
 
             $messages = [
@@ -650,81 +651,53 @@ class OnboardingController extends Controller
 
             $paymentType = $request->payment_type;
             if ($paymentType === 'artist_account') {
-                $rules['stripe_account_id'] = ['required', 'string', 'max:255'];
-                $messages['stripe_account_id.required'] = 'Please connect your Stripe account to receive payments.';
-            } elseif ($paymentType === 'studio_account') {
-                $rules['studio_email'] = ['required', 'email', 'max:255'];
-                $messages['studio_email.required'] = 'Studio email is required.';
-                $messages['studio_email.email'] = 'Please enter a valid email address.';
-            } elseif ($paymentType === 'inkjin_account') {
                 $rules['account_holder_name'] = ['required', 'string', 'max:255'];
                 $rules['bank_name'] = ['required', 'string', 'max:255'];
                 $rules['account_number'] = ['required', 'string', 'max:255'];
                 $rules['swift_bic'] = ['required', 'string', 'max:50'];
                 $rules['currency'] = ['required', 'string', 'size:3'];
-
                 $messages['account_holder_name.required'] = 'Account holder name is required.';
                 $messages['bank_name.required'] = 'Bank name is required.';
                 $messages['account_number.required'] = 'Account number is required.';
                 $messages['swift_bic.required'] = 'SWIFT/BIC is required.';
                 $messages['currency.required'] = 'Please select a currency.';
+            } elseif ($paymentType === 'studio_account') {
+                $rules['studio_email'] = ['required', 'email', 'max:255'];
+                $messages['studio_email.required'] = 'Studio email is required.';
+                $messages['studio_email.email'] = 'Please enter a valid email address.';
             }
 
             $validated = $request->validate($rules, $messages);
-
-            // If user is switching from studio payouts to artist payouts, do not allow reusing the studio's Stripe ID
-            if (
-                $paymentType === 'artist_account' &&
-                ($userDetail->payment_type ?? null) === 'studio_account' &&
-                !empty($userDetail->stripe_account_id) &&
-                isset($validated['stripe_account_id']) &&
-                $validated['stripe_account_id'] === $userDetail->stripe_account_id
-            ) {
-                return redirect()->back()
-                    ->with('error', 'Please connect your own Stripe account for Artist payouts.')
-                    ->withInput();
-            }
+            $studio = null;
 
             $userDetail->payment_type = $validated['payment_type'];
 
             if ($paymentType === 'artist_account') {
-                $userDetail->stripe_account_id = $validated['stripe_account_id'];
+                $userDetail->stripe_account_id = null;
                 $userDetail->studio_id = null;
                 $userDetail->payment_status = 'approved';
+                $userDetail->currency = strtoupper($validated['currency']);
+                $this->upsertUserBankDetails($user, $validated);
             } elseif ($paymentType === 'studio_account') {
                 $studioName = $userDetail->studio_name ?? 'Studio';
                 $studioEmail = strtolower(trim($validated['studio_email']));
                 $studio = Studio::firstWhere('email', $studioEmail);
-                $existingStudio = (bool) $studio;
                 if (!$studio) {
                     $studio = Studio::create([
                         'name' => $studioName,
                         'email' => $studioEmail,
-                        'stripe_account_id' => null,
                     ]);
                 }
 
                 $userDetail->studio_id = $studio->id;
-                $userDetail->stripe_account_id = $studio->stripe_account_id;
-                $userDetail->payment_status = 'pending';
-            } else {
-                // inkjin_account
-                $userDetail->studio_id = null;
                 $userDetail->stripe_account_id = null;
-                $userDetail->payment_status = 'approved';
-                $userDetail->currency = strtoupper($validated['currency']);
-
-                $this->upsertUserBankDetails($user, $validated);
+                $userDetail->payment_status = 'pending';
             }
 
             $userDetail->save();
 
             if ($paymentType === 'studio_account') {
-                if ($existingStudio) {
-                    $this->sendStudioDecisionEmail($user, $userDetail, $studio, true);
-                } else {
-                    $this->sendStudioFirstTimeConnectEmail($user, $userDetail, $studio);
-                }
+                $this->sendStudioPayoutInfoRequestEmail($user, $userDetail, $studio);
             }
 
             if ($request->expectsJson() || $request->ajax()) {
@@ -1078,7 +1051,7 @@ class OnboardingController extends Controller
 
             // Base validation - payment_type is always required
             $rules = [
-                'payment_type' => ['required', 'in:artist_account,studio_account,inkjin_account'],
+                'payment_type' => ['required', 'in:artist_account,studio_account'],
             ];
 
             $messages = [
@@ -1090,15 +1063,6 @@ class OnboardingController extends Controller
             $paymentType = $request->payment_type;
             
             if ($paymentType === 'artist_account') {
-                // Artist account: Stripe account ID is required
-                $rules['stripe_account_id'] = ['required', 'string', 'max:255'];
-                $messages['stripe_account_id.required'] = 'Please connect your Stripe account to complete onboarding.';
-            } elseif ($paymentType === 'studio_account') {
-                // Studio account: Studio email is required
-                $rules['studio_email'] = ['required', 'email', 'max:255'];
-                $messages['studio_email.required'] = 'Studio email is required.';
-                $messages['studio_email.email'] = 'Please enter a valid email address.';
-            } elseif ($paymentType === 'inkjin_account') {
                 $rules['account_holder_name'] = ['required', 'string', 'max:255'];
                 $rules['bank_name'] = ['required', 'string', 'max:255'];
                 $rules['account_number'] = ['required', 'string', 'max:255'];
@@ -1109,54 +1073,48 @@ class OnboardingController extends Controller
                 $messages['account_number.required'] = 'Account number is required.';
                 $messages['swift_bic.required'] = 'SWIFT/BIC is required.';
                 $messages['currency.required'] = 'Please select a currency.';
+            } elseif ($paymentType === 'studio_account') {
+                // Studio account: Studio email is required
+                $rules['studio_email'] = ['required', 'email', 'max:255'];
+                $messages['studio_email.required'] = 'Studio email is required.';
+                $messages['studio_email.email'] = 'Please enter a valid email address.';
             }
 
             $validated = $request->validate($rules, $messages);
+            $studio = null;
 
             // Always set payment_type and completed_steps
             $userDetail->payment_type = $validated['payment_type'];
             $userDetail->completed_steps = array_unique(array_merge($userDetail->completed_steps ?? [], [6]));
 
-            // Handle artist account: Stripe ID saved on user_details
-            if ($paymentType === 'artist_account' && isset($validated['stripe_account_id'])) {
-                $userDetail->stripe_account_id = $validated['stripe_account_id'];
+            if ($paymentType === 'artist_account') {
+                $userDetail->stripe_account_id = null;
                 $userDetail->studio_id = null;
                 $userDetail->payment_status = 'approved';
+                $userDetail->currency = strtoupper($validated['currency']);
+                $this->upsertUserBankDetails($user, $validated);
             } elseif ($paymentType === 'studio_account') {
                 // Studio account: find or create studio record
                 $studioName = $userDetail->studio_name ?? 'Studio';
                 $studioEmail = strtolower(trim($validated['studio_email']));
                 $studio = Studio::firstWhere('email', $studioEmail);
-                $existingStudio = (bool) $studio;
                 if (!$studio) {
                     $studio = Studio::create([
                         'name' => $studioName,
                         'email' => $studioEmail,
-                        'stripe_account_id' => null,
                     ]);
                 }
 
-                // Link artist to studio and mirror studio Stripe state
+                // Link artist to studio; studio submits bank details via emailed link
                 $userDetail->studio_id = $studio->id;
-                $userDetail->stripe_account_id = $studio->stripe_account_id;
-                $userDetail->payment_status = 'pending';
-            } elseif ($paymentType === 'inkjin_account') {
-                // Inkjin account: clear studio and artist Stripe references
-                $userDetail->studio_id = null;
                 $userDetail->stripe_account_id = null;
-                $userDetail->payment_status = 'approved';
-                $userDetail->currency = strtoupper($validated['currency']);
-                $this->upsertUserBankDetails($user, $validated);
+                $userDetail->payment_status = 'pending';
             }
 
             $userDetail->save();
 
             if ($paymentType === 'studio_account') {
-                if ($existingStudio) {
-                    $this->sendStudioDecisionEmail($user, $userDetail, $studio, true);
-                } else {
-                    $this->sendStudioFirstTimeConnectEmail($user, $userDetail, $studio);
-                }
+                $this->sendStudioPayoutInfoRequestEmail($user, $userDetail, $studio);
             }
 
             // Mark onboarding as complete
@@ -1197,63 +1155,281 @@ class OnboardingController extends Controller
         }
     }
 
-    public function studioPaymentDecision(Request $request, UserDetail $userDetail, string $decision)
+    /**
+     * Signed link: studio fills payout bank details (no login).
+     */
+    public function showStudioPayoutForm(Request $request, UserDetail $userDetail)
     {
-        if (!$request->hasValidSignature()) {
-            return view('studio.payment-decision-result', [
-                'status' => 'error',
-                'message' => 'Invalid or expired link.',
-            ]);
-        }
-
-        $decision = strtolower($decision);
-        if (!in_array($decision, ['allow', 'decline'], true)) {
-            return view('studio.payment-decision-result', [
-                'status' => 'error',
-                'message' => 'Invalid decision.',
+        if (! $request->hasValidSignature()) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'message' => 'This link is invalid or has expired. Ask the artist to resend the payout request email.',
             ]);
         }
 
         if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
-            return view('studio.payment-decision-result', [
-                'status' => 'error',
-                'message' => 'This request is no longer active.',
-            ]);
-        }
-
-        if (in_array((string) $userDetail->payment_status, ['approved', 'rejected'], true)) {
-            return view('studio.payment-decision-result', [
-                'status' => 'locked',
-                'message' => 'Decision already submitted and cannot be changed.',
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'message' => 'This payout request is no longer active.',
             ]);
         }
 
         $studio = Studio::find($userDetail->studio_id);
-        if (!$studio) {
-            return view('studio.payment-decision-result', [
-                'status' => 'error',
-                'message' => 'Studio not found.',
+        if (! $studio) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'message' => 'Studio record was not found.',
             ]);
         }
 
-        if ($decision === 'allow') {
-            $userDetail->payment_status = 'approved';
-            $userDetail->stripe_account_id = $studio->stripe_account_id;
-            $userDetail->save();
+        $storeUrl = URL::temporarySignedRoute(
+            'studio.payout-info.store',
+            now()->addDays(14),
+            ['userDetail' => $userDetail->id]
+        );
 
-            return view('studio.payment-decision-result', [
-                'status' => 'approved',
-                'message' => 'Artist request approved successfully.',
+        return view('studio.payout-form', [
+            'userDetail' => $userDetail,
+            'studio' => $studio,
+            'storeUrl' => $storeUrl,
+        ]);
+    }
+
+    /**
+     * Save studio bank details on the studio record and mark the artist payout request approved.
+     */
+    public function saveStudioPayoutForm(Request $request, UserDetail $userDetail)
+    {
+        if (! $request->hasValidSignature()) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'message' => 'This link is invalid or has expired. Ask the artist to resend the payout request email.',
+            ]);
+        }
+
+        if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'message' => 'This payout request is no longer active.',
+            ]);
+        }
+
+        $studio = Studio::find($userDetail->studio_id);
+        if (! $studio) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'message' => 'Studio record was not found.',
+            ]);
+        }
+
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'studio_display_name' => ['nullable', 'string', 'max:255'],
+                'account_holder_name' => [
+                    'required',
+                    'string',
+                    'min:2',
+                    'max:255',
+                    'regex:/^[\p{L}\p{M}\s\'\-\.]+$/u',
+                ],
+                'bank_name' => [
+                    'required',
+                    'string',
+                    'min:2',
+                    'max:255',
+                    'regex:/^[\p{L}\p{N}\p{M}\s\-\.\,\&]+$/u',
+                ],
+                'account_number' => [
+                    'required',
+                    'string',
+                    'max:64',
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        $norm = $this->normalizedPayoutAccountNumber((string) $value);
+                        if ($norm === '') {
+                            $fail('Enter a valid account number or IBAN.');
+
+                            return;
+                        }
+                        if (strlen($norm) > 34) {
+                            $fail('Account number or IBAN must not exceed 34 characters (after removing spaces and hyphens).');
+
+                            return;
+                        }
+                        if ($this->looksLikeIban($norm)) {
+                            if (! $this->isValidIban($norm)) {
+                                $fail('This IBAN is not valid. Check the country code, length, and digits.');
+                            }
+
+                            return;
+                        }
+                        if (strlen($norm) < 4) {
+                            $fail('Account number must be at least 4 characters (after removing spaces).');
+
+                            return;
+                        }
+                        if (! preg_match('/^[A-Z0-9]+$/', $norm)) {
+                            $fail('Account number may only contain letters and digits (or use a valid IBAN).');
+
+                            return;
+                        }
+                    },
+                ],
+                'swift_bic' => [
+                    'required',
+                    'string',
+                    'max:15',
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        $v = strtoupper(preg_replace('/\s+/', '', (string) $value));
+                        if (! preg_match('/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/', $v)) {
+                            $fail('Enter a valid 8- or 11-character SWIFT/BIC (letters and numbers only, e.g. CHASUS33 or DEUTDEFF500).');
+                        }
+                    },
+                ],
+                'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
+            ],
+            [
+                'account_holder_name.required' => 'Account holder name is required.',
+                'account_holder_name.min' => 'Account holder name must be at least 2 characters.',
+                'account_holder_name.regex' => 'Account holder name may only include letters, spaces, hyphens, apostrophes, and periods.',
+                'bank_name.required' => 'Bank name is required.',
+                'bank_name.min' => 'Bank name must be at least 2 characters.',
+                'bank_name.regex' => 'Bank name contains invalid characters.',
+                'account_number.required' => 'Account number or IBAN is required.',
+                'account_number.max' => 'Account number or IBAN is too long. Remove extra spaces and try again.',
+                'swift_bic.required' => 'SWIFT/BIC is required.',
+                'swift_bic.max' => 'SWIFT/BIC must be at most 11 characters after removing spaces.',
+                'currency.required' => 'Please select a currency.',
+                'currency.size' => 'Please select a valid 3-letter currency.',
+                'currency.regex' => 'Currency must be a 3-letter ISO code.',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return redirect()->to(URL::temporarySignedRoute(
+                'studio.payout-info.show',
+                now()->addDays(30),
+                ['userDetail' => $userDetail->id]
+            ))->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
+
+        $currency = strtoupper(trim($validated['currency']));
+        $holder = trim($validated['account_holder_name']);
+        $bankName = trim($validated['bank_name']);
+        $accountNumber = $this->normalizedPayoutAccountNumber((string) $validated['account_number']);
+        $swift = strtoupper(preg_replace('/\s+/', '', (string) $validated['swift_bic']));
+
+        $studio->fill([
+            'account_holder_name' => $holder,
+            'bank_name' => $bankName,
+            'account_number' => $accountNumber,
+            'swift_bic' => $swift,
+            'bank_currency' => $currency,
+        ]);
+        if (! empty($validated['studio_display_name'])) {
+            $studio->name = trim($validated['studio_display_name']);
+        }
+        $studio->save();
+
+        $userDetail->payment_status = 'approved';
+        $userDetail->currency = $currency;
+        $userDetail->save();
+
+        return view('studio.payout-form-result', [
+            'success' => true,
+            'message' => 'Thank you. Payout details have been saved successfully.',
+        ]);
+    }
+
+    /**
+     * Signed link: studio approves this artist receiving payouts through the studio (no artist user_bank_details changes).
+     */
+    public function approveStudioArtistBankLink(Request $request, UserDetail $userDetail)
+    {
+        if (! $request->hasValidSignature()) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Invalid link',
+                'message' => 'This link is invalid or has expired. Ask the artist to resend the payout email.',
+            ]);
+        }
+
+        if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Request inactive',
+                'message' => 'This payout request is no longer active.',
+            ]);
+        }
+
+        $studio = Studio::find($userDetail->studio_id);
+        if (! $studio || ! $studio->hasStoredBankDetails()) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Details unavailable',
+                'message' => 'Your studio does not have complete bank details on file anymore. Please use the secure bank form link from the latest email from us.',
+            ]);
+        }
+
+        $currency = strtoupper(trim((string) $studio->bank_currency));
+
+        $userDetail->payment_status = 'approved';
+        $userDetail->currency = $currency;
+        $userDetail->save();
+
+        return view('studio.payout-form-result', [
+            'success' => true,
+            'title' => 'Approved',
+            'message' => 'Thank you. This artist is approved to receive payouts through your studio.',
+        ]);
+    }
+
+    /**
+     * Signed link: studio declines linking payout details for this artist.
+     */
+    public function declineStudioArtistBankLink(Request $request, UserDetail $userDetail)
+    {
+        if (! $request->hasValidSignature()) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Invalid link',
+                'message' => 'This link is invalid or has expired. Ask the artist to resend the payout email.',
+            ]);
+        }
+
+        if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Request inactive',
+                'message' => 'This payout request is no longer active.',
+            ]);
+        }
+
+        if (($userDetail->payment_status ?? '') === 'approved') {
+            return view('studio.payout-form-result', [
+                'success' => true,
+                'title' => 'Already linked',
+                'message' => 'This artist was already approved to use your studio’s payout details. Nothing was changed.',
+            ]);
+        }
+
+        if (($userDetail->payment_status ?? '') === 'rejected') {
+            return view('studio.payout-form-result', [
+                'success' => true,
+                'title' => 'Already declined',
+                'message' => 'You have already declined this request.',
             ]);
         }
 
         $userDetail->payment_status = 'rejected';
-        $userDetail->stripe_account_id = null;
         $userDetail->save();
 
-        return view('studio.payment-decision-result', [
-            'status' => 'rejected',
-            'message' => 'Artist request declined successfully.',
+        return view('studio.payout-form-result', [
+            'success' => true,
+            'title' => 'Declined',
+            'message' => 'You declined linking your payout details to this artist. Their bank information on our platform was not updated.',
         ]);
     }
 
@@ -1268,9 +1444,9 @@ class OnboardingController extends Controller
 
         $status = (string) ($userDetail->payment_status ?? 'pending');
         $message = match ($status) {
-            'approved' => 'Your studio payment request has been approved.',
-            'rejected' => 'Your studio payment request was declined. Please contact your studio or update your payment method.',
-            default => 'Your studio payment request is pending approval. You will get access after studio approval.',
+            'approved' => 'Your studio has submitted payout details. You have full access.',
+            'rejected' => 'Your studio payout setup was not completed. Please contact your studio or update your payment method in settings.',
+            default => 'We are waiting for your studio to respond to the email we sent them (bank form, or approve/decline if they already have details on file).',
         };
 
         return view('studio.payment-request-status', [
@@ -1280,52 +1456,104 @@ class OnboardingController extends Controller
         ]);
     }
 
-    private function sendStudioDecisionEmail($artistUser, UserDetail $userDetail, Studio $studio, bool $existingStudio): void
+    private function sendStudioPayoutInfoRequestEmail(User $artistUser, UserDetail $userDetail, Studio $studio): void
     {
-        $allowUrl = URL::temporarySignedRoute(
-            'studio.payment.decision',
-            now()->addDays(30),
-            ['userDetail' => $userDetail->id, 'decision' => 'allow']
-        );
+        $studio->refresh();
 
-        $declineUrl = URL::temporarySignedRoute(
-            'studio.payment.decision',
-            now()->addDays(30),
-            ['userDetail' => $userDetail->id, 'decision' => 'decline']
-        );
-
-        $artistName = trim(($artistUser->first_name ?? '') . ' ' . ($artistUser->last_name ?? ''));
+        $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
         if ($artistName === '') {
             $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
         }
 
-        Mail::to($studio->email)->send(new StudioPaymentDecisionMail(
-            $studio->name ?? 'Studio',
-            $artistName,
-            $allowUrl,
-            $declineUrl,
-            $existingStudio
-        ));
-    }
+        $showApproveDecline = $studio->hasStoredBankDetails();
 
-    private function sendStudioFirstTimeConnectEmail($artistUser, UserDetail $userDetail, Studio $studio): void
-    {
-        $artistName = trim(($artistUser->first_name ?? '') . ' ' . ($artistUser->last_name ?? ''));
-        if ($artistName === '') {
-            $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
-        }
-
-        $connectUrl = URL::temporarySignedRoute(
-            'studio.stripe.connect',
+        $formUrl = URL::temporarySignedRoute(
+            'studio.payout-info.show',
             now()->addDays(30),
             ['userDetail' => $userDetail->id]
         );
 
-        Mail::to($studio->email)->send(new StudioFirstTimeConnectMail(
-            $studio->name ?? 'Studio',
-            $artistName,
-            $connectUrl
-        ));
+        $approveUrl = $showApproveDecline
+            ? URL::temporarySignedRoute(
+                'studio.payout-artist-link.approve',
+                now()->addDays(30),
+                ['userDetail' => $userDetail->id]
+            )
+            : null;
+
+        $declineUrl = $showApproveDecline
+            ? URL::temporarySignedRoute(
+                'studio.payout-artist-link.decline',
+                now()->addDays(30),
+                ['userDetail' => $userDetail->id]
+            )
+            : null;
+
+        try {
+            Mail::to($studio->email)->send(new StudioPayoutInfoRequestMail(
+                $studio->name ?? 'Studio',
+                $artistName,
+                $formUrl,
+                $showApproveDecline,
+                $approveUrl,
+                $declineUrl
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send studio payout info request email', [
+                'studio_id' => $studio->id,
+                'user_detail_id' => $userDetail->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Uppercase and strip spaces / hyphens for validation and storage of account or IBAN.
+     */
+    private function normalizedPayoutAccountNumber(string $value): string
+    {
+        return strtoupper(preg_replace('/[\s\-]+/', '', trim($value)));
+    }
+
+    private function looksLikeIban(string $normalized): bool
+    {
+        // Shortest IBANs are 15 characters (e.g. NO); longest 34.
+        return (bool) preg_match('/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/', $normalized);
+    }
+
+    /**
+     * ISO 13616 mod-97-10 check (IBAN).
+     */
+    private function isValidIban(string $iban): bool
+    {
+        if (strlen($iban) < 15 || strlen($iban) > 34) {
+            return false;
+        }
+        if (! preg_match('/^[A-Z]{2}\d{2}[A-Z0-9]+$/', $iban)) {
+            return false;
+        }
+        $rearranged = substr($iban, 4).substr($iban, 0, 4);
+        $numeric = '';
+        for ($i = 0, $len = strlen($rearranged); $i < $len; $i++) {
+            $c = $rearranged[$i];
+            $numeric .= ctype_alpha($c) ? (string) (ord($c) - 55) : $c;
+        }
+
+        return $this->mod97String($numeric) === 1;
+    }
+
+    private function mod97String(string $numeric): int
+    {
+        if (function_exists('gmp_init')) {
+            return (int) gmp_intval(gmp_mod(gmp_init($numeric), '97'));
+        }
+        $parts = str_split($numeric, 7);
+        $rem = 0;
+        foreach ($parts as $part) {
+            $rem = (int) (($rem.$part) % 97);
+        }
+
+        return $rem;
     }
 
     private function upsertUserBankDetails($user, array $validated): void

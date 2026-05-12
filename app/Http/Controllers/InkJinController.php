@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\URL;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use App\Http\Controllers\GoogleCalendarController;
@@ -34,6 +35,14 @@ use Stripe\Stripe;
 
 class InkJinController extends Controller
 {
+    private function makePostBookingAccessUrl(User $bookingUser, Booking $booking): string
+    {
+        return URL::temporarySignedRoute(
+            'user.post-booking.access',
+            now()->addDays(14),
+            ['user' => $bookingUser->id, 'booking' => $booking->id]
+        );
+    }
 
     private function resolveBookingFee(UserDetail $userDetail): array
     {
@@ -83,21 +92,17 @@ class InkJinController extends Controller
         ];
     }
 
-    private function resolveArtistPaymentDestination(UserDetail $userDetail): array
+    /**
+     * Artist payout preference label for PaymentIntent metadata (bookings always settle on the platform account).
+     */
+    private function artistPayoutPreferenceLabel(UserDetail $userDetail): string
     {
         $paymentType = (string) ($userDetail->payment_type ?? 'inkjin_account');
-        $connectedAccountId = null;
-
-        if (in_array($paymentType, ['artist_account', 'studio_account'], true)) {
-            $connectedAccountId = trim((string) ($userDetail->stripe_account_id ?? ''));
-            if ($connectedAccountId === '') {
-                throw new \RuntimeException('Selected payout account is not connected yet.');
-            }
-        } else {
-            $paymentType = 'inkjin_account';
+        if (! in_array($paymentType, ['artist_account', 'studio_account', 'inkjin_account'], true)) {
+            return 'inkjin_account';
         }
 
-        return [$paymentType, $connectedAccountId];
+        return $paymentType;
     }
 
     /**
@@ -316,7 +321,8 @@ class InkJinController extends Controller
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'email' => $email,
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make(Str::password(32)),
+                'must_set_password' => true,
                 'role' => 'user',
                 'on_boarding' => 'yes',
                 'email_verified_at' => now(),
@@ -663,11 +669,7 @@ class InkJinController extends Controller
         $totalDueNow = $deposit + $platformFee;
         $amountCents = (int) round($totalDueNow * 100);
 
-        try {
-            [$paymentType, $connectedAccountId] = $this->resolveArtistPaymentDestination($userDetail);
-        } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
+        $payoutPreference = $this->artistPayoutPreferenceLabel($userDetail);
 
         try {
             Stripe::setApiKey($stripeSecret);
@@ -681,7 +683,8 @@ class InkJinController extends Controller
                     'tattoo_slug' => (string) $tattoo->slug,
                     'tattoo_design_id' => (string) $tattoo->id,
                     'artist_username' => (string) $userDetail->user_name,
-                    'payout_type' => $paymentType,
+                    'payout_type' => $payoutPreference,
+                    'stripe_settlement' => 'platform',
                     'cardholder_name' => $validated['cardholder_name'],
                     'deposit_type' => (string) $depositMeta['type'],
                     'deposit_value' => (string) $depositMeta['amount'],
@@ -692,16 +695,6 @@ class InkJinController extends Controller
                 ],
             ];
 
-            if ($connectedAccountId) {
-                $payload['transfer_data'] = [
-                    'destination' => $connectedAccountId,
-                ];
-                $artistFeeCents = (int) round(((float) $bookingFee['artist_fee']) * 100);
-                if ($artistFeeCents > 0) {
-                    $payload['application_fee_amount'] = $artistFeeCents;
-                }
-            }
-
             $intent = PaymentIntent::create($payload);
 
             return response()->json([
@@ -709,7 +702,7 @@ class InkJinController extends Controller
                 'payment_intent_id' => $intent->id,
                 'amount_cents' => $amountCents,
                 'currency' => 'eur',
-                'payout_type' => $paymentType,
+                'payout_type' => $payoutPreference,
             ]);
         } catch (ApiErrorException $e) {
             return response()->json([
@@ -754,10 +747,15 @@ class InkJinController extends Controller
 
         $existingByIntent = Booking::query()->where('payment_intent_id', $intent->id)->first();
         if ($existingByIntent) {
+            $existingBookingUser = User::query()->find($existingByIntent->user_id);
+
             return response()->json([
                 'saved' => true,
                 'booking_id' => $existingByIntent->id,
                 'booking_reference' => '#INK-' . str_pad((string) $existingByIntent->id, 6, '0', STR_PAD_LEFT),
+                'post_booking_login_url' => $existingBookingUser
+                    ? $this->makePostBookingAccessUrl($existingBookingUser, $existingByIntent)
+                    : null,
             ]);
         }
 
@@ -880,34 +878,14 @@ class InkJinController extends Controller
         }
 
         if ($artistEmail !== '') {
-            $attempt = 0;
-            $maxAttempts = 3;
-            $sent = false;
-            $delaySeconds = 4;
-
-            while ($attempt < $maxAttempts && !$sent) {
-                try {
-                    if ($attempt > 0) {
-                        sleep($delaySeconds);
-                        $delaySeconds += 3;
-                    }
-                    Mail::to($artistEmail)->send(new BookingConfirmationMail($booking, true, []));
-                    $sent = true;
-                } catch (\Throwable $e) {
-                    $attempt++;
-                    $message = (string) $e->getMessage();
-                    $isRateLimited = stripos($message, 'Too many emails per second') !== false;
-
-                    if (!$isRateLimited || $attempt >= $maxAttempts) {
-                        Log::error('Failed to send artist booking notification email', [
-                            'booking_id' => $booking->id,
-                            'email' => $artistEmail,
-                            'attempt' => $attempt,
-                            'error' => $message,
-                        ]);
-                        break;
-                    }
-                }
+            try {
+                Mail::to($artistEmail)->send(new BookingConfirmationMail($booking, true, []));
+            } catch (\Throwable $e) {
+                Log::error('Failed to send artist booking notification email', [
+                    'booking_id' => $booking->id,
+                    'email' => $artistEmail,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -924,7 +902,7 @@ class InkJinController extends Controller
                         (string) ($bookingUser->last_name ?? ''),
                     ])));
                     Mail::to($clientEmail)->send(new UserWelcomeMail(
-                        url(route('user.bookings.index')),
+                        $this->makePostBookingAccessUrl($bookingUser, $booking),
                         $recipientName,
                     ));
                 } catch (\Throwable $e) {
@@ -942,6 +920,7 @@ class InkJinController extends Controller
             'saved' => true,
             'booking_id' => $booking->id,
             'booking_reference' => '#INK-' . str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
+            'post_booking_login_url' => $this->makePostBookingAccessUrl($bookingUser, $booking),
         ]);
     }
 }

@@ -39,7 +39,7 @@ class ArtistDesignsController extends Controller
         $styles = $this->styleSlugs();
         $rules = [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:255'],
             'is_active' => ['required', 'boolean'],
             'is_visible' => ['required', 'boolean'],
             'is_repeatable' => ['required', 'boolean'],
@@ -121,7 +121,7 @@ class ArtistDesignsController extends Controller
         ArtistDesign::create([
             'user_id' => Auth::id(),
             'title' => $validated['title'],
-            'description' => $validated['description'],
+            'description' => trim((string) ($validated['description'] ?? '')),
             'image' => $imagePath,
             'is_active' => $request->boolean('is_active'),
             'is_visible' => $request->boolean('is_visible'),
@@ -161,7 +161,7 @@ class ArtistDesignsController extends Controller
 
         $artistDesign->update([
             'title' => $validated['title'],
-            'description' => $validated['description'],
+            'description' => trim((string) ($validated['description'] ?? '')),
             'image' => $imagePath,
             'is_active' => $request->boolean('is_active'),
             'is_visible' => $request->boolean('is_visible'),

@@ -70,12 +70,15 @@ class AvailabilityController extends Controller
 
         $workingHoursInitial = self::buildWorkingHoursInitialForView($availabilityByDay);
 
+        $needsWeeklyAvailabilitySetup = ! $user->hasWeeklyAvailabilitySlots();
+
         return view('artist.availability.index', [
             'availabilityByDay' => $availabilityByDay,
             'userTimezone' => $timezone,
             'savedAvailabilityStatus' => $userDetail?->availability_status,
             'workingHoursInitial' => $workingHoursInitial,
             'blockedPeriods' => $blockedPeriods,
+            'needsWeeklyAvailabilitySetup' => $needsWeeklyAvailabilitySetup,
         ]);
     }
 

@@ -10,7 +10,9 @@ use App\Http\Controllers\Admin\FormController;
 use App\Http\Controllers\QuestionsController;
 
 use App\Http\Controllers\UserController\BookingsController;
+use App\Http\Controllers\UserController\ClientPasswordController;
 use App\Http\Controllers\BookingsController as ArtistBookingsController;
+use App\Http\Controllers\Auth\PostBookingAccessController;
 
 
 Route::get('/', function () {
@@ -46,24 +48,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/auth/google-calendar/status', [\App\Http\Controllers\GoogleCalendarController::class, 'checkStatus'])->name('google.calendar.status');
     Route::post('/auth/google-calendar/disconnect', [\App\Http\Controllers\GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect');
 
-    // Stripe Connect routes
-    Route::get('/connect-stripe', [\App\Http\Controllers\StripeConnectController::class, 'connectStripe'])->name('connect.stripe');
-    Route::get('/connect-stripe/callback', [\App\Http\Controllers\StripeConnectController::class, 'callback'])->name('connect.stripe.callback');
-    Route::get('/connect-stripe/status', [\App\Http\Controllers\StripeConnectController::class, 'getAccountStatus'])->name('connect.stripe.status');
-    Route::post('/connect-stripe/disconnect', [\App\Http\Controllers\StripeConnectController::class, 'disconnect'])->name('connect.stripe.disconnect');
 });
 
-Route::get('/studio/payment/decision/{userDetail}/{decision}', [OnboardingController::class, 'studioPaymentDecision'])
-    ->whereIn('decision', ['allow', 'decline'])
-    ->name('studio.payment.decision');
-Route::get('/studio/stripe/connect/{userDetail}', [\App\Http\Controllers\StripeConnectController::class, 'studioConnect'])
-    ->name('studio.stripe.connect');
-Route::get('/studio/stripe/callback/{userDetail}', [\App\Http\Controllers\StripeConnectController::class, 'studioCallback'])
-    ->name('studio.stripe.callback');
+Route::get('/studio/payout-info/{userDetail}', [OnboardingController::class, 'showStudioPayoutForm'])
+    ->middleware('signed')
+    ->name('studio.payout-info.show');
+Route::post('/studio/payout-info/{userDetail}', [OnboardingController::class, 'saveStudioPayoutForm'])
+    ->middleware('signed')
+    ->name('studio.payout-info.store');
+
+Route::get('/studio/payout-link/{userDetail}/approve', [OnboardingController::class, 'approveStudioArtistBankLink'])
+    ->middleware('signed')
+    ->name('studio.payout-artist-link.approve');
+Route::get('/studio/payout-link/{userDetail}/decline', [OnboardingController::class, 'declineStudioArtistBankLink'])
+    ->middleware('signed')
+    ->name('studio.payout-artist-link.decline');
+
+Route::get('/user/access-from-booking/{user}/{booking}', PostBookingAccessController::class)
+    ->middleware(['signed', 'throttle:20,1'])
+    ->name('user.post-booking.access');
 
 //Common routes
 
-Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
+Route::middleware(['auth', 'verified', 'onboarding', 'client_password'])->group(function () {
     Route::get('/studio/payment/status', [OnboardingController::class, 'studioPaymentStatus'])->name('studio.payment.status');
 
     // Dashboard route
@@ -90,7 +97,7 @@ Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
 });
 
 // Profile routes (accessible even if email not verified, so user can update email)
-Route::middleware(['auth', 'onboarding'])->group(function () {
+Route::middleware(['auth', 'onboarding', 'client_password'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -121,8 +128,11 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
 // Artist routes
 Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist')->group(function () {
     
-    Route::get('/dashboard', function () {
-        return view('artist.dashboard');
+    Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $needsWeeklyAvailabilitySetup = $user && ! $user->hasWeeklyAvailabilitySlots();
+
+        return view('artist.dashboard', compact('needsWeeklyAvailabilitySetup'));
     })->name('artist.dashboard');
 
     // Settings routes
@@ -204,7 +214,10 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
 });
 
 // User routes
-Route::middleware(['auth', 'verified', 'onboarding', 'user'])->prefix('user')->group(function () {
+Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])->prefix('user')->group(function () {
+    Route::post('/password/booking-initial', [ClientPasswordController::class, 'storeBookingInitial'])
+        ->name('user.password.booking-initial.store');
+
     Route::get('/dashboard', function () {
         return view('user.dashboard');
     })->name('user.dashboard');

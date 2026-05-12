@@ -16,7 +16,11 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('stripe_account_id')->nullable();
+            $table->string('account_holder_name')->nullable();
+            $table->string('bank_name')->nullable();
+            $table->string('account_number')->nullable();
+            $table->string('swift_bic')->nullable();
+            $table->string('bank_currency', 3)->nullable();
             $table->timestamps();
         });
     }

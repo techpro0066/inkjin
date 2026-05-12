@@ -32,7 +32,11 @@
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
 
-    @if(Auth::user()->userDetail->availability_status == 'closed')
+    @php
+      $ud = Auth::user()->userDetail;
+    @endphp
+
+    @if($ud && $ud->availability_status == 'closed')
     <div id="booksClosedBanner" class="bg-red-50 border border-red-200 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div class="flex items-start gap-3">
         <span class="material-symbols-outlined text-red-600 mt-0.5">event_busy</span>
@@ -44,6 +48,45 @@
       <a href="{{ route('availability.index') }}" class="whitespace-nowrap px-4 py-2 bg-red-600 text-white rounded-full text-xs font-bold hover:bg-red-700 transition-colors shadow-sm">
         Open Your Books
       </a>
+    </div>
+    @endif
+
+    @if($ud && ($ud->payment_status ?? '') !== 'approved')
+    <div id="paymentNotApprovedBanner" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <span class="material-symbols-outlined text-amber-600 mt-0.5">payments</span>
+        <div>
+          <h3 class="text-sm font-bold text-amber-900">Payout setup is not approved yet</h3>
+          <p class="text-xs text-amber-800 mt-1">
+            @if(($ud->payment_type ?? '') === 'studio_account')
+              Your studio still needs to complete or approve payout details before your payment profile is active. You can resend the request from payment settings or follow up with your studio.
+            @else
+              Complete and approve your payout method so you can receive earnings. Open payment settings to see what is still required.
+            @endif
+          </p>
+        </div>
+      </div>
+      <a href="{{ route('settings.payment') }}" class="whitespace-nowrap px-4 py-2 bg-amber-600 text-white rounded-full text-xs font-bold hover:bg-amber-700 transition-colors shadow-sm">
+        Payment settings
+      </a>
+    </div>
+    @endif
+
+    @if(!empty($needsWeeklyAvailabilitySetup))
+    <div class="mb-8 rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-amber-100/40 p-5 sm:p-6 shadow-sm" role="alert">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+        <div class="w-11 h-11 rounded-xl bg-amber-100 border border-amber-200/60 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-amber-800 text-2xl">event_available</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <h3 class="text-sm font-bold text-amber-950">Weekly availability is not set</h3>
+          <p class="text-xs text-amber-900/90 mt-1.5 leading-relaxed">Add at least one weekly time range on your availability page. Until you do, clients cannot complete bookings with you.</p>
+        </div>
+        <a href="{{ route('availability.index') }}" class="self-start sm:self-center shrink-0 inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 px-4 py-2.5 rounded-xl shadow-sm transition-colors">
+          <span class="material-symbols-outlined text-base">calendar_clock</span>
+          Set availability
+        </a>
+      </div>
     </div>
     @endif
 
@@ -257,6 +300,9 @@
 
   </div>
 </main>
+@if(!empty($needsWeeklyAvailabilitySetup))
+  @include('components.artist_availability_setup_modal', ['context' => 'dashboard'])
+@endif
 @endsection
 
 @section('scripts')

@@ -170,6 +170,14 @@
   $defaultSched = $st !== '' ? $st : 'auto';
   $isAuto = $defaultSched === 'auto';
   $gcal = !empty($userDetail->google_calendar_token);
+  $connectedCalendarEmail = null;
+  if ($gcal) {
+      if (! empty($userDetail->google_calendar_id) && str_contains((string) $userDetail->google_calendar_id, '@')) {
+          $connectedCalendarEmail = (string) $userDetail->google_calendar_id;
+      } elseif (auth()->check() && auth()->user()->email) {
+          $connectedCalendarEmail = (string) auth()->user()->email;
+      }
+  }
 @endphp
   <main class="main-content flex-1 min-h-screen flex flex-col">
     <form id="calendarForm" class="contents">
@@ -248,6 +256,11 @@
                 @endif
               </div>
               <p id="googleStatusText" class="text-on-surface-variant text-xs mt-1">{{ $gcal ? 'Google Calendar is connected and ready for auto scheduling.' : 'Connect Google Calendar to enable auto scheduling.' }}</p>
+              @if($gcal && $connectedCalendarEmail)
+                <p id="googleConnectedEmailLine" class="text-on-surface-variant text-xs mt-1.5">
+                  Connected account: <span class="font-semibold text-on-surface">{{ $connectedCalendarEmail }}</span>
+                </p>
+              @endif
             </div>
           </div>
           <div id="googleActionWrap">
@@ -329,6 +342,7 @@
         .attr('class', 'inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full')
         .html('<span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span> Not connected');
       $('#googleStatusText').text('Connect Google Calendar to enable auto scheduling.');
+      $('#googleConnectedEmailLine').remove();
       $('#googleActionWrap').html('<button type="button" id="connectCalendarBtn" class="text-sm font-semibold text-primary border border-primary/25 px-4 py-2 rounded-xl hover:bg-primary/10 transition-colors">Connect</button>');
       bindConnectButton();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use Illuminate\Support\Facades\URL;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -117,11 +118,21 @@ class BookingConfirmationMail extends Mailable
                 'questions' => $this->questions,
             ]);
         } else {
+            $seeBookingUrl = null;
+            if ($customer) {
+                $seeBookingUrl = URL::temporarySignedRoute(
+                    'user.post-booking.access',
+                    now()->addDays(14),
+                    ['user' => $customer->id, 'booking' => $booking->id]
+                );
+            }
+
             // Customer email data
             return array_merge($baseData, [
                 'userName' => ucfirst($customer->first_name).' '.ucfirst($customer->last_name),
                 'artistName' => ucfirst($artist->first_name).' '.ucfirst($artist->last_name),
                 'totalAmount' => $booking->total_amount_paid,
+                'seeBookingUrl' => $seeBookingUrl,
             ]);
         }
     }

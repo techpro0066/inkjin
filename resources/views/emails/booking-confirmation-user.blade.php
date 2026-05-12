@@ -49,6 +49,19 @@
                   </td>
                 </tr>
 
+                @if(!empty($seeBookingUrl))
+                <tr>
+                  <td align="center" style="padding:0 0 12px 0;">
+                    <a href="{{ $seeBookingUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(135deg,#310f7a 0%,#482d91 100%);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:12px;line-height:1;">See Booking</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 28px 0;font-size:12px;color:#7a7583;line-height:1.5;text-align:center;">
+                    This link signs you in to Inkjin and opens your booking. It expires in 14 days for your security.
+                  </td>
+                </tr>
+                @endif
+
                 <tr>
                   <td style="padding:0 0 24px 0;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#F8F1FB;border-radius:12px;">

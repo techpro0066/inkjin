@@ -18,6 +18,10 @@ function authenticated_home_url(?User $user = null): string
         return route('verification.notice', absolute: false);
     }
 
+    if ($user->role === 'user' && $user->must_set_password) {
+        return route('user.bookings.index', ['set_password' => '1'], absolute: false);
+    }
+
     return match ($user->role) {
         'admin' => route('admin.dashboard', absolute: false),
         'artist' => route('artist.dashboard', absolute: false),

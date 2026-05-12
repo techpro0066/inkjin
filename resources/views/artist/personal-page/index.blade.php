@@ -121,7 +121,7 @@
           <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Personal Page</h2>
           <p class="text-on-surface-variant mt-1">Customize how your booking page looks to clients.</p>
         </div>
-        <button type="button" onclick="copyPageLink()" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors">
+        <button type="button" onclick="copyPageLink('{{ $username }}')" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors">
           <span class="material-symbols-outlined text-lg">content_copy</span> Copy Your Personal Page Link
         </button>
       </div>
@@ -312,6 +312,13 @@
     </form>
   </main>
 
+  <div id="copyLinkToast" class="pointer-events-none fixed top-6 right-6 z-[70] transform translate-x-full opacity-0 transition-all duration-300">
+    <div class="pointer-events-auto flex items-center gap-3 bg-on-surface text-white px-5 py-3 rounded-xl shadow-lg max-w-sm">
+      <span class="material-symbols-outlined text-green-400 shrink-0" style="font-size:20px;">check_circle</span>
+      <span class="text-sm font-medium" id="copyLinkToastMessage">Personal page link copied.</span>
+    </div>
+  </div>
+
   <!-- Preview Modal -->
   <div id="previewPersonalPageModal" class="fixed inset-0 z-50 hidden">
     <!-- Backdrop -->
@@ -474,21 +481,34 @@
       refreshPreviewModal();
     }
 
-    function copyPageLink() {
-      const pageUrl = window.location.href.replace('personal-page.html', 'artist/julianink');
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(pageUrl).then(function () {
-          alert('Personal page link copied.');
-        }).catch(function () {
-          alert(pageUrl);
-        });
-      } else {
-        alert(pageUrl);
-      }
+    var copyLinkToastTimer = null;
+    function showCopyLinkToast(message) {
+      var toast = document.getElementById('copyLinkToast');
+      var msgEl = document.getElementById('copyLinkToastMessage');
+      if (!toast || !msgEl) return;
+      msgEl.textContent = message || 'Personal page link copied.';
+      toast.classList.remove('translate-x-full', 'opacity-0');
+      toast.classList.add('translate-x-0', 'opacity-100');
+      clearTimeout(copyLinkToastTimer);
+      copyLinkToastTimer = setTimeout(function () {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        toast.classList.remove('translate-x-0', 'opacity-100');
+      }, 3000);
     }
 
-    function showSaveToast() {
-      alert('Changes saved successfully.');
+    function copyPageLink(username) {
+      const pageUrl = "{{ url('/') }}/" + username;
+      var done = function () {
+        showCopyLinkToast('Personal page link copied.');
+      };
+      var fail = function () {
+        showCopyLinkToast('Could not copy link. Copy it manually from the address bar.');
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(pageUrl).then(done).catch(fail);
+      } else {
+        fail();
+      }
     }
 
     function clearAlerts() {
@@ -583,7 +603,9 @@
     function handleBannerUpload(input) {
       if (!input || !input.files || !input.files[0]) return;
       const file = input.files[0];
-      if (!file.type || !file.type.startsWith('image/')) {
+      const isImageMime = !!file.type && file.type.startsWith('image/');
+      const isImageByName = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name || '');
+      if (!isImageMime && !isImageByName) {
         input.value = '';
         alert('Please select a valid image file.');
         return;
@@ -593,7 +615,11 @@
       activeBannerObjectUrl = URL.createObjectURL(file);
 
       const cropImage = document.getElementById('bannerCropImage');
-      cropImage.src = activeBannerObjectUrl;
+      if (!cropImage) return;
+
+      cropImage.onload = null;
+      cropImage.onerror = null;
+
       const modal = document.getElementById('bannerCropperModal');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
@@ -603,7 +629,7 @@
         bannerCropper = null;
       }
 
-      cropImage.onload = function () {
+      const initCropper = function () {
         bannerCropper = new Cropper(cropImage, {
           aspectRatio: 3,
           viewMode: 1,
@@ -615,6 +641,13 @@
           checkCrossOrigin: false
         });
       };
+
+      cropImage.onload = initCropper;
+      cropImage.onerror = function () {
+        closeBannerCropper();
+        alert('This image format is not supported by your browser. Please use JPG or PNG.');
+      };
+      cropImage.src = activeBannerObjectUrl;
     }
 
     function closeBannerCropper() {

@@ -37,6 +37,10 @@
             <div class="mb-4 rounded-xl bg-error-container/40 border border-error-container/60 px-4 py-3 text-sm text-error">
               {{ session('message', 'Your email address has been updated. Please verify your new email address before logging in again.') }}
             </div>
+          {{-- @elseif (session('status'))
+            <div class="mb-4 rounded-xl bg-amber-50 border border-amber-200/80 px-4 py-3 text-sm text-amber-950" role="status">
+              {{ session('status') }}
+            </div> --}}
           @endif
 
           <!-- Form -->

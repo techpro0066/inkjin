@@ -6,6 +6,12 @@
   $ud = $userDetail;
   $st = $ud->scheduling_type ?? '';
   $gcal = !empty($ud->google_calendar_token);
+  $connectedCalendarEmail = null;
+  if (!empty($ud->google_calendar_id) && str_contains((string) $ud->google_calendar_id, '@')) {
+      $connectedCalendarEmail = (string) $ud->google_calendar_id;
+  } elseif (!empty($user?->email)) {
+      $connectedCalendarEmail = (string) $user->email;
+  }
   // If Google Calendar is connected, default to auto scheduling in the UI.
   $defaultSched = $gcal ? 'auto' : ($st !== '' ? $st : 'auto');
   $isAuto = $defaultSched === 'auto';
@@ -34,6 +40,9 @@
         <div id="google-connect" class="mb-6" style="display: {{ $isAuto ? 'block' : 'none' }}">
           @if($gcal)
             <p class="text-sm text-green-700 mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-lg">check_circle</span> Google Calendar connected</p>
+            @if($connectedCalendarEmail)
+              <p class="text-xs text-on-surface-variant mb-3">Connected account: <span class="font-semibold text-on-surface">{{ $connectedCalendarEmail }}</span></p>
+            @endif
             <button type="button" id="disconnectCalendarBtn" class="inline-flex items-center gap-2 rounded-xl border border-error/40 text-error font-semibold py-2.5 px-5 text-sm hover:bg-error/5">Disconnect</button>
           @else
             <button type="button" id="connectCalendarBtn" class="inline-flex items-center gap-3 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98] text-sm">

@@ -8,31 +8,31 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class StudioPaymentDecisionMail extends Mailable
+class StudioPayoutInfoRequestMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
         public string $studioName,
         public string $artistName,
-        public string $allowUrl,
-        public string $declineUrl,
-        public bool $existingStudio = false
+        public string $formUrl,
+        public bool $showApproveDecline = false,
+        public ?string $approveUrl = null,
+        public ?string $declineUrl = null,
     ) {
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Studio payment approval request'
+            subject: 'Payout details requested — '.$this->studioName
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.studio-payment-decision'
+            view: 'emails.studio-payout-info-request'
         );
     }
 }
-
