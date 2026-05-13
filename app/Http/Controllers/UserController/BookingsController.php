@@ -138,6 +138,11 @@ class BookingsController extends Controller
             }
         }
 
+        $completionCode = trim((string) ($booking->completion_code ?? ''));
+        if ($completionCode !== '') {
+            $completionCode = strtoupper($completionCode);
+        }
+
         return [
             'id' => $booking->id,
             'reference' => '#INK-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
@@ -158,6 +163,8 @@ class BookingsController extends Controller
             'remainingBalance' => $remaining,
             'designMinPrice' => round($minPrice, 2),
             'consultation' => $consultation,
+            'completionCode' => $completionCode,
+            'completionCodeUsed' => (bool) $booking->completion_code_entered_at,
         ];
     }
 }

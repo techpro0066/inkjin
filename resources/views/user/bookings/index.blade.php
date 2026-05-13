@@ -180,16 +180,33 @@
                             <p class="text-xs text-on-surface-variant">Not sure about placement? Try it in AR first</p>
                             <a href="#" class="text-xs font-semibold text-primary hover:underline ml-auto whitespace-nowrap">Open App →</a>
                             </div>
-                            <div class="rounded-xl border px-4 py-3 mb-3 text-sm {{ $canFullRefund ? 'border-green-200 bg-green-50/60' : 'border-amber-200 bg-amber-50/60' }}">
-                                @if ($canFullRefund)
-                                    <p class="font-semibold text-green-900 mb-2">You are still within this artist’s full-refund cancellation window.</p>
-                                @else
-                                    <p class="font-semibold text-amber-900 mb-2">You are inside this artist’s no-refund cancellation window.</p>
-                                @endif
-                                <ul class="list-disc pl-5 space-y-1 text-on-surface-variant">
-                                    <li>Full refund if canceled at least <strong class="text-on-surface">{{ $cancelWindowHuman }}</strong> before your appointment.</li>
-                                    <li>No refund if canceled less than <strong class="text-on-surface">{{ $cancelWindowHuman }}</strong> before your appointment.</li>
-                                </ul>
+                            <div class="rounded-2xl border p-5 mb-3 text-sm overflow-hidden {{ $canFullRefund ? 'border-green-200/90 bg-gradient-to-br from-green-50 via-white to-emerald-50/80 shadow-sm shadow-green-900/[0.06]' : 'border-outline-variant/40 bg-surface-container-low shadow-sm' }}">
+                                <div class="flex gap-4">
+                                    <div class="flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center {{ $canFullRefund ? 'bg-green-100 text-green-700 ring-1 ring-green-200/60' : 'bg-surface-container-highest text-on-surface-variant ring-1 ring-outline-variant/20' }}">
+                                        <span class="material-symbols-outlined text-[24px]">{{ $canFullRefund ? 'verified_user' : 'schedule' }}</span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        @if ($canFullRefund)
+                                            <p class="font-semibold text-green-950 mb-2 leading-snug">You are still within this artist's full-refund cancellation window.</p>
+                                        @else
+                                            <p class="font-semibold text-on-surface mb-2 leading-snug">You are inside this artist's no-refund cancellation window.</p>
+                                        @endif
+                                        <ul class="list-disc pl-5 space-y-1.5 text-on-surface-variant leading-relaxed">
+                                            <li>Full refund if canceled at least <strong class="text-on-surface">{{ $cancelWindowHuman }}</strong> before your appointment.</li>
+                                            <li>No refund if canceled less than <strong class="text-on-surface">{{ $cancelWindowHuman }}</strong> before your appointment.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="mt-5 pt-4 flex justify-end {{ $canFullRefund ? 'border-t border-green-200/50' : 'border-t border-outline-variant/25' }}">
+                                    <button type="button"
+                                        class="js-user-cancel-open w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all active:scale-[0.98] {{ $canFullRefund ? 'bg-white text-error border border-red-200/90 shadow-sm hover:bg-red-50 hover:border-red-300' : 'bg-white text-on-surface border border-outline-variant/50 shadow-sm hover:bg-surface-container-highest hover:border-outline-variant' }}"
+                                        data-booking-id="{{ $booking->id }}"
+                                        data-can-full-refund="{{ $canFullRefund ? '1' : '0' }}"
+                                        data-window-human="{{ e($cancelWindowHuman) }}">
+                                        <span class="material-symbols-outlined text-[20px]">event_busy</span>
+                                        Cancel booking
+                                    </button>
+                                </div>
                             </div>
                             @php
                                 $re = $rescheduleEligibility[$booking->id] ?? ['can_reschedule' => false, 'message' => ''];
@@ -210,12 +227,6 @@
                                     class="js-user-reschedule-open text-sm font-semibold text-primary hover:underline text-left"
                                     data-booking-id="{{ $booking->id }}">{{ $artistRequested ? 'Choose New Time' : 'Reschedule' }}</button>
                             @endif
-                            <span class="text-outline">·</span>
-                            <button type="button"
-                                class="js-user-cancel-open text-sm font-semibold text-error hover:underline text-left"
-                                data-booking-id="{{ $booking->id }}"
-                                data-can-full-refund="{{ $canFullRefund ? '1' : '0' }}"
-                                data-window-human="{{ e($cancelWindowHuman) }}">Cancel</button>
                             </div>
                             @if (empty($re['can_reschedule']) && !$artistRequested && !empty($re['message']))
                                 <p class="text-xs text-on-surface-variant mt-2 max-w-xl">{{ $re['message'] }}</p>
@@ -640,6 +651,12 @@
             </div>
           </div>
         </div>
+        <div id="bdmCompletionRow" class="hidden mb-6 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-4">
+          <p class="text-xs font-bold text-primary uppercase tracking-wide mb-1">Completion code</p>
+          <p class="text-xs text-on-surface-variant mb-3 leading-snug">Share this with your artist after your session so they can mark the booking complete.</p>
+          <p id="bdmCompletionCode" class="font-mono text-xl sm:text-2xl font-extrabold tracking-[0.2em] text-on-surface text-center py-2 break-all"></p>
+          <p id="bdmCompletionUsedNote" class="hidden text-xs text-on-surface-variant text-center mt-2">This code was already verified with your artist.</p>
+        </div>
         <div class="rounded-2xl bg-gradient-to-br from-primary/5 to-primary-container/10 border border-primary/10 p-5">
           <p class="text-xs font-bold text-primary uppercase tracking-wide mb-4">Payment summary</p>
           <dl class="space-y-3 text-sm">
@@ -806,6 +823,22 @@ window.filterBookings = function (clickedBtn, mode) {
       maps.classList.remove('hidden');
     } else {
       maps.classList.add('hidden');
+    }
+
+    var completionRow = document.getElementById('bdmCompletionRow');
+    var completionCodeEl = document.getElementById('bdmCompletionCode');
+    var completionUsedNote = document.getElementById('bdmCompletionUsedNote');
+    if (completionRow && completionCodeEl && completionUsedNote) {
+      var code = (d.completionCode || '').trim();
+      if (code) {
+        completionRow.classList.remove('hidden');
+        completionCodeEl.textContent = code;
+        completionUsedNote.classList.toggle('hidden', !d.completionCodeUsed);
+      } else {
+        completionRow.classList.add('hidden');
+        completionCodeEl.textContent = '';
+        completionUsedNote.classList.add('hidden');
+      }
     }
 
     document.getElementById('bdmMinPrice').textContent = fmtEUR(d.designMinPrice);

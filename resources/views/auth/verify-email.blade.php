@@ -31,13 +31,13 @@
               Verify your email
             </h1>
             <p class="text-on-surface-variant">
-              Thanks for signing up. Please click the verification link sent to your inbox before continuing. If you did not receive it, resend below.
+              We are sending a secure 4-digit code to your email—check your inbox (and spam). You can resend below if you need a new code.
             </p>
           </div>
 
-          @if (session('status') == 'verification-link-sent')
-            <div class="mb-5 rounded-xl bg-primary-container/25 border border-primary-container/40 px-4 py-3 text-sm text-on-surface">
-              <strong>Success:</strong> A new verification link has been sent to your email address.
+          @if (session('verification_send_error'))
+            <div class="mb-5 rounded-xl bg-error-container/40 border border-error/30 px-4 py-3 text-sm text-error" role="alert">
+              {{ session('verification_send_error') }}
             </div>
           @endif
 
@@ -46,27 +46,61 @@
           </div>
 
           <div class="space-y-4">
-            <form method="POST" action="{{ route('verification.send') }}" id="resendVerificationForm" class="mb-0">
+            <form method="POST" action="{{ route('verification.verify-code') }}" class="mb-0 space-y-3">
               @csrf
+              <div>
+                <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="verification_code">{{ __('4-digit code') }}</label>
+                <input
+                  type="text"
+                  name="code"
+                  id="verification_code"
+                  value="{{ old('code') }}"
+                  maxlength="4"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  autocomplete="one-time-code"
+                  placeholder="1234"
+                  class="w-full border bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 {{ $errors->has('code') ? 'border-error ring-1 ring-error/30' : 'border-outline-variant/30' }}"
+                />
+              </div>
+
+              @if ($errors->has('code'))
+                <div class="rounded-xl bg-error-container/40 border border-error/30 px-4 py-3 text-sm text-error" role="alert">
+                  {{ $errors->first('code') }}
+                </div>
+              @endif
+
               <button
                 type="submit"
-                id="resendButton"
-                class="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]"
+                class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20"
               >
-                <span id="buttonText">{{ __('Resend Verification Email') }}</span>
-                <span id="countdownText" class="hidden"></span>
+                {{ __('Verify email') }}
               </button>
             </form>
 
-            <form method="POST" action="{{ route('logout') }}">
-              @csrf
-              <button
-                type="submit"
-                class="w-full inline-flex items-center justify-center bg-surface-container-highest text-on-surface-variant font-semibold py-4 px-8 rounded-xl border border-outline-variant/30 hover:bg-white transition-all"
-              >
-                {{ __('Log Out') }}
-              </button>
-            </form>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <form method="POST" action="{{ route('verification.send') }}" id="resendVerificationForm" class="mb-0 min-w-0">
+                @csrf
+                <button
+                  type="submit"
+                  id="resendButton"
+                  class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors"
+                >
+                  <span id="buttonText">{{ __('Resend code') }}</span>
+                  <span id="countdownText" class="hidden"></span>
+                </button>
+              </form>
+
+              <form method="POST" action="{{ route('logout') }}" class="min-w-0">
+                @csrf
+                <button
+                  type="submit"
+                  class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors"
+                >
+                  {{ __('Log Out') }}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>
@@ -103,18 +137,15 @@
 
       if (!form || !resendButton) return;
 
-      const activeButtonClasses = [
-        'bg-gradient-to-br',
-        'from-primary',
-        'to-primary-container',
-        'text-white',
-        'hover:opacity-90',
-        'shadow-lg',
-        'shadow-primary/20'
+      const idleResendClasses = [
+        'bg-surface-container-high',
+        'text-on-surface',
+        'hover:bg-surface-container',
       ];
-      const cooldownButtonClasses = [
-        'bg-surface-container-highest',
-        'text-on-surface-variant'
+      const cooldownResendClasses = [
+        'bg-surface-container-high',
+        'text-on-surface-variant',
+        'opacity-70',
       ];
 
       let countdownInterval = null;
@@ -154,14 +185,14 @@
         }
 
         // Check if email was just sent (either from registration or manual resend)
-        const emailJustSent = @json(session('email_sent_on_registration') || session('status') == 'verification-link-sent');
+        const emailJustSent = @json(session('email_sent_on_registration') || session('status') == 'verification-code-sent' || session('status') == 'verification-link-sent');
 
         if (emailJustSent && !localStorage.getItem(STORAGE_KEY)) {
           // Email was just sent (from registration or manual resend), start cooldown
           startCooldown(COOLDOWN_DURATION);
 
           if (!storedMessage) {
-            const message = 'Verification email sent! Please check your inbox.';
+            const message = 'Verification code sent! Please check your inbox.';
             localStorage.setItem(MESSAGE_KEY, message);
             resendMessageText.textContent = message;
             resendMessage.classList.remove('hidden');
@@ -193,8 +224,8 @@
         resendButton.disabled = true;
         buttonText.classList.add('hidden');
         countdownText.classList.remove('hidden');
-        resendButton.classList.remove(...activeButtonClasses);
-        resendButton.classList.add(...cooldownButtonClasses);
+        resendButton.classList.remove(...idleResendClasses);
+        resendButton.classList.add(...cooldownResendClasses);
 
         // Keep original timestamp when restoring from localStorage after refresh.
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -213,10 +244,10 @@
             // Enable button
             resendButton.disabled = false;
             buttonText.classList.remove('hidden');
-            buttonText.textContent = 'Resend Verification Email';
+            buttonText.textContent = 'Resend code';
             countdownText.classList.add('hidden');
-            resendButton.classList.remove(...cooldownButtonClasses);
-            resendButton.classList.add(...activeButtonClasses);
+            resendButton.classList.remove(...cooldownResendClasses);
+            resendButton.classList.add(...idleResendClasses);
 
             // Clear localStorage
             localStorage.removeItem(STORAGE_KEY);
@@ -266,7 +297,7 @@
           });
 
           if (response.ok) {
-            const successMessage = 'Verification email sent successfully! Please check your inbox.';
+            const successMessage = 'A new verification code was sent. Please check your inbox.';
             resendMessageText.textContent = successMessage;
             resendMessage.classList.remove('hidden');
             localStorage.setItem(MESSAGE_KEY, successMessage);
@@ -278,17 +309,17 @@
             localStorage.setItem(MESSAGE_KEY, throttleMessage);
             resendButton.disabled = false;
             buttonText.textContent = originalButtonText;
-            resendButton.classList.remove(...cooldownButtonClasses);
-            resendButton.classList.add(...activeButtonClasses);
+            resendButton.classList.remove(...cooldownResendClasses);
+            resendButton.classList.add(...idleResendClasses);
           } else {
-            const errorMessage = 'Unable to resend verification email right now. Please try again.';
+            const errorMessage = 'Unable to resend the code right now. Please try again.';
             resendMessageText.textContent = errorMessage;
             resendMessage.classList.remove('hidden');
             localStorage.setItem(MESSAGE_KEY, errorMessage);
             resendButton.disabled = false;
             buttonText.textContent = originalButtonText;
-            resendButton.classList.remove(...cooldownButtonClasses);
-            resendButton.classList.add(...activeButtonClasses);
+            resendButton.classList.remove(...cooldownResendClasses);
+            resendButton.classList.add(...idleResendClasses);
           }
         } catch (error) {
           resendMessageText.textContent = 'Network error. Please check your connection and try again.';
@@ -296,8 +327,8 @@
           localStorage.setItem(MESSAGE_KEY, 'Network error. Please check your connection and try again.');
           resendButton.disabled = false;
           buttonText.textContent = originalButtonText;
-          resendButton.classList.remove(...cooldownButtonClasses);
-          resendButton.classList.add(...activeButtonClasses);
+          resendButton.classList.remove(...cooldownResendClasses);
+          resendButton.classList.add(...idleResendClasses);
         } finally {
           isSubmitting = false;
         }
@@ -305,6 +336,15 @@
 
       // Initialize on page load
       checkExistingCooldown();
+
+      // If the resend control is still enabled (no active cooldown / no "just sent" session), trigger resend once
+      if (!resendButton.disabled && !isSubmitting) {
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit(resendButton);
+        } else {
+          resendButton.click();
+        }
+      }
 
       // Clean up interval on page unload
       window.addEventListener('beforeunload', function() {

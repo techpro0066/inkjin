@@ -78,8 +78,7 @@
       <p class="text-on-surface-variant mt-1">Manage your booking status and blocked dates.</p>
     </div>
 
-    @if(!empty($needsWeeklyAvailabilitySetup))
-    <div class="mb-8 rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-amber-100/40 p-5 sm:p-6 shadow-sm" role="alert">
+    <div id="availabilityPageSetupAlert" class="mb-8 rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-amber-100/40 p-5 sm:p-6 shadow-sm{{ empty($needsWeeklyAvailabilitySetup) ? ' hidden' : '' }}" role="alert">
       <div class="flex flex-col sm:flex-row sm:items-start gap-4">
         <div class="w-11 h-11 rounded-xl bg-amber-100 border border-amber-200/60 flex items-center justify-center flex-shrink-0">
           <span class="material-symbols-outlined text-amber-800 text-2xl">event_available</span>
@@ -104,7 +103,6 @@
         });
       });
     </script>
-    @endif
 
     <div class="space-y-10">
 
@@ -302,9 +300,10 @@
     </div>
   </div>
 </main>
-@if(!empty($needsWeeklyAvailabilitySetup))
-  @include('components.artist_availability_setup_modal', ['context' => 'availability'])
-@endif
+@include('components.artist_availability_setup_modal', [
+    'context' => 'availability',
+    'alwaysRenderAvailabilityModal' => true,
+])
 
 <!-- Block a date modal -->
 <div id="blockDateModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 block-modal-backdrop" onclick="closeBlockDateModal()">
@@ -1471,8 +1470,19 @@
             errEl.textContent = '';
           }
           var setupAlert = document.getElementById('availabilityPageSetupAlert');
+          var setupModal = document.getElementById('availabilitySetupRequiredModal');
+          var needsSetup = !!(result.data && result.data.needs_weekly_availability_setup);
           if (setupAlert) {
-            setupAlert.classList.add('hidden');
+            if (needsSetup) {
+              setupAlert.classList.remove('hidden');
+            } else {
+              setupAlert.classList.add('hidden');
+            }
+          }
+          if (setupModal) {
+            if (!needsSetup) {
+              setupModal.classList.add('hidden');
+            }
           }
           try {
             sessionStorage.removeItem('inkjin_dismiss_availability_page_alert');

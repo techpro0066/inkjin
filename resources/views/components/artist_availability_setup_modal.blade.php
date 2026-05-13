@@ -1,11 +1,13 @@
 {{-- Weekly hours not saved: blocks client bookings until at least one slot exists. --}}
 @php
   $ctx = $context ?? 'dashboard';
+  $needsSetup = ! empty($needsWeeklyAvailabilitySetup);
+  $alwaysRenderModal = ! empty($alwaysRenderAvailabilityModal);
 @endphp
-@if(!empty($needsWeeklyAvailabilitySetup))
+@if($needsSetup || $alwaysRenderModal)
 <div
   id="availabilitySetupRequiredModal"
-  class="fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6 bg-black/55 backdrop-blur-[2px]"
+  class="fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6 bg-black/55 backdrop-blur-[2px]{{ $needsSetup ? '' : ' hidden' }}"
   role="dialog"
   aria-modal="true"
   aria-labelledby="availabilitySetupModalTitle"

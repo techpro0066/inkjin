@@ -205,9 +205,12 @@ class AvailabilityController extends Controller
 
             DB::commit();
 
+            $user->unsetRelation('availabilities');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Availability saved successfully',
+                'needs_weekly_availability_setup' => ! $user->hasWeeklyAvailabilitySlots(),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

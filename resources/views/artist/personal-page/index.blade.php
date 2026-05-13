@@ -402,6 +402,22 @@
     let bannerCropper = null;
     let activeBannerObjectUrl = null;
     let croppedBannerBlob = null;
+    let croppedBannerFilename = 'banner.jpg';
+    let bannerSourceMime = '';
+
+    function inferImageMimeFromFilename(name) {
+      if (!name) return '';
+      if (/\.png$/i.test(name)) return 'image/png';
+      if (/\.webp$/i.test(name)) return 'image/webp';
+      if (/\.gif$/i.test(name)) return 'image/gif';
+      if (/\.jpe?g$/i.test(name)) return 'image/jpeg';
+      return '';
+    }
+
+    function bannerCropShouldPreserveAlpha() {
+      const m = (bannerSourceMime || '').toLowerCase();
+      return m === 'image/png' || m === 'image/webp' || m === 'image/gif';
+    }
 
     function getDisplayName() {
       const fullName = (document.getElementById('fullName')?.value || '').trim() || 'Artist Name';
@@ -603,6 +619,7 @@
     function handleBannerUpload(input) {
       if (!input || !input.files || !input.files[0]) return;
       const file = input.files[0];
+      bannerSourceMime = ((file.type || inferImageMimeFromFilename(file.name) || '') + '').toLowerCase();
       const isImageMime = !!file.type && file.type.startsWith('image/');
       const isImageByName = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name || '');
       if (!isImageMime && !isImageByName) {
@@ -672,18 +689,31 @@
     function applyBannerCrop() {
       if (!bannerCropper) return;
 
-      const canvas = bannerCropper.getCroppedCanvas({
+      const preserveAlpha = bannerCropShouldPreserveAlpha();
+      const canvasOpts = {
         width: 1200,
         height: 400,
         imageSmoothingEnabled: true,
         imageSmoothingQuality: 'high'
-      });
+      };
+      if (!preserveAlpha) {
+        canvasOpts.fillColor = '#ffffff';
+      }
+
+      const canvas = bannerCropper.getCroppedCanvas(canvasOpts);
 
       if (!canvas) return;
+
+      const outMime = preserveAlpha ? 'image/png' : 'image/jpeg';
+      const outQuality = preserveAlpha ? undefined : 0.92;
+      croppedBannerFilename = preserveAlpha ? 'banner.png' : 'banner.jpg';
+
       canvas.toBlob(function (blob) {
         if (!blob) return;
         croppedBannerBlob = blob;
-        const croppedBannerDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const croppedBannerDataUrl = preserveAlpha
+          ? canvas.toDataURL('image/png')
+          : canvas.toDataURL('image/jpeg', 0.92);
 
         const bannerArea = document.getElementById('bannerUploadArea');
         bannerArea.style.backgroundImage = "url('" + croppedBannerDataUrl + "')";
@@ -699,7 +729,7 @@
         }
 
         closeBannerCropper();
-      }, 'image/jpeg', 0.92);
+      }, outMime, outQuality);
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -747,7 +777,7 @@
         const formData = new FormData(form);
         if (croppedBannerBlob) {
           formData.delete('personal_page_background_image');
-          formData.append('personal_page_background_image', croppedBannerBlob, 'banner.jpg');
+          formData.append('personal_page_background_image', croppedBannerBlob, croppedBannerFilename || 'banner.jpg');
         }
 
         fetch(@json(route('personal-page.update')), {

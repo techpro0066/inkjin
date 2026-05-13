@@ -11,6 +11,7 @@ use App\Http\Controllers\QuestionsController;
 
 use App\Http\Controllers\UserController\BookingsController;
 use App\Http\Controllers\UserController\ClientPasswordController;
+use App\Http\Controllers\UserController\UserSettingsController;
 use App\Http\Controllers\BookingsController as ArtistBookingsController;
 use App\Http\Controllers\Auth\PostBookingAccessController;
 
@@ -37,6 +38,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/onboarding/studio', [OnboardingController::class, 'saveStudio'])->name('onboarding.studio.save');
     Route::post('/onboarding/calendar', [OnboardingController::class, 'saveCalendar'])->name('onboarding.calendar.save');
     Route::post('/onboarding/preferences', [OnboardingController::class, 'savePreferences'])->name('onboarding.preferences.save');
+    Route::post('/onboarding/payment/skip', [OnboardingController::class, 'skipPayment'])->name('onboarding.payment.skip');
     Route::post('/onboarding/payment', [OnboardingController::class, 'savePayment'])->name('onboarding.payment.save');
     Route::get('/onboarding/progress', [OnboardingController::class, 'getProgress'])->name('onboarding.progress');
     
@@ -221,6 +223,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])
     Route::get('/dashboard', function () {
         return view('user.dashboard');
     })->name('user.dashboard');
+
+    Route::get('/settings', [UserSettingsController::class, 'edit'])->name('user.settings');
+    Route::post('/settings/avatar', [UserSettingsController::class, 'updateAvatar'])->name('user.settings.avatar');
 
     // Bookings
     Route::get('/bookings', [BookingsController::class, 'index'])->name('user.bookings.index');

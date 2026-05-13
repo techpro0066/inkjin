@@ -4,6 +4,33 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 /**
+ * Safe mail settings for logs (no passwords or full DSN URLs).
+ *
+ * @return array<string, mixed>
+ */
+function mail_debug_context(): array
+{
+    $default = (string) config('mail.default', 'log');
+    $m = config('mail.mailers.'.$default, []);
+
+    $transport = $m['transport'] ?? null;
+    if (! $transport && ! empty($m['url'])) {
+        $transport = 'scheme_url';
+    }
+
+    return [
+        'mail_default' => $default,
+        'mail_from_address' => config('mail.from.address'),
+        'mail_from_name' => config('mail.from.name'),
+        'mail_transport' => $transport,
+        'mail_host' => $m['host'] ?? null,
+        'mail_port' => $m['port'] ?? null,
+        'mail_encryption' => $m['encryption'] ?? null,
+        'queue_default' => config('queue.default'),
+    ];
+}
+
+/**
  * Default URL for an authenticated user (after login, guest middleware, home).
  */
 function authenticated_home_url(?User $user = null): string

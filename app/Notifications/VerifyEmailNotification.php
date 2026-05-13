@@ -2,11 +2,9 @@
 
 namespace App\Notifications;
 
+use App\Support\EmailVerificationOtp;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\URL;
 
 class VerifyEmailNotification extends VerifyEmail
 {
@@ -18,32 +16,16 @@ class VerifyEmailNotification extends VerifyEmail
      */
     public function toMail($notifiable)
     {
-        $verificationUrl = $this->verificationUrl($notifiable);
+        $code = EmailVerificationOtp::issueAndReturnPlainCode($notifiable);
+        $expiresMinutes = (int) config('auth.verification.expire', 60);
 
         return (new MailMessage)
             ->subject('Verify Your Email Address')
             ->view('emails.verify-email', [
-                'verificationUrl' => $verificationUrl,
+                'code' => $code,
+                'expiresMinutes' => max(1, $expiresMinutes),
                 'user' => $notifiable,
             ]);
-    }
-
-    /**
-     * Get the verification URL for the given notifiable.
-     *
-     * @param  mixed  $notifiable
-     * @return string
-     */
-    protected function verificationUrl($notifiable)
-    {
-        return URL::temporarySignedRoute(
-            'verification.verify',
-            Carbon::now()->addMinutes(Config::get('auth.verification.expire', 60)),
-            [
-                'id' => $notifiable->getKey(),
-                'hash' => sha1($notifiable->getEmailForVerification()),
-            ]
-        );
     }
 }
 

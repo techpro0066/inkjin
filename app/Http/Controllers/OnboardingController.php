@@ -1156,6 +1156,69 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Skip the payout step and finish onboarding (payout can be completed later in settings).
+     */
+    public function skipPayment(Request $request)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unable to skip from this page.',
+                    'redirect' => $redirect->getTargetUrl(),
+                ], 409);
+            }
+
+            return $redirect;
+        }
+
+        try {
+            $user = $request->user();
+
+            if ($user->on_boarding === 'yes') {
+                return response()->json([
+                    'success' => true,
+                    'redirect' => authenticated_home_url(),
+                ]);
+            }
+
+            $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+            $userDetail->completed_steps = array_unique(array_merge($userDetail->completed_steps ?? [], [6]));
+            $userDetail->save();
+
+            $user->update(['on_boarding' => 'yes']);
+
+            $questions = QuestionSorting::where('user_id', '1')->where('is_active', true)->orderBy('order')->get();
+
+            foreach ($questions as $question) {
+                QuestionSorting::create([
+                    'user_id' => $user->id,
+                    'question_id' => $question->question_id,
+                    'order' => $question->order,
+                    'is_active' => $question->is_active,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => __('You can set up payouts later in your dashboard.'),
+                'redirect' => authenticated_home_url(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in skipPayment', [
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Signed link: studio fills payout bank details (no login).
      */
     public function showStudioPayoutForm(Request $request, UserDetail $userDetail)

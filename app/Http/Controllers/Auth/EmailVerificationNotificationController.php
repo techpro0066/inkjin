@@ -20,16 +20,16 @@ class EmailVerificationNotificationController extends Controller
 
         try {
             $request->user()->sendEmailVerificationNotification();
-            return back()->with('status', 'verification-link-sent');
+            return back()->with('status', 'verification-code-sent');
         } catch (\Symfony\Component\Mailer\Exception\UnexpectedResponseException $e) {
             // Handle Mailtrap rate limit or other SMTP errors gracefully
             // Email might still be sent, so we continue with success message
             Log::warning('Email verification notification error: ' . $e->getMessage());
-            return back()->with('status', 'verification-link-sent');
+            return back()->with('status', 'verification-code-sent');
         } catch (\Exception $e) {
             // Handle any other email errors
             Log::error('Email verification notification failed: ' . $e->getMessage());
-            return back()->withErrors(['email' => 'Unable to send verification email. Please try again later.']);
+            return back()->withErrors(['email' => 'Unable to send verification code. Please try again later.']);
         }
     }
 }

@@ -11,7 +11,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  
+  @php
+    $themeMap = [
+      'default' => [ 'primary' => '#310F7A', 'bg' => '#531BC9' ],
+      'ocean' => [ 'primary' => '#1565C0', 'bg' => '#4D96E9' ],
+      'forest' => [ 'primary' => '#2E7D32', 'bg' => '#5DAB61' ],
+      'coral' => [ 'primary' => '#D84315', 'bg' => '#FF7B52' ],
+      'midnight' => [ 'primary' => '#1A1A2E', 'bg' => '#42426D' ],
+      'golden' => [ 'primary' => '#F57F17', 'bg' => '#FFAC62' ]
+    ];
+    $selectedThemeKey = $userDetail->personal_page_color ?? 'default';
+    $selectedTheme = $themeMap[$selectedThemeKey] ?? $themeMap['default'];
+  @endphp
+
   <script>
     tailwind.config = {
       theme: {
@@ -67,18 +79,76 @@
     /* Aspect ratios */
     .aspect-4-5 { aspect-ratio: 4/5; }
     .aspect-1-1 { aspect-ratio: 1/1; }
+
+    .studio-name-color { 
+      color: {{ $selectedTheme['primary'] }};
+    }
+
+    #btnBrowseDesigns {
+      background-color: {{ $selectedTheme['primary'] }};
+    }
+
+    #btnBrowseDesigns:hover {
+      background-color: {{ $selectedTheme['bg'] }};
+    }
+
+    #btnRequestCustom{
+      color: {{ $selectedTheme['primary'] }};
+      border-color: {{ $selectedTheme['primary'] }};
+    }
+
+    #btnRequestCustom:hover {
+      color: white;
+      background-color: {{ $selectedTheme['bg'] }};
+    }
+
+    #tab-designs {
+      color: {{ $selectedTheme['primary'] }};
+    }
+
+    #tab-portfolio {
+      color: {{ $selectedTheme['primary'] }};
+    }
+
+    .border-primary {
+      border-color: {{ $selectedTheme['primary'] }};
+    }
+
+    .price-color {
+      color: {{ $selectedTheme['primary'] }};
+    }
+
+    .border-tab-btn{
+      border-color: {{ $selectedTheme['primary'] }};
+    }
+
+    .get-this-tattoo-btn{
+      background-color: {{ $selectedTheme['primary'] }};
+      color: white;
+    }
+
+    .get-this-tattoo-btn:hover {
+      color: white;
+      background-color: {{ $selectedTheme['bg'] }};
+    }
+
   </style>
 </head>
 <body class="bg-surface text-on-surface min-h-screen">
+
+  
 
   <!-- ═══════════════════════════════════════════════ -->
   <!-- HEADER / HERO                                   -->
   <!-- ═══════════════════════════════════════════════ -->
   <header class="relative">
     <!-- Banner -->
-    <div class="w-full h-[300px] relative bg-surface-container-highest overflow-hidden">
-        <img src="{{ $userDetail->personal_page_background_image ? asset($userDetail->personal_page_background_image) : '' }}" alt="Tattoo Header" class="w-full h-full object-cover absolute inset-0">
-        <div class="absolute inset-0 bg-black/20"></div> <!-- Subtle dark overlay to ensure avatar/text stands out -->
+    <div class="w-full h-[300px] relative overflow-hidden">
+      @if($userDetail->personal_page_background_image && $userDetail->personal_page_background_image != '')
+        <img src="{{ asset($userDetail->personal_page_background_image) }}" alt="Tattoo Header" class="w-full h-full object-cover absolute inset-0">
+      @else
+        <div class="absolute inset-0" style="background-color: {{ $selectedTheme['bg'] }};"></div> <!-- Subtle dark overlay to ensure avatar/text stands out -->
+      @endif
     </div>
 
     <!-- Profile Info -->
@@ -113,7 +183,7 @@
         </div>
 
         <!-- Studio -->
-        <p class="text-base font-semibold text-primary mb-2">{{ $userDetail->studio_name }}</p>
+        <p class="text-base font-semibold studio-name-color mb-2">{{ $userDetail->studio_name }}</p>
 
         <!-- Meta row -->
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-on-surface-variant mb-4">
@@ -169,7 +239,7 @@
         @if($userDetail->availability_status != 'closed')
             <div id="ctaButtons" class="flex flex-wrap gap-3">
                 @if($userDetail->availability_status == 'design_only' || $userDetail->availability_status == 'design_custom')
-                    <button id="btnBrowseDesigns" onclick="switchTab('designs')" class="px-6 py-2.5 bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors shadow-md shadow-primary/20">
+                    <button id="btnBrowseDesigns" onclick="switchTab('designs')" class="px-6 py-2.5  bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors shadow-md shadow-primary/20">
                         Browse Available Designs
                     </button>
                 @endif
@@ -206,7 +276,7 @@
   <nav class="border-b border-outline-variant sticky top-0 bg-surface/95 backdrop-blur-sm z-30">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 flex gap-0">
       @if($artistDesigns->count() > 0)
-        <button id="tab-designs" onclick="switchTab('designs')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 border-primary text-primary transition-colors">
+        <button id="tab-designs" onclick="switchTab('designs')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 border-tab-btn text-primary transition-colors">
           Available Designs
         </button>
       @endif
@@ -243,8 +313,8 @@
                             <span class="text-xs px-2 py-0.5 rounded-full bg-secondary-container text-secondary font-medium">{{ ucwords(str_replace('-', ' ', $artistDesign->primary_style)) }}</span>
                             <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">{{ $artistDesign->color == 'color' ? 'Full Color' : ($artistDesign->color == 'black-grey' ? 'Black & Grey' : ($artistDesign->color == 'both' ? 'Black & Color' : $artistDesign->color)) }}</span>
                         </div>
-                        <p class="text-sm font-semibold text-primary mb-3">€{{ $artistDesign->min_price }} — €{{ $artistDesign->max_price }}</p>
-                        <a href="{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]) }}" onclick="event.stopPropagation()" class="block w-full py-2 bg-primary text-on-primary rounded-full text-sm font-semibold hover:bg-primary-container transition-colors text-center">
+                        <p class="text-sm font-semibold price-color mb-3">€{{ $artistDesign->min_price }} — €{{ $artistDesign->max_price }}</p>
+                        <a href="{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]) }}" onclick="event.stopPropagation()" class="block w-full py-2 text-on-primary rounded-full text-sm font-semibold transition-colors text-center get-this-tattoo-btn">
                             Get This Tattoo
                         </a>
                     </div>
@@ -428,13 +498,13 @@
     function switchTab(tab) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => {
-        el.classList.remove('border-primary', 'text-primary');
+        el.classList.remove('border-tab-btn', 'text-primary');
         el.classList.add('border-transparent', 'text-on-surface-variant');
       });
       document.getElementById('content-' + tab).classList.add('active');
       const btn = document.getElementById('tab-' + tab);
       btn.classList.remove('border-transparent', 'text-on-surface-variant');
-      btn.classList.add('border-primary', 'text-primary');
+      btn.classList.add('border-tab-btn', 'text-primary');
     }
 
     // ── Modal Helpers ─────────────────────────────────

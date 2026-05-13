@@ -99,15 +99,21 @@
 
     <p id="payment_type_error" class="text-error text-sm mt-4 hidden"></p>
     <div id="payAlert" class="hidden rounded-xl px-4 py-3 text-sm mt-4"></div>
+    <p class="text-on-surface-variant text-sm mt-4 max-w-xl">You can complete payout details later in your financial settings if you prefer.</p>
   </div>
 
-  <div class="sticky bottom-0 bg-surface border-t border-outline-variant/10 px-8 md:px-12 py-5 flex items-center justify-between mt-auto">
+  <div class="sticky bottom-0 bg-surface border-t border-outline-variant/10 px-8 md:px-12 py-5 flex flex-wrap items-center justify-between gap-4 mt-auto">
     <a href="{{ route('onboarding.calendar') }}" class="inline-flex items-center gap-1 text-on-surface font-semibold hover:text-primary transition-colors">
       <span class="material-symbols-outlined text-lg">arrow_back</span> Back
     </a>
-    <button type="submit" id="paySubmit" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
-      Complete Onboarding
-    </button>
+    <div class="flex flex-wrap items-center gap-3 sm:ml-auto">
+      <button type="button" id="paySkip" class="inline-flex items-center gap-2 font-semibold py-3 px-6 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high transition-colors">
+        Skip for now
+      </button>
+      <button type="submit" id="paySubmit" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
+        Complete Onboarding
+      </button>
+    </div>
   </div>
 </form>
 
@@ -164,9 +170,11 @@ $(function () {
     e.preventDefault();
     var $alertEl = $('#payAlert');
     var $btn = $('#paySubmit');
+    var $skip = $('#paySkip');
     var originalBtnHtml = $btn.html();
     $('#paymentForm').find('[id$="_error"]').addClass('hidden').text('');
     $btn.prop('disabled', true);
+    $skip.prop('disabled', true);
     $btn.text('Submitting...');
     var fd = new FormData(this);
     $.ajax({
@@ -210,7 +218,45 @@ $(function () {
       })
       .always(function () {
         $btn.prop('disabled', false);
+        $skip.prop('disabled', false);
         $btn.html(originalBtnHtml);
+      });
+  });
+
+  $('#paySkip').on('click', function () {
+    var $skip = $(this);
+    var $submit = $('#paySubmit');
+    var $alertEl = $('#payAlert');
+    var originalSkipHtml = $skip.html();
+    $skip.prop('disabled', true);
+    $submit.prop('disabled', true);
+    $skip.text('Skipping...');
+    $alertEl.addClass('hidden');
+    $.ajax({
+      url: @json(route('onboarding.payment.skip')),
+      type: 'POST',
+      data: { _token: @json(csrf_token()) },
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+      .done(function (data) {
+        if (data.success && data.redirect) {
+          window.location.href = data.redirect;
+          return;
+        }
+        $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-red-50 text-red-800 border border-red-200');
+        $alertEl.text(data.message || 'Could not skip').removeClass('hidden');
+      })
+      .fail(function (xhr) {
+        var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Network error';
+        $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-red-50 text-red-800 border border-red-200');
+        $alertEl.text(msg).removeClass('hidden');
+      })
+      .always(function () {
+        $skip.prop('disabled', false);
+        $submit.prop('disabled', false);
+        $skip.html(originalSkipHtml);
       });
   });
 });

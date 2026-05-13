@@ -11,7 +11,7 @@
         <a href="{{ route('user.bookings.index') }}" class="nav-item {{ request()->routeIs('user.bookings.index') ? 'active' : '' }}">
           <span class="material-symbols-outlined">calendar_month</span> My Bookings
         </a>
-        <a href="client-settings.html" class="nav-item">
+        <a href="{{ route('user.settings') }}" class="nav-item {{ request()->routeIs('user.settings') ? 'active' : '' }}">
           <span class="material-symbols-outlined">settings</span> Settings
         </a>
       </nav>
