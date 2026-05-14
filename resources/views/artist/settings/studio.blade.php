@@ -7,6 +7,12 @@
 <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.place_api_key') }}&libraries=places"></script>
 @endif
 <style>
+  .radio-card { border: 1.5px solid #cac4d3; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; position: relative; }
+  .radio-card:hover { border-color: #664db1; }
+  .radio-card.selected { border-color: #310f7a; background: #fdf7ff; }
+  .radio-card .radio-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #cac4d3; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .radio-card.selected .radio-dot { border-color: #310f7a; background: #310f7a; }
+  .radio-card.selected .radio-dot::after { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; }
   /* Address autocomplete dropdown */
   .address-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 50; margin-top: 4px; }
   .address-dropdown.show { display: block; }
@@ -41,13 +47,14 @@
       <!-- Page Header -->
       <div class="mb-8">
         <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Studio Settings</h2>
-        <p class="text-on-surface-variant mt-1">Update your studio name, location, and map link.</p>
+        <p class="text-on-surface-variant mt-1">Update your studio name, location, workspace type, and map link.</p>
       </div>
       <div id="studioSuccessAlert" class="hidden mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
       <div id="studioErrorAlert" class="hidden mb-6 rounded-xl border border-error/30 bg-error/10 text-error px-4 py-3 text-sm"></div>
 
       <form id="studioForm" method="POST" action="{{ route('settings.studio.update') }}">
         @csrf
+        <input type="hidden" name="workspace_type" id="workspace_type" value="{{ old('workspace_type', $userDetail->workspace_type ?? '') }}">
         <div class="bg-surface-container-low rounded-2xl p-6 space-y-6">
           <div>
             <label for="studio_name" class="block text-sm font-semibold text-on-surface mb-2">Studio Name <span class="text-red-600">*</span></label>
@@ -115,6 +122,33 @@
             <p id="google_maps_link_error" class="text-error text-xs mt-1 hidden"></p>
           </div>
         </div>
+
+        <div class="mt-8 mb-2">
+          <h3 class="text-lg font-bold text-on-surface mb-1">Studio Type</h3>
+          <p class="text-on-surface-variant text-sm mb-5">What best describes your workspace? <span class="text-red-600">*</span></p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="studioTypeCards">
+            @foreach ([
+              'private' => ['home','Private Studio','A personal workspace — clients visit by appointment only'],
+              'shop' => ['storefront','Tattoo Shop','A shared shop with walk-ins and appointments'],
+              'home' => ['cottage','Home Studio','Working from home — address shared only after booking'],
+              'mobile' => ['flight','Mobile / Travel','You travel to clients or work at guest spots'],
+            ] as $val => $meta)
+              <div class="radio-card {{ (old('workspace_type', $userDetail->workspace_type ?? '')) === $val ? 'selected' : '' }}" data-workspace="{{ $val }}" onclick="selectStudioType(this)">
+                <div class="flex items-start gap-3">
+                  <div class="radio-dot mt-0.5"></div>
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="material-symbols-outlined text-primary text-xl">{{ $meta[0] }}</span>
+                      <span class="font-semibold text-sm text-on-surface">{{ $meta[1] }}</span>
+                    </div>
+                    <p class="text-on-surface-variant text-xs leading-relaxed">{{ $meta[2] }}</p>
+                  </div>
+                </div>
+              </div>
+            @endforeach
+          </div>
+          <p id="workspace_type_error" class="text-error text-xs mt-2 hidden"></p>
+        </div>
       </form>
     </div>
 
@@ -129,16 +163,29 @@
 
 @section('scripts')
 <script>
+function selectStudioType(card) {
+  $('#studioTypeCards .radio-card').removeClass('selected');
+  $(card).addClass('selected');
+  $('#workspace_type').val($(card).data('workspace') || '');
+  $('#workspace_type_error').text('').addClass('hidden');
+  $('#studioTypeCards').removeClass('ring-2 ring-error rounded-2xl p-2');
+}
+
 $(function () {
   function clearStudioErrors() {
     $('#studioForm [id$="_error"]').text('').addClass('hidden');
     $('#studioForm input').removeClass('border-error');
+    $('#studioTypeCards').removeClass('ring-2 ring-error rounded-2xl p-2');
   }
   function showStudioErrors(errors) {
     $.each(errors, function (k, messages) {
       var $err = $('#' + k + '_error');
       if ($err.length) {
         $err.text(messages[0]).removeClass('hidden');
+      }
+      if (k === 'workspace_type') {
+        $('#studioTypeCards').addClass('ring-2 ring-error rounded-2xl p-2');
+        return;
       }
       var fieldId = k === 'studio_address' ? 'address_search' : k;
       $('#' + fieldId).addClass('border-error');

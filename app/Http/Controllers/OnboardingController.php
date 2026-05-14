@@ -479,6 +479,10 @@ class OnboardingController extends Controller
                 'postal_code' => ['required', 'string', 'max:50'],
                 'country' => ['required', 'string', 'max:255'],
                 'google_maps_link' => ['nullable', 'url', 'max:500'],
+                'workspace_type' => ['required', 'string', Rule::in(['private', 'shop', 'home', 'mobile'])],
+            ], [
+                'workspace_type.required' => 'Please select a workspace type.',
+                'workspace_type.in' => 'Please select a valid workspace type.',
             ]);
 
             $user = $request->user();
@@ -494,6 +498,7 @@ class OnboardingController extends Controller
                 'postal_code' => $validated['postal_code'],
                 'country' => $validated['country'],
                 'google_maps_link' => $validated['google_maps_link'] ?? null,
+                'workspace_type' => $validated['workspace_type'],
             ]);
 
             if ($request->expectsJson() || $request->ajax()) {
