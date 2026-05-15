@@ -22,6 +22,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Str;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Booking;
+use App\Models\BookingRequest;
 use App\Mail\BookingConfirmationMail;
 use App\Mail\UserWelcomeMail;
 use App\Services\CancellationService;
@@ -639,7 +640,17 @@ class InkJinController extends Controller
                 'tattoo' => $tattoo,
                 'questions' => $questions,
                 'requiredBookingQuestions' => $questions,
-                'hasArtistQuestions' => !empty($questions)]);
+                'hasArtistQuestions' => !empty($questions),
+                'artistConsultationSettings' => [
+                    'required' => (bool) ($userDetail->require_consultation ?? false),
+                    'timing' => $userDetail->consultation_timing ?: 'combined',
+                    'session_type' => $userDetail->session_type ?: 'both',
+                    'session_duration_minutes' => (int) ($userDetail->session_duration_minutes ?: 30),
+                    'require_gap' => (bool) ($userDetail->require_gap_between_consultation_tattoo ?? false),
+                    'gap_value' => (int) ($userDetail->consultation_tattoo_gap_value ?? 0),
+                    'gap_unit' => $userDetail->consultation_tattoo_gap_unit ?: 'hours',
+                ],
+            ]);
         }
     }
 
@@ -932,6 +943,115 @@ class InkJinController extends Controller
             'booking_id' => $booking->id,
             'booking_reference' => '#INK-' . str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
             'post_booking_login_url' => $this->makePostBookingAccessUrl($bookingUser, $booking),
+        ]);
+    }
+
+    public function submitManagedBooking(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'artist_username' => ['required', 'string'],
+            'tattoo_slug' => ['required', 'string'],
+            'booking_payload' => ['required', 'array'],
+            'booking_payload.email' => ['required', 'email'],
+            'booking_payload.phone' => ['nullable', 'string', 'max:50'],
+            'booking_payload.name' => ['nullable', 'string', 'max:255'],
+            'booking_payload.consultation_required' => ['nullable', 'boolean'],
+            'booking_payload.consultation_type' => ['nullable', 'string', 'in:video,phone,studio'],
+            'booking_payload.questions_answers' => ['nullable', 'array'],
+            'booking_payload.preferences' => ['nullable', 'array'],
+            'booking_payload.preferred_days' => ['required', 'array', 'min:1'],
+            'booking_payload.how_much_flexible' => ['required', 'string'],
+            'booking_payload.avoid_dates' => ['nullable', 'string'],
+            'booking_payload.urgency' => ['nullable', 'string'],
+            'booking_payload.session_gap' => ['nullable', 'string'],
+        ]);
+
+        $payload = $validated['booking_payload'];
+        $email = mb_strtolower(trim((string) ($payload['email'] ?? '')));
+
+        $verified = $request->session()->get('booking_verified_emails', []);
+        $verifiedEntry = is_array($verified[$email] ?? null) ? $verified[$email] : null;
+        if (
+            !$verifiedEntry
+            || empty($verifiedEntry['user_id'])
+            || now()->timestamp > (int) ($verifiedEntry['verified_until'] ?? 0)
+        ) {
+            return response()->json(['message' => 'Please verify your email before submitting your request.'], 422);
+        }
+
+        $userDetail = UserDetail::query()->where('user_name', $validated['artist_username'])->first();
+        if (
+            !$userDetail
+            || !$userDetail->user
+            || $userDetail->user->role !== 'artist'
+            || $userDetail->user->on_boarding !== 'yes'
+        ) {
+            return response()->json(['message' => 'Artist not found.'], 404);
+        }
+
+        if (($userDetail->scheduling_type ?? '') !== 'managed') {
+            return response()->json(['message' => 'This artist does not accept managed booking requests.'], 422);
+        }
+
+        if ($userDetail->availability_status === 'closed') {
+            return response()->json(['message' => 'This artist is not accepting bookings right now.'], 422);
+        }
+
+        $design = $userDetail->user->artistDesigns()
+            ->where('slug', $validated['tattoo_slug'])
+            ->where('is_visible', true)
+            ->first();
+
+        if (!$design) {
+            return response()->json(['message' => 'Tattoo design not found.'], 404);
+        }
+
+        $consultationRequired = (bool) ($payload['consultation_required'] ?? false);
+        if ($consultationRequired) {
+            $consultType = (string) ($payload['consultation_type'] ?? '');
+            if (!in_array($consultType, ['video', 'phone', 'studio'], true)) {
+                return response()->json(['message' => 'Please select a consultation type.'], 422);
+            }
+            if (trim((string) ($payload['session_gap'] ?? '')) === '') {
+                return response()->json(['message' => 'Please select your preferred gap between consultation and tattoo session.'], 422);
+            }
+        } elseif (trim((string) ($payload['urgency'] ?? '')) === '') {
+            return response()->json(['message' => 'Please select your urgency.'], 422);
+        }
+
+        $bookingUser = User::query()->find((int) $verifiedEntry['user_id']);
+        if (!$bookingUser || mb_strtolower((string) $bookingUser->email) !== $email) {
+            return response()->json(['message' => 'Booking user not found. Please verify email again.'], 422);
+        }
+
+        $consultationDetails = null;
+        if ($consultationRequired) {
+            $consultationDetails = json_encode([
+                'required' => true,
+                'type' => (string) ($payload['consultation_type'] ?? ''),
+                'session_gap' => (string) ($payload['session_gap'] ?? ''),
+                'client_phone' => trim((string) ($payload['phone'] ?? '')),
+            ]);
+        }
+
+        $bookingRequest = BookingRequest::create([
+            'user_id' => $bookingUser->id,
+            'artist_id' => $userDetail->user_id,
+            'tattoo_id' => $design->id,
+            'status' => 'pending',
+            'questions_answers' => $payload['questions_answers'] ?? [],
+            'consultation_details' => $consultationDetails,
+            'preferences' => $payload['preferences'] ?? [],
+            'preferred_days' => $payload['preferred_days'] ?? [],
+            'avoid_dates' => trim((string) ($payload['avoid_dates'] ?? '')) ?: null,
+            'how_much_flexible' => (string) ($payload['how_much_flexible'] ?? ''),
+            'urgency' => $consultationRequired ? null : (string) ($payload['urgency'] ?? ''),
+        ]);
+
+        return response()->json([
+            'saved' => true,
+            'booking_request_id' => $bookingRequest->id,
+            'booking_reference' => $bookingRequest->referenceLabel(),
         ]);
     }
 }

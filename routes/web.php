@@ -247,3 +247,4 @@ Route::post('/api/public/verify-booking-otp', [InkJinController::class, 'verifyB
 Route::post('/api/public/upload-booking-question-image', [InkJinController::class, 'uploadBookingQuestionImage'])->name('public.booking.question_image.upload');
 Route::post('/api/public/create-booking-payment-intent', [InkJinController::class, 'createBookingPaymentIntent'])->name('public.booking.payment_intent.create');
 Route::post('/api/public/confirm-booking-payment', [InkJinController::class, 'confirmBookingAfterPayment'])->name('public.booking.payment.confirm');
+Route::post('/api/public/submit-managed-booking', [InkJinController::class, 'submitManagedBooking'])->name('public.booking.managed.submit');
