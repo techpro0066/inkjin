@@ -547,89 +547,100 @@ class InkJinController extends Controller
             ];
         })->filter()->values()->all();
 
-        $artistTimezone = $userDetail->timezone ?: 'UTC';
-        $tattooDurationMinutes = (int) ($tattoo->session_duration ?? 0) * 60;
-        if ($tattooDurationMinutes <= 0) {
-            preg_match('/(\d+)/', (string) ($tattoo->session_duration ?? ''), $durationMatch);
-            $tattooDurationMinutes = isset($durationMatch[1]) ? ((int) $durationMatch[1] * 60) : 120;
-        }
-        $artistAvailabilitySchedule = Availability::query()
-            ->where('user_id', $userDetail->user_id)
-            ->orderBy('day_of_week')
-            ->orderBy('start_time')
-            ->get()
-            ->groupBy('day_of_week')
-            ->map(function ($rows) use ($artistTimezone) {
-                return $rows->map(function ($availability) use ($artistTimezone) {
-                    $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d') . ' ' . $availability->start_time, 'UTC')
-                        ->setTimezone($artistTimezone)
-                        ->format('H:i');
-                    $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d') . ' ' . $availability->end_time, 'UTC')
-                        ->setTimezone($artistTimezone)
-                        ->format('H:i');
+        if($userDetail->scheduling_type == 'auto'){
 
+            $artistTimezone = $userDetail->timezone ?: 'UTC';
+            $tattooDurationMinutes = (int) ($tattoo->session_duration ?? 0) * 60;
+            if ($tattooDurationMinutes <= 0) {
+                preg_match('/(\d+)/', (string) ($tattoo->session_duration ?? ''), $durationMatch);
+                $tattooDurationMinutes = isset($durationMatch[1]) ? ((int) $durationMatch[1] * 60) : 120;
+            }
+            $artistAvailabilitySchedule = Availability::query()
+                ->where('user_id', $userDetail->user_id)
+                ->orderBy('day_of_week')
+                ->orderBy('start_time')
+                ->get()
+                ->groupBy('day_of_week')
+                ->map(function ($rows) use ($artistTimezone) {
+                    return $rows->map(function ($availability) use ($artistTimezone) {
+                        $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d') . ' ' . $availability->start_time, 'UTC')
+                            ->setTimezone($artistTimezone)
+                            ->format('H:i');
+                        $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d') . ' ' . $availability->end_time, 'UTC')
+                            ->setTimezone($artistTimezone)
+                            ->format('H:i');
+
+                        return [
+                            'start' => $startLocal,
+                            'end' => $endLocal,
+                        ];
+                    })->values()->all();
+                })
+                ->toArray();
+
+            $artistBlockedPeriods = AvailabilityOverride::query()
+                ->where('user_id', $userDetail->user_id)
+                ->orderBy('start_date')
+                ->get()
+                ->map(static function (AvailabilityOverride $o) {
                     return [
-                        'start' => $startLocal,
-                        'end' => $endLocal,
+                        'start_date' => $o->start_date->format('Y-m-d'),
+                        'end_date' => $o->end_date->format('Y-m-d'),
                     ];
-                })->values()->all();
-            })
-            ->toArray();
+                })
+                ->values()
+                ->all();
 
-        $artistBlockedPeriods = AvailabilityOverride::query()
-            ->where('user_id', $userDetail->user_id)
-            ->orderBy('start_date')
-            ->get()
-            ->map(static function (AvailabilityOverride $o) {
-                return [
-                    'start_date' => $o->start_date->format('Y-m-d'),
-                    'end_date' => $o->end_date->format('Y-m-d'),
-                ];
-            })
-            ->values()
-            ->all();
+            $artistBusyIntervalsByDate = [];
+            $existingBookings = Booking::query()
+                ->where('artist_user_id', $userDetail->user_id)
+                ->where('status', 'confirmed')
+                ->get();
 
-        $artistBusyIntervalsByDate = [];
-        $existingBookings = Booking::query()
-            ->where('artist_user_id', $userDetail->user_id)
-            ->where('status', 'confirmed')
-            ->get();
+            $sessionBufferMinutes = max(0, (int) ($userDetail->session_buffer_period ?? 0));
 
-        $sessionBufferMinutes = max(0, (int) ($userDetail->session_buffer_period ?? 0));
+            foreach ($existingBookings as $booking) {
+                $this->appendBookingOccupancyToBusyMap($booking, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
+            }
 
-        foreach ($existingBookings as $booking) {
-            $this->appendBookingOccupancyToBusyMap($booking, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
+            // Refreshing the booking page should require reconnecting again.
+            session()->forget('booking_verified_emails');
+
+            return view('public.book', [
+                'userDetail' => $userDetail,
+                'tattoo' => $tattoo,
+                'questions' => $questions,
+                'requiredBookingQuestions' => $questions,
+                'hasArtistQuestions' => !empty($questions),
+                'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
+                'artistTimezone' => $artistTimezone,
+                'artistBlockedPeriods' => $artistBlockedPeriods,
+                'artistBusyIntervalsByDate' => $artistBusyIntervalsByDate,
+                'tattooDurationMinutes' => $tattooDurationMinutes,
+                'artistConsultationSettings' => [
+                    'required' => (bool) ($userDetail->require_consultation ?? false),
+                    'timing' => $userDetail->consultation_timing ?: 'combined',
+                    'session_type' => $userDetail->session_type ?: 'both',
+                    'session_duration_minutes' => (int) ($userDetail->session_duration_minutes ?: 30),
+                    'require_gap' => (bool) ($userDetail->require_gap_between_consultation_tattoo ?? false),
+                    'gap_value' => (int) ($userDetail->consultation_tattoo_gap_value ?? 0),
+                    'gap_unit' => $userDetail->consultation_tattoo_gap_unit ?: 'hours',
+                ],
+                'stripePublishableKey' => env('STRIPE_KEY', ''),
+                'artistPaymentType' => $userDetail->payment_type ?: 'inkjin_account',
+                'minimumDepositType' => $userDetail->minimum_deposit_type ?: 'percentage',
+                'minimumDepositAmount' => (float) ($userDetail->minimum_deposit_amount ?? 30),
+                'bookingFeeType' => $userDetail->booking_fee_type ?: 'client',
+            ]);
         }
-
-        // Refreshing the booking page should require reconnecting again.
-        session()->forget('booking_verified_emails');
-
-        return view('public.book', [
-            'userDetail' => $userDetail,
-            'tattoo' => $tattoo,
-            'questions' => $questions,
-            'requiredBookingQuestions' => $questions,
-            'hasArtistQuestions' => !empty($questions),
-            'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
-            'artistTimezone' => $artistTimezone,
-            'artistBlockedPeriods' => $artistBlockedPeriods,
-            'artistBusyIntervalsByDate' => $artistBusyIntervalsByDate,
-            'tattooDurationMinutes' => $tattooDurationMinutes,
-            'artistConsultationSettings' => [
-                'required' => (bool) ($userDetail->require_consultation ?? false),
-                'timing' => $userDetail->consultation_timing ?: 'combined',
-                'session_type' => $userDetail->session_type ?: 'both',
-                'session_duration_minutes' => (int) ($userDetail->session_duration_minutes ?: 30),
-                'require_gap' => (bool) ($userDetail->require_gap_between_consultation_tattoo ?? false),
-                'gap_value' => (int) ($userDetail->consultation_tattoo_gap_value ?? 0),
-                'gap_unit' => $userDetail->consultation_tattoo_gap_unit ?: 'hours',
-            ],
-            'stripePublishableKey' => env('STRIPE_KEY', ''),
-            'artistPaymentType' => $userDetail->payment_type ?: 'inkjin_account',
-            'minimumDepositType' => $userDetail->minimum_deposit_type ?: 'percentage',
-            'minimumDepositAmount' => (float) ($userDetail->minimum_deposit_amount ?? 30),
-            'bookingFeeType' => $userDetail->booking_fee_type ?: 'client',
-        ]);
+        else{
+            return view('public.managed-book', [
+                'userDetail' => $userDetail,
+                'tattoo' => $tattoo,
+                'questions' => $questions,
+                'requiredBookingQuestions' => $questions,
+                'hasArtistQuestions' => !empty($questions)]);
+        }
     }
 
     public function createBookingPaymentIntent(Request $request): JsonResponse
@@ -924,4 +935,3 @@ class InkJinController extends Controller
         ]);
     }
 }
-
