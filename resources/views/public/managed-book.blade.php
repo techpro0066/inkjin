@@ -233,7 +233,7 @@
     <!-- ══════════════════════════════════ -->
     <div class="step-panel active" id="stepQuestions">
       <div id="questionsMount"></div>
-    </div>
+          </div>
 
     @php
       $consultDurationMinutes = (int) ($userDetail->session_duration_minutes ?: 30);
@@ -262,21 +262,21 @@
           <div class="pref-block" data-pref="0">
             <div class="pref-block-header">
               <p class="text-xs font-bold text-primary uppercase tracking-wider pref-block-label">Preference 1 <span class="text-error">*</span></p>
-            </div>
+      </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
               <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button type="button" class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button type="button" class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button type="button" class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div>
-            </div>
           </div>
         </div>
+      </div>
         <button type="button" id="addPrefBtn" onclick="addPreference()" class="text-sm text-primary font-semibold flex items-center gap-1 hover:underline mb-6"><span class="material-symbols-outlined text-[18px]">add</span> Add another preference</button>
         <div class="space-y-4">
           <div data-step2-field="days"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Preferred days of the week <span class="text-error">*</span></label><div class="flex flex-wrap gap-1.5" id="dayPills"><button type="button" class="day-pill" data-value="Mon" onclick="toggleDayPref(this)">Mon</button><button type="button" class="day-pill" data-value="Tue" onclick="toggleDayPref(this)">Tue</button><button type="button" class="day-pill" data-value="Wed" onclick="toggleDayPref(this)">Wed</button><button type="button" class="day-pill" data-value="Thu" onclick="toggleDayPref(this)">Thu</button><button type="button" class="day-pill" data-value="Fri" onclick="toggleDayPref(this)">Fri</button><button type="button" class="day-pill" data-value="Sat" onclick="toggleDayPref(this)">Sat</button><button type="button" class="day-pill" data-value="Sun" onclick="toggleDayPref(this)">Sun</button></div><p id="managedDayError" class="hidden text-sm text-error mt-2">Please select at least one preferred day.</p></div>
           <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Any dates to avoid?</label><input type="text" id="managedAvoid" placeholder="e.g., April 10-15, May 1st" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
           <div data-step2-field="flex"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How flexible are you? <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="flexPills"><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Very flexible" onclick="selectPill(this,'flexPills')">Very flexible</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Somewhat flexible" onclick="selectPill(this,'flexPills')">Somewhat flexible</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="These are my only options" onclick="selectPill(this,'flexPills')">These are my only options</button></div><p id="managedFlexError" class="hidden text-sm text-error mt-2">Please select how flexible you are.</p></div>
           <div data-step2-field="urgency"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Urgency <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="urgencyPills"><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="No rush" onclick="selectPill(this,'urgencyPills')">No rush</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Within 2 weeks" onclick="selectPill(this,'urgencyPills')">Within 2 weeks</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Within a month" onclick="selectPill(this,'urgencyPills')">Within a month</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="ASAP" onclick="selectPill(this,'urgencyPills')">ASAP</button></div><p id="managedUrgencyError" class="hidden text-sm text-error mt-2">Please select your urgency.</p></div>
+          </div>
         </div>
-      </div>
       <div class="mb-studio-location flex items-start gap-3 p-4 bg-surface-container-low rounded-xl mb-6">
         <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
         <div>
@@ -285,8 +285,8 @@
           @if(!empty($userDetail->google_maps_link))
           <a href="{{ $userDetail->google_maps_link }}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
           @endif
-        </div>
       </div>
+          </div>
       <button type="button" onclick="goToStep(3)" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm flex items-center justify-center gap-2">Continue to Your Details <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>
     </div>
 
@@ -404,7 +404,7 @@
       <!-- Auth -->
       <div class="question-div" data-reg="3" id="reg-3">
         <div class="w-full max-w-md mx-auto">
-                    <div id="bdAuthCreate">
+          <div id="bdAuthCreate">
             <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We are sending a secure 4-digit code to your email—check your inbox (and spam). You can resend below if you need a new code.</p></div>
             <div class="mb-4 hidden">
               <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpEmail">Email</label>
@@ -436,7 +436,7 @@
             <p id="bdConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
             <p class="text-center text-sm text-on-surface-variant">Email verified once will stay connected for this booking session.</p>
           </div>
-<div id="bdAuthLogin" class="hidden">
+          <div id="bdAuthLogin" class="hidden">
             <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">waving_hand</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Welcome back!</h2><p class="text-on-surface-variant">Log in to continue with your booking.</p></div>
             <div class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-3 mb-5"><span class="material-symbols-outlined text-primary text-[18px]">mail</span><span class="text-sm text-on-surface" id="bdAuthLoginEmail">you@example.com</span><span class="material-symbols-outlined text-green-500 text-[16px] ml-auto">check_circle</span></div>
             <div class="mb-5"><input type="password" id="bdLoginPassword" placeholder="Enter your password" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
@@ -1398,7 +1398,7 @@
     }
 
     function showManagedConfirmationCopy() {
-      document.getElementById('confManagedTitle').textContent = 'Availability Submitted! 🎉';
+        document.getElementById('confManagedTitle').textContent = 'Availability Submitted! 🎉';
       if (consultationRequired) {
         document.getElementById('confManagedDesc').innerHTML = artistName + ' will review your availability and confirm both your consultation and tattoo session times. You\'ll receive an email once both appointments are confirmed.';
         const info = consultTypeLabels[mcConsultType] || consultTypeLabels.video;
@@ -1490,7 +1490,7 @@
 
     if (consultationRequired) configureMcConsultTypeCards();
 
-        // ── Booking Status Check ──
+    // ── Booking Status Check ──
     const statusParam = params.get('status');
     if (statusParam === 'closed') {
       document.getElementById('bookingMainContent').classList.add('hidden');

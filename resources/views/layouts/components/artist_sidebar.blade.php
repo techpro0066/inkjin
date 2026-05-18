@@ -17,7 +17,7 @@
       <a href="{{ route('availability.index') }}" class="nav-item {{ request()->routeIs('availability.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">event_available</span> Availability
       </a>
-      <a href="#" class="nav-item">
+      <a href="{{ route('artist.requests.index') }}" class="nav-item {{ request()->routeIs('artist.requests.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">edit_note</span> Requests
       </a>
       <a href="#" class="nav-item">

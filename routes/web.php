@@ -14,6 +14,7 @@ use App\Http\Controllers\UserController\ClientPasswordController;
 use App\Http\Controllers\UserController\UserSettingsController;
 use App\Http\Controllers\BookingsController as ArtistBookingsController;
 use App\Http\Controllers\Auth\PostBookingAccessController;
+use App\Http\Controllers\RequestsController;
 
 
 Route::get('/', function () {
@@ -69,6 +70,10 @@ Route::get('/studio/payout-link/{userDetail}/decline', [OnboardingController::cl
 Route::get('/user/access-from-booking/{user}/{booking}', PostBookingAccessController::class)
     ->middleware(['signed', 'throttle:20,1'])
     ->name('user.post-booking.access');
+
+Route::get('/user/access-from-request/{user}/{bookingRequest}', \App\Http\Controllers\Auth\PostManagedRequestAccessController::class)
+    ->middleware(['signed', 'throttle:20,1'])
+    ->name('user.post-managed-request.access');
 
 //Common routes
 
@@ -213,6 +218,11 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
 
     // Booking routes
     Route::get('/bookings', [ArtistBookingsController::class, 'index'])->name('artist.bookings.index');
+
+    // Requests
+    Route::get('/requests', [RequestsController::class, 'index'])->name('artist.requests.index');
+    Route::post('/requests/{bookingRequest}/decline', [RequestsController::class, 'decline'])->name('artist.requests.decline');
+    Route::post('/requests/{bookingRequest}/offer-slots', [RequestsController::class, 'offerSlots'])->name('artist.requests.offer-slots');
 });
 
 // User routes
@@ -226,6 +236,19 @@ Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])
 
     Route::get('/settings', [UserSettingsController::class, 'edit'])->name('user.settings');
     Route::post('/settings/avatar', [UserSettingsController::class, 'updateAvatar'])->name('user.settings.avatar');
+
+    Route::get('/requests', [\App\Http\Controllers\UserController\RequestsController::class, 'index'])
+        ->name('user.requests.index');
+    Route::get('/requests/{bookingRequest}/confirm-times', [\App\Http\Controllers\UserController\RequestsController::class, 'confirmTimes'])
+        ->name('user.requests.confirm-times');
+    Route::post('/requests/{bookingRequest}/confirm-times', [\App\Http\Controllers\UserController\RequestsController::class, 'storeConfirmedTimes'])
+        ->name('user.requests.confirm-times.store');
+    Route::get('/requests/{bookingRequest}/payment', [\App\Http\Controllers\UserController\RequestsController::class, 'payment'])
+        ->name('user.requests.payment');
+    Route::post('/requests/{bookingRequest}/payment/intent', [\App\Http\Controllers\UserController\RequestsController::class, 'createPaymentIntent'])
+        ->name('user.requests.payment.intent');
+    Route::post('/requests/{bookingRequest}/payment/confirm', [\App\Http\Controllers\UserController\RequestsController::class, 'confirmPayment'])
+        ->name('user.requests.payment.confirm');
 
     // Bookings
     Route::get('/bookings', [BookingsController::class, 'index'])->name('user.bookings.index');

@@ -257,7 +257,7 @@
       <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-8 overflow-hidden">
         <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15">
           <h3 class="text-lg font-bold text-on-surface">Active Requests</h3>
-          <a href="client-requests.html" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+          <a href="{{ route('user.requests.index') }}" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
             View All Requests <span class="material-symbols-outlined text-base">arrow_forward</span>
           </a>
         </div>
@@ -273,7 +273,7 @@
               <p class="font-semibold text-on-surface text-sm">Dragon sleeve custom design — Japanese style</p>
               <p class="text-xs text-on-surface-variant mt-0.5">Julian Ink · Quote: <strong class="text-on-surface">€950</strong></p>
             </div>
-            <a href="client-requests.html" class="text-sm font-semibold text-primary hover:underline whitespace-nowrap">View Quote</a>
+            <a href="{{ route('user.requests.index') }}" class="text-sm font-semibold text-primary hover:underline whitespace-nowrap">View details</a>
           </div>
           <div class="p-5 flex flex-col sm:flex-row sm:items-center gap-3 hover:bg-surface-container-low/50 transition-colors">
             <div class="flex-1 min-w-0">

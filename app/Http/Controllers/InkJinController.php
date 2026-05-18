@@ -24,6 +24,7 @@ use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Mail\BookingConfirmationMail;
+use App\Mail\ManagedBookingRequestMail;
 use App\Mail\UserWelcomeMail;
 use App\Services\CancellationService;
 use App\Models\UserDetail;
@@ -42,6 +43,15 @@ class InkJinController extends Controller
             'user.post-booking.access',
             now()->addDays(14),
             ['user' => $bookingUser->id, 'booking' => $booking->id]
+        );
+    }
+
+    private function makePostManagedRequestAccessUrl(User $user, BookingRequest $bookingRequest): string
+    {
+        return URL::temporarySignedRoute(
+            'user.post-managed-request.access',
+            now()->addDays(14),
+            ['user' => $user->id, 'bookingRequest' => $bookingRequest->id]
         );
     }
 
@@ -312,6 +322,7 @@ class InkJinController extends Controller
         }
 
         $existingUser = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+        $isNewUser = false;
         if (!$existingUser) {
             $name = trim((string) ($validated['name'] ?? ''));
             $parts = preg_split('/\s+/', $name) ?: [];
@@ -328,12 +339,14 @@ class InkJinController extends Controller
                 'on_boarding' => 'yes',
                 'email_verified_at' => now(),
             ]);
+            $isNewUser = true;
         }
 
         $verified = $request->session()->get('booking_verified_emails', []);
         $verified[$email] = [
             'user_id' => $existingUser->id,
             'verified_until' => now()->addMinutes(10)->timestamp,
+            'is_new_user' => $isNewUser,
         ];
         $request->session()->put('booking_verified_emails', $verified);
         $request->session()->forget('booking_otp.' . $email);
@@ -1048,10 +1061,43 @@ class InkJinController extends Controller
             'urgency' => $consultationRequired ? null : (string) ($payload['urgency'] ?? ''),
         ]);
 
+        $isNewUser = !empty($verifiedEntry['is_new_user']);
+        $accessUrl = $this->makePostManagedRequestAccessUrl($bookingUser, $bookingRequest);
+        $clientEmail = (string) ($bookingUser->email ?? '');
+        $artistName = trim(implode(' ', array_filter([
+            (string) ($userDetail->user->first_name ?? ''),
+            (string) ($userDetail->user->last_name ?? ''),
+        ]))) ?: 'Your artist';
+        $recipientName = trim(implode(' ', array_filter([
+            (string) ($bookingUser->first_name ?? ''),
+            (string) ($bookingUser->last_name ?? ''),
+        ])));
+
+        if ($clientEmail !== '') {
+            try {
+                Mail::to($clientEmail)->send(new ManagedBookingRequestMail(
+                    $accessUrl,
+                    $recipientName,
+                    $artistName,
+                    (string) ($design->title ?? 'Design'),
+                    $bookingRequest->referenceLabel(),
+                    $isNewUser,
+                ));
+            } catch (\Throwable $e) {
+                Log::error('Failed to send managed booking request email', [
+                    'booking_request_id' => $bookingRequest->id,
+                    'user_id' => $bookingUser->id,
+                    'email' => $clientEmail,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return response()->json([
             'saved' => true,
             'booking_request_id' => $bookingRequest->id,
             'booking_reference' => $bookingRequest->referenceLabel(),
+            'post_request_access_url' => $accessUrl,
         ]);
     }
 }
