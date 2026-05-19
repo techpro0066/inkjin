@@ -24,6 +24,7 @@ use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Mail\BookingConfirmationMail;
+use App\Mail\ManagedBookingRequestArtistMail;
 use App\Mail\ManagedBookingRequestMail;
 use App\Mail\UserWelcomeMail;
 use App\Services\CancellationService;
@@ -1088,6 +1089,24 @@ class InkJinController extends Controller
                     'booking_request_id' => $bookingRequest->id,
                     'user_id' => $bookingUser->id,
                     'email' => $clientEmail,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $artistEmail = (string) ($userDetail->user->email ?? '');
+        if ($artistEmail !== '') {
+            try {
+                $bookingRequest->load(['user', 'tattoo']);
+                Mail::to($artistEmail)->send(new ManagedBookingRequestArtistMail(
+                    $bookingRequest,
+                    route('artist.requests.index'),
+                ));
+            } catch (\Throwable $e) {
+                Log::error('Failed to send managed booking request artist email', [
+                    'booking_request_id' => $bookingRequest->id,
+                    'artist_id' => $userDetail->user_id,
+                    'email' => $artistEmail,
                     'error' => $e->getMessage(),
                 ]);
             }
