@@ -436,6 +436,118 @@ class BookingRequest extends Model
         return '—';
     }
 
+    public function tattooDurationMinutes(): int
+    {
+        $tattoo = $this->tattoo;
+        if (!$tattoo) {
+            return 120;
+        }
+
+        $minutes = (int) ($tattoo->session_duration ?? 0) * 60;
+        if ($minutes <= 0) {
+            preg_match('/(\d+)/', (string) ($tattoo->session_duration ?? ''), $match);
+            $minutes = isset($match[1]) ? ((int) $match[1] * 60) : 120;
+        }
+
+        return $minutes;
+    }
+
+    public static function formatDurationMinutes(int $minutes): string
+    {
+        $mins = max(0, $minutes);
+        $hours = intdiv($mins, 60);
+        $remainder = $mins % 60;
+
+        if ($hours > 0 && $remainder > 0) {
+            return $hours.'h '.$remainder.'m';
+        }
+        if ($hours > 0) {
+            return $hours.'h';
+        }
+
+        return $remainder.'m';
+    }
+
+    public function checkoutDurationLabel(?UserDetail $userDetail): string
+    {
+        $tattooMinutes = $this->tattooDurationMinutes();
+
+        if (!$this->requiresConsultationPick()) {
+            return self::formatDurationMinutes($tattooMinutes);
+        }
+
+        $consultMinutes = (int) ($userDetail?->session_duration_minutes ?: 30);
+
+        return self::formatDurationMinutes($tattooMinutes + $consultMinutes).' total';
+    }
+
+    public function checkoutSizeLabel(): string
+    {
+        $fromAnswer = $this->answerByKeywords(['size', 'cm', 'inch']);
+        if ($fromAnswer) {
+            return $fromAnswer;
+        }
+
+        $tattoo = $this->tattoo;
+        if (!$tattoo) {
+            return '—';
+        }
+
+        $min = (int) ($tattoo->min_size ?? 0);
+        $max = (int) ($tattoo->max_size ?? 0);
+        if ($min > 0 || $max > 0) {
+            return $min.' - '.$max.' cm';
+        }
+
+        return '—';
+    }
+
+    public function checkoutStudioLocation(?UserDetail $userDetail): string
+    {
+        if (!$userDetail) {
+            return '—';
+        }
+
+        $studio = trim((string) ($userDetail->studio_name ?? ''));
+        $address = trim((string) ($userDetail->studio_address ?? ''));
+
+        if ($studio !== '' && $address !== '') {
+            return $studio.', '.$address;
+        }
+
+        return $studio !== '' ? $studio : ($address !== '' ? $address : '—');
+    }
+
+    public function checkoutDepositLabel(array $depositMeta): string
+    {
+        if (($depositMeta['type'] ?? '') === 'amount') {
+            return 'Deposit (Fixed)';
+        }
+
+        return 'Deposit ('.((string) ($depositMeta['label'] ?? '')).')';
+    }
+
+    public function clientSlotSummary(string $kind): ?string
+    {
+        $raw = $kind === 'consult'
+            ? $this->client_consultation_slots
+            : $this->client_session_slots;
+
+        $slots = $this->normalizedArtistSlots($raw);
+        if ($slots === []) {
+            return null;
+        }
+
+        $date = $slots[0]['date'];
+        $range = $slots[0]['ranges'][0] ?? null;
+        if (!$range) {
+            return null;
+        }
+
+        return $this->formatTimeRangeLabel($range['from'], $range['to']).' · '.
+            Carbon::createFromFormat('Y-m-d', $date)->format('l, M j, Y');
+    }
+
     public function designImageUrl(): ?string
     {
         $image = (string) ($this->tattoo?->image ?? '');

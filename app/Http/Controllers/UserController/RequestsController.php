@@ -97,20 +97,36 @@ class RequestsController extends Controller
             abort(404);
         }
 
-        $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price);
+        $minPrice = (float) ($tattoo->min_price ?? 0);
+        $maxPrice = (float) ($tattoo->max_price ?? 0);
+        $totals = $this->pricing->checkoutTotals($userDetail, $minPrice);
+        $deposit = (float) $totals['deposit'];
+        $minBalance = max(0, $minPrice - $deposit);
+        $maxBalance = max(0, $maxPrice - $deposit);
+
+        $showConsultRow = $bookingRequest->requiresConsultationPick();
+        $sessionDateTime = $bookingRequest->clientSlotSummary('session') ?? '—';
+        $consultDateTime = $showConsultRow
+            ? ($bookingRequest->clientSlotSummary('consult') ?? '—')
+            : null;
 
         return view('user.requests.payment', [
             'bookingRequest' => $bookingRequest,
+            'userDetail' => $userDetail,
             'artistName' => $bookingRequest->artistDisplayName(),
             'designTitle' => (string) ($tattoo->title ?? 'Design'),
-            'priceLabel' => $bookingRequest->priceLabel(),
             'totals' => $totals,
             'stripePublishableKey' => env('STRIPE_KEY', ''),
-            'sessionSummary' => $this->slotSummaryLine($bookingRequest, 'session'),
-            'consultSummary' => $bookingRequest->hasConsultation()
-                ? $this->slotSummaryLine($bookingRequest, 'consult')
-                : null,
-            'remainingBalance' => max(0, (float) $tattoo->min_price - $totals['deposit']),
+            'showConsultRow' => $showConsultRow,
+            'sessionDateTimeLabel' => $showConsultRow ? 'Tattoo Date & Time' : 'Date & Time',
+            'sessionDateTime' => $sessionDateTime,
+            'consultDateTime' => $consultDateTime,
+            'durationLabel' => $bookingRequest->checkoutDurationLabel($userDetail),
+            'sizeLabel' => $bookingRequest->checkoutSizeLabel(),
+            'locationLabel' => $bookingRequest->checkoutStudioLocation($userDetail),
+            'priceEstimateLabel' => $bookingRequest->priceLabel(),
+            'depositLabel' => $bookingRequest->checkoutDepositLabel($totals['deposit_meta']),
+            'balanceLabel' => '€'.number_format($minBalance, 2).' - €'.number_format($maxBalance, 2),
         ]);
     }
 

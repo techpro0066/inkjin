@@ -2,9 +2,22 @@
 
 @section('title', 'Complete payment')
 
+@section('styles')
+<style>
+  .info-tooltip { position: relative; display: inline-flex; cursor: help; }
+  .info-tooltip .tooltip-text {
+    visibility: hidden; opacity: 0; position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%); background: #322f36; color: white; padding: 8px 12px;
+    border-radius: 8px; font-size: 0.75rem; width: 220px; text-align: center;
+    transition: opacity 0.2s; z-index: 10; line-height: 1.4;
+  }
+  .info-tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+</style>
+@endsection
+
 @section('content')
 <main class="main-content flex-1 min-h-screen">
-  <div class="p-6 md:p-10 lg:p-12 max-w-4xl mx-auto">
+  <div class="p-6 md:p-10 lg:p-12 max-w-5xl mx-auto">
     <a href="{{ route('user.requests.confirm-times', $bookingRequest) }}" class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-6 transition-colors">
       <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to times
     </a>
@@ -13,92 +26,72 @@
       <div class="mb-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
     @endif
 
-    <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 mb-6">
-      <p class="text-xs text-outline mb-1">{{ $bookingRequest->referenceLabel() }}</p>
-      <h1 class="text-xl font-extrabold text-on-surface tracking-tight">Pay deposit &amp; confirm booking</h1>
-      <p class="text-sm text-on-surface-variant mt-1">{{ $designTitle }} with <strong>{{ $artistName }}</strong></p>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="space-y-4">
-        <div class="bg-white rounded-2xl border border-outline-variant/20 p-5">
-          <h2 class="text-sm font-bold text-on-surface mb-3">Your appointment</h2>
-          <ul class="space-y-2 text-sm text-on-surface-variant">
-            @if ($consultSummary)
-              <li class="flex items-start gap-2">
-                <span class="material-symbols-outlined text-primary text-lg shrink-0">groups</span>
-                <span><strong class="text-on-surface">Consultation:</strong> {{ $consultSummary }}</span>
-              </li>
-            @endif
-            @if ($sessionSummary)
-              <li class="flex items-start gap-2">
-                <span class="material-symbols-outlined text-primary text-lg shrink-0">brush</span>
-                <span><strong class="text-on-surface">Tattoo session:</strong> {{ $sessionSummary }}</span>
-              </li>
-            @endif
-          </ul>
-        </div>
-
-        <div class="bg-surface-container-low rounded-2xl border border-outline-variant/20 p-5">
-          <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-3">Due now</p>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-on-surface-variant">Deposit ({{ $totals['deposit_meta']['label'] }})</span>
-              <span class="font-semibold">€{{ number_format($totals['deposit'], 2) }}</span>
-            </div>
-            @if ($totals['platform_fee'] > 0)
-              <div class="flex justify-between">
-                <span class="text-on-surface-variant">Inkjin booking fee</span>
-                <span class="font-semibold">€{{ number_format($totals['platform_fee'], 2) }}</span>
-              </div>
-            @endif
-            <hr class="border-outline-variant/20">
-            <div class="flex justify-between">
-              <span class="font-bold text-on-surface">Total due now</span>
-              <span class="font-bold text-primary text-lg">€{{ number_format($totals['total_due'], 2) }}</span>
-            </div>
-          </div>
-          <p class="text-xs text-on-surface-variant mt-3">Remaining at studio (est.): €{{ number_format($remainingBalance, 2) }}</p>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl border border-outline-variant/20 p-5">
-        <h2 class="text-lg font-bold text-on-surface mb-1 flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary">lock</span> Secure payment
+    <div class="flex flex-col lg:flex-row gap-6">
+      <div class="flex-1 lg:order-1">
+        <h2 class="text-xl font-bold mb-1 flex items-center gap-2">
+          <span class="material-symbols-outlined text-[22px] text-primary">lock</span> Secure Payment
         </h2>
-        <p class="text-sm text-on-surface-variant mb-5">Your card is processed securely by Stripe.</p>
+        <p class="text-sm text-on-surface-variant mb-2">{{ $bookingRequest->referenceLabel() }}</p>
+        <p class="text-sm text-on-surface-variant mb-6">Your payment is securely processed. You won't be charged until you confirm.</p>
 
-        <div class="space-y-4 mb-4">
-          <div>
-            <label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Card number</label>
-            <div id="stripeCardNumber" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm min-h-[44px]"></div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
+          <div class="space-y-4">
             <div>
-              <label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Expiry</label>
-              <div id="stripeCardExpiry" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm min-h-[44px]"></div>
+              <label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Card Number</label>
+              <div id="stripeCardNumber" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm min-h-[44px]"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Expiry</label>
+                <div id="stripeCardExpiry" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm min-h-[44px]"></div>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">CVC</label>
+                <div id="stripeCardCvc" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm min-h-[44px]"></div>
+              </div>
             </div>
             <div>
-              <label class="text-xs font-semibold text-on-surface-variant mb-1.5 block">CVC</label>
-              <div id="stripeCardCvc" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm min-h-[44px]"></div>
+              <label class="text-xs font-semibold text-on-surface-variant mb-1.5 block" for="inputCardName">Cardholder Name</label>
+              <input type="text" id="inputCardName" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Name on card">
             </div>
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-on-surface-variant mb-1.5 block" for="inputCardName">Cardholder name</label>
-            <input type="text" id="inputCardName" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Name on card">
+            <p class="text-xs text-on-surface-variant flex items-center gap-2">Accepted: <strong>Visa</strong> · <strong>Mastercard</strong> · <strong>Amex</strong></p>
           </div>
         </div>
+
+        @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
 
         <label class="flex items-start gap-2 mb-4 cursor-pointer">
           <input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary">
-          <span class="text-xs text-on-surface-variant">I agree to pay the deposit and booking fee to secure this appointment.</span>
+          <span class="text-xs text-on-surface-variant">
+            I agree to the
+            <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">cancellation policy</a>
+            and <a href="#" class="text-primary underline">terms of service</a>.
+          </span>
         </label>
 
         <p id="paymentError" class="text-sm text-error hidden mb-3"></p>
 
-        <button type="button" id="btnConfirmPay" disabled class="w-full py-3.5 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-container transition-colors">
-          Pay €{{ number_format($totals['total_due'], 2) }} &amp; confirm
+        <button type="button" id="btnConfirmPay" disabled class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-container transition-all text-base shadow-lg shadow-primary/20">
+          Confirm &amp; Pay <span id="btnPayTotalAmount">€{{ number_format($totals['total_due'], 2) }}</span>
         </button>
+      </div>
+
+      <div class="lg:w-[340px] lg:order-2 shrink-0">
+        @include('user.requests.partials.booking-summary', [
+          'designTitle' => $designTitle,
+          'artistName' => $artistName,
+          'showConsultRow' => $showConsultRow,
+          'consultDateTime' => $consultDateTime,
+          'sessionDateTimeLabel' => $sessionDateTimeLabel,
+          'sessionDateTime' => $sessionDateTime,
+          'durationLabel' => $durationLabel,
+          'sizeLabel' => $sizeLabel,
+          'locationLabel' => $locationLabel,
+          'priceEstimateLabel' => $priceEstimateLabel,
+          'depositLabel' => $depositLabel,
+          'balanceLabel' => $balanceLabel,
+          'totals' => $totals,
+        ])
       </div>
     </div>
   </div>
@@ -113,6 +106,7 @@
   var stripePublishableKey = @json($stripePublishableKey);
   var intentUrl = @json(route('user.requests.payment.intent', $bookingRequest));
   var confirmUrl = @json(route('user.requests.payment.confirm', $bookingRequest));
+  var payButtonLabel = @json('€' . number_format($totals['total_due'], 2));
 
   var stripe = null;
   var stripeElements = null;
@@ -125,7 +119,14 @@
     if (!stripePublishableKey || typeof Stripe === 'undefined' || stripeCardNumber) return;
     stripe = Stripe(stripePublishableKey);
     stripeElements = stripe.elements();
-    var style = { base: { fontSize: '14px', color: '#1c1b21', '::placeholder': { color: '#7a7583' } } };
+    var style = {
+      base: {
+        fontSize: '14px',
+        color: '#1c1b21',
+        fontFamily: 'Plus Jakarta Sans, system-ui, sans-serif',
+        '::placeholder': { color: '#7a7583' }
+      }
+    };
     stripeCardNumber = stripeElements.create('cardNumber', { style: style });
     stripeCardExpiry = stripeElements.create('cardExpiry', { style: style });
     stripeCardCvc = stripeElements.create('cardCvc', { style: style });
@@ -152,6 +153,29 @@
 
   document.getElementById('inputCardName').addEventListener('input', checkReady);
   document.getElementById('agreePolicy').addEventListener('change', checkReady);
+
+  function toggleCancellationPolicy() {
+    var content = document.getElementById('cancellationPolicyContent');
+    var arrow = document.getElementById('cancPolicyArrow');
+    if (!content || !arrow) return;
+    var isOpen = !content.classList.contains('hidden');
+    content.classList.toggle('hidden', isOpen);
+    arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  }
+
+  function expandCancellationPolicy() {
+    var content = document.getElementById('cancellationPolicyContent');
+    if (content && content.classList.contains('hidden')) {
+      toggleCancellationPolicy();
+    }
+    var section = document.getElementById('cancellationPolicySection');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  window.toggleCancellationPolicy = toggleCancellationPolicy;
+  window.expandCancellationPolicy = expandCancellationPolicy;
 
   function showError(msg) {
     var el = document.getElementById('paymentError');
@@ -194,7 +218,7 @@
     if (btn.disabled) return;
     showError('');
     btn.disabled = true;
-    btn.textContent = 'Processing…';
+    btn.innerHTML = 'Processing…';
     try {
       mountStripe();
       var clientSecret = await createIntent();
@@ -213,7 +237,7 @@
     } catch (e) {
       showError(e.message || 'Payment failed.');
       btn.disabled = false;
-      btn.textContent = 'Pay €{{ number_format($totals['total_due'], 2) }} & confirm';
+      btn.innerHTML = 'Confirm &amp; Pay <span id="btnPayTotalAmount">' + payButtonLabel + '</span>';
       checkReady();
     }
   });
