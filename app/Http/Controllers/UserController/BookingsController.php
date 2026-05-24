@@ -113,8 +113,8 @@ class BookingsController extends Controller
         $end = Carbon::createFromFormat('H:i:s', (string) $booking->end_time_utc)->setTimezone($tz);
 
         $deposit = (float) ($booking->deposit_amount ?? 0);
-        $minPrice = (float) ($tattoo->min_price ?? 0);
-        $remaining = max(0, round($minPrice - $deposit, 2));
+        $minPrice = $booking->quoteAmount();
+        $remaining = $booking->remainingBalanceAmount();
         $totalPaid = (float) ($booking->total_amount_paid ?? 0);
         $platformFee = (float) ($booking->platform_fee ?? 0);
 
@@ -146,7 +146,7 @@ class BookingsController extends Controller
         return [
             'id' => $booking->id,
             'reference' => '#INK-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
-            'tattooTitle' => $tattoo?->title ?? 'Tattoo session',
+            'tattooTitle' => $booking->displayTitle(),
             'tattooImage' => $image,
             'artistName' => trim(($artist?->first_name ?? '').' '.($artist?->last_name ?? '')),
             'artistAvatar' => ($ud && $ud->avatar) ? asset($ud->avatar) : asset('design/images/icons/avatar.jpg'),

@@ -257,9 +257,12 @@
       <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-8 overflow-hidden">
         <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15">
           <h3 class="text-lg font-bold text-on-surface">Active Requests</h3>
-          <a href="{{ route('user.requests.index') }}" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
-            View All Requests <span class="material-symbols-outlined text-base">arrow_forward</span>
-          </a>
+          <div class="flex items-center gap-4">
+            <a href="{{ route('user.requests.index', ['tab' => 'custom']) }}" class="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Custom</a>
+            <a href="{{ route('user.requests.index') }}" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+              View all <span class="material-symbols-outlined text-base">arrow_forward</span>
+            </a>
+          </div>
         </div>
         <div class="divide-y divide-outline-variant/10">
           <div class="p-5 flex flex-col sm:flex-row sm:items-center gap-3 hover:bg-surface-container-low/50 transition-colors">

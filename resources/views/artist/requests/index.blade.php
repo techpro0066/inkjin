@@ -326,6 +326,7 @@
       <!-- Request Type Tabs -->
       <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
         <a href="{{ route('artist.requests.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary transition-all">Available Design Requests</a>
+        <a href="{{ route('artist.custom-requests.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Custom Requests</a>
       </div>
 
       <!-- Page Header -->
@@ -398,20 +399,20 @@
           <div id="requestDetailPanel" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-6 w-full">
             <div class="space-y-6" id="requestDetailLeft"></div>
             <div class="space-y-6 lg:sticky lg:top-4 lg:max-h-[calc(90vh-5rem)] lg:overflow-y-auto lg:overscroll-contain pr-0.5" id="requestDetailActions"></div>
-          </div>
+                </div>
           <div id="requestDetailMissing" class="hidden text-center py-12 text-on-surface-variant">
             <span class="material-symbols-outlined text-4xl text-outline mb-3 block">error</span>
             <p>Request not found.</p>
-          </div>
-        </div>
+                </div>
+              </div>
         <div class="px-6 py-4 border-t border-outline-variant/15">
           <button type="button" onclick="closeRequestDetail()" class="text-sm font-semibold text-primary hover:text-primary-container transition-colors flex items-center gap-1">
             <span class="material-symbols-outlined text-lg">arrow_back</span> Back to Design Requests
           </button>
-        </div>
-      </div>
-    </div>
-  </div>
+              </div>
+                </div>
+                </div>
+              </div>
 
   <!-- Decline Request Modal -->
   <div class="modal-backdrop" id="declineModal" style="z-index: 210;" onclick="closeDeclineModalOnBackdrop(event)">
@@ -424,15 +425,15 @@
           <button type="button" onclick="closeDeclineModal()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors">
             <span class="material-symbols-outlined text-on-surface-variant">close</span>
           </button>
-        </div>
+              </div>
         <div class="p-6 space-y-4">
           <p class="text-sm text-on-surface-variant">Share why you are declining this request. The client may be notified with your message.</p>
-          <div>
+                <div>
             <label for="declineReason" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Reason for decline</label>
             <textarea id="declineReason" rows="4" maxlength="2000" placeholder="e.g. Design style does not match my portfolio, schedule fully booked for requested dates…" class="w-full rounded-xl border border-outline-variant/30 px-4 py-3 text-sm text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y min-h-[100px]"></textarea>
-          </div>
+                </div>
           <p id="declineError" class="hidden text-sm text-error font-medium"></p>
-        </div>
+              </div>
         <div class="px-6 py-4 border-t border-outline-variant/15 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <button type="button" onclick="closeDeclineModal()" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors">Cancel</button>
           <button type="button" id="declineSubmitBtn" onclick="submitDecline()" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-error hover:bg-error/90 transition-colors flex items-center justify-center gap-2">

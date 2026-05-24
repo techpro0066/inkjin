@@ -33,9 +33,10 @@ class BookingConfirmationMail extends Mailable
      */
     public function envelope(): Envelope
     {
-        $subject = $this->isArtistEmail 
-            ? 'New Booking Notification - ' . $this->booking->tattoo->title
-            : 'Booking Confirmation - ' . $this->booking->tattoo->title;
+        $title = $this->booking->displayTitle();
+        $subject = $this->isArtistEmail
+            ? 'New Booking Notification - '.$title
+            : 'Booking Confirmation - '.$title;
             
         return new Envelope(
             subject: $subject,
@@ -63,7 +64,6 @@ class BookingConfirmationMail extends Mailable
     private function getEmailData(): array
     {
         $booking = $this->booking;
-        $tattoo = $booking->tattoo;
         $artist = $booking->artist;
         $customer = $booking->user;
         
@@ -99,7 +99,7 @@ class BookingConfirmationMail extends Mailable
         $baseData = [
             'bookingId' => $booking->id,
             'completionCode' => (string) ($booking->completion_code ?? ''),
-            'tattooTitle' => $tattoo->title,
+            'tattooTitle' => $booking->displayTitle(),
             'bookingDate' => $bookingDate,
             'bookingTime' => $bookingTime,
             'duration' => $duration,

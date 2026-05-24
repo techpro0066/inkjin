@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreClientSelectedSlotsRequest;
 use App\Models\Booking;
 use App\Models\BookingRequest;
+use App\Models\CustomRequest;
 use App\Services\BookingCheckoutPricingService;
 use App\Services\ManagedRequestBookingService;
 use Carbon\Carbon;
@@ -39,9 +40,23 @@ class RequestsController extends Controller
             ->values()
             ->all();
 
+        $customRequests = CustomRequest::query()
+            ->with(['artist.userDetail'])
+            ->where('user_id', Auth::id())
+            ->orderByDesc('created_at')
+            ->get();
+
+        $customRequestsPayload = $customRequests
+            ->map(fn (CustomRequest $request) => $request->toUserPanelArray())
+            ->values()
+            ->all();
+
         return view('user.requests.index', [
             'requests' => $requests,
             'requestsPayload' => $requestsPayload,
+            'customRequests' => $customRequests,
+            'customRequestsPayload' => $customRequestsPayload,
+            'activeTab' => request()->query('tab') === 'custom' ? 'custom' : 'design',
         ]);
     }
 
@@ -57,6 +72,14 @@ class RequestsController extends Controller
         if (!$bookingRequest->canAccessConfirmTimesPage()) {
             return redirect()->route('user.requests.index')
                 ->with('error', 'This request is not ready for scheduling yet.');
+        }
+
+        if ($bookingRequest->clientHasSelectedTimes()) {
+            $bookingRequest->update([
+                'client_session_slots' => null,
+                'client_consultation_slots' => null,
+            ]);
+            $bookingRequest->refresh();
         }
 
         return view('user.requests.confirm-times', $this->pickerViewData($bookingRequest));
@@ -273,10 +296,10 @@ class RequestsController extends Controller
             'offeredSession' => $offeredSession,
             'initialPicker' => $bookingRequest->initialPickerMonthFromSlots($offeredConsult, $offeredSession),
             'todayYmd' => now()->format('Y-m-d'),
-            'canPay' => $bookingRequest->canPay(),
+            'canPay' => false,
             'savedSelections' => [
-                'consult' => $bookingRequest->clientPickerSavedSelection('consult'),
-                'session' => $bookingRequest->clientPickerSavedSelection('session'),
+                'consult' => null,
+                'session' => null,
             ],
         ];
     }

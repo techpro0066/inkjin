@@ -152,9 +152,9 @@
     <p class="text-on-surface-variant text-sm mb-6 max-w-2xl">
       {{ $artistName }} shared times that work for them.
       @if ($hasConsult)
-        Choose one window for your consultation, then one for your tattoo session.
+        Choose one window for your consultation, then one for your tattoo session. Nothing is selected until you choose.
       @else
-        Choose a date and time for your tattoo session.
+        Choose a date and time for your tattoo session. Nothing is selected until you choose.
       @endif
     </p>
 

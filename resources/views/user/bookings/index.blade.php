@@ -143,7 +143,7 @@
                                 </span>
                             {{-- <span class="text-xs text-on-surface-variant font-medium">{{ $booking->tattoo->name }}</span> --}}
                             </div>
-                            <h3 class="font-bold text-on-surface text-lg mb-2">{{ $booking->tattoo?->title ?? 'Tattoo session' }}</h3>
+                            <h3 class="font-bold text-on-surface text-lg mb-2">{{ $booking->displayTitle() }}</h3>
                             <div class="flex items-center gap-3 mb-3">
                                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
                                     {{-- <span class="text-white text-[/10px] font-bold">{{ $booking->artist->first_name[0] }}{{ $booking->artist->last_name[0] }}</span> --}}
@@ -169,7 +169,7 @@
                             </div>
                             <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-on-surface-variant mb-3">
                             <span><strong class="text-on-surface">Deposit paid:</strong> €{{ $booking->deposit_amount }}</span>
-                            <span><strong class="text-on-surface">Remaining:</strong> €{{ $booking->tattoo->min_price - $booking->deposit_amount }}</span>
+                            <span><strong class="text-on-surface">Remaining:</strong> €{{ number_format($booking->remainingBalanceAmount(), 2) }}</span>
                             </div>
                             @php
                                 $artistRequested = !empty($artistReschedulePending[$booking->id]);
@@ -255,7 +255,7 @@
                                 </span>
                                 <span class="text-xs text-on-surface-variant font-medium">#INK-{{ str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT) }}</span>
                             </div>
-                            <h3 class="font-bold text-on-surface text-lg mb-2">{{ $booking->tattoo?->title ?? 'Tattoo session' }}</h3>
+                            <h3 class="font-bold text-on-surface text-lg mb-2">{{ $booking->displayTitle() }}</h3>
                             <div class="flex items-center gap-3 mb-3">
                                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0 overflow-hidden">
                                     <img src="{{ ($artistUd && $artistUd->avatar != '') ? asset($artistUd->avatar) : asset('design/images/icons/avatar.jpg') }}" alt="{{ $booking->artist?->first_name ?? '' }}" class="w-full h-full object-cover rounded-full">

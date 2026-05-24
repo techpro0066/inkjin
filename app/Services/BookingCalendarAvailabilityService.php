@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ArtistDesign;
 use App\Models\Availability;
+use App\Models\CustomRequest;
 use App\Models\AvailabilityOverride;
 use App\Models\Booking;
 use Carbon\Carbon;
@@ -113,6 +114,91 @@ class BookingCalendarAvailabilityService
                 'has_consultation' => (bool) $booking->has_consultation,
                 'consultation_timing_type' => $timing,
                 'consultation_booking_id' => $booking->consultation_booking_id,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function calendarPayloadForCustomRequest(CustomRequest $customRequest): array
+    {
+        $customRequest->loadMissing(['artist.userDetail']);
+        $artist = $customRequest->artist;
+        $userDetail = $artist?->userDetail;
+        if (!$artist || !$userDetail) {
+            throw new \RuntimeException('Custom request artist data is missing.');
+        }
+
+        $artistUserId = (int) $artist->id;
+        $artistTimezone = $userDetail->timezone ?: 'UTC';
+        $tattooDurationMinutes = max(15, $customRequest->sessionDurationMinutes());
+
+        $artistAvailabilitySchedule = Availability::query()
+            ->where('user_id', $artistUserId)
+            ->orderBy('day_of_week')
+            ->orderBy('start_time')
+            ->get()
+            ->groupBy('day_of_week')
+            ->map(function ($rows) use ($artistTimezone) {
+                return $rows->map(function ($availability) use ($artistTimezone) {
+                    $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->start_time, 'UTC')
+                        ->setTimezone($artistTimezone)
+                        ->format('H:i');
+                    $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->end_time, 'UTC')
+                        ->setTimezone($artistTimezone)
+                        ->format('H:i');
+
+                    return [
+                        'start' => $startLocal,
+                        'end' => $endLocal,
+                    ];
+                })->values()->all();
+            })
+            ->toArray();
+
+        $artistBlockedPeriods = AvailabilityOverride::query()
+            ->where('user_id', $artistUserId)
+            ->orderBy('start_date')
+            ->get()
+            ->map(static function (AvailabilityOverride $o) {
+                return [
+                    'start_date' => $o->start_date->format('Y-m-d'),
+                    'end_date' => $o->end_date->format('Y-m-d'),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $sessionBufferMinutes = max(0, (int) ($userDetail->session_buffer_period ?? 0));
+        $artistBusyIntervalsByDate = [];
+        $existingBookings = Booking::query()
+            ->where('artist_user_id', $artistUserId)
+            ->where('status', 'confirmed')
+            ->get();
+
+        foreach ($existingBookings as $booking) {
+            $this->appendBookingOccupancyToBusyMap($booking, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
+        }
+
+        return [
+            'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
+            'artistTimezone' => $artistTimezone,
+            'artistBlockedPeriods' => $artistBlockedPeriods,
+            'artistBusyIntervalsByDate' => $artistBusyIntervalsByDate,
+            'tattooDurationMinutes' => $tattooDurationMinutes,
+            'artistConsultationSettings' => [
+                'required' => (bool) ($userDetail->require_consultation ?? false),
+                'timing' => $userDetail->consultation_timing ?: 'combined',
+                'session_type' => $userDetail->session_type ?: 'both',
+                'session_duration_minutes' => (int) ($userDetail->session_duration_minutes ?: 30),
+                'require_gap' => (bool) ($userDetail->require_gap_between_consultation_tattoo ?? false),
+                'gap_value' => (int) ($userDetail->consultation_tattoo_gap_value ?? 0),
+                'gap_unit' => $userDetail->consultation_tattoo_gap_unit ?: 'hours',
+            ],
+            'customRequest' => [
+                'id' => $customRequest->id,
+                'reference' => $customRequest->referenceLabel(),
             ],
         ];
     }

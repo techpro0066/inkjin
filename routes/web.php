@@ -14,8 +14,11 @@ use App\Http\Controllers\UserController\ClientPasswordController;
 use App\Http\Controllers\UserController\UserSettingsController;
 use App\Http\Controllers\BookingsController as ArtistBookingsController;
 use App\Http\Controllers\Auth\PostBookingAccessController;
-use App\Http\Controllers\RequestsController;
 
+use App\Http\Controllers\ArtistCustomRequestsController;
+use App\Http\Controllers\ArtistDashboardController;
+use App\Http\Controllers\CustomRequestController;
+use App\Http\Controllers\RequestsController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -74,6 +77,10 @@ Route::get('/user/access-from-booking/{user}/{booking}', PostBookingAccessContro
 Route::get('/user/access-from-request/{user}/{bookingRequest}', \App\Http\Controllers\Auth\PostManagedRequestAccessController::class)
     ->middleware(['signed', 'throttle:20,1'])
     ->name('user.post-managed-request.access');
+
+Route::get('/user/access-from-custom-request/{user}/{customRequest}', \App\Http\Controllers\Auth\PostCustomRequestAccessController::class)
+    ->middleware(['signed', 'throttle:20,1'])
+    ->name('user.post-custom-request.access');
 
 //Common routes
 
@@ -135,12 +142,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
 // Artist routes
 Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist')->group(function () {
     
-    Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
-        $user = $request->user();
-        $needsWeeklyAvailabilitySetup = $user && ! $user->hasWeeklyAvailabilitySlots();
-
-        return view('artist.dashboard', compact('needsWeeklyAvailabilitySetup'));
-    })->name('artist.dashboard');
+    Route::get('/dashboard', [ArtistDashboardController::class, 'index'])->name('artist.dashboard');
 
     // Settings routes
 
@@ -221,6 +223,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
 
     // Requests
     Route::get('/requests', [RequestsController::class, 'index'])->name('artist.requests.index');
+    Route::get('/custom-requests', [ArtistCustomRequestsController::class, 'index'])->name('artist.custom-requests.index');
+    Route::post('/custom-requests/{customRequest}/decline', [ArtistCustomRequestsController::class, 'decline'])->name('artist.custom-requests.decline');
+    Route::post('/custom-requests/{customRequest}/send-quote', [ArtistCustomRequestsController::class, 'sendQuote'])->name('artist.custom-requests.send-quote');
     Route::post('/requests/{bookingRequest}/decline', [RequestsController::class, 'decline'])->name('artist.requests.decline');
     Route::post('/requests/{bookingRequest}/offer-slots', [RequestsController::class, 'offerSlots'])->name('artist.requests.offer-slots');
 });
@@ -236,6 +241,19 @@ Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])
 
     Route::get('/settings', [UserSettingsController::class, 'edit'])->name('user.settings');
     Route::post('/settings/avatar', [UserSettingsController::class, 'updateAvatar'])->name('user.settings.avatar');
+
+    Route::get('/custom-requests/{customRequest}/confirm-times', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'confirmTimes'])
+        ->name('user.custom-requests.confirm-times');
+    Route::post('/custom-requests/{customRequest}/confirm-times', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'storeConfirmedTimes'])
+        ->name('user.custom-requests.confirm-times.store');
+    Route::get('/custom-requests/{customRequest}/calendar-data', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'calendarData'])
+        ->name('user.custom-requests.calendar-data');
+    Route::get('/custom-requests/{customRequest}/payment', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'payment'])
+        ->name('user.custom-requests.payment');
+    Route::post('/custom-requests/{customRequest}/payment/intent', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'createPaymentIntent'])
+        ->name('user.custom-requests.payment.intent');
+    Route::post('/custom-requests/{customRequest}/payment/confirm', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'confirmPayment'])
+        ->name('user.custom-requests.payment.confirm');
 
     Route::get('/requests', [\App\Http\Controllers\UserController\RequestsController::class, 'index'])
         ->name('user.requests.index');
@@ -263,6 +281,9 @@ Route::get('/{username}', [InkJinController::class, 'publicArtistProfile'])->nam
 
 Route::get('/{user_name}/{tattoo_slug}', [InkJinController::class, 'publicTattooPage'])->name('public.tattoo');
 
+// custom request
+Route::get('/{user_name}/request/custom', [CustomRequestController::class, 'requestCustom'])->name('public.request-custom');
+
 Route::get('/{user_name}/{tattoo_slug}/book', [InkJinController::class, 'bookTattoo'])->name('public.tattoo.book');
 Route::get('/api/public/check-email-availability', [InkJinController::class, 'checkEmailAvailability'])->name('public.email.availability');
 Route::post('/api/public/send-booking-otp', [InkJinController::class, 'sendBookingOtp'])->name('public.booking.otp.send');
@@ -271,3 +292,4 @@ Route::post('/api/public/upload-booking-question-image', [InkJinController::clas
 Route::post('/api/public/create-booking-payment-intent', [InkJinController::class, 'createBookingPaymentIntent'])->name('public.booking.payment_intent.create');
 Route::post('/api/public/confirm-booking-payment', [InkJinController::class, 'confirmBookingAfterPayment'])->name('public.booking.payment.confirm');
 Route::post('/api/public/submit-managed-booking', [InkJinController::class, 'submitManagedBooking'])->name('public.booking.managed.submit');
+Route::post('/api/public/submit-custom-request', [CustomRequestController::class, 'submitCustomRequest'])->name('public.custom-request.submit');

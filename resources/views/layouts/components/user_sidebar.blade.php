@@ -8,7 +8,7 @@
         <a href="{{ route('user.dashboard') }}" class="nav-item {{ request()->routeIs('user.dashboard') ? 'active' : '' }}">
           <span class="material-symbols-outlined">dashboard</span> Dashboard
         </a>
-        <a href="{{ route('user.requests.index') }}" class="nav-item {{ request()->routeIs('user.requests.index') ? 'active' : '' }}">
+        <a href="{{ route('user.requests.index') }}" class="nav-item {{ request()->routeIs('user.requests.*') ? 'active' : '' }}">
           <span class="material-symbols-outlined">inbox</span> My Requests
         </a>
         <a href="{{ route('user.bookings.index') }}" class="nav-item {{ request()->routeIs('user.bookings.index') ? 'active' : '' }}">

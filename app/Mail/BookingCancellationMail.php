@@ -34,11 +34,12 @@ class BookingCancellationMail extends Mailable
      */
     public function envelope(): Envelope
     {
+        $title = $this->booking->displayTitle();
         $subject = $this->isNoShow
-            ? 'Booking Marked as No-Show - ' . ($this->booking->tattoo->title ?? 'Booking')
+            ? 'Booking Marked as No-Show - '.$title
             : ($this->cancellationType === 'artist'
-                ? 'Booking Cancelled by Artist - ' . ($this->booking->tattoo->title ?? 'Booking')
-                : 'Booking Cancelled - ' . ($this->booking->tattoo->title ?? 'Booking'));
+                ? 'Booking Cancelled by Artist - '.$title
+                : 'Booking Cancelled - '.$title);
 
         return new Envelope(
             subject: $subject,
@@ -66,7 +67,6 @@ class BookingCancellationMail extends Mailable
     private function getEmailData(): array
     {
         $booking = $this->booking;
-        $tattoo = $booking->tattoo;
         $artist = $booking->artist;
         $customer = $booking->user;
 
@@ -102,7 +102,7 @@ class BookingCancellationMail extends Mailable
 
         return [
             'bookingId' => $booking->id,
-            'tattooTitle' => $tattoo->title ?? 'Custom Tattoo',
+            'tattooTitle' => $booking->displayTitle(),
             'artistName' => $artist->name ?? 'Artist',
             'customerName' => $customer->name ?? 'Customer',
             'customerEmail' => $customer->email ?? '',

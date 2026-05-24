@@ -99,6 +99,28 @@
     background: #f8f1fb; border: 1px dashed rgba(49, 15, 122, 0.25);
     border-radius: 1rem; padding: 1.5rem; text-align: center;
   }
+  .quote-readonly {
+    background: #fff;
+    border: 1px solid rgba(202, 196, 211, 0.35);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #1c1b21;
+  }
+  .request-tab {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    color: #7a7583;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .request-tab.active {
+    color: #310f7a;
+    border-bottom-color: #310f7a;
+  }
+  .request-tab:hover:not(.active) { color: #1c1b21; }
 </style>
 @endsection
 
@@ -107,10 +129,16 @@
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
     <div class="mb-6">
       <h2 class="text-2xl font-extrabold text-on-surface tracking-tight">My Requests</h2>
-      <p class="text-sm text-on-surface-variant mt-1">Booking requests you submitted to artists</p>
+      <p class="text-sm text-on-surface-variant mt-1">Track design booking requests and custom tattoo inquiries</p>
     </div>
 
-    <div class="flex flex-wrap gap-2 mb-6 filter-pills">
+    <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
+      <button type="button" id="tabDesignRequests" class="request-tab {{ ($activeTab ?? 'design') === 'design' ? 'active' : '' }}" onclick="switchRequestsTab('design')">Design requests</button>
+      <button type="button" id="tabCustomRequests" class="request-tab {{ ($activeTab ?? 'design') === 'custom' ? 'active' : '' }}" onclick="switchRequestsTab('custom')">Custom requests</button>
+    </div>
+
+    <div id="panelDesignRequests" class="{{ ($activeTab ?? 'design') === 'custom' ? 'hidden' : '' }}">
+    <div class="flex flex-wrap gap-2 mb-6 filter-pills" id="designFilterPills">
       <button type="button" class="filter-pill active text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30" data-status="all" onclick="filterByStatus('all', this)">All</button>
       <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="pending" onclick="filterByStatus('pending', this)">Pending</button>
       <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterByStatus('confirmed', this)">Confirmed</button>
@@ -145,10 +173,69 @@
     <div id="requestsEmpty" class="hidden bg-white rounded-2xl border border-outline-variant/20 p-12 text-center">
       <span class="material-symbols-outlined text-outline text-5xl mb-4">inbox</span>
       <p class="font-bold text-on-surface text-lg mb-2">No requests found</p>
-      <p class="text-sm text-on-surface-variant max-w-md mx-auto">When you submit a managed booking request, it will appear here so you can track the artist's response.</p>
+      <p id="requestsEmptyHint" class="text-sm text-on-surface-variant max-w-md mx-auto">When you submit a managed booking request, it will appear here so you can track the artist's response.</p>
+    </div>
+    </div>
+
+    <div id="panelCustomRequests" class="{{ ($activeTab ?? 'design') === 'custom' ? '' : 'hidden' }}">
+      <div class="flex flex-wrap gap-2 mb-6 filter-pills" id="customFilterPills">
+        <button type="button" class="filter-pill active text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30" data-status="all" onclick="filterCustomByStatus('all', this)">All</button>
+        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="pending" onclick="filterCustomByStatus('pending', this)">Pending</button>
+        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterCustomByStatus('confirmed', this)">Quoted</button>
+        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="declined" onclick="filterCustomByStatus('declined', this)">Declined</button>
+      </div>
+
+      <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="customSortBy" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Sort by</label>
+            <select id="customSortBy" onchange="applyCustomFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white">
+              <option value="recent">Most recent</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </div>
+          <div>
+            <label for="customSearchArtist" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+              <input type="text" id="customSearchArtist" placeholder="Search artist name…" oninput="applyCustomFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="customRequestsList" class="space-y-4 mb-8">
+        @foreach ($customRequests as $customRequest)
+          @include('user.requests.partials.custom-request-card', ['customRequest' => $customRequest])
+        @endforeach
+      </div>
+
+      <div id="customRequestsEmpty" class="hidden bg-white rounded-2xl border border-outline-variant/20 p-12 text-center">
+        <span class="material-symbols-outlined text-outline text-5xl mb-4">brush</span>
+        <p class="font-bold text-on-surface text-lg mb-2">No custom requests found</p>
+        <p id="customRequestsEmptyHint" class="text-sm text-on-surface-variant max-w-md mx-auto">When you submit a custom tattoo request to an artist, it will appear here.</p>
+      </div>
     </div>
   </div>
 </main>
+
+<div id="customRequestDetailModal" class="modal-backdrop" onclick="closeCustomModalOnBackdrop(event)">
+  <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-5xl" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15 shrink-0">
+      <h3 class="text-lg font-bold text-on-surface">Custom request details</h3>
+      <button type="button" onclick="closeUserCustomRequestDetail()" class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-container-low text-outline">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div id="customRequestDetailMissing" class="hidden modal-scroll p-8 text-center text-on-surface-variant">Request not found.</div>
+    <div id="customRequestDetailPanel" class="modal-scroll hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:divide-x divide-outline-variant/15">
+        <div id="customRequestDetailLeft" class="p-6 space-y-5"></div>
+        <div id="customRequestDetailRight" class="p-6 bg-surface-container-low/50 space-y-4"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="requestDetailModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event)">
   <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-5xl" onclick="event.stopPropagation()">
@@ -170,19 +257,78 @@
 
 <script>
   const userRequestsById = @json(collect($requestsPayload)->keyBy('id'));
+  const userCustomRequestsById = @json(collect($customRequestsPayload)->keyBy('id'));
+  let currentRequestsTab = @json($activeTab ?? 'design');
   let currentStatusFilter = 'all';
+  let currentCustomStatusFilter = 'all';
 
   function escapeHtml(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  function switchRequestsTab(tab) {
+    currentRequestsTab = tab;
+    var designPanel = document.getElementById('panelDesignRequests');
+    var customPanel = document.getElementById('panelCustomRequests');
+    var tabDesign = document.getElementById('tabDesignRequests');
+    var tabCustom = document.getElementById('tabCustomRequests');
+    if (designPanel) designPanel.classList.toggle('hidden', tab !== 'design');
+    if (customPanel) customPanel.classList.toggle('hidden', tab !== 'custom');
+    if (tabDesign) tabDesign.classList.toggle('active', tab === 'design');
+    if (tabCustom) tabCustom.classList.toggle('active', tab === 'custom');
+    var url = new URL(window.location.href);
+    if (tab === 'custom') url.searchParams.set('tab', 'custom');
+    else url.searchParams.delete('tab');
+    history.replaceState(null, '', url.pathname + (url.search || ''));
+    if (tab === 'design') applyFilters();
+    else applyCustomFilters();
+  }
+
   function filterByStatus(status, btn) {
     currentStatusFilter = status;
-    document.querySelectorAll('.filter-pill').forEach(function(pill) {
+    document.querySelectorAll('#designFilterPills .filter-pill').forEach(function(pill) {
       pill.classList.toggle('active', pill === btn);
       pill.classList.toggle('text-on-surface-variant', pill !== btn);
     });
     applyFilters();
+  }
+
+  function filterCustomByStatus(status, btn) {
+    currentCustomStatusFilter = status;
+    document.querySelectorAll('#customFilterPills .filter-pill').forEach(function(pill) {
+      pill.classList.toggle('active', pill === btn);
+      pill.classList.toggle('text-on-surface-variant', pill !== btn);
+    });
+    applyCustomFilters();
+  }
+
+  function applyCustomFilters() {
+    const search = (document.getElementById('customSearchArtist')?.value || '').trim().toLowerCase();
+    const sortBy = document.getElementById('customSortBy')?.value || 'recent';
+    const cards = Array.from(document.querySelectorAll('#customRequestsList .custom-request-card'));
+    let visible = 0;
+
+    cards.sort(function(a, b) {
+      const da = a.dataset.date || '';
+      const db = b.dataset.date || '';
+      return sortBy === 'oldest' ? da.localeCompare(db) : db.localeCompare(da);
+    });
+
+    const list = document.getElementById('customRequestsList');
+    if (list) cards.forEach(function(card) { list.appendChild(card); });
+
+    cards.forEach(function(card) {
+      const statusOk = currentCustomStatusFilter === 'all' || card.dataset.status === currentCustomStatusFilter;
+      const searchOk = !search || (card.dataset.artist || '').includes(search);
+      const show = statusOk && searchOk;
+      card.classList.toggle('hidden', !show);
+      if (show) visible++;
+    });
+
+    const emptyEl = document.getElementById('customRequestsEmpty');
+    const listEl = document.getElementById('customRequestsList');
+    if (emptyEl) emptyEl.classList.toggle('hidden', visible > 0 || cards.length === 0);
+    if (listEl) listEl.classList.toggle('hidden', cards.length === 0);
   }
 
   function applyFilters() {
@@ -389,17 +535,133 @@
     if (e.target === e.currentTarget) closeUserRequestDetail();
   }
 
+  function formatAnswerForDisplay(answer) {
+    if (typeof answer === 'boolean') return answer ? 'Yes' : 'No';
+    if (Array.isArray(answer)) return answer.join(', ');
+    if (typeof answer === 'string' && /^https?:\/\//i.test(answer)) {
+      return '<a href="' + escapeHtml(answer) + '" target="_blank" rel="noopener" class="text-primary font-semibold hover:underline">View file</a>';
+    }
+    return escapeHtml(String(answer || '—'));
+  }
+
+  function buildCustomArtistResponseHtml(req) {
+    if (req.isDeclined) {
+      var reason = req.reasonDecline
+        ? '<p class="text-sm text-on-surface whitespace-pre-line mt-2">' + escapeHtml(req.reasonDecline) + '</p>'
+        : '<p class="text-sm text-on-surface-variant mt-2">No reason was provided.</p>';
+      return '<div class="bg-white rounded-2xl p-5 border border-error/20"><h4 class="font-bold text-error flex items-center gap-2"><span class="material-symbols-outlined">block</span> Request declined</h4>' + reason + '</div>';
+    }
+    if (req.isPending || !req.hasQuote) {
+      return '<div class="waiting-panel"><span class="material-symbols-outlined text-primary text-4xl mb-2">hourglass_top</span><p class="font-semibold text-on-surface">Waiting for artist</p><p class="text-sm text-on-surface-variant mt-2">' + escapeHtml(req.artistName) + ' is reviewing your custom request and will send a quote when ready.</p></div>';
+    }
+    var html = '<div><h4 class="font-bold text-on-surface mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">request_quote</span> Quote from artist</h4><p class="text-sm text-on-surface-variant mb-4">Details shared by ' + escapeHtml(req.artistName) + '</p>';
+    html += '<div class="space-y-3 mb-4">';
+    html += '<div><p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Estimated price</p><p class="quote-readonly font-semibold">' + escapeHtml(req.estimatedPriceLabel || '—') + '</p></div>';
+    html += '<div><p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Estimated duration</p><p class="quote-readonly">' + escapeHtml(req.estimatedTime || '—') + '</p></div>';
+    html += '<div><p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Number of sessions</p><p class="quote-readonly">' + escapeHtml(req.numberOfSessions || '—') + '</p></div>';
+    if (req.messageForClient && String(req.messageForClient).trim()) {
+      html += '<div><p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Message</p><p class="quote-readonly whitespace-pre-line">' + escapeHtml(req.messageForClient) + '</p></div>';
+    }
+    html += '</div>';
+    if ((req.artistSessionSlots || []).length) {
+      html += buildSlotsReadOnlyPanel('Offered session times', 'brush', req.artistSessionSlots, 'artist-slots-panel--session');
+    }
+    html += '</div>';
+    if (req.confirmTimesUrl) {
+      html += buildCustomQuoteActionHtml(req);
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function buildCustomQuoteActionHtml(req) {
+    if (!req.confirmTimesUrl) return '';
+    return '<div class="mt-5 pt-4 border-t border-outline-variant/20">' +
+      '<a href="' + escapeHtml(req.confirmTimesUrl) + '" class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary-container transition-colors shadow-md shadow-primary/15">' +
+      '<span class="material-symbols-outlined text-lg">event</span> Set date &amp; time</a></div>';
+  }
+
+  function renderUserCustomRequestDetail(req) {
+    var left = document.getElementById('customRequestDetailLeft');
+    var right = document.getElementById('customRequestDetailRight');
+    var profileLink = req.artistProfileUrl
+      ? '<a href="' + escapeHtml(req.artistProfileUrl) + '" target="_blank" rel="noopener" class="text-sm font-semibold text-primary hover:underline">View artist profile</a>'
+      : '';
+
+    var questionsHtml = '';
+    (req.questionsAnswers || []).forEach(function(item) {
+      if (!item || !item.question) return;
+      questionsHtml += '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + formatAnswerForDisplay(item.answer) + '</p></div>';
+    });
+
+    var availabilityHtml = req.isManaged ? buildAvailabilityHtml(req.availabilityDetails) : '';
+
+    left.innerHTML =
+      '<div class="flex items-center gap-4"><div class="w-14 h-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0"><span class="text-white text-lg font-bold">' + escapeHtml(req.artistInitials) + '</span></div><div><p class="font-bold text-lg text-on-surface">' + escapeHtml(req.artistName) + '</p>' + (profileLink ? '<p class="mt-1">' + profileLink + '</p>' : '') + '</div></div>' +
+      '<div class="flex items-center gap-3 flex-wrap"><span class="inline-flex items-center gap-1.5 ' + escapeHtml(req.statusBadgeClass) + ' text-xs font-semibold px-3 py-1 rounded-full"><span class="w-1.5 h-1.5 rounded-full status-dot"></span> ' + escapeHtml(req.filterStatus) + '</span><span class="text-xs text-outline">Submitted ' + escapeHtml(req.submittedAt) + '</span><span class="text-xs text-outline">' + escapeHtml(req.reference) + '</span></div>' +
+      '<div class="bg-surface-container-low rounded-2xl p-5 border border-outline-variant/20 flex gap-4"><div class="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/15"><span class="material-symbols-outlined text-primary text-3xl">brush</span></div><div><h4 class="font-bold text-on-surface text-lg">Custom tattoo request</h4><p class="text-sm text-on-surface-variant mt-1">' + escapeHtml(req.schedulingLabel) + '</p></div></div>' +
+      (questionsHtml ? '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">' + questionsHtml + '</div>' : '') +
+      availabilityHtml +
+      '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Additional notes</h4><p class="text-sm text-on-surface leading-relaxed whitespace-pre-line">' + escapeHtml(req.additionalNotes) + '</p></div>';
+
+    right.innerHTML = buildCustomArtistResponseHtml(req);
+  }
+
+  function openUserCustomRequestDetail(id) {
+    var req = userCustomRequestsById[id] || userCustomRequestsById[String(id)];
+    var panel = document.getElementById('customRequestDetailPanel');
+    var missing = document.getElementById('customRequestDetailMissing');
+    if (!req) {
+      panel.classList.add('hidden');
+      missing.classList.remove('hidden');
+    } else {
+      missing.classList.add('hidden');
+      panel.classList.remove('hidden');
+      renderUserCustomRequestDetail(req);
+    }
+    document.getElementById('customRequestDetailModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeUserCustomRequestDetail() {
+    document.getElementById('customRequestDetailModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function closeCustomModalOnBackdrop(e) {
+    if (e.target === e.currentTarget) closeUserCustomRequestDetail();
+  }
+
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeUserRequestDetail();
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('customRequestDetailModal').classList.contains('open')) {
+      closeUserCustomRequestDetail();
+      return;
+    }
+    closeUserRequestDetail();
   });
 
   document.addEventListener('DOMContentLoaded', function() {
     applyFilters();
+    applyCustomFilters();
     @if($requests->isEmpty())
     document.getElementById('requestsEmpty').classList.remove('hidden');
     document.getElementById('requestsList').classList.add('hidden');
-    document.querySelector('#requestsEmpty p.text-on-surface-variant').textContent = 'You have not submitted any booking requests yet. Browse artists and submit a managed booking request to get started.';
+    var designHint = document.getElementById('requestsEmptyHint');
+    if (designHint) designHint.textContent = 'You have not submitted any booking requests yet. Browse artists and submit a managed booking request to get started.';
     @endif
+    @if($customRequests->isEmpty())
+    document.getElementById('customRequestsEmpty').classList.remove('hidden');
+    document.getElementById('customRequestsList').classList.add('hidden');
+    @endif
+    var openCustomId = parseInt(new URLSearchParams(window.location.search).get('open') || '', 10);
+    if (!isNaN(openCustomId) && userCustomRequestsById[openCustomId]) {
+      switchRequestsTab('custom');
+      openUserCustomRequestDetail(openCustomId);
+      var url = new URL(window.location.href);
+      url.searchParams.delete('open');
+      history.replaceState(null, '', url.pathname + (url.search || ''));
+    }
   });
 </script>
 @endsection

@@ -244,7 +244,7 @@
                     </button>
                 @endif
                 @if($userDetail->availability_status == 'custom_only' || $userDetail->availability_status == 'design_custom')
-                    <a id="btnRequestCustom" href="request-custom.html?artist=Julian+Ink" class="px-6 py-2.5 border-2 border-primary text-primary rounded-full font-semibold text-sm hover:bg-primary hover:text-on-primary transition-colors inline-flex items-center">
+                    <a id="btnRequestCustom" href="{{route('public.request-custom', ['user_name' => $userDetail->user_name])}}" class="px-6 py-2.5 border-2 border-primary text-primary rounded-full font-semibold text-sm hover:bg-primary hover:text-on-primary transition-colors inline-flex items-center">
                         Request Custom Tattoo
                     </a>
                 @endif

@@ -25,6 +25,12 @@
     }
     .filter-pills { flex-wrap: wrap; }
     .request-card { overflow: hidden; word-break: break-word; }
+    .status-new { background: #f3e8ff; color: #6b21a8; }
+    .status-new .status-dot { background: #9333ea; }
+    .status-confirmed { background: #f0fdf4; color: #15803d; }
+    .status-confirmed .status-dot { background: #22c55e; }
+    .status-declined { background: #fef2f2; color: #b91c1c; }
+    .status-declined .status-dot { background: #ef4444; }
 </style>
 @endsection
 
@@ -113,17 +119,17 @@
         <p class="text-xs text-on-surface-variant mt-1">2 confirmed, 1 pending</p>
       </div>
 
-      <!-- Pending Requests -->
-      <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
+      <!-- Pending Custom Requests -->
+      <a href="{{ route('artist.custom-requests.index') }}" class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20 block">
         <div class="flex items-start justify-between mb-4">
           <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
-            <span class="material-symbols-outlined text-primary">pending_actions</span>
+            <span class="material-symbols-outlined text-primary">brush</span>
           </div>
         </div>
-        <p class="text-3xl font-extrabold text-on-surface">5</p>
-        <p class="text-sm font-semibold text-on-surface mt-1">Pending Requests</p>
-        <p class="text-xs text-on-surface-variant mt-1">3 new since yesterday</p>
-      </div>
+        <p class="text-3xl font-extrabold text-on-surface">{{ $pendingCustomRequestsCount ?? 0 }}</p>
+        <p class="text-sm font-semibold text-on-surface mt-1">Custom Requests</p>
+        <p class="text-xs text-on-surface-variant mt-1">Pending review</p>
+      </a>
 
       <!-- This Month's Revenue -->
       <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
@@ -148,6 +154,36 @@
         <p class="text-sm font-semibold text-on-surface mt-1">Waitlist</p>
         <p class="text-xs text-on-surface-variant mt-1">Clients waiting for books to open</p>
       </div>
+    </div>
+
+    <!-- Recent Custom Requests -->
+    <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-10 overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15">
+        <h3 class="text-lg font-bold text-on-surface">Recent Custom Requests</h3>
+        <a href="{{ route('artist.custom-requests.index') }}" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+          View All <span class="material-symbols-outlined text-base">arrow_forward</span>
+        </a>
+      </div>
+
+      @forelse($recentCustomRequests ?? [] as $customRequest)
+        <div class="booking-row px-6 py-4 border-b border-outline-variant/10 last:border-b-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <p class="font-semibold text-on-surface">{{ $customRequest->clientDisplayName() }}</p>
+              <span class="inline-flex items-center gap-1.5 {{ $customRequest->statusBadgeClass() }} text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                <span class="w-1.5 h-1.5 rounded-full status-dot"></span> {{ $customRequest->filterStatusLabel() }}
+              </span>
+            </div>
+            <p class="text-sm text-on-surface-variant">{{ $customRequest->referenceLabel() }} · {{ $customRequest->created_at?->format('M j, Y') }}</p>
+          </div>
+          <a href="{{ route('artist.custom-requests.index') }}?open={{ $customRequest->id }}" class="text-sm font-semibold text-primary hover:text-primary-container whitespace-nowrap">View</a>
+        </div>
+      @empty
+        <div class="px-6 py-10 text-center">
+          <span class="material-symbols-outlined text-3xl text-outline mb-2 block">brush</span>
+          <p class="text-sm text-on-surface-variant">No custom requests yet.</p>
+        </div>
+      @endforelse
     </div>
 
     <!-- Recent Bookings -->

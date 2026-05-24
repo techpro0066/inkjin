@@ -152,6 +152,38 @@ class Booking extends Model
         return $this->status === 'confirmed';
     }
 
+    public function isCustomBooking(): bool
+    {
+        return $this->booking_type === 'custom' || $this->tattoo_id === null;
+    }
+
+    public function displayTitle(): string
+    {
+        if ($this->tattoo) {
+            return (string) $this->tattoo->title;
+        }
+
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $reference = trim((string) ($details['reference'] ?? ''));
+
+        return $reference !== '' ? 'Custom · '.$reference : 'Custom tattoo';
+    }
+
+    public function quoteAmount(): float
+    {
+        if ($this->tattoo) {
+            return (float) ($this->tattoo->min_price ?? 0);
+        }
+
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+
+        return max(0, (float) ($details['estimated_price'] ?? 0));
+    }
+
+    public function remainingBalanceAmount(): float
+    {
+        return max(0, round($this->quoteAmount() - (float) ($this->deposit_amount ?? 0), 2));
+    }
 
     // Accessor methods for booking and consultation times
     public function getBookingTimeAttribute()
