@@ -63,7 +63,7 @@ return new class extends Migration
             // Step 6: Payments
             $table->enum('payment_type', ['artist_account', 'studio_account', 'inkjin_account'])->nullable();
             $table->string('stripe_account_id')->nullable();
-            $table->foreignId('studio_id')->nullable()->constrained('studios')->onDelete('cascade');
+            $table->unsignedBigInteger('studio_id')->nullable();
             $table->enum('payment_status', ['pending', 'approved', 'rejected'])->nullable();
             
             // Progress tracking
