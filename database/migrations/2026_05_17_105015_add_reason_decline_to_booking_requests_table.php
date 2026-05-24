@@ -6,21 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
+        if (! Schema::hasTable('booking_requests') || Schema::hasColumn('booking_requests', 'reason_decline')) {
+            return;
+        }
+
         Schema::table('booking_requests', function (Blueprint $table) {
             $table->text('reason_decline')->nullable();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
+        if (! Schema::hasTable('booking_requests') || ! Schema::hasColumn('booking_requests', 'reason_decline')) {
+            return;
+        }
+
         Schema::table('booking_requests', function (Blueprint $table) {
             $table->dropColumn('reason_decline');
         });

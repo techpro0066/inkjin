@@ -6,12 +6,12 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        // Create studios table to store shared studio payment info
+        if (Schema::hasTable('studios')) {
+            return;
+        }
+
         Schema::create('studios', function (Blueprint $table) {
             $table->id();
             $table->string('name');
@@ -25,9 +25,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('studios');

@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('inkjin_tattoos')) {
+            return;
+        }
+
         Schema::create('inkjin_tattoos', function (Blueprint $table) {
             $table->id();
             $table->string('artist_handle');

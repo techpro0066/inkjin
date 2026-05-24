@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('booking_requests') || Schema::hasColumn('booking_requests', 'artist_notes_to_client')) {
+            return;
+        }
+
         Schema::table('booking_requests', function (Blueprint $table) {
             $table->text('artist_notes_to_client')->nullable()->after('artist_session_slots');
         });
@@ -15,6 +19,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('booking_requests') || ! Schema::hasColumn('booking_requests', 'artist_notes_to_client')) {
+            return;
+        }
+
         Schema::table('booking_requests', function (Blueprint $table) {
             $table->dropColumn('artist_notes_to_client');
         });

@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('inkjin_artists')) {
+            return;
+        }
+
         Schema::create('inkjin_artists', function (Blueprint $table) {
             $table->id();
             $table->string('artist_handle')->unique();

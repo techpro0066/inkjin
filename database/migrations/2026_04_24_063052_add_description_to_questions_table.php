@@ -6,25 +6,34 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
+        if (! Schema::hasTable('questions')) {
+            return;
+        }
+
         Schema::table('questions', function (Blueprint $table) {
-            $table->text('description')->nullable()->after('question');
-            $table->text('placeholder')->nullable()->after('description');
+            if (! Schema::hasColumn('questions', 'description')) {
+                $table->text('description')->nullable()->after('question');
+            }
+            if (! Schema::hasColumn('questions', 'placeholder')) {
+                $table->text('placeholder')->nullable()->after('description');
+            }
         });
     }
 
-    /**`
-     * Reverse the migrations.
-     */
     public function down(): void
     {
+        if (! Schema::hasTable('questions')) {
+            return;
+        }
+
         Schema::table('questions', function (Blueprint $table) {
-            $table->dropColumn('description');
-            $table->dropColumn('placeholder');
+            foreach (['placeholder', 'description'] as $column) {
+                if (Schema::hasColumn('questions', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
 };

@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('bookings')) {
+            return;
+        }
+
         Schema::table('bookings', function (Blueprint $table) {
             // Check if columns exist before adding them
             if (!Schema::hasColumn('bookings', 'reschedule_status')) {

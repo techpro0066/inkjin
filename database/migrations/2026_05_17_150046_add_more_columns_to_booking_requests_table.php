@@ -6,24 +6,34 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
+        if (! Schema::hasTable('booking_requests')) {
+            return;
+        }
+
         Schema::table('booking_requests', function (Blueprint $table) {
-            $table->json('artist_consultation_slots')->nullable()->after('reason_decline');
-            $table->json('artist_session_slots')->nullable()->after('artist_consultation_slots');
+            if (! Schema::hasColumn('booking_requests', 'artist_consultation_slots')) {
+                $table->json('artist_consultation_slots')->nullable()->after('reason_decline');
+            }
+            if (! Schema::hasColumn('booking_requests', 'artist_session_slots')) {
+                $table->json('artist_session_slots')->nullable()->after('artist_consultation_slots');
+            }
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
+        if (! Schema::hasTable('booking_requests')) {
+            return;
+        }
+
         Schema::table('booking_requests', function (Blueprint $table) {
-            //
+            foreach (['artist_session_slots', 'artist_consultation_slots'] as $column) {
+                if (Schema::hasColumn('booking_requests', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
 };
