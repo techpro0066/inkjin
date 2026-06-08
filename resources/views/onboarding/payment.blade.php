@@ -55,24 +55,24 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label for="holder_name" class="block text-sm font-semibold text-on-surface mb-2">Account Holder Full Name</label>
-            <input type="text" id="holder_name" name="account_holder_name" value="{{ old('account_holder_name', $bank->account_holder_name ?? '') }}" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" placeholder="Enter your full name" autocomplete="name">
+            <input type="text" id="holder_name" name="account_holder_name" value="{{ old('account_holder_name', $bank->account_holder_name ?? '') }}" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" placeholder="Enter your full name" autocomplete="name" maxlength="120">
             <p id="account_holder_name_error" class="text-error text-xs mt-1 hidden"></p>
           </div>
           <div>
             <label for="bank_name" class="block text-sm font-semibold text-on-surface mb-2">Bank Name</label>
-            <input type="text" id="bank_name" name="bank_name" value="{{ old('bank_name', $bank->bank_name ?? '') }}" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" placeholder="Enter your bank's name">
+            <input type="text" id="bank_name" name="bank_name" value="{{ old('bank_name', $bank->bank_name ?? '') }}" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" placeholder="Enter your bank's name" maxlength="120">
             <p id="bank_name_error" class="text-error text-xs mt-1 hidden"></p>
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label for="iban" class="block text-sm font-semibold text-on-surface mb-2">Account Number / IBAN</label>
-            <input type="text" id="iban" name="account_number" value="{{ old('account_number', $bank->account_number ?? '') }}" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" placeholder="Enter your account number">
+            <input type="text" id="iban" name="account_number" value="{{ old('account_number', $bank->account_number ?? '') }}" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" placeholder="Enter your account number" maxlength="34">
             <p id="account_number_error" class="text-error text-xs mt-1 hidden"></p>
           </div>
           <div>
             <label for="swift" class="block text-sm font-semibold text-on-surface mb-2">SWIFT / BIC</label>
-            <input type="text" id="swift" name="swift_bic" value="{{ old('swift_bic', $bank->swift_bic ?? '') }}" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" placeholder="Enter your bank's SWIFT/BIC">
+            <input type="text" id="swift" name="swift_bic" value="{{ old('swift_bic', $bank->swift_bic ?? '') }}" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" placeholder="Enter your bank's SWIFT/BIC" maxlength="11">
             <p id="swift_bic_error" class="text-error text-xs mt-1 hidden"></p>
           </div>
         </div>
@@ -166,6 +166,67 @@ $(function () {
     }
   }
 
+  function validateArtistBankDetails() {
+    var paymentType = $('#payment_type').val();
+    if (paymentType !== 'artist_account') {
+      return true;
+    }
+
+    var isValid = true;
+    var holderName = ($('#holder_name').val() || '').trim();
+    var bankName = ($('#bank_name').val() || '').trim();
+    var accountNumber = ($('#iban').val() || '').trim().toUpperCase();
+    var swiftBic = ($('#swift').val() || '').trim().toUpperCase();
+
+    var holderNameRegex = /^[A-Za-z]+(?:[ ]+[A-Za-z]+)*$/;
+    var bankNameRegex = /^[A-Za-z]+(?:[ ]+[A-Za-z]+)*$/;
+    var accountNumberRegex = /^[A-Za-z0-9]{6,34}$/;
+    var swiftBicRegex = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
+
+    $('#holder_name').val(holderName.replace(/\s+/g, ' '));
+    $('#bank_name').val(bankName.replace(/\s+/g, ' '));
+    $('#iban').val(accountNumber);
+    $('#swift').val(swiftBic);
+
+    if (!holderName) {
+      $('#account_holder_name_error').text('Account holder name is required.').removeClass('hidden');
+      isValid = false;
+    } else if (!holderNameRegex.test(holderName)) {
+      $('#account_holder_name_error').text('Only alphabets and spaces are allowed.').removeClass('hidden');
+      isValid = false;
+    }
+
+    if (!bankName) {
+      $('#bank_name_error').text('Bank name is required.').removeClass('hidden');
+      isValid = false;
+    } else if (!bankNameRegex.test(bankName)) {
+      $('#bank_name_error').text('Use only alphabets and spaces (no underscores or special characters).').removeClass('hidden');
+      isValid = false;
+    }
+
+    if (!accountNumber) {
+      $('#account_number_error').text('Account number / IBAN is required.').removeClass('hidden');
+      isValid = false;
+    } else if (!accountNumberRegex.test(accountNumber)) {
+      $('#account_number_error').text('Use 6-34 letters or numbers only (no spaces or special characters).').removeClass('hidden');
+      isValid = false;
+    }
+
+    if (!swiftBic) {
+      $('#swift_bic_error').text('SWIFT / BIC is required.').removeClass('hidden');
+      isValid = false;
+    } else if (!swiftBicRegex.test(swiftBic)) {
+      $('#swift_bic_error').text('Enter a valid SWIFT/BIC (8 or 11 characters, e.g. DEUTDEFF or DEUTDEFF500).').removeClass('hidden');
+      isValid = false;
+    }
+
+    if (!isValid && typeof window.scrollToFirstOnboardingError === 'function') {
+      window.scrollToFirstOnboardingError(document.getElementById('paymentForm'));
+    }
+
+    return isValid;
+  }
+
   $('#paymentForm').on('submit', function (e) {
     e.preventDefault();
     var $alertEl = $('#payAlert');
@@ -173,6 +234,11 @@ $(function () {
     var $skip = $('#paySkip');
     var originalBtnHtml = $btn.html();
     $('#paymentForm').find('[id$="_error"]').addClass('hidden').text('');
+
+    if (!validateArtistBankDetails()) {
+      return;
+    }
+
     $btn.prop('disabled', true);
     $skip.prop('disabled', true);
     $btn.text('Submitting...');

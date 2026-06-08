@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserBankDetail;
 use App\Models\Studio;
+use App\Mail\ArtistWelcomeMail;
 use App\Mail\StudioPayoutInfoRequestMail;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -656,13 +657,64 @@ class OnboardingController extends Controller
 
             $paymentType = $request->payment_type;
             if ($paymentType === 'artist_account') {
-                $rules['account_holder_name'] = ['required', 'string', 'max:255'];
-                $rules['bank_name'] = ['required', 'string', 'max:255'];
-                $rules['account_number'] = ['required', 'string', 'max:255'];
-                $rules['swift_bic'] = ['required', 'string', 'max:50'];
-                $rules['currency'] = ['required', 'string', 'size:3'];
+                $rules['account_holder_name'] = [
+                    'required',
+                    'string',
+                    'min:2',
+                    'max:255',
+                    'regex:/^[A-Za-z]+(?:\s+[A-Za-z]+)*$/',
+                ];
+                $rules['bank_name'] = [
+                    'required',
+                    'string',
+                    'min:2',
+                    'max:255',
+                    'regex:/^[A-Za-z]+(?:\s+[A-Za-z]+)*$/',
+                ];
+                $rules['account_number'] = [
+                    'required',
+                    'string',
+                    'max:64',
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        $norm = $this->normalizedPayoutAccountNumber((string) $value);
+                        if ($norm === '') {
+                            $fail('Enter a valid account number or IBAN.');
+
+                            return;
+                        }
+                        if (strlen($norm) > 34) {
+                            $fail('Account number or IBAN must not exceed 34 characters (after removing spaces and hyphens).');
+
+                            return;
+                        }
+                        if ($this->looksLikeIban($norm)) {
+                            if (! $this->isValidIban($norm)) {
+                                $fail('This IBAN is not valid. Check the country code, length, and digits.');
+                            }
+
+                            return;
+                        }
+                        if (! preg_match('/^[A-Z0-9]{6,34}$/', $norm)) {
+                            $fail('Account number may only contain letters and digits (6-34 characters).');
+                        }
+                    },
+                ];
+                $rules['swift_bic'] = [
+                    'required',
+                    'string',
+                    'max:15',
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        $v = strtoupper(preg_replace('/\s+/', '', (string) $value));
+                        if (! preg_match('/^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/', $v)) {
+                            $fail('Enter a valid 8- or 11-character SWIFT/BIC (letters and numbers only, e.g. CHASUS33 or DEUTDEFF500).');
+                        }
+                    },
+                ];
+                $rules['currency'] = ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'];
                 $messages['account_holder_name.required'] = 'Account holder name is required.';
+                $messages['account_holder_name.regex'] = 'Account holder name may only include alphabets and spaces.';
                 $messages['bank_name.required'] = 'Bank name is required.';
+                $messages['bank_name.regex'] = 'Bank name may only include alphabets and spaces.';
                 $messages['account_number.required'] = 'Account number is required.';
                 $messages['swift_bic.required'] = 'SWIFT/BIC is required.';
                 $messages['currency.required'] = 'Please select a currency.';
@@ -1123,7 +1175,12 @@ class OnboardingController extends Controller
             }
 
             // Mark onboarding as complete
+            $completingOnboarding = $user->on_boarding !== 'yes';
             $user->update(['on_boarding' => 'yes']);
+
+            if ($completingOnboarding) {
+                $this->sendArtistWelcomeEmail($user);
+            }
 
             $questions = QuestionSorting::where('user_id', '1')->where('is_active', true)->orderBy('order')->get();
 
@@ -1192,6 +1249,7 @@ class OnboardingController extends Controller
             $userDetail->save();
 
             $user->update(['on_boarding' => 'yes']);
+            $this->sendArtistWelcomeEmail($user);
 
             $questions = QuestionSorting::where('user_id', '1')->where('is_active', true)->orderBy('order')->get();
 
@@ -1522,6 +1580,25 @@ class OnboardingController extends Controller
             'message' => $message,
             'hideSidebar' => true,
         ]);
+    }
+
+    private function sendArtistWelcomeEmail(User $user): void
+    {
+        if ($user->role !== 'artist') {
+            return;
+        }
+
+        try {
+            Mail::to($user->email)->send(
+                new ArtistWelcomeMail(url(authenticated_home_url($user)))
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to send artist welcome email after onboarding', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function sendStudioPayoutInfoRequestEmail(User $artistUser, UserDetail $userDetail, Studio $studio): void

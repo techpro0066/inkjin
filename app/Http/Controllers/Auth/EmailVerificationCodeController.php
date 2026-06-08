@@ -3,13 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Mail\ArtistWelcomeMail;
 use App\Support\EmailVerificationOtp;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class EmailVerificationCodeController extends Controller
 {
@@ -34,18 +31,6 @@ class EmailVerificationCodeController extends Controller
 
         if ($request->user()->markEmailAsVerified()) {
             event(new Verified($request->user()));
-
-            if ($request->user()->role === 'artist') {
-                try {
-                    Mail::to($request->user()->email)->send(new ArtistWelcomeMail(url('/artist/dashboard')));
-                } catch (\Throwable $e) {
-                    Log::error('Failed to send artist welcome email after verification', [
-                        'user_id' => $request->user()->id,
-                        'email' => $request->user()->email,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
         }
 
         $home = authenticated_home_url($request->user());
