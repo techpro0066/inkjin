@@ -123,7 +123,7 @@
   <p class="text-sm text-error mt-1 hidden" id="signup-password-confirmation-error"></p>
   </div>
   <div class="space-y-2">
-    <label class="block text-sm font-semibold text-on-surface mb-2" for="payout_bank_country">Where is your bank account based?</label>
+    <label class="block text-sm font-semibold text-on-surface mb-2" for="payout_bank_country">Where you are based?</label>
     <select id="payout_bank_country" name="payout_bank_country" class="js-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
       <option value="">Select country</option>
       @foreach ($registrationCountries as $country)
