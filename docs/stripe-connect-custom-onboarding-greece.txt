@@ -1,0 +1,242 @@
+InkJin — Stripe Connect: Custom On-Site Onboarding (Greece Platform)
+======================================================================
+Date: June 2026
+Context: Platform Stripe account is based in Greece (GR). Goal is for artists
+         to complete Connect onboarding entirely inside InkJin — no redirects,
+         no Stripe-hosted pages, no embedded Stripe UI components.
+
+
+SUMMARY
+-------
+YES — you can avoid sending users to stripe.com.
+
+NO — you cannot avoid Stripe entirely. Identity checks, bank validation, and
+     payouts still run on Stripe’s backend. Your job is to collect data on
+     YOUR forms and send it via Stripe’s API (and optionally Stripe.js on
+     your page for sensitive fields like bank numbers).
+
+This approach is called **Custom account + API-based onboarding** (sometimes
+“manual onboarding” or “own your onboarding UI”).
+
+
+WHAT YOU DO NOT WANT (and alternatives)
+---------------------------------------
+
+| Approach                         | User leaves your site? | Fits your goal? |
+|----------------------------------|------------------------|-----------------|
+| Account Links (hosted onboarding)| YES → connect.stripe.com | NO          |
+| Embedded Connect components      | NO (iframe on your page) | NO — still Stripe UI |
+| OAuth Connect                    | YES → Stripe login       | NO          |
+| Custom forms + Accounts API      | NO                       | YES         |
+
+
+WHAT “CUSTOM FORM” MEANS WITH STRIPE
+------------------------------------
+
+You build Blade/HTML forms in InkJin. Your Laravel backend calls Stripe APIs:
+
+1. Create connected account
+   POST /v1/accounts
+   - For Greece platform: use controller settings OR type custom (not both)
+   - Set country = artist’s country (e.g. GR, DE, CY…)
+   - Request capabilities: card_payments, transfers
+
+2. Collect person / business details (your forms → API)
+   - Individual: legal name, email, phone, DOB, address, tax/ID info
+   - Company (if studio): company name, registration, directors, owners
+   PATCH /v1/accounts/{id}
+
+3. Identity verification (your upload → Stripe Files API)
+   - User picks ID/passport on YOUR page
+   - Backend uploads file: POST /v1/files (purpose=identity_document)
+   - Attach to account/person — user never opens stripe.com
+
+4. Bank account (your form → API or Stripe.js on YOUR page)
+   - EU/Greece: often use Stripe.js to tokenize IBAN securely on your domain
+     (still no redirect — script runs inline)
+   - Or External Accounts API with account numbers where allowed
+   POST /v1/accounts/{id}/external_accounts
+
+5. Terms of service
+   - YOU show Stripe Connected Account Agreement + your terms on your page
+   - Record acceptance (timestamp, IP) in your DB
+   - Set tos_acceptance on the Account via API
+
+6. Stay in sync
+   - Webhook: account.updated
+   - Read account.requirements.currently_due / eventually_due
+   - Show extra fields in YOUR form when Stripe adds new requirements
+
+
+GREECE (GR) PLATFORM — PRACTICAL NOTES
+--------------------------------------
+
+- Your platform country is Greece → Stripe applies EU/GR platform rules.
+- You can onboard connected accounts in countries Stripe allows for GR platforms
+  (typically many EU countries; confirm in Dashboard → Connect → Settings).
+- Artists in Greece (GR) as connected accounts are a natural fit.
+- Cross-border: e.g. GR platform onboarding a CY or DE artist may work but
+  CHECK Dashboard + Stripe support for your exact account — rules change.
+- Business type: individual artists vs company/studio — fields differ.
+- Currency: EUR is standard for Greece.
+
+
+WHAT THE USER NEVER SEES (if built correctly)
+---------------------------------------------
+
+- connect.stripe.com
+- Stripe Express Dashboard (use controller.stripe_dashboard.type = none)
+- Embedded onboarding iframes
+- Stripe login / OAuth
+
+What still happens behind the scenes:
+- Stripe validates documents and bank details
+- Stripe may request more fields (you reflect those in your form via webhooks)
+- Payouts/charges enabled only when requirements satisfied
+
+
+DATA YOU TYPICALLY COLLECT (artist / individual)
+------------------------------------------------
+
+Personal
+  - Legal first / last name (or full name)
+  - Email, phone
+  - Date of birth
+  - Home address (line1, city, postal code, country)
+
+Identity (Greece / EU)
+  - Government ID type (passport, ID card)
+  - ID number where required
+  - Upload: front (and back if needed) of ID document
+
+Bank payout
+  - Account holder name
+  - IBAN (Greece/EU)
+  - BIC/SWIFT if required
+
+Legal
+  - Accept Stripe Connected Account Agreement (link on your page)
+  - Accept your platform terms
+
+Optional / business
+  - Professional name, website, MCC (merchant category code) for tattoos
+
+
+RECOMMENDED ARCHITECTURE FOR INKJIN (Laravel)
+---------------------------------------------
+
+Frontend (Blade + JS)
+  - Step wizard: Country → Personal → Address → ID upload → Bank → Terms
+  - File upload for ID (client → your server → Stripe Files API)
+  - Optional: @stripe/stripe-js only for bank tokenization (no redirect)
+
+Backend
+  - StripeConnectService (create account, update, upload files, external account)
+  - Store: stripe_account_id, onboarding_step, requirements snapshot
+  - POST routes under /onboarding/payment/connect/*
+  - Webhook route: POST /webhooks/stripe/connect (verify signature)
+
+Database (when you implement for real)
+  - user_details.stripe_account_id
+  - stripe_onboarding_status (pending | in_progress | verified | restricted)
+  - stripe_charges_enabled, stripe_payouts_enabled
+  - stripe_requirements_due (JSON)
+  - Do NOT store ID document files long-term — upload to Stripe, delete local copy
+
+Verification rule (same as before)
+  - charges_enabled = true
+  - payouts_enabled = true
+  - requirements.currently_due is empty
+
+
+COMPARISON TO YOUR CURRENT INKJIN FLOW
+--------------------------------------
+
+Current (reverted) payment step:
+  - Manual bank fields only (holder, bank name, IBAN, SWIFT, currency)
+  - Saved in user_bank_details — NOT a Stripe Connect account
+  - No KYC, no Stripe account creation
+
+Target (custom Connect):
+  - Replace or extend artist payout with full Connect onboarding
+  - Bank details go to Stripe as external_account, not only local DB
+  - Add identity + compliance fields Stripe requires for GR/EU
+
+
+EFFORT & RISKS
+--------------
+
+Pros
+  - Full white-label UX — user stays on inkjin.com
+  - Matches your product design system
+  - Works with Greece-based platform
+
+Cons / responsibilities
+  - YOU maintain forms when Stripe changes requirements (embedded avoids this)
+  - Higher compliance burden on platform (Custom accounts)
+  - More engineering: dynamic requirements, webhooks, error handling
+  - File upload security (virus scan, size limits, no public storage)
+  - Must not store raw ID images longer than needed
+
+Stripe explicitly recommends embedded onboarding for most platforms because
+requirement changes are handled automatically. Custom API onboarding is
+valid but is the highest maintenance option.
+
+
+PHASED IMPLEMENTATION SUGGESTION
+--------------------------------
+
+Phase 1 — Foundation
+  - Enable Connect Custom in Stripe Dashboard (Greece account)
+  - Config: STRIPE_KEY, STRIPE_SECRET, STRIPE_WEBHOOK_SECRET in .env
+  - Create account on country select (API only, no UI yet)
+  - Webhook: account.updated → update local status
+
+Phase 2 — Custom forms (MVP)
+  - Personal + address + DOB form → PATCH account
+  - ID upload → Files API
+  - IBAN form → external account (Stripe.js if needed)
+  - Terms checkbox → tos_acceptance on account
+
+Phase 3 — Dynamic requirements
+  - Read currently_due from webhook
+  - Show “Complete missing info” steps in your wizard
+
+Phase 4 — Production hardening
+  - Encrypt sensitive fields at rest if any cached
+  - Rate limits, audit log, admin view of onboarding status
+  - Remove duplicate local-only bank flow for artists using Connect
+
+
+STRIPE DASHBOARD CHECKLIST (GREECE)
+-----------------------------------
+[ ] Connect enabled
+[ ] Custom accounts enabled (not only Express)
+[ ] Webhook endpoint registered (account.updated, etc.)
+[ ] Test mode: create test connected account GR individual
+[ ] Confirm allowed connected account countries for your platform
+[ ] Review Connect pricing and payout schedule for GR
+
+
+BOTTOM LINE
+-----------
+Your goal is achievable: **Custom Connect accounts + your own Laravel/Blade
+forms + Stripe API (and minimal Stripe.js for bank tokenization if required)**.
+
+Users never need to visit stripe.com. You own the entire UX, but Stripe still
+processes KYC and payouts. This is significantly more work than embedded
+components but gives complete control over look and flow.
+
+For InkJin next step: design the multi-step wizard UI and StripeConnectService
+before touching the database schema, then wire webhooks before going live.
+
+
+USEFUL STRIPE DOCS
+------------------
+- Custom account onboarding (API): https://docs.stripe.com/connect/custom/onboarding
+- Required verification information: https://docs.stripe.com/connect/required-verification-information
+- Accounts API: https://docs.stripe.com/api/accounts
+- Files API (identity): https://docs.stripe.com/api/files
+- External bank accounts: https://docs.stripe.com/connect/payouts-bank-accounts
+- Webhooks (Connect): https://docs.stripe.com/connect/webhooks
+- Testing Connect: https://docs.stripe.com/connect/testing

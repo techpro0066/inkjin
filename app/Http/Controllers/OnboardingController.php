@@ -19,6 +19,10 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use App\Models\QuestionSorting;
+use App\Services\StripeConnectService;
+use App\Services\StripeCountrySpecService;
+use App\Support\StripeConnectCountries;
+use Stripe\Exception\ApiErrorException;
 
 class OnboardingController extends Controller
 {
@@ -148,13 +152,305 @@ class OnboardingController extends Controller
         return view('onboarding.calendar', $this->onboardingViewData($request) + ['activeNav' => 'calendar']);
     }
 
-    public function payment(Request $request)
+    public function payment(Request $request, StripeConnectService $stripeConnect)
     {
         if ($redirect = $this->ensureOnboardingPage($request, 6)) {
             return $redirect;
         }
 
-        return view('onboarding.payment', $this->onboardingViewData($request) + ['activeNav' => 'payment']);
+        $userDetail = $request->user()->userDetail;
+        $stripeStatus = null;
+        if ($userDetail?->stripe_account_id && $stripeConnect->isConfigured()) {
+            try {
+                $stripeStatus = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
+            } catch (ApiErrorException $e) {
+                Log::warning('Could not load Stripe Connect status for onboarding payment step', [
+                    'user_id' => $request->user()->id,
+                    'stripe_account_id' => $userDetail->stripe_account_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return view('onboarding.payment', $this->onboardingViewData($request) + [
+            'activeNav' => 'payment',
+            'stripePublishableKey' => config('services.stripe.key'),
+            'stripeConnectConfigured' => $stripeConnect->isConfigured(),
+            'stripeStatus' => $stripeStatus,
+            'stripeConnectLocale' => $stripeConnect->connectLocale(),
+            'payoutBankCountry' => $userDetail?->payout_bank_country,
+            'payoutBankCountryName' => $userDetail?->payout_bank_country
+                ? StripeConnectCountries::nameFor($userDetail->payout_bank_country)
+                : null,
+            'payoutWaitingListCountry' => $userDetail?->payout_waiting_list_country,
+            'stripeSupportedCountries' => StripeConnectCountries::supportedForSelect(),
+            'stripeUnsupportedCountries' => StripeConnectCountries::unsupportedCountryNamesForWaitingList(),
+        ]);
+    }
+
+    /**
+     * Supported bank-account countries for this platform (from Stripe Country Spec API).
+     */
+    public function stripePayoutCountries(StripeCountrySpecService $countrySpecService)
+    {
+        if (! $countrySpecService->isConfigured()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe is not configured.',
+            ], 500);
+        }
+
+        $supported = $countrySpecService->supportedPayoutCountries();
+        $countries = [];
+        foreach ($supported as $code => $meta) {
+            $countries[] = [
+                'code' => $code,
+                'name' => $meta['name'],
+                'currency' => $meta['currency'],
+            ];
+        }
+
+        usort($countries, fn (array $a, array $b) => strcasecmp($a['name'], $b['name']));
+
+        return response()->json([
+            'success' => true,
+            'countries' => $countries,
+            'source' => 'stripe_country_spec',
+        ]);
+    }
+
+    /**
+     * Save the artist's bank account country before Stripe embedded onboarding.
+     */
+    public function savePayoutBankCountry(Request $request, StripeConnectService $stripeConnect)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to save bank country from this page.',
+                'redirect' => $redirect->getTargetUrl(),
+            ], 409);
+        }
+
+        $supportedCodes = array_keys(StripeConnectCountries::supported());
+
+        $validated = $request->validate([
+            'payout_bank_country' => ['required', 'string', 'size:2', Rule::in($supportedCodes)],
+        ], [
+            'payout_bank_country.required' => 'Please select where your bank account is based.',
+            'payout_bank_country.in' => 'The selected country is not supported for payouts.',
+        ]);
+
+        $user = $request->user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+        $country = strtoupper($validated['payout_bank_country']);
+
+        if ($userDetail->payout_bank_country !== $country && $userDetail->stripe_account_id) {
+            try {
+                if ($stripeConnect->isConfigured()) {
+                    $status = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
+                    if (! ($status['complete'] ?? false)) {
+                        $userDetail->stripe_account_id = null;
+                    }
+                }
+            } catch (\Throwable $e) {
+                $userDetail->stripe_account_id = null;
+            }
+        }
+
+        $userDetail->payout_bank_country = $country;
+        $userDetail->payout_waiting_list_country = null;
+        $userDetail->payout_waiting_list_at = null;
+        $currencySync = StripeConnectCountries::syncCurrencyFromBankCountry($userDetail);
+        $userDetail->save();
+
+        return response()->json([
+            'success' => true,
+            'payout_bank_country' => $country,
+            'payout_bank_country_name' => StripeConnectCountries::nameFor($country),
+            'currency_updated' => $currencySync['updated'],
+            'currency' => $currencySync['currency'],
+            'previous_currency' => $currencySync['previous'],
+        ]);
+    }
+
+    /**
+     * Join the payout waiting list when the artist's bank country is not supported.
+     */
+    public function savePayoutWaitingList(Request $request)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to join the waiting list from this page.',
+                'redirect' => $redirect->getTargetUrl(),
+            ], 409);
+        }
+
+        $unsupportedNames = StripeConnectCountries::unsupportedCountryNamesForWaitingList();
+
+        $validated = $request->validate([
+            'payout_waiting_list_country' => ['required', 'string', 'max:120', Rule::in($unsupportedNames)],
+        ], [
+            'payout_waiting_list_country.required' => 'Please select your country.',
+            'payout_waiting_list_country.in' => 'Please select a valid country.',
+        ]);
+
+        $user = $request->user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+        $countryName = $validated['payout_waiting_list_country'];
+
+        $userDetail->payout_bank_country = null;
+        $userDetail->stripe_account_id = null;
+        $userDetail->payout_waiting_list_country = $countryName;
+        $userDetail->payout_waiting_list_at = now();
+        $userDetail->save();
+
+        Log::info('Artist joined payout waiting list', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'country_name' => $countryName,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'country_name' => $countryName,
+            'message' => 'Thanks! We will notify you when payouts become available in your country.',
+        ]);
+    }
+
+    /**
+     * Create (or reuse) a connected account and return an Account Session for embedded onboarding.
+     */
+    public function createStripeConnectSession(Request $request, StripeConnectService $stripeConnect)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to start Stripe onboarding from this page.',
+                'redirect' => $redirect->getTargetUrl(),
+            ], 409);
+        }
+
+        if (! $stripeConnect->isConfigured()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe is not configured. Please contact support.',
+            ], 500);
+        }
+
+        try {
+            $user = $request->user();
+            $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+            if (! $userDetail->payout_bank_country || ! StripeConnectCountries::isSupported($userDetail->payout_bank_country)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please select where your bank account is based before continuing.',
+                    'errors' => [
+                        'payout_bank_country' => ['Please select where your bank account is based.'],
+                    ],
+                ], 422);
+            }
+
+            if ($userDetail->payout_waiting_list_country) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payouts are not available in your country yet.',
+                ], 422);
+            }
+
+            $phase = $request->input('phase');
+            if ($phase !== null && $phase !== '') {
+                $phase = (string) $phase;
+                if (! in_array($phase, ['personal', 'identity', 'bank'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid Stripe onboarding phase.',
+                    ], 422);
+                }
+            } else {
+                $phase = null;
+            }
+
+            $session = $stripeConnect->createOnboardingSession($user, $userDetail, $phase);
+
+            return response()->json([
+                'success' => true,
+                'client_secret' => $session['client_secret'],
+                'account_id' => $session['account_id'],
+                'publishable_key' => config('services.stripe.key'),
+                'collection_options' => $session['collection_options'],
+                'phase' => $session['phase'],
+                'phased' => $session['phased'],
+            ]);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe Connect session creation failed', [
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not start Stripe onboarding: '.$e->getMessage(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Stripe Connect session creation failed', [
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not start Stripe onboarding.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Poll embedded onboarding completion for the connected account.
+     */
+    public function stripeConnectStatus(Request $request, StripeConnectService $stripeConnect)
+    {
+        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to check Stripe status from this page.',
+                'redirect' => $redirect->getTargetUrl(),
+            ], 409);
+        }
+
+        $userDetail = $request->user()->userDetail;
+        if (! $userDetail?->stripe_account_id) {
+            return response()->json([
+                'success' => true,
+                'complete' => false,
+                'message' => 'No Stripe account linked yet.',
+            ]);
+        }
+
+        if (! $stripeConnect->isConfigured()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe is not configured.',
+            ], 500);
+        }
+
+        try {
+            $status = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
+            $phaseStatus = $stripeConnect->getOnboardingPhaseStatus($userDetail->stripe_account_id);
+
+            return response()->json([
+                'success' => true,
+                ...$status,
+                'phases' => $phaseStatus,
+            ]);
+        } catch (ApiErrorException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not load Stripe account status.',
+            ], 422);
+        }
     }
 
     /**
@@ -1118,20 +1414,8 @@ class OnboardingController extends Controller
 
             // Conditional validation based on payment_type
             $paymentType = $request->payment_type;
-            
-            if ($paymentType === 'artist_account') {
-                $rules['account_holder_name'] = ['required', 'string', 'max:255'];
-                $rules['bank_name'] = ['required', 'string', 'max:255'];
-                $rules['account_number'] = ['required', 'string', 'max:255'];
-                $rules['swift_bic'] = ['required', 'string', 'max:50'];
-                $rules['currency'] = ['required', 'string', 'size:3'];
-                $messages['account_holder_name.required'] = 'Account holder name is required.';
-                $messages['bank_name.required'] = 'Bank name is required.';
-                $messages['account_number.required'] = 'Account number is required.';
-                $messages['swift_bic.required'] = 'SWIFT/BIC is required.';
-                $messages['currency.required'] = 'Please select a currency.';
-            } elseif ($paymentType === 'studio_account') {
-                // Studio account: Studio email is required
+
+            if ($paymentType === 'studio_account') {
                 $rules['studio_email'] = ['required', 'email', 'max:255'];
                 $messages['studio_email.required'] = 'Studio email is required.';
                 $messages['studio_email.email'] = 'Please enter a valid email address.';
@@ -1145,11 +1429,28 @@ class OnboardingController extends Controller
             $userDetail->completed_steps = array_unique(array_merge($userDetail->completed_steps ?? [], [6]));
 
             if ($paymentType === 'artist_account') {
-                $userDetail->stripe_account_id = null;
-                $userDetail->studio_id = null;
-                $userDetail->payment_status = 'approved';
-                $userDetail->currency = strtoupper($validated['currency']);
-                $this->upsertUserBankDetails($user, $validated);
+                if ($userDetail->payout_waiting_list_country) {
+                    $userDetail->studio_id = null;
+                    $userDetail->stripe_account_id = null;
+                    $userDetail->payment_status = 'pending';
+                } else {
+                    $stripeConnect = app(StripeConnectService::class);
+                    if (! $stripeConnect->isConfigured()) {
+                        throw ValidationException::withMessages([
+                            'stripe_connect' => ['Stripe payout setup is not available right now. Please try again later or skip for now.'],
+                        ]);
+                    }
+
+                    $accountId = $userDetail->stripe_account_id;
+                    if (! $accountId || ! $stripeConnect->isOnboardingSubmitted($accountId)) {
+                        throw ValidationException::withMessages([
+                            'stripe_connect' => ['Please complete Stripe payout setup before finishing onboarding.'],
+                        ]);
+                    }
+
+                    $userDetail->studio_id = null;
+                    $userDetail->payment_status = 'approved';
+                }
             } elseif ($paymentType === 'studio_account') {
                 // Studio account: find or create studio record
                 $studioName = $userDetail->studio_name ?? 'Studio';

@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') - Onboarding | Inkjin</title>
     <meta name="description" content="Configure your payout method on Inkjin Book & Pay.">
     <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
@@ -158,6 +159,7 @@
       border-color: rgba(202,196,211,0.5);
     }
   </style>
+  @stack('styles')
   {{-- Page-specific CSS/JS (e.g. Cropper on profile, Maps on studio): @push('head') --}}
   @stack('head')
 </head>

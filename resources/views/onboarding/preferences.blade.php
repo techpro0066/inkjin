@@ -61,6 +61,7 @@
           <div>
             <label for="currency" class="block text-[11px] uppercase tracking-wider text-on-surface-variant font-medium mb-2">Currency <span class="text-red-600">*</span></label>
             <select id="currency" name="currency" class="select w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" data-selected="{{ $ud->currency ?? '' }}"></select>
+            <p class="text-on-surface-variant text-xs mt-2">Your payout currency. We'll confirm this matches your bank account when you set up payouts.</p>
             <p id="currency_error" class="text-error text-xs mt-1 hidden"></p>
           </div>
           <div>

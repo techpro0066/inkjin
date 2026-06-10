@@ -1,0 +1,701 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\User;
+use App\Models\UserDetail;
+use App\Support\StripeConnectCountries;
+use Illuminate\Support\Facades\Log;
+use Stripe\Account;
+use Stripe\AccountSession;
+use Stripe\Exception\ApiErrorException;
+use Stripe\Stripe;
+
+class StripeConnectService
+{
+    /** @var array<string, string> */
+    private const COUNTRY_NAME_TO_ISO = [
+        'greece' => 'GR',
+        'germany' => 'DE',
+        'cyprus' => 'CY',
+        'france' => 'FR',
+        'italy' => 'IT',
+        'spain' => 'ES',
+        'netherlands' => 'NL',
+        'belgium' => 'BE',
+        'austria' => 'AT',
+        'portugal' => 'PT',
+        'ireland' => 'IE',
+        'united kingdom' => 'GB',
+        'uk' => 'GB',
+        'united states' => 'US',
+        'usa' => 'US',
+    ];
+
+    public function isConfigured(): bool
+    {
+        return (bool) config('services.stripe.secret') && (bool) config('services.stripe.key');
+    }
+
+    public function connectLocale(): string
+    {
+        return (string) config('services.stripe.connect.locale', 'en-US');
+    }
+
+    /**
+     * Collection options for the embedded account-onboarding component (camelCase for Connect JS).
+     *
+     * @return array<string, mixed>
+     */
+    public function embeddedCollectionOptions(?string $phase = null): array
+    {
+        if ($this->usePhasedOnboarding() && $phase !== null && $phase !== '') {
+            return $this->embeddedCollectionOptionsForPhase($phase);
+        }
+
+        $options = [
+            'fields' => (string) config('services.stripe.connect.onboarding_fields', 'eventually_due'),
+            'futureRequirements' => (string) config('services.stripe.connect.future_requirements', 'include'),
+        ];
+
+        $exclude = $this->excludedEmbeddedRequirements();
+        if ($exclude !== []) {
+            $options['requirements'] = [
+                'exclude' => $exclude,
+            ];
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function embeddedCollectionOptionsForPhase(string $phase): array
+    {
+        $only = match ($phase) {
+            'personal' => $this->personalOnboardingRequirements(),
+            'identity' => $this->identityOnboardingRequirements(),
+            'bank' => $this->bankOnboardingRequirements(),
+            default => [],
+        };
+
+        $options = [
+            'fields' => (string) config('services.stripe.connect.onboarding_fields', 'eventually_due'),
+            'futureRequirements' => (string) config('services.stripe.connect.future_requirements', 'include'),
+        ];
+
+        if ($only === []) {
+            return $this->embeddedCollectionOptions(null);
+        }
+
+        $requirements = ['only' => $only];
+        $exclude = $this->excludedEmbeddedRequirements();
+        if ($phase === 'bank' && $exclude !== []) {
+            $requirements['exclude'] = array_values(array_filter(
+                $exclude,
+                fn (string $item) => str_starts_with($item, 'external_account')
+            ));
+        }
+
+        $options['requirements'] = $requirements;
+
+        return $options;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function personalOnboardingRequirements(): array
+    {
+        return [
+            'individual.first_name',
+            'individual.last_name',
+            'individual.email',
+            'individual.phone',
+            'individual.dob.day',
+            'individual.dob.month',
+            'individual.dob.year',
+            'individual.address.line1',
+            'individual.address.line2',
+            'individual.address.city',
+            'individual.address.state',
+            'individual.address.postal_code',
+            'individual.id_number',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function identityOnboardingRequirements(): array
+    {
+        return [
+            'individual.verification.document',
+            'individual.verification.document.front',
+            'individual.verification.document.back',
+            'individual.verification.additional_document',
+            'individual.verification.additional_document.front',
+            'individual.verification.additional_document.back',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function bankOnboardingRequirements(): array
+    {
+        return [
+            'external_account',
+            'tos_acceptance.date',
+            'tos_acceptance.ip',
+        ];
+    }
+
+    /**
+     * @return array{
+     *     personal: bool,
+     *     identity: bool,
+     *     bank: bool,
+     *     active_phase: string|null,
+     *     phased: bool
+     * }
+     */
+    public function getOnboardingPhaseStatus(string $accountId): array
+    {
+        $status = $this->getOnboardingStatus($accountId);
+        $due = array_values(array_unique(array_merge(
+            $status['currently_due'],
+            $status['eventually_due']
+        )));
+
+        $personalComplete = ! $this->requirementsDueForPhase('personal', $due);
+        $identityComplete = ! $this->requirementsDueForPhase('identity', $due);
+        $bankComplete = ! $this->requirementsDueForPhase('bank', $due);
+
+        $activePhase = null;
+        if (! $personalComplete) {
+            $activePhase = 'personal';
+        } elseif (! $identityComplete) {
+            $activePhase = 'identity';
+        } elseif (! $bankComplete) {
+            $activePhase = 'bank';
+        }
+
+        return [
+            'personal' => $personalComplete,
+            'identity' => $identityComplete,
+            'bank' => $bankComplete,
+            'active_phase' => $activePhase,
+            'phased' => $this->usePhasedOnboarding(),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $due
+     */
+    private function requirementsDueForPhase(string $phase, array $due): bool
+    {
+        foreach ($due as $requirement) {
+            if ($this->requirementMatchesPhase($phase, $requirement)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function requirementMatchesPhase(string $phase, string $requirement): bool
+    {
+        $needles = match ($phase) {
+            'personal' => [
+                'individual.first_name',
+                'individual.last_name',
+                'individual.email',
+                'individual.phone',
+                'individual.dob.',
+                'individual.address.',
+                'individual.id_number',
+            ],
+            'identity' => ['individual.verification.'],
+            'bank' => ['external_account', 'tos_acceptance'],
+            default => [],
+        };
+
+        foreach ($needles as $needle) {
+            if (str_ends_with($needle, '.')) {
+                if (str_starts_with($requirement, $needle)) {
+                    return true;
+                }
+            } elseif ($requirement === $needle || str_starts_with($requirement, $needle.'.')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function usePhasedOnboarding(): bool
+    {
+        return (bool) config('services.stripe.connect.phased_onboarding', false);
+    }
+
+    /**
+     * Requirements intentionally excluded from the embedded UI (identity verification is not excluded).
+     *
+     * @return list<string>
+     */
+    private function excludedEmbeddedRequirements(): array
+    {
+        $exclude = [];
+
+        if ($this->forceIndividualBusinessType()) {
+            $exclude[] = 'business_type';
+        }
+
+        if ($this->excludeBusinessDetailsFromUi()) {
+            $exclude[] = 'business_profile.*';
+        }
+
+        if ($this->excludeBankCountryFromUi()) {
+            $exclude[] = 'external_account.*.country';
+            $exclude[] = 'external_account.*.currency';
+        }
+
+        return $exclude;
+    }
+
+    /**
+     * @return array{enabled: bool, features?: array<string, bool>}
+     */
+    private function accountOnboardingComponents(): array
+    {
+        $components = ['enabled' => true];
+
+        if ($this->disableStripeUserAuthentication()) {
+            // Skip Stripe SMS/popup user-auth step; go straight to personal details.
+            // Requires controller.requirement_collection = application on the connected account.
+            $components['features'] = [
+                'disable_stripe_user_authentication' => true,
+            ];
+        }
+
+        return $components;
+    }
+
+    private function disableStripeUserAuthentication(): bool
+    {
+        return (bool) config('services.stripe.connect.disable_user_authentication', true);
+    }
+
+    /**
+     * @return array{account_id: string, client_secret: string, collection_options: array<string, mixed>}
+     */
+    public function createOnboardingSession(User $user, UserDetail $userDetail, ?string $phase = null): array
+    {
+        $this->initialize();
+
+        $accountId = $this->ensureConnectedAccount($user, $userDetail);
+
+        $session = AccountSession::create([
+            'account' => $accountId,
+            'components' => [
+                'account_onboarding' => $this->accountOnboardingComponents(),
+            ],
+        ]);
+
+        return [
+            'account_id' => $accountId,
+            'client_secret' => $session->client_secret,
+            'collection_options' => $this->embeddedCollectionOptions($phase),
+            'phase' => $phase,
+            'phased' => $this->usePhasedOnboarding(),
+        ];
+    }
+
+    public function ensureConnectedAccount(User $user, UserDetail $userDetail): string
+    {
+        $this->initialize();
+
+        if (! empty($userDetail->stripe_account_id)) {
+            try {
+                $account = Account::retrieve($userDetail->stripe_account_id);
+                $expectedCountry = $this->resolvePayoutBankCountry($userDetail);
+                if ($expectedCountry !== null && strtoupper((string) ($account->country ?? '')) !== $expectedCountry) {
+                    Log::info('Stripe account country mismatch; creating a new connected account', [
+                        'user_id' => $user->id,
+                        'stripe_account_id' => $userDetail->stripe_account_id,
+                        'account_country' => $account->country ?? null,
+                        'expected_country' => $expectedCountry,
+                    ]);
+                    $userDetail->stripe_account_id = null;
+                    $userDetail->save();
+                } else {
+                    $this->ensureIndividualBusinessType($userDetail->stripe_account_id);
+                    $this->syncProfileToAccount($userDetail->stripe_account_id, $user, $userDetail);
+
+                    return $userDetail->stripe_account_id;
+                }
+            } catch (ApiErrorException $e) {
+                Log::warning('Stored Stripe account not found, creating a new one', [
+                    'user_id' => $user->id,
+                    'stripe_account_id' => $userDetail->stripe_account_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $country = $this->resolvePayoutBankCountry($userDetail);
+        if ($country === null) {
+            throw new \RuntimeException('Bank account country must be selected before starting Stripe onboarding.');
+        }
+
+        $defaultCurrency = StripeConnectCountries::currencyForCountry($country);
+
+        $account = Account::create(array_filter(array_merge([
+            'country' => $country,
+            'email' => $user->email,
+            'business_type' => 'individual',
+            'default_currency' => $defaultCurrency ? strtolower($defaultCurrency) : null,
+            'capabilities' => [
+                'card_payments' => ['requested' => true],
+                'transfers' => ['requested' => true],
+            ],
+            'controller' => [
+                'fees' => ['payer' => 'application'],
+                'losses' => ['payments' => 'application'],
+                'stripe_dashboard' => ['type' => 'none'],
+                'requirement_collection' => 'application',
+            ],
+            'metadata' => [
+                'inkjin_user_id' => (string) $user->id,
+            ],
+        ], $this->buildStripeAccountPrefill($user, $userDetail)), fn ($value) => $value !== null));
+
+        $userDetail->stripe_account_id = $account->id;
+        $userDetail->save();
+
+        return $account->id;
+    }
+
+    /**
+     * @return array{
+     *     complete: bool,
+     *     payout_ready: bool,
+     *     details_submitted: bool,
+     *     charges_enabled: bool,
+     *     payouts_enabled: bool,
+     *     currently_due: array<int, string>,
+     *     eventually_due: array<int, string>,
+     *     disabled_reason: string|null
+     * }
+     */
+    public function getOnboardingStatus(string $accountId): array
+    {
+        $this->initialize();
+
+        $account = Account::retrieve($accountId);
+        $requirements = $account->requirements ?? null;
+        $currentlyDue = $requirements->currently_due ?? [];
+        $eventuallyDue = $requirements->eventually_due ?? [];
+        $pendingVerification = $requirements->pending_verification ?? [];
+        $detailsSubmitted = (bool) ($account->details_submitted ?? false);
+        $identityStillDue = $this->identityRequirementsOutstanding($currentlyDue, []);
+
+        // User finished embedded onboarding — nothing left for them to submit now.
+        // Stripe may still be reviewing (pending_verification); that is OK for InkJin onboarding.
+        $complete = $currentlyDue === []
+            && ($detailsSubmitted || $pendingVerification !== []);
+
+        $payoutReady = (bool) $account->charges_enabled
+            && (bool) $account->payouts_enabled
+            && $currentlyDue === [];
+
+        return [
+            'complete' => $complete,
+            'payout_ready' => $payoutReady,
+            'details_submitted' => $detailsSubmitted,
+            'charges_enabled' => (bool) $account->charges_enabled,
+            'payouts_enabled' => (bool) $account->payouts_enabled,
+            'currently_due' => $currentlyDue,
+            'eventually_due' => $eventuallyDue,
+            'pending_verification' => $pendingVerification,
+            'identity_verification_due' => $identityStillDue,
+            'submitted' => $detailsSubmitted,
+            'disabled_reason' => $requirements->disabled_reason ?? null,
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $currentlyDue
+     * @param  array<int, string>  $eventuallyDue
+     */
+    private function identityRequirementsOutstanding(array $currentlyDue, array $eventuallyDue): bool
+    {
+        $prefixes = [
+            'individual.verification',
+            'individual.id_number',
+            'individual.dob',
+        ];
+
+        foreach (array_merge($currentlyDue, $eventuallyDue) as $requirement) {
+            foreach ($prefixes as $prefix) {
+                if (str_starts_with($requirement, $prefix)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function isOnboardingComplete(string $accountId): bool
+    {
+        return $this->getOnboardingStatus($accountId)['complete'];
+    }
+
+    /**
+     * True when the user has submitted their Stripe details (InkJin can finish onboarding).
+     */
+    public function isOnboardingSubmitted(string $accountId): bool
+    {
+        return $this->getOnboardingStatus($accountId)['complete'];
+    }
+
+    private function forceIndividualBusinessType(): bool
+    {
+        return (bool) config('services.stripe.connect.force_individual', true);
+    }
+
+    private function excludeBusinessDetailsFromUi(): bool
+    {
+        return (bool) config('services.stripe.connect.exclude_business_details', true);
+    }
+
+    private function excludeBankCountryFromUi(): bool
+    {
+        return (bool) config('services.stripe.connect.exclude_bank_country', true);
+    }
+
+    /**
+     * Resolve the ISO country for the Stripe connected account (bank payout country).
+     */
+    public function resolvePayoutBankCountry(UserDetail $userDetail): ?string
+    {
+        $code = strtoupper(trim((string) $userDetail->payout_bank_country));
+        if ($code !== '' && StripeConnectCountries::isSupported($code)) {
+            return $code;
+        }
+
+        return null;
+    }
+
+    private function ensureIndividualBusinessType(string $accountId): void
+    {
+        if (! $this->forceIndividualBusinessType()) {
+            return;
+        }
+
+        $account = Account::retrieve($accountId);
+        if (($account->business_type ?? null) === 'individual') {
+            return;
+        }
+
+        Account::update($accountId, ['business_type' => 'individual']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildStripeAccountPrefill(User $user, UserDetail $userDetail): array
+    {
+        $prefill = [];
+
+        $individual = array_filter([
+            'first_name' => $this->nonEmpty($user->first_name),
+            'last_name' => $this->nonEmpty($user->last_name),
+            'email' => $this->nonEmpty($user->email),
+            'phone' => $this->nonEmpty($userDetail->mobile_number),
+        ], fn ($value) => $value !== null && $value !== '');
+
+        if ($individual !== []) {
+            $prefill['individual'] = $individual;
+        }
+
+        $businessProfile = [];
+        $mcc = $this->artistMerchantCategoryCode();
+        if ($mcc !== null) {
+            $businessProfile['mcc'] = $mcc;
+        }
+
+        if ($this->excludeBusinessDetailsFromUi()) {
+            $fullName = trim($user->first_name.' '.$user->last_name);
+            $aliasMode = $userDetail->personal_page_name_alias;
+            $displayName = match ($aliasMode) {
+                'username' => $this->nonEmpty($userDetail->user_name) ?? $fullName,
+                'both' => $fullName !== ''
+                    ? trim($fullName.' ('.($userDetail->user_name ?? '').')')
+                    : ($this->nonEmpty($userDetail->user_name) ?? ''),
+                default => $fullName !== '' ? $fullName : ($this->nonEmpty($userDetail->user_name) ?? ''),
+            };
+
+            $businessProfile = array_merge($businessProfile, array_filter([
+                'name' => $this->nonEmpty($displayName),
+                'url' => $this->artistProfileUrlForStripe($userDetail),
+                'product_description' => $this->nonEmpty($userDetail->personal_page_tagline)
+                    ?? $this->nonEmpty($userDetail->personal_page_description)
+                    ?? 'Professional tattoo artist and body art services.',
+                'support_phone' => $this->nonEmpty($userDetail->mobile_number),
+                'support_email' => $this->nonEmpty($user->email),
+            ], fn ($value) => $value !== null && $value !== ''));
+        }
+
+        if ($businessProfile !== []) {
+            $prefill['business_profile'] = $businessProfile;
+        }
+
+        return $prefill;
+    }
+
+    /**
+     * Default merchant category code (industry) for tattoo artist connected accounts.
+     * Stripe maps MCC to the industry shown in Connect onboarding / Dashboard.
+     */
+    private function artistMerchantCategoryCode(): ?string
+    {
+        $mcc = trim((string) config('services.stripe.connect.artist_mcc', '7299'));
+        if ($mcc === '' || ! preg_match('/^\d{4}$/', $mcc)) {
+            return null;
+        }
+
+        return $mcc;
+    }
+
+    private function syncProfileToAccount(string $accountId, User $user, UserDetail $userDetail): void
+    {
+        $prefill = $this->buildStripeAccountPrefill($user, $userDetail);
+        if ($prefill === []) {
+            return;
+        }
+
+        $bankCountry = $this->resolvePayoutBankCountry($userDetail);
+        if ($bankCountry !== null) {
+            $currency = StripeConnectCountries::currencyForCountry($bankCountry);
+            $updates = array_filter([
+                'country' => $bankCountry,
+                'default_currency' => $currency ? strtolower($currency) : null,
+            ], fn ($value) => $value !== null);
+            $prefill = array_merge($updates, $prefill);
+        }
+
+        try {
+            Account::update($accountId, $prefill);
+        } catch (ApiErrorException $e) {
+            Log::warning('Could not prefill Stripe Connect account from onboarding profile', [
+                'stripe_account_id' => $accountId,
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function nonEmpty(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : null;
+    }
+
+    private function artistProfileUrlForStripe(UserDetail $userDetail): ?string
+    {
+        $userName = $this->nonEmpty($userDetail->user_name);
+        if ($userName === null) {
+            return null;
+        }
+
+        $configuredBase = $this->nonEmpty((string) config('services.stripe.connect.business_url_base'));
+        $url = $configuredBase !== null
+            ? rtrim($configuredBase, '/').'/'.ltrim($userName, '/')
+            : url('/'.$userName);
+
+        return $this->isStripeAcceptableUrl($url) ? $url : null;
+    }
+
+    private function isStripeAcceptableUrl(?string $url): bool
+    {
+        if ($url === null || $url === '') {
+            return false;
+        }
+
+        if (! filter_var($url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        if ($host === '') {
+            return false;
+        }
+
+        $blockedHosts = ['localhost', '127.0.0.1', '::1'];
+        if (in_array($host, $blockedHosts, true)) {
+            return false;
+        }
+
+        if (str_ends_with($host, '.local') || str_ends_with($host, '.test')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function initialize(): void
+    {
+        $secret = config('services.stripe.secret');
+        if (! $secret) {
+            throw new \RuntimeException('Stripe is not configured.');
+        }
+
+        Stripe::setApiKey($secret);
+    }
+
+    private function resolveCountryCode(?string $country): string
+    {
+        $default = strtoupper((string) config('services.stripe.connect.default_country', 'GR'));
+        $country = trim((string) $country);
+
+        if ($country === '') {
+            return $default;
+        }
+
+        if (strlen($country) === 2 && ctype_alpha($country)) {
+            return strtoupper($country);
+        }
+
+        $normalized = strtolower($country);
+
+        return self::COUNTRY_NAME_TO_ISO[$normalized] ?? $default;
+    }
+
+    /**
+     * Delete a connected account from Stripe (test accounts can always be deleted).
+     *
+     * @return array{id: string, deleted: bool}
+     */
+    public function deleteConnectedAccount(string $accountId): array
+    {
+        $this->initialize();
+
+        $accountId = trim($accountId);
+        if ($accountId === '' || ! preg_match('/^acct_[a-zA-Z0-9]+$/', $accountId)) {
+            throw new \InvalidArgumentException('Invalid Stripe account ID. Expected format: acct_...');
+        }
+
+        $account = Account::retrieve($accountId);
+        $account->delete();
+
+        return [
+            'id' => $account->id,
+            'deleted' => (bool) ($account->deleted ?? true),
+        ];
+    }
+}

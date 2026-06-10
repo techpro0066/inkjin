@@ -42,4 +42,32 @@ return [
         'place_api_key' => env('GOOGLE_PLACE_API_KEY'),
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'connect' => [
+            'default_country' => env('STRIPE_CONNECT_DEFAULT_COUNTRY', 'GR'),
+            'locale' => env('STRIPE_CONNECT_LOCALE', 'en-US'),
+            // Artists always onboard as Stripe individual accounts (skip business type UI).
+            'force_individual' => env('STRIPE_CONNECT_FORCE_INDIVIDUAL', true),
+            // Hide business profile step in embedded UI; values are prefilled via API.
+            'exclude_business_details' => env('STRIPE_CONNECT_EXCLUDE_BUSINESS_DETAILS', true),
+            // Bank country/currency chosen in InkJin before Stripe onboarding.
+            'exclude_bank_country' => env('STRIPE_CONNECT_EXCLUDE_BANK_COUNTRY', true),
+            // Public base URL for artist pages sent to Stripe business_profile.url (required when APP_URL is localhost).
+            'business_url_base' => env('STRIPE_CONNECT_BUSINESS_URL_BASE'),
+            // How long to cache Stripe CountrySpec payout countries (seconds).
+            'countries_cache_ttl' => env('STRIPE_CONNECT_COUNTRIES_CACHE_TTL', 86400),
+            // Skip Stripe SMS/popup auth before embedded onboarding forms (application liability).
+            'disable_user_authentication' => env('STRIPE_CONNECT_DISABLE_USER_AUTHENTICATION', true),
+            // Collect all onboarding requirements up front (personal details, identity upload, bank).
+            'onboarding_fields' => env('STRIPE_CONNECT_ONBOARDING_FIELDS', 'eventually_due'),
+            'future_requirements' => env('STRIPE_CONNECT_FUTURE_REQUIREMENTS', 'include'),
+            // Default industry (MCC) for artist connected accounts — 7299 = personal/other services (tattoo).
+            'artist_mcc' => env('STRIPE_CONNECT_ARTIST_MCC', '7299'),
+            // Optional token for the public /stripe/delete-account dev tool (required in production).
+            'dev_delete_token' => env('STRIPE_CONNECT_DEV_DELETE_TOKEN'),
+        ],
+    ],
+
 ];

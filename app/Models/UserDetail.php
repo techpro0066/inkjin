@@ -43,6 +43,9 @@ class UserDetail extends Model
         'consultation_tattoo_gap_value',
         'consultation_tattoo_gap_unit',
         'stripe_account_id',
+        'payout_bank_country',
+        'payout_waiting_list_country',
+        'payout_waiting_list_at',
         'current_step',
         'completed_steps',
         'scheduling_type',
@@ -65,6 +68,7 @@ class UserDetail extends Model
         'google_calendar_token' => 'array',
         'require_consultation' => 'boolean',
         'require_gap_between_consultation_tattoo' => 'boolean',
+        'payout_waiting_list_at' => 'datetime',
     ];
 
     /**

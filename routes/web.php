@@ -19,6 +19,7 @@ use App\Http\Controllers\ArtistCustomRequestsController;
 use App\Http\Controllers\ArtistDashboardController;
 use App\Http\Controllers\CustomRequestController;
 use App\Http\Controllers\RequestsController;
+use App\Http\Controllers\StripeConnectDevController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -43,6 +44,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/onboarding/calendar', [OnboardingController::class, 'saveCalendar'])->name('onboarding.calendar.save');
     Route::post('/onboarding/preferences', [OnboardingController::class, 'savePreferences'])->name('onboarding.preferences.save');
     Route::post('/onboarding/payment/skip', [OnboardingController::class, 'skipPayment'])->name('onboarding.payment.skip');
+    Route::post('/onboarding/payment/bank-country', [OnboardingController::class, 'savePayoutBankCountry'])->name('onboarding.payment.bank-country');
+    Route::post('/onboarding/payment/waiting-list', [OnboardingController::class, 'savePayoutWaitingList'])->name('onboarding.payment.waiting-list');
+    Route::get('/onboarding/payment/stripe/countries', [OnboardingController::class, 'stripePayoutCountries'])->name('onboarding.payment.stripe.countries');
+    Route::post('/onboarding/payment/stripe/session', [OnboardingController::class, 'createStripeConnectSession'])->name('onboarding.payment.stripe.session');
+    Route::get('/onboarding/payment/stripe/status', [OnboardingController::class, 'stripeConnectStatus'])->name('onboarding.payment.stripe.status');
     Route::post('/onboarding/payment', [OnboardingController::class, 'savePayment'])->name('onboarding.payment.save');
     Route::get('/onboarding/progress', [OnboardingController::class, 'getProgress'])->name('onboarding.progress');
     
@@ -55,6 +61,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/auth/google-calendar/disconnect', [\App\Http\Controllers\GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect');
 
 });
+
+Route::get('/stripe/delete-account', [StripeConnectDevController::class, 'showDeleteForm'])
+    ->name('stripe.delete-account.show');
+Route::post('/stripe/delete-account', [StripeConnectDevController::class, 'deleteAccount'])
+    ->name('stripe.delete-account.destroy');
 
 Route::get('/studio/payout-info/{userDetail}', [OnboardingController::class, 'showStudioPayoutForm'])
     ->middleware('signed')

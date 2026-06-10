@@ -1,0 +1,52 @@
+<?php
+
+/**
+ * Fallback Stripe Connect payout countries when the Country Spec API is unavailable.
+ * Live lists are loaded from Stripe (platform CountrySpec.supported_transfer_countries).
+ */
+return [
+    'supported' => [
+        'AT' => ['name' => 'Austria', 'currency' => 'EUR'],
+        'BE' => ['name' => 'Belgium', 'currency' => 'EUR'],
+        'BG' => ['name' => 'Bulgaria', 'currency' => 'BGN'],
+        'HR' => ['name' => 'Croatia', 'currency' => 'EUR'],
+        'CY' => ['name' => 'Cyprus', 'currency' => 'EUR'],
+        'CZ' => ['name' => 'Czech Republic', 'currency' => 'CZK'],
+        'DK' => ['name' => 'Denmark', 'currency' => 'DKK'],
+        'EE' => ['name' => 'Estonia', 'currency' => 'EUR'],
+        'FI' => ['name' => 'Finland', 'currency' => 'EUR'],
+        'FR' => ['name' => 'France', 'currency' => 'EUR'],
+        'DE' => ['name' => 'Germany', 'currency' => 'EUR'],
+        'GR' => ['name' => 'Greece', 'currency' => 'EUR'],
+        'HU' => ['name' => 'Hungary', 'currency' => 'HUF'],
+        'IE' => ['name' => 'Ireland', 'currency' => 'EUR'],
+        'IT' => ['name' => 'Italy', 'currency' => 'EUR'],
+        'LV' => ['name' => 'Latvia', 'currency' => 'EUR'],
+        'LT' => ['name' => 'Lithuania', 'currency' => 'EUR'],
+        'LU' => ['name' => 'Luxembourg', 'currency' => 'EUR'],
+        'MT' => ['name' => 'Malta', 'currency' => 'EUR'],
+        'NL' => ['name' => 'Netherlands', 'currency' => 'EUR'],
+        'PL' => ['name' => 'Poland', 'currency' => 'PLN'],
+        'PT' => ['name' => 'Portugal', 'currency' => 'EUR'],
+        'RO' => ['name' => 'Romania', 'currency' => 'RON'],
+        'SK' => ['name' => 'Slovakia', 'currency' => 'EUR'],
+        'SI' => ['name' => 'Slovenia', 'currency' => 'EUR'],
+        'ES' => ['name' => 'Spain', 'currency' => 'EUR'],
+        'SE' => ['name' => 'Sweden', 'currency' => 'SEK'],
+        'CH' => ['name' => 'Switzerland', 'currency' => 'CHF'],
+        'GB' => ['name' => 'United Kingdom', 'currency' => 'GBP'],
+        'NO' => ['name' => 'Norway', 'currency' => 'NOK'],
+        'IS' => ['name' => 'Iceland', 'currency' => 'ISK'],
+        'LI' => ['name' => 'Liechtenstein', 'currency' => 'CHF'],
+        'US' => ['name' => 'United States', 'currency' => 'USD'],
+        'CA' => ['name' => 'Canada', 'currency' => 'CAD'],
+        'AU' => ['name' => 'Australia', 'currency' => 'AUD'],
+        'NZ' => ['name' => 'New Zealand', 'currency' => 'NZD'],
+        'SG' => ['name' => 'Singapore', 'currency' => 'SGD'],
+        'HK' => ['name' => 'Hong Kong', 'currency' => 'HKD'],
+        'JP' => ['name' => 'Japan', 'currency' => 'JPY'],
+        'MX' => ['name' => 'Mexico', 'currency' => 'MXN'],
+        'BR' => ['name' => 'Brazil', 'currency' => 'BRL'],
+        'AE' => ['name' => 'United Arab Emirates', 'currency' => 'AED'],
+    ],
+];
