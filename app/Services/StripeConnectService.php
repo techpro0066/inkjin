@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Studio;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Support\StripeConnectCountries;
@@ -313,6 +314,268 @@ class StripeConnectService
         ];
     }
 
+    public function resolveStudioStripeAccountId(Studio $studio): ?string
+    {
+        return $studio->resolveStripeAccountId();
+    }
+
+    /**
+     * @param  array{business_type: string, country: string, industry: string}  $setup
+     * @return array{account_id: string, client_secret: string, collection_options: array<string, mixed>}
+     */
+    public function createStudioOnboardingSession(Studio $studio, UserDetail $userDetail, array $setup): array
+    {
+        $this->initialize();
+
+        $accountId = $this->ensureStudioConnectedAccount($studio, $userDetail, $setup);
+
+        $session = AccountSession::create([
+            'account' => $accountId,
+            'components' => [
+                'account_onboarding' => $this->accountOnboardingComponents(),
+            ],
+        ]);
+
+        return [
+            'account_id' => $accountId,
+            'client_secret' => $session->client_secret,
+            'collection_options' => $this->embeddedCollectionOptionsForStudio($setup['business_type']),
+        ];
+    }
+
+    /**
+     * @param  array{business_type: string, country: string, industry: string}  $setup
+     */
+    public function ensureStudioConnectedAccount(Studio $studio, UserDetail $userDetail, array $setup): string
+    {
+        $this->initialize();
+
+        $country = strtoupper(trim($setup['country']));
+        $businessType = $setup['business_type'] === 'individual' ? 'individual' : 'company';
+
+        $existingId = $this->resolveStudioStripeAccountId($studio);
+        if ($existingId !== null && $existingId !== '') {
+            try {
+                $account = Account::retrieve($existingId);
+                if (strtoupper((string) ($account->country ?? '')) !== $country) {
+                    Log::info('Studio Stripe account country mismatch; creating a new connected account', [
+                        'studio_id' => $studio->id,
+                        'stripe_account_id' => $existingId,
+                        'account_country' => $account->country ?? null,
+                        'expected_country' => $country,
+                    ]);
+                } else {
+                    $this->syncStudioProfileToAccount($existingId, $studio, $setup);
+
+                    return $existingId;
+                }
+            } catch (ApiErrorException $e) {
+                Log::warning('Stored studio Stripe account not found, creating a new one', [
+                    'studio_id' => $studio->id,
+                    'stripe_account_id' => $existingId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $defaultCurrency = StripeConnectCountries::currencyForCountry($country);
+        $studioName = $this->nonEmpty($studio->name) ?? 'Studio';
+
+        $payload = [
+            'country' => $country,
+            'email' => $studio->email,
+            'business_type' => $businessType,
+            'default_currency' => $defaultCurrency ? strtolower($defaultCurrency) : null,
+            'capabilities' => [
+                'card_payments' => ['requested' => true],
+                'transfers' => ['requested' => true],
+            ],
+            'controller' => [
+                'fees' => ['payer' => 'application'],
+                'losses' => ['payments' => 'application'],
+                'stripe_dashboard' => ['type' => 'none'],
+                'requirement_collection' => 'application',
+            ],
+            'business_profile' => $this->buildStudioBusinessProfile($studio, $setup),
+            'metadata' => [
+                'inkjin_studio_id' => (string) $studio->id,
+                'inkjin_studio_industry' => $setup['industry'],
+                'inkjin_studio_business_type' => $businessType,
+            ],
+        ];
+
+        if ($businessType === 'company') {
+            $payload['company'] = ['name' => $studioName];
+        }
+
+        $account = Account::create(array_filter($payload, fn ($value) => $value !== null));
+
+        return $account->id;
+    }
+
+    /**
+     * @return array{mcc: string, description: string}
+     */
+    public function studioIndustryMeta(string $industry): array
+    {
+        return match ($industry) {
+            'tattoo_beauty' => [
+                'mcc' => '7230',
+                'description' => 'Tattoo and beauty studio offering tattoos, body art, beauty, piercing, and barber services.',
+            ],
+            'tattoo_studio' => [
+                'mcc' => '7299',
+                'description' => 'Tattoo studio offering professional tattoos and body art.',
+            ],
+            default => [
+                'mcc' => '7299',
+                'description' => 'Professional tattoo and body art services.',
+            ],
+        };
+    }
+
+    public function resolveCurrencyForAccount(string $accountId): ?string
+    {
+        try {
+            $this->initialize();
+            $account = Account::retrieve($accountId);
+            $currency = strtoupper(trim((string) ($account->default_currency ?? '')));
+            if ($currency !== '') {
+                return $currency;
+            }
+            if (! empty($account->country)) {
+                return StripeConnectCountries::currencyForCountry((string) $account->country);
+            }
+        } catch (ApiErrorException $e) {
+            Log::warning('Could not resolve Stripe account currency', [
+                'stripe_account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Mark the artist as approved after the studio finishes Stripe embedded onboarding.
+     */
+    public function finalizeStudioOnboarding(Studio $studio, UserDetail $userDetail, string $accountId): void
+    {
+        if (! $this->isOnboardingSubmitted($accountId)) {
+            throw new \RuntimeException('Stripe onboarding is not complete yet.');
+        }
+
+        $studio->stripe_account_id = $accountId;
+        $studio->save();
+
+        $userDetail->stripe_account_id = $accountId;
+        $userDetail->payment_status = 'approved';
+
+        $currency = $this->resolveCurrencyForAccount($accountId);
+        if ($currency !== null) {
+            $userDetail->currency = $currency;
+        }
+
+        $userDetail->save();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function embeddedCollectionOptionsForStudio(string $businessType): array
+    {
+        $options = [
+            'fields' => (string) config('services.stripe.connect.onboarding_fields', 'eventually_due'),
+            'futureRequirements' => (string) config('services.stripe.connect.future_requirements', 'include'),
+        ];
+
+        $exclude = [
+            'business_type',
+            'business_profile.mcc',
+            'business_profile.product_description',
+            'business_profile.url',
+        ];
+
+        if ($businessType === 'individual') {
+            $exclude[] = 'business_profile.*';
+        }
+
+        if ($this->excludeBankCountryFromUi()) {
+            $exclude[] = 'external_account.*.country';
+            $exclude[] = 'external_account.*.currency';
+        }
+
+        $options['requirements'] = ['exclude' => array_values(array_unique($exclude))];
+
+        return $options;
+    }
+
+    /**
+     * @param  array{business_type: string, country: string, industry: string}  $setup
+     * @return array<string, string>
+     */
+    private function buildStudioBusinessProfile(Studio $studio, array $setup): array
+    {
+        $industryMeta = $this->studioIndustryMeta($setup['industry']);
+        $isIndividual = ($setup['business_type'] ?? '') === 'individual';
+
+        if ($isIndividual) {
+            return array_filter([
+                'mcc' => $industryMeta['mcc'],
+                'product_description' => $industryMeta['description'],
+                'url' => $this->individualBusinessWebsiteUrl(),
+            ]);
+        }
+
+        $studioName = $this->nonEmpty($studio->name) ?? 'Studio';
+
+        return array_filter([
+            'name' => $studioName,
+            'support_email' => $this->nonEmpty($studio->email),
+            'mcc' => $industryMeta['mcc'],
+            'product_description' => $industryMeta['description'],
+        ]);
+    }
+
+    /**
+     * @param  array{business_type: string, country: string, industry: string}  $setup
+     */
+    private function syncStudioProfileToAccount(string $accountId, Studio $studio, array $setup): void
+    {
+        $country = strtoupper(trim($setup['country']));
+        $businessType = $setup['business_type'] === 'individual' ? 'individual' : 'company';
+        $studioName = $this->nonEmpty($studio->name) ?? 'Studio';
+        $currency = StripeConnectCountries::currencyForCountry($country);
+
+        $updates = array_filter([
+            'email' => $this->nonEmpty($studio->email),
+            'country' => $country,
+            'business_type' => $businessType,
+            'default_currency' => $currency ? strtolower($currency) : null,
+            'company' => $businessType === 'company' ? ['name' => $studioName] : null,
+            'business_profile' => $this->buildStudioBusinessProfile($studio, $setup),
+            'metadata' => [
+                'inkjin_studio_id' => (string) $studio->id,
+                'inkjin_studio_industry' => $setup['industry'],
+                'inkjin_studio_business_type' => $businessType,
+            ],
+        ], fn ($value) => $value !== null && $value !== []);
+
+        if ($updates === []) {
+            return;
+        }
+
+        try {
+            Account::update($accountId, $updates);
+        } catch (ApiErrorException $e) {
+            Log::warning('Could not sync studio profile to Stripe Connect account', [
+                'stripe_account_id' => $accountId,
+                'studio_id' => $studio->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function ensureConnectedAccount(User $user, UserDetail $userDetail): string
     {
         $this->initialize();
@@ -541,7 +804,7 @@ class StripeConnectService
 
             $businessProfile = array_merge($businessProfile, array_filter([
                 'name' => $this->nonEmpty($displayName),
-                'url' => $this->artistProfileUrlForStripe($userDetail),
+                'url' => $this->individualBusinessWebsiteUrl(),
                 'product_description' => $this->nonEmpty($userDetail->personal_page_tagline)
                     ?? $this->nonEmpty($userDetail->personal_page_description)
                     ?? 'Professional tattoo artist and body art services.',
@@ -604,6 +867,16 @@ class StripeConnectService
         $value = trim((string) $value);
 
         return $value !== '' ? $value : null;
+    }
+
+    private function individualBusinessWebsiteUrl(): string
+    {
+        $url = trim((string) config('services.stripe.connect.individual_business_website_url', 'https://www.inkjin.com'));
+        if ($url !== '' && ! preg_match('#^https?://#i', $url)) {
+            $url = 'https://'.$url;
+        }
+
+        return $this->isStripeAcceptableUrl($url) ? $url : 'https://www.inkjin.com';
     }
 
     private function artistProfileUrlForStripe(UserDetail $userDetail): ?string

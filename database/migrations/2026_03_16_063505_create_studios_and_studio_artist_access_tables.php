@@ -1,11 +1,13 @@
 <?php
 
+use App\Database\SafelyDropsTables;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use SafelyDropsTables;
     public function up(): void
     {
         if (Schema::hasTable('studios')) {
@@ -16,17 +18,13 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('account_holder_name')->nullable();
-            $table->string('bank_name')->nullable();
-            $table->string('account_number')->nullable();
-            $table->string('swift_bic')->nullable();
-            $table->string('bank_currency', 3)->nullable();
+            $table->string('stripe_account_id')->nullable();
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('studios');
+        $this->dropTablesSafely('studios');
     }
 };

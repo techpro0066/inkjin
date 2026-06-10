@@ -13,16 +13,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('availability_overrides')) {
-            return;
-        }
-
-        Schema::create('availability_overrides', function (Blueprint $table) {
+        Schema::create('user_not_registered', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
-            $table->string('reason')->nullable();
+            $table->string('email');
+            $table->string('country');
+            $table->string('hear_about_us');
             $table->timestamps();
         });
     }
@@ -32,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $this->dropTablesSafely('availability_overrides');
+        $this->dropTablesSafely('user_not_registered');
     }
 };

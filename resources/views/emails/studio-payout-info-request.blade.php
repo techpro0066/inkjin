@@ -71,7 +71,7 @@
             </p>
             @if(!empty($showApproveDecline))
                 <p class="content">
-                    We already have your studio’s bank payout details on file. Please choose whether to <strong>allow this artist to receive payouts through your studio</strong> on {{ config('app.name', 'Inkjin') }}.
+                    Your studio already has Stripe connected for payouts. Please choose whether to <strong>allow this artist to receive payouts through your studio</strong> on {{ config('app.name', 'Inkjin') }}.
                 </p>
                 <div class="btn-row-split">
                     <a href="{{ $approveUrl }}" class="btn">Approve</a>
@@ -84,10 +84,10 @@
                 </p>
             @else
                 <p class="content">
-                    Please open the secure link below and submit your payout bank details. You can use this link again whenever we send a new request to update your information.
+                    Please open the secure link below and connect your studio’s Stripe account for payouts. Stripe will guide you through identity verification and bank account setup.
                 </p>
                 <div class="button-row">
-                    <a href="{{ $formUrl }}" class="btn">Provide payout details</a>
+                    <a href="{{ $formUrl }}" class="btn">Connect Stripe</a>
                 </div>
                 <p class="content" style="font-size: 13px; color: #888;">
                     If the button does not work, copy and paste this URL into your browser:<br>

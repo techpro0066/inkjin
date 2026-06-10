@@ -11,6 +11,10 @@
     default => 'artist',
   };
   $stripeComplete = (bool) ($stripeStatus['complete'] ?? false);
+  $artistStripeConnected = (bool) ($artistStripeConnected ?? false);
+  $studioPayoutConnected = (bool) ($studioPayoutConnected ?? false);
+  $studioPayoutCommitted = (bool) ($studioPayoutCommitted ?? false);
+  $payoutOptionLocked = (bool) ($payoutOptionLocked ?? ($artistStripeConnected || $studioPayoutCommitted));
   $stripeConnectLocale = $stripeConnectLocale ?? config('services.stripe.connect.locale', 'en-US');
   $payoutBankCountry = $payoutBankCountry ?? $ud->payout_bank_country ?? null;
   $payoutWaitingListCountry = $payoutWaitingListCountry ?? $ud->payout_waiting_list_country ?? null;
@@ -31,8 +35,12 @@
       <p class="text-on-surface-variant mt-2 max-w-lg">Select how you want your earnings to be handled. You can update these settings later in your financial dashboard.</p>
     </div>
 
+    <div id="payoutOptionLockBanner" class="rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant mb-6 max-w-2xl {{ $payoutOptionLocked ? '' : 'hidden' }}">
+      Your payout option is locked after setup is saved. Disconnect your current setup in Payment Settings before switching between Artist and Studio.
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-      <div class="payout-card {{ $payoutKey === 'artist' ? 'selected' : '' }}" onclick="selectPayout('artist', this)" id="card-artist" role="button" tabindex="0">
+      <div class="payout-card {{ $payoutKey === 'artist' ? 'selected' : '' }} {{ $payoutOptionLocked && $payoutKey !== 'artist' ? 'opacity-55 cursor-not-allowed' : '' }}" onclick="selectPayout('artist', this)" id="card-artist" role="button" tabindex="0">
         <div class="radio-indicator"></div>
         <div class="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center mb-5">
           <span class="material-symbols-outlined text-primary text-2xl">person</span>
@@ -42,7 +50,7 @@
         <span class="inline-flex items-center gap-1 text-sm font-bold text-primary">You get paid directly <span class="material-symbols-outlined text-base">arrow_forward</span></span>
       </div>
 
-      <div class="payout-card {{ $payoutKey === 'studio' ? 'selected' : '' }}"
+      <div class="payout-card {{ $payoutKey === 'studio' ? 'selected' : '' }} {{ $payoutOptionLocked && $payoutKey !== 'studio' ? 'opacity-55 cursor-not-allowed' : '' }}"
         onclick="selectPayout('studio', this)" id="card-studio" role="button" tabindex="0">
         <div class="radio-indicator"></div>
         <div class="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center mb-5">
@@ -56,6 +64,18 @@
 
     <div id="payout-artist" class="{{ $payoutKey !== 'artist' ? 'hidden' : '' }}">
       <div class="bg-surface-container-low rounded-2xl p-6 bg-white space-y-6">
+        @if ($artistStripeConnected)
+          <div class="max-w-2xl rounded-xl border border-green-200 bg-green-50 text-green-900 px-4 py-4 text-sm">
+            <p class="font-semibold flex items-center gap-2 mb-2">
+              <span class="material-symbols-outlined text-base">check_circle</span>
+              Stripe account connected
+            </p>
+            <p class="text-green-800">Your artist payouts are already set up through Stripe.</p>
+            @if ($payoutBankCountry && ($payoutBankCountryName ?? null))
+              <p class="text-green-800 mt-2">Bank account country: <strong>{{ $payoutBankCountryName }}</strong></p>
+            @endif
+          </div>
+        @else
         {{-- Bank account country (InkJin-controlled) --}}
         <div id="payoutCountryStep" class="{{ ($payoutBankCountry || $payoutWaitingListCountry) && ! $payoutWaitingListCountry ? 'hidden' : '' }}">
           @if ($payoutWaitingListCountry)
@@ -114,14 +134,9 @@
                 Add your personal details, upload an identity document (passport or ID), and enter your bank account below. Onboarding will finish automatically when you're done.
               @endif
             </p>
-            <div id="payoutStripeCountrySummary" class="flex flex-wrap items-center justify-between gap-3 mt-4 {{ $payoutBankCountry ? '' : 'hidden' }}">
-              <div>
-                <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
-                <p id="payoutBankCountryName" class="text-sm font-semibold text-on-surface">{{ $payoutBankCountryName ?? $payoutBankCountry ?? '' }}</p>
-              </div>
-              @if (! $stripeComplete)
-                <button type="button" id="payoutChangeCountry" class="text-sm font-semibold text-primary hover:underline">Change country</button>
-              @endif
+            <div id="payoutStripeCountrySummary" class="mt-4 {{ $payoutBankCountry ? '' : 'hidden' }}">
+              <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
+              <p id="payoutBankCountryName" class="text-sm font-semibold text-on-surface">{{ $payoutBankCountryName ?? $payoutBankCountry ?? '' }}</p>
             </div>
           </div>
 
@@ -130,13 +145,14 @@
               Stripe is not configured. You can skip this step for now and finish payout setup later in settings.
             </div>
           @else
-            <div id="stripeConnectMount" class="min-h-[420px] rounded-xl m-1 bg-white overflow-hidden"></div>
+            <div id="stripeConnectMount" class="min-h-[420px] rounded-xl p-1 bg-white overflow-hidden"></div>
             <p id="stripe_connect_error" class="text-error text-xs mt-2 hidden"></p>
             <p id="stripeConnectHint" class="text-on-surface-variant text-xs mt-3 {{ $stripeComplete ? 'hidden' : '' }}">
               You'll be guided through personal details, identity document upload, and bank account setup. Onboarding will finish automatically once all steps are complete.
             </p>
           @endif
         </div>
+        @endif
       </div>
     </div>
 
@@ -146,7 +162,7 @@
           <div>
             <label for="studio_email" class="block text-sm font-semibold text-on-surface mb-2">Studio Email Address</label>
             <input type="text" id="studio_email" name="studio_email" value="{{ $studioEmail }}" placeholder="studio@example.com" class="form-input" autocomplete="email">
-            <p class="text-on-surface-variant text-xs mt-2">When you click Complete Onboarding, we send an approval email to this studio.</p>
+            <p class="text-on-surface-variant text-xs mt-2">When you click Complete Onboarding, we email your studio a secure link to connect Stripe for payouts.</p>
           </div>
         </div>
         <p id="studio_email_error" class="text-error text-sm mt-3 hidden"></p>
@@ -207,6 +223,25 @@ window.setStripeOnboardingComplete = function (complete) {
     hint.classList.add('hidden');
   } else if (hint) {
     hint.classList.remove('hidden');
+  }
+};
+
+window.lockPayoutOptions = function (activeKey) {
+  window.payoutOptionLocked = true;
+  window.activePayoutKey = activeKey;
+
+  const banner = document.getElementById('payoutOptionLockBanner');
+  if (banner) banner.classList.remove('hidden');
+
+  const artistCard = document.getElementById('card-artist');
+  const studioCard = document.getElementById('card-studio');
+  if (artistCard) {
+    artistCard.classList.toggle('opacity-55', activeKey !== 'artist');
+    artistCard.classList.toggle('cursor-not-allowed', activeKey !== 'artist');
+  }
+  if (studioCard) {
+    studioCard.classList.toggle('opacity-55', activeKey !== 'studio');
+    studioCard.classList.toggle('cursor-not-allowed', activeKey !== 'studio');
   }
 };
 
@@ -309,10 +344,13 @@ async function mountStripeOnboarding() {
       ...(collectionOptions.requirements ? { requirements: collectionOptions.requirements } : {}),
     });
     accountOnboarding.setOnExit(async () => {
-      window.setStripeOnboardingComplete(true);
-      // Brief pause so Stripe can mark details_submitted before we save onboarding.
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      await tryAutoFinishOnboarding();
+      const status = await refreshStripeStatus();
+      if (status?.complete) {
+        window.setStripeOnboardingComplete(true);
+        window.lockPayoutOptions('artist');
+        await tryAutoFinishOnboarding();
+      }
     });
     accountOnboarding.setOnStepChange(() => {
       window.clearOnboardingFieldError && window.clearOnboardingFieldError('stripe_connect');
@@ -568,64 +606,41 @@ window.handlePayoutWaitingListChange = function (value) {
   }
 };
 
-document.getElementById('payoutChangeCountry')?.addEventListener('click', () => {
-  window.payoutWaitingListMode = false;
-  window.payoutWaitingListSaved = false;
-  if (typeof window.updatePaySubmitLabel === 'function') window.updatePaySubmitLabel();
-  window.payoutBankCountrySelected = false;
-  onboardingMounted = false;
-  connectInstance = null;
-  stripeSessionData = null;
-  const mount = document.getElementById('stripeConnectMount');
-  if (mount) mount.innerHTML = '';
-  window.showPayoutStep('country');
-  toggleWaitingListInline(false);
-  togglePayoutCountryContinue(false);
-  window.payoutSupportedCountryPending = null;
-  resetCountryStepCopy();
-  const bankSelect = document.getElementById('payout_bank_country');
-  const bankWrap = bankSelect?.closest('div');
-  if (bankWrap) bankWrap.classList.remove('hidden');
-  const savedCountry = window.savedPayoutBankCountry || initialPayoutBankCountry;
-  if (bankSelect && savedCountry) {
-    bankSelect.value = savedCountry;
-    window.payoutSupportedCountryPending = savedCountry;
-    togglePayoutCountryContinue(true);
-    if (window.jQuery) {
-      const $bank = window.jQuery(bankSelect);
-      if ($bank.hasClass('select2-hidden-accessible')) {
-        $bank.val(savedCountry).trigger('change');
-      }
-    }
-  } else {
-    togglePayoutCountryContinue(false);
-    window.payoutSupportedCountryPending = null;
-    if (bankSelect) bankSelect.value = '';
-  }
-  const waitSelect = document.getElementById('payout_waiting_list_country');
-  if (waitSelect) waitSelect.value = '';
-  document.getElementById('payoutWaitingListSuccess')?.classList.add('hidden');
-});
+window.artistStripeConnected = @json($artistStripeConnected);
 
-if (window.payoutBankCountrySelected) {
-  window.showPayoutStep('stripe');
-} else {
-  window.showPayoutStep('country');
+if (!window.artistStripeConnected) {
+  if (window.payoutBankCountrySelected) {
+    window.showPayoutStep('stripe');
+  } else {
+    window.showPayoutStep('country');
+  }
+  window.mountStripeOnboardingIfNeeded();
 }
 
 window.submitPayoutWaitingList = submitPayoutWaitingList;
-
-window.mountStripeOnboardingIfNeeded();
 </script>
 <script>
+window.payoutOptionLocked = @json($payoutOptionLocked);
+window.activePayoutKey = @json($payoutKey);
+const artistStripeConnected = @json($artistStripeConnected);
+
 function selectPayout(type, el) {
+  if (window.payoutOptionLocked && type !== window.activePayoutKey) {
+    if (typeof window.showOnboardingAlert === 'function') {
+      window.showOnboardingAlert('payAlert', 'Disconnect your current payout setup in Payment Settings before switching between Artist and Studio.', 'warning');
+    } else {
+      $('#payAlert').attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-amber-50 text-amber-900 border border-amber-200').text('Disconnect your current payout setup before switching between Artist and Studio.').removeClass('hidden');
+    }
+    return;
+  }
+
   $('.payout-card').removeClass('selected');
   $(el).addClass('selected');
   var map = { artist: 'artist_account', studio: 'studio_account' };
   $('#payment_type').val(map[type]);
   $('#payout-artist').toggleClass('hidden', type !== 'artist');
   $('#payout-studio').toggleClass('hidden', type !== 'studio');
-  if (type === 'artist' && typeof window.mountStripeOnboardingIfNeeded === 'function') {
+  if (type === 'artist' && !artistStripeConnected && typeof window.mountStripeOnboardingIfNeeded === 'function') {
     window.mountStripeOnboardingIfNeeded();
   }
   if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('payment_type');
@@ -676,6 +691,7 @@ $(function () {
   async function validateArtistStripeSetupAsync() {
     var paymentType = $('#payment_type').val();
     if (paymentType !== 'artist_account') return true;
+    if (artistStripeConnected) return true;
     if (window.payoutWaitingListMode || window.payoutWaitingListSaved) {
       if (window.payoutWaitingListSaved) return true;
       var waitCountry = $('#payout_waiting_list_country').val();
@@ -767,6 +783,14 @@ $(function () {
     })
       .done(function (data) {
         if (data.success && data.redirect) {
+          const paymentType = $('#payment_type').val();
+          if (typeof window.lockPayoutOptions === 'function') {
+            if (paymentType === 'artist_account') {
+              window.lockPayoutOptions('artist');
+            } else if (paymentType === 'studio_account') {
+              window.lockPayoutOptions('studio');
+            }
+          }
           window.location.href = data.redirect;
           return;
         }

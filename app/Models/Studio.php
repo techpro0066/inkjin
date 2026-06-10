@@ -10,11 +10,7 @@ class Studio extends Model
     protected $fillable = [
         'name',
         'email',
-        'account_holder_name',
-        'bank_name',
-        'account_number',
-        'swift_bic',
-        'bank_currency',
+        'stripe_account_id',
     ];
 
     /**
@@ -26,17 +22,48 @@ class Studio extends Model
     }
 
     /**
-     * Whether the studio already has a full bank profile on file (used for new artists on the same studio email).
+     * Stripe connected account id shared by artists linked to this studio (stored on user_details).
+     */
+    public function resolveStripeAccountId(): ?string
+    {
+        if (! empty($this->stripe_account_id)) {
+            return $this->stripe_account_id;
+        }
+
+        return UserDetail::query()
+            ->where('studio_id', $this->id)
+            ->whereNotNull('stripe_account_id')
+            ->value('stripe_account_id');
+    }
+
+    /**
+     * Whether this studio has completed Stripe Connect onboarding (used for approve/decline emails).
+     */
+    public function hasStripeConnect(): bool
+    {
+        $accountId = $this->resolveStripeAccountId();
+        if ($accountId === null || $accountId === '') {
+            return false;
+        }
+
+        $stripeConnect = app(\App\Services\StripeConnectService::class);
+        if (! $stripeConnect->isConfigured()) {
+            return false;
+        }
+
+        try {
+            return $stripeConnect->isOnboardingSubmitted($accountId);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * @deprecated Use hasStripeConnect() — kept for callers that checked manual bank details.
      */
     public function hasStoredBankDetails(): bool
     {
-        $nonEmpty = static fn ($v): bool => $v !== null && trim((string) $v) !== '';
-
-        return $nonEmpty($this->account_holder_name)
-            && $nonEmpty($this->bank_name)
-            && $nonEmpty($this->account_number)
-            && $nonEmpty($this->swift_bic)
-            && $nonEmpty($this->bank_currency);
+        return $this->hasStripeConnect();
     }
 }
 

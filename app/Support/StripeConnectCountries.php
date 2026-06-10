@@ -9,6 +9,17 @@ use ResourceBundle;
 class StripeConnectCountries
 {
     /**
+     * ISO codes offered on the artist registration page.
+     *
+     * @var list<string>
+     */
+    private const REGISTRATION_COUNTRY_CODES = [
+        'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR',
+        'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK',
+        'SI', 'ES', 'SE', 'NO', 'CH', 'GB', 'US',
+    ];
+
+    /**
      * @return array<string, array{name: string, currency: string}>
      */
     public static function supported(): array
@@ -32,6 +43,35 @@ class StripeConnectCountries
         usort($items, fn (array $a, array $b) => strcasecmp($a['name'], $b['name']));
 
         return $items;
+    }
+
+    /**
+     * @return list<array{code: string, name: string}>
+     */
+    public static function registrationCountriesForSelect(): array
+    {
+        $supported = self::supported();
+        $items = [];
+
+        foreach (self::REGISTRATION_COUNTRY_CODES as $code) {
+            if (! isset($supported[$code])) {
+                continue;
+            }
+
+            $items[] = [
+                'code' => $code,
+                'name' => $supported[$code]['name'],
+            ];
+        }
+
+        usort($items, fn (array $a, array $b) => strcasecmp($a['name'], $b['name']));
+
+        return $items;
+    }
+
+    public static function isRegistrationCountry(string $countryCode): bool
+    {
+        return in_array(strtoupper($countryCode), self::REGISTRATION_COUNTRY_CODES, true);
     }
 
     public static function isSupported(string $countryCode): bool

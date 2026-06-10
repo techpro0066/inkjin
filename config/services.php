@@ -56,6 +56,8 @@ return [
             'exclude_bank_country' => env('STRIPE_CONNECT_EXCLUDE_BANK_COUNTRY', true),
             // Public base URL for artist pages sent to Stripe business_profile.url (required when APP_URL is localhost).
             'business_url_base' => env('STRIPE_CONNECT_BUSINESS_URL_BASE'),
+            // Website URL always sent to Stripe for individual connected accounts (business_profile.url).
+            'individual_business_website_url' => env('STRIPE_CONNECT_INDIVIDUAL_BUSINESS_WEBSITE_URL', 'https://www.inkjin.com'),
             // How long to cache Stripe CountrySpec payout countries (seconds).
             'countries_cache_ttl' => env('STRIPE_CONNECT_COUNTRIES_CACHE_TTL', 86400),
             // Skip Stripe SMS/popup auth before embedded onboarding forms (application liability).

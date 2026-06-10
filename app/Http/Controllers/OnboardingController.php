@@ -67,6 +67,18 @@ class OnboardingController extends Controller
     /**
      * @return \Illuminate\Http\RedirectResponse|null
      */
+    /**
+     * Allow Stripe payout API calls from onboarding step 6 or dashboard payment settings.
+     */
+    protected function ensurePaymentStripeAccess(Request $request): mixed
+    {
+        if ($request->routeIs('settings.payment.*')) {
+            return null;
+        }
+
+        return $this->ensureOnboardingPage($request, 6);
+    }
+
     protected function ensureOnboardingPage(Request $request, int $pageStep)
     {
         $user = $request->user();
@@ -172,8 +184,40 @@ class OnboardingController extends Controller
             }
         }
 
-        return view('onboarding.payment', $this->onboardingViewData($request) + [
-            'activeNav' => 'payment',
+        return view('onboarding.payment', $this->onboardingViewData($request) + $this->paymentStripeViewData($userDetail, $stripeConnect, $stripeStatus));
+    }
+
+    public function paymentSettings(Request $request, StripeConnectService $stripeConnect)
+    {
+        $userDetail = $request->user()->userDetail;
+        $stripeStatus = null;
+
+        if ($userDetail?->stripe_account_id && $stripeConnect->isConfigured()) {
+            try {
+                $stripeStatus = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
+            } catch (ApiErrorException $e) {
+                Log::warning('Could not load Stripe Connect status for payment settings', [
+                    'user_id' => $request->user()->id,
+                    'stripe_account_id' => $userDetail->stripe_account_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return view('artist.settings.payment', [
+            'userDetail' => $userDetail,
+            ...$this->paymentStripeViewData($userDetail, $stripeConnect, $stripeStatus),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function paymentStripeViewData(?UserDetail $userDetail, StripeConnectService $stripeConnect, ?array $stripeStatus): array
+    {
+        $lockState = $this->paymentPayoutLockState($userDetail, $stripeStatus);
+
+        return [
             'stripePublishableKey' => config('services.stripe.key'),
             'stripeConnectConfigured' => $stripeConnect->isConfigured(),
             'stripeStatus' => $stripeStatus,
@@ -185,7 +229,84 @@ class OnboardingController extends Controller
             'payoutWaitingListCountry' => $userDetail?->payout_waiting_list_country,
             'stripeSupportedCountries' => StripeConnectCountries::supportedForSelect(),
             'stripeUnsupportedCountries' => StripeConnectCountries::unsupportedCountryNamesForWaitingList(),
-        ]);
+            ...$lockState,
+        ];
+    }
+
+    /**
+     * @return array{
+     *     artistStripeConnected: bool,
+     *     studioPayoutConnected: bool,
+     *     payoutOptionLocked: bool
+     * }
+     */
+    protected function paymentPayoutLockState(?UserDetail $userDetail, ?array $stripeStatus = null): array
+    {
+        $artistStripeConnected = $this->hasActiveArtistStripe($userDetail, $stripeStatus);
+        $studioPayoutConnected = $this->hasActiveStudioPayout($userDetail);
+        $studioPayoutCommitted = $this->hasStudioPayoutCommitted($userDetail);
+
+        return [
+            'artistStripeConnected' => $artistStripeConnected,
+            'studioPayoutConnected' => $studioPayoutConnected,
+            'studioPayoutCommitted' => $studioPayoutCommitted,
+            'payoutOptionLocked' => $artistStripeConnected || $studioPayoutCommitted,
+        ];
+    }
+
+    protected function hasActiveArtistStripe(?UserDetail $userDetail, ?array $stripeStatus = null): bool
+    {
+        if (($userDetail?->payment_type ?? null) !== 'artist_account' || empty($userDetail->stripe_account_id)) {
+            return false;
+        }
+
+        if ($stripeStatus !== null) {
+            return (bool) ($stripeStatus['complete'] ?? false);
+        }
+
+        $stripeConnect = app(StripeConnectService::class);
+        if (! $stripeConnect->isConfigured()) {
+            return false;
+        }
+
+        try {
+            return $stripeConnect->isOnboardingSubmitted($userDetail->stripe_account_id);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    protected function hasActiveStudioPayout(?UserDetail $userDetail): bool
+    {
+        return ($userDetail?->payment_type ?? null) === 'studio_account'
+            && ($userDetail->payment_status ?? null) === 'approved'
+            && ! empty($userDetail->studio_id);
+    }
+
+    protected function hasStudioPayoutCommitted(?UserDetail $userDetail): bool
+    {
+        return ($userDetail?->payment_type ?? null) === 'studio_account'
+            && ! empty($userDetail->studio_id);
+    }
+
+    protected function hasLockedPayoutConnection(?UserDetail $userDetail, ?array $stripeStatus = null): bool
+    {
+        return $this->hasActiveArtistStripe($userDetail, $stripeStatus)
+            || $this->hasStudioPayoutCommitted($userDetail);
+    }
+
+    protected function assertPaymentTypeCanChange(?UserDetail $userDetail, string $requestedType, ?array $stripeStatus = null): void
+    {
+        $currentType = $userDetail?->payment_type;
+        if ($currentType === null || $currentType === '' || $currentType === $requestedType) {
+            return;
+        }
+
+        if ($this->hasLockedPayoutConnection($userDetail, $stripeStatus)) {
+            throw ValidationException::withMessages([
+                'payment_type' => ['Disconnect your current payout setup before switching between Artist and Studio.'],
+            ]);
+        }
     }
 
     /**
@@ -224,7 +345,7 @@ class OnboardingController extends Controller
      */
     public function savePayoutBankCountry(Request $request, StripeConnectService $stripeConnect)
     {
-        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+        if ($redirect = $this->ensurePaymentStripeAccess($request)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to save bank country from this page.',
@@ -279,7 +400,7 @@ class OnboardingController extends Controller
      */
     public function savePayoutWaitingList(Request $request)
     {
-        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+        if ($redirect = $this->ensurePaymentStripeAccess($request)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to join the waiting list from this page.',
@@ -324,7 +445,7 @@ class OnboardingController extends Controller
      */
     public function createStripeConnectSession(Request $request, StripeConnectService $stripeConnect)
     {
-        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+        if ($redirect = $this->ensurePaymentStripeAccess($request)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to start Stripe onboarding from this page.',
@@ -412,7 +533,7 @@ class OnboardingController extends Controller
      */
     public function stripeConnectStatus(Request $request, StripeConnectService $stripeConnect)
     {
-        if ($redirect = $this->ensureOnboardingPage($request, 6)) {
+        if ($redirect = $this->ensurePaymentStripeAccess($request)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to check Stripe status from this page.',
@@ -421,7 +542,17 @@ class OnboardingController extends Controller
         }
 
         $userDetail = $request->user()->userDetail;
-        if (! $userDetail?->stripe_account_id) {
+        $accountId = $request->query('account_id');
+        if (! is_string($accountId) || $accountId === '') {
+            $accountId = $userDetail?->stripe_account_id;
+        } elseif ($userDetail?->stripe_account_id !== null && $userDetail->stripe_account_id !== $accountId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe account does not belong to this user.',
+            ], 403);
+        }
+
+        if (! $accountId) {
             return response()->json([
                 'success' => true,
                 'complete' => false,
@@ -437,8 +568,8 @@ class OnboardingController extends Controller
         }
 
         try {
-            $status = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
-            $phaseStatus = $stripeConnect->getOnboardingPhaseStatus($userDetail->stripe_account_id);
+            $status = $stripeConnect->getOnboardingStatus($accountId);
+            $phaseStatus = $stripeConnect->getOnboardingPhaseStatus($accountId);
 
             return response()->json([
                 'success' => true,
@@ -920,12 +1051,35 @@ class OnboardingController extends Controller
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
+            if ((int) $request->input('disconnect_stripe', 0) === 1) {
+                if (! $this->hasActiveArtistStripe($userDetail)) {
+                    $msg = 'No connected Stripe payout to disconnect.';
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+
+                    return redirect()->back()->with('error', $msg);
+                }
+
+                $userDetail->stripe_account_id = null;
+                $userDetail->payment_status = null;
+                $userDetail->save();
+
+                $msg = 'Stripe payout disconnected. You can now switch payout options or connect again.';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['success' => true, 'message' => $msg]);
+                }
+
+                return redirect()->route('settings.payment')->with('success', $msg);
+            }
+
             if ((int) $request->input('disconnect_studio', 0) === 1) {
-                if (($userDetail->payment_type ?? null) !== 'studio_account' || empty($userDetail->studio_id)) {
+                if (! $this->hasActiveStudioPayout($userDetail)) {
                     $msg = 'No linked studio payout to disconnect.';
                     if ($request->expectsJson() || $request->ajax()) {
                         return response()->json(['success' => false, 'message' => $msg], 422);
                     }
+
                     return redirect()->back()->with('error', $msg);
                 }
 
@@ -935,10 +1089,11 @@ class OnboardingController extends Controller
                 $userDetail->payment_status = null;
                 $userDetail->save();
 
-                $msg = 'Studio payout disconnected. Please connect another payment method.';
+                $msg = 'Studio payout disconnected. You can now switch payout options or connect again.';
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json(['success' => true, 'message' => $msg]);
                 }
+
                 return redirect()->route('settings.payment')->with('success', $msg);
             }
 
@@ -953,67 +1108,7 @@ class OnboardingController extends Controller
 
             $paymentType = $request->payment_type;
             if ($paymentType === 'artist_account') {
-                $rules['account_holder_name'] = [
-                    'required',
-                    'string',
-                    'min:2',
-                    'max:255',
-                    'regex:/^[A-Za-z]+(?:\s+[A-Za-z]+)*$/',
-                ];
-                $rules['bank_name'] = [
-                    'required',
-                    'string',
-                    'min:2',
-                    'max:255',
-                    'regex:/^[A-Za-z]+(?:\s+[A-Za-z]+)*$/',
-                ];
-                $rules['account_number'] = [
-                    'required',
-                    'string',
-                    'max:64',
-                    function (string $attribute, mixed $value, \Closure $fail): void {
-                        $norm = $this->normalizedPayoutAccountNumber((string) $value);
-                        if ($norm === '') {
-                            $fail('Enter a valid account number or IBAN.');
-
-                            return;
-                        }
-                        if (strlen($norm) > 34) {
-                            $fail('Account number or IBAN must not exceed 34 characters (after removing spaces and hyphens).');
-
-                            return;
-                        }
-                        if ($this->looksLikeIban($norm)) {
-                            if (! $this->isValidIban($norm)) {
-                                $fail('This IBAN is not valid. Check the country code, length, and digits.');
-                            }
-
-                            return;
-                        }
-                        if (! preg_match('/^[A-Z0-9]{6,34}$/', $norm)) {
-                            $fail('Account number may only contain letters and digits (6-34 characters).');
-                        }
-                    },
-                ];
-                $rules['swift_bic'] = [
-                    'required',
-                    'string',
-                    'max:15',
-                    function (string $attribute, mixed $value, \Closure $fail): void {
-                        $v = strtoupper(preg_replace('/\s+/', '', (string) $value));
-                        if (! preg_match('/^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/', $v)) {
-                            $fail('Enter a valid 8- or 11-character SWIFT/BIC (letters and numbers only, e.g. CHASUS33 or DEUTDEFF500).');
-                        }
-                    },
-                ];
-                $rules['currency'] = ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'];
-                $messages['account_holder_name.required'] = 'Account holder name is required.';
-                $messages['account_holder_name.regex'] = 'Account holder name may only include alphabets and spaces.';
-                $messages['bank_name.required'] = 'Bank name is required.';
-                $messages['bank_name.regex'] = 'Bank name may only include alphabets and spaces.';
-                $messages['account_number.required'] = 'Account number is required.';
-                $messages['swift_bic.required'] = 'SWIFT/BIC is required.';
-                $messages['currency.required'] = 'Please select a currency.';
+                $rules['stripe_account_id'] = ['nullable', 'string', 'regex:/^acct_[a-zA-Z0-9]+$/'];
             } elseif ($paymentType === 'studio_account') {
                 $rules['studio_email'] = ['required', 'email', 'max:255'];
                 $messages['studio_email.required'] = 'Studio email is required.';
@@ -1023,14 +1118,39 @@ class OnboardingController extends Controller
             $validated = $request->validate($rules, $messages);
             $studio = null;
 
+            $this->assertPaymentTypeCanChange($userDetail, $validated['payment_type']);
+
             $userDetail->payment_type = $validated['payment_type'];
 
             if ($paymentType === 'artist_account') {
-                $userDetail->stripe_account_id = null;
-                $userDetail->studio_id = null;
-                $userDetail->payment_status = 'approved';
-                $userDetail->currency = strtoupper($validated['currency']);
-                $this->upsertUserBankDetails($user, $validated);
+                if ($userDetail->payout_waiting_list_country) {
+                    $userDetail->stripe_account_id = null;
+                    $userDetail->studio_id = null;
+                    $userDetail->payment_status = 'pending';
+                } else {
+                    $stripeConnect = app(StripeConnectService::class);
+                    if (! $stripeConnect->isConfigured()) {
+                        throw ValidationException::withMessages([
+                            'stripe_connect' => ['Stripe payout setup is not available right now. Please try again later.'],
+                        ]);
+                    }
+
+                    $accountId = $request->input('stripe_account_id') ?: $userDetail->stripe_account_id;
+                    if (! is_string($accountId) || $accountId === '' || ! $stripeConnect->isOnboardingSubmitted($accountId)) {
+                        throw ValidationException::withMessages([
+                            'stripe_connect' => ['Please complete Stripe payout setup before saving.'],
+                        ]);
+                    }
+
+                    $userDetail->stripe_account_id = $accountId;
+                    $userDetail->studio_id = null;
+                    $userDetail->payment_status = 'approved';
+
+                    $currency = $stripeConnect->resolveCurrencyForAccount($accountId);
+                    if ($currency !== null) {
+                        $userDetail->currency = $currency;
+                    }
+                }
             } elseif ($paymentType === 'studio_account') {
                 $studioName = $userDetail->studio_name ?? 'Studio';
                 $studioEmail = strtolower(trim($validated['studio_email']));
@@ -1424,6 +1544,18 @@ class OnboardingController extends Controller
             $validated = $request->validate($rules, $messages);
             $studio = null;
 
+            $stripeConnect = app(StripeConnectService::class);
+            $stripeStatus = null;
+            if ($userDetail->stripe_account_id && $stripeConnect->isConfigured()) {
+                try {
+                    $stripeStatus = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
+                } catch (\Throwable) {
+                    $stripeStatus = null;
+                }
+            }
+
+            $this->assertPaymentTypeCanChange($userDetail, $validated['payment_type'], $stripeStatus);
+
             // Always set payment_type and completed_steps
             $userDetail->payment_type = $validated['payment_type'];
             $userDetail->completed_steps = array_unique(array_merge($userDetail->completed_steps ?? [], [6]));
@@ -1609,171 +1741,201 @@ class OnboardingController extends Controller
             ]);
         }
 
-        $storeUrl = URL::temporarySignedRoute(
-            'studio.payout-info.store',
-            now()->addDays(14),
+        $artist = $userDetail->user;
+        $artistName = trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''));
+        if ($artistName === '') {
+            $artistName = $userDetail->user_name ?? $artist->email ?? 'Artist';
+        }
+
+        $stripeConnect = app(StripeConnectService::class);
+        $studioAlreadyConnected = $studio->hasStripeConnect();
+
+        $approveUrl = URL::temporarySignedRoute(
+            'studio.payout-artist-link.approve',
+            now()->addDays(30),
+            ['userDetail' => $userDetail->id]
+        );
+        $declineUrl = URL::temporarySignedRoute(
+            'studio.payout-artist-link.decline',
+            now()->addDays(30),
             ['userDetail' => $userDetail->id]
         );
 
         return view('studio.payout-form', [
             'userDetail' => $userDetail,
             'studio' => $studio,
-            'storeUrl' => $storeUrl,
+            'artistName' => $artistName,
+            'studioAlreadyConnected' => $studioAlreadyConnected,
+            'approveUrl' => $approveUrl,
+            'declineUrl' => $declineUrl,
+            'stripeConnectConfigured' => $stripeConnect->isConfigured(),
+            'stripePublishableKey' => config('services.stripe.key'),
+            'stripeConnectLocale' => $stripeConnect->connectLocale(),
+            'stripeSessionUrl' => URL::temporarySignedRoute(
+                'studio.payout-info.stripe.session',
+                now()->addDays(14),
+                ['userDetail' => $userDetail->id]
+            ),
+            'stripeStatusUrl' => URL::temporarySignedRoute(
+                'studio.payout-info.stripe.status',
+                now()->addDays(14),
+                ['userDetail' => $userDetail->id]
+            ),
+            'stripeCompleteUrl' => URL::temporarySignedRoute(
+                'studio.payout-info.stripe.complete',
+                now()->addDays(14),
+                ['userDetail' => $userDetail->id]
+            ),
+            'stripeSupportedCountries' => StripeConnectCountries::supportedForSelect(),
         ]);
     }
 
-    /**
-     * Save studio bank details on the studio record and mark the artist payout request approved.
-     */
-    public function saveStudioPayoutForm(Request $request, UserDetail $userDetail)
+    public function createStudioStripeSession(Request $request, UserDetail $userDetail, StripeConnectService $stripeConnect)
     {
         if (! $request->hasValidSignature()) {
-            return view('studio.payout-form-result', [
-                'success' => false,
-                'message' => 'This link is invalid or has expired. Ask the artist to resend the payout request email.',
-            ]);
+            return response()->json(['success' => false, 'message' => 'This link is invalid or has expired.'], 403);
         }
 
         if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
-            return view('studio.payout-form-result', [
-                'success' => false,
-                'message' => 'This payout request is no longer active.',
-            ]);
+            return response()->json(['success' => false, 'message' => 'This payout request is no longer active.'], 422);
         }
 
         $studio = Studio::find($userDetail->studio_id);
         if (! $studio) {
-            return view('studio.payout-form-result', [
-                'success' => false,
-                'message' => 'Studio record was not found.',
-            ]);
+            return response()->json(['success' => false, 'message' => 'Studio record was not found.'], 404);
         }
 
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'studio_display_name' => ['nullable', 'string', 'max:255'],
-                'account_holder_name' => [
-                    'required',
-                    'string',
-                    'min:2',
-                    'max:255',
-                    'regex:/^[\p{L}\p{M}\s\'\-\.]+$/u',
-                ],
-                'bank_name' => [
-                    'required',
-                    'string',
-                    'min:2',
-                    'max:255',
-                    'regex:/^[\p{L}\p{N}\p{M}\s\-\.\,\&]+$/u',
-                ],
-                'account_number' => [
-                    'required',
-                    'string',
-                    'max:64',
-                    function (string $attribute, mixed $value, \Closure $fail): void {
-                        $norm = $this->normalizedPayoutAccountNumber((string) $value);
-                        if ($norm === '') {
-                            $fail('Enter a valid account number or IBAN.');
+        if (! $stripeConnect->isConfigured()) {
+            return response()->json(['success' => false, 'message' => 'Stripe is not configured.'], 500);
+        }
 
-                            return;
-                        }
-                        if (strlen($norm) > 34) {
-                            $fail('Account number or IBAN must not exceed 34 characters (after removing spaces and hyphens).');
-
-                            return;
-                        }
-                        if ($this->looksLikeIban($norm)) {
-                            if (! $this->isValidIban($norm)) {
-                                $fail('This IBAN is not valid. Check the country code, length, and digits.');
-                            }
-
-                            return;
-                        }
-                        if (strlen($norm) < 4) {
-                            $fail('Account number must be at least 4 characters (after removing spaces).');
-
-                            return;
-                        }
-                        if (! preg_match('/^[A-Z0-9]+$/', $norm)) {
-                            $fail('Account number may only contain letters and digits (or use a valid IBAN).');
-
-                            return;
-                        }
-                    },
-                ],
-                'swift_bic' => [
-                    'required',
-                    'string',
-                    'max:15',
-                    function (string $attribute, mixed $value, \Closure $fail): void {
-                        $v = strtoupper(preg_replace('/\s+/', '', (string) $value));
-                        if (! preg_match('/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/', $v)) {
-                            $fail('Enter a valid 8- or 11-character SWIFT/BIC (letters and numbers only, e.g. CHASUS33 or DEUTDEFF500).');
-                        }
-                    },
-                ],
-                'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
-            ],
-            [
-                'account_holder_name.required' => 'Account holder name is required.',
-                'account_holder_name.min' => 'Account holder name must be at least 2 characters.',
-                'account_holder_name.regex' => 'Account holder name may only include letters, spaces, hyphens, apostrophes, and periods.',
-                'bank_name.required' => 'Bank name is required.',
-                'bank_name.min' => 'Bank name must be at least 2 characters.',
-                'bank_name.regex' => 'Bank name contains invalid characters.',
-                'account_number.required' => 'Account number or IBAN is required.',
-                'account_number.max' => 'Account number or IBAN is too long. Remove extra spaces and try again.',
-                'swift_bic.required' => 'SWIFT/BIC is required.',
-                'swift_bic.max' => 'SWIFT/BIC must be at most 11 characters after removing spaces.',
-                'currency.required' => 'Please select a currency.',
-                'currency.size' => 'Please select a valid 3-letter currency.',
-                'currency.regex' => 'Currency must be a 3-letter ISO code.',
-            ]
+        $supportedCodes = array_map(
+            fn (array $country) => $country['code'],
+            StripeConnectCountries::supportedForSelect()
         );
 
-        if ($validator->fails()) {
-            return redirect()->to(URL::temporarySignedRoute(
-                'studio.payout-info.show',
-                now()->addDays(30),
-                ['userDetail' => $userDetail->id]
-            ))->withErrors($validator)->withInput();
+        $validated = $request->validate([
+            'business_type' => ['required', 'string', Rule::in(['individual', 'company'])],
+            'country' => ['required', 'string', 'size:2', Rule::in($supportedCodes)],
+            'industry' => ['required', 'string', Rule::in(['tattoo_studio', 'tattoo_beauty', 'other'])],
+        ], [
+            'business_type.required' => 'Please select whether you are an individual or a business.',
+            'business_type.in' => 'Please select a valid account type.',
+            'country.required' => 'Please select your country.',
+            'country.in' => 'The selected country is not supported for payouts.',
+            'industry.required' => 'Please select what best describes you.',
+            'industry.in' => 'Please select a valid industry.',
+        ]);
+
+        $setup = [
+            'business_type' => $validated['business_type'],
+            'country' => strtoupper($validated['country']),
+            'industry' => $validated['industry'],
+        ];
+
+        try {
+            $session = $stripeConnect->createStudioOnboardingSession($studio, $userDetail, $setup);
+
+            return response()->json([
+                'success' => true,
+                'client_secret' => $session['client_secret'],
+                'account_id' => $session['account_id'],
+                'collection_options' => $session['collection_options'],
+            ]);
+        } catch (ApiErrorException $e) {
+            Log::error('Studio Stripe session creation failed', [
+                'user_detail_id' => $userDetail->id,
+                'studio_id' => $studio->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not start Stripe onboarding: '.$e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Studio Stripe session creation failed', [
+                'user_detail_id' => $userDetail->id,
+                'studio_id' => $studio->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'message' => 'Could not start Stripe onboarding.'], 500);
+        }
+    }
+
+    public function studioStripeStatus(Request $request, UserDetail $userDetail, StripeConnectService $stripeConnect)
+    {
+        if (! $request->hasValidSignature()) {
+            return response()->json(['success' => false, 'message' => 'Invalid or expired link.'], 403);
         }
 
-        $validated = $validator->validated();
-
-        $currency = strtoupper(trim($validated['currency']));
-        $holder = trim($validated['account_holder_name']);
-        $bankName = trim($validated['bank_name']);
-        $accountNumber = $this->normalizedPayoutAccountNumber((string) $validated['account_number']);
-        $swift = strtoupper(preg_replace('/\s+/', '', (string) $validated['swift_bic']));
-
-        $studio->fill([
-            'account_holder_name' => $holder,
-            'bank_name' => $bankName,
-            'account_number' => $accountNumber,
-            'swift_bic' => $swift,
-            'bank_currency' => $currency,
-        ]);
-        if (! empty($validated['studio_display_name'])) {
-            $studio->name = trim($validated['studio_display_name']);
+        $accountId = $request->query('account_id');
+        if (! is_string($accountId) || $accountId === '') {
+            $studio = $userDetail->studio_id ? Studio::find($userDetail->studio_id) : null;
+            $accountId = $studio?->resolveStripeAccountId() ?? $userDetail->stripe_account_id;
         }
-        $studio->save();
 
-        $userDetail->payment_status = 'approved';
-        $userDetail->currency = $currency;
-        $userDetail->save();
+        if (! $accountId) {
+            return response()->json(['success' => true, 'complete' => false]);
+        }
 
-        return view('studio.payout-form-result', [
-            'success' => true,
-            'message' => 'Thank you. Payout details have been saved successfully.',
+        try {
+            $status = $stripeConnect->getOnboardingStatus($accountId);
+
+            return response()->json([
+                'success' => true,
+                'complete' => (bool) ($status['complete'] ?? false),
+                'details_submitted' => (bool) ($status['details_submitted'] ?? false),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Could not read Stripe status.'], 500);
+        }
+    }
+
+    public function completeStudioStripeOnboarding(Request $request, UserDetail $userDetail, StripeConnectService $stripeConnect)
+    {
+        if (! $request->hasValidSignature()) {
+            return response()->json(['success' => false, 'message' => 'This link is invalid or has expired.'], 403);
+        }
+
+        if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
+            return response()->json(['success' => false, 'message' => 'This payout request is no longer active.'], 422);
+        }
+
+        $studio = Studio::find($userDetail->studio_id);
+        if (! $studio) {
+            return response()->json(['success' => false, 'message' => 'Studio record was not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'account_id' => ['required', 'string', 'regex:/^acct_[a-zA-Z0-9]+$/'],
         ]);
+
+        try {
+            $stripeConnect->finalizeStudioOnboarding($studio, $userDetail, $validated['account_id']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stripe payout setup completed successfully.',
+                'redirect' => URL::temporarySignedRoute(
+                    'studio.payout-info.show',
+                    now()->addDays(14),
+                    ['userDetail' => $userDetail->id, 'completed' => 1]
+                ),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 
     /**
      * Signed link: studio approves this artist receiving payouts through the studio (no artist user_bank_details changes).
      */
-    public function approveStudioArtistBankLink(Request $request, UserDetail $userDetail)
+    public function approveStudioArtistBankLink(Request $request, UserDetail $userDetail, StripeConnectService $stripeConnect)
     {
         if (! $request->hasValidSignature()) {
             return view('studio.payout-form-result', [
@@ -1792,18 +1954,23 @@ class OnboardingController extends Controller
         }
 
         $studio = Studio::find($userDetail->studio_id);
-        if (! $studio || ! $studio->hasStoredBankDetails()) {
+        if (! $studio || ! $studio->hasStripeConnect()) {
             return view('studio.payout-form-result', [
                 'success' => false,
-                'title' => 'Details unavailable',
-                'message' => 'Your studio does not have complete bank details on file anymore. Please use the secure bank form link from the latest email from us.',
+                'title' => 'Stripe not connected',
+                'message' => 'Your studio has not completed Stripe payout setup yet. Please use the secure link from the latest email to connect Stripe first.',
             ]);
         }
 
-        $currency = strtoupper(trim((string) $studio->bank_currency));
-
+        $accountId = $studio->resolveStripeAccountId();
+        $userDetail->stripe_account_id = $accountId;
         $userDetail->payment_status = 'approved';
-        $userDetail->currency = $currency;
+
+        $currency = $stripeConnect->resolveCurrencyForAccount($accountId);
+        if ($currency !== null) {
+            $userDetail->currency = $currency;
+        }
+
         $userDetail->save();
 
         return view('studio.payout-form-result', [
@@ -1873,7 +2040,7 @@ class OnboardingController extends Controller
         $message = match ($status) {
             'approved' => 'Your studio has submitted payout details. You have full access.',
             'rejected' => 'Your studio payout setup was not completed. Please contact your studio or update your payment method in settings.',
-            default => 'We are waiting for your studio to respond to the email we sent them (bank form, or approve/decline if they already have details on file).',
+            default => 'We are waiting for your studio to connect Stripe or approve your payout request via the email we sent them.',
         };
 
         return view('studio.payment-request-status', [
@@ -1911,7 +2078,7 @@ class OnboardingController extends Controller
             $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
         }
 
-        $showApproveDecline = $studio->hasStoredBankDetails();
+        $showApproveDecline = $studio->hasStripeConnect();
 
         $formUrl = URL::temporarySignedRoute(
             'studio.payout-info.show',

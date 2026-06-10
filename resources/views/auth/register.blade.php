@@ -123,6 +123,28 @@
   <p class="text-sm text-error mt-1 hidden" id="signup-password-confirmation-error"></p>
   </div>
   <div class="space-y-2">
+    <label class="block text-sm font-semibold text-on-surface mb-2" for="payout_bank_country">Where is your bank account based?</label>
+    <select id="payout_bank_country" name="payout_bank_country" class="js-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+      <option value="">Select country</option>
+      @foreach ($registrationCountries as $country)
+        <option value="{{ $country['code'] }}">{{ $country['name'] }}</option>
+      @endforeach
+      <option disabled>──────────</option>
+      <option value="__not_listed__">My country is not listed here</option>
+    </select>
+    <p class="text-sm text-error mt-1 hidden" id="signup-country-error"></p>
+  </div>
+  <div id="unlisted-country-wrap" class="space-y-2 hidden">
+    <label class="block text-sm font-semibold text-on-surface mb-2" for="unlisted_country">Select your country</label>
+    <select id="unlisted_country" name="unlisted_country" class="js-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+      <option value="">Select country</option>
+      @foreach ($unlistedCountries as $countryName)
+        <option value="{{ $countryName }}">{{ $countryName }}</option>
+      @endforeach
+    </select>
+    <p class="text-sm text-error mt-1 hidden" id="signup-unlisted-country-error"></p>
+  </div>
+  <div class="space-y-2">
     <label class="text-sm font-semibold text-on-surface-variant ml-1" for="referral_source">How did you hear about us? <span class="text-xs text-on-surface-variant font-normal">(optional)</span></label>
     <select id="referral_source" name="referral_source" class="js-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
       <option value="">Select...</option>
@@ -158,6 +180,35 @@
   </div>
   </section>
   </main>
+
+  <div
+    id="countryNotAvailableModal"
+    class="hidden fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6 bg-black/55 backdrop-blur-[2px]"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="countryNotAvailableModalTitle"
+    aria-describedby="countryNotAvailableModalDesc"
+  >
+    <div class="relative w-full max-w-md rounded-2xl bg-white border border-outline-variant/20 shadow-2xl shadow-primary/10 overflow-hidden">
+      <div class="p-6 sm:p-8">
+        <div class="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
+          <span class="material-symbols-outlined text-primary text-3xl" aria-hidden="true">public_off</span>
+        </div>
+        <h2 id="countryNotAvailableModalTitle" class="text-xl font-bold text-on-surface tracking-tight">Account not created</h2>
+        <p id="countryNotAvailableModalDesc" class="text-sm text-on-surface-variant mt-3 leading-relaxed">
+          We are not in your country right now. We will notify you once bookpay becomes available in your area.
+        </p>
+        <button
+          type="button"
+          id="countryNotAvailableModalOk"
+          class="mt-6 w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-95 transition-opacity text-sm"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer Component -->
   <footer class="py-8 w-full bg-surface text-on-surface-variant text-sm">
     <div class="text-center px-6">
@@ -178,19 +229,50 @@
   <script>
     $(function () {
       if (window.jQuery && $.fn.select2) {
-        $('#referral_source.js-select2').select2({
+        $('.js-select2').select2({
           width: '100%',
           dropdownParent: $('body'),
           placeholder: 'Select...'
         });
       }
 
+      var artistsPageUrl = @json(route('public.artists.list'));
+
+      function showCountryNotAvailableModal(message) {
+        if (message) {
+          $('#countryNotAvailableModalDesc').text(message);
+        }
+        $('#countryNotAvailableModal').removeClass('hidden');
+      }
+
+      $('#countryNotAvailableModalOk').on('click', function () {
+        window.location.href = artistsPageUrl;
+      });
+
+      @if (session('country_not_available'))
+        showCountryNotAvailableModal(@json(session('country_not_available')));
+      @endif
+
+      function toggleUnlistedCountry() {
+        var value = $('#payout_bank_country').val();
+        var showUnlisted = value === '__not_listed__';
+        $('#unlisted-country-wrap').toggleClass('hidden', !showUnlisted);
+        if (!showUnlisted) {
+          $('#unlisted_country').val('').trigger('change');
+        }
+      }
+
+      $('#payout_bank_country').on('change select2:select', toggleUnlistedCountry);
+
       function clearErrors() {
         $('#register-alert').addClass('hidden').text('');
         $('#signup-email-error').addClass('hidden').text('');
         $('#signup-password-error').addClass('hidden').text('');
         $('#signup-password-confirmation-error').addClass('hidden').text('');
+        $('#signup-country-error').addClass('hidden').text('');
+        $('#signup-unlisted-country-error').addClass('hidden').text('');
         $('#signup-email, #signup-password, #signup-confirm-password').removeClass('border-error');
+        $('#payout_bank_country, #unlisted_country').closest('.select2-container').find('.select2-selection--single').removeClass('border-error');
       }
 
       $(document).on('click', '.eye-toggle', function () {
@@ -222,7 +304,14 @@
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
           }
-        }).done(function (_response, _textStatus, xhr) {
+        }).done(function (response, _textStatus, xhr) {
+          if (response && response.country_not_available) {
+            showCountryNotAvailableModal(
+              response.message || 'We are not in your country right now. We will notify you once bookpay becomes available in your area.'
+            );
+            return;
+          }
+
           window.location.href = xhr.responseURL || '{{ route('verification.notice') }}';
         }).fail(function (xhr) {
           if (xhr.status === 422 && xhr.responseJSON) {
@@ -243,7 +332,17 @@
               $('#signup-confirm-password').addClass('border-error');
             }
 
-            if (!errors.email && !errors.password && !errors.password_confirmation) {
+            if (errors.payout_bank_country && errors.payout_bank_country.length) {
+              $('#signup-country-error').removeClass('hidden').text(errors.payout_bank_country[0]);
+              $('#payout_bank_country').closest('.select2-container').find('.select2-selection--single').addClass('border-error');
+            }
+
+            if (errors.unlisted_country && errors.unlisted_country.length) {
+              $('#signup-unlisted-country-error').removeClass('hidden').text(errors.unlisted_country[0]);
+              $('#unlisted_country').closest('.select2-container').find('.select2-selection--single').addClass('border-error');
+            }
+
+            if (!errors.email && !errors.password && !errors.password_confirmation && !errors.payout_bank_country && !errors.unlisted_country) {
               var fallbackMessage = xhr.responseJSON.message || 'Registration failed. Please check your details.';
               $('#register-alert').removeClass('hidden').text(fallbackMessage);
             }

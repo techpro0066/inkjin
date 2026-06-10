@@ -70,9 +70,15 @@ Route::post('/stripe/delete-account', [StripeConnectDevController::class, 'delet
 Route::get('/studio/payout-info/{userDetail}', [OnboardingController::class, 'showStudioPayoutForm'])
     ->middleware('signed')
     ->name('studio.payout-info.show');
-Route::post('/studio/payout-info/{userDetail}', [OnboardingController::class, 'saveStudioPayoutForm'])
+Route::post('/studio/payout-info/{userDetail}/stripe/session', [OnboardingController::class, 'createStudioStripeSession'])
     ->middleware('signed')
-    ->name('studio.payout-info.store');
+    ->name('studio.payout-info.stripe.session');
+Route::get('/studio/payout-info/{userDetail}/stripe/status', [OnboardingController::class, 'studioStripeStatus'])
+    ->middleware('signed')
+    ->name('studio.payout-info.stripe.status');
+Route::post('/studio/payout-info/{userDetail}/stripe/complete', [OnboardingController::class, 'completeStudioStripeOnboarding'])
+    ->middleware('signed')
+    ->name('studio.payout-info.stripe.complete');
 
 Route::get('/studio/payout-link/{userDetail}/approve', [OnboardingController::class, 'approveStudioArtistBankLink'])
     ->middleware('signed')
@@ -189,13 +195,12 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     
     Route::post('/settings/preferences', [OnboardingController::class, 'savePreferences'])->name('settings.preferences.update');
 
-    Route::get('/settings/payment', function (\Illuminate\Http\Request $request) {
-        $user = $request->user();
-        $userDetail = $user->userDetail;
-        return view('artist.settings.payment', compact('userDetail'));
-    })->name('settings.payment');
-    
+    Route::get('/settings/payment', [OnboardingController::class, 'paymentSettings'])->name('settings.payment');
     Route::post('/settings/payment', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
+    Route::post('/settings/payment/bank-country', [OnboardingController::class, 'savePayoutBankCountry'])->name('settings.payment.bank-country');
+    Route::post('/settings/payment/waiting-list', [OnboardingController::class, 'savePayoutWaitingList'])->name('settings.payment.waiting-list');
+    Route::post('/settings/payment/stripe/session', [OnboardingController::class, 'createStripeConnectSession'])->name('settings.payment.stripe.session');
+    Route::get('/settings/payment/stripe/status', [OnboardingController::class, 'stripeConnectStatus'])->name('settings.payment.stripe.status');
 
     // Availability routes (for artists)
     Route::get('/availability', [\App\Http\Controllers\AvailabilityController::class, 'index'])->name('availability.index');
