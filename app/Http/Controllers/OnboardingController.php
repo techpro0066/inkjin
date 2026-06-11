@@ -7,6 +7,7 @@ use App\Models\UserDetail;
 use App\Models\UserBankDetail;
 use App\Models\Studio;
 use App\Mail\ArtistWelcomeMail;
+use App\Mail\StudioPayoutDeclinedArtistMail;
 use App\Mail\StudioPayoutInfoRequestMail;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -227,8 +228,10 @@ class OnboardingController extends Controller
                 ? StripeConnectCountries::nameFor($userDetail->payout_bank_country)
                 : null,
             'payoutWaitingListCountry' => $userDetail?->payout_waiting_list_country,
+            'payoutRegistrationCountries' => StripeConnectCountries::registrationCountriesForSelect(),
             'stripeSupportedCountries' => StripeConnectCountries::supportedForSelect(),
             'stripeUnsupportedCountries' => StripeConnectCountries::unsupportedCountryNamesForWaitingList(),
+            'userCountryUserBelongsIn' => auth()->user()?->country_user_belongs_in,
             ...$lockState,
         ];
     }
@@ -286,7 +289,8 @@ class OnboardingController extends Controller
     protected function hasStudioPayoutCommitted(?UserDetail $userDetail): bool
     {
         return ($userDetail?->payment_type ?? null) === 'studio_account'
-            && ! empty($userDetail->studio_id);
+            && ! empty($userDetail->studio_id)
+            && ($userDetail->payment_status ?? null) !== 'rejected';
     }
 
     protected function hasLockedPayoutConnection(?UserDetail $userDetail, ?array $stripeStatus = null): bool
@@ -353,7 +357,10 @@ class OnboardingController extends Controller
             ], 409);
         }
 
-        $supportedCodes = array_keys(StripeConnectCountries::supported());
+        $supportedCodes = array_map(
+            fn (array $country) => $country['code'],
+            StripeConnectCountries::registrationCountriesForSelect()
+        );
 
         $validated = $request->validate([
             'payout_bank_country' => ['required', 'string', 'size:2', Rule::in($supportedCodes)],
@@ -365,6 +372,9 @@ class OnboardingController extends Controller
         $user = $request->user();
         $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
         $country = strtoupper($validated['payout_bank_country']);
+
+        $user->country_user_belongs_in = $country;
+        $user->save();
 
         if ($userDetail->payout_bank_country !== $country && $userDetail->stripe_account_id) {
             try {
@@ -1073,6 +1083,10 @@ class OnboardingController extends Controller
                 return redirect()->route('settings.payment')->with('success', $msg);
             }
 
+            if ((int) $request->input('resend_studio_email', 0) === 1) {
+                return $this->resendStudioPayoutEmail($request, $user, $userDetail);
+            }
+
             if ((int) $request->input('disconnect_studio', 0) === 1) {
                 if (! $this->hasActiveStudioPayout($userDetail)) {
                     $msg = 'No linked studio payout to disconnect.';
@@ -1521,6 +1535,10 @@ class OnboardingController extends Controller
         try {
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+            if ((int) $request->input('resend_studio_email', 0) === 1) {
+                return $this->resendStudioPayoutEmail($request, $user, $userDetail);
+            }
 
             // Base validation - payment_type is always required
             $rules = [
@@ -2017,8 +2035,17 @@ class OnboardingController extends Controller
             ]);
         }
 
+        $artistUser = $userDetail->user;
+        $studio = Studio::find($userDetail->studio_id);
+        $studioName = $studio?->name ?? 'Studio';
+
         $userDetail->payment_status = 'rejected';
+        $userDetail->studio_id = null;
         $userDetail->save();
+
+        if ($artistUser) {
+            $this->sendStudioPayoutDeclinedArtistEmail($artistUser, $studioName);
+        }
 
         return view('studio.payout-form-result', [
             'success' => true,
@@ -2039,7 +2066,7 @@ class OnboardingController extends Controller
         $status = (string) ($userDetail->payment_status ?? 'pending');
         $message = match ($status) {
             'approved' => 'Your studio has submitted payout details. You have full access.',
-            'rejected' => 'Your studio payout setup was not completed. Please contact your studio or update your payment method in settings.',
+            'rejected' => 'Your studio declined your payout request. You can connect your own bank account or invite a different studio from payment settings.',
             default => 'We are waiting for your studio to connect Stripe or approve your payout request via the email we sent them.',
         };
 
@@ -2064,6 +2091,75 @@ class OnboardingController extends Controller
             Log::error('Failed to send artist welcome email after onboarding', [
                 'user_id' => $user->id,
                 'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Resend the studio payout setup email (reminder) without changing payout settings.
+     */
+    protected function resendStudioPayoutEmail(Request $request, User $user, UserDetail $userDetail)
+    {
+        if (($userDetail->payment_type ?? null) !== 'studio_account' || empty($userDetail->studio_id)) {
+            $msg = 'No studio payout request to resend yet.';
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+
+            return redirect()->back()->with('error', $msg);
+        }
+
+        if (($userDetail->payment_status ?? null) === 'approved') {
+            $msg = 'Your studio payout is already connected.';
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+
+            return redirect()->back()->with('error', $msg);
+        }
+
+        $studio = Studio::find($userDetail->studio_id);
+        if (! $studio) {
+            $msg = 'Studio record not found. Please send a new studio email.';
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+
+            return redirect()->back()->with('error', $msg);
+        }
+
+        $this->sendStudioPayoutInfoRequestEmail($user, $userDetail, $studio);
+
+        $msg = 'Reminder sent to your studio.';
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => $msg]);
+        }
+
+        return redirect()->back()->with('success', $msg);
+    }
+
+    private function sendStudioPayoutDeclinedArtistEmail(User $artistUser, string $studioName): void
+    {
+        $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
+        if ($artistName === '') {
+            $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
+        }
+
+        try {
+            Mail::to($artistUser->email)->send(new StudioPayoutDeclinedArtistMail(
+                $artistName,
+                $studioName,
+                route('settings.payment'),
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send studio payout declined email to artist', [
+                'user_id' => $artistUser->id,
+                'email' => $artistUser->email,
                 'error' => $e->getMessage(),
             ]);
         }

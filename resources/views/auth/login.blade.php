@@ -202,7 +202,12 @@
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
           },
-          success: function(_response, _textStatus, xhr) {
+          success: function(response) {
+            if (response && response.country_not_available && response.redirect) {
+              window.location.href = response.redirect;
+              return;
+            }
+
             window.location.href = '{{ authenticated_home_url() }}';
           },
           error: function(xhr) {

@@ -57,7 +57,10 @@
     </div>
     @endif
 
-    @if($ud && ($ud->payment_status ?? '') !== 'approved')
+    @if($ud && (
+      (($ud->payment_type ?? '') === 'studio_account' && !empty($ud->studio_id) && ($ud->payment_status ?? '') === 'pending')
+      || (($ud->payment_type ?? '') === 'artist_account' && ($ud->payment_status ?? '') !== 'approved')
+    ))
     <div id="paymentNotApprovedBanner" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div class="flex items-start gap-3">
         <span class="material-symbols-outlined text-amber-600 mt-0.5">payments</span>

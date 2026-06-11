@@ -501,10 +501,10 @@ class InkJinController extends Controller
 
         $availabilities = Availability::where('user_id', $userDetail->user_id)->get();
 
-        if (!$userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes' || $availabilities->count() === 0 || $userDetail->availability_status === 'closed') {
+        if (! $userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes' || $availabilities->count() === 0 || in_array($userDetail->availability_status, ['closed', 'custom_only'], true)) {
             return redirect()->route('public.artist', ['username' => $userName]);
         }
-        
+
         $tattoo = $userDetail->user->artistDesigns()->where('slug', $tattooSlug)->first();
 
         $relatedTattoos = $userDetail->user->artistDesigns()->where('is_visible', true)->where('id', '!=', $tattoo->id)->take(3)->get();
@@ -520,7 +520,7 @@ class InkJinController extends Controller
     {
         $userDetail = UserDetail::where('user_name', $userName)->first();
 
-        if (! $userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes' || $userDetail->availability_status === 'closed') {
+        if (! $userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes' || in_array($userDetail->availability_status, ['closed', 'custom_only'], true)) {
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
@@ -538,29 +538,7 @@ class InkJinController extends Controller
 
 
 
-        $questions = QuestionSorting::query()
-            ->where('user_id', $userDetail->user_id)
-            ->where('is_active', true)
-            ->whereHas('question')
-            ->with('question')
-            ->orderBy('order')
-            ->get()
-            ->map(function ($question) {
-            if (!$question->question) {
-                return null;
-            }
-
-            return [
-                'id' => $question->question_id,
-                'question' => $question->question->question,
-                'description' => $question->question->description,
-                'placeholder' => $question->question->placeholder,
-                'type' => $question->question->type,
-                'is_required' => $question->question->is_required,
-                'is_active' => $question->is_active,
-                'options' => $question->question->options,
-            ];
-        })->filter()->values()->all();
+        $questions = QuestionSorting::activeQuestionsPayloadForArtist($userDetail->user_id, 'default');
 
         if($userDetail->scheduling_type == 'auto'){
 
@@ -1007,8 +985,8 @@ class InkJinController extends Controller
             return response()->json(['message' => 'This artist does not accept managed booking requests.'], 422);
         }
 
-        if ($userDetail->availability_status === 'closed') {
-            return response()->json(['message' => 'This artist is not accepting bookings right now.'], 422);
+        if ($userDetail->availability_status === 'closed' || $userDetail->availability_status === 'custom_only') {
+            return response()->json(['message' => 'This artist is not accepting available design bookings right now.'], 422);
         }
 
         $design = $userDetail->user->artistDesigns()

@@ -22,6 +22,11 @@
     ];
     $selectedThemeKey = $userDetail->personal_page_color ?? 'default';
     $selectedTheme = $themeMap[$selectedThemeKey] ?? $themeMap['default'];
+    $showAvailableDesigns = in_array($userDetail->availability_status, ['design_custom', 'design_only'], true);
+    $hasVisibleDesigns = $showAvailableDesigns && $artistDesigns->count() > 0;
+    $hasPortfolio = $artistPortfolios->count() > 0;
+    $designsTabActive = $hasVisibleDesigns;
+    $portfolioTabActive = ! $hasVisibleDesigns && $hasPortfolio;
   @endphp
 
   <script>
@@ -273,20 +278,22 @@
   <!-- ═══════════════════════════════════════════════ -->
   <!-- TABS                                            -->
   <!-- ═══════════════════════════════════════════════ -->
+  @if($hasVisibleDesigns || $hasPortfolio)
   <nav class="border-b border-outline-variant sticky top-0 bg-surface/95 backdrop-blur-sm z-30">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 flex gap-0">
-      @if($artistDesigns->count() > 0)
-        <button id="tab-designs" onclick="switchTab('designs')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 border-tab-btn text-primary transition-colors">
+      @if($hasVisibleDesigns)
+        <button id="tab-designs" onclick="switchTab('designs')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $designsTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} transition-colors">
           Available Designs
         </button>
       @endif
-      @if($artistPortfolios->count() > 0)
-        <button id="tab-portfolio" onclick="switchTab('portfolio')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition-colors">
+      @if($hasPortfolio)
+        <button id="tab-portfolio" onclick="switchTab('portfolio')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $portfolioTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors">
           Portfolio
         </button>
       @endif
     </div>
   </nav>
+  @endif
 
   <!-- ═══════════════════════════════════════════════ -->
   <!-- AVAILABLE DESIGNS TAB                           -->
@@ -297,8 +304,8 @@
       <h3 class="text-lg font-bold text-on-surface mb-3">About</h3>
       <p class="text-on-surface-variant text-sm leading-relaxed">{{ $userDetail->personal_page_description ?? '' }}</p>
     </div>
-    @if($artistDesigns->count() > 0)
-        <div id="content-designs" class="tab-content active">
+    @if($hasVisibleDesigns)
+        <div id="content-designs" class="tab-content {{ $designsTabActive ? 'active' : '' }}">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             @foreach($artistDesigns as $artistDesign)
                 <div class="design-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="window.location.href='{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]) }}'">
@@ -328,7 +335,8 @@
     <!-- ═══════════════════════════════════════════════ -->
     <!-- PORTFOLIO TAB                                   -->
     <!-- ═══════════════════════════════════════════════ -->
-    <div id="content-portfolio" class="tab-content">
+    @if($hasPortfolio)
+    <div id="content-portfolio" class="tab-content {{ $portfolioTabActive ? 'active' : '' }}">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         @foreach($artistPortfolios as $artistPortfolio)
             <div class="design-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="openPortfolioModal(5)">
@@ -353,6 +361,7 @@
         @endforeach
       </div>
     </div>
+    @endif
   </main>
 
   @endif

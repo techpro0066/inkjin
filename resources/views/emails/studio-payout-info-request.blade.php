@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payout details</title>
+    <title>Studio payout setup</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -66,12 +66,12 @@
         </div>
         <div class="email-body">
             <p class="greeting">Hello {{ $studioName }},</p>
-            <p class="content">
-                <strong>{{ $artistName }}</strong> has selected your studio for payouts on {{ config('app.name', 'Inkjin') }}.
-            </p>
             @if(!empty($showApproveDecline))
                 <p class="content">
-                    Your studio already has Stripe connected for payouts. Please choose whether to <strong>allow this artist to receive payouts through your studio</strong> on {{ config('app.name', 'Inkjin') }}.
+                    <strong>{{ $artistName }}</strong> has selected your studio for payouts on {{ config('app.name', 'Inkjin') }}.
+                </p>
+                <p class="content">
+                    Your studio already has a bank account connected for payouts. Please choose whether to allow this artist to receive payouts through your studio on {{ config('app.name', 'Inkjin') }}.
                 </p>
                 <div class="btn-row-split">
                     <a href="{{ $approveUrl }}" class="btn">Approve</a>
@@ -84,10 +84,13 @@
                 </p>
             @else
                 <p class="content">
-                    Please open the secure link below and connect your studio’s Stripe account for payouts. Stripe will guide you through identity verification and bank account setup.
+                    <strong>{{ $artistName }}</strong> has selected your studio for payouts on {{ config('app.name', 'Inkjin') }}.
+                </p>
+                <p class="content">
+                    Please open the secure link below and connect your studio’s bank account for payouts.
                 </p>
                 <div class="button-row">
-                    <a href="{{ $formUrl }}" class="btn">Connect Stripe</a>
+                    <a href="{{ $formUrl }}" class="btn">Connect bank account</a>
                 </div>
                 <p class="content" style="font-size: 13px; color: #888;">
                     If the button does not work, copy and paste this URL into your browser:<br>

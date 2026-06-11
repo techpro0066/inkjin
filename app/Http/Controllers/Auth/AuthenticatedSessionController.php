@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\UserNotRegistered;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,8 +24,24 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse|JsonResponse
     {
+        $email = mb_strtolower(trim((string) $request->input('email')));
+
+        if (
+            $email !== ''
+            && UserNotRegistered::query()->whereRaw('LOWER(email) = ?', [$email])->exists()
+        ) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'country_not_available' => true,
+                    'redirect' => route('register'),
+                ]);
+            }
+
+            return redirect()->route('register')->with('country_not_available', true);
+        }
+
         $request->authenticate();
 
         $request->session()->regenerate();

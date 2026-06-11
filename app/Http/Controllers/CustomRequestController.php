@@ -38,34 +38,7 @@ class CustomRequestController extends Controller
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
-        $questions = QuestionSorting::query()
-            ->where('user_id', $userDetail->user_id)
-            ->where('is_active', true)
-            ->whereHas('question', function ($query) {
-                $query->where('form_context', 'custom');
-            })
-            ->with('question')
-            ->orderBy('order')
-            ->get()
-            ->map(function ($question) {
-                if (!$question->question) {
-                    return null;
-                }
-
-                return [
-                    'id' => $question->question_id,
-                    'question' => $question->question->question,
-                    'description' => $question->question->description,
-                    'placeholder' => $question->question->placeholder,
-                    'type' => $question->question->type,
-                    'is_required' => $question->question->is_required,
-                    'is_active' => $question->is_active,
-                    'options' => $question->question->options,
-                ];
-            })
-            ->filter()
-            ->values()
-            ->all();
+        $questions = QuestionSorting::activeQuestionsPayloadForArtist($userDetail->user_id, 'custom');
 
         if (count($questions) === 0) {
             return redirect()->route('public.artist', ['username' => $userName]);

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\ArtistDesign;
 
 class Booking extends Model
@@ -70,6 +71,7 @@ class Booking extends Model
         'reschedule_limit',
         'reschedule_status',
         'reschedule_requested_by',
+        'pay_artist',
     ];
 
     protected $casts = [
@@ -95,6 +97,7 @@ class Booking extends Model
         'has_consultation' => 'boolean',
         'consultation_completed' => 'boolean',
         'deposit_released' => 'boolean',
+        'pay_artist' => 'boolean',
         'remaining_amount_released' => 'boolean',
         'platform_fee_refunded' => 'boolean',
         'questions_answers' => 'array',
@@ -121,6 +124,11 @@ class Booking extends Model
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function artistPayout(): HasOne
+    {
+        return $this->hasOne(ArtistPayout::class);
     }
 
 

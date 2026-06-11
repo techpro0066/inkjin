@@ -24,8 +24,13 @@ class StudioPayoutInfoRequestMail extends Mailable
 
     public function envelope(): Envelope
     {
+        $appName = config('app.name', 'Inkjin');
+        $subject = $this->showApproveDecline
+            ? 'Payout approval requested — '.$this->artistName.' on '.$appName
+            : 'Connect your studio bank account — '.$this->artistName.' on '.$appName;
+
         return new Envelope(
-            subject: 'Payout details requested — '.$this->studioName
+            subject: $subject,
         );
     }
 

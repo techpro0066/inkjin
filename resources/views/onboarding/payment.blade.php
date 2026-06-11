@@ -14,14 +14,17 @@
   $artistStripeConnected = (bool) ($artistStripeConnected ?? false);
   $studioPayoutConnected = (bool) ($studioPayoutConnected ?? false);
   $studioPayoutCommitted = (bool) ($studioPayoutCommitted ?? false);
+  $studioPayoutStatus = match (true) {
+    $studioPayoutConnected => 'connected',
+    $studioPayoutCommitted => 'not_connected',
+    default => 'email_not_sent',
+  };
   $payoutOptionLocked = (bool) ($payoutOptionLocked ?? ($artistStripeConnected || $studioPayoutCommitted));
   $stripeConnectLocale = $stripeConnectLocale ?? config('services.stripe.connect.locale', 'en-US');
   $payoutBankCountry = $payoutBankCountry ?? $ud->payout_bank_country ?? null;
   $payoutWaitingListCountry = $payoutWaitingListCountry ?? $ud->payout_waiting_list_country ?? null;
-  $stripeSupportedCountries = $stripeSupportedCountries ?? [];
-  $stripeUnsupportedCountries = $stripeUnsupportedCountries ?? [];
+  $payoutRegistrationCountries = $payoutRegistrationCountries ?? [];
   $bankCountryRoute = route('onboarding.payment.bank-country');
-  $waitingListRoute = route('onboarding.payment.waiting-list');
 @endphp
 
 @section('content')
@@ -76,29 +79,37 @@
             @endif
           </div>
         @else
-        {{-- Bank account country (InkJin-controlled) --}}
-        <div id="payoutCountryStep" class="{{ ($payoutBankCountry || $payoutWaitingListCountry) && ! $payoutWaitingListCountry ? 'hidden' : '' }}">
           @if ($payoutWaitingListCountry)
             <div class="rounded-xl border border-green-200 bg-green-50 text-green-900 px-4 py-4 max-w-md">
               <p class="text-sm font-semibold mb-1">Your country isn't supported yet</p>
               <p class="text-sm">We'll notify you at <strong>{{ auth()->user()->email }}</strong> when payouts become available.</p>
             </div>
           @else
-            <div class="max-w-2xl space-y-4">
+            <div id="payoutConnectIntroStep" class="max-w-2xl">
+              <p class="text-on-surface-variant text-sm mb-5">Connect your bank account through Stripe to receive payouts directly.</p>
+              <button
+                type="button"
+                id="connectBankAccountBtn"
+                class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]"
+              >
+                <span class="material-symbols-outlined text-xl">account_balance</span>
+                Connect Bank Account
+              </button>
+            </div>
+
+            <div id="payoutCountryStep" class="hidden max-w-2xl space-y-4">
               <div id="payoutCountryFields">
-                <p id="payoutCountryTitle" class="text-base font-semibold text-on-surface mb-2">Where is your bank account based?</p>
+                <label for="payout_bank_country" class="block text-base font-semibold text-on-surface mb-2">Where is your bank account based?</label>
                 <p id="payoutCountryDescription" class="text-on-surface-variant text-sm mb-4">
                   This is the country of your bank account where you'll receive your payouts.
                   Are you using Revolut? Check your IBAN in the app — the first two letters show the country.
                   GR = Greece, LT = Lithuania, GB = United Kingdom.
                 </p>
-                <select id="payout_bank_country" name="payout_bank_country" class="select w-full max-w-md px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm" aria-label="Bank account country">
-                  <option value="" disabled selected>Select country</option>
-                  @foreach ($stripeSupportedCountries as $country)
+                <select id="payout_bank_country" name="payout_bank_country" class="js-payout-country-select w-full max-w-md text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" aria-label="Bank account country">
+                  <option value="">Select country</option>
+                  @foreach ($payoutRegistrationCountries as $country)
                     <option value="{{ $country['code'] }}">{{ $country['name'] }}</option>
                   @endforeach
-                  <option disabled>──────────</option>
-                  <option value="__not_listed__">My country is not listed</option>
                 </select>
                 <p id="payout_bank_country_error" class="text-error text-xs mt-2 hidden"></p>
                 <button type="button" id="payoutCountryContinue" class="hidden mt-4 inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all disabled:opacity-70">
@@ -106,65 +117,76 @@
                   <span id="payoutCountryContinueIcon" class="material-symbols-outlined text-lg">arrow_forward</span>
                 </button>
               </div>
+            </div>
 
-              <div id="payoutWaitingListInline" class="hidden">
-                <p class="text-on-surface-variant text-sm mb-3">Your country isn't supported yet. Tell us where you are and we'll notify you when payouts become available.</p>
-                <label for="payout_waiting_list_country" class="block text-[11px] uppercase tracking-wider text-on-surface-variant font-medium mb-2">Select your country <span class="text-red-600">*</span></label>
-                <select id="payout_waiting_list_country" name="payout_waiting_list_country" class="select w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white text-sm">
-                  <option value="" disabled selected>Select country</option>
-                  @foreach ($stripeUnsupportedCountries as $countryName)
-                    <option value="{{ $countryName }}">{{ $countryName }}</option>
-                  @endforeach
-                </select>
-                <p id="payout_waiting_list_country_error" class="text-error text-xs mt-2 hidden"></p>
-                <div id="payoutWaitingListSuccess" class="hidden rounded-xl border border-green-200 bg-green-50 text-green-900 px-4 py-3 mt-3 text-sm"></div>
+            <div id="payoutStripeStep" class="hidden">
+              <div class="mb-4 pb-4 border-b border-outline-variant/20 max-w-2xl">
+                <p id="payoutStripeStepTitle" class="text-base font-semibold text-on-surface">Complete your payout details</p>
+                <p id="payoutStripeStepDescription" class="text-on-surface-variant text-sm mt-2">
+                  Add your personal details, upload an identity document (passport or ID), and enter your bank account below. Onboarding will finish automatically when you're done.
+                </p>
+                <div id="payoutStripeCountrySummary" class="mt-4 hidden">
+                  <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
+                  <p id="payoutBankCountryName" class="text-sm font-semibold text-on-surface"></p>
+                </div>
               </div>
-            </div>
-          @endif
-        </div>
 
-        {{-- Stripe personal details + bank (after country selected) --}}
-        <div id="payoutStripeStep" class="{{ $payoutBankCountry && ! $payoutWaitingListCountry ? '' : 'hidden' }}">
-          <div class="mb-4 pb-4 border-b border-outline-variant/20 max-w-2xl">
-            <p id="payoutStripeStepTitle" class="text-base font-semibold text-on-surface">Complete your payout details</p>
-            <p id="payoutStripeStepDescription" class="text-on-surface-variant text-sm mt-2">
-              @if ($payoutBankCountry && ($payoutBankCountryName ?? null))
-                Add your personal details, upload an identity document (passport or ID), and enter your bank account below for payouts to {{ $payoutBankCountryName }}. Onboarding will finish automatically when you're done.
+              @if (!($stripeConnectConfigured ?? false))
+                <div class="rounded-xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+                  Stripe is not configured. You can skip this step for now and finish payout setup later in settings.
+                </div>
               @else
-                Add your personal details, upload an identity document (passport or ID), and enter your bank account below. Onboarding will finish automatically when you're done.
+                <div id="stripeConnectMount" class="min-h-[420px] rounded-xl p-1 bg-white overflow-hidden"></div>
+                <p id="stripe_connect_error" class="text-error text-xs mt-2 hidden"></p>
+                <p id="stripeConnectHint" class="text-on-surface-variant text-xs mt-3 {{ $stripeComplete ? 'hidden' : '' }}">
+                  You'll be guided through personal details, identity document upload, and bank account setup. Onboarding will finish automatically once all steps are complete.
+                </p>
               @endif
-            </p>
-            <div id="payoutStripeCountrySummary" class="mt-4 {{ $payoutBankCountry ? '' : 'hidden' }}">
-              <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
-              <p id="payoutBankCountryName" class="text-sm font-semibold text-on-surface">{{ $payoutBankCountryName ?? $payoutBankCountry ?? '' }}</p>
             </div>
-          </div>
-
-          @if (!($stripeConnectConfigured ?? false))
-            <div class="rounded-xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
-              Stripe is not configured. You can skip this step for now and finish payout setup later in settings.
-            </div>
-          @else
-            <div id="stripeConnectMount" class="min-h-[420px] rounded-xl p-1 bg-white overflow-hidden"></div>
-            <p id="stripe_connect_error" class="text-error text-xs mt-2 hidden"></p>
-            <p id="stripeConnectHint" class="text-on-surface-variant text-xs mt-3 {{ $stripeComplete ? 'hidden' : '' }}">
-              You'll be guided through personal details, identity document upload, and bank account setup. Onboarding will finish automatically once all steps are complete.
-            </p>
           @endif
-        </div>
         @endif
       </div>
     </div>
 
     <div id="payout-studio" class="{{ $payoutKey !== 'studio' ? 'hidden' : '' }}">
-      <div class="bg-surface-container-low rounded-2xl p-6">
-        <div class="space-y-4">
+      <div class="bg-surface-container-low rounded-2xl p-6 space-y-4">
+        <div id="studioPayoutEmailNotSent" class="max-w-2xl space-y-4 {{ $studioPayoutStatus !== 'email_not_sent' ? 'hidden' : '' }}">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant/40 px-3 py-1 text-xs font-bold uppercase tracking-wide">Email not sent</span>
+          <p class="text-on-surface-variant text-sm">You need to send an email to your studio and ask them to connect their bank account. Payouts are on hold until they do.</p>
           <div>
             <label for="studio_email" class="block text-sm font-semibold text-on-surface mb-2">Studio Email Address</label>
-            <input type="text" id="studio_email" name="studio_email" value="{{ $studioEmail }}" placeholder="studio@example.com" class="form-input" autocomplete="email">
-            <p class="text-on-surface-variant text-xs mt-2">When you click Complete Onboarding, we email your studio a secure link to connect Stripe for payouts.</p>
+            <input type="email" id="studio_email" name="studio_email" value="{{ $studioEmail }}" placeholder="studio@example.com" class="form-input" autocomplete="email">
           </div>
+          <button type="button" id="payStudioSend" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
+            Send
+          </button>
         </div>
+
+        <div id="studioPayoutNotConnected" class="max-w-2xl space-y-4 {{ $studioPayoutStatus !== 'not_connected' ? 'hidden' : '' }}">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200/80 px-3 py-1 text-xs font-bold uppercase tracking-wide">Not connected</span>
+          <p class="text-on-surface-variant text-sm">Your studio hasn't connected a bank account yet. Payouts are on hold until they do.</p>
+          @if ($studioEmail)
+            <div>
+              <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Studio email</p>
+              <p class="text-sm font-semibold text-on-surface mt-1">{{ $studioEmail }}</p>
+            </div>
+          @endif
+          <button type="button" id="payStudioReminder" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
+            Send a reminder to your studio
+          </button>
+        </div>
+
+        <div id="studioPayoutConnected" class="max-w-2xl space-y-4 {{ $studioPayoutStatus !== 'connected' ? 'hidden' : '' }}">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-800 border border-green-200/80 px-3 py-1 text-xs font-bold uppercase tracking-wide">Connected</span>
+          <p class="text-on-surface-variant text-sm">Your studio's bank account is connected. You're ready to receive payments.</p>
+          @if ($studioEmail)
+            <div>
+              <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Studio email</p>
+              <p class="text-sm font-semibold text-on-surface mt-1">{{ $studioEmail }}</p>
+            </div>
+          @endif
+        </div>
+
         <p id="studio_email_error" class="text-error text-sm mt-3 hidden"></p>
       </div>
     </div>
@@ -182,9 +204,6 @@
       <button type="button" id="paySkip" class="inline-flex items-center gap-2 font-semibold py-3 px-6 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high transition-colors">
         Skip for now
       </button>
-      <button type="submit" id="paySubmit" data-default-label="Complete Onboarding" data-waitlist-label="Notify me and complete onboarding" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
-        Complete Onboarding
-      </button>
     </div>
   </div>
 </form>
@@ -200,17 +219,13 @@ const publishableKey = @json($stripePublishableKey ?? '');
 const sessionUrl = @json(route('onboarding.payment.stripe.session'));
 const statusUrl = @json(route('onboarding.payment.stripe.status'));
 const bankCountryUrl = @json($bankCountryRoute);
-const waitingListUrl = @json($waitingListRoute);
 const stripeConnectLocale = @json($stripeConnectLocale);
-const initialPayoutBankCountry = @json($payoutBankCountry);
 const initialWaitingListCountry = @json($payoutWaitingListCountry);
 window.stripeOnboardingComplete = @json($stripeComplete);
 window.stripeAutoFinishTriggered = false;
-window.payoutBankCountrySelected = !!initialPayoutBankCountry && !initialWaitingListCountry;
-window.payoutWaitingListMode = false;
-window.payoutWaitingListSaved = !!initialWaitingListCountry;
+window.payoutBankCountrySelected = false;
 window.payoutSupportedCountryPending = null;
-window.savedPayoutBankCountry = initialPayoutBankCountry || null;
+window.savedPayoutBankCountry = null;
 
 let connectInstance = null;
 let onboardingMounted = false;
@@ -288,10 +303,6 @@ async function tryAutoFinishOnboarding() {
   if (autoFinishInProgress || window.stripeAutoFinishTriggered) {
     return;
   }
-  if (window.payoutWaitingListMode || window.payoutWaitingListSaved) {
-    return;
-  }
-
   autoFinishInProgress = true;
   try {
     if (window.payoutSupportedCountryPending && !window.payoutBankCountrySelected) {
@@ -377,17 +388,60 @@ window.mountStripeOnboardingIfNeeded = async function () {
 };
 
 window.showPayoutStep = function (step) {
+  const intro = document.getElementById('payoutConnectIntroStep');
   const country = document.getElementById('payoutCountryStep');
   const stripe = document.getElementById('payoutStripeStep');
+  if (intro) intro.classList.toggle('hidden', step !== 'intro');
   if (country) country.classList.toggle('hidden', step !== 'country');
   if (stripe) stripe.classList.toggle('hidden', step !== 'stripe');
 };
 
+function initPayoutCountrySelect2() {
+  if (!window.jQuery || !window.jQuery.fn.select2) return;
+  const $select = window.jQuery('#payout_bank_country');
+  if (!$select.length) return;
+  if ($select.hasClass('select2-hidden-accessible')) {
+    $select.select2('destroy');
+  }
+  $select.select2({
+    width: '100%',
+    dropdownParent: window.jQuery('body'),
+    placeholder: 'Select country',
+  });
+}
+
+function resetPayoutCountrySelect() {
+  const select = document.getElementById('payout_bank_country');
+  if (window.jQuery && select) {
+    const $select = window.jQuery(select);
+    if ($select.hasClass('select2-hidden-accessible')) {
+      $select.val('').trigger('change');
+    } else {
+      select.value = '';
+    }
+  } else if (select) {
+    select.value = '';
+  }
+  togglePayoutCountryContinue(false);
+  window.payoutSupportedCountryPending = null;
+  const errEl = document.getElementById('payout_bank_country_error');
+  if (errEl) {
+    errEl.classList.add('hidden');
+    errEl.textContent = '';
+  }
+}
+
+document.getElementById('connectBankAccountBtn')?.addEventListener('click', () => {
+  window.showPayoutStep('country');
+  window.requestAnimationFrame(() => {
+    initPayoutCountrySelect2();
+    resetPayoutCountrySelect();
+  });
+});
+
 function setPayoutCountrySaving(saving) {
   const bankSelect = document.getElementById('payout_bank_country');
-  const waitSelect = document.getElementById('payout_waiting_list_country');
   if (bankSelect) bankSelect.disabled = saving;
-  if (waitSelect) waitSelect.disabled = saving;
 }
 
 function setCountryContinueLoading(loading) {
@@ -432,56 +486,6 @@ function togglePayoutCountryContinue(show) {
   if (btn) btn.classList.toggle('hidden', !show);
   if (show) {
     setCountryContinueLoading(false);
-  }
-}
-
-function toggleWaitingListInline(show) {
-  const inline = document.getElementById('payoutWaitingListInline');
-  if (!inline) return;
-  inline.classList.toggle('hidden', !show);
-  window.payoutWaitingListMode = !!show;
-  if (typeof window.updatePaySubmitLabel === 'function') {
-    window.updatePaySubmitLabel();
-  }
-  if (show && typeof window.initOnboardingSelect2 === 'function' && window.jQuery) {
-    window.initOnboardingSelect2(window.jQuery(inline));
-  }
-}
-
-async function submitPayoutWaitingList(countryName) {
-  const errEl = document.getElementById('payout_waiting_list_country_error');
-  if (errEl) {
-    errEl.classList.add('hidden');
-    errEl.textContent = '';
-  }
-
-  setPayoutCountrySaving(true);
-  try {
-    const res = await fetch(waitingListUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ payout_waiting_list_country: countryName }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || 'Could not join the waiting list.');
-    }
-    window.payoutBankCountrySelected = false;
-    window.stripeOnboardingComplete = false;
-    window.payoutWaitingListSaved = true;
-    return data;
-  } catch (err) {
-    if (errEl) {
-      errEl.textContent = err.message || 'Could not join the waiting list.';
-      errEl.classList.remove('hidden');
-    }
-    throw err;
-  } finally {
-    setPayoutCountrySaving(false);
   }
 }
 
@@ -531,7 +535,6 @@ async function savePayoutBankCountry(countryCode) {
 }
 
 window.handlePayoutBankCountryChange = async function (value) {
-  const select = document.getElementById('payout_bank_country');
   const errEl = document.getElementById('payout_bank_country_error');
 
   if (errEl) {
@@ -540,26 +543,13 @@ window.handlePayoutBankCountryChange = async function (value) {
   }
 
   if (!value) {
-    toggleWaitingListInline(false);
     togglePayoutCountryContinue(false);
     window.payoutSupportedCountryPending = null;
-    window.payoutWaitingListMode = false;
-    if (typeof window.updatePaySubmitLabel === 'function') window.updatePaySubmitLabel();
     return;
   }
 
-  if (value === '__not_listed__') {
-    togglePayoutCountryContinue(false);
-    window.payoutSupportedCountryPending = null;
-    toggleWaitingListInline(true);
-    return;
-  }
-
-  toggleWaitingListInline(false);
-  window.payoutWaitingListMode = false;
   window.payoutSupportedCountryPending = value;
   togglePayoutCountryContinue(true);
-  if (typeof window.updatePaySubmitLabel === 'function') window.updatePaySubmitLabel();
 };
 
 document.getElementById('payoutCountryContinue')?.addEventListener('click', async () => {
@@ -568,7 +558,7 @@ document.getElementById('payoutCountryContinue')?.addEventListener('click', asyn
   const btn = document.getElementById('payoutCountryContinue');
   const countryCode = window.payoutSupportedCountryPending || select?.value;
 
-  if (!countryCode || countryCode === '__not_listed__') {
+  if (!countryCode) {
     if (errEl) {
       errEl.textContent = 'Please select where your bank account is based.';
       errEl.classList.remove('hidden');
@@ -595,29 +585,11 @@ document.getElementById('payoutCountryContinue')?.addEventListener('click', asyn
   }
 });
 
-window.handlePayoutWaitingListChange = function (value) {
-  const errEl = document.getElementById('payout_waiting_list_country_error');
-  if (errEl) {
-    errEl.classList.add('hidden');
-    errEl.textContent = '';
-  }
-  if (typeof window.clearOnboardingFieldError === 'function') {
-    window.clearOnboardingFieldError('payout_waiting_list_country');
-  }
-};
-
 window.artistStripeConnected = @json($artistStripeConnected);
 
-if (!window.artistStripeConnected) {
-  if (window.payoutBankCountrySelected) {
-    window.showPayoutStep('stripe');
-  } else {
-    window.showPayoutStep('country');
-  }
-  window.mountStripeOnboardingIfNeeded();
+if (!window.artistStripeConnected && !initialWaitingListCountry) {
+  window.showPayoutStep('intro');
 }
-
-window.submitPayoutWaitingList = submitPayoutWaitingList;
 </script>
 <script>
 window.payoutOptionLocked = @json($payoutOptionLocked);
@@ -640,35 +612,19 @@ function selectPayout(type, el) {
   $('#payment_type').val(map[type]);
   $('#payout-artist').toggleClass('hidden', type !== 'artist');
   $('#payout-studio').toggleClass('hidden', type !== 'studio');
-  if (type === 'artist' && !artistStripeConnected && typeof window.mountStripeOnboardingIfNeeded === 'function') {
-    window.mountStripeOnboardingIfNeeded();
+  if (type === 'artist' && !artistStripeConnected && typeof window.showPayoutStep === 'function') {
+    window.showPayoutStep(window.payoutBankCountrySelected ? 'stripe' : 'intro');
   }
   if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('payment_type');
   if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('stripe_connect');
   if (typeof window.clearOnboardingAlert === 'function') window.clearOnboardingAlert('payAlert');
-  if (typeof window.updatePaySubmitLabel === 'function') window.updatePaySubmitLabel();
 }
 $(function () {
-  window.updatePaySubmitLabel = function () {
-    var $btn = $('#paySubmit');
-    if (!$btn.length) return;
-    var isArtist = $('#payment_type').val() === 'artist_account';
-    var waitlist = isArtist && (window.payoutWaitingListMode || window.payoutWaitingListSaved);
-    $btn.text(waitlist ? ($btn.data('waitlist-label') || 'Notify me and complete onboarding') : ($btn.data('default-label') || 'Complete Onboarding'));
-  };
-  window.updatePaySubmitLabel();
-
   $('#payout_bank_country').on('change select2:select', function () {
     if (typeof window.handlePayoutBankCountryChange === 'function') {
       window.handlePayoutBankCountryChange($(this).val());
     }
   });
-  $('#payout_waiting_list_country').on('change select2:select', function () {
-    if (typeof window.handlePayoutWaitingListChange === 'function') {
-      window.handlePayoutWaitingListChange($(this).val());
-    }
-  });
-
   $('#studio_email').on('input', function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('studio_email');
   });
@@ -692,29 +648,10 @@ $(function () {
     var paymentType = $('#payment_type').val();
     if (paymentType !== 'artist_account') return true;
     if (artistStripeConnected) return true;
-    if (window.payoutWaitingListMode || window.payoutWaitingListSaved) {
-      if (window.payoutWaitingListSaved) return true;
-      var waitCountry = $('#payout_waiting_list_country').val();
-      if (!waitCountry) {
-        $('#payout_waiting_list_country_error').text('Please select your country.').removeClass('hidden');
-        if (typeof window.scrollToFirstOnboardingError === 'function') {
-          window.scrollToFirstOnboardingError(document.getElementById('paymentForm'));
-        }
-        return false;
-      }
-      return true;
-    }
-    if (window.payoutSupportedCountryPending && !window.payoutBankCountrySelected) {
-      $('#payout_bank_country_error').text('Please click Continue to proceed with payout setup.').removeClass('hidden');
-      if (typeof window.scrollToFirstOnboardingError === 'function') {
-        window.scrollToFirstOnboardingError(document.getElementById('paymentForm'));
-      }
-      return false;
-    }
     if (!@json($stripeConnectConfigured ?? false)) return true;
     if (!window.payoutBankCountrySelected) {
-      $('#stripe_connect_error').text('Please select where your bank account is based before continuing.').removeClass('hidden');
-      window.showPayoutStep('country');
+      $('#stripe_connect_error').text('Please connect your bank account and complete payout setup before continuing.').removeClass('hidden');
+      window.showPayoutStep('intro');
       if (typeof window.scrollToFirstOnboardingError === 'function') {
         window.scrollToFirstOnboardingError(document.getElementById('paymentForm'));
       }
@@ -736,39 +673,20 @@ $(function () {
   async function submitPaymentForm(options) {
     options = options || {};
     var $alertEl = $('#payAlert');
-    var $btn = $('#paySubmit');
     var $skip = $('#paySkip');
-    var originalBtnHtml = $btn.html();
+    var $studioSend = $('#payStudioSend');
+    var originalStudioSendHtml = $studioSend.length ? $studioSend.html() : '';
     $('#paymentForm').find('[id$="_error"]').addClass('hidden').text('');
 
     if (!options.auto) {
       if (!await validateArtistStripeSetupAsync()) return;
     }
 
-    if ($('#payment_type').val() === 'artist_account' && window.payoutWaitingListMode && !window.payoutWaitingListSaved) {
-      var waitCountry = $('#payout_waiting_list_country').val();
-      if (!waitCountry) {
-        $('#payout_waiting_list_country_error').text('Please select your country.').removeClass('hidden');
-        return;
-      }
-      $btn.prop('disabled', true);
-      $skip.prop('disabled', true);
-      $btn.text('Submitting...');
-      try {
-        if (typeof window.submitPayoutWaitingList === 'function') {
-          await window.submitPayoutWaitingList(waitCountry);
-        }
-      } catch (err) {
-        $btn.prop('disabled', false);
-        $skip.prop('disabled', false);
-        window.updatePaySubmitLabel();
-        return;
-      }
-    }
-
-    $btn.prop('disabled', true);
     $skip.prop('disabled', true);
-    $btn.text(options.auto ? 'Finishing onboarding…' : 'Submitting...');
+    if ($studioSend.length) {
+      $studioSend.prop('disabled', true);
+      $studioSend.text(options.auto ? 'Finishing onboarding…' : 'Sending...');
+    }
     var fd = new FormData(document.getElementById('paymentForm'));
     $.ajax({
       url: @json(route('onboarding.payment.save')),
@@ -830,9 +748,11 @@ $(function () {
         }
       })
       .always(function () {
-        $btn.prop('disabled', false);
         $skip.prop('disabled', false);
-        window.updatePaySubmitLabel();
+        if ($studioSend.length) {
+          $studioSend.prop('disabled', false);
+          $studioSend.html(originalStudioSendHtml);
+        }
         if (!options.auto) {
           window.stripeAutoFinishTriggered = false;
         }
@@ -841,18 +761,53 @@ $(function () {
 
   window.submitPaymentForm = submitPaymentForm;
 
-  $('#paymentForm').on('submit', function (e) {
-    e.preventDefault();
+  $('#payStudioSend').on('click', function () {
+    $('#payment_type').val('studio_account');
+    var email = ($('#studio_email').val() || '').trim();
+    if (!email) {
+      $('#studio_email_error').text('Studio email is required.').removeClass('hidden');
+      return;
+    }
+    $('#studio_email_error').addClass('hidden').text('');
     submitPaymentForm();
+  });
+
+  $('#payStudioReminder').on('click', function () {
+    var $btn = $(this);
+    var $alertEl = $('#payAlert');
+    var originalHtml = $btn.html();
+    $alertEl.addClass('hidden').text('');
+    $btn.prop('disabled', true).text('Sending...');
+    $.ajax({
+      url: @json(route('onboarding.payment.save')),
+      type: 'POST',
+      data: { _token: @json(csrf_token()), resend_studio_email: 1 },
+      headers: { 'X-CSRF-TOKEN': @json(csrf_token()), Accept: 'application/json' },
+    })
+      .done(function (data) {
+        if (data.success) {
+          $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-green-50 text-green-800 border border-green-200').text(data.message || 'Reminder sent to your studio.').removeClass('hidden');
+          return;
+        }
+        $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-red-50 text-red-800 border border-red-200').text(data.message || 'Could not send reminder.').removeClass('hidden');
+      })
+      .fail(function (xhr) {
+        $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-red-50 text-red-800 border border-red-200').text((xhr.responseJSON && xhr.responseJSON.message) || 'Could not send reminder.').removeClass('hidden');
+      })
+      .always(function () {
+        $btn.prop('disabled', false).html(originalHtml);
+      });
   });
 
   $('#paySkip').on('click', function () {
     var $skip = $(this);
-    var $submit = $('#paySubmit');
+    var $studioSend = $('#payStudioSend');
+    var $studioReminder = $('#payStudioReminder');
     var $alertEl = $('#payAlert');
     var originalSkipHtml = $skip.html();
     $skip.prop('disabled', true);
-    $submit.prop('disabled', true);
+    if ($studioSend.length) $studioSend.prop('disabled', true);
+    if ($studioReminder.length) $studioReminder.prop('disabled', true);
     $skip.text('Skipping...');
     $alertEl.addClass('hidden');
     $.ajax({
@@ -876,7 +831,8 @@ $(function () {
       })
       .always(function () {
         $skip.prop('disabled', false);
-        $submit.prop('disabled', false);
+        if ($studioSend.length) $studioSend.prop('disabled', false);
+        if ($studioReminder.length) $studioReminder.prop('disabled', false);
         $skip.html(originalSkipHtml);
       });
   });

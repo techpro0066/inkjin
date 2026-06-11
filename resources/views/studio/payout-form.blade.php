@@ -5,7 +5,7 @@
 @section('content')
 <div class="flex-1 p-8 md:p-12 max-w-3xl w-full mx-auto">
   <div class="mb-8">
-    <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Connect Stripe for payouts</h2>
+    <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Connect for payouts</h2>
     <p class="text-on-surface-variant mt-2 text-sm md:text-base">
       <strong>{{ $studio->name }}</strong> — {{ $artistName }} selected your studio to receive their booking payouts on {{ config('app.name', 'Inkjin') }}.
     </p>
@@ -43,8 +43,16 @@
           <p class="text-on-surface-variant text-sm mt-1">Answer a few questions so we can set up the right payout account for you.</p>
         </div>
 
-        <div class="space-y-2">
+        <div class="space-y-3">
           <label for="studio_business_type" class="block text-sm font-semibold text-on-surface">Account type</label>
+          <div class="rounded-xl border border-outline-variant/20 bg-white/60 px-4 py-3 text-sm text-on-surface-variant space-y-3">
+            <p class="leading-relaxed">
+              <span class="font-semibold text-on-surface">Individual</span> — Choose this option if you work under your own name, with no registered company. Payouts go to your personal bank account.
+            </p>
+            <p class="leading-relaxed">
+              <span class="font-semibold text-on-surface">Business</span> — Choose this option if your studio is a registered business or legal entity. Payouts go to your business bank account.
+            </p>
+          </div>
           <select id="studio_business_type" name="business_type" class="select w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface">
             <option value="" disabled selected>Select type</option>
             <option value="individual">Individual</option>

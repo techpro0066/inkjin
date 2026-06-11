@@ -351,7 +351,7 @@
   (function () {
     function initSelect2($ctx) {
       if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) return;
-      $ctx.find('select.select, select.js-select2, select.select2').each(function () {
+      $ctx.find('select.select, select.js-select2, select.select2, select.js-payout-country-select').each(function () {
         var $el = $(this);
         if ($el.hasClass('no-select2')) return;
         if ($el.hasClass('select2-hidden-accessible')) return;

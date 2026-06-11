@@ -78,24 +78,20 @@ class RegisteredUserController extends Controller
                 new CountryNotAvailableMail($validated['unlisted_country'])
             );
 
-            $countryNotAvailableMessage = 'We are not in your country right now. We will notify you once bookpay becomes available in your area.';
-
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
                     'country_not_available' => true,
-                    'message' => $countryNotAvailableMessage,
                 ]);
             }
 
-            return redirect()->route('register')->with(
-                'country_not_available',
-                $countryNotAvailableMessage
-            );
+            return redirect()->route('register')->with('country_not_available', true);
         }
 
         // Check if email exists in inkjin_artists table
         $artist = InkJinArtist::where('email', $request->email)->first();
+
+        $countryCode = strtoupper($validated['payout_bank_country']);
 
         $userData = [
             'first_name' => '',
@@ -106,13 +102,14 @@ class RegisteredUserController extends Controller
             'on_boarding' => 'no',
             'on_app' => $artist ? 1 : 0,
             'app_id' => $artist ? $artist->id : null,
+            'country_user_belongs_in' => $countryCode,
         ];
 
         $user = User::create($userData);
 
         $userDetail = UserDetail::create([
             'user_id' => $user->id,
-            'payout_bank_country' => strtoupper($validated['payout_bank_country']),
+            'payout_bank_country' => $countryCode,
         ]);
         StripeConnectCountries::syncCurrencyFromBankCountry($userDetail);
         $userDetail->save();

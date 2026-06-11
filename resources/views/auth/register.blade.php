@@ -194,16 +194,16 @@
         <div class="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
           <span class="material-symbols-outlined text-primary text-3xl" aria-hidden="true">public_off</span>
         </div>
-        <h2 id="countryNotAvailableModalTitle" class="text-xl font-bold text-on-surface tracking-tight">Account not created</h2>
+        <h2 id="countryNotAvailableModalTitle" class="text-xl font-bold text-on-surface tracking-tight">Bookpay isn't in your country yet</h2>
         <p id="countryNotAvailableModalDesc" class="text-sm text-on-surface-variant mt-3 leading-relaxed">
-          We are not in your country right now. We will notify you once bookpay becomes available in your area.
+          We're expanding country by country. We'll email you the moment we launch in your area. No need to do anything else right now.
         </p>
         <button
           type="button"
           id="countryNotAvailableModalOk"
           class="mt-6 w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-95 transition-opacity text-sm"
         >
-          OK
+          Ok
         </button>
       </div>
     </div>
@@ -236,21 +236,18 @@
         });
       }
 
-      var artistsPageUrl = @json(route('public.artists.list'));
+      var registerPageUrl = @json(route('register'));
 
-      function showCountryNotAvailableModal(message) {
-        if (message) {
-          $('#countryNotAvailableModalDesc').text(message);
-        }
+      function showCountryNotAvailableModal() {
         $('#countryNotAvailableModal').removeClass('hidden');
       }
 
       $('#countryNotAvailableModalOk').on('click', function () {
-        window.location.href = artistsPageUrl;
+        window.location.href = registerPageUrl;
       });
 
       @if (session('country_not_available'))
-        showCountryNotAvailableModal(@json(session('country_not_available')));
+        showCountryNotAvailableModal();
       @endif
 
       function toggleUnlistedCountry() {
@@ -306,9 +303,7 @@
           }
         }).done(function (response, _textStatus, xhr) {
           if (response && response.country_not_available) {
-            showCountryNotAvailableModal(
-              response.message || 'We are not in your country right now. We will notify you once bookpay becomes available in your area.'
-            );
+            showCountryNotAvailableModal();
             return;
           }
 

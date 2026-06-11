@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Log;
 use Stripe\Account;
 use Stripe\AccountSession;
 use Stripe\Exception\ApiErrorException;
+use Stripe\PaymentIntent;
 use Stripe\Stripe;
+use Stripe\Transfer;
 
 class StripeConnectService
 {
@@ -365,7 +367,7 @@ class StripeConnectService
                         'expected_country' => $country,
                     ]);
                 } else {
-                    $this->syncStudioProfileToAccount($existingId, $studio, $setup);
+                    $this->syncStudioProfileToAccount($existingId, $studio, $userDetail, $setup);
 
                     return $existingId;
                 }
@@ -379,7 +381,6 @@ class StripeConnectService
         }
 
         $defaultCurrency = StripeConnectCountries::currencyForCountry($country);
-        $studioName = $this->nonEmpty($studio->name) ?? 'Studio';
 
         $payload = [
             'country' => $country,
@@ -404,9 +405,10 @@ class StripeConnectService
             ],
         ];
 
-        if ($businessType === 'company') {
-            $payload['company'] = ['name' => $studioName];
-        }
+        $payload = array_replace_recursive(
+            $payload,
+            $this->buildStudioStripeAccountPrefill($studio, $userDetail, $setup)
+        );
 
         $account = Account::create(array_filter($payload, fn ($value) => $value !== null));
 
@@ -540,11 +542,10 @@ class StripeConnectService
     /**
      * @param  array{business_type: string, country: string, industry: string}  $setup
      */
-    private function syncStudioProfileToAccount(string $accountId, Studio $studio, array $setup): void
+    private function syncStudioProfileToAccount(string $accountId, Studio $studio, UserDetail $userDetail, array $setup): void
     {
         $country = strtoupper(trim($setup['country']));
         $businessType = $setup['business_type'] === 'individual' ? 'individual' : 'company';
-        $studioName = $this->nonEmpty($studio->name) ?? 'Studio';
         $currency = StripeConnectCountries::currencyForCountry($country);
 
         $updates = array_filter([
@@ -552,7 +553,6 @@ class StripeConnectService
             'country' => $country,
             'business_type' => $businessType,
             'default_currency' => $currency ? strtolower($currency) : null,
-            'company' => $businessType === 'company' ? ['name' => $studioName] : null,
             'business_profile' => $this->buildStudioBusinessProfile($studio, $setup),
             'metadata' => [
                 'inkjin_studio_id' => (string) $studio->id,
@@ -560,6 +560,11 @@ class StripeConnectService
                 'inkjin_studio_business_type' => $businessType,
             ],
         ], fn ($value) => $value !== null && $value !== []);
+
+        $updates = array_replace_recursive(
+            $updates,
+            $this->buildStudioStripeAccountPrefill($studio, $userDetail, $setup)
+        );
 
         if ($updates === []) {
             return;
@@ -574,6 +579,58 @@ class StripeConnectService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * @param  array{business_type: string, country: string, industry: string}  $setup
+     * @return array<string, mixed>
+     */
+    private function buildStudioStripeAccountPrefill(Studio $studio, UserDetail $userDetail, array $setup): array
+    {
+        $country = strtoupper(trim($setup['country']));
+        $businessType = $setup['business_type'] === 'individual' ? 'individual' : 'company';
+        $address = $this->buildStudioAddressFromUserDetail($userDetail, $country);
+
+        if ($businessType === 'individual') {
+            return $address !== null ? ['individual' => ['address' => $address]] : [];
+        }
+
+        $company = array_filter([
+            'name' => $this->nonEmpty($studio->name) ?? 'Studio',
+        ], fn ($value) => $value !== null && $value !== '');
+
+        if ($address !== null) {
+            $company['address'] = $address;
+        }
+
+        return $company !== [] ? ['company' => $company] : [];
+    }
+
+    /**
+     * Build Stripe address fields from the artist's saved studio location.
+     *
+     * @return array<string, string>|null
+     */
+    private function buildStudioAddressFromUserDetail(UserDetail $userDetail, string $accountCountryIso): ?array
+    {
+        $line1 = trim(trim((string) ($userDetail->street_number ?? '')).' '.trim((string) ($userDetail->street_name ?? '')));
+        if ($line1 === '') {
+            $line1 = trim((string) ($userDetail->studio_address ?? ''));
+        }
+
+        $address = array_filter([
+            'line1' => $this->nonEmpty($line1),
+            'city' => $this->nonEmpty($userDetail->city),
+            'state' => $this->nonEmpty($userDetail->state),
+            'postal_code' => $this->nonEmpty($userDetail->postal_code),
+            'country' => strtoupper($accountCountryIso),
+        ], fn ($value) => $value !== null && $value !== '');
+
+        if (empty($address['line1'])) {
+            return null;
+        }
+
+        return $address;
     }
 
     public function ensureConnectedAccount(User $user, UserDetail $userDetail): string
@@ -723,6 +780,91 @@ class StripeConnectService
     public function isOnboardingSubmitted(string $accountId): bool
     {
         return $this->getOnboardingStatus($accountId)['complete'];
+    }
+
+    public function isPayoutReady(string $accountId): bool
+    {
+        return $this->getOnboardingStatus($accountId)['payout_ready'];
+    }
+
+    /**
+     * Transfer funds from the platform balance to a connected account (Separate charges & transfers).
+     *
+     * @param  array<string, string>  $metadata
+     * @return array{id: string, amount: int, currency: string, destination: string}
+     */
+    public function transferToConnectedAccount(
+        string $destinationAccountId,
+        int $amountCents,
+        string $currency,
+        ?string $sourceChargeId = null,
+        array $metadata = [],
+        ?string $idempotencyKey = null,
+    ): array {
+        $this->initialize();
+
+        $destinationAccountId = trim($destinationAccountId);
+        if ($destinationAccountId === '' || ! preg_match('/^acct_[a-zA-Z0-9]+$/', $destinationAccountId)) {
+            throw new \InvalidArgumentException('Invalid Stripe connected account ID.');
+        }
+
+        if ($amountCents < 1) {
+            throw new \InvalidArgumentException('Transfer amount must be at least one cent.');
+        }
+
+        $payload = [
+            'amount' => $amountCents,
+            'currency' => strtolower($currency),
+            'destination' => $destinationAccountId,
+            'metadata' => $metadata,
+        ];
+
+        if ($sourceChargeId !== null && $sourceChargeId !== '') {
+            $payload['source_transaction'] = $sourceChargeId;
+        }
+
+        $options = [];
+        if ($idempotencyKey !== null && $idempotencyKey !== '') {
+            $options['idempotency_key'] = $idempotencyKey;
+        }
+
+        $transfer = Transfer::create($payload, $options);
+
+        return [
+            'id' => $transfer->id,
+            'amount' => (int) $transfer->amount,
+            'currency' => strtoupper((string) $transfer->currency),
+            'destination' => (string) $transfer->destination,
+        ];
+    }
+
+    public function resolveChargeIdFromPaymentIntent(?string $paymentIntentId): ?string
+    {
+        if ($paymentIntentId === null || trim($paymentIntentId) === '') {
+            return null;
+        }
+
+        $this->initialize();
+
+        try {
+            $intent = PaymentIntent::retrieve($paymentIntentId);
+            $latestCharge = $intent->latest_charge ?? null;
+
+            if (is_string($latestCharge) && $latestCharge !== '') {
+                return $latestCharge;
+            }
+
+            if (is_object($latestCharge) && isset($latestCharge->id)) {
+                return (string) $latestCharge->id;
+            }
+        } catch (ApiErrorException $e) {
+            Log::warning('Could not resolve Stripe charge from payment intent', [
+                'payment_intent_id' => $paymentIntentId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 
     private function forceIndividualBusinessType(): bool

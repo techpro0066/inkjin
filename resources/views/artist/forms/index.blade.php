@@ -522,12 +522,44 @@
   const ARTIST_FORMS_QUESTION_DELETE_URL_TEMPLATE = @json(route('artist.forms.questions.destroy', ['id' => '__ID__']));
   const ARTIST_FORMS_REORDER_URL = @json(route('artist.forms.questions.reorder'));
   const ARTIST_SYSTEM_QUESTION_STATUS_URL_TEMPLATE = @json(route('artist.forms.questions.status', ['id' => '__ID__']));
+  const ARTIST_FORMS_TAB_STORAGE_KEY = "artistFormsActiveTab";
   const currentFormToContext = { booking: "default", request: "custom" };
   let currentFormType = "booking";
   let $pendingDeleteRow = null;
 
-  function switchFormType(type, btn) {
+  function persistActiveFormTab(type) {
+    try {
+      sessionStorage.setItem(ARTIST_FORMS_TAB_STORAGE_KEY, type);
+    } catch (e) {}
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", type === "request" ? "custom" : "booking");
+    window.history.replaceState({}, "", url);
+  }
+
+  function restoreActiveFormTab() {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    let saved = null;
+    try {
+      saved = sessionStorage.getItem(ARTIST_FORMS_TAB_STORAGE_KEY);
+    } catch (e) {}
+
+    const type = tabParam === "custom" || tabParam === "request"
+      ? "request"
+      : (tabParam === "booking" ? "booking" : (saved === "request" ? "request" : "booking"));
+
+    const btn = document.getElementById(type === "request" ? "tabRequest" : "tabBooking");
+    if (btn) {
+      switchFormType(type, btn, { persist: false });
+    }
+  }
+
+  function switchFormType(type, btn, options) {
+    options = options || {};
     currentFormType = type;
+    if (options.persist !== false) {
+      persistActiveFormTab(type);
+    }
     document.querySelectorAll(".form-tab").forEach(function (tab) {
       tab.classList.remove("active");
     });
@@ -1127,6 +1159,7 @@
       }
     }).done(function (response) {
       if (response && response.success) {
+        persistActiveFormTab(currentFormType);
         resetAddQuestionForm();
         closeAddQuestionModal();
         window.location.reload();
@@ -1175,5 +1208,6 @@
 
   initQuestionSorting("#bookingQuestionsList", "default");
   initQuestionSorting("#requestQuestionsList", "custom");
+  restoreActiveFormTab();
   </script>
 @endsection
