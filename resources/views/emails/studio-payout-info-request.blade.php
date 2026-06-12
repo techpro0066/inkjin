@@ -71,16 +71,14 @@
                     <strong>{{ $artistName }}</strong> has selected your studio for payouts on {{ config('app.name', 'Inkjin') }}.
                 </p>
                 <p class="content">
-                    Your studio already has a bank account connected for payouts. Please choose whether to allow this artist to receive payouts through your studio on {{ config('app.name', 'Inkjin') }}.
+                    Your studio already has a bank account connected for payouts. Please review your studio information and choose whether to allow this artist to receive payouts through your studio on {{ config('app.name', 'Inkjin') }}.
                 </p>
-                <div class="btn-row-split">
-                    <a href="{{ $approveUrl }}" class="btn">Approve</a>
-                    <a href="{{ $declineUrl }}" class="btn btn-decline">Decline</a>
+                <div class="button-row">
+                    <a href="{{ $formUrl }}" class="btn">Approve</a>
                 </div>
                 <p class="content" style="font-size: 13px; color: #888;">
-                    If the buttons do not work, copy one of these URLs:<br>
-                    <span style="word-break: break-all;">Approve: {{ $approveUrl }}</span><br><br>
-                    <span style="word-break: break-all;">Decline: {{ $declineUrl }}</span>
+                    If the button does not work, copy and paste this URL into your browser:<br>
+                    <span style="word-break: break-all;">{{ $formUrl }}</span>
                 </p>
             @else
                 <p class="content">

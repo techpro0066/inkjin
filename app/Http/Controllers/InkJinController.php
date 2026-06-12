@@ -369,7 +369,7 @@ class InkJinController extends Controller
             'artist_username' => ['required', 'string'],
             'tattoo_slug' => ['required', 'string'],
             'question_id' => ['required'],
-            'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ]);
 
         $userDetail = UserDetail::query()

@@ -12,7 +12,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link href="css/bookpay.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css" rel="stylesheet">
   <script>
     tailwind.config = {
       theme: {
@@ -208,26 +207,10 @@
       background: #310f7a;
       color: #fff;
     }
-    .dropify-wrapper .dropify-message p {
-      font-size: 0.78rem;
-      line-height: 1.2rem;
+    .q-toggle-input:focus-visible + .q-toggle-ui {
+      box-shadow: 0 0 0 3px rgba(30, 107, 255, 0.22);
     }
-    .dropify-wrapper .dropify-message span.file-icon {
-      font-size: 36px;
-    }
-    .dropify-wrapper .dropify-message {
-      text-align: center;
-    }
-    .dropify-wrapper .dropify-preview .dropify-render {
-      text-align: center;
-    }
-    .dropify-wrapper .dropify-preview .dropify-render img {
-      margin-left: auto;
-      margin-right: auto;
-      display: inline-block;
-      float: none;
-    }
-    .q-toggle-row {
+  </style>
       display: flex;
       align-items: flex-start;
       gap: 0.85rem;
@@ -896,8 +879,8 @@
 
   <!-- jquery-cdn -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  @include('public.partials.question-image-upload')
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
   <script src="https://js.stripe.com/v3/"></script>
   <script>
     var currentStep = 1;
@@ -1397,7 +1380,7 @@
         } else if (q.type === 'textarea') {
           body = '<textarea rows="4" placeholder="' + q.placeholder + '" data-question-id="' + q.id + '" class="js-question-input w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>';
         } else if (q.type === 'image') {
-          body = '<div class="border-2 border-dashed border-outline-variant/40 rounded-2xl p-6 bg-white"><input type="file" accept="image/*" data-question-id="' + q.id + '" class="dropify js-question-file" data-allowed-file-extensions="jpg jpeg png webp" data-max-file-size="5M" data-show-remove="true"></div>';
+          body = window.QuestionImageField.buildHtml(q.id);
         } else if (q.type === 'toggle') {
           body = '<label class="q-toggle-row"><span class="q-toggle-control"><input type="checkbox" data-question-id="' + q.id + '" class="q-toggle-input js-question-toggle"><span class="q-toggle-ui"></span></span><span class="q-toggle-label">' + q.subtitle + '</span></label>';
         }
@@ -1421,6 +1404,9 @@
       });
 
       $('#questionsMount').html(html);
+      if (window.QuestionImageField) {
+        window.QuestionImageField.initIn($('#questionsMount'));
+      }
     }
 
     function getCurrentQuestionDiv() {
@@ -2331,16 +2317,28 @@
       if ($(this).hasClass('js-question-toggle')) {
         questionAnswers[qId] = $(this).is(':checked');
       } else if ($(this).hasClass('js-question-file')) {
+        var $zone = $(this).closest('.q-image-upload');
         var file = this.files && this.files.length ? this.files[0] : null;
         questionAnswers[qId] = '';
-        if (file) {
-          try {
-            var imageUrl = await uploadQuestionImage(file, qId);
-            questionAnswers[qId] = imageUrl;
-          } catch (error) {
-            $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed. Please try again.');
-            return;
-          }
+        if (!file) {
+          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
+          return;
+        }
+        var fileError = window.QuestionImageField ? window.QuestionImageField.validateFile(file) : '';
+        if (fileError) {
+          $question.find('.js-question-error').removeClass('hidden').text(fileError);
+          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
+          return;
+        }
+        if (window.QuestionImageField) window.QuestionImageField.showLocalPreview($zone, file);
+        try {
+          var imageUrl = await uploadQuestionImage(file, qId);
+          questionAnswers[qId] = imageUrl;
+          if (window.QuestionImageField) window.QuestionImageField.showPreview($zone, imageUrl);
+        } catch (error) {
+          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
+          $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed. Please try again.');
+          return;
         }
       } else {
         questionAnswers[qId] = String($(this).val() || '').trim();
@@ -2387,7 +2385,6 @@
         width: '100%',
         minimumResultsForSearch: Infinity
       });
-      $('.dropify').dropify();
       updatePaymentSummary();
       mountStripeElements();
       checkPayReady();

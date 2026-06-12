@@ -12,7 +12,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link href="css/bookpay.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css" rel="stylesheet">
   <script>
     tailwind.config = {
       theme: {
@@ -52,21 +51,6 @@
     /* Progress bar */
     .tf-progress { position: fixed; top: 0; left: 0; height: 3px; background: #310f7a; transition: width 0.4s ease; z-index: 100; }
 
-    /* Typeform screen */
-    .tf-screen {
-      display: none;
-      min-height: calc(100vh - 64px);
-      align-items: center;
-      justify-content: center;
-      padding: 2rem 1rem;
-    }
-    .tf-screen.active {
-      display: flex;
-      animation: tfSlideIn 0.4s ease-out;
-    }
-    .tf-screen.active.reverse {
-      animation: tfSlideInReverse 0.4s ease-out;
-    }
     @keyframes tfSlideIn {
       from { opacity: 0; transform: translateY(40px); }
       to { opacity: 1; transform: translateY(0); }
@@ -137,7 +121,7 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner { width: 32px; height: 32px; border: 3px solid #ece6ef; border-top-color: #310f7a; border-radius: 50%; animation: spin 0.8s linear infinite; }
 
-    .question-div { display: none; min-height: calc(100vh - 64px); align-items: center; justify-content: center; padding: 2rem 0; width: 100%; }
+    .question-div { display: none; min-height: 50vh; align-items: center; justify-content: center; padding: 1rem 0 2rem; width: 100%; }
     .question-div.active { display: flex; animation: tfSlideIn 0.4s ease-out; }
     .question-div.active.reverse { animation: tfSlideInReverse 0.4s ease-out; }
     .single-choice-radio-button { padding: 0.75rem 1.5rem; border-radius: 9999px; border: 2px solid #cac4d3; font-size: 0.95rem; font-weight: 600; color: #494552; cursor: pointer; transition: all 0.15s; background: white; }
@@ -183,9 +167,22 @@
     .time-pref-pill { padding: 0.5rem 1rem; border-radius: 9999px; border: 1.5px solid #cac4d3; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; background: white; }
     .time-pref-pill:hover { border-color: #310f7a; color: #310f7a; }
     .time-pref-pill.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .progress-step .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid #cac4d3; color: #cac4d3; transition: all 0.3s; }
+    .progress-step.active .step-dot, .progress-step.completed .step-dot { border-color: #310f7a; background: #310f7a; color: white; }
+    .progress-step .step-label { font-size: 0.7rem; color: #7a7583; margin-top: 4px; transition: color 0.3s; white-space: nowrap; }
+    .progress-step.active .step-label { color: #310f7a; font-weight: 600; }
+    .progress-step.completed .step-label { color: #310f7a; }
+    .progress-line { height: 2px; background: #cac4d3; flex: 1; margin: 0 4px; margin-top: -12px; transition: background 0.3s; min-width: 12px; }
+    .progress-line.completed { background: #310f7a; }
+    .tf-screen { display: none; width: 100%; }
+    .tf-screen.active { display: block; animation: fadeUp 0.35s ease-out; }
+    .tf-screen.active.reverse { animation: fadeDown 0.35s ease-out; }
+    .tf-screen[data-screen="0"].active { display: flex; min-height: calc(100vh - 64px); align-items: center; justify-content: center; padding: 2rem 1rem; animation: tfSlideIn 0.4s ease-out; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
-<body class="bg-surface text-on-surface">
+<body class="bg-surface text-on-surface min-h-screen">
 
   <!-- CUSTOM CLOSED OVERLAY (hidden by default) -->
   <div id="customClosedOverlay" class="hidden">
@@ -206,24 +203,68 @@
 
   <!-- Header -->
   <header class="border-b border-outline-variant/20 bg-white/70 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       <a href="{{ $artistProfileUrl }}" class="flex items-center gap-2 text-primary font-extrabold text-xl tracking-tight">
-        <img src="images/inkjin_logo-p-500.png" alt="inkjin" class="h-7">
+        <img src="{{ asset('design/images/logo-blue.png') }}" alt="inkjin" class="h-7">
       </a>
-      <div class="flex items-center gap-4">
-        <button id="btnPrev" class="hidden w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center transition-colors" onclick="prevScreen()">
-          <span class="material-symbols-outlined text-on-surface-variant">arrow_upward</span>
-        </button>
+      <div class="flex items-center gap-3 flex-wrap justify-end">
         <a href="{{ $artistProfileUrl }}" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
-          <span class="material-symbols-outlined text-[18px]">close</span>
+          <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to {{ $artistName }}
         </a>
       </div>
     </div>
   </header>
 
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- TYPEFORM SCREENS                                -->
-  <!-- ═══════════════════════════════════════════════ -->
+  @php
+    $rcArtistInitials = strtoupper(substr($userDetail->user->first_name ?? 'A', 0, 1) . substr($userDetail->user->last_name ?? 'A', 0, 1));
+  @endphp
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8" id="rcMainContent">
+
+    <div id="rcBookingChrome" class="hidden">
+      <div class="flex items-start justify-center mb-10" id="progressDots">
+        <div class="progress-step text-center" data-step="1"><div class="step-dot mx-auto">1</div><div class="step-label">Questions</div></div>
+        <div class="progress-line mt-4" data-line="1"></div>
+        @if(!empty($isManagedScheduling))
+        <div class="progress-step text-center" data-step="2"><div class="step-dot mx-auto">2</div><div class="step-label">Availability</div></div>
+        <div class="progress-line mt-4" data-line="2"></div>
+        <div class="progress-step text-center" data-step="3"><div class="step-dot mx-auto">3</div><div class="step-label">Register</div></div>
+        <div class="progress-line mt-4" data-line="3"></div>
+        <div class="progress-step text-center" data-step="4"><div class="step-dot mx-auto">4</div><div class="step-label">Review</div></div>
+        <div class="progress-line mt-4" data-line="4"></div>
+        <div class="progress-step text-center" data-step="5"><div class="step-dot mx-auto">5</div><div class="step-label">Submitted</div></div>
+        @else
+        <div class="progress-step text-center" data-step="2"><div class="step-dot mx-auto">2</div><div class="step-label">Register</div></div>
+        <div class="progress-line mt-4" data-line="2"></div>
+        <div class="progress-step text-center" data-step="3"><div class="step-dot mx-auto">3</div><div class="step-label">Review</div></div>
+        <div class="progress-line mt-4" data-line="3"></div>
+        <div class="progress-step text-center" data-step="4"><div class="step-dot mx-auto">4</div><div class="step-label">Submitted</div></div>
+        @endif
+      </div>
+
+      <div class="bg-white rounded-2xl border border-outline-variant/20 p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+        <div class="w-full sm:w-24 h-24 sm:h-24 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0 overflow-hidden">
+          @if($userDetail->avatar && $userDetail->avatar != '')
+            <img src="{{ asset($userDetail->avatar) }}" alt="{{ $artistName }}" class="w-full h-full object-cover">
+          @else
+            <span class="text-white text-2xl font-bold">{{ $rcArtistInitials }}</span>
+          @endif
+        </div>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-base sm:text-lg font-bold text-on-surface mb-1">Custom Tattoo Request</h2>
+          <div class="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-on-surface-variant">
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> Custom design</span>
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> Artist will review &amp; reply</span>
+          </div>
+          <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-[10px] font-bold">{{ $rcArtistInitials }}</span>
+            </div>
+            <span class="leading-relaxed break-words">with <strong>{{ $artistName }}</strong>@if($userDetail->studio_name) at <strong>{{ $userDetail->studio_name }}</strong>@endif</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
   <!-- Screen 0: Intro / Artist Card -->
   <div class="tf-screen active" data-screen="0">
@@ -260,6 +301,9 @@
   <!-- Screen 9: Availability (managed scheduling) -->
   <div class="tf-screen" data-screen="9">
     <div class="w-full max-w-xl">
+      <button type="button" onclick="prevScreen()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors">
+        <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to Questions
+      </button>
       <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">When are you available?</h2>
       <p class="text-on-surface-variant mb-6"><span id="rcManagedArtistHint">{{ $artistName }}</span> will confirm a time that works for both of you.</p>
 
@@ -487,9 +531,9 @@
       <button type="button" onclick="submitRequest()" id="btnSubmit" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">
         Submit Request
       </button>
-      <p class="text-center text-sm text-on-surface-variant">
-        You can edit your answers by going back with the ↑ arrow
-      </p>
+      <button type="button" onclick="prevScreen()" class="w-full mt-2 py-3 rounded-xl font-semibold text-sm text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container transition-colors">
+        Back to edit your answers
+      </button>
     </div>
   </div>
 
@@ -531,9 +575,11 @@
     </div>
   </div>
 
+  </main>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  @include('public.partials.question-image-upload')
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
   <script>
   (function($) {
     'use strict';
@@ -610,7 +656,7 @@
         } else if (q.type === 'textarea') {
           body = '<textarea rows="4" placeholder="' + escapeHtml(q.placeholder) + '" data-question-id="' + q.id + '" class="js-question-input w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>';
         } else if (q.type === 'image') {
-          body = '<div class="border-2 border-dashed border-outline-variant/40 rounded-2xl p-6 bg-white"><input type="file" accept="image/*" data-question-id="' + q.id + '" class="dropify js-question-file" data-allowed-file-extensions="jpg jpeg png webp" data-max-file-size="5M" data-show-remove="true"></div>';
+          body = window.QuestionImageField.buildHtml(q.id);
         } else if (q.type === 'toggle') {
           body = '<label class="q-toggle-row"><span class="q-toggle-control"><input type="checkbox" data-question-id="' + q.id + '" class="q-toggle-input js-question-toggle"><span class="q-toggle-ui"></span></span><span class="q-toggle-label">' + escapeHtml(q.subtitle) + '</span></label>';
         }
@@ -626,6 +672,9 @@
           '<div class="flex items-center justify-end mt-6">' + navButton + '</div></div></div>';
       });
       $('#questionsMount').html(html);
+      if (window.QuestionImageField) {
+        window.QuestionImageField.initIn($('#questionsMount'));
+      }
     }
 
     function validateActiveQuestion() {
@@ -697,14 +746,27 @@
       if (!qId) return;
       if ($(this).hasClass('js-question-toggle')) questionAnswers[qId] = $(this).is(':checked');
       else if ($(this).hasClass('js-question-file')) {
+        var $zone = $(this).closest('.q-image-upload');
         var file = this.files && this.files.length ? this.files[0] : null;
         questionAnswers[qId] = '';
-        if (file) {
-          try { questionAnswers[qId] = await uploadQuestionImage(file, qId); }
-          catch (error) {
-            $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed.');
-            return;
-          }
+        if (!file) {
+          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
+          return;
+        }
+        var fileError = window.QuestionImageField ? window.QuestionImageField.validateFile(file) : '';
+        if (fileError) {
+          $question.find('.js-question-error').removeClass('hidden').text(fileError);
+          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
+          return;
+        }
+        if (window.QuestionImageField) window.QuestionImageField.showLocalPreview($zone, file);
+        try {
+          questionAnswers[qId] = await uploadQuestionImage(file, qId);
+          if (window.QuestionImageField) window.QuestionImageField.showPreview($zone, questionAnswers[qId]);
+        } catch (error) {
+          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
+          $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed.');
+          return;
         }
       } else questionAnswers[qId] = String($(this).val() || '').trim();
       $question.find('.js-question-error').addClass('hidden');
@@ -720,7 +782,6 @@
     $(function() {
       renderQuestions();
       $('.js-select2-question').select2({ width: '100%', minimumResultsForSearch: Infinity });
-      $('.dropify').dropify();
     });
   })(jQuery);
   </script>
@@ -733,7 +794,8 @@
     var isManagedScheduling = @json(!empty($isManagedScheduling));
     var questionCount = (typeof window.rcGetTotalQuestions === 'function') ? window.rcGetTotalQuestions() : 0;
     var postScreens = isManagedScheduling ? [9, 10, 11, 12, 13, 14, 15, 16] : [10, 11, 12, 13, 14, 15, 16];
-    var totalSteps = 1 + questionCount + postScreens.length;
+    var rcMaxStep = isManagedScheduling ? 5 : 4;
+    var rcCurrentQuestion = 0;
     var rcPrefCount = 1;
     var RC_PREF_TIME_PILLS = '<div class="flex flex-wrap gap-1.5"><button type="button" class="time-pref-pill" data-value="Morning" onclick="rcToggleTimePref(this)">Morning</button><button type="button" class="time-pref-pill" data-value="Afternoon" onclick="rcToggleTimePref(this)">Afternoon</button><button type="button" class="time-pref-pill" data-value="Evening" onclick="rcToggleTimePref(this)">Evening</button></div>';
 
@@ -753,6 +815,54 @@
     var rcOtpResendEmail = '';
     var rcOtpResendTimer = null;
 
+    function rcResolveStep() {
+      if (current === 0) return 0;
+      if (inQuestions) return 1;
+      if (isManagedScheduling && current === 9) return 2;
+      if (current >= 10 && current <= 13) return isManagedScheduling ? 3 : 2;
+      if (current === 14 || current === 15) return isManagedScheduling ? 4 : 3;
+      if (current === 16) return isManagedScheduling ? 5 : 4;
+      return 0;
+    }
+
+    function updateProgressDots() {
+      var step = rcResolveStep();
+      document.querySelectorAll('.progress-step').forEach(function(el) {
+        var s = parseInt(el.getAttribute('data-step') || '0', 10);
+        el.classList.remove('active', 'completed');
+        if (s === step) el.classList.add('active');
+        else if (s < step) el.classList.add('completed');
+      });
+      document.querySelectorAll('.progress-line').forEach(function(el) {
+        var lineNum = parseInt(el.getAttribute('data-line') || '0', 10);
+        el.classList.toggle('completed', lineNum < step);
+      });
+    }
+
+    function updateTopProgress() {
+      var step = rcResolveStep();
+      var pct = 0;
+      if (step === 0) {
+        pct = 0;
+      } else if (step === 1 && inQuestions) {
+        var totalQ = Math.max(1, questionCount);
+        pct = 5 + (rcCurrentQuestion / totalQ) * 15;
+      } else if (step >= 1 && rcMaxStep > 1) {
+        pct = ((step - 1) / (rcMaxStep - 1)) * 100;
+      }
+      document.getElementById('progressBar').style.width = Math.min(pct, 100) + '%';
+    }
+
+    function updateBookingChrome() {
+      var chrome = document.getElementById('rcBookingChrome');
+      var step = rcResolveStep();
+      if (chrome) {
+        chrome.classList.toggle('hidden', step === 0);
+      }
+      updateProgressDots();
+      updateTopProgress();
+    }
+
     function showScreen(screenId, reverse) {
       document.querySelectorAll('.tf-screen').forEach(function(s) {
         s.classList.remove('active', 'reverse');
@@ -764,8 +874,7 @@
         target.classList.add('active');
         if (reverse) target.classList.add('reverse');
       }
-      updateProgress();
-      updatePrevBtn();
+      updateBookingChrome();
       window.scrollTo({ top: 0 });
     }
 
@@ -787,8 +896,7 @@
           jQuery('div.question-div[data-q="' + lastIdx + '"]').addClass('active reverse');
         }
       }
-      updateProgress();
-      updatePrevBtn();
+      updateBookingChrome();
       window.scrollTo({ top: 0 });
     }
 
@@ -807,9 +915,8 @@
     };
 
     window.rcSyncQuestionProgress = function(questionIndex) {
-      var stepIndex = 1 + questionIndex;
-      var pct = Math.round((stepIndex / (totalSteps - 1)) * 100);
-      document.getElementById('progressBar').style.width = Math.min(pct, 100) + '%';
+      rcCurrentQuestion = Math.max(0, parseInt(questionIndex, 10) || 0);
+      updateTopProgress();
     };
 
     function clearRcError(inputId, errorId) {
@@ -1287,30 +1394,6 @@
       }
     };
 
-    function updateProgress() {
-      var stepIndex = 0;
-      if (inQuestions) return;
-      if (current === 0) stepIndex = 0;
-      else {
-        var idx = postScreens.indexOf(current);
-        if (idx >= 0) stepIndex = 1 + questionCount + idx;
-      }
-      var pct = Math.round((stepIndex / (totalSteps - 1)) * 100);
-      document.getElementById('progressBar').style.width = Math.min(pct, 100) + '%';
-    }
-
-    function updatePrevBtn() {
-      var btn = document.getElementById('btnPrev');
-      var show = (inQuestions || (current > 0 && current < 16));
-      if (show) {
-        btn.classList.remove('hidden');
-        btn.classList.add('flex');
-      } else {
-        btn.classList.add('hidden');
-        btn.classList.remove('flex');
-      }
-    }
-
     function shakeInput(el) {
       el.style.animation = 'none';
       el.offsetHeight;
@@ -1380,9 +1463,7 @@
 
       showScreen(16, false);
       current = 16;
-      document.getElementById('progressBar').style.width = '100%';
-      document.getElementById('btnPrev').classList.add('hidden');
-      document.getElementById('btnPrev').classList.remove('flex');
+      updateBookingChrome();
       document.getElementById('submitLoading').classList.remove('hidden');
       document.getElementById('submitSuccess').classList.add('hidden');
 
@@ -1468,6 +1549,8 @@
     if (statusParam === 'closed' || statusParam === 'flash') {
       document.getElementById('progressBar').style.display = 'none';
       document.querySelector('header').style.display = 'none';
+      var rcMain = document.getElementById('rcMainContent');
+      if (rcMain) rcMain.style.display = 'none';
       document.querySelectorAll('.tf-screen').forEach(function(s) {
         s.classList.remove('active');
         s.style.display = 'none';
@@ -1515,8 +1598,7 @@
 
     syncRcOtpEmailFromForm();
 
-    updateProgress();
-    updatePrevBtn();
+    updateBookingChrome();
   })();
   </script>
 

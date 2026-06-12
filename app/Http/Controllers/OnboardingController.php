@@ -293,6 +293,30 @@ class OnboardingController extends Controller
             && ($userDetail->payment_status ?? null) !== 'rejected';
     }
 
+    protected function disconnectStudioPayout(UserDetail $userDetail): void
+    {
+        $userDetail->payment_type = 'artist_account';
+        $userDetail->studio_id = null;
+        $userDetail->stripe_account_id = null;
+        $userDetail->payment_status = null;
+        $userDetail->save();
+    }
+
+    protected function resolveOrCreateStudio(string $email, ?string $studioName = null): Studio
+    {
+        $studioEmail = strtolower(trim($email));
+        $studio = Studio::firstWhere('email', $studioEmail);
+
+        if (! $studio) {
+            $studio = Studio::create([
+                'name' => $studioName ?: 'Studio',
+                'email' => $studioEmail,
+            ]);
+        }
+
+        return $studio;
+    }
+
     protected function hasLockedPayoutConnection(?UserDetail $userDetail, ?array $stripeStatus = null): bool
     {
         return $this->hasActiveArtistStripe($userDetail, $stripeStatus)
@@ -1088,7 +1112,7 @@ class OnboardingController extends Controller
             }
 
             if ((int) $request->input('disconnect_studio', 0) === 1) {
-                if (! $this->hasActiveStudioPayout($userDetail)) {
+                if (! $this->hasStudioPayoutCommitted($userDetail)) {
                     $msg = 'No linked studio payout to disconnect.';
                     if ($request->expectsJson() || $request->ajax()) {
                         return response()->json(['success' => false, 'message' => $msg], 422);
@@ -1097,11 +1121,7 @@ class OnboardingController extends Controller
                     return redirect()->back()->with('error', $msg);
                 }
 
-                $userDetail->payment_type = 'artist_account';
-                $userDetail->studio_id = null;
-                $userDetail->stripe_account_id = null;
-                $userDetail->payment_status = null;
-                $userDetail->save();
+                $this->disconnectStudioPayout($userDetail);
 
                 $msg = 'Studio payout disconnected. You can now switch payout options or connect again.';
                 if ($request->expectsJson() || $request->ajax()) {
@@ -1540,6 +1560,19 @@ class OnboardingController extends Controller
                 return $this->resendStudioPayoutEmail($request, $user, $userDetail);
             }
 
+            if ((int) $request->input('disconnect_studio', 0) === 1) {
+                if (! $this->hasStudioPayoutCommitted($userDetail)) {
+                    return response()->json(['success' => false, 'message' => 'No linked studio payout to disconnect.'], 422);
+                }
+
+                $this->disconnectStudioPayout($userDetail);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Studio payout disconnected. You can now switch payout options or connect again.',
+                ]);
+            }
+
             // Base validation - payment_type is always required
             $rules = [
                 'payment_type' => ['required', 'in:artist_account,studio_account'],
@@ -1767,6 +1800,15 @@ class OnboardingController extends Controller
 
         $stripeConnect = app(StripeConnectService::class);
         $studioAlreadyConnected = $studio->hasStripeConnect();
+        $paymentStatus = (string) ($userDetail->payment_status ?? 'pending');
+
+        $studioProfile = null;
+        if ($studioAlreadyConnected) {
+            $accountId = $studio->resolveStripeAccountId();
+            if ($accountId) {
+                $studioProfile = $stripeConnect->resolveStudioDisplayProfile($accountId, $studio);
+            }
+        }
 
         $approveUrl = URL::temporarySignedRoute(
             'studio.payout-artist-link.approve',
@@ -1784,6 +1826,8 @@ class OnboardingController extends Controller
             'studio' => $studio,
             'artistName' => $artistName,
             'studioAlreadyConnected' => $studioAlreadyConnected,
+            'studioProfile' => $studioProfile,
+            'paymentStatus' => $paymentStatus,
             'approveUrl' => $approveUrl,
             'declineUrl' => $declineUrl,
             'stripeConnectConfigured' => $stripeConnect->isConfigured(),
@@ -1980,6 +2024,22 @@ class OnboardingController extends Controller
             ]);
         }
 
+        if (($userDetail->payment_status ?? '') === 'approved') {
+            return view('studio.payout-form-result', [
+                'success' => true,
+                'title' => 'Already approved',
+                'message' => 'This artist was already approved to receive payouts through your studio.',
+            ]);
+        }
+
+        if (($userDetail->payment_status ?? '') === 'rejected') {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Request declined',
+                'message' => 'This payout request was already declined.',
+            ]);
+        }
+
         $accountId = $studio->resolveStripeAccountId();
         $userDetail->stripe_account_id = $accountId;
         $userDetail->payment_status = 'approved';
@@ -2132,12 +2192,48 @@ class OnboardingController extends Controller
             return redirect()->back()->with('error', $msg);
         }
 
+        $requestedEmail = strtolower(trim((string) $request->input('studio_email', '')));
+        $emailChanged = false;
+
+        if ($requestedEmail !== '') {
+            $validator = validator(['studio_email' => $requestedEmail], [
+                'studio_email' => ['required', 'email', 'max:255'],
+            ], [
+                'studio_email.email' => 'Please enter a valid email address.',
+            ]);
+
+            if ($validator->fails()) {
+                $msg = $validator->errors()->first('studio_email');
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $msg, 'errors' => $validator->errors()], 422);
+                }
+
+                return redirect()->back()->withErrors($validator)->withInput();
+            }
+
+            if ($requestedEmail !== strtolower(trim((string) $studio->email))) {
+                $studio = $this->resolveOrCreateStudio($requestedEmail, $userDetail->studio_name ?? 'Studio');
+                $userDetail->studio_id = $studio->id;
+                $userDetail->payment_status = 'pending';
+                $userDetail->save();
+                $emailChanged = true;
+            }
+        }
+
         $this->sendStudioPayoutInfoRequestEmail($user, $userDetail, $studio);
 
-        $msg = 'Reminder sent to your studio.';
+        $msg = $emailChanged
+            ? 'Studio email updated. An invitation was sent to '.$studio->email.'.'
+            : 'Reminder sent to your studio.';
 
         if ($request->expectsJson() || $request->ajax()) {
-            return response()->json(['success' => true, 'message' => $msg]);
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'studio_email' => $studio->email,
+                'email_changed' => $emailChanged,
+            ]);
         }
 
         return redirect()->back()->with('success', $msg);

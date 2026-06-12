@@ -12,7 +12,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link href="{{asset('design/css/inkjin_bookpay.css')}}" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css" rel="stylesheet">
   <script>
     tailwind.config = {
       theme: {
@@ -171,7 +170,7 @@
   <header class="border-b border-outline-variant/20 bg-white/70 backdrop-blur-md sticky top-0 z-50">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-2 text-primary font-extrabold text-xl tracking-tight">
-        <img src="{{asset('design/images/inkjin_logo-p-500.png')}}" alt="inkjin" class="h-7">
+        <img src="{{asset('design/images/logo-blue.png')}}" alt="inkjin" class="h-7">
       </a>
       <div class="flex items-center gap-3 flex-wrap justify-end">
         <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
@@ -500,8 +499,8 @@
 
   <!-- JAVASCRIPT -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  @include('public.partials.question-image-upload')
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
   <script>
   (function($) {
     'use strict';
@@ -590,7 +589,7 @@
         } else if (q.type === 'textarea') {
           body = '<textarea rows="4" placeholder="' + escapeHtml(q.placeholder) + '" data-question-id="' + q.id + '" class="js-question-input w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>';
         } else if (q.type === 'image') {
-          body = '<div class="border-2 border-dashed border-outline-variant/40 rounded-2xl p-6 bg-white"><input type="file" accept="image/*" data-question-id="' + q.id + '" class="dropify js-question-file" data-allowed-file-extensions="jpg jpeg png webp" data-max-file-size="5M" data-show-remove="true"></div>';
+          body = window.QuestionImageField.buildHtml(q.id);
         } else if (q.type === 'toggle') {
           body = '<label class="q-toggle-row"><span class="q-toggle-control"><input type="checkbox" data-question-id="' + q.id + '" class="q-toggle-input js-question-toggle"><span class="q-toggle-ui"></span></span><span class="q-toggle-label">' + escapeHtml(q.subtitle) + '</span></label>';
         }
@@ -606,6 +605,9 @@
           '<div class="flex items-center justify-end mt-6">' + navButton + '</div></div></div>';
       });
       $('#questionsMount').html(html);
+      if (window.QuestionImageField) {
+        window.QuestionImageField.initIn($('#questionsMount'));
+      }
     }
 
     function validateActiveQuestion() {
@@ -689,14 +691,27 @@
       if (!qId) return;
       if ($(this).hasClass('js-question-toggle')) questionAnswers[qId] = $(this).is(':checked');
       else if ($(this).hasClass('js-question-file')) {
+        var $zone = $(this).closest('.q-image-upload');
         var file = this.files && this.files.length ? this.files[0] : null;
         questionAnswers[qId] = '';
-        if (file) {
-          try { questionAnswers[qId] = await uploadQuestionImage(file, qId); }
-          catch (error) {
-            $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed.');
-            return;
-          }
+        if (!file) {
+          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
+          return;
+        }
+        var fileError = window.QuestionImageField ? window.QuestionImageField.validateFile(file) : '';
+        if (fileError) {
+          $question.find('.js-question-error').removeClass('hidden').text(fileError);
+          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
+          return;
+        }
+        if (window.QuestionImageField) window.QuestionImageField.showLocalPreview($zone, file);
+        try {
+          questionAnswers[qId] = await uploadQuestionImage(file, qId);
+          if (window.QuestionImageField) window.QuestionImageField.showPreview($zone, questionAnswers[qId]);
+        } catch (error) {
+          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
+          $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed.');
+          return;
         }
       } else questionAnswers[qId] = String($(this).val() || '').trim();
       $question.find('.js-question-error').addClass('hidden');
@@ -717,7 +732,6 @@
         return;
       }
       $('.js-select2-question').select2({ width: '100%', minimumResultsForSearch: Infinity });
-      $('.dropify').dropify();
       if (typeof window.mbOnQuestionsReady === 'function') window.mbOnQuestionsReady(false);
     });
   })(jQuery);

@@ -1,13 +1,19 @@
 @extends('layouts.onboarding_bookpay', ['hideSidebar' => true])
 
-@section('title', 'Studio Stripe payout setup')
+@section('title', $studioAlreadyConnected ? 'Review payout request' : 'Studio Stripe payout setup')
 
 @section('content')
 <div class="flex-1 p-8 md:p-12 max-w-3xl w-full mx-auto">
   <div class="mb-8">
-    <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Connect for payouts</h2>
+    <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">
+      {{ $studioAlreadyConnected ? 'Review payout request' : 'Connect for payouts' }}
+    </h2>
     <p class="text-on-surface-variant mt-2 text-sm md:text-base">
-      <strong>{{ $studio->name }}</strong> — {{ $artistName }} selected your studio to receive their booking payouts on {{ config('app.name', 'Inkjin') }}.
+      @if ($studioAlreadyConnected)
+        <strong>{{ $artistName }}</strong> selected your studio to receive their booking payouts on {{ config('app.name', 'Inkjin') }}.
+      @else
+        <strong>{{ $studio->name }}</strong> — {{ $artistName }} selected your studio to receive their booking payouts on {{ config('app.name', 'Inkjin') }}.
+      @endif
     </p>
   </div>
 
@@ -18,18 +24,68 @@
   @endif
 
   @if ($studioAlreadyConnected)
-    <div class="bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 space-y-5">
-      <p class="text-on-surface-variant text-sm">
-        Your studio already has Stripe connected. Approve or decline linking payouts for <strong>{{ $artistName }}</strong>.
-      </p>
-      <div class="flex flex-wrap gap-3">
-        <a href="{{ $approveUrl }}" class="inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all text-sm">
-          Approve artist
-        </a>
-        <a href="{{ $declineUrl }}" class="inline-flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-xl border border-error/40 text-error hover:bg-error-container/20 transition-colors text-sm">
-          Decline
-        </a>
+    @php
+      $profile = $studioProfile ?? ['name' => $studio->name, 'email' => $studio->email];
+      $isApproved = ($paymentStatus ?? '') === 'approved';
+      $isRejected = ($paymentStatus ?? '') === 'rejected';
+    @endphp
+    <div class="bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 space-y-6">
+      <div>
+        <p class="text-base font-semibold text-on-surface">Your studio information</p>
+        <p class="text-on-surface-variant text-sm mt-1">
+          Your studio already has a bank account connected for payouts. Review the details below, then approve or decline this artist.
+        </p>
       </div>
+
+      <dl class="grid gap-4 sm:grid-cols-2 text-sm">
+        <div class="sm:col-span-2">
+          <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Studio name</dt>
+          <dd class="text-on-surface font-semibold mt-1">{{ $profile['name'] ?? $studio->name }}</dd>
+        </div>
+        @if (!empty($profile['email']))
+          <div>
+            <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Email</dt>
+            <dd class="text-on-surface mt-1 break-all">{{ $profile['email'] }}</dd>
+          </div>
+        @endif
+        @if (!empty($profile['business_type_label']))
+          <div>
+            <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Account type</dt>
+            <dd class="text-on-surface mt-1">{{ $profile['business_type_label'] }}</dd>
+          </div>
+        @endif
+        @if (!empty($profile['country_name']) || !empty($profile['country']))
+          <div>
+            <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Country</dt>
+            <dd class="text-on-surface mt-1">{{ $profile['country_name'] ?? $profile['country'] }}</dd>
+          </div>
+        @endif
+        @if (!empty($profile['address']))
+          <div class="sm:col-span-2">
+            <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Address</dt>
+            <dd class="text-on-surface mt-1">{{ $profile['address'] }}</dd>
+          </div>
+        @endif
+      </dl>
+
+      @if ($isApproved)
+        <div class="rounded-xl border border-green-200 bg-green-50 text-green-900 px-4 py-4 text-sm">
+          You have already approved this artist to receive payouts through your studio.
+        </div>
+      @elseif ($isRejected)
+        <div class="rounded-xl border border-outline-variant/30 bg-surface-container-high text-on-surface-variant px-4 py-4 text-sm">
+          You have already declined this payout request.
+        </div>
+      @else
+        <div class="pt-2 border-t border-outline-variant/20 flex flex-wrap gap-3">
+          <a href="{{ $approveUrl }}" class="inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all text-sm">
+            Approve artist
+          </a>
+          <a href="{{ $declineUrl }}" class="inline-flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-xl border border-error/40 text-error hover:bg-error-container/20 transition-colors text-sm">
+            Decline
+          </a>
+        </div>
+      @endif
     </div>
   @elseif (!($stripeConnectConfigured ?? false))
     <div class="rounded-xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
@@ -84,7 +140,7 @@
         </div>
 
         <button type="button" id="studioSetupContinue" class="inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all text-sm">
-          Continue to Stripe
+          Continue
           <span class="material-symbols-outlined text-lg">arrow_forward</span>
         </button>
       </div>
@@ -96,7 +152,7 @@
             Add your details, verify your identity, and connect your bank account below.
           </p>
         </div>
-        <div id="studioStripeConnectMount" class="min-h-[420px] rounded-xl bg-white overflow-hidden"></div>
+        <div id="studioStripeConnectMount" class="min-h-[420px] bg-white overflow-hidden p-2"></div>
         <p id="studio_stripe_connect_error" class="text-error text-xs hidden"></p>
         <p id="studioStripeConnectHint" class="text-on-surface-variant text-xs">
           Onboarding will finish automatically when all required steps are complete.
@@ -116,6 +172,7 @@ const publishableKey = @json($stripePublishableKey ?? '');
 const sessionUrl = @json($stripeSessionUrl);
 const completeUrl = @json($stripeCompleteUrl);
 const stripeConnectLocale = @json($stripeConnectLocale ?? 'en-US');
+const stripeConnectAppearance = @json(config('services.stripe.connect.appearance', []));
 
 let connectInstance = null;
 let stripeSessionData = null;
@@ -255,6 +312,7 @@ async function mountStudioStripeOnboarding(setup) {
       publishableKey,
       fetchClientSecret: async () => stripeSessionData.client_secret,
       locale: stripeConnectLocale || 'en-US',
+      appearance: stripeConnectAppearance,
     });
     connectInstance.update({ locale: stripeConnectLocale || 'en-US' });
 

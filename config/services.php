@@ -69,6 +69,14 @@ return [
             'artist_mcc' => env('STRIPE_CONNECT_ARTIST_MCC', '7299'),
             // Optional token for the public /stripe/delete-account dev tool (required in production).
             'dev_delete_token' => env('STRIPE_CONNECT_DEV_DELETE_TOKEN'),
+            'appearance' => [
+                'variables' => [
+                    'colorPrimary' => '#000000',
+                    'buttonPrimaryColorBackground' => '#000000',
+                    'buttonPrimaryColorBorder' => '#000000',
+                    'buttonPrimaryColorText' => '#FFFFFF',
+                ],
+            ],
         ],
     ],
 

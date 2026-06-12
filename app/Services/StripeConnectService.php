@@ -459,6 +459,118 @@ class StripeConnectService
     }
 
     /**
+     * Display profile for an existing studio Stripe account (approval review page).
+     *
+     * @return array{
+     *     name: string,
+     *     email: ?string,
+     *     address: ?string,
+     *     country: ?string,
+     *     country_name: ?string,
+     *     business_type: ?string,
+     *     business_type_label: ?string
+     * }
+     */
+    public function resolveStudioDisplayProfile(string $accountId, Studio $studio): array
+    {
+        $fallback = [
+            'name' => $studio->name ?? 'Studio',
+            'email' => $studio->email,
+            'address' => null,
+            'country' => null,
+            'country_name' => null,
+            'business_type' => null,
+            'business_type_label' => null,
+        ];
+
+        try {
+            $this->initialize();
+            $account = Account::retrieve($accountId);
+
+            $name = $studio->name ?? 'Studio';
+            $email = $studio->email;
+            $address = null;
+            $country = ! empty($account->country) ? strtoupper((string) $account->country) : null;
+            $businessType = ! empty($account->business_type) ? (string) $account->business_type : null;
+
+            if ($businessType === 'company' && ! empty($account->company)) {
+                $company = $account->company;
+                if (! empty($company->name)) {
+                    $name = (string) $company->name;
+                }
+                if (! empty($account->email)) {
+                    $email = (string) $account->email;
+                }
+                $address = $this->formatStripeAddressLine($company->address ?? null);
+            } elseif ($businessType === 'individual' && ! empty($account->individual)) {
+                $individual = $account->individual;
+                $fullName = trim(((string) ($individual->first_name ?? '')).' '.((string) ($individual->last_name ?? '')));
+                if ($fullName !== '') {
+                    $name = $fullName;
+                }
+                if (! empty($individual->email)) {
+                    $email = (string) $individual->email;
+                }
+                $address = $this->formatStripeAddressLine($individual->address ?? null);
+            }
+
+            $businessTypeLabel = match ($businessType) {
+                'individual' => 'Individual',
+                'company' => 'Business',
+                default => null,
+            };
+
+            return [
+                'name' => $name,
+                'email' => $email,
+                'address' => $address,
+                'country' => $country,
+                'country_name' => $country ? StripeConnectCountries::nameFor($country) : null,
+                'business_type' => $businessType,
+                'business_type_label' => $businessTypeLabel,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Could not resolve studio display profile from Stripe', [
+                'stripe_account_id' => $accountId,
+                'studio_id' => $studio->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $fallback;
+        }
+    }
+
+    /**
+     * @param  object|null  $address
+     */
+    private function formatStripeAddressLine(?object $address): ?string
+    {
+        if ($address === null) {
+            return null;
+        }
+
+        $cityState = trim((string) ($address->city ?? ''));
+        if (! empty($address->state)) {
+            $cityState = $cityState === ''
+                ? (string) $address->state
+                : $cityState.', '.((string) $address->state);
+        }
+
+        $parts = array_filter([
+            $address->line1 ?? null,
+            $address->line2 ?? null,
+            $cityState !== '' ? $cityState : null,
+            $address->postal_code ?? null,
+        ], fn ($value) => $value !== null && trim((string) $value) !== '');
+
+        if ($parts === []) {
+            return null;
+        }
+
+        return implode(', ', array_map(fn ($value) => trim((string) $value), $parts));
+    }
+
+    /**
      * Mark the artist as approved after the studio finishes Stripe embedded onboarding.
      */
     public function finalizeStudioOnboarding(Studio $studio, UserDetail $userDetail, string $accountId): void
