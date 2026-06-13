@@ -61,6 +61,13 @@
         appearance: textfield;
         -moz-appearance: textfield;
       }
+
+      .availability-tab-content { display: none; animation: availabilityTabIn 0.2s ease; }
+      .availability-tab-content.active { display: block; }
+      @keyframes availabilityTabIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
     </style>
 @endsection
 
@@ -75,7 +82,7 @@
     <!-- Page Header -->
     <div class="mb-8">
       <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Availability</h2>
-      <p class="text-on-surface-variant mt-1">Manage your booking status and blocked dates.</p>
+      <p class="text-on-surface-variant mt-1">Manage your booking status, blocked dates, and working hours.</p>
     </div>
 
     <div id="availabilityPageSetupAlert" class="mb-8 rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-amber-100/40 p-5 sm:p-6 shadow-sm{{ empty($needsWeeklyAvailabilitySetup) ? ' hidden' : '' }}" role="alert">
@@ -85,31 +92,33 @@
         </div>
         <div class="min-w-0 flex-1">
           <h3 class="text-sm font-bold text-amber-950">Weekly hours not configured</h3>
-          <p class="text-xs text-amber-900/90 mt-1.5 leading-relaxed">Add at least one working time in Working Hours below and save. Until you do, clients cannot complete bookings with you.</p>
+          <p class="text-xs text-amber-900/90 mt-1.5 leading-relaxed">Add at least one working time in the Working Hours tab and save. Until you do, clients cannot complete bookings with you.</p>
         </div>
-        <button type="button" id="availabilityPageScrollToHoursBtn" class="self-start sm:self-center shrink-0 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 px-4 py-2.5 rounded-xl shadow-sm transition-colors">
+        <button type="button" id="availabilityPageGoToHoursBtn" class="self-start sm:self-center shrink-0 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 px-4 py-2.5 rounded-xl shadow-sm transition-colors">
           <span class="material-symbols-outlined text-base">edit_calendar</span>
-          Go to weekly hours
+          Go to working hours
         </button>
       </div>
     </div>
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        var btn = document.getElementById('availabilityPageScrollToHoursBtn');
-        if (!btn) return;
-        btn.addEventListener('click', function () {
-          var el = document.getElementById('weeklyHoursSection');
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      });
-    </script>
+
+    <div class="border-b border-outline-variant/30 mb-8">
+      <nav class="flex gap-1 -mb-px overflow-x-auto" aria-label="Availability sections">
+        <button type="button" id="availability-tab-status" data-availability-tab="status" class="availability-tab-btn shrink-0 px-5 py-3.5 text-sm font-semibold border-b-2 border-primary text-primary transition-colors whitespace-nowrap">
+          Status
+        </button>
+        <button type="button" id="availability-tab-blocked" data-availability-tab="blocked" class="availability-tab-btn shrink-0 px-5 py-3.5 text-sm font-semibold border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">
+          Blocked dates
+        </button>
+        <button type="button" id="availability-tab-hours" data-availability-tab="hours" class="availability-tab-btn shrink-0 px-5 py-3.5 text-sm font-semibold border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">
+          Working hours
+        </button>
+      </nav>
+    </div>
 
     <div class="space-y-10">
 
-      <!-- ══════════════════════════════════ -->
-      <!-- Section 1: Booking Status          -->
-      <!-- ══════════════════════════════════ -->
-      <section>
+      <!-- Tab: Booking Status -->
+      <section id="availability-panel-status" class="availability-tab-content active">
         <h3 id="bookingStatusHeading" class="text-lg font-bold text-on-surface mb-1">Booking Status</h3>
         <div class="h-px bg-outline-variant/30 mb-5"></div>
 
@@ -212,10 +221,8 @@
         </form>
       </section>
 
-      <!-- ══════════════════════════════════ -->
-      <!-- Section 2: Blocked Dates           -->
-      <!-- ══════════════════════════════════ -->
-      <section>
+      <!-- Tab: Blocked Dates -->
+      <section id="availability-panel-blocked" class="availability-tab-content">
         <h3 class="text-lg font-bold text-on-surface mb-1">Blocked Dates</h3>
         <p class="text-on-surface-variant text-sm mb-1">Block off dates when you're not available</p>
         <p class="text-on-surface-variant text-xs mb-3 max-w-xl">To block a day or range, use <strong class="text-on-surface font-semibold">Block a date</strong> or <strong class="text-on-surface font-semibold">Block a range</strong> below. To unblock, remove the entry from <strong class="text-on-surface font-semibold">Currently Blocked</strong>. The calendar is for reference only.</p>
@@ -276,17 +283,15 @@
         </div>
       </section>
 
-      <!-- ══════════════════════════════════ -->
-      <!-- Section 3: Working Hours           -->
-      <!-- ══════════════════════════════════ -->
-      <section id="weeklyHoursSection">
+      <!-- Tab: Working Hours -->
+      <section id="availability-panel-hours" class="availability-tab-content">
         <h3 class="text-lg font-bold text-on-surface mb-1">Working Hours</h3>
         <p class="text-on-surface-variant text-sm mb-1">Set your regular weekly availability</p>
         <div class="h-px bg-outline-variant/30 mb-5"></div>
 
         <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 p-6">
           <div id="workingHoursContainer"></div>
-          <p class="text-xs text-on-surface-variant mt-5 pt-4 border-t border-outline-variant/10">These are your regular weekly hours. Use Blocked Dates above to mark specific days off.</p>
+          <p class="text-xs text-on-surface-variant mt-5 pt-4 border-t border-outline-variant/10">These are your regular weekly hours. Use Blocked Dates to mark specific days off.</p>
         </div>
         <p id="workingHoursError" class="hidden mt-4 text-sm font-medium text-error" role="alert"></p>
         <div class="mt-6 flex justify-end">
@@ -403,6 +408,72 @@
 </div>
 
 <script>
+  // ── Availability tabs ──
+  var AVAILABILITY_TAB_KEY = 'inkjin_availability_tab';
+
+  function switchAvailabilityTab(tab) {
+    var valid = ['status', 'blocked', 'hours'];
+    if (valid.indexOf(tab) === -1) tab = 'status';
+
+    document.querySelectorAll('.availability-tab-content').forEach(function(el) {
+      el.classList.remove('active');
+    });
+    document.querySelectorAll('.availability-tab-btn').forEach(function(btn) {
+      btn.classList.remove('border-primary', 'text-primary');
+      btn.classList.add('border-transparent', 'text-on-surface-variant');
+    });
+
+    var panel = document.getElementById('availability-panel-' + tab);
+    var tabBtn = document.getElementById('availability-tab-' + tab);
+    if (panel) panel.classList.add('active');
+    if (tabBtn) {
+      tabBtn.classList.add('border-primary', 'text-primary');
+      tabBtn.classList.remove('border-transparent', 'text-on-surface-variant');
+    }
+
+    try {
+      sessionStorage.setItem(AVAILABILITY_TAB_KEY, tab);
+    } catch (e) {}
+
+    if (tab === 'blocked' && typeof renderCalendar === 'function') {
+      renderCalendar();
+    }
+  }
+
+  function restoreAvailabilityTab() {
+    var tab = 'status';
+    try {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'blocked' || params.get('tab') === 'hours' || params.get('tab') === 'status') {
+        tab = params.get('tab');
+      } else {
+        var stored = sessionStorage.getItem(AVAILABILITY_TAB_KEY);
+        if (stored === 'blocked' || stored === 'hours' || stored === 'status') {
+          tab = stored;
+        }
+      }
+    } catch (e) {}
+    switchAvailabilityTab(tab);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    restoreAvailabilityTab();
+
+    document.querySelectorAll('.availability-tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function () {
+        var tab = btn.getAttribute('data-availability-tab');
+        if (tab) switchAvailabilityTab(tab);
+      });
+    });
+
+    var goHoursBtn = document.getElementById('availabilityPageGoToHoursBtn');
+    if (goHoursBtn) {
+      goHoursBtn.addEventListener('click', function () {
+        switchAvailabilityTab('hours');
+      });
+    }
+  });
+
   // ── Booking Status (saved value from DB; "Active" badge only after a successful save) ──
   var savedBookingStatus = @json($savedAvailabilityStatus ?? null);
 
