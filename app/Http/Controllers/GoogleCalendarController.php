@@ -12,12 +12,39 @@ use Google_Service_Calendar;
 
 class GoogleCalendarController extends Controller
 {
+    private const RETURN_SESSION_KEY = 'google_calendar_return_to';
+
+    private function storeCalendarReturnTo(Request $request): void
+    {
+        $returnTo = $request->query('return_to') === 'settings' ? 'settings' : 'onboarding';
+
+        session([self::RETURN_SESSION_KEY => $returnTo]);
+    }
+
+    private function calendarReturnUrl(?string $returnTo = null): string
+    {
+        $returnTo ??= session(self::RETURN_SESSION_KEY, 'onboarding');
+
+        return $returnTo === 'settings'
+            ? route('settings.calendar')
+            : route('onboarding.calendar');
+    }
+
+    private function pullCalendarReturnUrl(): string
+    {
+        $returnTo = session()->pull(self::RETURN_SESSION_KEY, 'onboarding');
+
+        return $this->calendarReturnUrl($returnTo);
+    }
+
     /**
      * Redirect user to Google OAuth consent screen
      */
     public function redirect(Request $request)
     {
         try {
+            $this->storeCalendarReturnTo($request);
+
             $client = new Google_Client();
             $client->setClientId(config('services.google.client_id'));
             $client->setClientSecret(config('services.google.client_secret'));
@@ -34,7 +61,7 @@ class GoogleCalendarController extends Controller
             return redirect($authUrl);
         } catch (\Exception $e) {
             Log::error('Google Calendar redirect error: ' . $e->getMessage());
-            return redirect()->route('onboarding.calendar')
+            return redirect()->to($this->calendarReturnUrl())
                 ->with('error', 'Failed to connect to Google Calendar. Please try again.');
         }
     }
@@ -48,7 +75,7 @@ class GoogleCalendarController extends Controller
             $code = $request->get('code');
 
             if (!$code) {
-                return redirect()->route('onboarding.calendar')
+                return redirect()->to($this->pullCalendarReturnUrl())
                     ->with('error', 'Google Calendar authorization was cancelled.');
             }
 
@@ -62,7 +89,7 @@ class GoogleCalendarController extends Controller
 
             if (isset($accessToken['error'])) {
                 Log::error('Google OAuth error: ' . $accessToken['error']);
-                return redirect()->route('onboarding.calendar')
+                return redirect()->to($this->pullCalendarReturnUrl())
                     ->with('error', 'Failed to connect Google Calendar: ' . $accessToken['error']);
             }
 
@@ -122,16 +149,30 @@ class GoogleCalendarController extends Controller
             }
 
             // Store tokens and calendar ID
-            $userDetail->update([
+            $returnTo = session(self::RETURN_SESSION_KEY, 'onboarding');
+
+            $updateData = [
                 'google_calendar_token' => $accessToken,
                 'google_calendar_id' => $primaryCalendarId,
-            ]);
+            ];
 
-            return redirect()->route('onboarding.calendar')
-                ->with('success', 'Google Calendar connected successfully!');
+            if ($returnTo === 'settings') {
+                $updateData['scheduling_type'] = 'auto';
+            }
+
+            $userDetail->update($updateData);
+
+            session()->forget(self::RETURN_SESSION_KEY);
+
+            $successMessage = $returnTo === 'settings'
+                ? 'Google Calendar connected successfully! Auto scheduling is now selected.'
+                : 'Google Calendar connected successfully!';
+
+            return redirect()->to($this->calendarReturnUrl($returnTo))
+                ->with('success', $successMessage);
         } catch (\Exception $e) {
             Log::error('Google Calendar callback error: ' . $e->getMessage());
-            return redirect()->route('onboarding.calendar')
+            return redirect()->to($this->pullCalendarReturnUrl())
                 ->with('error', 'Failed to connect Google Calendar. Please try again.');
         }
     }

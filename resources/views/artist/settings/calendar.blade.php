@@ -167,9 +167,9 @@
 
 @php
   $st = $userDetail->scheduling_type ?? '';
-  $defaultSched = $st !== '' ? $st : 'auto';
-  $isAuto = $defaultSched === 'auto';
   $gcal = !empty($userDetail->google_calendar_token);
+  $defaultSched = $gcal ? 'auto' : ($st !== '' ? $st : 'auto');
+  $isAuto = $defaultSched === 'auto';
   $connectedCalendarEmail = null;
   if ($gcal) {
       if (! empty($userDetail->google_calendar_id) && str_contains((string) $userDetail->google_calendar_id, '@')) {
@@ -204,6 +204,12 @@
       </div>
       <p id="scheduling_type_error" class="text-error text-sm mt-1 mb-4 hidden"></p>
       <div id="calAlert" class="hidden rounded-xl px-4 py-3 text-sm mb-6"></div>
+      @if (session('success'))
+        <div class="rounded-xl px-4 py-3 text-sm mb-6 bg-green-50 text-green-800 border border-green-200">{{ session('success') }}</div>
+      @endif
+      @if (session('error'))
+        <div class="rounded-xl px-4 py-3 text-sm mb-6 bg-red-50 text-red-800 border border-red-200">{{ session('error') }}</div>
+      @endif
 
       <!-- Schedule Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -323,9 +329,11 @@
     }
   }
   $(function () {
+    const googleCalendarRedirectUrl = @json(route('google.calendar.redirect', ['return_to' => 'settings']));
+
     function bindConnectButton() {
       $('#connectCalendarBtn').off('click').on('click', function () {
-        window.location.href = @json(route('google.calendar.redirect'));
+        window.location.href = googleCalendarRedirectUrl;
       });
     }
     function openCalModal() {
