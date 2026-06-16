@@ -6,21 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
+        if (! Schema::hasTable('users') || Schema::hasColumn('users', 'country_user_belongs_in')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $table->string('country_user_belongs_in')->nullable();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
+        if (! Schema::hasTable('users') || ! Schema::hasColumn('users', 'country_user_belongs_in')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn('country_user_belongs_in');
         });

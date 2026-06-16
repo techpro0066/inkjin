@@ -8,19 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasColumn('bookings', 'pay_artist')) {
-            Schema::table('bookings', function (Blueprint $table) {
-                $table->boolean('pay_artist')->default(false);
-            });
+        if (! Schema::hasTable('bookings') || Schema::hasColumn('bookings', 'pay_artist')) {
+            return;
         }
+
+        Schema::table('bookings', function (Blueprint $table) {
+            $table->boolean('pay_artist')->default(false);
+        });
     }
 
     public function down(): void
     {
-        if (Schema::hasColumn('bookings', 'pay_artist')) {
-            Schema::table('bookings', function (Blueprint $table) {
-                $table->dropColumn('pay_artist');
-            });
-        }
+        // No-op: pay_artist is owned by 2026_06_11_112211_add_column_pay_artist_in_booking_table.
     }
 };

@@ -6,21 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
+        if (! Schema::hasTable('bookings') || Schema::hasColumn('bookings', 'pay_artist')) {
+            return;
+        }
+
         Schema::table('bookings', function (Blueprint $table) {
             $table->boolean('pay_artist')->default(false);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
+        if (! Schema::hasTable('bookings') || ! Schema::hasColumn('bookings', 'pay_artist')) {
+            return;
+        }
+
         Schema::table('bookings', function (Blueprint $table) {
             $table->dropColumn('pay_artist');
         });
