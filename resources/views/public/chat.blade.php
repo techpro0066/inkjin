@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Inbox — Inkjin Book & Pay</title>
+  <meta name="description" content="Messages with your tattoo artists on Inkjin Book & Pay.">
+  <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
+  <link href="{{ asset('design/css/inkjin_bookpay.css') }}" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-container-high": "#ece6ef",
+            "surface-container-lowest": "#ffffff",
+            "surface-container": "#f2ecf5",
+            "background": "#fdf7ff",
+            "primary": "#310f7a",
+            "surface-dim": "#ded8e1",
+            "on-surface-variant": "#494552",
+            "secondary-fixed": "#e8ddff",
+            "on-secondary-fixed-variant": "#4a4168",
+            "inverse-surface": "#322f36",
+            "error-container": "#ffdad6",
+            "inverse-on-surface": "#f5eff8",
+            "tertiary": "#452200",
+            "surface-container-low": "#f8f1fb",
+            "surface": "#fdf7ff",
+            "secondary-fixed-dim": "#ccc0ee",
+            "on-tertiary-fixed": "#2e1500",
+            "on-error": "#ffffff",
+            "on-primary-container": "#b69fff",
+            "secondary": "#625881",
+            "inverse-primary": "#cebdff",
+            "primary-fixed": "#e8ddff",
+            "outline": "#7a7583",
+            "tertiary-fixed": "#ffdcc2",
+            "tertiary-container": "#653500",
+            "on-secondary": "#ffffff",
+            "on-primary": "#ffffff",
+            "on-tertiary-fixed-variant": "#6c3a04",
+            "error": "#ba1a1a",
+            "tertiary-fixed-dim": "#ffb77b",
+            "surface-bright": "#fdf7ff",
+            "surface-tint": "#664db1",
+            "on-error-container": "#93000a",
+            "on-primary-fixed": "#21005e",
+            "primary-fixed-dim": "#cebdff",
+            "on-tertiary-container": "#e49e62",
+            "on-primary-fixed-variant": "#4e3397",
+            "primary-container": "#482d91",
+            "on-surface": "#1c1b21",
+            "outline-variant": "#cac4d3",
+            "on-tertiary": "#ffffff",
+            "surface-container-highest": "#e6e0ea",
+            "on-background": "#1c1b21",
+            "secondary-container": "#ddd0ff",
+            "on-secondary-fixed": "#1e1539",
+            "surface-variant": "#e6e0ea",
+            "on-secondary-container": "#615780"
+          },
+          fontFamily: {
+            "headline": ["Plus Jakarta Sans"],
+            "body": ["Plus Jakarta Sans"],
+            "label": ["Plus Jakarta Sans"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .mobile-header { display: none; }
+    @media (max-width: 1023px) { .mobile-header { display: flex; } }
+    .sidebar { width: 260px; min-height: 100vh; }
+    @media (min-width: 1024px) { .sidebar { display: flex !important; } .main-content { margin-left: 260px; } }
+    @media (max-width: 1023px) { .main-content { padding-top: 70px; } }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); transition: all 0.2s; cursor: pointer; text-decoration: none; }
+    .nav-item:hover { background: rgba(255,255,255,0.1); }
+    .nav-item.active { background: #ffffff; color: #310f7a; font-weight: 600; }
+    .nav-item .material-symbols-outlined { font-size: 20px; }
+    .sidebar.open { display: flex !important; }
+    .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+    .sidebar-backdrop.open { display: block; }
+    .conversation-item { transition: background 0.15s ease; }
+    .conversation-item:hover { background: #f8f1fb; }
+    .conversation-item.active { background: #f2ecf5; border-left: 3px solid #310f7a; }
+    .msg-bubble-artist { background: #f8f1fb; border-radius: 18px 18px 18px 4px; }
+    .msg-bubble-client { background: #310f7a; color: white; border-radius: 18px 18px 4px 18px; }
+    @media (max-width: 1023px) {
+      .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
+      body { overflow-x: hidden; }
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex">
+
+  <!-- Mobile Header -->
+  <div class="mobile-header fixed top-0 left-0 right-0 z-50 bg-primary text-white px-4 py-3 items-center justify-between">
+    <div><span class="text-lg font-bold">Inkjin</span></div>
+    <button type="button" onclick="toggleMobileNav()" class="material-symbols-outlined text-white">menu</button>
+  </div>
+
+  <div id="sidebarBackdrop" class="sidebar-backdrop hidden" onclick="closeMobileNav()"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar hidden lg:flex fixed top-0 left-0 bg-primary flex-col justify-between p-6 z-40" id="mobileSidebar">
+    <div>
+      <div class="mb-10">
+        <h1 class="text-white text-xl font-bold">inkjin</h1>
+        <p class="text-white/50 text-[10px] uppercase tracking-[2px] mt-1">Book & Pay</p>
+      </div>
+      <nav class="flex flex-col gap-1">
+        <a href="{{ route('user.dashboard') }}" class="nav-item"><span class="material-symbols-outlined">dashboard</span> Dashboard</a>
+        <a href="{{ route('public.chat') }}" class="nav-item active"><span class="material-symbols-outlined">mail</span> Inbox <span class="ml-auto bg-primary/30 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">3</span></a>
+        <a href="{{ route('user.requests.index') }}" class="nav-item"><span class="material-symbols-outlined">edit_note</span> My Requests</a>
+        <a href="{{ route('user.bookings.index') }}" class="nav-item"><span class="material-symbols-outlined">calendar_today</span> My Bookings</a>
+        <a href="{{ route('user.settings') }}" class="nav-item"><span class="material-symbols-outlined">settings</span> Settings</a>
+      </nav>
+    </div>
+    <div>
+      <div class="border-t border-white/10 pt-4 mt-4">
+        @auth
+          <form method="POST" action="{{ route('logout') }}" class="m-0">
+            @csrf
+            <button type="submit" class="nav-item text-white/60 hover:text-white w-full text-left border-0 bg-transparent cursor-pointer font-[inherit]">
+              <span class="material-symbols-outlined">logout</span> Log Out
+            </button>
+          </form>
+        @else
+          <a href="{{ route('login') }}" class="nav-item text-white/60 hover:text-white"><span class="material-symbols-outlined">login</span> Log In</a>
+        @endauth
+      </div>
+      <div class="flex items-center gap-3 mt-4 pt-4 border-t border-white/10">
+        @auth
+          <div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-primary font-bold text-sm overflow-hidden">
+            <img src="{{ (Auth::user()->userDetail && Auth::user()->userDetail->avatar != '') ? asset(Auth::user()->userDetail->avatar) : asset('design/images/icons/avatar.jpg') }}" alt="{{ Auth::user()->first_name }}" class="w-full h-full object-cover rounded-full">
+          </div>
+          <div>
+            <div class="text-white text-sm font-semibold">{{ Auth::user()->first_name }}</div>
+            <div class="text-white/50 text-xs">{{ Auth::user()->email }}</div>
+          </div>
+        @else
+          <div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-primary font-bold text-sm">SM</div>
+          <div>
+            <div class="text-white text-sm font-semibold">Julian Ink</div>
+            <div class="text-white/50 text-xs">sarah@email.com</div>
+          </div>
+        @endauth
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content flex-1 min-h-screen">
+    <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
+
+      <!-- App Banner -->
+      <div id="appBanner" class="relative mb-6 bg-surface-container-low rounded-xl px-5 py-3 flex items-center justify-between border border-outline-variant/20">
+        <div class="flex items-center gap-3">
+          <span class="text-lg">💬</span>
+          <p class="text-sm text-on-surface-variant"><strong class="text-on-surface">Reply faster from the Inkjin app</strong> — get push notifications for new messages</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <a href="#" class="text-sm font-semibold text-primary hover:underline whitespace-nowrap">Download</a>
+          <button type="button" onclick="document.getElementById('appBanner').style.display='none'" class="material-symbols-outlined text-outline text-lg hover:text-on-surface transition-colors">close</button>
+        </div>
+      </div>
+
+      <!-- Page Header -->
+      <div class="mb-6">
+        <h2 class="text-2xl font-extrabold text-on-surface tracking-tight">Inbox</h2>
+        <p class="text-sm text-on-surface-variant mt-1">4 conversations · 3 unread</p>
+      </div>
+
+      <!-- Chat Layout -->
+      <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden" style="min-height: 600px;">
+        <div class="flex h-[600px]">
+
+          <!-- Conversation List -->
+          <div class="w-full lg:w-[340px] flex-shrink-0 border-r border-outline-variant/15 flex flex-col" id="convList">
+            <!-- Search -->
+            <div class="p-4 border-b border-outline-variant/10">
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+                <input type="text" placeholder="Search conversations..." class="w-full text-sm border border-outline-variant/30 rounded-xl pl-10 pr-4 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              </div>
+            </div>
+            <!-- Conversations -->
+            <div class="flex-1 overflow-y-auto">
+              <div class="conversation-item active p-4 cursor-pointer" onclick="showConversation(0)">
+                <div class="flex items-center gap-3">
+                  <div class="relative flex-shrink-0">
+                    <div class="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+                      <span class="text-white text-xs font-bold">JI</span>
+                    </div>
+                    <span class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-white"></span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <p class="font-bold text-on-surface text-sm">Julian Ink</p>
+                      <span class="text-[11px] text-outline">2h ago</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant truncate mt-0.5">I've updated the design based on...</p>
+                    <span class="inline-block mt-1 text-[10px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full">Dragon Sleeve</span>
+                  </div>
+                </div>
+              </div>
+              <div class="conversation-item p-4 cursor-pointer border-t border-outline-variant/10" onclick="showConversation(1)">
+                <div class="flex items-center gap-3">
+                  <div class="w-11 h-11 rounded-full bg-gradient-to-br from-emerald-300 to-emerald-400 flex items-center justify-center flex-shrink-0">
+                    <span class="text-white text-xs font-bold">MT</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <p class="font-semibold text-on-surface text-sm">Maya Tattoo</p>
+                      <span class="text-[11px] text-outline">Yesterday</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant truncate mt-0.5">Your session is confirmed for...</p>
+                  </div>
+                </div>
+              </div>
+              <div class="conversation-item p-4 cursor-pointer border-t border-outline-variant/10" onclick="showConversation(2)">
+                <div class="flex items-center gap-3">
+                  <div class="relative flex-shrink-0">
+                    <div class="w-11 h-11 rounded-full bg-gradient-to-br from-rose-300 to-rose-400 flex items-center justify-center">
+                      <span class="text-white text-xs font-bold">AF</span>
+                    </div>
+                    <span class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-white"></span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <p class="font-bold text-on-surface text-sm">Alex Fine Line</p>
+                      <span class="text-[11px] text-outline">3 days ago</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant truncate mt-0.5">Here's the quote for your...</p>
+                    <span class="inline-block mt-1 text-[10px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full">Rose Mandala</span>
+                  </div>
+                </div>
+              </div>
+              <div class="conversation-item p-4 cursor-pointer border-t border-outline-variant/10" onclick="showConversation(3)">
+                <div class="flex items-center gap-3">
+                  <div class="w-11 h-11 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center flex-shrink-0">
+                    <span class="text-white text-xs font-bold">NB</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <p class="font-semibold text-on-surface text-sm">Nina Blackwork</p>
+                      <span class="text-[11px] text-outline">1 week ago</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant truncate mt-0.5">Thanks for your interest! I...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Message View -->
+          <div class="hidden lg:flex flex-1 flex-col" id="chatView">
+            <!-- Chat Header -->
+            <div class="px-6 py-4 border-b border-outline-variant/10 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+                  <span class="text-white text-xs font-bold">JI</span>
+                </div>
+                <div>
+                  <p class="font-bold text-on-surface text-sm">Julian Ink</p>
+                  <a href="#" class="text-xs text-primary hover:underline">View Artist Profile</a>
+                </div>
+              </div>
+              <div class="hidden sm:flex items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2">
+                <span class="material-symbols-outlined text-primary text-sm">calendar_today</span>
+                <div>
+                  <p class="text-xs font-semibold text-on-surface">Dragon Sleeve — Session 2</p>
+                  <p class="text-[11px] text-on-surface-variant">April 15, 2:00 PM</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-4">
+              <div class="text-center">
+                <span class="text-[11px] text-outline bg-surface-container-high/50 px-3 py-1 rounded-full">March 27</span>
+              </div>
+              <div class="flex items-end gap-2 max-w-[75%]">
+                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
+                  <span class="text-white text-[9px] font-bold">JI</span>
+                </div>
+                <div class="msg-bubble-artist px-4 py-3">
+                  <p class="text-sm text-on-surface">Hey Sarah! I've started working on the design revisions for your dragon sleeve. I'm adjusting the scale pattern and adding more detail to the clouds like you mentioned.</p>
+                  <p class="text-[11px] text-outline mt-1">10:30 AM</p>
+                </div>
+              </div>
+              <div class="flex items-end gap-2 max-w-[75%] ml-auto flex-row-reverse">
+                <div class="w-7 h-7 rounded-full bg-primary-fixed-dim flex items-center justify-center flex-shrink-0">
+                  <span class="text-primary text-[9px] font-bold">SM</span>
+                </div>
+                <div class="msg-bubble-client px-4 py-3">
+                  <p class="text-sm">That sounds great! Could you also make the cherry blossoms a bit more prominent? I really want them to pop.</p>
+                  <p class="text-[11px] text-white/60 mt-1">11:15 AM</p>
+                </div>
+              </div>
+              <div class="flex items-end gap-2 max-w-[75%]">
+                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
+                  <span class="text-white text-[9px] font-bold">JI</span>
+                </div>
+                <div class="msg-bubble-artist px-4 py-3">
+                  <p class="text-sm text-on-surface">Absolutely! I'll make the blossoms larger and use a brighter pink. Here's a quick preview of the direction I'm going:</p>
+                  <p class="text-[11px] text-outline mt-1">11:45 AM</p>
+                </div>
+              </div>
+              <div class="flex items-end gap-2 max-w-[75%]">
+                <div class="w-7 h-7 flex-shrink-0"></div>
+                <div class="w-48 h-48 rounded-2xl bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-gray-400 text-3xl">image</span>
+                </div>
+              </div>
+
+              <div class="text-center">
+                <span class="text-[11px] text-outline bg-surface-container-high/50 px-3 py-1 rounded-full">Today</span>
+              </div>
+              <div class="flex items-end gap-2 max-w-[75%]">
+                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
+                  <span class="text-white text-[9px] font-bold">JI</span>
+                </div>
+                <div class="msg-bubble-artist px-4 py-3">
+                  <p class="text-sm text-on-surface">I've updated the design based on your feedback — check it out! The cherry blossoms are much more prominent now. Let me know if you'd like any more changes before your session on April 15. 🎨</p>
+                  <p class="text-[11px] text-outline mt-1">2:00 PM</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Message Input -->
+            <div class="px-6 py-4 border-t border-outline-variant/10">
+              <div class="flex items-center gap-3">
+                <button type="button" class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center hover:bg-surface-container-high transition-colors flex-shrink-0">
+                  <span class="material-symbols-outlined text-on-surface-variant text-xl">attach_file</span>
+                </button>
+                <input type="text" placeholder="Type a message..." class="flex-1 text-sm border border-outline-variant/30 rounded-full px-5 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <button type="button" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center hover:bg-primary-container transition-colors flex-shrink-0">
+                  <span class="material-symbols-outlined text-white text-xl">send</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    function closeMobileNav() {
+      var sidebar = document.getElementById('mobileSidebar');
+      var backdrop = document.getElementById('sidebarBackdrop');
+      if (sidebar) {
+        sidebar.classList.add('hidden');
+        sidebar.classList.remove('flex');
+      }
+      if (backdrop) backdrop.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    function toggleMobileNav() {
+      var sidebar = document.getElementById('mobileSidebar');
+      var backdrop = document.getElementById('sidebarBackdrop');
+      if (!sidebar || window.matchMedia('(min-width: 1024px)').matches) return;
+      var open = sidebar.classList.contains('hidden');
+      if (open) {
+        sidebar.classList.remove('hidden');
+        sidebar.classList.add('flex');
+        if (backdrop) backdrop.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      } else {
+        closeMobileNav();
+      }
+    }
+
+    function showConversation(idx) {
+      var chatView = document.getElementById('chatView');
+      chatView.classList.remove('hidden');
+      chatView.classList.add('flex');
+    }
+  </script>
+</body>
+</html>

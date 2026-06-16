@@ -149,6 +149,39 @@ class Booking extends Model
             ->where('booking_date', '>=', now()->toDateString());
     }
 
+    public function scopeOpen($query)
+    {
+        return $query->whereIn('status', ['pending', 'confirmed']);
+    }
+
+    public function scopeBetweenUsers($query, int $clientId, int $artistId)
+    {
+        return $query->where('user_id', $clientId)
+            ->where('artist_user_id', $artistId);
+    }
+
+    public static function hasOpenChatBetween(int $clientId, int $artistId): bool
+    {
+        return static::query()
+            ->open()
+            ->betweenUsers($clientId, $artistId)
+            ->exists();
+    }
+
+    public static function latestOpenBetween(int $clientId, int $artistId): ?self
+    {
+        return static::query()
+            ->open()
+            ->betweenUsers($clientId, $artistId)
+            ->orderByDesc('booking_date')
+            ->first();
+    }
+
+    public function isOpenForChat(): bool
+    {
+        return in_array($this->status, ['pending', 'confirmed'], true);
+    }
+
     // Helper methods
     public function isCancelled(): bool
     {

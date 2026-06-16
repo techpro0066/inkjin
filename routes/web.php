@@ -12,11 +12,14 @@ use App\Http\Controllers\QuestionsController;
 use App\Http\Controllers\UserController\BookingsController;
 use App\Http\Controllers\UserController\ClientPasswordController;
 use App\Http\Controllers\UserController\UserSettingsController;
+use App\Http\Controllers\User\ChatController as UserChatController;
 use App\Http\Controllers\BookingsController as ArtistBookingsController;
 use App\Http\Controllers\Auth\PostBookingAccessController;
 
 use App\Http\Controllers\ArtistCustomRequestsController;
 use App\Http\Controllers\ArtistDashboardController;
+use App\Http\Controllers\Artist\ChatController as ArtistChatController;
+use App\Http\Controllers\Api\ChatController as ApiChatController;
 use App\Http\Controllers\CustomRequestController;
 use App\Http\Controllers\RequestsController;
 use App\Http\Controllers\StripeConnectDevController;
@@ -125,6 +128,15 @@ Route::middleware(['auth', 'verified', 'onboarding', 'client_password'])->group(
     Route::get('/bookings/{id}/reschedule', [\App\Http\Controllers\ReschedulingController::class, 'showReschedulePage'])->name('bookings.reschedule');
     Route::get('/bookings/{id}/reschedule-flow', [\App\Http\Controllers\ReschedulingController::class, 'showRescheduleFlow'])->name('bookings.reschedule-flow');
     
+});
+
+Route::middleware(['auth', 'verified', 'onboarding'])->prefix('api/chat')->group(function () {
+    Route::get('/token', [ApiChatController::class, 'token'])->name('api.chat.token');
+    Route::get('/channels', [ApiChatController::class, 'channels'])->name('api.chat.channels');
+    Route::post('/channels/artist/{artistUserId}/ensure', [ApiChatController::class, 'ensureForArtist'])->name('api.chat.ensure.artist');
+    Route::post('/channels/client/{clientUserId}/ensure', [ApiChatController::class, 'ensureForClient'])->name('api.chat.ensure.client');
+    Route::get('/can-send/{streamChannelId}', [ApiChatController::class, 'canSend'])->name('api.chat.can-send');
+    Route::get('/unread-summary', [ApiChatController::class, 'unreadSummary'])->name('api.chat.unread-summary');
 });
 
 // Profile routes (accessible even if email not verified, so user can update email)
@@ -244,6 +256,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/custom-requests/{customRequest}/send-quote', [ArtistCustomRequestsController::class, 'sendQuote'])->name('artist.custom-requests.send-quote');
     Route::post('/requests/{bookingRequest}/decline', [RequestsController::class, 'decline'])->name('artist.requests.decline');
     Route::post('/requests/{bookingRequest}/offer-slots', [RequestsController::class, 'offerSlots'])->name('artist.requests.offer-slots');
+
+    Route::get('/chat', [ArtistChatController::class, 'index'])->name('artist.chat.index');
 });
 
 // User routes
@@ -271,6 +285,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])
     Route::post('/custom-requests/{customRequest}/payment/confirm', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'confirmPayment'])
         ->name('user.custom-requests.payment.confirm');
 
+    Route::get('/chat', [UserChatController::class, 'index'])->name('user.chat.index');
+
     Route::get('/requests', [\App\Http\Controllers\UserController\RequestsController::class, 'index'])
         ->name('user.requests.index');
     Route::get('/requests/{bookingRequest}/confirm-times', [\App\Http\Controllers\UserController\RequestsController::class, 'confirmTimes'])
@@ -293,6 +309,17 @@ Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])
 require __DIR__.'/auth.php';
 
 Route::get('/artists', [InkJinController::class, 'publicArtistsList'])->name('public.artists.list');
+Route::get('/chat', function () {
+    if (Auth::check()) {
+        return match (Auth::user()->role) {
+            'artist' => redirect()->route('artist.chat.index'),
+            'user' => redirect()->route('user.chat.index'),
+            default => redirect()->to(authenticated_home_url()),
+        };
+    }
+
+    return redirect()->route('login');
+})->name('public.chat');
 Route::get('/{username}', [InkJinController::class, 'publicArtistProfile'])->name('public.artist');
 
 Route::get('/{user_name}/{tattoo_slug}', [InkJinController::class, 'publicTattooPage'])->name('public.tattoo');

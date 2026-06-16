@@ -1,0 +1,599 @@
+================================================================================
+  INKJIN — GETSTREAM.IO CHAT INTEGRATION PLAN
+  User dashboard + Artist dashboard
+  Updated: 2026-06-15
+================================================================================
+
+This document describes how to add real-time chat using GetStream.io
+(https://getstream.io/chat/) for clients and artists in Inkjin Book & Pay.
+
+It covers: architecture, database tables, booking-gated access rules, user
+flows, routes, packages, and a phased rollout plan.
+
+--------------------------------------------------------------------------------
+1. WHY GETSTREAM (vs building chat ourselves)
+--------------------------------------------------------------------------------
+
+GetStream handles:
+  - Real-time message delivery (WebSockets)
+  - Message storage and history
+  - Read receipts, typing indicators, online presence
+  - File/image attachments
+  - Unread counts per channel
+  - Global edge network (low latency)
+
+Inkjin Laravel app still handles:
+  - Who is allowed to chat (booking-gated authorization)
+  - When a channel is created (on first open booking between a pair)
+  - Issuing secure login tokens for the frontend
+  - Blocking send when no open booking exists (via Booking relations)
+  - Email notifications for offline users (optional)
+
+Result: We store a minimal mapping in MySQL (channel id + user ids).
+Messages live in GetStream. Whether chat is allowed is derived from bookings.
+
+
+--------------------------------------------------------------------------------
+2. CORE BUSINESS RULE (booking-gated chat)
+--------------------------------------------------------------------------------
+
+  A client CANNOT message an artist unless they have at least one OPEN booking
+  with that artist.
+
+  Chat is BLOCKED when:
+    - Booking is cancelled
+    - Booking is completed (marked done)
+    - Booking is no_show
+    - No booking exists between the pair
+
+  Chat is UNBLOCKED again when:
+    - The same client books the same artist again (new open booking)
+    - Existing channel is reused; message history is preserved
+
+  This applies to BOTH sides:
+    - Client cannot send if no open booking
+    - Artist cannot send to that client if no open booking
+
+  Pre-booking messaging (requests / quotes) is OUT OF SCOPE for chat.
+  That stays on the existing request flow + email + one-way note fields until
+  a booking is created.
+
+
+--------------------------------------------------------------------------------
+3. HIGH-LEVEL ARCHITECTURE
+--------------------------------------------------------------------------------
+
+  [Client browser]                    [Artist browser]
+        |                                    |
+        |  Stream Chat JS SDK                |  Stream Chat JS SDK
+        v                                    v
+  +-----------------------------------------------------+
+  |              GetStream Cloud (Chat API)               |
+  |  - channels, messages, read state, attachments      |
+  +-----------------------------------------------------+
+        ^                                    ^
+        | webhooks (new message)             |
+        |                                    |
+  +-----------------------------------------------------+
+  |           Inkjin Laravel (backend)                  |
+  |  - create/sync users in Stream                      |
+  |  - create channel on first open booking (pair)      |
+  |  - POST /api/chat/token  -> Stream JWT              |
+  |  - GET  /user/chat       -> client inbox              |
+  |  - GET  /artist/chat     -> artist inbox              |
+  |  - chat_channels table (channel id + user ids only) |
+  |  - Booking::scopeOpen() -> gate all send/list       |
+  +-----------------------------------------------------+
+        |
+        v
+  [MySQL: users, bookings, chat_channels]
+
+
+--------------------------------------------------------------------------------
+4. CONVERSATION MODEL (one channel per client–artist pair)
+--------------------------------------------------------------------------------
+
+One Stream channel = ONE client + ONE artist (not per booking, not per request).
+
+  Example pair:
+    Client Sarah (user_id 8)  <->  Artist Julian (user_id 3)
+    Stream channel id:  u8-a3
+    Full cid:           messaging:u8-a3
+
+WHY one channel per pair (not per booking)?
+  - Minimal table: only store channel id + both user ids
+  - Message history continues across repeat bookings with same artist
+  - "Is chat allowed?" is checked via bookings table, not channel status
+
+WHY NOT per-booking channels?
+  - User asked for simpler schema; booking state lives on bookings already
+  - Multiple parallel open bookings with same artist are rare; one thread is OK
+  - UI can show context from the latest open booking (title, session date)
+
+CHANNEL LIFECYCLE:
+
+  1. Client gets first OPEN booking with artist
+     -> Laravel creates Stream channel u{client}-a{artist} (if not exists)
+     -> Inserts row in chat_channels
+
+  2. Client and artist message freely while ANY open booking exists
+
+  3. Last open booking closes (cancelled / completed / no_show)
+     -> Channel row stays (history preserved)
+     -> Laravel blocks new messages (API + UI)
+     -> Optional: freeze channel in Stream (read-only)
+
+  4. Client books same artist again
+     -> Same channel reused
+     -> Chat unblocked automatically (open booking exists again)
+
+
+--------------------------------------------------------------------------------
+5. WHAT IS AN "OPEN" BOOKING? (source of truth)
+--------------------------------------------------------------------------------
+
+Defined on the existing bookings table — NO duplicate status on chat_channels.
+
+Booking statuses in DB (enum on bookings.status):
+  pending, confirmed, cancelled, completed, no_show, rescheduled
+
+OPEN (chat allowed) — recommended scope:
+  status IN ('pending', 'confirmed')
+
+CLOSED (chat blocked):
+  cancelled, completed, no_show, rescheduled
+
+Add to App\Models\Booking:
+
+  public function scopeOpen($query)
+  {
+      return $query->whereIn('status', ['pending', 'confirmed']);
+  }
+
+  public function scopeBetweenUsers($query, int $clientId, int $artistId)
+  {
+      return $query->where('user_id', $clientId)
+                   ->where('artist_user_id', $artistId);
+  }
+
+  public static function hasOpenChatBetween(int $clientId, int $artistId): bool
+  {
+      return static::query()
+          ->open()
+          ->betweenUsers($clientId, $artistId)
+          ->exists();
+  }
+
+Optional helper for UI context (latest open booking for header subtitle):
+
+  public static function latestOpenBetween(int $clientId, int $artistId): ?Booking
+  {
+      return static::query()
+          ->open()
+          ->betweenUsers($clientId, $artistId)
+          ->orderByDesc('booking_date')
+          ->first();
+  }
+
+Note: bookings.artist_user_id is the artist FK (not artist_id like requests).
+
+
+--------------------------------------------------------------------------------
+6. STREAM CONCEPTS MAPPED TO INKJIN
+--------------------------------------------------------------------------------
+
+Stream User
+  - id: string cast of users.id (e.g. "42")
+  - name: users.first_name + last_name
+  - image: user_details.avatar URL
+  - custom field: inkjin_role: "user" | "artist"
+
+Stream Channel (type: "messaging")
+  - id: u{client_user_id}-a{artist_user_id}
+      e.g. u8-a3
+  - members: [client_user_id, artist_user_id] as strings
+  - custom data (optional, for Stream UI only — not stored in MySQL):
+      client_user_id: 8
+      artist_user_id: 3
+
+Stream Message
+  - Stored entirely in GetStream
+  - No local messages table
+
+
+--------------------------------------------------------------------------------
+7. DATABASE TABLE (local — minimal)
+--------------------------------------------------------------------------------
+
+GetStream stores messages. We only need channel id + participant ids.
+
+-----------------------------------------------------------------------------
+TABLE: chat_channels
+-----------------------------------------------------------------------------
+Purpose: Map Stream channel to a client–artist pair. One row per pair.
+
+Columns:
+  id                  BIGINT UNSIGNED PK AUTO_INCREMENT
+  stream_channel_id   VARCHAR(100) UNIQUE NOT NULL
+                      -- e.g. "u8-a3" (channel id part of cid)
+  client_user_id      BIGINT UNSIGNED NOT NULL  FK -> users.id
+  artist_user_id      BIGINT UNSIGNED NOT NULL  FK -> users.id
+  created_at          TIMESTAMP
+  updated_at          TIMESTAMP
+
+Indexes:
+  UNIQUE (client_user_id, artist_user_id)   -- one channel per pair
+
+That is all we need in this table.
+
+We do NOT store:
+  - context_type / context_id   (use bookings relation instead)
+  - status / archived         (derive from Booking::open())
+  - title / last_message_at   (title from latest open booking or Stream;
+                               sorting from Stream API)
+
+-----------------------------------------------------------------------------
+NO messages TABLE
+-----------------------------------------------------------------------------
+Message bodies stay in GetStream.
+
+-----------------------------------------------------------------------------
+NO chat_channel_reads TABLE (v1)
+-----------------------------------------------------------------------------
+Use Stream unread API. Add cache table later only if needed.
+
+-----------------------------------------------------------------------------
+OPTIONAL: stream_webhook_events (production)
+-----------------------------------------------------------------------------
+  id, event_id, event_type, payload, processed_at, created_at
+  For idempotent webhook processing.
+
+
+--------------------------------------------------------------------------------
+8. ELOQUENT MODEL & RELATIONS
+--------------------------------------------------------------------------------
+
+App\Models\ChatChannel
+
+  fillable: stream_channel_id, client_user_id, artist_user_id
+
+  Relations:
+    client()  -> belongsTo(User::class, 'client_user_id')
+    artist()  -> belongsTo(User::class, 'artist_user_id')
+
+  Scopes:
+    forClient($userId)   -> where('client_user_id', $userId)
+    forArtist($userId)   -> where('artist_user_id', $userId)
+    forUser($userId)     -> where client OR artist
+
+  Access helpers:
+    participantIds(): [client_user_id, artist_user_id]
+
+    function isChatAllowed(): bool
+    {
+        return Booking::hasOpenChatBetween(
+            $this->client_user_id,
+            $this->artist_user_id
+        );
+    }
+
+    function latestOpenBooking(): ?Booking
+    {
+        return Booking::latestOpenBetween(
+            $this->client_user_id,
+            $this->artist_user_id
+        );
+    }
+
+    static function channelIdForPair(int $clientId, int $artistId): string
+    {
+        return 'u'.$clientId.'-a'.$artistId;
+    }
+
+App\Models\User — optional relations:
+
+  chatChannelsAsClient()  -> hasMany(ChatChannel::class, 'client_user_id')
+  chatChannelsAsArtist()  -> hasMany(ChatChannel::class, 'artist_user_id')
+
+App\Models\Booking — optional:
+
+  After create/update when status becomes open:
+    StreamChatService::ensureChannelForPair($booking->user_id, $booking->artist_user_id)
+
+
+--------------------------------------------------------------------------------
+9. AUTHORIZATION (enforced everywhere)
+--------------------------------------------------------------------------------
+
+Rule: canChat(client_id, artist_id) = Booking::hasOpenChatBetween(...)
+
+Apply on:
+  1. GET /api/chat/token          — OK if user has ANY open booking (inbox access)
+  2. GET /api/chat/channels        — return only channels where isChatAllowed()
+  3. POST send message (API guard)  — reject 403 if !isChatAllowed()
+  4. Stream webhook outbound email  — only if recipient allowed
+  5. Frontend                       — disable input when channel.can_chat = false
+
+User must also be a channel participant:
+  Auth::id() === client_user_id OR artist_user_id
+
+Inbox visibility:
+  - Show channel in list ONLY if isChatAllowed() is true
+  - OR show with "Chat closed" + read-only history (product choice)
+  Recommended: hide from active inbox when blocked; optional "Past conversations"
+  tab loads frozen channels read-only.
+
+When booking cancelled/completed:
+  - StreamChatService::syncChannelFreeze($channel)
+  - If !isChatAllowed(): channel.freeze() in Stream (read-only history)
+  - If open booking returns: channel.unfreeze()
+
+
+--------------------------------------------------------------------------------
+10. USER FLOWS
+--------------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+10A. CLIENT (role = user)
+-----------------------------------------------------------------------------
+
+  Entry points:
+    - Sidebar: Inbox -> GET /user/chat
+    - Bookings page: "Message Artist" (only shown when that booking is open)
+    - Dashboard message cards
+
+  "Message Artist" button visibility:
+    Show only if booking.status is pending or confirmed (open).
+
+  Flow:
+    1. Client opens /user/chat (auth middleware)
+    2. GET /api/chat/token -> Stream JWT
+    3. GET /api/chat/channels -> chat_channels for client_user_id = me
+       FILTER: only rows where Booking::hasOpenChatBetween(me, artist) = true
+    4. Select conversation -> load messages from Stream
+    5. Send message -> blocked by API if no open booking
+
+  Deep link from booking card:
+    GET /user/chat?artist={artist_user_id}
+    -> opens channel u{me}-a{artist} if allowed, else show "No active booking"
+
+-----------------------------------------------------------------------------
+10B. ARTIST (role = artist)
+-----------------------------------------------------------------------------
+
+  Entry points:
+    - Sidebar: Inbox (replace "Clients" placeholder)
+    - Bookings page: Message client
+    - Requests: NO chat link (booking required first)
+
+  Flow: Same as client, filtered by artist_user_id = me.
+
+  Deep link:
+    GET /artist/chat?client={client_user_id}
+
+-----------------------------------------------------------------------------
+10C. CHANNEL CREATION TRIGGERS
+-----------------------------------------------------------------------------
+
+  Trigger                                    Action
+  -----------------------------------------  ----------------------------------
+  Booking created with open status           ensureChannel(client, artist)
+  Booking status -> pending/confirmed        ensureChannel (unfreeze if existed)
+  Booking status -> cancelled/completed/     freeze channel; block new messages
+    no_show
+  User opens chat deep link with open        ensureChannel (idempotent)
+
+  NOT triggered by:
+    - booking_request submit
+    - custom_request submit
+    - quote sent (until booking exists)
+
+  Service: App\Services\StreamChatService
+    - upsertUser(User $user)
+    - ensureChannelForPair(int $clientId, int $artistId): ChatChannel
+    - syncChannelAccess(ChatChannel $channel): void  // freeze/unfreeze
+    - getToken(User $user): string
+
+  Hook into:
+    - Booking creation services (after payment confirm)
+    - BookingCancellationController (after cancel)
+    - BookingsController@markCompleted (after complete)
+    - Booking model observer (status changed) — optional single place
+
+
+--------------------------------------------------------------------------------
+11. API ROUTES (Laravel)
+--------------------------------------------------------------------------------
+
+All chat API routes require auth.
+
+  GET  /api/chat/token
+       Returns: { api_key, token, user_id }
+       Requires: user has at least one open booking (client or artist role)
+
+  GET  /api/chat/channels
+       Returns: chat_channels for current user WHERE isChatAllowed() = true
+       Enriched with: artist/client name, avatar, latest open booking title/date
+       from Booking::latestOpenBetween() + Stream last message preview
+
+  GET  /api/chat/channels/{artistUserId}          (client route)
+  GET  /api/chat/channels/client/{clientUserId}   (artist route)
+       Returns: channel + can_chat boolean + booking context
+
+  POST /api/chat/channels/{artistUserId}/ensure   (client)
+  POST /api/chat/channels/client/{clientUserId}/ensure  (artist)
+       Create channel if open booking exists; 403 otherwise
+
+  POST /api/webhooks/stream
+       GetStream webhooks (message.new) — verify signature
+
+Page routes:
+
+  GET /user/chat          name: user.chat.index
+  GET /artist/chat        name: artist.chat.index
+
+Remove or redirect public GET /chat mock to login in production.
+
+
+--------------------------------------------------------------------------------
+12. FRONTEND APPROACH
+--------------------------------------------------------------------------------
+
+Package: stream-chat-js (vanilla) — matches Blade + jQuery stack
+
+Files:
+  resources/views/user/chat/index.blade.php
+  resources/views/artist/chat/index.blade.php
+  public/js/stream-chat-inbox.js
+  layouts/components/user_sidebar.blade.php   (Inbox -> user.chat)
+  layouts/components/artist_sidebar.blade.php   (add Inbox)
+  user/bookings/index.blade.php               (Message Artist — open only)
+  artist/bookings/index.blade.php
+
+UI from client-inbox.html:
+  - Conversation list (only active / allowed channels)
+  - Thread with artist/client name
+  - Header subtitle from latest open booking (design title + session date)
+  - Input disabled + banner when chat blocked: "Chat is available when you
+    have an active booking with this artist."
+
+API response shape per channel:
+  {
+    "stream_channel_id": "u8-a3",
+    "client_user_id": 8,
+    "artist_user_id": 3,
+    "can_chat": true,
+    "booking": { "id": 42, "title": "Dragon Sleeve", "date": "..." },
+    "other_party": { "name": "...", "avatar": "..." }
+  }
+
+
+--------------------------------------------------------------------------------
+13. PACKAGES & ENVIRONMENT
+--------------------------------------------------------------------------------
+
+Composer:
+  getstream/stream-chat
+
+NPM:
+  stream-chat
+
+.env:
+  STREAM_API_KEY=
+  STREAM_API_SECRET=
+  STREAM_WEBHOOK_SECRET=
+
+config/stream.php:
+  api_key, api_secret, webhook_secret
+
+
+--------------------------------------------------------------------------------
+14. NOTIFICATIONS (phase 2)
+--------------------------------------------------------------------------------
+
+On webhook message.new:
+  1. Resolve chat_channels row by stream_channel_id
+  2. Verify isChatAllowed() — ignore if blocked
+  3. Email offline recipient via existing Mail stack
+
+
+--------------------------------------------------------------------------------
+15. IMPLEMENTATION PHASES
+--------------------------------------------------------------------------------
+
+PHASE 1 — Backend foundation
+  [ ] GetStream account + env
+  [ ] Install getstream/stream-chat PHP SDK
+  [ ] Migration: chat_channels (minimal columns only)
+  [ ] ChatChannel model + Booking::scopeOpen() + hasOpenChatBetween()
+  [ ] StreamChatService (upsert user, ensure channel, freeze/unfreeze, token)
+  [ ] API: token, channels, ensure
+  [ ] Hooks: booking created, cancelled, completed
+
+PHASE 2 — Client inbox UI
+  [ ] GET /user/chat
+  [ ] stream-chat-js + client-inbox.html design
+  [ ] Message Artist on open bookings only
+
+PHASE 3 — Artist inbox UI
+  [ ] GET /artist/chat
+  [ ] Sidebar Inbox link
+  [ ] Message client from open bookings only
+
+PHASE 4 — Webhooks & email
+  [ ] Stream webhook + NewChatMessageMail
+
+PHASE 5 — Polish
+  [ ] Read-only past conversations (optional)
+  [ ] Unread sidebar badge
+  [ ] File attachments
+  [ ] Redirect public /chat to login
+
+
+--------------------------------------------------------------------------------
+16. EXAMPLE RECORDS
+--------------------------------------------------------------------------------
+
+bookings (chat ALLOWED):
+  id: 42, user_id: 8, artist_user_id: 3, status: confirmed
+
+chat_channels:
+  stream_channel_id: u8-a3
+  client_user_id:    8
+  artist_user_id:    3
+
+Stream cid: messaging:u8-a3
+Members: ["8", "3"]
+
+After booking #42 completed:
+  - bookings.status = completed
+  - Booking::hasOpenChatBetween(8, 3) = false
+  - Send blocked; channel row unchanged; history in Stream
+
+Client books artist again (booking #99, status confirmed):
+  - Booking::hasOpenChatBetween(8, 3) = true
+  - Same channel u8-a3 unfrozen; chat resumes
+
+
+--------------------------------------------------------------------------------
+17. OPEN DECISIONS
+--------------------------------------------------------------------------------
+
+  1. Inbox when blocked: hide thread entirely OR show read-only history?
+     --> Recommend: hide from active list; optional "Past messages" later
+
+  2. pending status: count as open? --> Yes (booking exists, not closed)
+
+  3. Public /chat mock: redirect to login?
+
+  4. Guest clients (must_set_password): same as other user routes — block
+     until password set
+
+  5. Multiple open bookings same pair: one channel, show latest booking in UI
+
+
+--------------------------------------------------------------------------------
+18. FILE CHECKLIST
+--------------------------------------------------------------------------------
+
+  database/migrations/xxxx_create_chat_channels_table.php
+  app/Models/ChatChannel.php
+  app/Models/Booking.php                    (add scopeOpen, hasOpenChatBetween)
+  app/Services/StreamChatService.php
+  app/Http/Controllers/Api/ChatTokenController.php
+  app/Http/Controllers/Api/ChatChannelController.php
+  app/Http/Controllers/Api/StreamWebhookController.php
+  app/Http/Controllers/User/ChatController.php
+  app/Http/Controllers/Artist/ChatController.php
+  app/Observers/BookingObserver.php         (optional: sync channel on status)
+  config/stream.php
+  resources/views/user/chat/index.blade.php
+  resources/views/artist/chat/index.blade.php
+  public/js/stream-chat-inbox.js
+
+
+================================================================================
+END OF PLAN
+================================================================================
+
+Next step: Confirm open decisions in section 17, then implement Phase 1.

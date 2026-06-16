@@ -8,6 +8,10 @@
         <a href="{{ route('user.dashboard') }}" class="nav-item {{ request()->routeIs('user.dashboard') ? 'active' : '' }}">
           <span class="material-symbols-outlined">dashboard</span> Dashboard
         </a>
+        <a href="{{ route('user.chat.index') }}" class="nav-item {{ request()->routeIs('user.chat.*') ? 'active' : '' }}">
+          <span class="material-symbols-outlined">mail</span> Inbox
+          <span id="inboxUnreadDot" class="nav-inbox-unread-dot hidden ml-auto flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none" aria-hidden="true"></span>
+        </a>
         <a href="{{ route('user.requests.index') }}" class="nav-item {{ request()->routeIs('user.requests.*') ? 'active' : '' }}">
           <span class="material-symbols-outlined">inbox</span> My Requests
         </a>

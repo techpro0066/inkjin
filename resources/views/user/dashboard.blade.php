@@ -171,12 +171,12 @@
       <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-8 overflow-hidden">
         <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15">
           <h3 class="text-lg font-bold text-on-surface">Recent Messages</h3>
-          <a href="client-inbox.html" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+          <a href="{{ route('user.chat.index') }}" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
             View All Messages <span class="material-symbols-outlined text-base">arrow_forward</span>
           </a>
         </div>
         <div class="divide-y divide-outline-variant/10">
-          <a href="client-inbox.html" class="p-4 flex items-center gap-3 hover:bg-surface-container-low/50 transition-colors">
+          <a href="{{ route('user.chat.index') }}" class="p-4 flex items-center gap-3 hover:bg-surface-container-low/50 transition-colors">
             <div class="relative flex-shrink-0">
               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
                 <span class="text-white text-xs font-bold">JI</span>
@@ -191,7 +191,7 @@
               <p class="text-sm text-on-surface-variant truncate">I've updated the design based on your feedback — check it out!</p>
             </div>
           </a>
-          <a href="client-inbox.html" class="p-4 flex items-center gap-3 hover:bg-surface-container-low/50 transition-colors">
+          <a href="{{ route('user.chat.index') }}" class="p-4 flex items-center gap-3 hover:bg-surface-container-low/50 transition-colors">
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-300 to-emerald-400 flex items-center justify-center flex-shrink-0">
               <span class="text-white text-xs font-bold">MT</span>
             </div>
@@ -203,7 +203,7 @@
               <p class="text-sm text-on-surface-variant truncate">Your session is confirmed for March 10 — see you then!</p>
             </div>
           </a>
-          <a href="client-inbox.html" class="p-4 flex items-center gap-3 hover:bg-surface-container-low/50 transition-colors">
+          <a href="{{ route('user.chat.index') }}" class="p-4 flex items-center gap-3 hover:bg-surface-container-low/50 transition-colors">
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-rose-300 to-rose-400 flex items-center justify-center flex-shrink-0">
               <span class="text-white text-xs font-bold">AF</span>
             </div>

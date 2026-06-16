@@ -254,6 +254,13 @@
                           data-design-image="{{ e($designImage) }}">
                           <span class="material-symbols-outlined text-[22px]">visibility</span>
                         </button>
+                        @if($booking->isOpenForChat())
+                          <a href="{{ route('artist.chat.index', ['client' => $booking->user_id]) }}"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
+                            title="Message client">
+                            <span class="material-symbols-outlined text-[22px]">chat</span>
+                          </a>
+                        @endif
                         @if($booking->status === 'confirmed' || $artistRequestPending)
                           @if(!$artistRequestPending)
                           <button type="button"
@@ -379,6 +386,13 @@
                     data-design-image="{{ e($designImage) }}">
                     <span class="material-symbols-outlined text-[22px]">visibility</span>
                   </button>
+                  @if($booking->isOpenForChat())
+                    <a href="{{ route('artist.chat.index', ['client' => $booking->user_id]) }}"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/25 text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
+                      title="Message client">
+                      <span class="material-symbols-outlined text-[22px]">chat</span>
+                    </a>
+                  @endif
                   @if($booking->status === 'confirmed' || $artistRequestPending)
                     @if(!$artistRequestPending)
                     <button type="button"

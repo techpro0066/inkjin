@@ -26,6 +26,10 @@
       <a href="{{ route('artist.forms.index') }}" class="nav-item {{ request()->routeIs('personal-page.index') || request()->routeIs('artist.forms.index') || request()->routeIs('portfolio.index')  || request()->routeIs('artist-designs.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">folder_open</span> Content
       </a>
+      <a href="{{ route('artist.chat.index') }}" class="nav-item {{ request()->routeIs('artist.chat.*') ? 'active' : '' }}">
+        <span class="material-symbols-outlined">mail</span> Inbox
+        <span id="inboxUnreadDot" class="nav-inbox-unread-dot hidden ml-auto flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none" aria-hidden="true"></span>
+      </a>
       <a href="#" class="nav-item">
         <span class="material-symbols-outlined">group</span> Clients
       </a>

@@ -94,6 +94,8 @@
     .nav-item:hover { background: rgba(255,255,255,0.1); }
     .nav-item.active { background: #ffffff; color: #310f7a; font-weight: 600; }
     .nav-item .material-symbols-outlined { font-size: 20px; }
+    .nav-inbox-unread-dot { background: #fbbf24; color: #2b175f; min-width: 20px; text-align: center; }
+    .nav-item.active .nav-inbox-unread-dot { background: #310f7a; color: #ffffff; }
     /* Progress bar */
     .progress-fill { transition: width 0.4s ease; }
     /* Mobile sidebar — handled by Tailwind responsive classes (hidden lg:flex) */
@@ -161,5 +163,9 @@
   </script>
 
   @yield('scripts')
+
+  @if (! empty($chatBadgeEnabled))
+    <script src="{{ asset('js/chat-unread-badge.js') }}?v=1" defer data-api-base="{{ url('/api/chat') }}"></script>
+  @endif
 </body>
 </html>
