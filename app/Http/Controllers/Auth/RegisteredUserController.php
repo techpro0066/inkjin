@@ -97,7 +97,7 @@ class RegisteredUserController extends Controller
             'role' => 'artist',
             'on_boarding' => 'no',
             'on_app' => 1,
-            'app_id' => 'null',
+            'app_id' => null,
             'country_user_belongs_in' => $countryCode,
         ];
 
