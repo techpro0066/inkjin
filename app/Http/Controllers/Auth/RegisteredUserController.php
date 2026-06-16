@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\CountryNotAvailableMail;
-use App\Models\InkJinArtist;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserNotRegistered;
@@ -88,9 +87,6 @@ class RegisteredUserController extends Controller
             return redirect()->route('register')->with('country_not_available', true);
         }
 
-        // Check if email exists in inkjin_artists table
-        $artist = InkJinArtist::where('email', $request->email)->first();
-
         $countryCode = strtoupper($validated['payout_bank_country']);
 
         $userData = [
@@ -100,8 +96,8 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($validated['password']),
             'role' => 'artist',
             'on_boarding' => 'no',
-            'on_app' => $artist ? 1 : 0,
-            'app_id' => $artist ? $artist->id : null,
+            'on_app' => 1,
+            'app_id' => 'null',
             'country_user_belongs_in' => $countryCode,
         ];
 

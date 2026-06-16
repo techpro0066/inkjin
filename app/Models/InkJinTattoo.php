@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class InkJinTattoo extends Model
 {
-    protected $table = 'inkjin_tattoos';
 
     protected $fillable = [
         'artist_handle',
