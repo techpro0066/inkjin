@@ -28,7 +28,5 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         
-        $this->call(InkjinArtistSeeder::class);
-        $this->call(InkjinTattooSeeder::class);
     }
 }
