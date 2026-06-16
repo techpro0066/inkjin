@@ -1,0 +1,37 @@
+<?php
+
+use App\Database\SafelyDropsTables;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    use SafelyDropsTables;
+
+    public function up(): void
+    {
+        if (Schema::hasTable('portfolios')) {
+            return;
+        }
+
+        Schema::create('portfolios', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('title');
+            $table->text('description');
+            $table->boolean('is_active');
+            $table->string('image');
+            $table->string('primary_style');
+            $table->json('other_styles');
+            $table->string('color');
+            $table->json('tags');
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        $this->dropTablesSafely('portfolios');
+    }
+};

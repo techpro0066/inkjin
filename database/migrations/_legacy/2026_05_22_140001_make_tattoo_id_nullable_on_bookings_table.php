@@ -36,6 +36,12 @@ return new class extends Migration
             return;
         }
 
+        // Bookings without a tattoo (custom bookings) rely on nullable tattoo_id.
+        // Reverting to NOT NULL would fail or corrupt existing rows.
+        if (DB::table('bookings')->whereNull('tattoo_id')->exists()) {
+            return;
+        }
+
         if ($this->foreignKeyExists('bookings', 'bookings_tattoo_id_foreign')) {
             Schema::table('bookings', function (Blueprint $table) {
                 $table->dropForeign(['tattoo_id']);
