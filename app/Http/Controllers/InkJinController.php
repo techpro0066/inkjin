@@ -732,6 +732,7 @@ class InkJinController extends Controller
             'tattoo_slug' => ['required', 'string'],
             'payment_intent_id' => ['required', 'string'],
             'booking_payload' => ['required', 'array'],
+            'booking_payload.phone' => ['nullable', 'string', 'max:50'],
         ]);
 
         $payload = $validated['booking_payload'];
@@ -778,6 +779,8 @@ class InkJinController extends Controller
         if (!$bookingUser) {
             return response()->json(['message' => 'Booking user not found. Please verify email again.'], 422);
         }
+
+        $bookingUser->syncPhoneNumber($payload['phone'] ?? null);
 
         $artistTimezone = $userDetail->timezone ?: 'UTC';
         $consultationRequired = (bool) ($payload['consultation_required'] ?? false);
@@ -1015,6 +1018,8 @@ class InkJinController extends Controller
         if (!$bookingUser || mb_strtolower((string) $bookingUser->email) !== $email) {
             return response()->json(['message' => 'Booking user not found. Please verify email again.'], 422);
         }
+
+        $bookingUser->syncPhoneNumber($payload['phone'] ?? null);
 
         $consultationDetails = null;
         if ($consultationRequired) {

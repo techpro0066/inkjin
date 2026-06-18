@@ -82,39 +82,37 @@ class StreamChatService
 
     public function ensureChannelForBooking(Booking $booking): ?ChatChannel
     {
+        $clientId = (int) $booking->user_id;
+        $artistId = (int) $booking->artist_user_id;
+
+        $existing = ChatChannel::query()->where('booking_id', $booking->id)->first();
+
         if (! $booking->isOpenForChat()) {
-            return null;
-        }
+            if ($existing) {
+                $this->syncChannelForBooking($booking);
+            }
 
-        return $this->ensureChannelForPair((int) $booking->user_id, (int) $booking->artist_user_id);
-    }
-
-    public function ensureChannelForPair(int $clientId, int $artistId): ?ChatChannel
-    {
-        if (! Booking::hasOpenChatBetween($clientId, $artistId)) {
-            return null;
+            return $existing;
         }
 
         if (! $this->isConfigured()) {
             return ChatChannel::query()->firstOrCreate(
+                ['booking_id' => $booking->id],
                 [
                     'client_user_id' => $clientId,
                     'artist_user_id' => $artistId,
-                ],
-                [
-                    'stream_channel_id' => ChatChannel::channelIdForPair($clientId, $artistId),
+                    'stream_channel_id' => ChatChannel::channelIdForBooking($clientId, $artistId, $booking->id),
                 ]
             );
         }
 
-        $channelId = ChatChannel::channelIdForPair($clientId, $artistId);
+        $channelId = ChatChannel::channelIdForBooking($clientId, $artistId, $booking->id);
 
         $chatChannel = ChatChannel::query()->firstOrCreate(
+            ['booking_id' => $booking->id],
             [
                 'client_user_id' => $clientId,
                 'artist_user_id' => $artistId,
-            ],
-            [
                 'stream_channel_id' => $channelId,
             ]
         );
@@ -134,6 +132,8 @@ class StreamChatService
                 'members' => [(string) $clientId, (string) $artistId],
                 'client_user_id' => $clientId,
                 'artist_user_id' => $artistId,
+                'booking_id' => $booking->id,
+                'booking_ref' => $booking->referenceLabel(),
             ]);
 
             $streamChannel->create((string) $clientId, [(string) $clientId, (string) $artistId]);
@@ -148,22 +148,19 @@ class StreamChatService
         return $chatChannel;
     }
 
-    public function syncChannelForPair(int $clientId, int $artistId): void
+    public function syncChannelForBooking(Booking $booking): void
     {
-        $chatChannel = ChatChannel::query()
-            ->where('client_user_id', $clientId)
-            ->where('artist_user_id', $artistId)
-            ->first();
+        $chatChannel = ChatChannel::query()->where('booking_id', $booking->id)->first();
 
         if (! $chatChannel) {
-            if (Booking::hasOpenChatBetween($clientId, $artistId)) {
-                $this->ensureChannelForPair($clientId, $artistId);
+            if ($booking->isOpenForChat()) {
+                $this->ensureChannelForBooking($booking);
             }
 
             return;
         }
 
-        if (Booking::hasOpenChatBetween($clientId, $artistId)) {
+        if ($booking->isOpenForChat()) {
             $this->unfreezeChannel($chatChannel);
         } else {
             $this->freezeChannel($chatChannel);
@@ -187,19 +184,19 @@ class StreamChatService
             return;
         }
 
-        $pairs = $query->get(['user_id', 'artist_user_id'])->unique(fn ($b) => $b->user_id.'-'.$b->artist_user_id);
-
-        foreach ($pairs as $booking) {
-            $this->ensureChannelForPair((int) $booking->user_id, (int) $booking->artist_user_id);
+        foreach ($query->get() as $booking) {
+            $this->ensureChannelForBooking($booking);
         }
 
         ChatChannel::query()
             ->forUser($user->id)
+            ->with('booking')
             ->get()
-            ->each(fn (ChatChannel $chatChannel) => $this->syncChannelForPair(
-                $chatChannel->client_user_id,
-                $chatChannel->artist_user_id
-            ));
+            ->each(function (ChatChannel $chatChannel) {
+                if ($chatChannel->booking) {
+                    $this->syncChannelForBooking($chatChannel->booking);
+                }
+            });
     }
 
     public function getUnreadSummaryForUser(User $user): array

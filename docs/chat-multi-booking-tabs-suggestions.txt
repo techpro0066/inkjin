@@ -1,0 +1,514 @@
+================================================================================
+  INKJIN — CHAT: ONE CUSTOMER, MULTIPLE BOOKING THREADS
+  Suggestions only (no implementation)
+  Updated: 2026-06-16
+================================================================================
+
+REQUEST (product intent)
+------------------------
+- One conversation entry per customer (client ↔ artist), not one row per booking.
+- Multiple Stream channels behind the scenes — one channel per booking.
+- UI to pick which booking thread: DROPDOWN (preferred) or horizontal tabs.
+- Selector label = booking reference, e.g. INK-FL-00042 or INK-CR-00007.
+- Feels like a single chat with that person, but each booking has its own
+  message thread so design/session talk does not mix across bookings.
+
+
+CURRENT STATE (already built)
+-----------------------------
+- GetStream channel: ONE per client–artist pair.
+  Stream id format: u{clientId}-a{artistId}
+- DB table chat_channels: client_user_id, artist_user_id, stream_channel_id
+  (no booking_id column).
+- StreamChatService::ensureChannelForBooking() creates/reuses the pair channel.
+- Inbox UI: left list = one row per pair; header shows latest open booking only.
+- All messages for that pair live in one Stream thread (not separated).
+- Chat allowed/blocked is pair-level: any open booking between the two users.
+- Booking refs already exist: Booking::referenceLabel()
+  - Flash / available design: INK-FL-{booking_id zero-padded}
+  - Custom request:        INK-CR-{custom_request_id zero-padded}
+
+
+================================================================================
+UX SUGGESTION (target experience)
+================================================================================
+
+ARTIST INBOX
+------------
+Left column (unchanged conceptually):
+  - One row per client (avatar, name, last message preview, unread badge).
+  - Preview + timestamp from the most recently active booking tab (or channel).
+
+Right panel when a client is selected:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  [Avatar] Jane Doe · Online                                 │
+  ├─────────────────────────────────────────────────────────────┤
+  │  [INK-FL-00012] [INK-FL-00038 ●] [INK-CR-00005]            │  ← tabs
+  ├─────────────────────────────────────────────────────────────┤
+  │  (messages for selected booking only)                       │
+  ├─────────────────────────────────────────────────────────────┤
+  │  [ message input ]                                          │
+  └─────────────────────────────────────────────────────────────┘
+
+  - Active tab highlighted; dot (●) = unread in that tab.
+  - Optional subtitle under tab: session date or design title (truncated).
+  - Completed/cancelled tabs: still visible for history, read-only, muted style.
+
+CLIENT INBOX
+------------
+Same pattern, but left list = one row per artist they have booked.
+
+
+DEEP LINKS
+----------
+From bookings list / booking detail:
+  /artist/chat?client=8&booking=38
+  /user/chat?artist=3&booking=38
+Opens that customer/artist conversation with the correct booking pre-selected
+in the dropdown (or tab).
+
+
+================================================================================
+UI VARIANT: BOOKING DROPDOWN (recommended over tabs)
+================================================================================
+
+Yes — this works well and uses the SAME backend as Option B (one channel per
+booking). Only the selector control changes (dropdown instead of tab bar).
+
+BEHAVIOUR
+---------
+Single booking with this artist/client:
+  - No dropdown shown (or show static label only: "INK-FL-00038").
+  - Chat opens directly on that booking's channel.
+
+Two or more bookings:
+  - Header shows a dropdown, e.g.:
+      [ INK-FL-00038 ▼ ]
+  - Click opens list of all bookings for this pair:
+      INK-FL-00012   Rose forearm · Jun 12 · Completed
+      INK-FL-00038 ● Rose sleeve  · Jun 20 · Confirmed   ← unread dot
+      INK-CR-00005   Custom back  · Jul 2  · Confirmed
+  - Selecting an item switches the active Stream channel (message thread).
+  - Dropdown label updates to the selected booking ref.
+
+Layout sketch:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  [Avatar] Jane Doe · Online                                 │
+  │  Booking: [ INK-FL-00038 ▼ ]  · Confirmed · Jun 20, 2026   │
+  ├─────────────────────────────────────────────────────────────┤
+  │  (messages for selected booking only)                       │
+  ├─────────────────────────────────────────────────────────────┤
+  │  [ message input ]                                          │
+  └─────────────────────────────────────────────────────────────┘
+
+WHY DROPDOWN CAN BE BETTER THAN TABS
+------------------------------------
+  - Scales when a repeat client has many bookings (no cramped tab row).
+  - Cleaner on mobile — tabs overflow easily; dropdown is one control.
+  - Each row can show ref + title + date + status in one line.
+  - Same data model and API as tabs; purely a frontend choice.
+
+DEFAULT SELECTION (when opening a conversation)
+-----------------------------------------------
+  1. booking_id from URL ?booking=38 (deep link from bookings page)
+  2. Else booking with unread messages
+  3. Else nearest upcoming open booking (soonest session date)
+  4. Else most recently active thread
+
+DROPDOWN ROW CONTENT (suggested)
+------------------------------
+  Primary:   INK-FL-00038  (Booking::referenceLabel())
+  Secondary: design title or "Custom tattoo" (truncated)
+  Meta:      session date · status chip (Confirmed / Completed)
+  Indicator: unread dot if that channel has unread
+
+READ-ONLY BOOKINGS IN DROPDOWN
+------------------------------
+  - Still listed (for history) but row styled muted.
+  - Selecting them loads messages; input disabled ("This booking is closed").
+
+NOTIFICATIONS / SIDEBAR
+-----------------------
+  - Inbox row stays one per customer (unchanged).
+  - Unread badge on inbox row = sum across all booking channels.
+  - Optional: show which booking had the latest message in preview subtitle,
+    e.g. "INK-FL-00038: See you Saturday!"
+
+
+================================================================================
+ARCHITECTURE OPTIONS
+================================================================================
+
+Compare three approaches. Recommendation is Option B (see end).
+
+
+--------------------------------------------------------------------------------
+OPTION A — Single Stream channel + message tags (booking_id on each message)
+--------------------------------------------------------------------------------
+
+How it works:
+  - Keep one Stream channel per pair (no DB migration required).
+  - Every sent message includes custom field: booking_id (and optionally
+    booking_ref e.g. "INK-FL-00038").
+  - Frontend loads channel messages, filters by active tab booking_id.
+  - Tabs built from Laravel: list of bookings between this pair (open first,
+    then recent closed).
+
+Pros:
+  - Smallest change to Stream + chat_channels table.
+  - One channel to manage; matches "single chat per customer" literally.
+  - Cross-booking messages still possible if you ever want a "General" tab
+    (probably not needed).
+
+Cons:
+  - Unread counts are channel-level in GetStream; per-tab unread must be
+    computed in Laravel or client-side (scan messages since last_read per tab).
+  - Cannot freeze one booking's thread in Stream while another is active —
+    freeze is all-or-nothing on the channel (current behavior).
+  - Message history queries: filter in browser after full load, or custom
+    backend pagination logic; can get heavy for long histories.
+  - Risk of mis-tagged messages if client sends without booking_id (must enforce
+    server-side via Stream webhook or only allow send when tab is selected and
+    validate booking is open).
+  - Typing indicators and "last message" are channel-wide unless you simulate
+    per-tab state in the UI.
+
+Best when:
+  - You want the fastest path and rarely have 2+ open bookings per pair.
+  - Per-booking lock/freeze is not required (pair-level lock is enough).
+
+
+--------------------------------------------------------------------------------
+OPTION B — One Stream channel per booking, grouped in UI per customer (RECOMMENDED)
+--------------------------------------------------------------------------------
+
+How it works:
+  - Stream channel id: u{clientId}-a{artistId}-b{bookingId}
+    Example: u8-a3-b38
+  - DB: extend chat_channels OR add chat_booking_threads:
+      stream_channel_id, client_user_id, artist_user_id, booking_id
+    Unique on booking_id (one thread per booking).
+  - Inbox list still shows ONE row per pair (group Stream channels by pair).
+  - Clicking a customer loads all their booking channels; user picks one via
+    dropdown (if 2+) or lands on the default booking channel (if 1).
+  - Label from Booking::referenceLabel().
+
+Pros:
+  - True separate threads per booking — clean history, no filtering hacks.
+  - Per-booking freeze: when booking completes/cancels, freeze only that
+    channel; other open bookings stay writable.
+  - Native GetStream unread per tab (each tab = its own channel).
+  - Clear audit trail: "all messages about INK-FL-00038" = query one channel.
+  - Aligns with booking-gated rules at booking granularity.
+
+Cons:
+  - More Stream channels (one per booking ever chatted on, or only created when
+    first message sent / booking opens).
+  - Sidebar grouping logic: aggregate last message + unread across N channels.
+  - Migration: existing pair-level channels need a one-time split or deprecation
+    plan for old mixed messages.
+
+Best when:
+  - Product requirement is genuinely "each booking has its own chat."
+  - Artists run multiple concurrent sessions with the same repeat client.
+  - Per-booking read-only after completion is desired.
+
+
+--------------------------------------------------------------------------------
+OPTION C — Hybrid: pair channel for "active" + archive per booking
+--------------------------------------------------------------------------------
+
+How it works:
+  - New messages always go to the channel for the currently selected open
+    booking (Option B).
+  - Legacy messages in old pair channel (u8-a3) shown only under an
+    "Earlier messages" tab or migrated via Stream server-side copy.
+
+Pros:
+  - Handles migration from current single-thread setup.
+
+Cons:
+  - Two mental models; confusing unless migration is one-time and complete.
+
+Best when:
+  - You must preserve production history without a hard cutover.
+
+Usually skip unless you already have live users on the pair channel.
+
+
+================================================================================
+RECOMMENDED APPROACH: OPTION B + BOOKING DROPDOWN
+================================================================================
+
+Reasoning:
+  Separate chat per booking under one customer conversation = many Stream
+  channels, one grouped inbox row. Dropdown is the preferred way to switch
+  threads when there is more than one booking (tabs remain valid alternative).
+
+Keep the mental model:
+  - LIST      = customer (pair) — one inbox row
+  - DROPDOWN  = bookings (INK-FL-xxxxx / INK-CR-xxxxx) — only if count > 1
+  - THREAD    = one Stream channel per booking
+
+
+================================================================================
+DATA MODEL (suggested)
+================================================================================
+
+New or altered table: chat_booking_threads (name flexible)
+
+  id
+  booking_id          FK bookings, unique
+  client_user_id      FK users
+  artist_user_id      FK users
+  stream_channel_id   string, unique   e.g. u8-a3-b38
+  created_at
+  updated_at
+
+Indexes:
+  (client_user_id, artist_user_id)  — list tabs for a pair
+  stream_channel_id
+
+Optional: keep chat_channels as a pair-level cache for "inbox row exists" or
+drop it and derive inbox list purely from threads + bookings.
+
+Channel creation trigger (same as today):
+  - BookingObserver when booking becomes open for chat
+  - ensureChannelForBooking() creates thread row + Stream channel for THAT booking
+
+
+================================================================================
+API CHANGES (suggested)
+================================================================================
+
+GET /api/chat/channels
+  Today: flat list of pairs.
+  Suggested: list of PAIRS with nested bookings:
+
+  {
+    "conversations": [
+      {
+        "client_user_id": 8,
+        "artist_user_id": 3,
+        "other_party": { ... },
+        "last_message_at": "...",
+        "unread_total": 2,
+        "bookings": [
+          {
+            "booking_id": 38,
+            "reference": "INK-FL-00038",
+            "title": "Rose forearm",
+            "date": "Jun 20, 2026",
+            "status": "confirmed",
+            "stream_channel_id": "u8-a3-b38",
+            "can_chat": true,
+            "unread": 1
+          },
+          ...
+        ]
+      }
+    ]
+  }
+
+New or extended:
+  GET /api/chat/conversations/{clientId}/{artistId}/tabs
+    — tabs for one pair (if channels payload gets too heavy).
+
+  GET /api/chat/can-send/{streamChannelId}
+    — already exists; change logic to check THAT booking is open, not just
+      any open booking between the pair.
+
+  POST ensure endpoints:
+    — accept optional booking_id; create/open the booking thread channel.
+
+
+================================================================================
+BOOKING GATING (per tab)
+================================================================================
+
+Today:
+  can_chat = Booking::hasOpenChatBetween(client, artist)
+
+Suggested:
+  can_chat = this specific booking->isOpenForChat()
+
+Tab states:
+  OPEN      — can send/receive (confirmed, in progress, etc. per your rules)
+  READ-ONLY — completed / cancelled / no_show; show history, disable input
+  HIDDEN    — optional: hide tabs older than X months, or "show archived"
+
+When last open booking for a pair closes:
+  - Inbox row can remain (history) with all tabs read-only.
+  - Or hide from active inbox until next booking (product choice).
+
+When client books same artist again:
+  - New booking → new tab + new Stream channel.
+  - Old tabs stay accessible as read-only.
+
+
+================================================================================
+GETSTREAM DETAILS
+================================================================================
+
+Channel type: messaging (unchanged)
+
+Channel custom data (suggested):
+  client_user_id, artist_user_id, booking_id, booking_ref
+
+Members: [client_id, artist_id] only (unchanged)
+
+Freeze:
+  - Call channel.freeze() when that booking closes.
+  - Other booking channels for same pair stay active.
+
+Unread (sidebar + tab dots):
+  - Option B: sum channel.unreadCount across booking channels per pair.
+  - Option A: custom last_read timestamps per booking in Laravel JSON column
+    or separate chat_read_state table.
+
+Message send:
+  - Client always sends on activeStreamChannel for selected tab.
+  - No cross-tab leakage.
+
+Attachments / images:
+  - Work per channel as today; scoped to booking thread.
+
+
+================================================================================
+FRONTEND (stream-chat-inbox.js + chat-inbox.blade.php)
+================================================================================
+
+Changes:
+  1. After selecting a conversation (pair), render tab bar from bookings[].
+  2. activeStreamChannel switches when tab changes (watchChannel per tab).
+  3. Persist selected tab in URL ?booking=38 for deep links.
+  4. Header: customer name; remove single booking badge OR show active tab ref.
+  5. Mobile: horizontal scroll tabs under header; keep back button behavior.
+  6. Unread: update tab dot when message.new on any channel in the group.
+
+Tab sort order (suggested):
+  1. Open bookings — soonest session date first
+  2. Closed bookings — most recent last activity first
+
+Tab label:
+  - Primary: INK-FL-00038 / INK-CR-00007 (Booking::referenceLabel())
+  - Tooltip: design title + date
+
+
+================================================================================
+EDGE CASES
+================================================================================
+
+Multiple open bookings with same artist
+  - Common for multi-session pieces. Tabs are essential; default to tab with
+    nearest upcoming session or most recent unread.
+
+Client has bookings with multiple artists
+  - Unchanged: one inbox row per artist.
+
+Pre-booking (requests / quotes)
+  - Still out of scope for chat (per existing plan). No tab until booking exists.
+
+Artist deletes account / client banned
+  - Threads read-only or hidden per existing user status rules.
+
+Empty tab (channel created, no messages yet)
+  - Show empty state: "No messages yet for INK-FL-00038."
+
+Wrong tab message
+  - With Option B, impossible if UI only watches one channel at a time.
+
+INK-CR vs INK-FL
+  - Use same tab UI; referenceLabel() already distinguishes types.
+
+Migration from current single pair channel
+  - If no production messages yet: switch id format and done.
+  - If messages exist: either leave old channel as "Legacy" tab or assign
+    messages to booking via created_at + booking date heuristics (messy).
+    Prefer clean cutover if still pre-launch.
+
+
+================================================================================
+INBOX ROW AGGREGATION (Option B)
+================================================================================
+
+For each pair, compute:
+  - last_message_preview: text from channel with latest last_message_at
+  - last_message_at: max across booking channels
+  - unread_total: sum of unread counts
+  - subtitle: optional "INK-FL-00038 · 2m ago" for context
+
+Search:
+  - Match client/artist name OR any booking ref (INK-FL-00038).
+
+
+================================================================================
+NOTIFICATIONS (future)
+================================================================================
+
+Email/push copy should include booking ref:
+  "New message from Jane about INK-FL-00038"
+Deep link opens correct tab.
+
+
+================================================================================
+IMPLEMENTATION PHASES (when you choose to build)
+================================================================================
+
+Phase 1 — Data + backend
+  - Migration chat_booking_threads (or booking_id on chat_channels).
+  - StreamChatService: ensureChannelForBooking creates per-booking channel.
+  - Update BookingObserver, canSend, formatChannel API.
+
+Phase 2 — API shape
+  - Grouped conversations endpoint with bookings[] and refs.
+  - Deep link query params booking_id.
+
+Phase 3 — Frontend booking selector
+  - Dropdown in chat header (show only when bookings.length > 1).
+  - Channel switching on selection; unread dots on dropdown rows.
+  - Read-only UI for frozen channels.
+
+Phase 4 — Bookings integration
+  - "Message" on booking row opens chat with that booking pre-selected.
+  - Artist bookings modal link same pattern.
+
+Phase 5 — Migration / cleanup
+  - Deprecate old u{client}-a{artist} channels if any exist.
+
+
+================================================================================
+OPEN PRODUCT QUESTIONS (decide before build)
+================================================================================
+
+1. Show tabs for completed bookings forever, or only last N / only while pair
+   has any open booking?
+
+2. If two open bookings exist, should the client see both tabs equally or only
+   the "current" session until the first completes?
+
+3. Should artist be able to message on a completed booking tab (reopen), or
+   strictly read-only?
+
+4. Include booking status chip on tab (Confirmed, Completed)?
+
+5. Dropdown vs tabs: dropdown recommended for mobile and many bookings; tabs
+   OK if you strongly prefer always-visible switching (max 2–3 open bookings).
+
+6. Sort order in dropdown: open bookings first (by date), then completed?
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+Goal:     One inbox entry per customer; one Stream channel per booking.
+UI:       Booking dropdown in header when 2+ bookings (INK-FL-xxxxx labels).
+Today:    One Stream thread per pair — all bookings share one message history.
+Recommend: Option B (per-booking channels) + dropdown selector in chat header.
+Reuse:    Booking::referenceLabel(), existing inbox layout, booking-gated rules
+          narrowed to per-booking isOpenForChat().
+
+This document is suggestions only — no code changes included.
+
+================================================================================

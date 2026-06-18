@@ -514,7 +514,7 @@
     }
 
     function copyPageLink(username) {
-      const pageUrl = "{{ url('/') }}/" + username;
+      const pageUrl = "{{ url('/') }}/@" + username;
       var done = function () {
         showCopyLinkToast('Personal page link copied.');
       };

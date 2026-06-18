@@ -20,9 +20,11 @@ return new class extends Migration
             $table->string('stream_channel_id', 100)->unique();
             $table->foreignId('client_user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('artist_user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete();
             $table->timestamps();
 
-            $table->unique(['client_user_id', 'artist_user_id']);
+            $table->unique('booking_id');
+            $table->index(['client_user_id', 'artist_user_id'], 'chat_channels_pair_index');
         });
     }
 

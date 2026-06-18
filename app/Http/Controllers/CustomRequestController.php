@@ -131,6 +131,8 @@ class CustomRequestController extends Controller
             $requestUser->save();
         }
 
+        $requestUser->syncPhoneNumber($payload['phone'] ?? null);
+
         $questionsAnswers = is_array($payload['questions_answers'] ?? null) ? $payload['questions_answers'] : [];
         $phone = trim((string) ($payload['phone'] ?? ''));
         $referral = trim((string) ($payload['referral_source'] ?? ''));

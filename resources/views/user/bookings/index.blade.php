@@ -223,7 +223,7 @@
                             <button type="button" class="js-booking-detail-open text-sm font-semibold text-primary hover:underline text-left" data-booking-id="{{ $booking->id }}">View Details</button>
                             @if ($booking->isOpenForChat())
                                 <span class="text-outline">·</span>
-                                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id]) }}"
+                                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id, 'booking' => $booking->id]) }}"
                                    class="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
                                    title="Message artist">
                                     <span class="material-symbols-outlined text-[18px]">chat</span>
@@ -359,7 +359,7 @@
                 <span class="text-outline">·</span>
                 <a href="#" class="text-sm font-semibold text-error hover:underline">Cancel</a>
                 <span class="text-outline">·</span>
-                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id ?? '']) }}" class="text-sm font-semibold text-primary hover:underline">Message Artist</a>
+                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id ?? '', 'booking' => $booking->id ?? '']) }}" class="text-sm font-semibold text-primary hover:underline">Message Artist</a>
               </div>
             </div>
           </div>
@@ -411,7 +411,7 @@
                 <span class="text-outline">·</span>
                 <a href="#" class="text-sm font-semibold text-error hover:underline">Cancel</a>
                 <span class="text-outline">·</span>
-                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id ?? '']) }}" class="text-sm font-semibold text-primary hover:underline">Message Artist</a>
+                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id ?? '', 'booking' => $booking->id ?? '']) }}" class="text-sm font-semibold text-primary hover:underline">Message Artist</a>
               </div>
             </div>
           </div>
@@ -461,7 +461,7 @@
                 <span class="text-outline">·</span>
                 <a href="#" class="text-sm font-semibold text-error hover:underline">Cancel</a>
                 <span class="text-outline">·</span>
-                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id ?? '']) }}" class="text-sm font-semibold text-primary hover:underline">Message Artist</a>
+                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id ?? '', 'booking' => $booking->id ?? '']) }}" class="text-sm font-semibold text-primary hover:underline">Message Artist</a>
               </div>
             </div>
           </div>
@@ -576,7 +576,7 @@
                 <span class="text-outline">·</span>
                 <a href="#" class="text-sm font-semibold text-error hover:underline">Cancel</a>
                 <span class="text-outline">·</span>
-                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id ?? '']) }}" class="text-sm font-semibold text-primary hover:underline">Message Artist</a>
+                <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id ?? '', 'booking' => $booking->id ?? '']) }}" class="text-sm font-semibold text-primary hover:underline">Message Artist</a>
               </div>
             </div>
           </div>

@@ -382,33 +382,54 @@ class QuestionsController extends Controller
 
         $question = Question::query()->whereKey($id)->firstOrFail();
 
+        $userId = Auth::id();
+
         $isSystemQuestion = QuestionSorting::query()
             ->where('user_id', 1)
             ->where('question_id', $question->id)
             ->exists();
 
-        if (! $isSystemQuestion) {
+        if ($isSystemQuestion) {
+            $existingUserOrder = QuestionSorting::query()
+                ->where('user_id', $userId)
+                ->where('question_id', $question->id)
+                ->value('order');
+
+            $systemOrder = QuestionSorting::query()
+                ->where('user_id', 1)
+                ->where('question_id', $question->id)
+                ->value('order');
+
+            QuestionSorting::updateOrCreate(
+                ['user_id' => $userId, 'question_id' => $question->id],
+                [
+                    'order' => $existingUserOrder ?? $systemOrder ?? $question->id,
+                    'is_active' => $data['is_active'],
+                ]
+            );
+
             return response()->json([
-                'success' => false,
-                'message' => 'Question is not a system question.',
-            ], 422);
+                'success' => true,
+                'message' => 'Question status updated.',
+            ]);
         }
 
-        $userId = Auth::id();
+        if ((int) $question->user_id !== (int) $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot update this question.',
+            ], 403);
+        }
+
         $existingUserOrder = QuestionSorting::query()
             ->where('user_id', $userId)
-            ->where('question_id', $question->id)
-            ->value('order');
-
-        $systemOrder = QuestionSorting::query()
-            ->where('user_id', 1)
             ->where('question_id', $question->id)
             ->value('order');
 
         QuestionSorting::updateOrCreate(
             ['user_id' => $userId, 'question_id' => $question->id],
             [
-                'order' => $existingUserOrder ?? $systemOrder ?? $question->id,
+                'order' => $existingUserOrder ?? $question->id,
                 'is_active' => $data['is_active'],
             ]
         );

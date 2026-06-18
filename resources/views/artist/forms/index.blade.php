@@ -283,9 +283,10 @@
                         <span class="badge {{ $badgeClass }}">{{ $typeLabel }}</span>
                         <span class="badge {{ $isSystem ? 'badge-system' : 'badge-custom' }}">{{ $isSystem ? 'SYSTEM' : 'CUSTOM' }}</span>
                         @if($isSystem)
-                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleSystemQuestion(this)" title="Enable/Disable"></div>
+                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleQuestionStatus(this)" title="Enable/Disable"></div>
                             <span class="material-symbols-outlined text-outline/40" style="font-size:16px;" title="System question">lock</span>
                         @else
+                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleQuestionStatus(this)" title="Enable/Disable"></div>
                             <div class="flex items-center gap-1">
                                 <button type="button" class="js-edit-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-surface-container-low" title="Edit">
                                     <span class="material-symbols-outlined text-on-surface-variant" style="font-size:16px;">edit</span>
@@ -354,9 +355,10 @@
                         <span class="badge {{ $badgeClass }}">{{ $typeLabel }}</span>
                         <span class="badge {{ $isSystem ? 'badge-system' : 'badge-custom' }}">{{ $isSystem ? 'SYSTEM' : 'CUSTOM' }}</span>
                         @if($isSystem)
-                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleSystemQuestion(this)" title="Enable/Disable"></div>
+                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleQuestionStatus(this)" title="Enable/Disable"></div>
                             <span class="material-symbols-outlined text-outline/40" style="font-size:16px;" title="System question">lock</span>
                         @else
+                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleQuestionStatus(this)" title="Enable/Disable"></div>
                             <div class="flex items-center gap-1">
                                 <button type="button" class="js-edit-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-surface-container-low" title="Edit">
                                     <span class="material-symbols-outlined text-on-surface-variant" style="font-size:16px;">edit</span>
@@ -569,7 +571,7 @@
     closeAddQuestionModal();
   }
 
-  function toggleSystemQuestion(el) {
+  function toggleQuestionStatus(el) {
     const row = el.closest(".q-row");
     if (!row) return;
     const questionId = row.dataset.id;

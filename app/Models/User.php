@@ -21,6 +21,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'first_name',
         'last_name',
         'email',
+        'phone_number',
         'password',
         'must_set_password',
         'role',
@@ -85,6 +86,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getEmailForPasswordReset()
     {
         return $this->email;
+    }
+
+    public function syncPhoneNumber(?string $phone): void
+    {
+        $phone = trim((string) $phone);
+        if ($phone === '' || $this->phone_number === $phone) {
+            return;
+        }
+
+        $this->forceFill(['phone_number' => $phone])->save();
     }
 
     /**

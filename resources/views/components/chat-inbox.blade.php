@@ -57,6 +57,50 @@
     0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
     30% { transform: translateY(-4px); opacity: 1; }
   }
+  #chatBookingSelectMenu {
+    box-shadow: 0 12px 40px rgba(28, 27, 33, 0.12);
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .chat-booking-option { transition: background 0.12s ease; }
+  .chat-booking-option:hover { background: #f8f1fb; }
+  .chat-booking-option .chat-booking-ref { color: #1c1b21; }
+  .chat-booking-option .chat-booking-meta { color: #494552; }
+  .chat-booking-option.active { background: #f2ecf5; border-left: 3px solid #310f7a; }
+  .chat-booking-option.has-unread {
+    background: #310f7a;
+    border-left: 3px solid #664db1;
+    color: #fff;
+  }
+  .chat-booking-option.has-unread:hover { background: #482d91; }
+  .chat-booking-option.active.has-unread {
+    background: #310f7a;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+  }
+  .chat-booking-option.has-unread .chat-booking-ref,
+  .chat-booking-option.has-unread .chat-booking-meta,
+  .chat-booking-option.has-unread .chat-booking-preview {
+    color: #fff;
+  }
+  .chat-booking-option.has-unread .chat-booking-meta,
+  .chat-booking-option.has-unread .chat-booking-preview {
+    opacity: 0.92;
+  }
+  #chatBookingSelectBtn.has-other-unread {
+    border: 1px solid rgba(49, 15, 122, 0.22);
+    background: #f8f1fb;
+  }
+  #chatBookingSelectUnreadHint { line-height: 1.3; }
+  .chat-booking-select-dot {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 9999px;
+    background: #310f7a;
+    border: 2px solid #fff;
+  }
   @media (max-width: 1023px) {
     #chatView.mobile-open { display: flex !important; position: fixed; inset: 0; top: 70px; z-index: 40; background: #fdf7ff; flex-direction: column; }
     #chatView.mobile-open ~ #convList,
@@ -102,6 +146,7 @@
         data-user-id="{{ Auth::id() }}"
         data-open-artist="{{ request('artist', '') }}"
         data-open-client="{{ request('client', '') }}"
+        data-open-booking="{{ request('booking', '') }}"
         data-csrf="{{ csrf_token() }}"
         data-locked-message="{{ $role === 'artist'
           ? 'This chat is locked. You need an open booking with this client to send messages.'
@@ -135,11 +180,27 @@
                   <p class="text-xs text-on-surface-variant truncate" id="chatHeaderMeta"></p>
                 </div>
               </div>
-              <div class="hidden sm:flex items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2 flex-shrink-0" id="chatBookingBadge">
-                <span class="material-symbols-outlined text-primary text-sm">calendar_today</span>
-                <div>
-                  <p class="text-xs font-semibold text-on-surface" id="chatBookingTitle"></p>
-                  <p class="text-[11px] text-on-surface-variant" id="chatBookingDate"></p>
+              <div class="flex flex-col items-end gap-1 flex-shrink-0 min-w-0 max-w-[220px] sm:max-w-[280px]" id="chatBookingWrap">
+                <div class="hidden relative w-full" id="chatBookingSelectWrap">
+                  <button type="button" id="chatBookingSelectBtn" class="relative w-full flex items-center justify-between gap-2 bg-surface-container-low rounded-lg px-3 py-2 text-left hover:bg-surface-container transition-colors border border-transparent">
+                    <span class="min-w-0">
+                      <span class="block text-xs font-bold text-on-surface truncate" id="chatBookingSelectLabel">INK-FL-00000</span>
+                      <span class="block text-[11px] text-on-surface-variant truncate" id="chatBookingSelectMeta"></span>
+                      <span class="hidden text-[10px] text-primary font-semibold truncate mt-0.5" id="chatBookingSelectUnreadHint"></span>
+                    </span>
+                    <span class="relative flex-shrink-0 flex items-center">
+                      <span class="material-symbols-outlined text-outline text-lg">expand_more</span>
+                      <span id="chatBookingSelectDot" class="chat-booking-select-dot hidden" aria-hidden="true"></span>
+                    </span>
+                  </button>
+                  <div id="chatBookingSelectMenu" class="hidden absolute right-0 top-full mt-1 z-50 w-[min(100vw-2rem,320px)] rounded-xl border border-outline-variant/20 bg-white py-1"></div>
+                </div>
+                <div class="hidden items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2 w-full" id="chatBookingStatic">
+                  <span class="material-symbols-outlined text-primary text-sm flex-shrink-0">calendar_today</span>
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold text-on-surface truncate" id="chatBookingTitle"></p>
+                    <p class="text-[11px] text-on-surface-variant truncate" id="chatBookingDate"></p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -177,7 +238,7 @@
       </div>
 
       <script src="https://cdn.jsdelivr.net/npm/stream-chat@8.40.0/dist/browser.full-bundle.min.js"></script>
-      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=12"></script>
+      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=17"></script>
     @endif
   </div>
 </main>

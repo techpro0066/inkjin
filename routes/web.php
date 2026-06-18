@@ -19,6 +19,8 @@ use App\Http\Controllers\Auth\PostBookingAccessController;
 use App\Http\Controllers\ArtistCustomRequestsController;
 use App\Http\Controllers\ArtistDashboardController;
 use App\Http\Controllers\Artist\ChatController as ArtistChatController;
+use App\Http\Controllers\Artist\ClientsController as ArtistClientsController;
+use App\Http\Controllers\Artist\PaymentsController as ArtistPaymentsController;
 use App\Http\Controllers\Api\ChatController as ApiChatController;
 use App\Http\Controllers\CustomRequestController;
 use App\Http\Controllers\RequestsController;
@@ -258,6 +260,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/requests/{bookingRequest}/offer-slots', [RequestsController::class, 'offerSlots'])->name('artist.requests.offer-slots');
 
     Route::get('/chat', [ArtistChatController::class, 'index'])->name('artist.chat.index');
+    Route::get('/clients', [ArtistClientsController::class, 'index'])->name('artist.clients.index');
+    Route::get('/payments', [ArtistPaymentsController::class, 'index'])->name('artist.payments.index');
 });
 
 // User routes
@@ -320,14 +324,14 @@ Route::get('/chat', function () {
 
     return redirect()->route('login');
 })->name('public.chat');
-Route::get('/{username}', [InkJinController::class, 'publicArtistProfile'])->name('public.artist');
+Route::get('/@{username}', [InkJinController::class, 'publicArtistProfile'])->name('public.artist');
 
-Route::get('/{user_name}/{tattoo_slug}', [InkJinController::class, 'publicTattooPage'])->name('public.tattoo');
+Route::get('/@{user_name}/{tattoo_slug}', [InkJinController::class, 'publicTattooPage'])->name('public.tattoo');
 
 // custom request
-Route::get('/{user_name}/request/custom', [CustomRequestController::class, 'requestCustom'])->name('public.request-custom');
+Route::get('/@{user_name}/request/custom', [CustomRequestController::class, 'requestCustom'])->name('public.request-custom');
 
-Route::get('/{user_name}/{tattoo_slug}/book', [InkJinController::class, 'bookTattoo'])->name('public.tattoo.book');
+Route::get('/@{user_name}/{tattoo_slug}/book', [InkJinController::class, 'bookTattoo'])->name('public.tattoo.book');
 Route::get('/api/public/check-email-availability', [InkJinController::class, 'checkEmailAvailability'])->name('public.email.availability');
 Route::post('/api/public/send-booking-otp', [InkJinController::class, 'sendBookingOtp'])->name('public.booking.otp.send');
 Route::post('/api/public/verify-booking-otp', [InkJinController::class, 'verifyBookingOtp'])->name('public.booking.otp.verify');

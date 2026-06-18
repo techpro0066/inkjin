@@ -11,6 +11,7 @@ class ChatChannel extends Model
         'stream_channel_id',
         'client_user_id',
         'artist_user_id',
+        'booking_id',
     ];
 
     public function client(): BelongsTo
@@ -21,6 +22,11 @@ class ChatChannel extends Model
     public function artist(): BelongsTo
     {
         return $this->belongsTo(User::class, 'artist_user_id');
+    }
+
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(Booking::class);
     }
 
     public function scopeForUser($query, int $userId)
@@ -41,19 +47,27 @@ class ChatChannel extends Model
         return $query->where('artist_user_id', $userId);
     }
 
-    public static function channelIdForPair(int $clientId, int $artistId): string
+    public function scopeForPair($query, int $clientId, int $artistId)
     {
-        return 'u'.$clientId.'-a'.$artistId;
+        return $query->where('client_user_id', $clientId)
+            ->where('artist_user_id', $artistId);
+    }
+
+    public static function channelIdForBooking(int $clientId, int $artistId, int $bookingId): string
+    {
+        return 'u'.$clientId.'-a'.$artistId.'-b'.$bookingId;
+    }
+
+    public function pairKey(): string
+    {
+        return $this->client_user_id.'-'.$this->artist_user_id;
     }
 
     public function isChatAllowed(): bool
     {
-        return Booking::hasOpenChatBetween($this->client_user_id, $this->artist_user_id);
-    }
+        $this->loadMissing('booking');
 
-    public function latestOpenBooking(): ?Booking
-    {
-        return Booking::latestOpenBetween($this->client_user_id, $this->artist_user_id);
+        return $this->booking?->isOpenForChat() ?? false;
     }
 
     public function otherPartyUserIdFor(int $userId): ?int

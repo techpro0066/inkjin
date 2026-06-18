@@ -19,7 +19,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('restrict');
             $table->foreignId('artist_user_id')->constrained('users')->onDelete('restrict');
-            $table->foreignId('tattoo_id')->nullable()->constrained('inkjin_tattoos')->onDelete('restrict');
+            $table->foreignId('tattoo_id')->nullable()->constrained('artist_designs')->onDelete('restrict');
 
             // Booking Type & Custom Details
             $table->enum('booking_type', ['custom', 'flash'])->default('flash');

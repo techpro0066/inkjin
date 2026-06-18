@@ -164,7 +164,7 @@
             <thead>
               <tr class="bg-surface-container-low/50 text-on-surface-variant text-xs uppercase tracking-wider">
                 <th class="text-left px-6 py-3 font-semibold">Client</th>
-                <th class="text-left px-6 py-3 font-semibold">Service</th>
+                <th class="text-left px-6 py-3 font-semibold">Booking</th>
                 <th class="text-left px-6 py-3 font-semibold">Date</th>
                 <th class="text-left px-6 py-3 font-semibold">Time</th>
                 <th class="text-left px-6 py-3 font-semibold">Duration</th>
@@ -210,10 +210,11 @@
                               ? $imgRaw
                               : asset(ltrim($imgRaw, '/'));
                       }
-                      $bookingRef = '#INK-' . str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT);
+                      $bookingRef = $booking->referenceLabel();
                       $dateLong = $booking->booking_date?->format('l, F j, Y') ?? '—';
                       $clientEmail = (string) ($booking->user?->email ?? '');
                       $questionsAnswersData = is_array($booking->questions_answers ?? null) ? $booking->questions_answers : [];
+                      $balanceLabel = $booking->estimatedBalanceLabel();
                   @endphp
                   <tr class="booking-group border-t border-outline-variant/10 hover:bg-surface-container-low/40"
                       data-booking-row
@@ -224,7 +225,7 @@
                       data-sort-ts="{{ $sortStamp }}"
                       data-sort-name="{{ e($clientLower) }}">
                     <td class="px-6 py-4 font-medium text-on-surface">{{ $clientName }}</td>
-                    <td class="px-6 py-4 text-on-surface-variant">{{ Str::limit($serviceTitle, 48) }}</td>
+                    <td class="px-6 py-4 font-medium text-on-surface tabular-nums">{{ $bookingRef }}</td>
                     <td class="px-6 py-4 text-on-surface">{{ $booking->booking_date?->format('M j, Y') ?? '—' }}</td>
                     <td class="px-6 py-4 text-on-surface-variant">{{ $startEnd }}</td>
                     <td class="px-6 py-4 text-on-surface-variant tabular-nums">{{ $duration }}</td>
@@ -250,12 +251,13 @@
                           data-status-badge-class="{{ e($badgeCls) }}"
                           data-booking-type="{{ e(ucfirst((string) ($booking->booking_type ?? ''))) }}"
                           data-deposit="{{ e('€' . number_format((float) ($booking->deposit_amount ?? 0), 2)) }}"
+                          data-balance="{{ e($balanceLabel) }}"
                           data-questions='@json($questionsAnswersData)'
                           data-design-image="{{ e($designImage) }}">
                           <span class="material-symbols-outlined text-[22px]">visibility</span>
                         </button>
                         @if($booking->isOpenForChat())
-                          <a href="{{ route('artist.chat.index', ['client' => $booking->user_id]) }}"
+                          <a href="{{ route('artist.chat.index', ['client' => $booking->user_id, 'booking' => $booking->id]) }}"
                             class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
                             title="Message client">
                             <span class="material-symbols-outlined text-[22px]">chat</span>
@@ -291,7 +293,8 @@
                             title="Cancel booking"
                             data-booking-id="{{ $booking->id }}"
                             data-cancel-url="{{ route('api.bookings.cancel', $booking->id) }}"
-                            data-cancel-info-url="{{ route('api.bookings.cancellation-info', $booking->id) }}">
+                            data-cancel-info-url="{{ route('api.bookings.cancellation-info', $booking->id) }}"
+                            data-booking-ref="{{ e($bookingRef) }}">
                             <span class="material-symbols-outlined text-[22px]">close</span>
                           </button>
                         @endif
@@ -341,10 +344,11 @@
                           ? $imgRaw
                           : asset(ltrim($imgRaw, '/'));
                   }
-                  $bookingRef = '#INK-' . str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT);
+                  $bookingRef = $booking->referenceLabel();
                   $dateLong = $booking->booking_date?->format('l, F j, Y') ?? '—';
                   $clientEmail = (string) ($booking->user?->email ?? '');
                   $questionsAnswersData = is_array($booking->questions_answers ?? null) ? $booking->questions_answers : [];
+                  $balanceLabel = $booking->estimatedBalanceLabel();
               @endphp
               <div class="booking-group p-5 space-y-2"
                    data-booking-row
@@ -361,7 +365,7 @@
                 @if ($artistRequestPending)
                   <p class="text-xs font-semibold text-blue-700">Reschedule request sent{{ $booking->reschedule_reason ? ': '.Str::limit($booking->reschedule_reason, 80) : '.' }}</p>
                 @endif
-                <p class="text-sm text-on-surface">{{ Str::limit($serviceTitle, 80) }}</p>
+                <p class="text-sm font-medium text-on-surface tabular-nums">{{ $bookingRef }}</p>
                 <p class="text-sm text-on-surface-variant">{{ $booking->booking_date?->format('l, F j, Y') ?? '—' }} · {{ $startEnd }}</p>
                 <p class="text-xs text-on-surface-variant">{{ $duration }} · {{ strtoupper(str_replace('/', ' ', $tz)) }}</p>
                 <div class="flex flex-wrap items-center gap-2 pt-1">
@@ -382,12 +386,13 @@
                     data-status-badge-class="{{ e($badgeCls) }}"
                     data-booking-type="{{ e(ucfirst((string) ($booking->booking_type ?? ''))) }}"
                     data-deposit="{{ e('€' . number_format((float) ($booking->deposit_amount ?? 0), 2)) }}"
+                    data-balance="{{ e($balanceLabel) }}"
                     data-questions='@json($questionsAnswersData)'
                     data-design-image="{{ e($designImage) }}">
                     <span class="material-symbols-outlined text-[22px]">visibility</span>
                   </button>
                   @if($booking->isOpenForChat())
-                    <a href="{{ route('artist.chat.index', ['client' => $booking->user_id]) }}"
+                    <a href="{{ route('artist.chat.index', ['client' => $booking->user_id, 'booking' => $booking->id]) }}"
                       class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/25 text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
                       title="Message client">
                       <span class="material-symbols-outlined text-[22px]">chat</span>
@@ -423,7 +428,8 @@
                       title="Cancel booking"
                       data-booking-id="{{ $booking->id }}"
                       data-cancel-url="{{ route('api.bookings.cancel', $booking->id) }}"
-                      data-cancel-info-url="{{ route('api.bookings.cancellation-info', $booking->id) }}">
+                      data-cancel-info-url="{{ route('api.bookings.cancellation-info', $booking->id) }}"
+                      data-booking-ref="{{ e($bookingRef) }}">
                       <span class="material-symbols-outlined text-[22px]">close</span>
                     </button>
                   @endif
@@ -502,9 +508,13 @@
           <dt class="text-on-surface-variant font-medium">Timezone</dt>
           <dd id="abdmTimezone" class="text-on-surface text-right text-xs">—</dd>
         </div>
-        <div class="flex justify-between gap-4 py-2">
+        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
           <dt class="text-on-surface-variant font-medium">Deposit</dt>
           <dd id="abdmDeposit" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
+        </div>
+        <div class="flex justify-between gap-4 py-2">
+          <dt class="text-on-surface-variant font-medium">Balance (est.)</dt>
+          <dd id="abdmBalance" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
         </div>
       </dl>
       <div id="abdmQaSection" class="hidden rounded-xl border border-outline-variant/20 bg-surface-container-low/40 p-4">
@@ -1048,7 +1058,8 @@
   function loadInfoAndOpen(btn) {
     var infoUrl = btn.getAttribute('data-cancel-info-url');
     var bookingId = btn.getAttribute('data-booking-id') || '—';
-    if (bookingIdEl) bookingIdEl.textContent = '#INK-' + String(bookingId).padStart(6, '0');
+    var bookingRef = btn.getAttribute('data-booking-ref') || '';
+    if (bookingIdEl) bookingIdEl.textContent = bookingRef || ('INK-FL-' + String(bookingId).padStart(5, '0'));
     if (windowEl) windowEl.textContent = 'Loading...';
     if (refundLeadEl) refundLeadEl.textContent = 'Loading refund details...';
     if (refundSubEl) refundSubEl.textContent = '';
@@ -1177,6 +1188,7 @@
   var durEl = document.getElementById('abdmDuration');
   var tzEl = document.getElementById('abdmTimezone');
   var depEl = document.getElementById('abdmDeposit');
+  var balEl = document.getElementById('abdmBalance');
   var qaSectionEl = document.getElementById('abdmQaSection');
   var qaListEl = document.getElementById('abdmQaList');
 
@@ -1217,6 +1229,7 @@
     if (durEl) durEl.textContent = ds.duration || '—';
     if (tzEl) tzEl.textContent = ds.timezone || 'UTC';
     if (depEl) depEl.textContent = ds.deposit || '—';
+    if (balEl) balEl.textContent = ds.balance || '—';
     if (qaSectionEl && qaListEl) {
       qaListEl.innerHTML = '';
       var rawQuestions = ds.questions || '';

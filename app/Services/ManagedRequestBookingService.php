@@ -142,7 +142,7 @@ class ManagedRequestBookingService
             'user_id' => $bookingRequest->user_id,
             'artist_user_id' => $bookingRequest->artist_id,
             'tattoo_id' => $tattoo->id,
-            'booking_type' => 'custom',
+            'booking_type' => 'flash',
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $sessionUtc['date'],
             'start_time_utc' => $sessionUtc['start_time_utc'],

@@ -10,6 +10,7 @@ use App\Services\StreamChatService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class ChatController extends Controller
 {
@@ -40,13 +41,14 @@ class ChatController extends Controller
 
         $channels = ChatChannel::query()
             ->forUser($user->id)
-            ->with(['client.userDetail', 'artist.userDetail'])
-            ->get()
-            ->map(fn (ChatChannel $channel) => $this->formatChannel($channel, $user))
-            ->values();
+            ->with(['client.userDetail', 'artist.userDetail', 'booking.tattoo'])
+            ->get();
+
+        $conversations = $this->buildConversations($channels, $user);
 
         return response()->json([
-            'channels' => $channels,
+            'conversations' => $conversations,
+            'channels' => $this->flattenBookingThreads($conversations),
             'configured' => $this->streamChat->isConfigured(),
         ]);
     }
@@ -59,7 +61,7 @@ class ChatController extends Controller
             abort(403);
         }
 
-        return $this->ensurePairResponse($user->id, $artistUserId, $user);
+        return $this->ensurePairResponse($user->id, $artistUserId, $user, $request);
     }
 
     public function ensureForClient(Request $request, int $clientUserId): JsonResponse
@@ -70,7 +72,7 @@ class ChatController extends Controller
             abort(403);
         }
 
-        return $this->ensurePairResponse($clientUserId, $user->id, $user);
+        return $this->ensurePairResponse($clientUserId, $user->id, $user, $request);
     }
 
     public function unreadSummary(Request $request): JsonResponse
@@ -98,76 +100,176 @@ class ChatController extends Controller
         ]);
     }
 
-    private function ensurePairResponse(int $clientId, int $artistId, User $viewer): JsonResponse
+    private function ensurePairResponse(int $clientId, int $artistId, User $viewer, Request $request): JsonResponse
     {
-        $existing = ChatChannel::query()
-            ->where('client_user_id', $clientId)
-            ->where('artist_user_id', $artistId)
-            ->first();
+        $bookingId = $request->integer('booking');
 
-        if ($existing) {
-            return response()->json([
-                'channel' => $this->formatChannel($existing, $viewer),
-            ]);
+        if ($bookingId > 0) {
+            $booking = Booking::query()
+                ->where('id', $bookingId)
+                ->where('user_id', $clientId)
+                ->where('artist_user_id', $artistId)
+                ->first();
+
+            if (! $booking) {
+                return response()->json([
+                    'message' => 'Booking not found.',
+                ], 404);
+            }
+
+            if (! $booking->isOpenForChat()) {
+                $existing = ChatChannel::query()->where('booking_id', $booking->id)->first();
+                if (! $existing) {
+                    return response()->json([
+                        'message' => 'No active booking for this conversation.',
+                    ], 403);
+                }
+            } else {
+                $this->streamChat->ensureChannelForBooking($booking);
+            }
+        } elseif (! Booking::hasOpenChatBetween($clientId, $artistId)) {
+            $hasHistory = ChatChannel::query()->forPair($clientId, $artistId)->exists();
+            if (! $hasHistory) {
+                return response()->json([
+                    'message' => 'No active booking between these users.',
+                ], 403);
+            }
+        } else {
+            Booking::query()
+                ->open()
+                ->betweenUsers($clientId, $artistId)
+                ->get()
+                ->each(fn (Booking $booking) => $this->streamChat->ensureChannelForBooking($booking));
         }
 
-        if (! Booking::hasOpenChatBetween($clientId, $artistId)) {
-            return response()->json([
-                'message' => 'No active booking between these users.',
-            ], 403);
-        }
+        $channels = ChatChannel::query()
+            ->forPair($clientId, $artistId)
+            ->with(['client.userDetail', 'artist.userDetail', 'booking.tattoo'])
+            ->get();
 
-        $channel = $this->streamChat->ensureChannelForPair($clientId, $artistId);
-
-        if (! $channel) {
+        if ($channels->isEmpty()) {
             return response()->json([
                 'message' => 'Could not open chat channel.',
             ], 500);
         }
 
+        $conversation = $this->buildConversations($channels, $viewer)->first();
+
         return response()->json([
-            'channel' => $this->formatChannel($channel, $viewer),
+            'conversation' => $conversation,
+            'channels' => $this->flattenBookingThreads(collect([$conversation])),
         ]);
     }
 
-    private function formatChannel(ChatChannel $channel, User $viewer): array
+    /**
+     * @param  Collection<int, ChatChannel>  $channels
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function buildConversations(Collection $channels, User $viewer): Collection
     {
-        $otherId = $channel->otherPartyUserIdFor($viewer->id);
-        $other = $otherId === $channel->client_user_id ? $channel->client : $channel->artist;
-        $booking = $channel->latestOpenBooking();
+        return $channels
+            ->groupBy(fn (ChatChannel $channel) => $channel->pairKey())
+            ->map(function (Collection $group) use ($viewer) {
+                /** @var ChatChannel $first */
+                $first = $group->first();
+                $otherId = $first->otherPartyUserIdFor($viewer->id);
+                $other = $otherId === $first->client_user_id ? $first->client : $first->artist;
 
-        $initials = '';
-        if ($other) {
-            $initials = strtoupper(substr($other->first_name ?? '', 0, 1).substr($other->last_name ?? '', 0, 1));
-        }
+                $initials = '';
+                if ($other) {
+                    $initials = strtoupper(substr($other->first_name ?? '', 0, 1).substr($other->last_name ?? '', 0, 1));
+                }
 
-        $avatar = $other?->userDetail && filled($other->userDetail->avatar)
-            ? asset($other->userDetail->avatar)
-            : asset('design/images/icons/avatar.jpg');
+                $avatar = $other?->userDetail && filled($other->userDetail->avatar)
+                    ? asset($other->userDetail->avatar)
+                    : asset('design/images/icons/avatar.jpg');
 
+                $bookings = $group
+                    ->map(fn (ChatChannel $channel) => $this->formatBookingThread($channel))
+                    ->sort(function (array $a, array $b) {
+                        if ($a['can_chat'] !== $b['can_chat']) {
+                            return $b['can_chat'] <=> $a['can_chat'];
+                        }
+
+                        $dateCompare = strcmp((string) ($a['date_sort'] ?? ''), (string) ($b['date_sort'] ?? ''));
+                        if ($dateCompare !== 0) {
+                            return $dateCompare;
+                        }
+
+                        return $b['booking_id'] <=> $a['booking_id'];
+                    })
+                    ->values()
+                    ->all();
+
+                return [
+                    'client_user_id' => $first->client_user_id,
+                    'artist_user_id' => $first->artist_user_id,
+                    'other_party' => [
+                        'id' => $other?->id,
+                        'name' => $other ? trim($other->first_name.' '.$other->last_name) : 'Unknown',
+                        'initials' => $initials ?: '?',
+                        'avatar' => $avatar,
+                        'role' => $other?->role,
+                    ],
+                    'bookings' => $bookings,
+                ];
+            })
+            ->values();
+    }
+
+    private function formatBookingThread(ChatChannel $channel): array
+    {
+        $booking = $channel->booking;
         $bookingDate = null;
+        $dateSort = '';
+
         if ($booking?->booking_date) {
-            $bookingDate = Carbon::parse($booking->booking_date)->format('M j, Y');
+            $parsed = Carbon::parse($booking->booking_date);
+            $bookingDate = $parsed->format('M j, Y');
+            $dateSort = $parsed->format('Y-m-d');
         }
 
         return [
+            'booking_id' => $booking?->id ?? $channel->booking_id,
+            'reference' => $booking?->referenceLabel() ?? ('Booking #'.$channel->booking_id),
+            'title' => $booking?->displayTitle() ?? 'Booking',
+            'date' => $bookingDate,
+            'date_sort' => $dateSort,
+            'status' => $booking?->status,
             'stream_channel_id' => $channel->stream_channel_id,
+            'can_chat' => $channel->isChatAllowed(),
             'client_user_id' => $channel->client_user_id,
             'artist_user_id' => $channel->artist_user_id,
-            'can_chat' => $channel->isChatAllowed(),
-            'other_party' => [
-                'id' => $other?->id,
-                'name' => $other ? trim($other->first_name.' '.$other->last_name) : 'Unknown',
-                'initials' => $initials ?: '?',
-                'avatar' => $avatar,
-                'role' => $other?->role,
-            ],
-            'booking' => $booking ? [
-                'id' => $booking->id,
-                'title' => $booking->displayTitle(),
-                'date' => $bookingDate,
-                'status' => $booking->status,
-            ] : null,
         ];
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>|null>  $conversations
+     * @return array<int, array<string, mixed>>
+     */
+    private function flattenBookingThreads(Collection $conversations): array
+    {
+        $threads = [];
+
+        foreach ($conversations as $conversation) {
+            if (! is_array($conversation)) {
+                continue;
+            }
+
+            foreach ($conversation['bookings'] ?? [] as $booking) {
+                $threads[] = array_merge($booking, [
+                    'other_party' => $conversation['other_party'] ?? null,
+                    'booking' => [
+                        'id' => $booking['booking_id'],
+                        'reference' => $booking['reference'],
+                        'title' => $booking['title'],
+                        'date' => $booking['date'],
+                        'status' => $booking['status'],
+                    ],
+                ]);
+            }
+        }
+
+        return $threads;
     }
 }

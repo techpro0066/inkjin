@@ -198,6 +198,29 @@ class Booking extends Model
         return $this->booking_type === 'custom' || $this->tattoo_id === null;
     }
 
+    public function isCustomRequestBooking(): bool
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+
+        if (($details['custom_request_id'] ?? null) !== null) {
+            return true;
+        }
+
+        return $this->booking_type === 'custom' && $this->tattoo_id === null;
+    }
+
+    public function referenceLabel(): string
+    {
+        if ($this->isCustomRequestBooking()) {
+            $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+            $id = (int) ($details['custom_request_id'] ?? $this->id);
+
+            return 'INK-CR-'.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+        }
+
+        return 'INK-FL-'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
+    }
+
     public function displayTitle(): string
     {
         if ($this->tattoo) {
@@ -219,6 +242,42 @@ class Booking extends Model
         $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
 
         return max(0, (float) ($details['estimated_price'] ?? 0));
+    }
+
+    /**
+     * @return array{min: float, max: float}
+     */
+    public function estimatedBalanceRange(): array
+    {
+        $deposit = (float) ($this->deposit_amount ?? 0);
+
+        if ($this->tattoo) {
+            $minPrice = (float) ($this->tattoo->min_price ?? 0);
+            $maxPrice = (float) ($this->tattoo->max_price ?? 0);
+
+            return [
+                'min' => max(0, round($minPrice - $deposit, 2)),
+                'max' => max(0, round($maxPrice - $deposit, 2)),
+            ];
+        }
+
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $price = max(0, (float) ($details['estimated_price'] ?? 0));
+        $balance = max(0, round($price - $deposit, 2));
+
+        return ['min' => $balance, 'max' => $balance];
+    }
+
+    public function estimatedBalanceLabel(): string
+    {
+        $range = $this->estimatedBalanceRange();
+        $format = static fn (float $amount): string => '€'.number_format($amount, 2);
+
+        if ($range['min'] === $range['max']) {
+            return $format($range['min']);
+        }
+
+        return $format($range['min']).' - '.$format($range['max']);
     }
 
     public function remainingBalanceAmount(): float

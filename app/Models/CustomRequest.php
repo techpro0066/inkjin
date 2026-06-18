@@ -92,7 +92,7 @@ class CustomRequest extends Model
     public function filterStatusLabel(): string
     {
         return match ($this->status) {
-            'confirmed' => 'Confirmed',
+            'confirmed' => 'Quote sent',
             'cancelled' => 'Declined',
             'moved_to_booking' => 'Moved to booking',
             default => 'New Request',
@@ -114,7 +114,7 @@ class CustomRequest extends Model
         }
 
         if ($this->isConfirmedForUser()) {
-            return 'Quote received';
+            return 'Quote sent';
         }
 
         return 'Pending review';

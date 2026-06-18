@@ -141,7 +141,7 @@
     <div class="flex flex-wrap gap-2 mb-6 filter-pills" id="designFilterPills">
       <button type="button" class="filter-pill active text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30" data-status="all" onclick="filterByStatus('all', this)">All</button>
       <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="pending" onclick="filterByStatus('pending', this)">Pending</button>
-      <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterByStatus('confirmed', this)">Confirmed</button>
+      <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterByStatus('confirmed', this)">Dates sent</button>
       <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="declined" onclick="filterByStatus('declined', this)">Declined</button>
     </div>
 
@@ -181,7 +181,7 @@
       <div class="flex flex-wrap gap-2 mb-6 filter-pills" id="customFilterPills">
         <button type="button" class="filter-pill active text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30" data-status="all" onclick="filterCustomByStatus('all', this)">All</button>
         <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="pending" onclick="filterCustomByStatus('pending', this)">Pending</button>
-        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterCustomByStatus('confirmed', this)">Quoted</button>
+        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterCustomByStatus('confirmed', this)">Quote sent</button>
         <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="declined" onclick="filterCustomByStatus('declined', this)">Declined</button>
       </div>
 

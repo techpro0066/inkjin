@@ -20,7 +20,7 @@
       <a href="{{ route('artist.requests.index') }}" class="nav-item {{ request()->routeIs('artist.requests.index') || request()->routeIs('artist.custom-requests.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">edit_note</span> Requests
       </a>
-      <a href="#" class="nav-item">
+      <a href="{{ route('artist.payments.index') }}" class="nav-item {{ request()->routeIs('artist.payments.*') ? 'active' : '' }}">
         <span class="material-symbols-outlined">payments</span> Payments
       </a>
       <a href="{{ route('artist.forms.index') }}" class="nav-item {{ request()->routeIs('personal-page.index') || request()->routeIs('artist.forms.index') || request()->routeIs('portfolio.index')  || request()->routeIs('artist-designs.index') ? 'active' : '' }}">
@@ -30,7 +30,7 @@
         <span class="material-symbols-outlined">mail</span> Inbox
         <span id="inboxUnreadDot" class="nav-inbox-unread-dot hidden ml-auto flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none" aria-hidden="true"></span>
       </a>
-      <a href="#" class="nav-item">
+      <a href="{{ route('artist.clients.index') }}" class="nav-item {{ request()->routeIs('artist.clients.*') ? 'active' : '' }}">
         <span class="material-symbols-outlined">group</span> Clients
       </a>
       <a href="{{ route('profile.edit') }}" class="nav-item {{ request()->routeIs('profile.edit') || request()->routeIs('settings.*') ? 'active' : '' }}">

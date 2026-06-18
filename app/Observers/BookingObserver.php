@@ -22,9 +22,6 @@ class BookingObserver
             return;
         }
 
-        $this->streamChat->syncChannelForPair(
-            (int) $booking->user_id,
-            (int) $booking->artist_user_id
-        );
+        $this->streamChat->syncChannelForBooking($booking);
     }
 }

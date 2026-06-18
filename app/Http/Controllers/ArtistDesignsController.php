@@ -31,7 +31,18 @@ class ArtistDesignsController extends Controller
 
     private function sessionDurations(): array
     {
-        return ['30min', '1h', '2h', '3h', '4h'];
+        return ['30min', '1h', '2h', '3h', '4h', '6h', '8h'];
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function normalizedSessionCounts(Request $request): array
+    {
+        $maxRaw = $request->input('max_sessions');
+        $max = ($maxRaw === null || $maxRaw === '') ? 1 : (int) $maxRaw;
+
+        return [1, max(1, $max)];
     }
 
     private function designRules(bool $requireImage): array
@@ -54,8 +65,7 @@ class ArtistDesignsController extends Controller
             'max_price' => ['required', 'integer', 'min:0', 'gte:min_price'],
             'min_size' => ['required', 'integer', 'min:1'],
             'max_size' => ['required', 'integer', 'min:1', 'gte:min_size'],
-            'min_sessions' => ['required', 'integer', 'min:1'],
-            'max_sessions' => ['required', 'integer', 'min:1', 'gte:min_sessions'],
+            'max_sessions' => ['nullable', 'integer', 'min:1'],
             'session_duration' => ['required', 'string', Rule::in($this->sessionDurations())],
         ];
         $rules['image'] = $requireImage
@@ -116,6 +126,7 @@ class ArtistDesignsController extends Controller
     {
         $validated = $request->validate($this->designRules(true));
         [$other, $tags] = $this->normalizeArrays($validated);
+        [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
         $imagePath = $this->storeUploadedImage($request);
 
         ArtistDesign::create([
@@ -135,8 +146,8 @@ class ArtistDesignsController extends Controller
             'max_price' => $validated['max_price'],
             'min_size' => $validated['min_size'],
             'max_size' => $validated['max_size'],
-            'min_sessions' => $validated['min_sessions'],
-            'max_sessions' => $validated['max_sessions'],
+            'min_sessions' => $minSessions,
+            'max_sessions' => $maxSessions,
             'session_duration' => $validated['session_duration'],
             'slug' => Str::slug($validated['title']),
         ]);
@@ -152,6 +163,7 @@ class ArtistDesignsController extends Controller
         $this->assertOwns($artistDesign);
         $validated = $request->validate($this->designRules(false));
         [$other, $tags] = $this->normalizeArrays($validated);
+        [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
 
         $imagePath = $artistDesign->image;
         if ($request->hasFile('image')) {
@@ -175,8 +187,8 @@ class ArtistDesignsController extends Controller
             'max_price' => $validated['max_price'],
             'min_size' => $validated['min_size'],
             'max_size' => $validated['max_size'],
-            'min_sessions' => $validated['min_sessions'],
-            'max_sessions' => $validated['max_sessions'],
+            'min_sessions' => $minSessions,
+            'max_sessions' => $maxSessions,
             'session_duration' => $validated['session_duration'],
             'slug' => Str::slug($validated['title']),
         ]);

@@ -164,8 +164,7 @@
   }
   .artist-slot-block:last-child { margin-bottom: 0; }
   .artist-slot-date,
-  .artist-slot-time-from,
-  .artist-slot-time-to {
+  .artist-slot-time-from {
     width: 100%;
     border: 1px solid rgba(202, 196, 211, 0.45);
     border-radius: 0.75rem;
@@ -173,9 +172,21 @@
     font-size: 0.875rem;
     color: #1c1b21;
   }
+  .artist-slot-time-from {
+    min-width: 7rem;
+    color-scheme: light;
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  .artist-slot-time-from::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+  }
+  .artist-slot-time-from::-webkit-inner-spin-button {
+    display: none;
+  }
   .artist-slot-date.is-invalid,
-  .artist-slot-time-from.is-invalid,
-  .artist-slot-time-to.is-invalid {
+  .artist-slot-time-from.is-invalid {
     border-color: #ba1a1a;
     box-shadow: 0 0 0 2px rgba(186, 26, 26, 0.12);
   }
@@ -221,11 +232,12 @@
     color: #7a7583;
     margin-bottom: 0.25rem;
   }
-  .artist-slot-range-to-label {
-    font-size: 0.75rem;
+  .artist-slot-time-end-hint {
+    font-size: 0.8rem;
     font-weight: 600;
     color: #7a7583;
     padding-bottom: 0.55rem;
+    white-space: nowrap;
   }
   .artist-slots-add-date {
     width: 100%;
@@ -317,7 +329,7 @@
       <div class="flex flex-wrap gap-2">
         <button type="button" onclick="filterByStatus('all')" class="filter-pill active text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="all">All</button>
         <button type="button" onclick="filterByStatus('New Request')" class="filter-pill text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="New Request">New</button>
-        <button type="button" onclick="filterByStatus('Confirmed')" class="filter-pill text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="Confirmed">Confirmed</button>
+        <button type="button" onclick="filterByStatus('Quote sent')" class="filter-pill text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="Quote sent">Quote sent</button>
         <button type="button" onclick="filterByStatus('Declined')" class="filter-pill text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="Declined">Declined</button>
       </div>
     </div>
@@ -667,7 +679,8 @@
   function buildCustomQuoteSessionSlotsPanel() {
     return '<div class="artist-slots-panel artist-slots-panel--session" data-slots-kind="session" data-field-key="artist_session_slots">' +
       '<h4 class="font-bold text-on-surface mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">brush</span> Tattoo session times</h4>' +
-      '<p class="text-sm text-on-surface-variant mb-4">Offer dates and time windows when you can do this tattoo. Not tied to the client\'s preferred dates.</p>' +
+      '<p class="text-sm text-on-surface-variant mb-2">Offer dates and start times when you can do this tattoo. Not tied to the client\'s preferred dates.</p>' +
+      '<p class="text-xs font-semibold text-primary/80 mb-3">End time uses your estimated duration above.</p>' +
       '<div id="sessionSlotsBlocks" class="slots-blocks-container"></div>' +
       '<p id="sessionSlotsError" class="hidden text-sm text-error font-medium mt-2"></p>' +
       '<button type="button" onclick="addSlotDateBlock(\'session\')" class="artist-slots-add-date flex items-center justify-center gap-1"><span class="material-symbols-outlined text-lg">calendar_add_on</span> Add another date</button>' +
@@ -683,33 +696,97 @@
     return h * 60 + m;
   }
 
+  function minutesToTime(totalMinutes) {
+    var mins = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+    var h = Math.floor(mins / 60);
+    var m = mins % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+
+  function addMinutesToTime(timeStr, minutes) {
+    var start = timeToMinutes(timeStr);
+    if (start === null || !minutes || minutes <= 0) return null;
+    var end = start + minutes;
+    if (end >= 24 * 60) return null;
+    return minutesToTime(end);
+  }
+
+  function parseQuoteDurationMinutes(text) {
+    var s = String(text || '').trim();
+    if (!s) return null;
+    var match = s.match(/(\d+(?:\.\d+)?)/);
+    if (!match) return null;
+    return Math.max(60, Math.round(parseFloat(match[1]) * 60));
+  }
+
+  function getCustomQuoteDurationMinutes() {
+    return parseQuoteDurationMinutes(document.getElementById('quoteEstimatedDuration')?.value);
+  }
+
+  function getCustomQuoteDurationLabel() {
+    var text = String(document.getElementById('quoteEstimatedDuration')?.value || '').trim();
+    return text || 'session';
+  }
+
+  function getDurationMinutesForSlotsKind(kind) {
+    return getCustomQuoteDurationMinutes();
+  }
+
+  function syncTimeRowEndHint(row, kind) {
+    if (!row) return;
+    var hint = row.querySelector('.artist-slot-time-end-hint');
+    var from = (row.querySelector('.artist-slot-time-from') || {}).value || '';
+    var duration = getDurationMinutesForSlotsKind(kind);
+    if (!hint) return;
+    if (!from || !duration) {
+      hint.textContent = '';
+      return;
+    }
+    var end = addMinutesToTime(from, duration);
+    hint.textContent = end ? ('→ ' + formatOfferTime(end)) : '→ past midnight';
+  }
+
+  function syncAllTimeRowEndHints(kind) {
+    var container = document.getElementById(kind + 'SlotsBlocks');
+    if (!container) return;
+    container.querySelectorAll('.artist-slot-time-row').forEach(function(row) {
+      syncTimeRowEndHint(row, kind);
+    });
+  }
+
   function rangesOverlap(a, b) {
     return a.start < b.end && b.start < a.end;
   }
 
-  function buildTimeRangeRowHtml(range) {
+  function buildTimeRangeRowHtml(range, kind) {
     range = range || { from: '', to: '' };
+    var from = range.from || '';
+    var endHint = '';
+    if (from) {
+      var duration = getDurationMinutesForSlotsKind(kind);
+      var end = duration ? addMinutesToTime(from, duration) : null;
+      endHint = end ? ('→ ' + formatOfferTime(end)) : (duration ? '→ past midnight' : '');
+    }
     return '<div class="artist-slot-time-row">' +
-      '<div class="artist-slot-time-field"><label>From</label><input type="time" class="artist-slot-time-from" value="' + escapeHtml(range.from || '') + '" onchange="onArtistSlotFieldChange(this)"></div>' +
-      '<span class="artist-slot-range-to-label">to</span>' +
-      '<div class="artist-slot-time-field"><label>To</label><input type="time" class="artist-slot-time-to" value="' + escapeHtml(range.to || '') + '" onchange="onArtistSlotFieldChange(this)"></div>' +
-      '<button type="button" onclick="removeSlotTimeRow(this)" class="w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-outline hover:bg-surface-container-low mb-0.5" title="Remove window"><span class="material-symbols-outlined text-lg">close</span></button>' +
+      '<div class="artist-slot-time-field"><label>Start</label><input type="time" class="artist-slot-time-from" value="' + escapeHtml(from) + '" step="300" onchange="onArtistSlotFieldChange(this)"></div>' +
+      '<span class="artist-slot-time-end-hint">' + escapeHtml(endHint) + '</span>' +
+      '<button type="button" onclick="removeSlotTimeRow(this)" class="w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-outline hover:bg-surface-container-low mb-0.5" title="Remove slot"><span class="material-symbols-outlined text-lg">close</span></button>' +
       '</div>';
   }
 
   function buildSlotBlockHtml(kind, index, minDate, slot) {
     slot = slot || { date: '', ranges: [{ from: '', to: '' }] };
     var ranges = (slot.ranges && slot.ranges.length) ? slot.ranges : [{ from: '', to: '' }];
-    var timeRows = ranges.map(function(r) { return buildTimeRangeRowHtml(r); }).join('');
+    var timeRows = ranges.map(function(r) { return buildTimeRangeRowHtml(r, kind); }).join('');
     return '<div class="artist-slot-block" data-slot-index="' + index + '">' +
       '<div class="flex items-center justify-between mb-2"><p class="text-xs font-bold text-primary uppercase tracking-wider slot-block-label">Session date ' + (index + 1) + '</p>' +
       '<button type="button" onclick="removeSlotDateBlock(\'' + kind + '\', this)" class="text-xs font-semibold text-outline hover:text-error flex items-center gap-0.5"><span class="material-symbols-outlined text-sm">delete</span> Remove</button></div>' +
       '<label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label>' +
       '<input type="date" class="artist-slot-date" min="' + escapeHtml(minDate) + '" value="' + escapeHtml(slot.date || '') + '" onchange="onArtistSlotFieldChange(this)">' +
-      '<p class="text-xs font-semibold text-on-surface-variant mt-3 mb-1">Available time windows (from — to)</p>' +
-      '<p class="text-xs text-on-surface-variant mb-2">Complete every date and time window you add, or remove extras you do not need. Windows on the same date cannot overlap.</p>' +
+      '<p class="text-xs font-semibold text-on-surface-variant mt-3 mb-1">Available start times</p>' +
+      '<p class="text-xs text-on-surface-variant mb-2">End time uses your estimated duration. Multiple start times on the same date cannot overlap.</p>' +
       '<div class="artist-slot-times">' + timeRows + '</div>' +
-      '<button type="button" onclick="addSlotTimeRow(this)" class="mt-2 text-xs font-semibold text-primary hover:text-primary-container flex items-center gap-1"><span class="material-symbols-outlined text-sm">add</span> Add another time window</button>' +
+      '<button type="button" onclick="addSlotTimeRow(this)" class="mt-2 text-xs font-semibold text-primary hover:text-primary-container flex items-center gap-1"><span class="material-symbols-outlined text-sm">add</span> Add another start time</button>' +
       '<p class="artist-slot-block-error hidden text-xs text-error font-medium mt-2" role="alert"></p>' +
       '</div>';
   }
@@ -790,35 +867,35 @@
     return hasDup;
   }
 
-  function validateRangesInBlock(block) {
+  function validateRangesInBlock(block, kind) {
     var ranges = [];
     var rows = block.querySelectorAll('.artist-slot-time-row');
     var messages = [];
-    if (!rows.length) return { ok: false, message: 'Add at least one time window for this date.' };
+    var durationMinutes = getDurationMinutesForSlotsKind(kind);
+    var durationLabel = getCustomQuoteDurationLabel();
+
+    if (!rows.length) return { ok: false, message: 'Add at least one start time for this date.' };
+    if (!durationMinutes) return { ok: false, message: 'Enter estimated duration above first.' };
+
     rows.forEach(function(row, rowIndex) {
       row.classList.remove('is-conflict');
       var fromInput = row.querySelector('.artist-slot-time-from');
-      var toInput = row.querySelector('.artist-slot-time-to');
       fromInput.classList.remove('is-invalid');
-      toInput.classList.remove('is-invalid');
       var from = fromInput.value;
-      var to = toInput.value;
-      var rowLabel = rows.length > 1 ? ('Window ' + (rowIndex + 1) + ': ') : '';
-      if (!from || !to) {
-        if (!from) fromInput.classList.add('is-invalid');
-        if (!to) toInput.classList.add('is-invalid');
-        messages.push(rowLabel + 'enter from and to times, or remove this window.');
-        return;
-      }
-      var start = timeToMinutes(from);
-      var end = timeToMinutes(to);
-      if (start === null || end === null || start >= end) {
+      var rowLabel = rows.length > 1 ? ('Slot ' + (rowIndex + 1) + ': ') : '';
+      if (!from) {
         fromInput.classList.add('is-invalid');
-        toInput.classList.add('is-invalid');
-        messages.push(rowLabel + 'from time must be earlier than to time.');
+        messages.push(rowLabel + 'enter a start time, or remove this slot.');
         return;
       }
-      ranges.push({ start: start, end: end, row: row });
+      var endTime = addMinutesToTime(from, durationMinutes);
+      if (!endTime) {
+        fromInput.classList.add('is-invalid');
+        messages.push(rowLabel + 'start time is too late for a ' + durationLabel + ' session.');
+        return;
+      }
+      ranges.push({ start: timeToMinutes(from), end: timeToMinutes(endTime), row: row });
+      syncTimeRowEndHint(row, kind);
     });
     if (messages.length) return { ok: false, message: messages.join(' ') };
     ranges.sort(function(a, b) { return a.start - b.start; });
@@ -827,36 +904,36 @@
         if (rangesOverlap(ranges[i], ranges[j])) {
           ranges[i].row.classList.add('is-conflict');
           ranges[j].row.classList.add('is-conflict');
-          return { ok: false, message: 'Time windows on this date overlap. Adjust or remove one.' };
+          return { ok: false, message: 'Start times on this date are too close — they would overlap given the ' + durationLabel + ' session length.' };
         }
       }
     }
     return { ok: true, ranges: ranges };
   }
 
-  function validateBlockRequired(block) {
+  function validateBlockRequired(block, kind) {
     var dateInput = block.querySelector('.artist-slot-date');
     var date = dateInput ? dateInput.value : '';
     if (!date) {
       dateInput.classList.add('is-invalid');
       block.classList.add('is-incomplete-block');
-      block.querySelectorAll('.artist-slot-time-from, .artist-slot-time-to').forEach(function(inp) {
+      block.querySelectorAll('.artist-slot-time-from').forEach(function(inp) {
         if (!inp.value) inp.classList.add('is-invalid');
       });
       return { ok: false, message: 'Select a date for this entry, or remove it if you do not need it.', block: block, focusEl: dateInput };
     }
-    var rangeCheck = validateRangesInBlock(block);
+    var rangeCheck = validateRangesInBlock(block, kind);
     if (!rangeCheck.ok) {
       block.classList.add('is-incomplete-block');
-      return { ok: false, message: rangeCheck.message, block: block, focusEl: block.querySelector('.artist-slot-time-from.is-invalid') || block.querySelector('.artist-slot-time-to.is-invalid') || block.querySelector('.artist-slot-time-from') };
+      return { ok: false, message: rangeCheck.message, block: block, focusEl: block.querySelector('.artist-slot-time-from.is-invalid') || block.querySelector('.artist-slot-time-from') };
     }
     return { ok: true, block: block, ranges: rangeCheck.ranges };
   }
 
   function buildSlotsPanelSummaryMessage(failureCount, hasComplete) {
-    if (!hasComplete && failureCount === 0) return 'Add at least one date with complete time windows (from and to).';
-    if (failureCount > 1) return 'Fix ' + failureCount + ' entries — complete every date and time window, or remove extras you do not need.';
-    if (failureCount === 1) return 'Complete the date and all time windows, or remove this entry.';
+    if (!hasComplete && failureCount === 0) return 'Add at least one date with a start time.';
+    if (failureCount > 1) return 'Fix ' + failureCount + ' entries — complete every date and start time, or remove extras you do not need.';
+    if (failureCount === 1) return 'Complete the date and start time, or remove this entry.';
     return '';
   }
 
@@ -879,7 +956,7 @@
     }
     for (var i = 0; i < blocks.length; i++) {
       var block = blocks[i];
-      var check = validateBlockRequired(block);
+      var check = validateBlockRequired(block, kind);
       if (!check.ok) addFailure(check);
       else {
         setBlockInlineError(block, '');
@@ -900,8 +977,8 @@
       if (firstBlock) {
         var dateEl = firstBlock.querySelector('.artist-slot-date');
         if (dateEl) dateEl.classList.add('is-invalid');
-        firstBlock.querySelectorAll('.artist-slot-time-from, .artist-slot-time-to').forEach(function(inp) { inp.classList.add('is-invalid'); });
-        addFailure({ ok: false, message: 'Add at least one date with complete time windows (from and to).', block: firstBlock, focusEl: dateEl });
+        firstBlock.querySelectorAll('.artist-slot-time-from').forEach(function(inp) { inp.classList.add('is-invalid'); });
+        addFailure({ ok: false, message: 'Add at least one date with a start time.', block: firstBlock, focusEl: dateEl });
       }
     }
     if (failures.length || !hasComplete) {
@@ -928,7 +1005,10 @@
   }
 
   function onArtistSlotFieldChange(input) {
-    if (!slotsPanelKindFromEl(input)) return;
+    var kind = slotsPanelKindFromEl(input);
+    if (!kind) return;
+    var row = input.closest('.artist-slot-time-row');
+    if (row) syncTimeRowEndHint(row, kind);
     validateCustomQuoteSessionSlots({ scroll: false });
   }
 
@@ -938,6 +1018,7 @@
     minDate = minDate || todayYmd();
     if (slots && slots.length) {
       container.innerHTML = slots.map(function(slot, i) { return buildSlotBlockHtml(kind, i, minDate, slot); }).join('');
+      syncAllTimeRowEndHints(kind);
       return;
     }
     if (!container.children.length) container.innerHTML = buildSlotBlockHtml(kind, 0, minDate);
@@ -972,7 +1053,7 @@
         block.querySelectorAll('.artist-slot-time-row').forEach(function(row, i) {
           if (i === 0) {
             row.querySelector('.artist-slot-time-from').value = '';
-            row.querySelector('.artist-slot-time-to').value = '';
+            syncTimeRowEndHint(row, kind);
           } else row.remove();
         });
       }
@@ -985,18 +1066,21 @@
   }
 
   function addSlotTimeRow(btn) {
-    var wrap = btn.closest('.artist-slot-block').querySelector('.artist-slot-times');
-    if (!wrap) return;
-    wrap.insertAdjacentHTML('beforeend', buildTimeRangeRowHtml({ from: '', to: '' }));
+    var block = btn.closest('.artist-slot-block');
+    var wrap = block ? block.querySelector('.artist-slot-times') : null;
+    var kind = slotsPanelKindFromEl(btn);
+    if (!wrap || !kind) return;
+    wrap.insertAdjacentHTML('beforeend', buildTimeRangeRowHtml({ from: '', to: '' }, kind));
     onArtistSlotFieldChange(wrap);
   }
 
   function removeSlotTimeRow(btn) {
     var block = btn.closest('.artist-slot-block');
+    var kind = slotsPanelKindFromEl(btn);
     var rows = block.querySelectorAll('.artist-slot-time-row');
     if (rows.length <= 1) {
       rows[0].querySelector('.artist-slot-time-from').value = '';
-      rows[0].querySelector('.artist-slot-time-to').value = '';
+      if (kind) syncTimeRowEndHint(rows[0], kind);
       onArtistSlotFieldChange(rows[0]);
       return;
     }
@@ -1007,14 +1091,16 @@
   function collectSlotsFromPanel(kind) {
     var container = document.getElementById(kind + 'SlotsBlocks');
     if (!container) return [];
+    var durationMinutes = getDurationMinutesForSlotsKind(kind);
     var slots = [];
     container.querySelectorAll('.artist-slot-block').forEach(function(block) {
       var date = (block.querySelector('.artist-slot-date') || {}).value || '';
       var ranges = [];
       block.querySelectorAll('.artist-slot-time-row').forEach(function(row) {
         var from = (row.querySelector('.artist-slot-time-from') || {}).value || '';
-        var to = (row.querySelector('.artist-slot-time-to') || {}).value || '';
-        if (from && to) ranges.push({ from: from, to: to });
+        if (!from || !durationMinutes) return;
+        var to = addMinutesToTime(from, durationMinutes);
+        if (to) ranges.push({ from: from, to: to });
       });
       if (date && ranges.length) slots.push({ date: date, ranges: ranges });
     });
@@ -1198,6 +1284,10 @@
       }
       if (inputEl) inputEl.classList.remove('quote-input-invalid');
       hideQuoteFormGeneralError();
+      if (key === 'estimated_time') {
+        syncAllTimeRowEndHints('session');
+        validateCustomQuoteSessionSlots({ scroll: false });
+      }
     });
   }
 
@@ -1284,7 +1374,7 @@
     if (isManagedCustomRequest(req)) {
       const slotsValidation = validateCustomQuoteSessionSlots({ scroll: true });
       if (!slotsValidation.ok) {
-        showQuoteFormGeneralError(slotsValidation.message || 'Add session dates and time windows.');
+        showQuoteFormGeneralError(slotsValidation.message || 'Add session dates and start times.');
         return;
       }
       payload.artist_session_slots = collectSlotsFromPanel('session');

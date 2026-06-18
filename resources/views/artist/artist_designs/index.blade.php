@@ -202,8 +202,13 @@
               '2h' => '2 hours',
               '3h' => '3 hours',
               '4h' => '4 hours',
+              '6h' => '6 hours',
+              '8h' => '8 hours',
               default => $design->session_duration,
           };
+          $sessionsLabel = (int) $design->max_sessions > 1
+              ? 'Up to '.$design->max_sessions.' sessions'
+              : '1 session';
           $colorLabel = match ($design->color) {
               'color' => 'color',
               'black-grey' => 'black grey',
@@ -259,7 +264,7 @@
             <div class="text-xs text-on-surface-variant space-y-0.5 mb-3">
               <p><span class="font-semibold text-on-surface">Price:</span> €{{ $design->min_price }} — €{{ $design->max_price }}</p>
               <p><span class="font-semibold text-on-surface">Size:</span> {{ $design->min_size }} — {{ $design->max_size }} cm</p>
-              <p><span class="font-semibold text-on-surface">Sessions:</span> {{ $design->min_sessions }}–{{ $design->max_sessions }}, {{ $sessionLabel }} each</p>
+              <p><span class="font-semibold text-on-surface">Sessions:</span> {{ $sessionsLabel }}, {{ $sessionLabel }} each</p>
             </div>
             <div class="flex items-center gap-1 pt-2 mt-1 border-t border-outline-variant/10">
               <button type="button" class="btn-edit-design w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors" title="Edit" data-design-id="{{ $design->id }}"><span class="material-symbols-outlined text-on-surface-variant text-lg">edit</span></button>
@@ -470,20 +475,16 @@
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_size"></p>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="max_size"></p>
             </div>
-            <!-- Number of Sessions -->
-            <div class="design-field-section scroll-mt-6" data-design-field="min_sessions">
-              <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Number of Sessions</label>
-              <div class="flex items-center gap-3">
-                <input type="number" id="designSessionsMin" name="designSessionsMin" placeholder="Min" min="1" class="flex-1 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                <span class="text-on-surface-variant font-medium">—</span>
-                <input type="number" id="designSessionsMax" name="designSessionsMax" placeholder="Max" min="1" class="flex-1 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-              </div>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_sessions"></p>
+            <!-- Max sessions -->
+            <div class="design-field-section scroll-mt-6" data-design-field="max_sessions">
+              <label for="designSessionsMax" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Max sessions</label>
+              <input type="number" id="designSessionsMax" name="designSessionsMax" placeholder="" min="1" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p class="text-xs text-on-surface-variant mt-1.5 italic">Leave blank if this design will be completed in one session</p>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="max_sessions"></p>
             </div>
-            <!-- Session Time -->
+            <!-- Duration -->
             <div class="design-field-section scroll-mt-6" data-design-field="session_duration">
-              <label for="designSessionTime" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Session Time</label>
+              <label for="designSessionTime" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Duration</label>
               <select id="designSessionTime" name="designSessionTime" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
                 <option value="">Select…</option>
                 <option value="30min">30 min</option>
@@ -491,6 +492,8 @@
                 <option value="2h">2 hours</option>
                 <option value="3h">3 hours</option>
                 <option value="4h">4 hours</option>
+                <option value="6h">6 hours</option>
+                <option value="8h">8 hours</option>
               </select>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="session_duration"></p>
             </div>
@@ -698,7 +701,7 @@
         $('#designImage').val('');
       }
 
-      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'primary_style', 'other_styles', 'color', 'tags', 'min_price', 'max_price', 'min_size', 'max_size', 'min_sessions', 'max_sessions', 'session_duration'];
+      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'primary_style', 'other_styles', 'color', 'tags', 'min_price', 'max_price', 'min_size', 'max_size', 'max_sessions', 'session_duration'];
 
       function setDesignFormBanner(msg) {
         var el = document.getElementById('designFormBanner');
@@ -806,8 +809,7 @@
         $('#designPriceMax').val(d.max_price != null ? d.max_price : '');
         $('#size_min').val(d.min_size != null ? d.min_size : '');
         $('#size_max').val(d.max_size != null ? d.max_size : '');
-        $('#designSessionsMin').val(d.min_sessions != null ? d.min_sessions : '');
-        $('#designSessionsMax').val(d.max_sessions != null ? d.max_sessions : '');
+        $('#designSessionsMax').val((d.max_sessions != null && parseInt(d.max_sessions, 10) > 1) ? d.max_sessions : '');
         $('#designSessionTime').val(d.session_duration || '');
         $('#toggleVisibility').toggleClass('active', !!d.is_visible);
         $('#toggleAvailable').toggleClass('active', !!d.is_active);
@@ -948,21 +950,15 @@
         if (!errors.min_size && !errors.max_size && minS > maxS) {
           errors.max_size = 'Maximum size must be greater than or equal to minimum size.';
         }
-        var minSev = $('#designSessionsMin').val();
-        var maxSev = $('#designSessionsMax').val();
-        var minSe = parseInt(minSev, 10);
-        var maxSe = parseInt(maxSev, 10);
-        if (minSev === '' || isNaN(minSe) || minSe < 1) {
-          errors.min_sessions = 'Please enter a minimum of 1 session.';
-        }
-        if (maxSev === '' || isNaN(maxSe) || maxSe < 1) {
-          errors.max_sessions = 'Please enter a maximum of at least 1 session.';
-        }
-        if (!errors.min_sessions && !errors.max_sessions && minSe > maxSe) {
-          errors.max_sessions = 'Maximum sessions must be greater than or equal to minimum sessions.';
+        var maxSev = String($('#designSessionsMax').val() || '').trim();
+        if (maxSev !== '') {
+          var maxSe = parseInt(maxSev, 10);
+          if (isNaN(maxSe) || maxSe < 1) {
+            errors.max_sessions = 'Please enter at least 1 session, or leave blank for a single-session design.';
+          }
         }
         var sessionDur = $('#designSessionTime').val();
-        var allowedDur = ['30min', '1h', '2h', '3h', '4h'];
+        var allowedDur = ['30min', '1h', '2h', '3h', '4h', '6h', '8h'];
         if (!sessionDur) {
           errors.session_duration = 'Please select session time.';
         } else if (allowedDur.indexOf(sessionDur) === -1) {
@@ -1021,7 +1017,6 @@
         $('#designPriceMax').val('');
         $('#size_min').val('');
         $('#size_max').val('');
-        $('#designSessionsMin').val('');
         $('#designSessionsMax').val('');
         $('#designSessionTime').val('');
         $('#toggleVisibility, #toggleAvailable').addClass('active');
@@ -1113,8 +1108,9 @@
         fd.append('max_price', $('#designPriceMax').val());
         fd.append('min_size', $('#size_min').val());
         fd.append('max_size', $('#size_max').val());
-        fd.append('min_sessions', $('#designSessionsMin').val());
-        fd.append('max_sessions', $('#designSessionsMax').val());
+        fd.append('min_sessions', '1');
+        var maxSessionsVal = String($('#designSessionsMax').val() || '').trim();
+        fd.append('max_sessions', maxSessionsVal === '' ? '1' : maxSessionsVal);
         fd.append('session_duration', $('#designSessionTime').val());
         var $btn = $('#btnSaveDesign');
         var btnHtml = $btn.html();

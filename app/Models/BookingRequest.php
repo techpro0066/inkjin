@@ -87,7 +87,8 @@ class BookingRequest extends Model
     public function filterStatusLabel(): string
     {
         return match ($this->status) {
-            'confirmed', 'moved_to_booking' => 'Confirmed',
+            'confirmed' => 'Dates sent',
+            'moved_to_booking' => 'Booked',
             'cancelled' => 'Declined',
             default => 'New Request',
         };
@@ -112,7 +113,7 @@ class BookingRequest extends Model
         }
 
         if ($this->isConfirmedForUser()) {
-            return 'Confirmed';
+            return 'Dates sent';
         }
 
         return 'Pending review';
@@ -452,6 +453,11 @@ class BookingRequest extends Model
         return $minutes;
     }
 
+    public function consultationDurationMinutes(): int
+    {
+        return (int) ($this->artist?->userDetail?->session_duration_minutes ?: 30);
+    }
+
     public static function formatDurationMinutes(int $minutes): string
     {
         $mins = max(0, $minutes);
@@ -738,6 +744,10 @@ class BookingRequest extends Model
             'artistNotesToClient' => $this->artist_notes_to_client,
             'artistSessionSlots' => $this->normalizedArtistSlots($this->artist_session_slots),
             'artistConsultationSlots' => $this->normalizedArtistSlots($this->artist_consultation_slots),
+            'tattooDurationMinutes' => $this->tattooDurationMinutes(),
+            'consultDurationMinutes' => $this->consultationDurationMinutes(),
+            'tattooDurationLabel' => self::formatDurationMinutes($this->tattooDurationMinutes()),
+            'consultDurationLabel' => self::formatDurationMinutes($this->consultationDurationMinutes()),
             'questionsAnswers' => is_array($this->questions_answers) ? array_values($this->questions_answers) : [],
         ];
     }
