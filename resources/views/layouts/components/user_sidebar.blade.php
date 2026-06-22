@@ -23,7 +23,7 @@
         </a>
       </nav>
     </div>
-    <div>
+    <div class="flex-shrink-0 w-full min-w-0">
       <div class="border-t border-white/10 pt-4 mt-4">
         <form method="POST" action="{{ route('logout') }}" class="m-0">
           @csrf
@@ -33,13 +33,13 @@
           </button>
         </form>
       </div>
-      <div class="flex items-center gap-3 mt-4 pt-4 border-t border-white/10">
-        <div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-primary font-bold text-sm">
+      <div class="flex min-w-0 items-center gap-3 mt-4 pt-4 border-t border-white/10">
+        <div class="shrink-0 w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-primary font-bold text-sm overflow-hidden">
           <img src="{{ (Auth::user()->userDetail && Auth::user()->userDetail->avatar != "") ? asset(Auth::user()->userDetail->avatar) : asset('design/images/icons/avatar.jpg') }}" alt="{{ Auth::user()->first_name }}" class="w-full h-full object-cover rounded-full">
         </div>
-        <div>
-          <div class="text-white text-sm font-semibold">{{ Auth::user()->first_name }}</div>
-          <div class="text-white/50 text-xs">{{ Auth::user()->email }}</div>
+        <div class="min-w-0 flex-1">
+          <div class="text-white text-sm font-semibold truncate" title="{{ Auth::user()->first_name }} {{ Auth::user()->last_name }}">{{ Auth::user()->first_name }} {{ Auth::user()->last_name }}</div>
+          <div class="text-white/50 text-xs truncate" title="{{ Auth::user()->email }}">{{ Auth::user()->email }}</div>
         </div>
       </div>
     </div>
