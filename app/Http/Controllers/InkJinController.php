@@ -732,7 +732,21 @@ class InkJinController extends Controller
             'tattoo_slug' => ['required', 'string'],
             'payment_intent_id' => ['required', 'string'],
             'booking_payload' => ['required', 'array'],
+            'booking_payload.email' => ['required', 'email'],
             'booking_payload.phone' => ['nullable', 'string', 'max:50'],
+            'booking_payload.name' => ['nullable', 'string', 'max:255'],
+            'booking_payload.consultation_required' => ['nullable', 'boolean'],
+            'booking_payload.consultation_timing' => ['nullable', 'string', 'in:separate,combined'],
+            'booking_payload.consult_duration_minutes' => ['nullable', 'integer', 'min:1'],
+            'booking_payload.tattoo_duration_minutes' => ['nullable', 'integer', 'min:1'],
+            'booking_payload.questions_answers' => ['nullable', 'array'],
+            'booking_payload.notes' => ['nullable', 'string', 'max:2000'],
+            'booking_payload.date' => ['nullable', 'date'],
+            'booking_payload.time' => ['nullable', 'string', 'max:20'],
+            'booking_payload.tattoo_date' => ['nullable', 'date'],
+            'booking_payload.tattoo_time' => ['nullable', 'string', 'max:20'],
+            'booking_payload.consultation_date' => ['nullable', 'date'],
+            'booking_payload.consultation_time' => ['nullable', 'string', 'max:20'],
         ]);
 
         $payload = $validated['booking_payload'];
