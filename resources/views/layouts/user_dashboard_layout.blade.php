@@ -7,7 +7,7 @@
   <title>@yield('title', 'Dashboard') - {{ config('app.name', 'Inkjin') }}</title>
   <meta name="description" content="Your client dashboard on Inkjin Book & Pay. Manage bookings, messages, and payments.">
   <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
-  <link href="{{ asset('design/css/inkjin_bookpay.css') }}" rel="stylesheet">
+  <link href="{{ asset('design/css/inkjin_main.css') }}" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
