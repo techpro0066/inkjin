@@ -84,20 +84,6 @@
         </p>
     </div>
   </main>
-
-  <!-- Footer Component -->
-  <footer class="py-8 w-full bg-surface text-on-surface-variant text-sm">
-    <div class="text-center px-6">
-      <div class="flex flex-wrap justify-center gap-4 mb-3">
-        <a class="hover:text-primary transition-colors duration-300" href="#">Privacy Policy</a>
-        <span class="text-outline-variant/40">·</span>
-        <a class="hover:text-primary transition-colors duration-300" href="#">Terms of Service</a>
-        <span class="text-outline-variant/40">·</span>
-        <a class="hover:text-primary transition-colors duration-300" href="#">Help Center</a>
-      </div>
-      <div class="text-on-surface-variant/60 font-medium">© 2026 Inkjin. All rights reserved.</div>
-    </div>
-  </footer>
 @endsection
 
 @push('scripts')

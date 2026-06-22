@@ -107,6 +107,21 @@
 
   <body class="bg-background text-on-surface min-h-screen flex flex-col">
     @yield('content')
+    
+
+  <!-- Shared Footer Navigation -->
+  <footer class="py-8 w-full bg-surface text-on-surface-variant text-sm">
+    <div class="text-center px-6">
+      <div class="flex flex-wrap justify-center gap-4 mb-3">
+        <a class="hover:text-primary transition-colors duration-300" href="https://inkjin.com/en/privacy">Privacy Policy</a>
+        <span class="text-outline-variant/40">·</span>
+        <a class="hover:text-primary transition-colors duration-300" href="https://inkjin.com/en/terms">Terms of Service</a>
+        <span class="text-outline-variant/40">·</span>
+        <a class="hover:text-primary transition-colors duration-300" href="https://help.inkjin.com">Help Center</a>
+      </div>
+      <div class="text-on-surface-variant/60 font-medium">© 2026 Inkjin. All rights reserved.</div>
+    </div>
+  </footer>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     @stack('scripts')
   </body>
