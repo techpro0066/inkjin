@@ -129,7 +129,7 @@ class ArtistClientService
 
         $totalSpent = $bookings
             ->where('payment_status', 'paid')
-            ->sum(fn (Booking $b) => (float) $b->total_amount_paid);
+            ->sum(fn (Booking $b) => $this->clientPaidToArtistAmount($b));
 
         $status = $this->resolveStatus($bookings);
 
@@ -147,7 +147,7 @@ class ArtistClientService
                 'service' => $b->displayTitle(),
                 'reference' => $b->referenceLabel(),
                 'status' => $this->bookingDisplayStatus($b, $now),
-                'amount' => $b->payment_status === 'paid' ? (float) $b->total_amount_paid : 0.0,
+                'amount' => $this->clientPaidToArtistAmount($b),
             ])
             ->values()
             ->all();
@@ -227,6 +227,15 @@ class ArtistClientService
         $date = $lastCompleted?->booking_date ?? $latest?->booking_date;
 
         return $date ? $date->format('Y-m-d') : '';
+    }
+
+    private function clientPaidToArtistAmount(Booking $booking): float
+    {
+        if ($booking->payment_status !== 'paid') {
+            return 0.0;
+        }
+
+        return max(0, round((float) $booking->total_amount_paid - (float) $booking->platform_fee, 2));
     }
 
     private function initials(string $name): string
