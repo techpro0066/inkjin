@@ -29,6 +29,7 @@ use App\Mail\ManagedBookingRequestMail;
 use App\Mail\UserWelcomeMail;
 use App\Services\CancellationService;
 use App\Models\UserDetail;
+use App\Models\Waitlist;
 use App\Models\Question;
 use App\Models\QuestionSorting;
 use App\Models\UserQuestion;
@@ -1114,6 +1115,50 @@ class InkJinController extends Controller
             'booking_request_id' => $bookingRequest->id,
             'booking_reference' => $bookingRequest->referenceLabel(),
             'post_request_access_url' => $accessUrl,
+        ]);
+    }
+
+    public function submitWaitlist(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'artist_username' => ['required', 'string'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $userDetail = UserDetail::query()
+            ->where('user_name', $validated['artist_username'])
+            ->first();
+
+        if (! $userDetail || ! $userDetail->user || $userDetail->user->role !== 'artist') {
+            return response()->json(['message' => 'Artist not found.'], 404);
+        }
+
+        $email = mb_strtolower(trim($validated['email']));
+        $name = trim($validated['name']);
+
+        $existing = Waitlist::query()
+            ->where('user_id', $userDetail->user_id)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'saved' => true,
+                'message' => 'You are already on the waitlist.',
+            ]);
+        }
+
+        Waitlist::query()->create([
+            'user_id' => $userDetail->user_id,
+            'name' => $name,
+            'email' => $email,
+            'status' => Waitlist::STATUS_PENDING,
+        ]);
+
+        return response()->json([
+            'saved' => true,
+            'message' => 'You have been added to the waitlist.',
         ]);
     }
 }

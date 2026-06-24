@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\Waitlist;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -11,6 +12,7 @@ class ArtistClientService
     /**
      * @return array{
      *     clients: array<int, array<string, mixed>>,
+     *     waitlist: array<int, array<string, mixed>>,
      *     stats: array<string, int|float>
      * }
      */
@@ -48,15 +50,48 @@ class ArtistClientService
         $returning = collect($clients)->filter(fn (array $c) => ($c['totalBookings'] ?? 0) >= 2)->count();
         $returningRate = $total > 0 ? (int) round(($returning / $total) * 100) : 0;
 
+        $waitlist = $this->buildWaitlistForArtist($artistUserId);
+
         return [
             'clients' => $clients,
+            'waitlist' => $waitlist,
             'stats' => [
                 'total' => $total,
                 'active' => $active,
                 'new_this_month' => $newThisMonth,
                 'returning_rate' => $returningRate,
+                'waitlist' => count($waitlist),
             ],
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function buildWaitlistForArtist(int $artistUserId): array
+    {
+        return Waitlist::query()
+            ->where('user_id', $artistUserId)
+            ->where('status', Waitlist::STATUS_PENDING)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (Waitlist $entry) {
+                $statusKey = (string) ($entry->status ?? Waitlist::STATUS_PENDING);
+
+                return [
+                    'id' => $entry->id,
+                    'name' => $entry->name,
+                    'email' => $entry->email,
+                    'initials' => $this->initials($entry->name),
+                    'status' => $statusKey === Waitlist::STATUS_SENT ? 'Notified' : 'Waiting',
+                    'status_key' => $statusKey,
+                    'joined_at' => $entry->created_at?->format('Y-m-d') ?? '',
+                    'joined_at_label' => $entry->created_at?->format('M j, Y') ?? '—',
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -90,14 +125,7 @@ class ArtistClientService
             ->sortByDesc('booking_date')
             ->first();
 
-        $lastSession = '—';
-        if ($upcoming) {
-            $lastSession = 'Upcoming: '.$upcoming->booking_date->format('M j, Y');
-        } elseif ($lastCompleted?->booking_date) {
-            $lastSession = $lastCompleted->booking_date->format('Y-m-d');
-        } elseif ($latest?->booking_date) {
-            $lastSession = $latest->booking_date->format('Y-m-d');
-        }
+        $lastSessionSort = $this->lastSessionSortValue($upcoming, $lastCompleted, $latest);
 
         $totalSpent = $bookings
             ->where('payment_status', 'paid')
@@ -139,8 +167,7 @@ class ArtistClientService
             'totalBookings' => $bookings->count(),
             'completed' => $completed,
             'cancelled' => $cancelled,
-            'lastSession' => $lastSession,
-            'last_session_sort' => $this->lastSessionSortValue($lastSession),
+            'last_session_sort' => $lastSessionSort,
             'totalSpent' => round($totalSpent, 2),
             'status' => $status,
             'firstVisit' => $firstVisit ? $firstVisit->format('Y-m-d') : '—',
@@ -191,17 +218,15 @@ class ArtistClientService
         return ucfirst(str_replace('_', ' ', (string) $booking->status));
     }
 
-    private function lastSessionSortValue(string $lastSession): string
+    private function lastSessionSortValue(?Booking $upcoming, ?Booking $lastCompleted, ?Booking $latest): string
     {
-        if (str_starts_with($lastSession, 'Upcoming')) {
+        if ($upcoming?->booking_date) {
             return '9999-12-31';
         }
 
-        if ($lastSession === '—') {
-            return '';
-        }
+        $date = $lastCompleted?->booking_date ?? $latest?->booking_date;
 
-        return $lastSession;
+        return $date ? $date->format('Y-m-d') : '';
     }
 
     private function initials(string $name): string

@@ -407,6 +407,9 @@
   </div>
 </div>
 
+@include('components.waitlist-notify-modal')
+<script src="{{ asset('js/waitlist-notify.js') }}?v=2"></script>
+
 <script>
   // ── Availability tabs ──
   var AVAILABILITY_TAB_KEY = 'inkjin_availability_tab';
@@ -582,7 +585,22 @@
           if (result.ok && result.data && result.data.success) {
             savedBookingStatus = result.data.availability_status || val;
             applySavedBookingStatusSelection();
-            if (typeof showSaveToast === 'function') showSaveToast();
+            var notify = result.data.waitlist_notify;
+            if (notify && notify.pending_count > 0 && window.InkjinWaitlistNotify && typeof window.InkjinWaitlistNotify.showPrompt === 'function') {
+              window.InkjinWaitlistNotify.showPrompt({
+                pendingCount: notify.pending_count,
+                notifyUrl: notify.notify_url,
+                context: 'books_open',
+                onDismiss: function() {
+                  if (typeof showSaveToast === 'function') showSaveToast();
+                },
+                onSuccess: function() {
+                  if (typeof showSaveToast === 'function') showSaveToast();
+                },
+              });
+            } else if (typeof showSaveToast === 'function') {
+              showSaveToast();
+            }
             return;
           }
           var msg = (result.data && result.data.message) ? result.data.message : 'Could not save booking status.';

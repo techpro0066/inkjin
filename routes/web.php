@@ -261,6 +261,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
 
     Route::get('/chat', [ArtistChatController::class, 'index'])->name('artist.chat.index');
     Route::get('/clients', [ArtistClientsController::class, 'index'])->name('artist.clients.index');
+    Route::post('/clients/waitlist/notify', [ArtistClientsController::class, 'notifyWaitlist'])->name('artist.clients.waitlist.notify');
     Route::get('/payments', [ArtistPaymentsController::class, 'index'])->name('artist.payments.index');
 });
 
@@ -339,4 +340,5 @@ Route::post('/api/public/upload-booking-question-image', [InkJinController::clas
 Route::post('/api/public/create-booking-payment-intent', [InkJinController::class, 'createBookingPaymentIntent'])->name('public.booking.payment_intent.create');
 Route::post('/api/public/confirm-booking-payment', [InkJinController::class, 'confirmBookingAfterPayment'])->name('public.booking.payment.confirm');
 Route::post('/api/public/submit-managed-booking', [InkJinController::class, 'submitManagedBooking'])->name('public.booking.managed.submit');
+Route::post('/api/public/submit-waitlist', [InkJinController::class, 'submitWaitlist'])->name('public.waitlist.submit');
 Route::post('/api/public/submit-custom-request', [CustomRequestController::class, 'submitCustomRequest'])->name('public.custom-request.submit');

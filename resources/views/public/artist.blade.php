@@ -430,18 +430,21 @@
       
       <div id="waitlistFormView">
         <h2 class="text-xl font-bold text-on-surface mb-2">Join the Waitlist</h2>
-        <p class="text-sm text-on-surface-variant mb-6">Enter your name and email to be the first to know when Julian Ink opens their books.</p>
+        <p class="text-sm text-on-surface-variant mb-6">Enter your name and email to be the first to know when {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }} opens their books.</p>
         
-        <form onsubmit="event.preventDefault(); submitWaitlist();" class="flex flex-col gap-4">
+        <form id="waitlistForm" onsubmit="event.preventDefault(); submitWaitlist();" class="flex flex-col gap-4" novalidate>
           <div>
-            <label class="block text-sm font-semibold text-on-surface mb-1">First Name</label>
-            <input type="text" required class="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+            <label for="waitlistName" class="block text-sm font-semibold text-on-surface mb-1">Name</label>
+            <input type="text" id="waitlistName" name="name" autocomplete="name" class="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+            <p id="waitlistNameError" class="hidden text-xs text-error mt-1"></p>
           </div>
           <div>
-            <label class="block text-sm font-semibold text-on-surface mb-1">Email Address</label>
-            <input type="email" required class="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+            <label for="waitlistEmail" class="block text-sm font-semibold text-on-surface mb-1">Email Address</label>
+            <input type="email" id="waitlistEmail" name="email" autocomplete="email" class="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+            <p id="waitlistEmailError" class="hidden text-xs text-error mt-1"></p>
           </div>
-          <button type="submit" class="w-full py-3 mt-2 bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors">
+          <p id="waitlistFormError" class="hidden text-sm text-error"></p>
+          <button type="submit" id="waitlistSubmitBtn" class="w-full py-3 mt-2 bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
             Notify Me
           </button>
         </form>
@@ -450,7 +453,7 @@
       <div id="waitlistSuccessView" class="hidden flex-col items-center text-center py-4">
         <span class="material-symbols-outlined text-6xl text-green-500 mb-4">check_circle</span>
         <h2 class="text-xl font-bold text-on-surface mb-2">You're on the list!</h2>
-        <p class="text-sm text-on-surface-variant mb-6">We'll email you the moment Julian Ink's books open.</p>
+        <p class="text-sm text-on-surface-variant mb-6">We'll email you the moment {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}'s books open.</p>
         <button onclick="closeModal('waitlistModal')" class="w-full py-3 bg-surface-container text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container-high transition-colors">
           Close
         </button>
@@ -463,6 +466,9 @@
   <!-- JAVASCRIPT                                      -->
   <!-- ═══════════════════════════════════════════════ -->
   <script>
+    const waitlistArtistUsername = @json($userDetail->user_name);
+    const csrfToken = @json(csrf_token());
+
     // ── Data ──────────────────────────────────────────
     const portfolio = [
       {
@@ -529,6 +535,49 @@
       modal.classList.add('hidden');
       modal.classList.remove('flex');
       document.body.style.overflow = '';
+      if (id === 'waitlistModal') {
+        resetWaitlistModal();
+      }
+    }
+
+    function resetWaitlistModal() {
+      document.getElementById('waitlistFormView')?.classList.remove('hidden');
+      const successView = document.getElementById('waitlistSuccessView');
+      if (successView) {
+        successView.classList.add('hidden');
+        successView.classList.remove('flex');
+      }
+      const form = document.getElementById('waitlistForm');
+      if (form) form.reset();
+      clearWaitlistErrors();
+      const submitBtn = document.getElementById('waitlistSubmitBtn');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Notify Me';
+      }
+    }
+
+    function clearWaitlistErrors() {
+      ['waitlistNameError', 'waitlistEmailError', 'waitlistFormError'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.textContent = '';
+          el.classList.add('hidden');
+        }
+      });
+      ['waitlistName', 'waitlistEmail'].forEach((id) => {
+        document.getElementById(id)?.classList.remove('border-error');
+      });
+    }
+
+    function showWaitlistFieldError(fieldId, errorId, message) {
+      const field = document.getElementById(fieldId);
+      const error = document.getElementById(errorId);
+      if (field) field.classList.add('border-error');
+      if (error) {
+        error.textContent = message;
+        error.classList.remove('hidden');
+      }
     }
 
     // ── Portfolio Detail Modal ────────────────────────
@@ -556,10 +605,89 @@
     });
 
     // ── Waitlist Submit ───────────────────────────────
-    function submitWaitlist() {
-      document.getElementById('waitlistFormView').classList.add('hidden');
-      document.getElementById('waitlistSuccessView').classList.remove('hidden');
-      document.getElementById('waitlistSuccessView').classList.add('flex');
+    async function submitWaitlist() {
+      clearWaitlistErrors();
+
+      const name = String(document.getElementById('waitlistName')?.value || '').trim();
+      const email = String(document.getElementById('waitlistEmail')?.value || '').trim();
+      let hasError = false;
+
+      if (!name) {
+        showWaitlistFieldError('waitlistName', 'waitlistNameError', 'Please enter your name.');
+        hasError = true;
+      }
+
+      if (!email) {
+        showWaitlistFieldError('waitlistEmail', 'waitlistEmailError', 'Please enter your email address.');
+        hasError = true;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showWaitlistFieldError('waitlistEmail', 'waitlistEmailError', 'Please enter a valid email address.');
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      const submitBtn = document.getElementById('waitlistSubmitBtn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+      }
+
+      try {
+        const response = await fetch('/api/public/submit-waitlist', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+          },
+          body: JSON.stringify({
+            artist_username: waitlistArtistUsername,
+            name: name,
+            email: email,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (response.status === 422 && data.errors) {
+            if (data.errors.name) {
+              showWaitlistFieldError('waitlistName', 'waitlistNameError', data.errors.name[0]);
+            }
+            if (data.errors.email) {
+              showWaitlistFieldError('waitlistEmail', 'waitlistEmailError', data.errors.email[0]);
+            }
+            const formError = document.getElementById('waitlistFormError');
+            if (formError && data.message && !data.errors.name && !data.errors.email) {
+              formError.textContent = data.message;
+              formError.classList.remove('hidden');
+            }
+          } else {
+            const formError = document.getElementById('waitlistFormError');
+            if (formError) {
+              formError.textContent = (data && data.message) || 'Unable to join the waitlist. Please try again.';
+              formError.classList.remove('hidden');
+            }
+          }
+          return;
+        }
+
+        document.getElementById('waitlistFormView').classList.add('hidden');
+        document.getElementById('waitlistSuccessView').classList.remove('hidden');
+        document.getElementById('waitlistSuccessView').classList.add('flex');
+      } catch (err) {
+        const formError = document.getElementById('waitlistFormError');
+        if (formError) {
+          formError.textContent = 'Unable to join the waitlist. Please try again.';
+          formError.classList.remove('hidden');
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Notify Me';
+        }
+      }
     }
 
     // ── Deep Linking (Hash + Query Params) ────────────

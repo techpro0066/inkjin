@@ -18,6 +18,11 @@
   .action-btn:hover { background: #f8f1fb; }
   .detail-panel { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
   .detail-panel.open { max-height: 2000px; }
+  .clients-tab-btn { transition: color 0.2s, border-color 0.2s; }
+  .status-waiting { background: #fffbeb; color: #b45309; }
+  .status-waiting .status-dot { background: #f59e0b; }
+  .status-notified { background: #f0fdf4; color: #15803d; }
+  .status-notified .status-dot { background: #22c55e; }
 </style>
 @endsection
 
@@ -73,6 +78,19 @@
       </div>
     </div>
 
+    <div class="flex gap-1 border-b border-outline-variant/20 mb-6 overflow-x-auto">
+      <button type="button" id="clientsTabClients" data-clients-tab="clients" class="clients-tab-btn shrink-0 px-5 py-3.5 text-sm font-semibold border-b-2 border-primary text-primary whitespace-nowrap">
+        Clients
+      </button>
+      <button type="button" id="clientsTabWaitlist" data-clients-tab="waitlist" class="clients-tab-btn shrink-0 px-5 py-3.5 text-sm font-semibold border-b-2 border-transparent text-on-surface-variant hover:text-on-surface whitespace-nowrap">
+        Waitlist
+        @if(($stats['waitlist'] ?? 0) > 0)
+          <span class="ml-1.5 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold">{{ $stats['waitlist'] }}</span>
+        @endif
+      </button>
+    </div>
+
+    <div id="clientsTabPanel">
     <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="lg:col-span-2">
@@ -111,7 +129,6 @@
               <th class="text-left px-6 py-3 font-semibold">Email</th>
               <th class="text-left px-6 py-3 font-semibold">Phone</th>
               <th class="text-left px-6 py-3 font-semibold">Bookings</th>
-              <th class="text-left px-6 py-3 font-semibold">Last Session</th>
               <th class="text-left px-6 py-3 font-semibold">Total Spent</th>
               <th class="text-left px-6 py-3 font-semibold">Status</th>
               <th class="text-left px-6 py-3 font-semibold">Actions</th>
@@ -125,9 +142,57 @@
         No clients match your search yet.
       </div>
     </div>
+    </div>
+
+    <div id="waitlistTabPanel" class="hidden">
+      @if($showWaitlistNotifyButton ?? false)
+      <div id="waitlistNotifyBar" class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <p class="text-sm text-on-surface-variant">Your books are open. Notify waitlist subscribers that they can book now.</p>
+        <button type="button" id="waitlistNotifyBtn" class="inline-flex items-center justify-center gap-2 shrink-0 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-lg">mail</span>
+          Send email
+        </button>
+      </div>
+      <p id="waitlistNotifyMessage" class="hidden mb-4 text-sm rounded-xl px-4 py-3"></p>
+      @endif
+
+      <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1.5" for="waitlistSearchInput">Search</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+              <input type="text" id="waitlistSearchInput" placeholder="Search by name or email..." class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-6 overflow-hidden">
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-surface-container-low/50 text-on-surface-variant text-xs uppercase tracking-wider">
+                <th class="text-left px-6 py-3 font-semibold">Name</th>
+                <th class="text-left px-6 py-3 font-semibold">Email</th>
+                <th class="text-left px-6 py-3 font-semibold">Joined</th>
+                <th class="text-left px-6 py-3 font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant/10" id="waitlistBody"></tbody>
+          </table>
+        </div>
+        <div class="md:hidden divide-y divide-outline-variant/10" id="waitlistMobile"></div>
+        <div id="waitlistEmpty" class="hidden p-12 text-center text-sm text-on-surface-variant">
+          No one on your waitlist yet.
+        </div>
+      </div>
+    </div>
 
   </div>
 </main>
+
+@include('components.waitlist-notify-modal')
 
 <div id="saveToast" class="fixed top-6 right-6 z-50 transform translate-x-full opacity-0 transition-all duration-300 pointer-events-none">
   <div class="flex items-center gap-3 bg-on-surface text-white px-5 py-3 rounded-xl shadow-lg">
@@ -138,7 +203,10 @@
 
 <script>
   window.inkjinArtistClients = @json($clients);
+  window.inkjinArtistWaitlist = @json($waitlist);
   window.inkjinCurrencySymbol = @json($currencySymbol);
+  window.inkjinWaitlistNotifyUrl = @json(route('artist.clients.waitlist.notify'));
 </script>
-<script src="{{ asset('js/artist-clients.js') }}?v=1"></script>
+<script src="{{ asset('js/waitlist-notify.js') }}?v=2"></script>
+<script src="{{ asset('js/artist-clients.js') }}?v=7"></script>
 @endsection

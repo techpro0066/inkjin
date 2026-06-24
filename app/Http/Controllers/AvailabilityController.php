@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Availability;
 use App\Models\AvailabilityOverride;
 use App\Models\UserDetail;
+use App\Models\Waitlist;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -139,14 +140,35 @@ class AvailabilityController extends Controller
             ], 422);
         }
 
+        $previousStatus = (string) ($userDetail->availability_status ?? '');
+
         $userDetail->update([
             'availability_status' => $request->availability_status,
         ]);
 
+        $newStatus = (string) $userDetail->fresh()->availability_status;
+        $openedBooks = $previousStatus === 'closed' && $newStatus !== 'closed';
+
+        $waitlistNotify = null;
+        if ($openedBooks) {
+            $pendingCount = Waitlist::query()
+                ->where('user_id', $user->id)
+                ->where('status', Waitlist::STATUS_PENDING)
+                ->count();
+
+            if ($pendingCount > 0) {
+                $waitlistNotify = [
+                    'pending_count' => $pendingCount,
+                    'notify_url' => route('artist.clients.waitlist.notify'),
+                ];
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Booking status saved successfully.',
-            'availability_status' => $userDetail->fresh()->availability_status,
+            'availability_status' => $newStatus,
+            'waitlist_notify' => $waitlistNotify,
         ]);
     }
 
