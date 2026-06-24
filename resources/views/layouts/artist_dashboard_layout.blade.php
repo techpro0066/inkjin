@@ -7,7 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="Your artist dashboard on Inkjin Book & Pay. Manage bookings, payments, and content.">
     <link rel="icon" href="{{ asset('assets/img/favicon/favicon.png') }}">
-    <link href="{{ asset('assets/css/bookpay.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/design/css/inkjin_main.css') }}" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -79,7 +79,7 @@
   <!-- end of common js -->
   <!-- start of common css -->
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     /* Sidebar */
     
@@ -88,8 +88,16 @@
 
     .sidebar { width: 260px; min-height: 100vh; overflow-y: auto; }
     @media (max-width: 1023px) { .sidebar { width: 100vw; height: 100vh; min-height: 100vh; } }
-    @media (min-width: 1024px) { .sidebar { display: flex !important; } .main-content { margin-left: 260px; } }
-    @media (max-width: 1023px) { .main-content {  padding-top: 70px; } }
+    .main-content { min-width: 0; width: 100%; max-width: 100%; overflow-x: hidden; }
+    @media (min-width: 1024px) {
+      .sidebar { display: flex !important; }
+      .main-content {
+        margin-left: 260px;
+        width: calc(100vw - 260px);
+        max-width: calc(100vw - 260px);
+      }
+    }
+    @media (max-width: 1023px) { .main-content { padding-top: 70px; } }
     .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); transition: all 0.2s; cursor: pointer; text-decoration: none; }
     .nav-item:hover { background: rgba(255,255,255,0.1); }
     .nav-item.active { background: #ffffff; color: #310f7a; font-weight: 600; }

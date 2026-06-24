@@ -23,12 +23,22 @@
   .status-waiting .status-dot { background: #f59e0b; }
   .status-notified { background: #f0fdf4; color: #15803d; }
   .status-notified .status-dot { background: #22c55e; }
+  .clients-table-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .clients-table-scroll table { min-width: 720px; }
+  @media (max-width: 1023px) {
+    .main-content { padding: 16px; padding-top: 70px; }
+  }
 </style>
 @endsection
 
 @section('content')
-<main class="main-content flex-1 min-h-screen">
-  <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
+<main class="main-content flex-1 min-h-screen min-w-0 w-full">
+  <div class="p-6 md:p-10 lg:p-12 max-w-6xl w-full min-w-0 mx-auto">
 
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
@@ -120,8 +130,8 @@
       </div>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-6 overflow-hidden">
-      <div class="hidden md:block overflow-x-auto">
+    <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-6 overflow-hidden min-w-0">
+      <div class="hidden md:block clients-table-scroll">
         <table class="w-full text-sm">
           <thead id="clientsThead">
             <tr class="bg-surface-container-low/50 text-on-surface-variant text-xs uppercase tracking-wider">
@@ -168,8 +178,8 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-6 overflow-hidden">
-        <div class="hidden md:block overflow-x-auto">
+      <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-6 overflow-hidden min-w-0">
+        <div class="hidden md:block clients-table-scroll">
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-surface-container-low/50 text-on-surface-variant text-xs uppercase tracking-wider">
