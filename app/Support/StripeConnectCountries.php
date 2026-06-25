@@ -16,7 +16,7 @@ class StripeConnectCountries
     private const REGISTRATION_COUNTRY_CODES = [
         'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR',
         'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK',
-        'SI', 'ES', 'SE', 'NO', 'CH', 'GB', 'US',
+        'SI', 'ES', 'SE', 'NO', 'CH', 'GB', 'US', 'CA', 'AU', 'NZ', 'SG',
     ];
 
     /**
@@ -50,17 +50,17 @@ class StripeConnectCountries
      */
     public static function registrationCountriesForSelect(): array
     {
-        $supported = self::supported();
         $items = [];
 
         foreach (self::REGISTRATION_COUNTRY_CODES as $code) {
-            if (! isset($supported[$code])) {
+            $meta = self::metaForCode($code);
+            if ($meta === null) {
                 continue;
             }
 
             $items[] = [
                 'code' => $code,
-                'name' => $supported[$code]['name'],
+                'name' => $meta['name'],
             ];
         }
 
@@ -76,17 +76,17 @@ class StripeConnectCountries
 
     public static function isSupported(string $countryCode): bool
     {
-        return isset(self::supported()[strtoupper($countryCode)]);
+        return self::metaForCode($countryCode) !== null;
     }
 
     public static function nameFor(string $countryCode): ?string
     {
-        return self::supported()[strtoupper($countryCode)]['name'] ?? null;
+        return self::metaForCode($countryCode)['name'] ?? null;
     }
 
     public static function currencyForCountry(string $countryCode): ?string
     {
-        $currency = self::supported()[strtoupper($countryCode)]['currency'] ?? null;
+        $currency = self::metaForCode($countryCode)['currency'] ?? null;
 
         return $currency ? strtoupper($currency) : null;
     }
@@ -186,6 +186,32 @@ class StripeConnectCountries
         $userDetail->currency = $expected;
 
         return ['updated' => true, 'currency' => $expected, 'previous' => $previous];
+    }
+
+    /**
+     * @return array{name: string, currency: string}|null
+     */
+    private static function metaForCode(string $countryCode): ?array
+    {
+        $code = strtoupper(trim($countryCode));
+        if ($code === '') {
+            return null;
+        }
+
+        $supported = self::supported();
+        if (isset($supported[$code])) {
+            return $supported[$code];
+        }
+
+        $config = config('stripe_connect_countries.supported.'.$code);
+        if (! is_array($config) || empty($config['name']) || empty($config['currency'])) {
+            return null;
+        }
+
+        return [
+            'name' => (string) $config['name'],
+            'currency' => strtoupper((string) $config['currency']),
+        ];
     }
 
     /**
