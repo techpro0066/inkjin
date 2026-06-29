@@ -72,6 +72,9 @@ class Booking extends Model
         'reschedule_status',
         'reschedule_requested_by',
         'pay_artist',
+        'payment_provider',
+        'viva_order_code',
+        'viva_transaction_id',
     ];
 
     protected $casts = [

@@ -1,0 +1,726 @@
+InkJin — Viva.com IRIS QR Payment & Artist Payout — Implementation Guide
+==========================================================================
+Date: June 2026
+Audience: Developers implementing Greek IRIS checkout + payout on InkJin
+
+This document is the step-by-step build guide. For product context and Viva API
+reference notes, also see: docs/iris-viva-qr-payment-greece.txt
+
+
+================================================================================
+1. WHAT WE ARE BUILDING
+================================================================================
+
+PRODUCT
+  Greek artists (payout_bank_country = GR) get dual checkout on booking payment:
+
+    [ Card ]     → Stripe PaymentIntent (existing — unchanged)
+    [ IRIS QR ]  → Viva Smart Checkout URL encoded as QR; client scans with
+                   Greek banking app (Piraeus, NBG, Alpha, Eurobank, etc.)
+
+  Non-Greek artists: Stripe card only.
+
+  IRIS tab rules (UX — already live):
+    - QR only on page. No "Open payment page" link, no redirect button.
+    - User picks ONE method. Card and IRIS are separate sessions.
+    - IRIS confirmation is async (webhook + polling). Can take minutes.
+
+PAYOUT (artist receives money)
+  Today InkJin pays artists via Stripe Connect (ArtistPayoutService) after the
+  cancellation window, using payment_intent_id on bookings.
+
+  When client pays via IRIS:
+    - Money lands in Viva (InkJin platform wallet OR artist connected account)
+    - Artist payout must use a Viva path — NOT Stripe transfer
+
+  Three payout models (pick one before Phase 4):
+
+    MVP (fastest)
+      InkJin Viva platform account collects all IRIS payments.
+      After cancellation window → manual bank transfer OR batch payout to artist IBAN.
+      Good for launch / smoke tests. Not scalable.
+
+    Recommended (production)
+      Viva Marketplace API — onboard each Greek artist as connected seller.
+      Split commission at payment time (like Stripe Connect).
+      ArtistPayoutService branches on payment_provider.
+
+    Per-artist merchant (heavy)
+      Each artist has own Viva merchant account + sourceCode.
+      InkJin only facilitates QR creation. Artist manages settlement.
+      Highest onboarding friction.
+
+
+================================================================================
+2. CURRENT CODEBASE STATE (June 2026)
+================================================================================
+
+DONE — UI shell
+  app/Support/PaymentMethods.php
+    showIrisTab() → true when artist payout_bank_country === 'GR'
+
+  Partials (shared):
+    resources/views/partials/checkout-payment-tabs.blade.php
+    resources/views/partials/checkout-payment-tabs-script.blade.php
+    resources/views/partials/checkout-iris-panel.blade.php   ← placeholder text
+
+  Payment pages with Card | IRIS tabs (IRIS = "coming soon"):
+    resources/views/public/book.blade.php
+    resources/views/user/requests/payment.blade.php
+    resources/views/user/custom-requests/payment.blade.php
+
+  Controllers passing showIrisTab:
+    InkJinController::bookTattoo
+    UserController\RequestsController::payment
+    UserController\CustomRequestsController::payment
+
+NOT DONE — backend / Viva integration
+  [ ] config/services.php viva block
+  [ ] .env VIVA_* credentials
+  [ ] VivaPaymentsService
+  [ ] pending_viva_payments table + model
+  [ ] Webhook controller
+  [ ] POST .../payment/viva/order endpoints (3 flows)
+  [ ] GET  .../payment/viva/status polling
+  [ ] QR rendering in checkout-iris-panel (qrcode.js)
+  [ ] Shared booking confirmation from Viva webhook
+  [ ] bookings.payment_provider + viva_order_code columns
+  [ ] ArtistPayoutService Viva branch
+  [ ] Greek artist Viva onboarding in settings
+
+
+================================================================================
+3. END-TO-END FLOW (TARGET ARCHITECTURE)
+================================================================================
+
+CLIENT PAYS WITH IRIS QR
+------------------------
+
+  1. Client opens IRIS tab (lazy — do NOT create Viva order until tab clicked)
+  2. Frontend POST → /.../payment/viva/order
+  3. Backend:
+       a. Authorize user + validate booking/request can pay
+       b. Compute amount via BookingCheckoutPricingService (same as Stripe)
+       c. OAuth token from Viva (cached)
+       d. POST /checkout/v2/orders → orderCode
+       e. Insert pending_viva_payments row (status=pending)
+       f. Return checkout_url + order_code + expires_at
+  4. Frontend builds QR from checkout_url:
+       https://www.vivapayments.com/web/checkout?ref={orderCode}&paymentMethod=29
+       paymentMethod=29 = IRIS (Viva constant)
+  5. Client scans QR → bank app → Viva IRIS → pays
+  6. Viva webhook POST → InkJin verifies transaction → creates booking
+  7. Frontend poll GET /.../payment/viva/status every 5s → redirect on paid
+
+ARTIST GETS PAID (after cancellation window)
+--------------------------------------------
+
+  Stripe path (existing):
+    Booking.payment_intent_id → ArtistPayoutService → Stripe Transfer
+
+  Viva path (new):
+    Booking.payment_provider = viva_iris
+    Booking.viva_transaction_id stored at confirm time
+    ArtistPayoutService::processBooking():
+      if payment_provider === 'viva_iris':
+        → VivaMarketplaceService::transferToSeller(...)   [Marketplace]
+        OR mark for manual payout + admin tool            [MVP]
+
+ASCII overview:
+
+  Client                    InkJin                         Viva
+    |                         |                              |
+    |-- IRIS tab opened ----->|                              |
+    |                         |-- OAuth token -------------->|
+    |                         |-- Create order ------------>|
+    |                         |<-- orderCode ----------------|
+    |<-- checkout_url + QR ---|                              |
+    |                                                         |
+    |-- scan QR (phone bank app) ---------------------------->|
+    |                         |<-- webhook (paid) -----------|
+    |                         |-- verify transaction -------->|
+    |                         |-- create Booking              |
+    |<-- poll status=paid ----|                              |
+    |                                                         |
+    ... cancellation window passes ...
+    |                         |-- payout artist (Viva) ----->|
+
+
+================================================================================
+4. VIVA ACCOUNT SETUP (OPS — DO FIRST)
+================================================================================
+
+Before writing code:
+
+  1. Register InkJin (or Greek entity) as Viva merchant — Greece.
+     https://www.viva.com/en-eu/signup
+
+  2. Settings → API Access:
+       - Client ID
+       - Client Secret
+       - Source Code (4-digit payment source for website)
+       - Merchant ID
+
+  3. Register webhook URL (production):
+       POST https://yourdomain.com/webhooks/viva/transaction-payment-created
+       Event: Transaction Payment Created (1796)
+       Also: Order Updated (4865) for cancellations
+
+  4. Webhook verification (Viva sends GET first):
+       Return JSON with Key from "Retrieve webhook key" API.
+
+  5. For Marketplace payouts — contact Viva sales:
+       https://www.viva.com/en-eu/product/marketplaces
+       IRIS + Marketplace requires production approval.
+
+  6. Greek artists using IRIS must register professional IBAN with AADE:
+       https://www.aade.gr/epaggelmatikos-logariasmos
+
+IMPORTANT LIMITATIONS
+  - IRIS is NOT available in Viva demo/sandbox. Test in production with small amounts.
+  - IRIS is Greece-only (GR merchant, GR bank apps).
+  - Confirmation can take up to ~20 minutes — webhooks are mandatory.
+  - Settlement to IBAN: next business day (StatusId = F).
+
+
+================================================================================
+5. ENVIRONMENT & CONFIG
+================================================================================
+
+.env (add to .env.example):
+
+  VIVA_CLIENT_ID=
+  VIVA_CLIENT_SECRET=
+  VIVA_SOURCE_CODE=        # 4-digit source from Viva dashboard
+  VIVA_MERCHANT_ID=
+  VIVA_WEBHOOK_KEY=        # from Retrieve webhook key API
+
+  # Production (default)
+  VIVA_ACCOUNTS_BASE=https://accounts.vivapayments.com
+  VIVA_API_BASE=https://api.vivapayments.com
+  VIVA_CHECKOUT_BASE=https://www.vivapayments.com
+
+  # Demo (cards only — NOT for IRIS testing)
+  # VIVA_ACCOUNTS_BASE=https://demo-accounts.vivapayments.com
+  # VIVA_API_BASE=https://demo-api.vivapayments.com
+  # VIVA_CHECKOUT_BASE=https://demo.vivapayments.com
+
+config/services.php — add:
+
+  'viva' => [
+      'client_id'       => env('VIVA_CLIENT_ID'),
+      'client_secret'   => env('VIVA_CLIENT_SECRET'),
+      'source_code'     => env('VIVA_SOURCE_CODE'),
+      'merchant_id'     => env('VIVA_MERCHANT_ID'),
+      'webhook_key'     => env('VIVA_WEBHOOK_KEY'),
+      'accounts_base'   => env('VIVA_ACCOUNTS_BASE', 'https://accounts.vivapayments.com'),
+      'api_base'        => env('VIVA_API_BASE', 'https://api.vivapayments.com'),
+      'checkout_base'   => env('VIVA_CHECKOUT_BASE', 'https://www.vivapayments.com'),
+      'iris_payment_method' => 29,
+      'order_timeout_seconds' => 1800,
+      'token_cache_ttl' => 3300,
+  ],
+
+
+================================================================================
+6. PHASE 1 — VivaPaymentsService (backend core)
+================================================================================
+
+Create: app/Services/VivaPaymentsService.php
+
+Responsibilities:
+
+  getAccessToken(): string
+    POST {accounts_base}/connect/token
+    grant_type=client_credentials
+    Authorization: Basic base64(client_id:client_secret)
+    Cache::remember('viva_access_token', token_cache_ttl, ...)
+
+  createPaymentOrder(
+      int $amountCents,
+      string $merchantTrns,
+      array $customer,      // email, fullName, phone, countryCode
+      array $tags = []
+  ): array
+    POST {api_base}/checkout/v2/orders
+    Body:
+      {
+        "amount": 5000,
+        "sourceCode": "{source_code}",
+        "customerTrns": "Deposit — {design title}",
+        "merchantTrns": "inkjin:booking_request:55",
+        "paymentTimeout": 1800,
+        "customer": {
+          "email": "...",
+          "fullName": "...",
+          "phone": "...",
+          "countryCode": "GR",
+          "requestLang": "el-GR"
+        },
+        "tags": ["inkjin", "managed_request", "artist:123"]
+      }
+    Returns: ['order_code' => ..., 'raw' => ...]
+
+  buildIrisCheckoutUrl(int|string $orderCode): string
+    return checkout_base
+      . '/web/checkout?ref=' . $orderCode
+      . '&paymentMethod=29'
+      . '&color=310f7a'
+      . '&lang=el-GR';
+
+  retrieveTransaction(string $transactionId): array
+    GET {api_base}/checkout/v2/transactions/{transactionId}
+
+  retrieveOrder(int|string $orderCode): array
+    GET {api_base}/checkout/v2/orders/{orderCode}
+
+  isTransactionPaid(array $transaction): bool
+    StatusId === 'F' (Finished) AND amount matches pending record
+
+merchantTrns format (idempotency key — unique per checkout attempt):
+  inkjin:public_booking:{session_or_user_id}:{tattoo_slug}
+  inkjin:booking_request:{booking_request_id}
+  inkjin:custom_request:{custom_request_id}
+
+
+================================================================================
+7. PHASE 2 — Database
+================================================================================
+
+Migration: pending_viva_payments
+
+  id                      bigint PK
+  viva_order_code         bigint UNIQUE NOT NULL
+  viva_transaction_id     varchar nullable
+  flow                    varchar  -- public_booking | managed_request | custom_request
+  booking_request_id      bigint nullable FK
+  custom_request_id       bigint nullable FK
+  artist_user_id          bigint NOT NULL
+  client_user_id          bigint nullable   -- null for guest public booking
+  amount_cents            int NOT NULL
+  currency                char(3) default 'EUR'
+  merchant_trns           varchar UNIQUE NOT NULL
+  status                  varchar  -- pending | paid | expired | failed | cancelled
+  metadata                json     -- booking payload for public flow
+  paid_at                 timestamp nullable
+  expires_at              timestamp NOT NULL
+  created_at / updated_at
+
+Migration: bookings — add columns
+
+  payment_provider        varchar(20) default 'stripe'  -- stripe | viva_iris
+  viva_order_code         bigint nullable
+  viva_transaction_id     varchar nullable
+
+Migration: user_details — add (Phase 3 onboarding)
+
+  viva_merchant_id              varchar nullable
+  viva_connected_account_id     varchar nullable
+  viva_onboarding_status        varchar nullable  -- pending | active | restricted
+  viva_source_code              varchar nullable  -- if per-artist source needed
+
+Update PaymentMethods.php (when onboarding exists):
+
+  public static function supportsIrisQr(?UserDetail $artist): bool
+  {
+      return self::isGreekArtist($artist)
+          && $artist->viva_onboarding_status === 'active';
+  }
+
+
+================================================================================
+8. PHASE 3 — API endpoints (one set per checkout flow)
+================================================================================
+
+All routes: auth middleware where applicable, CSRF on POST.
+
+PUBLIC CALENDAR BOOKING (guest, session-verified email)
+  POST /api/public/booking/payment/viva/order
+       Body: artist_username, tattoo_slug, cardholder_name, + booking payload
+       (same fields as confirmBookingAfterPayment — store in metadata json)
+  GET  /api/public/booking/payment/viva/status?order_code=
+
+MANAGED REQUEST (logged-in)
+  POST /user/requests/{bookingRequest}/payment/viva/order
+  GET  /user/requests/{bookingRequest}/payment/viva/status
+
+CUSTOM REQUEST (logged-in)
+  POST /user/custom-requests/{customRequest}/payment/viva/order
+  GET  /user/custom-requests/{customRequest}/payment/viva/status
+
+Controller pattern (example: RequestsController):
+
+  public function createVivaOrder(Request $request, BookingRequest $bookingRequest)
+  {
+      $this->authorizeRequest($bookingRequest);
+      if (!$bookingRequest->canPay()) return 422;
+      if (!PaymentMethods::showIrisTab($artist)) return 422;
+
+      $totals = $this->pricing->checkoutTotals($userDetail, $minPrice);
+      $amountCents = (int) round($totals['total_due'] * 100);
+      if ($amountCents < 30) return 422;  // confirm minimum with Viva
+
+      // Reuse valid pending order if not expired
+      $pending = PendingVivaPayment::query()
+          ->where('booking_request_id', $bookingRequest->id)
+          ->where('status', 'pending')
+          ->where('expires_at', '>', now())
+          ->first();
+
+      if (!$pending) {
+          $merchantTrns = "inkjin:booking_request:{$bookingRequest->id}:" . Str::uuid();
+          $order = $this->viva->createPaymentOrder(...);
+          $pending = PendingVivaPayment::create([...]);
+      }
+
+      return response()->json([
+          'order_code'    => $pending->viva_order_code,
+          'checkout_url'  => $this->viva->buildIrisCheckoutUrl($pending->viva_order_code),
+          'amount_cents'  => $pending->amount_cents,
+          'currency'      => 'eur',
+          'expires_at'    => $pending->expires_at->toIso8601String(),
+      ]);
+  }
+
+  public function vivaPaymentStatus(BookingRequest $bookingRequest, Request $request)
+  {
+      // Check pending row status (updated by webhook) OR call retrieveOrder as fallback
+      return ['status' => 'pending|paid|expired|failed', 'redirect_url' => '...'];
+  }
+
+
+================================================================================
+9. PHASE 4 — Webhook (required)
+================================================================================
+
+Route (no CSRF):
+  Route::post('/webhooks/viva/transaction-payment-created', ...)
+  Route::get('/webhooks/viva/transaction-payment-created', ...)  // verification
+
+Create: app/Http/Controllers/Webhooks/VivaWebhookController.php
+
+  GET  → return ['Key' => config('services.viva.webhook_key')]
+
+  POST → handleTransactionPaymentCreated(Request $request):
+    1. Log payload (redact PII in production logs)
+    2. Extract OrderCode, TransactionId, Amount, StatusId
+    3. Call VivaPaymentsService::retrieveTransaction($transactionId)
+    4. Verify StatusId = 'F' and amount matches pending_viva_payments row
+    5. DB::transaction + lockForUpdate on pending row
+    6. If pending.status already paid → return 200 (idempotent)
+    7. Route by flow → confirm booking:
+
+         public_booking     → InkJinController logic / new BookingPaymentConfirmationService
+         managed_request    → ManagedRequestBookingService::createBookingFromRequest(...)
+         custom_request     → CustomRequestBookingService equivalent
+
+    8. Set booking.payment_provider = 'viva_iris'
+       booking.viva_order_code, viva_transaction_id
+    9. pending.status = paid, paid_at = now()
+    10. Return 200 quickly
+
+Refactor recommendation:
+  app/Services/BookingPaymentConfirmationService.php
+    confirmFromStripePaymentIntent(PaymentIntent $intent, ...)
+    confirmFromVivaPayment(PendingVivaPayment $pending, ...)
+  Avoid duplicating booking creation in 3 controllers + webhook.
+
+
+================================================================================
+10. PHASE 5 — Frontend (replace "coming soon" with real QR)
+================================================================================
+
+Update: resources/views/partials/checkout-iris-panel.blade.php
+
+  Add:
+    <canvas id="irisQrCanvas" class="mx-auto"></canvas>
+    <p id="irisQrStatus">Waiting for payment…</p>
+    <p id="irisQrExpiry" class="text-xs text-on-surface-variant"></p>
+    <button type="button" id="irisQrRegenerate" class="hidden">Regenerate QR</button>
+
+  Load qrcode.js (CDN — same as Viva QR tutorial):
+    https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js
+
+Shared JS (new partial or extend checkout-payment-tabs-script):
+
+  var irisOrderLoaded = false;
+
+  tabIris.addEventListener('click', function () {
+    setActiveTab('iris');
+    if (!irisOrderLoaded) startIrisQrPayment();
+  });
+
+  async function startIrisQrPayment() {
+    var res = await fetch(vivaOrderUrl, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+      body: JSON.stringify({ /* flow-specific fields */ })
+    });
+    var data = await res.json();
+    if (!res.ok) { showError(data.message); return; }
+
+    QRCode.toCanvas(document.getElementById('irisQrCanvas'), data.checkout_url, {
+      width: 260, margin: 2, color: { dark: '#310f7a' }
+    });
+
+    irisOrderLoaded = true;
+    startExpiryCountdown(data.expires_at);
+    pollVivaStatus(data.order_code);
+  }
+
+  function pollVivaStatus(orderCode) {
+    var interval = setInterval(async function () {
+      var res = await fetch(vivaStatusUrl + '?order_code=' + orderCode);
+      var data = await res.json();
+      if (data.status === 'paid') {
+        clearInterval(interval);
+        window.location.href = data.redirect_url;
+      }
+      if (data.status === 'expired' || data.status === 'failed') {
+        clearInterval(interval);
+        document.getElementById('irisQrRegenerate').classList.remove('hidden');
+      }
+    }, 5000);
+    setTimeout(function () { clearInterval(interval); }, 600000);
+  }
+
+Per-page variables to pass from Blade:
+  book.blade.php           → vivaOrderUrl, vivaStatusUrl (public API routes)
+  requests/payment         → route('user.requests.payment.viva.order', ...)
+  custom-requests/payment  → route('user.custom-requests.payment.viva.order', ...)
+
+Policy checkbox:
+  Move agreePolicy inside panelPayCardExtras OR duplicate requirement:
+  IRIS tab should still require policy acceptance before creating order.
+
+
+================================================================================
+11. PHASE 6 — Artist payout via Viva
+================================================================================
+
+Current: app/Services/ArtistPayoutService.php
+  - Finds confirmed bookings with payment_status=paid, pay_artist=false
+  - After cancellation deadline → Stripe transfer using payment_intent_id
+
+Changes for Viva IRIS bookings:
+
+  1. Booking stores payment_provider ('stripe' | 'viva_iris')
+
+  2. processBooking() branch:
+
+     if ($booking->payment_provider === 'viva_iris') {
+         return $this->processVivaBookingPayout($booking);
+     }
+     // existing Stripe path unchanged
+
+  3. MVP processVivaBookingPayout():
+     - Compute amount (same computeArtistPayoutAmount())
+     - Create ArtistPayout with status=pending_manual OR completed after admin marks paid
+     - Set booking.pay_artist = true when marked
+     - Admin dashboard: list IRIS bookings awaiting manual bank transfer
+
+  4. Production processVivaBookingPayout() with Marketplace:
+     - Create app/Services/VivaMarketplaceService.php
+     - transferToConnectedSeller(booking, amountCents, viva_connected_account_id)
+     - Store viva_transfer_id on artist_payouts table (new nullable column)
+     - Mirror Stripe idempotency: artist_payout_booking_{id}
+
+  5. Refunds (CancellationService):
+     - if payment_provider === stripe → existing Stripe refund
+     - if payment_provider === viva_iris → Viva refund API
+     - Store refund id on booking.refund_intent_id or new viva_refund_id column
+
+  6. Artist payments UI (artist/payments):
+     - Show provider badge: Card (Stripe) | IRIS (Viva)
+     - Payout status per provider
+
+
+================================================================================
+12. PHASE 7 — Greek artist Viva onboarding
+================================================================================
+
+Where: resources/views/artist/settings/payment.blade.php
+       resources/views/onboarding/payment.blade.php
+
+When payout_bank_country === 'GR':
+
+  Section: "Receive IRIS payments"
+    - Explain: clients can pay via Greek bank app QR
+    - Requirement: AADE professional account IBAN
+    - Button: "Connect Viva account" → Marketplace onboarding flow
+
+  Store on user_details:
+    viva_connected_account_id
+    viva_onboarding_status (pending | active | restricted)
+
+  Until viva_onboarding_status === 'active':
+    Option A: hide IRIS tab (strict — recommended for production)
+    Option B: show IRIS tab but funds go to platform wallet (MVP only)
+
+Tighten PaymentMethods::showIrisTab() when ready:
+
+  return isGreekArtist($artist)
+      && config('services.viva.enabled')
+      && ($artist->viva_onboarding_status === 'active' || config('services.viva.platform_merchant_mvp'));
+
+
+================================================================================
+13. SECURITY CHECKLIST
+================================================================================
+
+  [ ] Never expose VIVA_CLIENT_SECRET to frontend
+  [ ] Verify every webhook with retrieveTransaction API — do not trust POST body alone
+  [ ] merchant_trns + viva_order_code unique constraints prevent double booking
+  [ ] lockForUpdate() on pending_viva_payments during webhook processing
+  [ ] Webhook route excluded from CSRF; verify GET Key handshake
+  [ ] Amount on webhook must match pending.amount_cents exactly
+  [ ] Public booking: validate session-verified email matches metadata before confirm
+  [ ] Rate-limit POST .../viva/order (prevent order spam)
+  [ ] Log payment events; avoid logging full customer PII
+
+
+================================================================================
+14. TESTING PLAN
+================================================================================
+
+UNIT / FEATURE (can run without IRIS)
+  - VivaPaymentsService token caching (mock HTTP)
+  - buildIrisCheckoutUrl contains paymentMethod=29
+  - Webhook idempotency: same orderCode twice → one booking
+  - PaymentMethods routing
+
+PRODUCTION SMOKE (IRIS — real Greek bank app required)
+  [ ] €0.50–€1.00 test order on staging with test artist (GR)
+  [ ] QR renders, scan with bank app
+  [ ] Webhook received within 20 min
+  [ ] Poll returns paid, redirect works
+  [ ] Booking row: payment_provider=viva_iris, viva_order_code set
+  [ ] Second webhook for same order → no duplicate booking
+  [ ] Order expiry → regenerate QR works
+  [ ] Cancel from bank app → status cancelled, user can retry
+
+PAYOUT SMOKE
+  [ ] IRIS booking passes cancellation window
+  [ ] ArtistPayoutService picks up viva_iris booking
+  [ ] Marketplace transfer OR manual payout recorded
+
+
+================================================================================
+15. IMPLEMENTATION ORDER (recommended)
+================================================================================
+
+Week 1 — Foundation
+  1. Viva merchant credentials + webhook URL registered
+  2. config/services.php + .env.example
+  3. VivaPaymentsService
+  4. pending_viva_payments migration + model
+  5. VivaWebhookController + GET verification
+  6. BookingPaymentConfirmationService (extract from existing Stripe confirms)
+
+Week 2 — First flow (managed request — simplest auth)
+  7. RequestsController viva/order + viva/status routes
+  8. Update checkout-iris-panel + JS polling
+  9. Production IRIS smoke test
+  10. Roll out to custom-requests + public book.blade.php
+
+Week 3 — Payouts & polish
+  11. bookings.payment_provider columns + backfill stripe
+  12. ArtistPayoutService MVP branch (manual payout queue)
+  13. Tighten showIrisTab when Viva onboarding fields exist
+  14. Artist settings Viva connect UI (if Marketplace approved)
+
+Week 4+ — Production hardening
+  15. Viva Marketplace connected accounts
+  16. Automated Viva artist transfers
+  17. Viva refunds in CancellationService
+  18. Reporting in artist payments dashboard
+
+
+================================================================================
+16. FILES TO CREATE / MODIFY (quick reference)
+================================================================================
+
+CREATE
+  app/Services/VivaPaymentsService.php
+  app/Services/VivaMarketplaceService.php          (Phase 6 — optional MVP skip)
+  app/Services/BookingPaymentConfirmationService.php
+  app/Models/PendingVivaPayment.php
+  app/Http/Controllers/Webhooks/VivaWebhookController.php
+  database/migrations/xxxx_create_pending_viva_payments_table.php
+  database/migrations/xxxx_add_viva_fields_to_bookings_table.php
+  database/migrations/xxxx_add_viva_fields_to_user_details_table.php
+  resources/views/partials/checkout-iris-script.blade.php   (optional)
+
+MODIFY
+  config/services.php
+  .env.example
+  routes/web.php                                   (webhook + viva routes)
+  bootstrap/app.php                                (CSRF except webhook if needed)
+  app/Support/PaymentMethods.php                   (stricter rules later)
+  app/Services/ArtistPayoutService.php             (Viva payout branch)
+  app/Services/CancellationService.php             (Viva refunds)
+  app/Models/Booking.php                           (new fillable columns)
+  app/Models/UserDetail.php
+  app/Http/Controllers/InkJinController.php        (viva order/status public)
+  app/Http/Controllers/UserController/RequestsController.php
+  app/Http/Controllers/UserController/CustomRequestsController.php
+  resources/views/partials/checkout-iris-panel.blade.php
+  resources/views/partials/checkout-payment-tabs-script.blade.php
+  resources/views/public/book.blade.php
+  resources/views/user/requests/payment.blade.php
+  resources/views/user/custom-requests/payment.blade.php
+  resources/views/artist/settings/payment.blade.php
+
+
+================================================================================
+17. USEFUL VIVA DOCUMENTATION
+================================================================================
+
+  IRIS overview:
+    https://developer.viva.com/payment-methods/local-payment-methods/iris/
+
+  Smart Checkout integration:
+    https://developer.viva.com/smart-checkout/smart-checkout-integration/
+
+  Create payment order:
+    https://developer.viva.com/tutorials/payments/create-a-payment-order/
+
+  Collect payment with QR code:
+    https://developer.viva.com/tutorials/payments/collect-payments-with-qr-code/
+
+  Payment method IDs (IRIS = 29):
+    https://developer.viva.com/tutorials/payments/set-your-desired-payment-method/
+
+  Webhooks:
+    https://developer.viva.com/webhooks-for-payments/
+
+  Transaction Payment Created webhook:
+    https://developer.viva.com/webhooks-for-payments/transaction-payment-created/
+
+  Marketplace / connected accounts:
+    https://developer.viva.com/marketplaces/
+
+  IRIS Smart Checkout help:
+    https://euhelp.viva.com/en/articles/6601115-iris-smart-checkout
+
+
+================================================================================
+18. OPEN PRODUCT DECISIONS (resolve before Phase 6)
+================================================================================
+
+  1. MVP: platform Viva wallet + manual artist payouts OK for launch?
+  2. Hide IRIS tab until artist completes Viva onboarding?
+  3. Show IRIS to non-Greek clients (they may not have GR bank app)?
+  4. Default tab: Card first (recommended) or IRIS first for GR artists?
+  5. Studio artists: one Viva account per studio or per artist?
+
+
+================================================================================
+END
+================================================================================
+
+Next immediate action:
+  1. Obtain Viva production API credentials.
+  2. Implement VivaPaymentsService + pending_viva_payments + webhook.
+  3. Ship managed-request IRIS flow first; smoke test with real Greek bank app.
+  4. Then public book.blade.php + custom requests + payout branch.

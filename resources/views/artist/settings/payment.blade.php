@@ -510,12 +510,6 @@
 
   </div>
 
-  <!-- Footer: Save Changes (artist payout only) -->
-  <div id="paymentSaveFooter" class="sticky bottom-0 bg-surface border-t border-outline-variant/10 px-6 md:px-10 lg:px-12 py-5 flex items-center justify-end {{ $payoutKey === 'studio' ? 'hidden' : '' }}">
-    <button type="submit" id="savePaymentBtn" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
-      <span class="material-symbols-outlined text-lg">save</span> Save Changes
-    </button>
-  </div>
   </form>
 </main>
 
@@ -650,7 +644,7 @@ async function tryAutoSaveArtistStripe() {
     if (savingMsg) savingMsg.classList.add('hidden');
     const errEl = document.getElementById('stripe_connect_error');
     if (errEl) {
-      errEl.textContent = err.message || 'Stripe is complete, but saving failed. Click Save Changes to try again.';
+      errEl.textContent = err.message || 'Stripe is complete, but saving failed. Please refresh the page to try again.';
       errEl.classList.remove('hidden');
     }
   }
@@ -915,7 +909,6 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
 <script>
   window.payoutOptionLocked = @json($payoutOptionLocked);
   window.activePayoutKey = @json($payoutKey);
-  const artistStripeConnected = @json($artistStripeConnected);
   const settingsPaymentSaveUrl = @json(route('settings.payment.update'));
 
   function selectPayout(type, el) {
@@ -933,7 +926,6 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
     $('#payment_type').val(map[type]);
     $('#payout-artist').toggleClass('hidden', type !== 'artist');
     $('#payout-studio').toggleClass('hidden', type !== 'studio');
-    $('#paymentSaveFooter').toggleClass('hidden', type === 'studio');
     $('#payment_type_error').text('').addClass('hidden');
     $('#payAlert').addClass('hidden').text('');
   }
@@ -1123,74 +1115,6 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
     $('#editStudioEmailBtn').on('click', function () { setStudioEmailEditing(true); });
     $('#cancelStudioEmailEditBtn').on('click', function () { setStudioEmailEditing(false); });
     $('#studio_email_not_connected').on('input', updateStudioReminderButtonLabel);
-
-    async function validateArtistStripeSetup() {
-      if ($('#payment_type').val() !== 'artist_account') return true;
-      if (artistStripeConnected) return true;
-      if (initialWaitingListCountry) return true;
-      if (!@json($stripeConnectConfigured ?? false)) return true;
-      if (!window.payoutBankCountrySelected) {
-        $('#stripe_connect_error').text('Please connect your bank account and complete payout setup before saving.').removeClass('hidden');
-        document.getElementById('artistPayoutNotConnected')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        return false;
-      }
-      if (typeof window.refreshStripeOnboardingStatus === 'function') {
-        await window.refreshStripeOnboardingStatus();
-      }
-      if (!window.stripeOnboardingComplete) {
-        $('#stripe_connect_error').text('Please complete Stripe payout setup before saving.').removeClass('hidden');
-        return false;
-      }
-      return true;
-    }
-
-    $('#paymentForm').on('submit', async function (e) {
-      e.preventDefault();
-      $('#paymentForm').find('[id$="_error"]').addClass('hidden').text('');
-      $('#payAlert').addClass('hidden').text('');
-      if (!await validateArtistStripeSetup()) return;
-      var $btn = $('#savePaymentBtn');
-      var original = $btn.html();
-      $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-lg">hourglass_top</span> Saving...');
-      var fd = new FormData(this);
-      if ($('#payment_type').val() === 'artist_account' && typeof window.getStripeSessionAccountId === 'function') {
-        const accountId = window.getStripeSessionAccountId();
-        if (accountId) fd.append('stripe_account_id', accountId);
-      }
-      $.ajax({
-        url: @json(route('settings.payment.update')),
-        type: 'POST',
-        data: fd,
-        processData: false,
-        contentType: false,
-        headers: { 'X-CSRF-TOKEN': @json(csrf_token()), Accept: 'application/json' },
-      }).done(function (data) {
-        if (data.success) {
-          const paymentType = $('#payment_type').val();
-          if (typeof window.lockPayoutOptions === 'function') {
-            if (paymentType === 'artist_account') {
-              window.lockPayoutOptions('artist');
-            } else if (paymentType === 'studio_account') {
-              window.lockPayoutOptions('studio');
-            }
-          }
-          window.location.reload();
-          return;
-        }
-        $('#payAlert').attr('class', 'rounded-xl px-4 py-3 text-sm mb-6 bg-red-50 text-red-800 border border-red-200').text(data.message || 'Could not save payment settings.').removeClass('hidden');
-      }).fail(function (xhr) {
-        if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-          $.each(xhr.responseJSON.errors, function (k, msgs) {
-            const errId = k === 'stripe_connect' ? 'stripe_connect_error' : (k + '_error');
-            $('#' + errId).text(msgs[0]).removeClass('hidden');
-          });
-        } else {
-          $('#payAlert').attr('class', 'rounded-xl px-4 py-3 text-sm mb-6 bg-red-50 text-red-800 border border-red-200').text((xhr.responseJSON && xhr.responseJSON.message) || 'Network error.').removeClass('hidden');
-        }
-      }).always(function () {
-        $btn.prop('disabled', false).html(original);
-      });
-    });
   });
 </script>
 @endsection

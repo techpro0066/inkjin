@@ -165,6 +165,126 @@ class CustomRequestBookingService
         return $booking;
     }
 
+    public function createBookingFromVivaPayment(
+        CustomRequest $customRequest,
+        int $orderCode,
+        string $transactionId,
+    ): Booking {
+        $existing = Booking::query()->where('viva_order_code', $orderCode)->first();
+        if ($existing) {
+            $this->linkCustomRequestToBooking($customRequest, $existing);
+
+            return $existing;
+        }
+
+        if ($customRequest->booking_id) {
+            $linked = Booking::query()->find($customRequest->booking_id);
+            if ($linked) {
+                return $linked;
+            }
+        }
+
+        $customRequest->load(['artist.userDetail', 'user']);
+        $userDetail = $customRequest->artist?->userDetail;
+        if (!$userDetail || !$customRequest->user) {
+            throw new \RuntimeException('Custom request is missing required relations.');
+        }
+
+        $sessionRange = $this->firstClientRange($customRequest, 'session');
+        if (!$sessionRange) {
+            throw new \RuntimeException('Session date and time are required.');
+        }
+
+        $artistTimezone = $userDetail->timezone ?: 'UTC';
+        [$sessionFrom, $sessionTo, $sessionDate] = $sessionRange;
+        $sessionUtc = $this->managedBooking->slotRangeToUtc($sessionDate, $sessionFrom, $sessionTo, $artistTimezone);
+
+        if ($this->managedBooking->artistLocalDateIsBlocked((int) $customRequest->artist_id, $sessionUtc['date'])) {
+            throw new \RuntimeException('The selected session date is no longer available.');
+        }
+
+        $hasConsult = $customRequest->autoRequiresConsultation();
+        $consultDate = null;
+        $consultStartUtc = null;
+        $consultEndUtc = null;
+        $consultationTiming = null;
+
+        if ($hasConsult) {
+            $consultRange = $this->firstClientRange($customRequest, 'consult');
+            if (!$consultRange) {
+                throw new \RuntimeException('Consultation date and time are required.');
+            }
+
+            [$consultFrom, $consultTo, $consultDateYmd] = $consultRange;
+            $consultUtc = $this->managedBooking->slotRangeToUtc($consultDateYmd, $consultFrom, $consultTo, $artistTimezone);
+
+            if ($this->managedBooking->artistLocalDateIsBlocked((int) $customRequest->artist_id, $consultUtc['date'])) {
+                throw new \RuntimeException('The selected consultation date is no longer available.');
+            }
+
+            $consultDate = $consultUtc['date'];
+            $consultStartUtc = $consultUtc['start_time_utc'];
+            $consultEndUtc = $consultUtc['end_time_utc'];
+            $consultationTiming = $customRequest->autoConsultationTiming();
+        }
+
+        $quotePrice = $customRequest->checkoutPriceAmount();
+        $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice);
+
+        $booking = Booking::create([
+            'user_id' => $customRequest->user_id,
+            'artist_user_id' => $customRequest->artist_id,
+            'tattoo_id' => null,
+            'booking_type' => 'custom',
+            'custom_tattoo_details' => [
+                'custom_request_id' => $customRequest->id,
+                'reference' => $customRequest->referenceLabel(),
+                'estimated_price' => (float) $customRequest->estimated_price,
+                'estimated_time' => $customRequest->estimated_time,
+                'number_of_sessions' => $customRequest->number_of_sessions,
+            ],
+            'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
+            'booking_date' => $sessionUtc['date'],
+            'start_time_utc' => $sessionUtc['start_time_utc'],
+            'end_time_utc' => $sessionUtc['end_time_utc'],
+            'timezone' => $artistTimezone,
+            'has_consultation' => $hasConsult,
+            'consultation_date' => $consultDate,
+            'consultation_start_time_utc' => $consultStartUtc,
+            'consultation_end_time_utc' => $consultEndUtc,
+            'consultation_timing_type' => $hasConsult ? $consultationTiming : null,
+            'status' => 'confirmed',
+            'payment_provider' => 'viva_iris',
+            'payment_intent_id' => null,
+            'viva_order_code' => $orderCode,
+            'viva_transaction_id' => $transactionId,
+            'payment_status' => 'paid',
+            'deposit_amount' => $totals['deposit'],
+            'platform_fee' => $totals['platform_fee'],
+            'total_amount_paid' => $totals['total_due'],
+            'currency' => 'EUR',
+            'questions_answers' => is_array($customRequest->questions_answers)
+                ? $customRequest->questions_answers
+                : [],
+            'notes' => trim(
+                (string) ($customRequest->anything_else_notes ?? '')."\n\nCustom request: ".$customRequest->referenceLabel()
+            ),
+        ]);
+
+        if (!$booking->completion_code) {
+            do {
+                $code = strtoupper(Str::random(6));
+            } while (Booking::query()->where('completion_code', $code)->exists());
+            $booking->completion_code = $code;
+            $booking->save();
+        }
+
+        $this->linkCustomRequestToBooking($customRequest, $booking);
+        $this->sendConfirmationEmails($booking);
+
+        return $booking;
+    }
+
     private function linkCustomRequestToBooking(CustomRequest $customRequest, Booking $booking): void
     {
         if ($customRequest->status !== 'moved_to_booking' || (int) $customRequest->booking_id !== (int) $booking->id) {

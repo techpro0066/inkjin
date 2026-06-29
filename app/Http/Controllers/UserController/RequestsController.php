@@ -7,8 +7,11 @@ use App\Http\Requests\StoreClientSelectedSlotsRequest;
 use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Models\CustomRequest;
-use App\Services\BookingCheckoutPricingService;
+use App\Support\PaymentMethods;
 use App\Services\ManagedRequestBookingService;
+use App\Services\BookingCheckoutPricingService;
+use App\Services\VivaCheckoutService;
+use App\Models\PendingVivaPayment;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +28,7 @@ class RequestsController extends Controller
     public function __construct(
         private readonly BookingCheckoutPricingService $pricing,
         private readonly ManagedRequestBookingService $bookingService,
+        private readonly VivaCheckoutService $vivaCheckout,
     ) {}
 
     public function index()
@@ -140,6 +144,7 @@ class RequestsController extends Controller
             'designTitle' => (string) ($tattoo->title ?? 'Design'),
             'totals' => $totals,
             'stripePublishableKey' => env('STRIPE_KEY', ''),
+            'showIrisTab' => PaymentMethods::showIrisTab($userDetail, Auth::user()?->phone_number),
             'showConsultRow' => $showConsultRow,
             'sessionDateTimeLabel' => $showConsultRow ? 'Tattoo Date & Time' : 'Date & Time',
             'sessionDateTime' => $sessionDateTime,
@@ -271,6 +276,54 @@ class RequestsController extends Controller
                 'message' => $e->getMessage() ?: 'Unable to complete booking.',
             ], 422);
         }
+    }
+
+    public function createVivaOrder(BookingRequest $bookingRequest): JsonResponse
+    {
+        $this->authorizeRequest($bookingRequest);
+
+        if (! $bookingRequest->canPay()) {
+            return response()->json(['message' => 'This request is not ready for payment.'], 422);
+        }
+
+        try {
+            $order = $this->vivaCheckout->createOrReuseOrderForBookingRequest(
+                $bookingRequest,
+                Auth::user(),
+            );
+
+            return response()->json($order);
+        } catch (\Throwable $e) {
+            Log::error('Viva order create failed (managed request)', [
+                'booking_request_id' => $bookingRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage() ?: 'Unable to start IRIS payment.',
+            ], 422);
+        }
+    }
+
+    public function vivaPaymentStatus(Request $request, BookingRequest $bookingRequest): JsonResponse
+    {
+        $this->authorizeRequest($bookingRequest);
+
+        $orderCode = $request->query('order_code');
+        $pending = PendingVivaPayment::query()
+            ->where('flow', PendingVivaPayment::FLOW_MANAGED_REQUEST)
+            ->where('reference_id', $bookingRequest->id)
+            ->when($orderCode, fn ($q) => $q->where('viva_order_code', $orderCode))
+            ->latest('id')
+            ->first();
+
+        if (! $pending) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        return response()->json(
+            $this->vivaCheckout->statusPayload($pending, route('user.bookings.index'))
+        );
     }
 
     private function authorizeRequest(BookingRequest $bookingRequest): void

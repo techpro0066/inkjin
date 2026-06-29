@@ -80,4 +80,21 @@ return [
         ],
     ],
 
+    'viva' => [
+        'client_id' => env('VIVA_CLIENT_ID'),
+        'client_secret' => env('VIVA_CLIENT_SECRET'),
+        'merchant_id' => env('VIVA_MERCHANT_ID'),
+        'api_key' => env('VIVA_API_KEY'),
+        'source_code' => env('VIVA_SOURCE_CODE', '2461'),
+        'webhook_key' => env('VIVA_WEBHOOK_KEY'),
+        'env' => env('VIVA_ENV', 'production'),
+        'accounts_base' => env('VIVA_ACCOUNTS_BASE', 'https://accounts.vivapayments.com'),
+        'api_base' => env('VIVA_API_BASE', 'https://api.vivapayments.com'),
+        'checkout_base' => env('VIVA_CHECKOUT_BASE', 'https://www.vivapayments.com'),
+        'iris_payment_method' => 29,
+        'order_timeout_seconds' => (int) env('VIVA_ORDER_TIMEOUT_SECONDS', 300),
+        'token_cache_ttl' => (int) env('VIVA_TOKEN_CACHE_TTL', 3300),
+        'checkout_color' => env('VIVA_CHECKOUT_COLOR', '310f7a'),
+    ],
+
 ];

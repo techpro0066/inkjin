@@ -9,7 +9,10 @@ use App\Models\Booking;
 use App\Models\CustomRequest;
 use App\Services\BookingCalendarAvailabilityService;
 use App\Services\BookingCheckoutPricingService;
+use App\Support\PaymentMethods;
 use App\Services\CustomRequestBookingService;
+use App\Services\VivaCheckoutService;
+use App\Models\PendingVivaPayment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +29,7 @@ class CustomRequestsController extends Controller
         private readonly BookingCheckoutPricingService $pricing,
         private readonly CustomRequestBookingService $bookingService,
         private readonly BookingCalendarAvailabilityService $calendar,
+        private readonly VivaCheckoutService $vivaCheckout,
     ) {}
 
     public function confirmTimes(Request $request, CustomRequest $customRequest): View|RedirectResponse
@@ -139,6 +143,7 @@ class CustomRequestsController extends Controller
             'artistName' => $customRequest->artistDisplayName(),
             'totals' => $totals,
             'stripePublishableKey' => env('STRIPE_KEY', ''),
+            'showIrisTab' => PaymentMethods::showIrisTab($userDetail, Auth::user()?->phone_number),
             'showConsultRow' => $customRequest->autoRequiresConsultation(),
             'sessionDateTimeLabel' => $customRequest->autoRequiresConsultation() ? 'Tattoo session' : 'Session',
             'sessionDateTime' => $customRequest->clientSlotSummary() ?? '—',
@@ -268,6 +273,54 @@ class CustomRequestsController extends Controller
                 'message' => $e->getMessage() ?: 'Unable to complete booking.',
             ], 422);
         }
+    }
+
+    public function createVivaOrder(CustomRequest $customRequest): JsonResponse
+    {
+        $this->authorizeCustomRequest($customRequest);
+
+        if (! $customRequest->canPay()) {
+            return response()->json(['message' => 'This request is not ready for payment.'], 422);
+        }
+
+        try {
+            $order = $this->vivaCheckout->createOrReuseOrderForCustomRequest(
+                $customRequest,
+                Auth::user(),
+            );
+
+            return response()->json($order);
+        } catch (\Throwable $e) {
+            Log::error('Viva order create failed (custom request)', [
+                'custom_request_id' => $customRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage() ?: 'Unable to start IRIS payment.',
+            ], 422);
+        }
+    }
+
+    public function vivaPaymentStatus(Request $request, CustomRequest $customRequest): JsonResponse
+    {
+        $this->authorizeCustomRequest($customRequest);
+
+        $orderCode = $request->query('order_code');
+        $pending = PendingVivaPayment::query()
+            ->where('flow', PendingVivaPayment::FLOW_CUSTOM_REQUEST)
+            ->where('reference_id', $customRequest->id)
+            ->when($orderCode, fn ($q) => $q->where('viva_order_code', $orderCode))
+            ->latest('id')
+            ->first();
+
+        if (! $pending) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        return response()->json(
+            $this->vivaCheckout->statusPayload($pending, route('user.bookings.index'))
+        );
     }
 
     private function authorizeCustomRequest(CustomRequest $customRequest): void

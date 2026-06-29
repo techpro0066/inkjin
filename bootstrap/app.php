@@ -26,6 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'user' => \App\Http\Middleware\CheckUser::class,
             'client_password' => \App\Http\Middleware\RequireClientPasswordComplete::class,
         ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/viva',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $e, Request $request) {

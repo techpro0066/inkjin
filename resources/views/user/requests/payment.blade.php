@@ -34,6 +34,9 @@
         <p class="text-sm text-on-surface-variant mb-2">{{ $bookingRequest->referenceLabel() }}</p>
         <p class="text-sm text-on-surface-variant mb-6">Your payment is securely processed. You won't be charged until you confirm.</p>
 
+        @include('partials.checkout-payment-tabs', ['showIrisTab' => $showIrisTab ?? false])
+
+        <div id="panelPayCard">
         <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
           <div class="space-y-4">
             <div>
@@ -57,7 +60,13 @@
             <p class="text-xs text-on-surface-variant flex items-center gap-2">Accepted: <strong>Visa</strong> · <strong>Mastercard</strong> · <strong>Amex</strong></p>
           </div>
         </div>
+        </div>
 
+        @include('partials.checkout-iris-panel', [
+          'showIrisTab' => $showIrisTab ?? false,
+        ])
+
+        <div id="panelPayCardExtras">
         @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
 
         <label class="flex items-start gap-2 mb-4 cursor-pointer">
@@ -74,6 +83,7 @@
         <button type="button" id="btnConfirmPay" disabled class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-container transition-all text-base shadow-lg shadow-primary/20">
           Confirm &amp; Pay <span id="btnPayTotalAmount">€{{ number_format($totals['total_due'], 2) }}</span>
         </button>
+        </div>
       </div>
 
       <div class="lg:w-[340px] lg:order-2 shrink-0">
@@ -106,6 +116,12 @@
   var stripePublishableKey = @json($stripePublishableKey);
   var intentUrl = @json(route('user.requests.payment.intent', $bookingRequest));
   var confirmUrl = @json(route('user.requests.payment.confirm', $bookingRequest));
+  var vivaOrderUrl = @json(route('user.requests.payment.viva.order', $bookingRequest));
+  var vivaStatusUrl = @json(route('user.requests.payment.viva.status', $bookingRequest));
+  window.vivaOrderUrl = vivaOrderUrl;
+  window.vivaStatusUrl = vivaStatusUrl;
+  window.vivaCsrfToken = csrfToken;
+  window.vivaOrderBody = function () { return {}; };
   var payButtonLabel = @json('€' . number_format($totals['total_due'], 2));
 
   var stripe = null;
@@ -245,4 +261,8 @@
   mountStripe();
 })();
 </script>
+@include('partials.checkout-payment-tabs-script', [
+  'showIrisTab' => $showIrisTab ?? false,
+  'artistSupportsIris' => false,
+])
 @endsection

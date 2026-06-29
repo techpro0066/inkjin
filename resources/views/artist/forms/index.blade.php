@@ -575,6 +575,7 @@
     const row = el.closest(".q-row");
     if (!row) return;
     const questionId = row.dataset.id;
+    console.log("questionId", questionId);
     if (!questionId || el.dataset.loading === "true") return;
 
     const previousEnabled = row.dataset.enabled === "true";

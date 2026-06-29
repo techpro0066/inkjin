@@ -752,7 +752,14 @@
           </div>
           <div class="flex-1 lg:order-1">
             <h2 class="text-xl font-bold mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[22px] text-primary">lock</span> Secure Payment</h2>
-            <p class="text-sm text-on-surface-variant mb-6">Your payment is securely processed. You won't be charged until you confirm.</p>
+            <p class="text-sm text-on-surface-variant mb-2">Your payment is securely processed. You won't be charged until you confirm.</p>
+
+            @include('partials.checkout-payment-tabs', [
+              'showIrisTab' => $showIrisTab ?? false,
+              'artistSupportsIris' => $artistSupportsIris ?? false,
+            ])
+
+            <div id="panelPayCard">
             <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
               <div class="space-y-4">
                 <div>
@@ -771,6 +778,12 @@
               </div>
               {{-- <label class="flex items-center gap-2 mt-5 cursor-pointer"><input type="checkbox" id="saveCard" class="accent-primary"><span class="text-sm text-on-surface-variant">Save this card for future bookings</span></label> --}}
             </div>
+            </div>
+
+            @include('partials.checkout-iris-panel', [
+              'showIrisTab' => $showIrisTab ?? false,
+              'artistSupportsIris' => $artistSupportsIris ?? false,
+            ])
             {{-- <div class="flex items-center gap-3 mb-6"><div class="flex-1 h-px bg-outline-variant/30"></div><span class="text-sm text-on-surface-variant font-medium">— or pay with —</span><div class="flex-1 h-px bg-outline-variant/30"></div></div> --}}
             {{-- <div class="space-y-3 mb-6">
               <button id="applePayBtn" class="w-full py-3.5 rounded-xl font-bold text-white bg-black hover:bg-gray-800 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm" style="display:none;"><svg class="w-5 h-5" fill="white" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Pay with  Pay</button>
@@ -785,10 +798,12 @@
               <p class="text-[10px] text-[#17120F]/50 text-center mt-2">You'll be redirected to Klarna to complete your payment</p>
               <p class="text-[10px] text-[#17120F]/40 text-center">Subject to approval. 18+ only.</p>
             </div> --}}
+            <div id="panelPayCardExtras">
             @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
             <label class="flex items-start gap-2 mb-4 cursor-pointer"><input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary" onchange="checkPayReady()"><span class="text-xs text-on-surface-variant">I agree to the <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">cancellation policy</a> and <a href="#" class="text-primary underline">terms of service</a>.</span></label>
             <p class="text-sm text-error hidden mb-3" id="formError"></p>
             <button id="btnConfirmPay" disabled onclick="confirmBooking()" class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all text-base shadow-lg shadow-primary/20">Confirm & Pay <span id="btnPayTotalAmount">€250</span></button>
+            </div>
           </div>
         </div>
       </div>
@@ -891,6 +906,19 @@
     var bookingOtpResendEmail = '';
     var bookingOtpResendTimer = null;
     var csrfToken = @json(csrf_token());
+    window.vivaOrderUrl = @json(route('public.booking.payment.viva.order'));
+    window.vivaStatusUrl = @json(route('public.booking.payment.viva.status'));
+    window.vivaCsrfToken = csrfToken;
+    window.vivaOrderBody = function () {
+      return {
+        artist_username: bookingArtistUsername,
+        tattoo_slug: bookingTattooSlug,
+        booking_payload: buildBookingPayload()
+      };
+    };
+    window.vivaStatusExtraQuery = function () {
+      return 'email=' + encodeURIComponent(String(bookingConnectedEmail || $('#bdEmail').val() || '').trim());
+    };
     var stripePublishableKey = @json($stripePublishableKey ?? '');
     var minimumDepositType = @json($minimumDepositType ?? 'percentage');
     var minimumDepositAmount = parseFloat(@json($minimumDepositAmount ?? 30)) || 0;
@@ -984,6 +1012,29 @@
       }
       return '';
     }
+
+    function isGreekClientPhone(phone) {
+      return /^\+30/.test(String(phone || '').replace(/[\s\-()]/g, ''));
+    }
+
+    function updateIrisTabVisibility() {
+      if (!@json($artistSupportsIris ?? false)) {
+        return;
+      }
+      var tablist = document.getElementById('checkoutPayTablist');
+      if (!tablist) {
+        return;
+      }
+      var showIris = isGreekClientPhone($('#bdPhone').val());
+      tablist.classList.toggle('hidden', !showIris);
+      if (!showIris) {
+        var tabIris = document.getElementById('tabPayIris');
+        if (tabIris && tabIris.getAttribute('aria-selected') === 'true' && window.checkoutSetActivePayTab) {
+          window.checkoutSetActivePayTab('card');
+        }
+      }
+    }
+    window.updateIrisTabVisibility = updateIrisTabVisibility;
 
     function updatePaymentSummary() {
       var minPrice = parseFloat(@json($tattoo->min_price ?? 0)) || 0;
@@ -1470,6 +1521,7 @@
       if (step === 4) {
         $('#stepPayment').addClass('active');
         updatePaymentSummary();
+        updateIrisTabVisibility();
       }
       if (step === 5) $('#stepConfirmation').addClass('active');
       updateProgressDots();
@@ -2517,5 +2569,9 @@
       renderMainCal();
     });
   </script>
+  @include('partials.checkout-payment-tabs-script', [
+    'showIrisTab' => $showIrisTab ?? false,
+    'artistSupportsIris' => $artistSupportsIris ?? false,
+  ])
 </body>
 </html>

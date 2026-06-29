@@ -287,6 +287,10 @@ Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])
         ->name('user.custom-requests.payment');
     Route::post('/custom-requests/{customRequest}/payment/intent', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'createPaymentIntent'])
         ->name('user.custom-requests.payment.intent');
+    Route::post('/custom-requests/{customRequest}/payment/viva/order', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'createVivaOrder'])
+        ->name('user.custom-requests.payment.viva.order');
+    Route::get('/custom-requests/{customRequest}/payment/viva/status', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'vivaPaymentStatus'])
+        ->name('user.custom-requests.payment.viva.status');
     Route::post('/custom-requests/{customRequest}/payment/confirm', [\App\Http\Controllers\UserController\CustomRequestsController::class, 'confirmPayment'])
         ->name('user.custom-requests.payment.confirm');
 
@@ -302,6 +306,10 @@ Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])
         ->name('user.requests.payment');
     Route::post('/requests/{bookingRequest}/payment/intent', [\App\Http\Controllers\UserController\RequestsController::class, 'createPaymentIntent'])
         ->name('user.requests.payment.intent');
+    Route::post('/requests/{bookingRequest}/payment/viva/order', [\App\Http\Controllers\UserController\RequestsController::class, 'createVivaOrder'])
+        ->name('user.requests.payment.viva.order');
+    Route::get('/requests/{bookingRequest}/payment/viva/status', [\App\Http\Controllers\UserController\RequestsController::class, 'vivaPaymentStatus'])
+        ->name('user.requests.payment.viva.status');
     Route::post('/requests/{bookingRequest}/payment/confirm', [\App\Http\Controllers\UserController\RequestsController::class, 'confirmPayment'])
         ->name('user.requests.payment.confirm');
 
@@ -338,7 +346,11 @@ Route::post('/api/public/send-booking-otp', [InkJinController::class, 'sendBooki
 Route::post('/api/public/verify-booking-otp', [InkJinController::class, 'verifyBookingOtp'])->name('public.booking.otp.verify');
 Route::post('/api/public/upload-booking-question-image', [InkJinController::class, 'uploadBookingQuestionImage'])->name('public.booking.question_image.upload');
 Route::post('/api/public/create-booking-payment-intent', [InkJinController::class, 'createBookingPaymentIntent'])->name('public.booking.payment_intent.create');
+Route::post('/api/public/booking/payment/viva/order', [InkJinController::class, 'createPublicVivaOrder'])->name('public.booking.payment.viva.order');
+Route::get('/api/public/booking/payment/viva/status', [InkJinController::class, 'publicVivaPaymentStatus'])->name('public.booking.payment.viva.status');
 Route::post('/api/public/confirm-booking-payment', [InkJinController::class, 'confirmBookingAfterPayment'])->name('public.booking.payment.confirm');
+Route::match(['get', 'post'], '/webhooks/viva', [\App\Http\Controllers\Webhooks\VivaWebhookController::class, 'handle'])
+    ->name('webhooks.viva');
 Route::post('/api/public/submit-managed-booking', [InkJinController::class, 'submitManagedBooking'])->name('public.booking.managed.submit');
 Route::post('/api/public/submit-waitlist', [InkJinController::class, 'submitWaitlist'])->name('public.waitlist.submit');
 Route::post('/api/public/submit-custom-request', [CustomRequestController::class, 'submitCustomRequest'])->name('public.custom-request.submit');

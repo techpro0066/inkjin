@@ -33,6 +33,9 @@ use App\Models\Waitlist;
 use App\Models\Question;
 use App\Models\QuestionSorting;
 use App\Models\UserQuestion;
+use App\Support\PaymentMethods;
+use App\Models\PendingVivaPayment;
+use App\Services\VivaCheckoutService;
 use Stripe\Exception\ApiErrorException;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
@@ -625,6 +628,8 @@ class InkJinController extends Controller
                 'minimumDepositType' => $userDetail->minimum_deposit_type ?: 'percentage',
                 'minimumDepositAmount' => (float) ($userDetail->minimum_deposit_amount ?? 30),
                 'bookingFeeType' => $userDetail->booking_fee_type ?: 'client',
+                'artistSupportsIris' => PaymentMethods::isGreekArtist($userDetail),
+                'showIrisTab' => false,
             ]);
         }
         else{
@@ -1160,5 +1165,120 @@ class InkJinController extends Controller
             'saved' => true,
             'message' => 'You have been added to the waitlist.',
         ]);
+    }
+
+    public function createPublicVivaOrder(Request $request, VivaCheckoutService $vivaCheckout): JsonResponse
+    {
+        $validated = $request->validate([
+            'artist_username' => ['required', 'string'],
+            'tattoo_slug' => ['required', 'string'],
+            'booking_payload' => ['required', 'array'],
+            'booking_payload.email' => ['required', 'email'],
+            'booking_payload.phone' => ['required', 'string', 'max:50'],
+            'booking_payload.name' => ['nullable', 'string', 'max:255'],
+            'booking_payload.consultation_required' => ['nullable', 'boolean'],
+            'booking_payload.consultation_timing' => ['nullable', 'string', 'in:separate,combined'],
+            'booking_payload.consult_duration_minutes' => ['nullable', 'integer', 'min:1'],
+            'booking_payload.tattoo_duration_minutes' => ['nullable', 'integer', 'min:1'],
+            'booking_payload.questions_answers' => ['nullable', 'array'],
+            'booking_payload.notes' => ['nullable', 'string', 'max:2000'],
+            'booking_payload.date' => ['nullable', 'date'],
+            'booking_payload.time' => ['nullable', 'string', 'max:20'],
+            'booking_payload.tattoo_date' => ['nullable', 'date'],
+            'booking_payload.tattoo_time' => ['nullable', 'string', 'max:20'],
+            'booking_payload.consultation_date' => ['nullable', 'date'],
+            'booking_payload.consultation_time' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $userDetail = UserDetail::query()
+            ->where('user_name', $validated['artist_username'])
+            ->first();
+
+        if (! $userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes') {
+            return response()->json(['message' => 'Artist not found.'], 404);
+        }
+
+        $tattoo = $userDetail->user->artistDesigns()
+            ->where('slug', $validated['tattoo_slug'])
+            ->where('is_visible', true)
+            ->first();
+
+        if (! $tattoo) {
+            return response()->json(['message' => 'Tattoo not found.'], 404);
+        }
+
+        $payload = $validated['booking_payload'];
+        $bookingEmail = mb_strtolower(trim((string) ($payload['email'] ?? '')));
+        $bookingUser = User::query()->whereRaw('LOWER(email) = ?', [$bookingEmail])->first();
+
+        if (! $bookingUser) {
+            return response()->json(['message' => 'Booking user not found. Please verify email again.'], 422);
+        }
+
+        if (! PaymentMethods::showIrisTab($userDetail, $payload['phone'] ?? $bookingUser->phone_number)) {
+            return response()->json(['message' => 'IRIS payment is not available for this checkout.'], 422);
+        }
+
+        $depositMeta = $this->resolveDepositForTattoo($userDetail, (float) $tattoo->min_price);
+        $bookingFee = $this->resolveBookingFee($userDetail);
+        $amountCents = (int) round(((float) $depositMeta['deposit'] + (float) $bookingFee['client_fee']) * 100);
+
+        try {
+            $order = $vivaCheckout->createOrReuseOrderForPublicBooking(
+                $userDetail,
+                $bookingUser,
+                $validated['artist_username'],
+                $validated['tattoo_slug'],
+                $payload,
+                $amountCents,
+            );
+
+            return response()->json($order);
+        } catch (\Throwable $e) {
+            Log::error('Viva order create failed (public booking)', [
+                'artist_username' => $validated['artist_username'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage() ?: 'Unable to start IRIS payment.',
+            ], 422);
+        }
+    }
+
+    public function publicVivaPaymentStatus(Request $request, VivaCheckoutService $vivaCheckout): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_code' => ['required'],
+            'email' => ['required', 'email'],
+        ]);
+
+        $bookingUser = User::query()
+            ->whereRaw('LOWER(email) = ?', [mb_strtolower(trim($validated['email']))])
+            ->first();
+
+        if (! $bookingUser) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        $pending = PendingVivaPayment::query()
+            ->where('viva_order_code', $validated['order_code'])
+            ->where('client_user_id', $bookingUser->id)
+            ->where('flow', PendingVivaPayment::FLOW_PUBLIC_BOOKING)
+            ->first();
+
+        if (! $pending) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        $status = $vivaCheckout->statusPayload($pending, route('login'));
+        if (($status['status'] ?? '') === 'paid') {
+            $confirmed = Booking::query()->where('viva_order_code', $pending->viva_order_code)->first();
+            if ($confirmed) {
+                $status['redirect_url'] = $this->makePostBookingAccessUrl($bookingUser, $confirmed);
+            }
+        }
+
+        return response()->json($status);
     }
 }

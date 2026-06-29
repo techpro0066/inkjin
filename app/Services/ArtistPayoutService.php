@@ -66,6 +66,10 @@ class ArtistPayoutService
             return false;
         }
 
+        if (($booking->payment_provider ?? 'stripe') === 'viva_iris') {
+            return false;
+        }
+
         $existingPayout = $booking->artistPayout;
         if ($existingPayout && $existingPayout->isCompleted()) {
             return false;
