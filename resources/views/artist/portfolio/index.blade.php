@@ -307,7 +307,7 @@
         </div>
         <!-- Description -->
         <div class="work-field-section scroll-mt-6" data-work-field="description">
-          <label for="workDescription" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Description</label>
+          <label for="workDescription" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Description <span class="font-normal text-on-surface-variant/70">(optional)</span></label>
           <textarea id="workDescription" name="workDescription" rows="3" placeholder="Describe this piece…" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
           <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="description"></p>
         </div>
@@ -799,8 +799,8 @@
           errors.title = 'Title must not exceed 255 characters.';
         }
         var desc = $.trim($('#workDescription').val());
-        if (!desc) {
-          errors.description = 'Please enter a description.';
+        if (desc.length > 2000) {
+          errors.description = 'Description must not exceed 2000 characters.';
         }
         var primary = $('#workPrimaryStyle').val();
         if (!primary) {

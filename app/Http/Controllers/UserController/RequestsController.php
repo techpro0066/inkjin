@@ -151,7 +151,6 @@ class RequestsController extends Controller
             'consultDateTime' => $consultDateTime,
             'durationLabel' => $bookingRequest->checkoutDurationLabel($userDetail),
             'sizeLabel' => $bookingRequest->checkoutSizeLabel(),
-            'locationLabel' => $bookingRequest->checkoutStudioLocation($userDetail),
             'priceEstimateLabel' => $bookingRequest->priceLabel(),
             'depositLabel' => $bookingRequest->checkoutDepositLabel($totals['deposit_meta']),
             'balanceLabel' => '€'.number_format($minBalance, 2).' - €'.number_format($maxBalance, 2),

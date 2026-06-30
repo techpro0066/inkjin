@@ -58,7 +58,7 @@
                     @if($isNewUser)
                       Thanks for submitting your first custom tattoo request with us. {{ $artistName }} will review your ideas and get back to you soon.
                     @else
-                      Your custom tattoo request has been sent to {{ $artistName }}. They will review your details and follow up with next steps.
+                      Your custom tattoo request has been sent to {{ $artistName }}. The artist will review your details and follow up with next steps.
                     @endif
                   </td>
                 </tr>

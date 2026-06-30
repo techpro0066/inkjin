@@ -28,9 +28,20 @@
       <span class="text-on-surface-variant shrink-0">Size</span>
       <span class="font-semibold text-right">{{ $sizeLabel }}</span>
     </div>
-    <div class="flex justify-between gap-3">
-      <span class="text-on-surface-variant shrink-0">Location</span>
-      <span class="font-semibold text-xs text-right">{{ $locationLabel }}</span>
+    <div class="flex justify-between gap-3 items-start">
+      <span class="text-on-surface-variant shrink-0 pt-0.5">Location</span>
+      <div class="font-semibold text-xs sm:text-sm text-right leading-snug min-w-0 max-w-[65%]">
+        @php
+          $locationLines = isset($userDetail) ? $userDetail->studioLocationLines() : [];
+        @endphp
+        @if ($locationLines === [])
+          <span>—</span>
+        @else
+          @foreach ($locationLines as $line)
+            <div class="break-words">{{ $line }}</div>
+          @endforeach
+        @endif
+      </div>
     </div>
   </div>
   <hr class="border-outline-variant/20 my-4">

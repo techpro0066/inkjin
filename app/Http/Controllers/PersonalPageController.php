@@ -6,10 +6,21 @@ use App\Models\UserDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
-use Illuminate\Validation\ValidationException;
 
 class PersonalPageController extends Controller
 {
+    private function deleteBackgroundImageIfSafe(?string $relativePath): void
+    {
+        if (! $relativePath || ! str_starts_with($relativePath, 'uploads/personal-pages/')) {
+            return;
+        }
+
+        $full = public_path($relativePath);
+        if (file_exists($full)) {
+            File::delete($full);
+        }
+    }
+
     public function index()
     {
         $user = Auth::user();
@@ -28,23 +39,20 @@ class PersonalPageController extends Controller
 
         $validated = $request->validate([
             'personal_page_background_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'remove_personal_page_background_image' => ['sometimes', 'boolean'],
             'personal_page_color' => ['required', 'string', 'max:50'],
             'personal_page_tagline' => ['required', 'string', 'max:255'],
             'personal_page_description' => ['required', 'string', 'max:500'],
             'personal_page_name_alias' => ['required', 'in:full,username,both'],
         ]);
 
-        if (! $request->hasFile('personal_page_background_image') && empty($userDetail->personal_page_background_image)) {
-            throw ValidationException::withMessages([
-                'personal_page_background_image' => ['Background image is required.'],
-            ]);
-        }
-
         $backgroundPath = $userDetail->personal_page_background_image;
-        if ($request->hasFile('personal_page_background_image')) {
-            if ($backgroundPath && file_exists(public_path($backgroundPath))) {
-                File::delete(public_path($backgroundPath));
-            }
+
+        if ($request->boolean('remove_personal_page_background_image')) {
+            $this->deleteBackgroundImageIfSafe($backgroundPath);
+            $backgroundPath = null;
+        } elseif ($request->hasFile('personal_page_background_image')) {
+            $this->deleteBackgroundImageIfSafe($backgroundPath);
 
             $file = $request->file('personal_page_background_image');
             $filename = time().'_'.uniqid().'.'.strtolower($file->getClientOriginalExtension());

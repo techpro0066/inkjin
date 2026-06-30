@@ -1,5 +1,7 @@
 @extends('layouts.artist_dashboard_layout')
 
+@section('title', 'Requests')
+
 @section('styles')
 <style>
     /* Request card hover */
@@ -335,21 +337,7 @@
 <main class="main-content flex-1 min-h-screen">
     <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
 
-      <!-- Request Type Tabs -->
-      <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
-        <a href="{{ route('artist.requests.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary transition-all">Available Design Requests</a>
-        <a href="{{ route('artist.custom-requests.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Custom Requests</a>
-      </div>
-
-      <!-- Page Header -->
-      <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
-          <div>
-            <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Available Design Requests</h2>
-            <p class="text-on-surface-variant mt-1">Review booking requests for your available designs and confirm appointments.</p>
-          </div>
-        </div>
-      </div>
+      @include('artist.requests.partials.page-header-and-tabs', ['activeTab' => 'design'])
 
       <!-- Filters Bar -->
       <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
@@ -456,6 +444,7 @@
     </div>
   </div>
 
+  <script src="{{ asset('js/question-answer-display.js') }}"></script>
   <script>
     const bookingRequestsById = @json(collect($requestsPayload)->keyBy('id'));
     const declineRequestUrlTemplate = @json(route('artist.requests.decline', ['bookingRequest' => 0]));
@@ -568,10 +557,9 @@
       var questionsHtml = '';
       (req.questionsAnswers || []).forEach(function(item) {
         if (!item || !item.question) return;
-        var answer = item.answer;
-        if (typeof answer === 'boolean') answer = answer ? 'Yes' : 'No';
-        if (Array.isArray(answer)) answer = answer.join(', ');
-        questionsHtml += '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + escapeHtml(answer || '—') + '</p></div>';
+        questionsHtml += window.QuestionAnswerDisplay
+          ? window.QuestionAnswerDisplay.renderAnswerHtml(item)
+          : '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + escapeHtml(String(item.answer || '—')) + '</p></div>';
       });
       var availabilityHtml = buildAvailabilityHtml(req.availabilityDetails || {});
       left.innerHTML =

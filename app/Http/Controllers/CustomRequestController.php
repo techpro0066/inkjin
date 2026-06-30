@@ -47,7 +47,7 @@ class CustomRequestController extends Controller
         $artistName = trim(($userDetail->user->first_name ?? '').' '.($userDetail->user->last_name ?? ''));
 
         $fallbackTattooSlug = (string) ($userDetail->user->artistDesigns()
-            ->where('is_visible', true)
+            ->where('is_active', true)
             ->orderBy('id')
             ->value('slug') ?? '');
 

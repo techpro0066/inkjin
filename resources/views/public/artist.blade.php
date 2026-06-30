@@ -5,7 +5,7 @@
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }} - Tattoo Artist | Inkjin</title>
   <meta name="description" content="Book tattoo designs or request custom work from Julian Ink at Open Ink Studio, Athens, Greece.">
-  <link rel="icon" href="{{asset('assets/img/favicon/favicon.png')}}">
+  <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,6 +27,27 @@
     $hasPortfolio = $artistPortfolios->count() > 0;
     $designsTabActive = $hasVisibleDesigns;
     $portfolioTabActive = ! $hasVisibleDesigns && $hasPortfolio;
+    $portfolioForJs = $artistPortfolios->values()->map(function ($portfolio) {
+        $colorLabel = match ($portfolio->color) {
+            'color' => 'Full Color',
+            'black-grey' => 'Black & Grey',
+            'both' => 'Black & Color',
+            default => (string) $portfolio->color,
+        };
+
+        return [
+            'title' => $portfolio->title,
+            'desc' => trim((string) ($portfolio->description ?? '')),
+            'style' => ucwords(str_replace('-', ' ', $portfolio->primary_style)),
+            'colors' => $colorLabel,
+            'image' => asset($portfolio->image),
+            'tags' => collect($portfolio->tags ?? [])->map(function ($tag) {
+                $tag = trim((string) $tag);
+
+                return $tag === '' ? '' : (str_starts_with($tag, '#') ? $tag : '#'.$tag);
+            })->filter()->values()->all(),
+        ];
+    })->values();
   @endphp
 
   <script>
@@ -308,11 +329,17 @@
         <div id="content-designs" class="tab-content {{ $designsTabActive ? 'active' : '' }}">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             @foreach($artistDesigns as $artistDesign)
+                @php $designSoldOut = $artistDesign->isSoldOut(); @endphp
                 <div class="design-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="window.location.href='{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]) }}'">
                     <div class="aspect-4-5 bg-gradient-to-br from-violet-100 via-violet-200 to-violet-300 relative">
                         <div class="absolute inset-0 flex items-center justify-center">
-                            <img src="{{ asset($artistDesign->image) }}" alt="Design" class="w-full h-full object-cover">
+                            <img src="{{ asset($artistDesign->image) }}" alt="Design" class="w-full h-full object-cover {{ $designSoldOut ? 'opacity-60' : '' }}">
                         </div>
+                        @if($designSoldOut)
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/40">
+                            <span class="px-3 py-1.5 rounded-full bg-white/95 text-on-surface text-xs font-bold uppercase tracking-wide">Sold Out</span>
+                        </div>
+                        @endif
                     </div>
                     <div class="p-4">
                         <h3 class="font-bold text-on-surface mb-1.5">{{ $artistDesign->title }}</h3>
@@ -320,10 +347,19 @@
                             <span class="text-xs px-2 py-0.5 rounded-full bg-secondary-container text-secondary font-medium">{{ ucwords(str_replace('-', ' ', $artistDesign->primary_style)) }}</span>
                             <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">{{ $artistDesign->color == 'color' ? 'Full Color' : ($artistDesign->color == 'black-grey' ? 'Black & Grey' : ($artistDesign->color == 'both' ? 'Black & Color' : $artistDesign->color)) }}</span>
                         </div>
-                        <p class="text-sm font-semibold price-color mb-3">€{{ $artistDesign->min_price }} — €{{ $artistDesign->max_price }}</p>
+                        <p class="text-sm font-semibold price-color mb-1">€{{ $artistDesign->min_price }} — €{{ $artistDesign->max_price }}</p>
+                        <div class="mb-3">
+                            @include('public.partials.design-booking-slots', ['design' => $artistDesign])
+                        </div>
+                        @if($designSoldOut)
+                        <a href="{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]) }}" onclick="event.stopPropagation()" class="block w-full py-2 rounded-full text-sm font-semibold text-center bg-surface-container-high text-on-surface-variant hover:bg-surface-container transition-colors">
+                            Sold Out
+                        </a>
+                        @else
                         <a href="{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]) }}" onclick="event.stopPropagation()" class="block w-full py-2 text-on-primary rounded-full text-sm font-semibold transition-colors text-center get-this-tattoo-btn">
                             Get This Tattoo
                         </a>
+                        @endif
                     </div>
                 </div>
             @endforeach
@@ -339,10 +375,10 @@
     <div id="content-portfolio" class="tab-content {{ $portfolioTabActive ? 'active' : '' }}">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         @foreach($artistPortfolios as $artistPortfolio)
-            <div class="design-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="openPortfolioModal(5)">
+            <div class="design-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="openPortfolioModal({{ $loop->index }})">
             <div class="aspect-1-1 bg-gradient-to-br from-warmGray-200 via-gray-300 to-gray-500 relative">
                 <div class="absolute inset-0 flex items-center justify-center">
-                    <img src="{{ asset($artistPortfolio->image) }}" alt="Portfolio" class="w-full h-full object-fill">
+                    <img src="{{ asset($artistPortfolio->image) }}" alt="{{ $artistPortfolio->title }}" class="w-full h-full object-cover">
                 </div>
             </div>
             <div class="p-4">
@@ -392,8 +428,9 @@
         <span class="material-symbols-outlined text-[20px]">close</span>
       </button>
       <div class="modal-body overflow-y-auto">
-        <div id="portfolioModalImage" class="aspect-1-1 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 relative">
-          <div class="absolute inset-0 flex items-center justify-center">
+        <div id="portfolioModalImage" class="aspect-1-1 bg-surface-container-high relative overflow-hidden">
+          <img id="portfolioModalImageEl" src="" alt="" class="hidden w-full h-full object-cover">
+          <div id="portfolioModalImagePlaceholder" class="absolute inset-0 flex items-center justify-center">
             <span class="material-symbols-outlined text-gray-400 text-6xl">image</span>
           </div>
         </div>
@@ -470,44 +507,7 @@
     const csrfToken = @json(csrf_token());
 
     // ── Data ──────────────────────────────────────────
-    const portfolio = [
-      {
-        title: "Phoenix Rising",
-        desc: "Full back piece completed over 5 sessions. Traditional Japanese phoenix with flowing feathers and fire elements, surrounded by peonies and wind bars. One of my most ambitious pieces to date.",
-        style: "Japanese", colors: "Full Color",
-        tags: ["#backpiece", "#phoenix", "#japanese", "#peony"]
-      },
-      {
-        title: "Geometric Wolf",
-        desc: "Half-geometric, half-realistic wolf portrait on the upper arm. The geometric side features sacred geometry patterns that transition seamlessly into photo-realistic fur detail.",
-        style: "Geometric", colors: "Black & Grey",
-        tags: ["#geometric", "#wolf", "#realism", "#hybrid"]
-      },
-      {
-        title: "Koi Fish Sleeve",
-        desc: "A vibrant full-sleeve featuring two koi fish swimming in opposite directions through churning water. Classic Japanese symbolism of perseverance and strength.",
-        style: "Japanese", colors: "Full Color",
-        tags: ["#sleeve", "#koi", "#japanese", "#water"]
-      },
-      {
-        title: "Minimalist Butterfly",
-        desc: "Ultra-fine single-needle butterfly on the inner wrist. Delicate wing details with subtle dotwork shading. Proof that small tattoos can carry immense beauty.",
-        style: "Fine Line", colors: "Black & Grey",
-        tags: ["#fineline", "#butterfly", "#minimalist", "#wrist"]
-      },
-      {
-        title: "Sacred Geometry Chest",
-        desc: "Symmetrical sacred geometry design spanning the full chest, featuring the Flower of Life, Metatron's Cube, and custom geometric patterns. Pure precision work.",
-        style: "Geometric", colors: "Black & Grey",
-        tags: ["#sacred", "#chest", "#geometry", "#symmetry"]
-      },
-      {
-        title: "Medusa Portrait",
-        desc: "Hyper-realistic Medusa portrait on the thigh with flowing snake hair and piercing eyes. Dramatic black and grey shading with white highlights for depth.",
-        style: "Realism", colors: "Black & Grey",
-        tags: ["#realism", "#medusa", "#portrait", "#mythology"]
-      }
-    ];
+      const portfolio = @json($portfolioForJs);
 
     // ── Tab Switching ─────────────────────────────────
     function switchTab(tab) {
@@ -583,13 +583,50 @@
     // ── Portfolio Detail Modal ────────────────────────
     function openPortfolioModal(index) {
       const p = portfolio[index];
-      document.getElementById('portfolioModalTitle').textContent = p.title;
-      document.getElementById('portfolioModalDesc').textContent = p.desc;
-      document.getElementById('portfolioModalStyle').textContent = p.style;
-      document.getElementById('portfolioModalColors').textContent = p.colors;
-      document.getElementById('portfolioModalTags').innerHTML = p.tags.map(t =>
-        `<span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">${t}</span>`
-      ).join('');
+      if (!p) {
+        return;
+      }
+
+      if (document.getElementById('content-portfolio')) {
+        switchTab('portfolio');
+      }
+
+      const imageEl = document.getElementById('portfolioModalImageEl');
+      const imagePlaceholder = document.getElementById('portfolioModalImagePlaceholder');
+      if (imageEl && p.image) {
+        imageEl.src = p.image;
+        imageEl.alt = p.title || 'Portfolio piece';
+        imageEl.classList.remove('hidden');
+        imagePlaceholder?.classList.add('hidden');
+      } else if (imageEl) {
+        imageEl.src = '';
+        imageEl.alt = '';
+        imageEl.classList.add('hidden');
+        imagePlaceholder?.classList.remove('hidden');
+      }
+
+      document.getElementById('portfolioModalTitle').textContent = p.title || '';
+
+      const descEl = document.getElementById('portfolioModalDesc');
+      if (descEl) {
+        if (p.desc) {
+          descEl.textContent = p.desc;
+          descEl.classList.remove('hidden');
+        } else {
+          descEl.textContent = '';
+          descEl.classList.add('hidden');
+        }
+      }
+
+      document.getElementById('portfolioModalStyle').textContent = p.style || '';
+      document.getElementById('portfolioModalColors').textContent = p.colors || '';
+
+      const tagsEl = document.getElementById('portfolioModalTags');
+      const tags = Array.isArray(p.tags) ? p.tags : [];
+      tagsEl.innerHTML = tags.length
+        ? tags.map(t => `<span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">${t}</span>`).join('')
+        : '';
+
       openModal('portfolioDetailModal');
     }
 

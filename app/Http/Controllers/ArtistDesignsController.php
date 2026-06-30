@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\ArtistDesign;
+use App\Models\UserDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
 class ArtistDesignsController extends Controller
@@ -45,7 +47,7 @@ class ArtistDesignsController extends Controller
         return [1, max(1, $max)];
     }
 
-    private function designRules(bool $requireImage): array
+    private function designRules(Request $request, bool $requireImage): array
     {
         $styles = $this->styleSlugs();
         $rules = [
@@ -54,6 +56,13 @@ class ArtistDesignsController extends Controller
             'is_active' => ['required', 'boolean'],
             'is_visible' => ['required', 'boolean'],
             'is_repeatable' => ['required', 'boolean'],
+            'repeat_limit' => [
+                Rule::requiredIf(fn () => $request->boolean('is_repeatable')),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:999',
+            ],
             'is_sensitive' => ['required', 'boolean'],
             'primary_style' => ['required', 'string', Rule::in($styles)],
             'other_styles' => ['nullable', 'array', 'max:2'],
@@ -115,19 +124,53 @@ class ArtistDesignsController extends Controller
         return 'uploads/artist-designs/'.$filename;
     }
 
+    private function normalizedRepeatLimit(Request $request, ?ArtistDesign $existing = null): ?int
+    {
+        if (! $request->boolean('is_repeatable')) {
+            return null;
+        }
+
+        $limit = max(1, (int) $request->input('repeat_limit'));
+
+        if ($existing && $limit < $existing->claimedBookingCount()) {
+            throw ValidationException::withMessages([
+                'repeat_limit' => [
+                    'Repeat limit cannot be lower than the number of bookings already claimed ('.$existing->claimedBookingCount().').',
+                ],
+            ]);
+        }
+
+        return $limit;
+    }
+
     public function index()
     {
-        $artistDesigns = Auth::user()->artistDesigns()->latest()->get();
+        $userDetail = Auth::user()->userDetail;
 
-        return view('artist.artist_designs.index', compact('artistDesigns'));
+        $artistDesigns = Auth::user()->artistDesigns()
+            ->withCount(['bookingRequests', 'bookings'])
+            ->withSoldOutState()
+            ->latest()
+            ->get();
+
+        $whatsIncludedItems = is_array($userDetail?->design_whats_included)
+            ? array_values($userDetail->design_whats_included)
+            : [];
+
+        return view('artist.artist_designs.index', [
+            'artistDesigns' => $artistDesigns,
+            'whatsIncludedIsActive' => (bool) ($userDetail?->design_whats_included_is_active ?? false),
+            'whatsIncludedItems' => $whatsIncludedItems,
+        ]);
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate($this->designRules(true));
+        $validated = $request->validate($this->designRules($request, true));
         [$other, $tags] = $this->normalizeArrays($validated);
         [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
         $imagePath = $this->storeUploadedImage($request);
+        $repeatLimit = $this->normalizedRepeatLimit($request);
 
         ArtistDesign::create([
             'user_id' => Auth::id(),
@@ -137,6 +180,7 @@ class ArtistDesignsController extends Controller
             'is_active' => $request->boolean('is_active'),
             'is_visible' => $request->boolean('is_visible'),
             'is_repeatable' => $request->boolean('is_repeatable'),
+            'repeat_limit' => $repeatLimit,
             'is_sensitive' => $request->boolean('is_sensitive'),
             'primary_style' => $validated['primary_style'],
             'other_styles' => $other,
@@ -161,9 +205,10 @@ class ArtistDesignsController extends Controller
     public function update(Request $request, ArtistDesign $artistDesign)
     {
         $this->assertOwns($artistDesign);
-        $validated = $request->validate($this->designRules(false));
+        $validated = $request->validate($this->designRules($request, false));
         [$other, $tags] = $this->normalizeArrays($validated);
         [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
+        $repeatLimit = $this->normalizedRepeatLimit($request, $artistDesign);
 
         $imagePath = $artistDesign->image;
         if ($request->hasFile('image')) {
@@ -178,6 +223,7 @@ class ArtistDesignsController extends Controller
             'is_active' => $request->boolean('is_active'),
             'is_visible' => $request->boolean('is_visible'),
             'is_repeatable' => $request->boolean('is_repeatable'),
+            'repeat_limit' => $repeatLimit,
             'is_sensitive' => $request->boolean('is_sensitive'),
             'primary_style' => $validated['primary_style'],
             'other_styles' => $other,
@@ -199,9 +245,88 @@ class ArtistDesignsController extends Controller
         ]);
     }
 
+    public function updateWhatsIncluded(Request $request)
+    {
+        $userDetail = Auth::user()->userDetail ?? UserDetail::create(['user_id' => Auth::id()]);
+
+        $validated = $request->validate([
+            'is_active' => ['required', 'boolean'],
+            'items' => ['sometimes', 'nullable', 'array', 'max:8'],
+            'items.*' => ['string', 'max:255'],
+        ]);
+
+        $update = [
+            'design_whats_included_is_active' => $request->boolean('is_active'),
+        ];
+
+        if ($request->has('items')) {
+            $update['design_whats_included'] = array_values(array_filter(array_map(
+                fn ($item) => trim((string) $item),
+                $validated['items'] ?? []
+            ), fn (string $item) => $item !== ''));
+        }
+
+        $userDetail->update($update);
+
+        return response()->json([
+            'success' => true,
+            'message' => $request->has('items') ? 'What\'s included saved.' : 'Visibility updated.',
+            'is_active' => (bool) $userDetail->design_whats_included_is_active,
+            'items' => is_array($userDetail->design_whats_included)
+                ? array_values($userDetail->design_whats_included)
+                : [],
+        ]);
+    }
+
+    public function toggleAvailability(Request $request, ArtistDesign $artistDesign)
+    {
+        $this->assertOwns($artistDesign);
+
+        $isActive = $request->has('is_active')
+            ? $request->boolean('is_active')
+            : ! $artistDesign->is_active;
+
+        $artistDesign->update(['is_active' => $isActive]);
+
+        return response()->json([
+            'success' => true,
+            'is_active' => $artistDesign->is_active,
+            'message' => $artistDesign->is_active
+                ? 'Design is now available for booking.'
+                : 'Design is now unavailable on your page.',
+        ]);
+    }
+
+    public function toggleVisibility(Request $request, ArtistDesign $artistDesign)
+    {
+        $this->assertOwns($artistDesign);
+
+        $isVisible = $request->has('is_visible')
+            ? $request->boolean('is_visible')
+            : ! $artistDesign->is_visible;
+
+        $artistDesign->update(['is_visible' => $isVisible]);
+
+        return response()->json([
+            'success' => true,
+            'is_visible' => $artistDesign->is_visible,
+            'message' => $artistDesign->is_visible
+                ? 'Design is now visible on your page.'
+                : 'Design is now hidden from your page.',
+        ]);
+    }
+
     public function destroy(ArtistDesign $artistDesign)
     {
         $this->assertOwns($artistDesign);
+
+        if (! $artistDesign->canBeDeleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This design has bookings or requests linked to it. Mark it unavailable instead of deleting.',
+            ], 422);
+        }
+
         $this->deleteUploadIfSafe($artistDesign->image);
         $artistDesign->delete();
 

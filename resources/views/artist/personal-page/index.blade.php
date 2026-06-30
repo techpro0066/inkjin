@@ -52,6 +52,15 @@
     .banner-upload.has-image .upload-prompt { display: none; }
     .banner-upload.has-image .upload-overlay { display: flex; }
     .banner-upload.has-image:hover .upload-overlay { background: rgba(20, 20, 20, 0.55); }
+    .banner-remove-btn {
+      font-size: 13px;
+      font-weight: 600;
+      color: #b3261e;
+      padding: 6px 12px;
+      border-radius: 10px;
+      transition: background 0.2s;
+    }
+    .banner-remove-btn:hover { background: rgba(179, 38, 30, 0.08); }
     .profile-upload { width: 96px; height: 96px; border-radius: 50%; border: 2px dashed #cac4d3; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; background: white; margin-top: -48px; margin-left: 24px; position: relative; z-index: 1; }
     .profile-upload:hover { border-color: #664db1; background: #f8f1fb; }
 
@@ -138,8 +147,8 @@
             <span class="material-symbols-outlined text-primary text-lg">image</span>
           </div>
           <div>
-            <h3 class="font-bold text-on-surface">Header & Banner <span class="text-red-600">*</span></h3>
-            <p class="text-xs text-on-surface-variant">Upload a banner and profile photo for your page.</p>
+            <h3 class="font-bold text-on-surface">Header & Banner</h3>
+            <p class="text-xs text-on-surface-variant">Banner image is optional. Profile photo is managed in Profile Settings.</p>
           </div>
         </div>
 
@@ -148,12 +157,17 @@
           <input type="file" id="bannerInput" name="personal_page_background_image" accept="image/*" class="hidden" onchange="handleBannerUpload(this)">
           <div class="upload-prompt flex flex-col items-center justify-center">
             <span class="material-symbols-outlined text-outline text-3xl mb-2">photo_camera</span>
-            <p class="text-sm font-semibold text-on-surface">Upload Banner Image</p>
+            <p class="text-sm font-semibold text-on-surface">Upload Banner Image <span class="text-on-surface-variant font-normal">(optional)</span></p>
             <p class="text-xs text-on-surface-variant mt-1">Recommended: 1200×400px</p>
           </div>
           <div class="upload-overlay">Click to change banner</div>
         </div>
-        <div class="relative z-20 mt-2 text-right pr-2">
+        <div class="flex justify-end mt-2">
+          <button type="button" id="btnRemoveBanner" class="banner-remove-btn inline-flex items-center gap-1.5 {{ $bannerUrl ? '' : 'hidden' }}" onclick="removeBannerImage(event)">
+            <span class="material-symbols-outlined text-[18px]">delete</span> Remove banner
+          </button>
+        </div>
+        <div class="relative z-20 mt-1 text-right pr-2">
           <p id="personal_page_background_image_error" class="text-error text-xs hidden inline-block"></p>
         </div>
 
@@ -405,6 +419,45 @@
     let croppedBannerBlob = null;
     let croppedBannerFilename = 'banner.jpg';
     let bannerSourceMime = '';
+    let bannerRemoved = false;
+
+    function syncBannerRemoveButton() {
+      const btn = document.getElementById('btnRemoveBanner');
+      const bannerArea = document.getElementById('bannerUploadArea');
+      if (!btn || !bannerArea) return;
+      btn.classList.toggle('hidden', !bannerArea.classList.contains('has-image'));
+    }
+
+    function removeBannerImage(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      bannerRemoved = true;
+      croppedBannerBlob = null;
+      croppedBannerFilename = 'banner.jpg';
+
+      const bannerInput = document.getElementById('bannerInput');
+      if (bannerInput) bannerInput.value = '';
+
+      const bannerArea = document.getElementById('bannerUploadArea');
+      if (bannerArea) {
+        bannerArea.style.backgroundImage = '';
+        bannerArea.classList.remove('has-image');
+      }
+
+      const previewBanner = document.getElementById('modalPreviewBanner');
+      if (previewBanner) {
+        previewBanner.style.backgroundImage = '';
+        previewBanner.style.backgroundSize = '';
+        previewBanner.style.backgroundPosition = '';
+        previewBanner.innerHTML = '<span class="material-symbols-outlined text-gray-400 text-4xl">panorama</span>';
+      }
+
+      syncBannerRemoveButton();
+      clearFieldError('personal_page_background_image');
+    }
 
     function inferImageMimeFromFilename(name) {
       if (!name) return '';
@@ -581,12 +634,6 @@
       }
     }
 
-    function hasBannerSelected() {
-      if (croppedBannerBlob) return true;
-      const bannerArea = document.getElementById('bannerUploadArea');
-      return !!(bannerArea && bannerArea.classList.contains('has-image'));
-    }
-
     function validatePersonalPageForm() {
       let ok = true;
       const tagline = (document.getElementById('tagline')?.value || '').trim();
@@ -594,10 +641,6 @@
       const alias = (document.getElementById('personal_page_name_alias')?.value || '').trim();
       const color = (document.getElementById('personal_page_color')?.value || '').trim();
 
-      if (!hasBannerSelected()) {
-        setFieldError('personal_page_background_image', 'Background image is required.');
-        ok = false;
-      }
       if (!tagline) {
         setFieldError('personal_page_tagline', 'Tagline is required.');
         ok = false;
@@ -712,6 +755,7 @@
       canvas.toBlob(function (blob) {
         if (!blob) return;
         croppedBannerBlob = blob;
+        bannerRemoved = false;
         const croppedBannerDataUrl = preserveAlpha
           ? canvas.toDataURL('image/png')
           : canvas.toDataURL('image/jpeg', 0.92);
@@ -729,6 +773,7 @@
           previewBanner.innerHTML = '';
         }
 
+        syncBannerRemoveButton();
         closeBannerCropper();
       }, outMime, outQuality);
     }
@@ -779,6 +824,9 @@
         if (croppedBannerBlob) {
           formData.delete('personal_page_background_image');
           formData.append('personal_page_background_image', croppedBannerBlob, croppedBannerFilename || 'banner.jpg');
+        } else if (bannerRemoved) {
+          formData.delete('personal_page_background_image');
+          formData.append('remove_personal_page_background_image', '1');
         }
 
         fetch(@json(route('personal-page.update')), {
@@ -802,7 +850,12 @@
               const bannerArea = document.getElementById('bannerUploadArea');
               bannerArea.style.backgroundImage = "url('" + result.data.banner + "')";
               bannerArea.classList.add('has-image');
+            } else {
+              removeBannerImage();
             }
+            bannerRemoved = false;
+            croppedBannerBlob = null;
+            syncBannerRemoveButton();
             showSaveToast();
             return;
           }

@@ -5,12 +5,12 @@
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Request a Custom Tattoo | Inkjin</title>
   <meta name="description" content="Request a custom tattoo design — describe your vision, upload references, and submit your request.">
-  <link rel="icon" href="images/favicon.png">
+  <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  <link href="css/bookpay.css" rel="stylesheet">
+  <link href="{{ asset('design/css/inkjin_bookpay.css') }}" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
   <script>
     tailwind.config = {
@@ -556,7 +556,7 @@
         <h2 class="text-2xl sm:text-3xl font-extrabold text-on-surface mb-3">Request Submitted! 🎉</h2>
         <p class="text-sm text-on-surface-variant mb-2">Reference: <strong id="successRequestRef">—</strong></p>
         <p class="text-on-surface-variant text-lg mb-8">
-          <span id="successArtistName">Julian Ink</span> will review your request@if(!empty($isManagedScheduling)) and confirm a time that works for both of you@endif. You'll receive updates via email.
+          <span id="successArtistName">{{ $artistName }}</span> will review your request @if(!empty($isManagedScheduling)) and confirm a time that works for both of you@endif. You'll receive updates via email.
         </p>
         <div class="bg-surface-container-low rounded-2xl p-5 mb-8 text-left">
           <h3 class="text-sm font-bold mb-3">What happens next?</h3>
@@ -579,6 +579,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   @include('public.partials.question-image-upload')
+  <script src="{{ asset('js/question-answer-display.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
   (function($) {
@@ -616,6 +617,7 @@
         var answer = questionAnswers[q.id];
         if (typeof answer === 'string') answer = answer.trim();
         if (answer === undefined || answer === null || answer === '') return;
+        if (Array.isArray(answer) && answer.length === 0) return;
         output[String(q.id)] = { id: q.id, question: String(q.title || ''), type: String(q.type || 'input'), answer: answer };
       });
       return output;
@@ -637,6 +639,15 @@
       if (!response.ok || !data || !data.success) throw new Error((data && data.message) || 'Image upload failed.');
       return data.file_url || data.file_path || '';
     }
+
+    if (window.QuestionImageField) {
+      window.QuestionImageField.setUploadHandler(uploadQuestionImage);
+    }
+
+    $(document).on('qimages:updated', '.q-image-upload', function(_event, questionId, urls) {
+      if (!questionId) return;
+      questionAnswers[questionId] = Array.isArray(urls) ? urls.slice() : [];
+    });
 
     function renderQuestions() {
       var html = '';
@@ -687,7 +698,10 @@
       if (qType === 'radio') hasValue = !!$active.find('.single-choice-radio-button.selected').length;
       else if (qType === 'select') hasValue = !!String($active.find('.js-select2-question').val() || '').trim();
       else if (qType === 'input' || qType === 'textarea') hasValue = !!String($active.find('.js-question-input').val() || '').trim();
-      else if (qType === 'image') hasValue = !!String(questionAnswers[qId] || '').trim();
+      else if (qType === 'image') {
+        var imageAnswer = questionAnswers[qId];
+        hasValue = Array.isArray(imageAnswer) ? imageAnswer.length > 0 : !!String(imageAnswer || '').trim();
+      }
       else if (qType === 'toggle') hasValue = $active.find('.js-question-toggle').is(':checked');
       else hasValue = !!questionAnswers[qId];
       $active.find('.js-question-error').toggleClass('hidden', hasValue);
@@ -740,35 +754,12 @@
       if (!validateActiveQuestion()) return;
       if (typeof window.rcLeaveQuestionsToContact === 'function') window.rcLeaveQuestionsToContact();
     });
-    $(document).on('change', '.js-select2-question, .js-question-file, .js-question-toggle', async function() {
+    $(document).on('change', '.js-select2-question, .js-question-toggle', async function() {
       var $question = $(this).closest('.question-div');
       var qId = $question.data('question-id');
       if (!qId) return;
       if ($(this).hasClass('js-question-toggle')) questionAnswers[qId] = $(this).is(':checked');
-      else if ($(this).hasClass('js-question-file')) {
-        var $zone = $(this).closest('.q-image-upload');
-        var file = this.files && this.files.length ? this.files[0] : null;
-        questionAnswers[qId] = '';
-        if (!file) {
-          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
-          return;
-        }
-        var fileError = window.QuestionImageField ? window.QuestionImageField.validateFile(file) : '';
-        if (fileError) {
-          $question.find('.js-question-error').removeClass('hidden').text(fileError);
-          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
-          return;
-        }
-        if (window.QuestionImageField) window.QuestionImageField.showLocalPreview($zone, file);
-        try {
-          questionAnswers[qId] = await uploadQuestionImage(file, qId);
-          if (window.QuestionImageField) window.QuestionImageField.showPreview($zone, questionAnswers[qId]);
-        } catch (error) {
-          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
-          $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed.');
-          return;
-        }
-      } else questionAnswers[qId] = String($(this).val() || '').trim();
+      else questionAnswers[qId] = String($(this).val() || '').trim();
       $question.find('.js-question-error').addClass('hidden');
     });
     $(document).on('input', '.js-question-input', function() {
@@ -1413,9 +1404,12 @@
       data.notes = document.getElementById('tfNotes')?.value.trim() || data.notes;
     }
 
-    function formatAnswer(val) {
+    function formatAnswer(val, type) {
+      if (window.QuestionAnswerDisplay) {
+        return window.QuestionAnswerDisplay.formatAnswerForReview(val, type);
+      }
       if (typeof val === 'boolean') return val ? 'Yes' : 'No';
-      if (Array.isArray(val)) return val.join(', ');
+      if (Array.isArray(val)) return val.length === 1 ? '1 photo' : (val.length > 1 ? val.length + ' photos' : '—');
       return String(val || '—');
     }
 
@@ -1427,7 +1421,7 @@
         Object.keys(qa).forEach(function(key) {
           var entry = qa[key];
           if (!entry) return;
-          items.push({ label: entry.question || 'Question', value: formatAnswer(entry.answer) });
+          items.push({ label: entry.question || 'Question', value: formatAnswer(entry.answer, entry.type) });
         });
       }
       items.push(

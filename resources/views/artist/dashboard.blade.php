@@ -25,6 +25,44 @@
     }
     .filter-pills { flex-wrap: wrap; }
     .request-card { overflow: hidden; word-break: break-word; }
+
+    /* Dashboard notices — uniform compact height & layout */
+    .dashboard-notices { display: flex; flex-direction: column; gap: 0.75rem; }
+    .dashboard-notice {
+      padding: 0.875rem 1rem;
+      display: flex;
+      align-items: center;
+    }
+    @media (min-width: 640px) {
+      .dashboard-notice {
+        padding: 0.875rem 1.125rem;
+        min-height: 4.75rem;
+      }
+    }
+    .dashboard-notice__inner { width: 100%; min-height: 3.25rem; }
+    @media (min-width: 640px) {
+      .dashboard-notice__inner { min-height: 3.5rem; }
+    }
+    .dashboard-notice__icon-wrap { width: 2.5rem; height: 2.5rem; }
+    .dashboard-notice__icon { font-size: 1.375rem; line-height: 1; }
+    .dashboard-notice__title { font-size: 0.8125rem; line-height: 1.25; }
+    .dashboard-notice__text {
+      font-size: 0.75rem;
+      line-height: 1.35;
+      margin-top: 0.125rem;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+    .dashboard-notice__btn {
+      padding: 0.5rem 0.875rem;
+      min-height: 2.25rem;
+    }
+    @media (max-width: 639px) {
+      .dashboard-notice__btn { width: 100%; }
+    }
+
     .status-new { background: #f3e8ff; color: #6b21a8; }
     .status-new .status-dot { background: #9333ea; }
     .status-confirmed { background: #f0fdf4; color: #15803d; }
@@ -78,62 +116,67 @@
       }
     @endphp
 
-    @if($ud && $ud->availability_status == 'closed')
-    <div id="booksClosedBanner" class="bg-red-50 border border-red-200 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div class="flex items-start gap-3">
-        <span class="material-symbols-outlined text-red-600 mt-0.5">event_busy</span>
-        <div>
-          <h3 class="text-sm font-bold text-red-900">Your books are currently closed</h3>
-          <p class="text-xs text-red-700 mt-1">Clients cannot book your available designs or send custom requests. When you are ready, open your books to start accepting appointments.</p>
-        </div>
-      </div>
-      <a href="{{ route('availability.index') }}" class="whitespace-nowrap px-4 py-2 bg-red-600 text-white rounded-full text-xs font-bold hover:bg-red-700 transition-colors shadow-sm">
-        Open Your Books
-      </a>
-    </div>
-    @endif
+    @php
+      $paymentNotApproved = $ud && (
+        (($ud->payment_type ?? '') === 'studio_account' && !empty($ud->studio_id) && ($ud->payment_status ?? '') === 'pending')
+        || (($ud->payment_type ?? '') === 'artist_account' && ($ud->payment_status ?? '') !== 'approved')
+      );
+      $paymentNoticeDescription = ($ud && ($ud->payment_type ?? '') === 'studio_account')
+        ? 'Your studio still needs to approve payout details before you can receive earnings.'
+        : 'Complete and approve your payout method to receive earnings.';
+    @endphp
 
-    @if($ud && (
-      (($ud->payment_type ?? '') === 'studio_account' && !empty($ud->studio_id) && ($ud->payment_status ?? '') === 'pending')
-      || (($ud->payment_type ?? '') === 'artist_account' && ($ud->payment_status ?? '') !== 'approved')
-    ))
-    <div id="paymentNotApprovedBanner" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div class="flex items-start gap-3">
-        <span class="material-symbols-outlined text-amber-600 mt-0.5">payments</span>
-        <div>
-          <h3 class="text-sm font-bold text-amber-900">Payout setup is not approved yet</h3>
-          <p class="text-xs text-amber-800 mt-1">
-            @if(($ud->payment_type ?? '') === 'studio_account')
-              Your studio still needs to complete or approve payout details before your payment profile is active. You can resend the request from payment settings or follow up with your studio.
-            @else
-              Complete and approve your payout method so you can receive earnings. Open payment settings to see what is still required.
-            @endif
-          </p>
-        </div>
-      </div>
-      <a href="{{ route('settings.payment') }}" class="whitespace-nowrap px-4 py-2 bg-amber-600 text-white rounded-full text-xs font-bold hover:bg-amber-700 transition-colors shadow-sm">
-        Payment settings
-      </a>
-    </div>
-    @endif
+    <div class="dashboard-notices mb-8">
+      @if(!empty($needsWeeklyAvailabilitySetup))
+        @include('artist.dashboard.partials.notice', [
+          'id' => 'weeklyAvailabilityNotice',
+          'theme' => 'amber',
+          'icon' => 'event_available',
+          'title' => 'Weekly availability is not set',
+          'description' => 'Set the days and times you\'re available. Until you do, clients can\'t book you.',
+          'buttonText' => 'Set availability',
+          'buttonIcon' => 'calendar_clock',
+          'buttonUrl' => route('availability.index'),
+        ])
+      @endif
 
-    @if(!empty($needsWeeklyAvailabilitySetup))
-    <div class="mb-8 rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-amber-100/40 p-5 sm:p-6 shadow-sm" role="alert">
-      <div class="flex flex-col sm:flex-row sm:items-start gap-4">
-        <div class="w-11 h-11 rounded-xl bg-amber-100 border border-amber-200/60 flex items-center justify-center flex-shrink-0">
-          <span class="material-symbols-outlined text-amber-800 text-2xl">event_available</span>
-        </div>
-        <div class="min-w-0 flex-1">
-          <h3 class="text-sm font-bold text-amber-950">Weekly availability is not set</h3>
-          <p class="text-xs text-amber-900/90 mt-1.5 leading-relaxed">Add at least one weekly time range on your availability page. Until you do, clients cannot complete bookings with you.</p>
-        </div>
-        <a href="{{ route('availability.index') }}" class="self-start sm:self-center shrink-0 inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 px-4 py-2.5 rounded-xl shadow-sm transition-colors">
-          <span class="material-symbols-outlined text-base">calendar_clock</span>
-          Set availability
-        </a>
-      </div>
+      @include('artist.dashboard.partials.notice', [
+        'id' => 'customizePageNotice',
+        'theme' => 'blue',
+        'icon' => 'palette',
+        'title' => 'Customize your booking page',
+        'description' => 'Manage your colors, bio, flash designs, portfolio, and intake forms.',
+        'buttonText' => 'Customize page',
+        'buttonIcon' => 'tune',
+        'buttonUrl' => route('personal-page.index'),
+      ])
+
+      @if($ud && $ud->availability_status == 'closed')
+        @include('artist.dashboard.partials.notice', [
+          'id' => 'booksClosedBanner',
+          'theme' => 'red',
+          'icon' => 'event_busy',
+          'title' => 'Your books are currently closed',
+          'description' => 'Clients can\'t book your designs or send custom requests. Open your books when you\'re ready to start accepting appointments.',
+          'buttonText' => 'Open your books',
+          'buttonIcon' => 'event_available',
+          'buttonUrl' => route('availability.index') . '?tab=status',
+        ])
+      @endif
+
+      @if($paymentNotApproved)
+        @include('artist.dashboard.partials.notice', [
+          'id' => 'paymentNotApprovedBanner',
+          'theme' => 'amber',
+          'icon' => 'payments',
+          'title' => 'Payout setup is not approved yet',
+          'description' => $paymentNoticeDescription,
+          'buttonText' => 'Payment settings',
+          'buttonIcon' => 'settings',
+          'buttonUrl' => route('settings.payment'),
+        ])
+      @endif
     </div>
-    @endif
 
     <!-- Welcome Header -->
     <div class="mb-8">
@@ -360,10 +403,6 @@
     <span id="dashboardCopyLinkToastMessage">Booking link copied.</span>
   </div>
 </div>
-
-@if(!empty($needsWeeklyAvailabilitySetup))
-  @include('components.artist_availability_setup_modal', ['context' => 'dashboard'])
-@endif
 
 @if($showWaitlistNotifyButton ?? false)
   @include('components.waitlist-notify-modal')

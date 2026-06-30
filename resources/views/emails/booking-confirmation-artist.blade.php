@@ -91,15 +91,30 @@
                               $questionText = (string) ($answerPayload['question'] ?? ($questions[$questionId] ?? ('Question #' . $questionId)));
                               $answerType = (string) ($answerPayload['type'] ?? '');
                               $answerValue = $answerPayload['answer'] ?? '';
-                              $isImageAnswer = $answerType === 'image'
-                                  || (is_string($answerValue) && (str_starts_with($answerValue, 'http://') || str_starts_with($answerValue, 'https://') || str_starts_with($answerValue, '/uploads/')));
+                              $imageUrls = [];
+                              if (is_array($answerValue)) {
+                                  foreach ($answerValue as $item) {
+                                      $item = trim((string) $item);
+                                      if ($item !== '' && (str_starts_with($item, 'http://') || str_starts_with($item, 'https://') || str_starts_with($item, '/uploads/') || str_starts_with($item, 'uploads/'))) {
+                                          $imageUrls[] = $item;
+                                      }
+                                  }
+                              } elseif (is_string($answerValue)) {
+                                  $answerValue = trim($answerValue);
+                                  if ($answerValue !== '' && (str_starts_with($answerValue, 'http://') || str_starts_with($answerValue, 'https://') || str_starts_with($answerValue, '/uploads/') || str_starts_with($answerValue, 'uploads/'))) {
+                                      $imageUrls[] = $answerValue;
+                                  }
+                              }
+                              $isImageAnswer = $answerType === 'image' || $imageUrls !== [];
                             @endphp
                             <p style="margin:0 0 4px 0;font-size:13px;font-weight:700;color:#6a5000;">Q: {{ $questionText }}</p>
-                            @if($isImageAnswer)
-                              <p style="margin:0 0 12px 0;font-size:14px;color:#4d4d4d;">
-                                A:
-                                <a href="{{ str_starts_with((string) $answerValue, 'http') ? $answerValue : url((string) $answerValue) }}" target="_blank" style="color:#310f7a;text-decoration:underline;">View uploaded image</a>
-                              </p>
+                            @if($isImageAnswer && $imageUrls !== [])
+                              <p style="margin:0 0 8px 0;font-size:14px;color:#4d4d4d;">A:</p>
+                              @foreach($imageUrls as $imageUrl)
+                                <p style="margin:0 0 8px 0;font-size:14px;color:#4d4d4d;">
+                                  <a href="{{ str_starts_with($imageUrl, 'http') ? $imageUrl : url($imageUrl) }}" target="_blank" style="color:#310f7a;text-decoration:underline;">View uploaded image {{ $loop->iteration }}</a>
+                                </p>
+                              @endforeach
                             @else
                               <p style="margin:0 0 12px 0;font-size:14px;color:#4d4d4d;">A: {{ is_array($answerValue) ? implode(', ', $answerValue) : $answerValue }}</p>
                             @endif

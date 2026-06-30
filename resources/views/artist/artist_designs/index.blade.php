@@ -143,6 +143,43 @@
       aspect-ratio: var(--design-preview-ar, 4 / 5);
       max-height: min(20rem, min(70vw, 85vh));
     }
+
+    /* What's included editor */
+    .included-item-row { display: flex; align-items: center; gap: 0.5rem; }
+    .included-item-row input { flex: 1; min-width: 0; }
+    .included-item-remove {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #7a7583;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .included-item-remove:hover { background: #fce8e8; color: #ba1a1a; }
+    .included-item-remove.is-hidden { visibility: hidden; pointer-events: none; }
+    .included-preset-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.375rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px dashed rgba(122, 117, 131, 0.45);
+      background: #fff;
+      color: #494552;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .included-preset-chip:hover:not(:disabled) {
+      border-color: #310f7a;
+      background: #f8f1fb;
+      color: #310f7a;
+    }
+    .included-preset-chip:disabled { opacity: 0.45; cursor: not-allowed; }
 </style>
 @endsection
 
@@ -170,6 +207,42 @@
           <button type="button" id="btnOpenNewDesign" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2 flex-shrink-0">
             <span class="material-symbols-outlined text-lg">add</span> New Design
           </button>
+        </div>
+      </div>
+
+      <!-- What's Included -->
+      <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 md:p-6 mb-8" id="whatsIncludedPanel">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
+          <div class="min-w-0 flex-1">
+            <h3 class="text-lg font-bold text-on-surface">What's Included</h3>
+            <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Let clients know what's part of your service — sizing, placement, touch-ups, aftercare.</p>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <span class="text-sm font-semibold text-on-surface-variant">Show on page</span>
+            <div id="toggleWhatsIncluded" class="toggle-switch @if($whatsIncludedIsActive) active @endif" role="switch" aria-checked="{{ $whatsIncludedIsActive ? 'true' : 'false' }}" title="Show or hide What's Included on your public design pages"></div>
+            <span id="toggleWhatsIncludedLabel" class="text-xs font-semibold {{ $whatsIncludedIsActive ? 'text-primary' : 'text-on-surface-variant' }} min-w-[1.75rem]">{{ $whatsIncludedIsActive ? 'Yes' : 'No' }}</span>
+          </div>
+        </div>
+
+        <div id="whatsIncludedEditor" class="space-y-5 @if(!$whatsIncludedIsActive) hidden @endif">
+          <div id="whatsIncludedList" class="space-y-2.5" aria-label="What's included items"></div>
+
+          <button type="button" id="btnAddIncludedItem" class="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-container transition-colors">
+            <span class="material-symbols-outlined text-[18px]">add</span> Add item
+          </button>
+          <p id="whatsIncludedLimitHint" class="hidden text-xs text-on-surface-variant">You can add up to 8 items. Remove one to add another preset.</p>
+
+          <div>
+            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2.5">Suggestions</p>
+            <div id="whatsIncludedPresets" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 border-t border-outline-variant/15">
+            <button type="button" id="btnSaveWhatsIncluded" class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
+              <span class="material-symbols-outlined text-lg">save</span> Save
+            </button>
+            <p id="whatsIncludedSaveStatus" class="hidden text-sm font-medium text-green-700"></p>
+          </div>
         </div>
       </div>
 
@@ -223,11 +296,14 @@
               str_replace('-', ' ', $design->primary_style).' '.
               $colorLabel
           );
+          $canDeleteDesign = ($design->booking_requests_count ?? 0) === 0 && ($design->bookings_count ?? 0) === 0;
+          $isSoldOut = $design->isSoldOut();
         @endphp
         <div
           class="design-card-wrap"
           data-design-id="{{ $design->id }}"
           data-is-active="{{ $design->is_active ? '1' : '0' }}"
+          data-is-sold-out="{{ $isSoldOut ? '1' : '0' }}"
           data-created="{{ $design->created_at->getTimestamp() }}"
           data-max-price="{{ (int) $design->max_price }}"
           data-search="{{ e($searchBlob) }}"
@@ -238,13 +314,20 @@
           </div>
           <div class="p-4">
             <div class="flex flex-wrap gap-1.5 mb-3">
-              @if ($design->is_visible)
-              <span class="toggle-badge on"><span class="material-symbols-outlined">visibility</span> Visible</span>
-              @else
-              <span class="toggle-badge off"><span class="material-symbols-outlined">visibility_off</span> Hidden</span>
+              @if ($isSoldOut)
+              <span class="toggle-badge off">Sold Out</span>
               @endif
-              <span class="toggle-badge {{ $design->is_active ? 'on' : 'off' }}">{{ $design->is_active ? 'Available' : 'Unavailable' }}</span>
-              <span class="toggle-badge {{ $design->is_repeatable ? 'on' : 'off' }}">Repeatable</span>
+              <span class="design-availability-badge toggle-badge {{ $design->is_active ? 'on' : 'off' }}">
+                <span class="design-availability-label">{{ $design->is_active ? 'Available' : 'Unavailable' }}</span>
+              </span>
+              <span class="toggle-badge {{ $design->is_visible ? 'on' : 'off' }}">Visibility</span>
+              <span class="toggle-badge {{ $design->is_repeatable ? 'on' : 'off' }}">
+                @if ($design->is_repeatable && $design->repeat_limit)
+                  Repeatable ×{{ $design->repeat_limit }}
+                @else
+                  Repeatable
+                @endif
+              </span>
               <span class="toggle-badge {{ $design->is_sensitive ? 'on' : 'off' }}">Sensitive</span>
             </div>
             <h4 class="font-bold text-on-surface text-sm mb-1.5">{{ $design->title }}</h4>
@@ -268,7 +351,21 @@
             </div>
             <div class="flex items-center gap-1 pt-2 mt-1 border-t border-outline-variant/10">
               <button type="button" class="btn-edit-design w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors" title="Edit" data-design-id="{{ $design->id }}"><span class="material-symbols-outlined text-on-surface-variant text-lg">edit</span></button>
+              @if ($canDeleteDesign)
               <button type="button" class="btn-delete-design w-8 h-8 rounded-lg flex items-center justify-center hover:bg-error-container transition-colors" title="Delete" data-delete-url="{{ route('artist-designs.destroy', $design) }}" data-design-id="{{ $design->id }}"><span class="material-symbols-outlined text-error text-lg">delete</span></button>
+              @else
+              <div class="ml-auto flex items-center gap-2 pl-2" title="Has bookings or requests — set unavailable instead of delete">
+                <span class="text-[11px] font-semibold text-on-surface-variant">Available</span>
+                <div
+                  class="btn-toggle-design-availability toggle-switch {{ $design->is_active ? 'active' : '' }}"
+                  role="switch"
+                  aria-checked="{{ $design->is_active ? 'true' : 'false' }}"
+                  title="Toggle availability"
+                  data-toggle-url="{{ route('artist-designs.toggle-availability', $design) }}"
+                  data-design-id="{{ $design->id }}"
+                ></div>
+              </div>
+              @endif
             </div>
           </div>
         </div>
@@ -359,6 +456,12 @@
                   <div id="toggleSensitive" class="toggle-switch"></div>
                   <span class="text-sm text-on-surface">Sensitive</span>
                 </div>
+              </div>
+              <div id="repeatLimitField" class="design-field-section hidden mt-4 scroll-mt-6" data-design-field="repeat_limit">
+                <label for="designRepeatLimit" class="block text-xs font-semibold text-on-surface-variant mb-1.5">How many times can this be booked? <span class="text-red-600">*</span></label>
+                <input type="number" id="designRepeatLimit" name="designRepeatLimit" min="1" max="999" step="1" placeholder="e.g. 3" class="w-full max-w-[160px] text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <p class="text-xs text-on-surface-variant mt-1.5">Total number of clients who can book this design before it shows as sold out.</p>
+                <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="repeat_limit"></p>
               </div>
             </div>
             <!-- Primary Style -->
@@ -570,6 +673,8 @@
             'is_active' => (bool) $d->is_active,
             'is_visible' => (bool) $d->is_visible,
             'is_repeatable' => (bool) $d->is_repeatable,
+            'repeat_limit' => $d->repeat_limit !== null ? (int) $d->repeat_limit : null,
+            'claimed_count' => $d->claimedBookingCount(),
             'is_sensitive' => (bool) $d->is_sensitive,
             'primary_style' => $d->primary_style,
             'other_styles' => array_values($d->other_styles ?? []),
@@ -582,6 +687,8 @@
             'min_sessions' => (int) $d->min_sessions,
             'max_sessions' => (int) $d->max_sessions,
             'session_duration' => $d->session_duration,
+            'can_delete' => ($d->booking_requests_count ?? 0) === 0 && ($d->bookings_count ?? 0) === 0,
+            'toggle_availability_url' => route('artist-designs.toggle-availability', $d),
         ];
     });
 @endphp
@@ -589,6 +696,8 @@
   <script>
     var ARTIST_DESIGNS_STORE_URL = @json(route('artist-designs.store'));
     var ARTIST_DESIGNS_INDEX_URL = @json(route('artist-designs.index'));
+    var WHATS_INCLUDED_UPDATE_URL = @json(route('artist-designs.whats-included.update'));
+    var WHATS_INCLUDED_INITIAL = @json(['is_active' => $whatsIncludedIsActive, 'items' => $whatsIncludedItems]);
     var ARTIST_DESIGNS_BY_ID = @json($designsForEdit);
     $(function () {
       var MODAL_MS = 350;
@@ -701,7 +810,7 @@
         $('#designImage').val('');
       }
 
-      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'primary_style', 'other_styles', 'color', 'tags', 'min_price', 'max_price', 'min_size', 'max_size', 'max_sessions', 'session_duration'];
+      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'repeat_limit', 'primary_style', 'other_styles', 'color', 'tags', 'min_price', 'max_price', 'min_size', 'max_size', 'max_sessions', 'session_duration'];
 
       function setDesignFormBanner(msg) {
         var el = document.getElementById('designFormBanner');
@@ -799,6 +908,15 @@
         return String(ARTIST_DESIGNS_INDEX_URL).replace(/\/+$/, '') + '/' + encodeURIComponent(id);
       }
 
+      function syncRepeatLimitFieldVisibility() {
+        var repeatable = $('#toggleRepeatable').hasClass('active');
+        $('#repeatLimitField').toggleClass('hidden', !repeatable);
+        if (!repeatable) {
+          $('#designRepeatLimit').val('');
+          $('.design-field-error[data-error-for="repeat_limit"]').addClass('hidden').empty();
+        }
+      }
+
       function populateDesignFormFromPayload(d) {
         $('#designTitle').val(d.title || '');
         $('#designDescription').val(d.description || '');
@@ -814,6 +932,8 @@
         $('#toggleVisibility').toggleClass('active', !!d.is_visible);
         $('#toggleAvailable').toggleClass('active', !!d.is_active);
         $('#toggleRepeatable').toggleClass('active', !!d.is_repeatable);
+        $('#designRepeatLimit').val(d.is_repeatable && d.repeat_limit != null ? d.repeat_limit : '');
+        syncRepeatLimitFieldVisibility();
         $('#toggleSensitive').toggleClass('active', !!d.is_sensitive);
         $('#designOtherStyles option').prop('selected', false);
         (d.other_styles || []).forEach(function (slug) {
@@ -878,6 +998,15 @@
         var desc = $.trim($('#designDescription').val());
         if (desc.length > 255) {
           errors.description = 'Description must not exceed 255 characters.';
+        }
+        if ($('#toggleRepeatable').hasClass('active')) {
+          var repeatLimitRaw = String($('#designRepeatLimit').val() || '').trim();
+          var repeatLimit = parseInt(repeatLimitRaw, 10);
+          if (repeatLimitRaw === '' || isNaN(repeatLimit) || repeatLimit < 1) {
+            errors.repeat_limit = 'Please enter how many times this design can be booked (at least 1).';
+          } else if (repeatLimit > 999) {
+            errors.repeat_limit = 'Repeat limit cannot exceed 999.';
+          }
         }
         var primary = $('#designPrimaryStyle').val();
         var allowedStyles = ['japanese', 'traditional', 'neo-traditional', 'realism', 'fine-line', 'blackwork', 'geometric', 'watercolor', 'tribal', 'surrealism', 'minimalist', 'dotwork'];
@@ -1021,6 +1150,8 @@
         $('#designSessionTime').val('');
         $('#toggleVisibility, #toggleAvailable').addClass('active');
         $('#toggleRepeatable, #toggleSensitive').removeClass('active');
+        $('#designRepeatLimit').val('');
+        syncRepeatLimitFieldVisibility();
         $('#designOtherStyles option').prop('selected', false);
         syncDesignOtherStylesChipsFromSelect();
       }
@@ -1091,6 +1222,9 @@
         fd.append('is_visible', $('#toggleVisibility').hasClass('active') ? '1' : '0');
         fd.append('is_active', $('#toggleAvailable').hasClass('active') ? '1' : '0');
         fd.append('is_repeatable', $('#toggleRepeatable').hasClass('active') ? '1' : '0');
+        if ($('#toggleRepeatable').hasClass('active')) {
+          fd.append('repeat_limit', String($('#designRepeatLimit').val() || '').trim());
+        }
         fd.append('is_sensitive', $('#toggleSensitive').hasClass('active') ? '1' : '0');
         fd.append('primary_style', $('#designPrimaryStyle').val());
         $('#designOtherStyles option:selected').each(function () {
@@ -1242,6 +1376,61 @@
         openDeleteDesignModal(delUrl);
       });
 
+      function updateDesignCardAvailability($card, isActive) {
+        var $badge = $card.find('.design-availability-badge');
+        var $label = $card.find('.design-availability-label');
+        $badge.toggleClass('on', !!isActive).toggleClass('off', !isActive);
+        $label.text(isActive ? 'Available' : 'Unavailable');
+        $card.find('.btn-toggle-design-availability')
+          .toggleClass('active', !!isActive)
+          .attr('aria-checked', isActive ? 'true' : 'false');
+        $card.attr('data-is-active', isActive ? '1' : '0');
+      }
+
+      $(document).on('click', '.btn-toggle-design-availability', function () {
+        var $toggle = $(this);
+        if ($toggle.data('loading')) {
+          return;
+        }
+        var toggleUrl = $toggle.data('toggle-url');
+        if (!toggleUrl) {
+          return;
+        }
+        var willBeActive = !$toggle.hasClass('active');
+        $toggle.data('loading', true);
+        fetch(toggleUrl, {
+          method: 'PATCH',
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ is_active: willBeActive })
+        }).then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          });
+        }).then(function (result) {
+          if (!result.ok || !result.data || !result.data.success) {
+            throw new Error((result.data && result.data.message) || 'Could not update availability.');
+          }
+          var isActive = !!result.data.is_active;
+          $toggle.toggleClass('active', isActive).attr('aria-checked', isActive ? 'true' : 'false');
+          var designId = $toggle.data('design-id');
+          var $card = $toggle.closest('.design-card-wrap');
+          updateDesignCardAvailability($card, isActive);
+          if (designId && ARTIST_DESIGNS_BY_ID[designId]) {
+            ARTIST_DESIGNS_BY_ID[designId].is_active = isActive;
+          }
+        }).catch(function (e) {
+          window.alert(e.message || 'Could not update availability.');
+        }).finally(function () {
+          $toggle.data('loading', false);
+        });
+      });
+
       $('#btnDeleteDesignCancel').on('click', closeDeleteDesignModal);
       $deleteDesignModal.on('click', function (e) {
         if (e.target === this) {
@@ -1301,6 +1490,9 @@
 
       $('#newDesignModal .toggle-switch').on('click', function () {
         $(this).toggleClass('active');
+        if (this.id === 'toggleRepeatable') {
+          syncRepeatLimitFieldVisibility();
+        }
       });
 
       $('#designImageUpload').on('click', function (e) {
@@ -1399,10 +1591,11 @@
         $wraps.each(function () {
           var $w = $(this);
           var isActive = String($w.attr('data-is-active')) === '1';
-          if (filter === 'available' && !isActive) {
+          var isSoldOut = String($w.attr('data-is-sold-out')) === '1';
+          if (filter === 'available' && (!isActive || isSoldOut)) {
             return;
           }
-          if (filter === 'sold-out' && isActive) {
+          if (filter === 'sold-out' && !isSoldOut) {
             return;
           }
           var hay = String($w.attr('data-search') || '').toLowerCase();
@@ -1459,6 +1652,286 @@
       applyDesignFilters();
 
       syncDesignOtherStylesChipsFromSelect();
+
+      (function initWhatsIncludedUi() {
+        var MAX_ITEMS = 8;
+        var DEFAULT_PLACEHOLDERS = [
+          'e.g. Custom sizing consultation',
+          'e.g. Design placement guidance',
+          'e.g. Touch-up session within 3 months',
+          'e.g. Aftercare instructions'
+        ];
+        var PRESETS = [
+          'Sizing consultation',
+          'Placement guidance',
+          'Color matching consultation',
+          'Custom adjustments',
+          'Stencil preview',
+          'Breaks as needed',
+          'Reference photos provided',
+          'Aftercare instructions',
+          'Aftercare product recommendations',
+          'Healing check-in (photo review)'
+        ];
+        var $list = $('#whatsIncludedList');
+        var $editor = $('#whatsIncludedEditor');
+        var $presets = $('#whatsIncludedPresets');
+        var $addBtn = $('#btnAddIncludedItem');
+        var $limitHint = $('#whatsIncludedLimitHint');
+        var $toggle = $('#toggleWhatsIncluded');
+        var $toggleLabel = $('#toggleWhatsIncludedLabel');
+        var $saveStatus = $('#whatsIncludedSaveStatus');
+
+        if (!$list.length) return;
+
+        function syncToggleUi() {
+          var on = $toggle.hasClass('active');
+          $toggle.attr('aria-checked', on ? 'true' : 'false');
+          $toggleLabel.text(on ? 'Yes' : 'No').toggleClass('text-primary', on).toggleClass('text-on-surface-variant', !on);
+          $editor.toggleClass('hidden', !on);
+        }
+
+        function rowCount() {
+          return $list.find('.included-item-row').length;
+        }
+
+        function rowValues() {
+          var values = [];
+          $list.find('.included-item-input').each(function () {
+            var v = $.trim($(this).val());
+            if (v) values.push(v.toLowerCase());
+          });
+          return values;
+        }
+
+        function syncRemoveButtons() {
+          $list.find('.included-item-row').each(function () {
+            var hasText = $.trim($(this).find('.included-item-input').val()) !== '';
+            $(this).find('.included-item-remove').toggleClass('is-hidden', !hasText);
+          });
+        }
+
+        function syncAddButton() {
+          var atMax = rowCount() >= MAX_ITEMS;
+          $addBtn.prop('disabled', atMax).toggleClass('opacity-40 cursor-not-allowed', atMax);
+          $limitHint.toggleClass('hidden', !atMax);
+        }
+
+        function syncPresetButtons() {
+          var existing = rowValues();
+          $presets.find('.included-preset-chip').each(function () {
+            var label = String($(this).data('preset') || '').trim().toLowerCase();
+            var used = existing.indexOf(label) !== -1;
+            $(this).prop('disabled', used || rowCount() >= MAX_ITEMS);
+          });
+        }
+
+        function buildRow(placeholder, value) {
+          var $row = $('<div class="included-item-row"></div>');
+          var $input = $('<input type="text" class="included-item-input w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" maxlength="255">');
+          $input.attr('placeholder', placeholder || 'e.g. Add a service detail');
+          if (value) $input.val(value);
+          var $remove = $('<button type="button" class="included-item-remove is-hidden" title="Remove item" aria-label="Remove item"><span class="material-symbols-outlined text-[18px]">close</span></button>');
+          $row.append($input, $remove);
+          return $row;
+        }
+
+        function appendRow(placeholder, value) {
+          if (rowCount() >= MAX_ITEMS) return false;
+          $list.append(buildRow(placeholder, value || ''));
+          syncRemoveButtons();
+          syncAddButton();
+          syncPresetButtons();
+          return true;
+        }
+
+        function firstEmptyInput() {
+          var $empty = null;
+          $list.find('.included-item-input').each(function () {
+            if (!$empty && $.trim($(this).val()) === '') {
+              $empty = $(this);
+            }
+          });
+          return $empty;
+        }
+
+        function insertPreset(text) {
+          var label = String(text || '').trim();
+          if (!label || rowCount() >= MAX_ITEMS) return;
+          var lower = label.toLowerCase();
+          if (rowValues().indexOf(lower) !== -1) return;
+          var $empty = firstEmptyInput();
+          if ($empty && $empty.length) {
+            $empty.val(label);
+          } else {
+            appendRow('e.g. Add a service detail', label);
+          }
+          syncRemoveButtons();
+          syncPresetButtons();
+        }
+
+        function loadInitialRows() {
+          $list.empty();
+          var savedItems = (WHATS_INCLUDED_INITIAL && WHATS_INCLUDED_INITIAL.items) || [];
+          if (savedItems.length) {
+            savedItems.forEach(function (item, idx) {
+              appendRow(DEFAULT_PLACEHOLDERS[idx] || 'e.g. Add a service detail', item);
+            });
+          } else {
+            DEFAULT_PLACEHOLDERS.forEach(function (ph) {
+              appendRow(ph, '');
+            });
+          }
+        }
+
+        loadInitialRows();
+
+        PRESETS.forEach(function (label) {
+          $presets.append(
+            $('<button type="button" class="included-preset-chip"></button>')
+              .attr('data-preset', label)
+              .html('<span class="material-symbols-outlined text-[16px]">add</span> ' + label)
+          );
+        });
+
+        $addBtn.on('click', function () {
+          appendRow('e.g. Add a service detail', '');
+          $list.find('.included-item-row:last .included-item-input').trigger('focus');
+        });
+
+        $list.on('input', '.included-item-input', function () {
+          syncRemoveButtons();
+          syncPresetButtons();
+        });
+
+        $list.on('click', '.included-item-remove', function () {
+          var $row = $(this).closest('.included-item-row');
+          if (rowCount() <= 1) {
+            $row.find('.included-item-input').val('');
+            syncRemoveButtons();
+            syncPresetButtons();
+            return;
+          }
+          $row.remove();
+          syncRemoveButtons();
+          syncAddButton();
+          syncPresetButtons();
+        });
+
+        $presets.on('click', '.included-preset-chip', function () {
+          if ($(this).prop('disabled')) return;
+          insertPreset($(this).data('preset'));
+        });
+
+        function collectItems() {
+          var items = [];
+          $list.find('.included-item-input').each(function () {
+            var v = $.trim($(this).val());
+            if (v) items.push(v);
+          });
+          return items;
+        }
+
+        function showWhatsIncludedStatus(message, isError) {
+          $saveStatus.removeClass('hidden text-green-700 text-error')
+            .addClass(isError ? 'text-error' : 'text-green-700')
+            .text(message || '');
+          clearTimeout($saveStatus.data('timer'));
+          if (message) {
+            var t = setTimeout(function () { $saveStatus.addClass('hidden').text(''); }, 4000);
+            $saveStatus.data('timer', t);
+          }
+        }
+
+        function saveWhatsIncluded(payload) {
+          return fetch(WHATS_INCLUDED_UPDATE_URL, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload),
+            credentials: 'same-origin'
+          }).then(function (res) {
+            var ct = res.headers.get('content-type') || '';
+            if (ct.indexOf('application/json') !== -1) {
+              return res.json().then(function (data) {
+                return { ok: res.ok, status: res.status, data: data };
+              });
+            }
+            return res.text().then(function () {
+              return { ok: false, status: res.status, data: {} };
+            });
+          });
+        }
+
+        $toggle.on('click', function () {
+          var $t = $(this);
+          var wasActive = $t.hasClass('active');
+          $t.toggleClass('active');
+          syncToggleUi();
+          var isActive = $t.hasClass('active');
+          $t.addClass('opacity-60 pointer-events-none');
+
+          saveWhatsIncluded({ is_active: isActive }).then(function (result) {
+            if (result.ok && result.data && result.data.success) {
+              if (typeof showSaveToast === 'function') {
+                showSaveToast();
+              }
+            } else {
+              if (wasActive) {
+                $t.addClass('active');
+              } else {
+                $t.removeClass('active');
+              }
+              syncToggleUi();
+              showWhatsIncludedStatus(
+                (result.data && result.data.message) || 'Could not update visibility. Please try again.',
+                true
+              );
+            }
+          }).catch(function () {
+            if (wasActive) {
+              $t.addClass('active');
+            } else {
+              $t.removeClass('active');
+            }
+            syncToggleUi();
+            showWhatsIncludedStatus('Could not update visibility. Please try again.', true);
+          }).finally(function () {
+            $t.removeClass('opacity-60 pointer-events-none');
+          });
+        });
+
+        $('#btnSaveWhatsIncluded').on('click', function () {
+          var items = collectItems();
+          var isActive = $toggle.hasClass('active');
+          var $btn = $(this);
+          var btnHtml = $btn.html();
+          $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-[16px] animate-pulse">hourglass_empty</span> Saving…');
+
+          saveWhatsIncluded({ is_active: isActive, items: items }).then(function (result) {
+            if (result.ok && result.data && result.data.success) {
+              showWhatsIncludedStatus(result.data.message || 'Saved.', false);
+            } else {
+              showWhatsIncludedStatus(
+                (result.data && result.data.message) || 'Could not save. Please try again.',
+                true
+              );
+            }
+          }).catch(function () {
+            showWhatsIncludedStatus('Could not save. Please try again.', true);
+          }).finally(function () {
+            $btn.prop('disabled', false).html(btnHtml);
+          });
+        });
+
+        syncAddButton();
+        syncPresetButtons();
+        syncToggleUi();
+      })();
     });
   </script>
 @endsection

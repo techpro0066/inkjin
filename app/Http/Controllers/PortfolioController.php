@@ -34,7 +34,7 @@ class PortfolioController extends Controller
 
         $rules = [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
+            'description' => ['nullable', 'string', 'max:2000'],
             'is_active' => ['required', 'boolean'],
             'primary_style' => ['required', 'string', Rule::in($styleValues)],
             'other_styles' => ['nullable', 'array', 'max:2'],
@@ -104,7 +104,7 @@ class PortfolioController extends Controller
         $portfolio = Portfolio::create([
             'user_id' => Auth::id(),
             'title' => $validated['title'],
-            'description' => $validated['description'],
+            'description' => trim((string) ($validated['description'] ?? '')),
             'is_active' => $request->boolean('is_active'),
             'image' => $imagePath,
             'primary_style' => $validated['primary_style'],
@@ -148,7 +148,7 @@ class PortfolioController extends Controller
 
         $portfolio->update([
             'title' => $validated['title'],
-            'description' => $validated['description'],
+            'description' => trim((string) ($validated['description'] ?? '')),
             'is_active' => $request->boolean('is_active'),
             'image' => $imagePath,
             'primary_style' => $validated['primary_style'],

@@ -239,6 +239,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/artist-designs', [\App\Http\Controllers\ArtistDesignsController::class, 'index'])->name('artist-designs.index');
     Route::post('/artist-designs', [\App\Http\Controllers\ArtistDesignsController::class, 'store'])->name('artist-designs.store');
     Route::put('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'update'])->name('artist-designs.update');
+    Route::put('/artist-designs/settings/whats-included', [\App\Http\Controllers\ArtistDesignsController::class, 'updateWhatsIncluded'])->name('artist-designs.whats-included.update');
+    Route::patch('/artist-designs/{artistDesign}/availability', [\App\Http\Controllers\ArtistDesignsController::class, 'toggleAvailability'])->name('artist-designs.toggle-availability');
+    Route::patch('/artist-designs/{artistDesign}/visibility', [\App\Http\Controllers\ArtistDesignsController::class, 'toggleVisibility'])->name('artist-designs.toggle-visibility');
     Route::delete('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'destroy'])->name('artist-designs.destroy');
 
     Route::get('/forms', [QuestionsController::class, 'index'])->name('artist.forms.index');

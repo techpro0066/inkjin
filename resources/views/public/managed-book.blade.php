@@ -500,6 +500,7 @@
   <!-- JAVASCRIPT -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   @include('public.partials.question-image-upload')
+  <script src="{{ asset('js/question-answer-display.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
   (function($) {
@@ -537,6 +538,7 @@
         var answer = questionAnswers[q.id];
         if (typeof answer === 'string') answer = answer.trim();
         if (answer === undefined || answer === null || answer === '') return;
+        if (Array.isArray(answer) && answer.length === 0) return;
         output[String(q.id)] = { id: q.id, question: String(q.title || ''), type: String(q.type || 'input'), answer: answer };
       });
       return output;
@@ -549,6 +551,7 @@
         var subtitle = String(q.subtitle || '').toLowerCase();
         if (!keywords.some(function(k) { return title.indexOf(k) !== -1 || subtitle.indexOf(k) !== -1; })) continue;
         var val = questionAnswers[q.id];
+        if (Array.isArray(val) && val.length) return val.join(', ');
         if (typeof val === 'string' && val.trim()) return val.trim();
         if (typeof val === 'number' || typeof val === 'boolean') return String(val);
       }
@@ -570,6 +573,15 @@
       if (!response.ok || !data || !data.success) throw new Error((data && data.message) || 'Image upload failed.');
       return data.file_url || data.file_path || '';
     }
+
+    if (window.QuestionImageField) {
+      window.QuestionImageField.setUploadHandler(uploadQuestionImage);
+    }
+
+    $(document).on('qimages:updated', '.q-image-upload', function(_event, questionId, urls) {
+      if (!questionId) return;
+      questionAnswers[questionId] = Array.isArray(urls) ? urls.slice() : [];
+    });
 
     function renderQuestions() {
       var html = '';
@@ -620,7 +632,10 @@
       if (qType === 'radio') hasValue = !!$active.find('.single-choice-radio-button.selected').length;
       else if (qType === 'select') hasValue = !!String($active.find('.js-select2-question').val() || '').trim();
       else if (qType === 'input' || qType === 'textarea') hasValue = !!String($active.find('.js-question-input').val() || '').trim();
-      else if (qType === 'image') hasValue = !!String(questionAnswers[qId] || '').trim();
+      else if (qType === 'image') {
+        var imageAnswer = questionAnswers[qId];
+        hasValue = Array.isArray(imageAnswer) ? imageAnswer.length > 0 : !!String(imageAnswer || '').trim();
+      }
       else if (qType === 'toggle') hasValue = $active.find('.js-question-toggle').is(':checked');
       else hasValue = !!questionAnswers[qId];
       $active.find('.js-question-error').toggleClass('hidden', hasValue);
@@ -685,35 +700,12 @@
       if (!validateActiveQuestion()) return;
       if (typeof window.goToStep === 'function') window.goToStep(2);
     });
-    $(document).on('change', '.js-select2-question, .js-question-file, .js-question-toggle', async function() {
+    $(document).on('change', '.js-select2-question, .js-question-toggle', async function() {
       var $question = $(this).closest('.question-div');
       var qId = $question.data('question-id');
       if (!qId) return;
       if ($(this).hasClass('js-question-toggle')) questionAnswers[qId] = $(this).is(':checked');
-      else if ($(this).hasClass('js-question-file')) {
-        var $zone = $(this).closest('.q-image-upload');
-        var file = this.files && this.files.length ? this.files[0] : null;
-        questionAnswers[qId] = '';
-        if (!file) {
-          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
-          return;
-        }
-        var fileError = window.QuestionImageField ? window.QuestionImageField.validateFile(file) : '';
-        if (fileError) {
-          $question.find('.js-question-error').removeClass('hidden').text(fileError);
-          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
-          return;
-        }
-        if (window.QuestionImageField) window.QuestionImageField.showLocalPreview($zone, file);
-        try {
-          questionAnswers[qId] = await uploadQuestionImage(file, qId);
-          if (window.QuestionImageField) window.QuestionImageField.showPreview($zone, questionAnswers[qId]);
-        } catch (error) {
-          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
-          $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed.');
-          return;
-        }
-      } else questionAnswers[qId] = String($(this).val() || '').trim();
+      else questionAnswers[qId] = String($(this).val() || '').trim();
       $question.find('.js-question-error').addClass('hidden');
     });
     $(document).on('input', '.js-question-input', function() {
@@ -1347,10 +1339,15 @@
       Object.keys(structuredAnswers).forEach(function(key) {
         var item = structuredAnswers[key];
         if (!item || !item.question) return;
-        var answerText = item.answer;
-        if (typeof answerText === 'boolean') answerText = answerText ? 'Yes' : 'No';
-        if (Array.isArray(answerText)) answerText = answerText.join(', ');
-        html += '<div class="flex justify-between gap-4"><span class="text-on-surface-variant shrink-0">' + item.question + '</span><span class="font-semibold text-right">' + (answerText || '—') + '</span></div>';
+        var answerText = window.QuestionAnswerDisplay
+          ? window.QuestionAnswerDisplay.formatAnswerForReview(item.answer, item.type)
+          : (function() {
+            var answer = item.answer;
+            if (typeof answer === 'boolean') return answer ? 'Yes' : 'No';
+            if (Array.isArray(answer)) return answer.length === 1 ? '1 photo' : (answer.length > 1 ? answer.length + ' photos' : '—');
+            return answer || '—';
+          })();
+        html += '<div class="flex justify-between gap-4"><span class="text-on-surface-variant shrink-0">' + item.question + '</span><span class="font-semibold text-right">' + answerText + '</span></div>';
       });
 
       if (isConsult && mcConsultType) {

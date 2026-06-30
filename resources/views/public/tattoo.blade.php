@@ -103,7 +103,10 @@
         </a>
 
         <!-- Price -->
-        <p id="designPrice" class="text-xl font-bold text-primary mb-3">€{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}</p>
+        <p id="designPrice" class="text-xl font-bold text-primary mb-2">€{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}</p>
+        <div class="mb-4">
+          @include('public.partials.design-booking-slots', ['design' => $tattoo, 'class' => 'text-sm'])
+        </div>
 
         <!-- Rating -->
         {{-- <div class="flex items-center gap-1.5 mb-6">
@@ -116,6 +119,7 @@
         <!-- Desktop CTA -->
         <div class="hidden md:block mt-auto">
           @php
+            $isSoldOut = $isSoldOut ?? $tattoo->isSoldOut();
             $cwRaw = strtolower(trim((string) ($userDetail->cancellation_window ?? '48h')));
             if (str_contains($cwRaw, 'w')) {
                 preg_match('/(\d+)/', $cwRaw, $m);
@@ -139,6 +143,18 @@
                 default => 'Rescheduling is not allowed for this artist',
             };
           @endphp
+          @if($isSoldOut)
+          <div class="block w-full py-3.5 bg-surface-container-high text-on-surface-variant rounded-full text-base font-semibold text-center cursor-not-allowed">
+            Sold Out
+          </div>
+          <p class="text-xs text-on-surface-variant text-center mt-2">
+            @if($tattoo->is_repeatable)
+              All {{ $tattoo->effectiveRepeatLimit() }} available booking slots for this design have been taken.
+            @else
+              This one-of-a-kind design has already been booked.
+            @endif
+          </p>
+          @else
           <a id="ctaDesktop" href="{{route('public.tattoo.book', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug])}}" class="block w-full py-3.5 bg-primary text-on-primary rounded-full text-base font-semibold hover:bg-primary-container transition-colors text-center shadow-md shadow-primary/20">
             Book Now — €{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}
           </a>
@@ -169,6 +185,7 @@
               </div>
             </div>
           </div>
+          @endif
         </div>
       </div>
     </div>
@@ -236,7 +253,7 @@
     </div>
 
     <!-- AR TRY-ON -->
-    <section class="mb-10 bg-gradient-to-br from-primary via-primary-container to-primary rounded-2xl p-6 relative overflow-hidden">
+    <section class="mb-10 bg-gradient-to-br from-primary via-primary-container to-primary rounded-2xl p-6 relative overflow-hidden hidden">
       <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
       <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
       <div class="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
@@ -262,27 +279,22 @@
     </section>
 
     <!-- WHAT'S INCLUDED -->
+    @php
+      $designWhatsIncludedItems = $userDetail->activeDesignWhatsIncludedItems();
+    @endphp
+    @if(count($designWhatsIncludedItems) > 0)
     <section class="mb-10 bg-surface-container-low rounded-2xl p-6">
       <h2 class="text-lg font-bold text-on-surface mb-4">What's Included</h2>
       <ul class="space-y-3 text-[15px] text-on-surface-variant">
+        @foreach($designWhatsIncludedItems as $includedItem)
         <li class="flex items-start gap-2.5">
           <span class="text-primary mt-0.5">✦</span>
-          <span>Custom sizing consultation</span>
+          <span>{{ $includedItem }}</span>
         </li>
-        <li class="flex items-start gap-2.5">
-          <span class="text-primary mt-0.5">✦</span>
-          <span>Design placement guidance</span>
-        </li>
-        <li class="flex items-start gap-2.5">
-          <span class="text-primary mt-0.5">✦</span>
-          <span>Touch-up session within 3 months</span>
-        </li>
-        <li class="flex items-start gap-2.5">
-          <span class="text-primary mt-0.5">✦</span>
-          <span>Aftercare instructions</span>
-        </li>
+        @endforeach
       </ul>
     </section>
+    @endif
 
     <!-- YOU MIGHT ALSO LIKE -->
     @if($relatedTattoos->count() > 0)
@@ -299,7 +311,8 @@
                         <div class="p-3 sm:p-4 flex flex-col justify-center">
                             <h3 class="font-bold text-on-surface text-sm mb-1">{{ $relatedTattoo->title }}</h3>
                             <span class="text-xs px-2 py-0.5 rounded-full bg-secondary-container text-secondary font-medium w-fit mb-1.5">{{ ucwords(str_replace('-', ' ', $relatedTattoo->primary_style)) }}</span>
-                            <p class="text-sm font-semibold text-primary">€{{ $relatedTattoo->min_price }} — €{{ $relatedTattoo->max_price }}</p>
+                            <p class="text-sm font-semibold text-primary mb-1">€{{ $relatedTattoo->min_price }} — €{{ $relatedTattoo->max_price }}</p>
+                            @include('public.partials.design-booking-slots', ['design' => $relatedTattoo, 'compact' => true])
                         </div>
                     </a>
                 @endforeach
@@ -329,6 +342,19 @@
 
   <!-- MOBILE STICKY CTA -->
   <div class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-sm border-t border-outline-variant px-4 py-3">
+    @php $isSoldOut = $isSoldOut ?? $tattoo->isSoldOut(); @endphp
+    @if($isSoldOut)
+    <div class="block w-full py-3.5 bg-surface-container-high text-on-surface-variant rounded-full text-base font-semibold text-center cursor-not-allowed">
+      Sold Out
+    </div>
+    <p class="text-[11px] text-on-surface-variant text-center mt-1.5">
+      @if($tattoo->is_repeatable)
+        All available booking slots for this design have been taken.
+      @else
+        This one-of-a-kind design has already been booked.
+      @endif
+    </p>
+    @else
     <a id="ctaMobile" href="{{route('public.tattoo.book', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug])}}" class="block w-full py-3.5 bg-primary text-on-primary rounded-full text-base font-semibold hover:bg-primary-container transition-colors text-center shadow-lg shadow-primary/25">
       Book Now — €{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}
     </a>
@@ -336,6 +362,7 @@
     <button onclick="toggleDetailCancPolicy()" class="text-[11px] text-on-surface-variant hover:text-primary transition-colors flex items-center gap-0.5 mx-auto mt-1">
       📋 Cancellation Policy
     </button>
+    @endif
   </div>
 
   <!-- SHARE TOAST -->

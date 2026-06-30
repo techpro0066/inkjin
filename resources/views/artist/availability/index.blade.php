@@ -305,10 +305,6 @@
     </div>
   </div>
 </main>
-@include('components.artist_availability_setup_modal', [
-    'context' => 'availability',
-    'alwaysRenderAvailabilityModal' => true,
-])
 
 <!-- Block a date modal -->
 <div id="blockDateModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 block-modal-backdrop" onclick="closeBlockDateModal()">
@@ -407,13 +403,8 @@
   </div>
 </div>
 
-@include('components.waitlist-notify-modal')
-<script src="{{ asset('js/waitlist-notify.js') }}?v=2"></script>
-
 <script>
   // ── Availability tabs ──
-  var AVAILABILITY_TAB_KEY = 'inkjin_availability_tab';
-
   function switchAvailabilityTab(tab) {
     var valid = ['status', 'blocked', 'hours'];
     if (valid.indexOf(tab) === -1) tab = 'status';
@@ -434,10 +425,6 @@
       tabBtn.classList.remove('border-transparent', 'text-on-surface-variant');
     }
 
-    try {
-      sessionStorage.setItem(AVAILABILITY_TAB_KEY, tab);
-    } catch (e) {}
-
     if (tab === 'blocked' && typeof renderCalendar === 'function') {
       renderCalendar();
     }
@@ -449,11 +436,6 @@
       var params = new URLSearchParams(window.location.search);
       if (params.get('tab') === 'blocked' || params.get('tab') === 'hours' || params.get('tab') === 'status') {
         tab = params.get('tab');
-      } else {
-        var stored = sessionStorage.getItem(AVAILABILITY_TAB_KEY);
-        if (stored === 'blocked' || stored === 'hours' || stored === 'status') {
-          tab = stored;
-        }
       }
     } catch (e) {}
     switchAvailabilityTab(tab);
@@ -585,22 +567,7 @@
           if (result.ok && result.data && result.data.success) {
             savedBookingStatus = result.data.availability_status || val;
             applySavedBookingStatusSelection();
-            var notify = result.data.waitlist_notify;
-            if (notify && notify.pending_count > 0 && window.InkjinWaitlistNotify && typeof window.InkjinWaitlistNotify.showPrompt === 'function') {
-              window.InkjinWaitlistNotify.showPrompt({
-                pendingCount: notify.pending_count,
-                notifyUrl: notify.notify_url,
-                context: 'books_open',
-                onDismiss: function() {
-                  if (typeof showSaveToast === 'function') showSaveToast();
-                },
-                onSuccess: function() {
-                  if (typeof showSaveToast === 'function') showSaveToast();
-                },
-              });
-            } else if (typeof showSaveToast === 'function') {
-              showSaveToast();
-            }
+            if (typeof showSaveToast === 'function') showSaveToast();
             return;
           }
           var msg = (result.data && result.data.message) ? result.data.message : 'Could not save booking status.';
@@ -1559,18 +1526,12 @@
             errEl.textContent = '';
           }
           var setupAlert = document.getElementById('availabilityPageSetupAlert');
-          var setupModal = document.getElementById('availabilitySetupRequiredModal');
           var needsSetup = !!(result.data && result.data.needs_weekly_availability_setup);
           if (setupAlert) {
             if (needsSetup) {
               setupAlert.classList.remove('hidden');
             } else {
               setupAlert.classList.add('hidden');
-            }
-          }
-          if (setupModal) {
-            if (!needsSetup) {
-              setupModal.classList.add('hidden');
             }
           }
           try {

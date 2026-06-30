@@ -131,7 +131,7 @@
               'private' => ['home','Private Studio','A personal workspace — clients visit by appointment only'],
               'shop' => ['storefront','Tattoo Shop','A shared shop with walk-ins and appointments'],
               'home' => ['cottage','Home Studio','Working from home — address shared only after booking'],
-              'mobile' => ['flight','Mobile / Travel','You travel to clients or work at guest spots'],
+              'mobile' => ['luggage','Guest','Guesting at this studio, not a permanent resident artist'],
             ] as $val => $meta)
               <div class="radio-card {{ (old('workspace_type', $userDetail->workspace_type ?? '')) === $val ? 'selected' : '' }}" data-workspace="{{ $val }}" onclick="selectStudioType(this)">
                 <div class="flex items-start gap-3">

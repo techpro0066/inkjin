@@ -32,11 +32,15 @@ class PublicVivaBookingService
 
         $design = $userDetail->user->artistDesigns()
             ->where('slug', $tattooSlug)
-            ->where('is_visible', true)
+            ->where('is_active', true)
             ->first();
 
         if (! $design) {
             throw new \RuntimeException('Tattoo design not found.');
+        }
+
+        if ($design->isSoldOut()) {
+            throw new \RuntimeException('This design is sold out and is no longer available to book.');
         }
 
         $existing = Booking::query()->where('viva_order_code', $pending->viva_order_code)->first();

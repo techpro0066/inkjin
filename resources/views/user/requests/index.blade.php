@@ -255,6 +255,7 @@
   </div>
 </div>
 
+<script src="{{ asset('js/question-answer-display.js') }}"></script>
 <script>
   const userRequestsById = @json(collect($requestsPayload)->keyBy('id'));
   const userCustomRequestsById = @json(collect($customRequestsPayload)->keyBy('id'));
@@ -492,10 +493,10 @@
     var questionsHtml = '';
     (req.questionsAnswers || []).forEach(function(item) {
       if (!item || !item.question) return;
-      var answer = item.answer;
-      if (typeof answer === 'boolean') answer = answer ? 'Yes' : 'No';
-      if (Array.isArray(answer)) answer = answer.join(', ');
-      questionsHtml += '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + escapeHtml(answer || '—') + '</p></div>';
+      var answer = window.QuestionAnswerDisplay
+        ? window.QuestionAnswerDisplay.formatAnswerForReview(item.answer, item.type)
+        : String(item.answer || '—');
+      questionsHtml += '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + escapeHtml(answer) + '</p></div>';
     });
 
     left.innerHTML =
@@ -535,9 +536,14 @@
     if (e.target === e.currentTarget) closeUserRequestDetail();
   }
 
-  function formatAnswerForDisplay(answer) {
+  function formatAnswerForDisplay(answer, answerType) {
+    if (window.QuestionAnswerDisplay) {
+      return escapeHtml(window.QuestionAnswerDisplay.formatAnswerForReview(answer, answerType));
+    }
     if (typeof answer === 'boolean') return answer ? 'Yes' : 'No';
-    if (Array.isArray(answer)) return answer.join(', ');
+    if (Array.isArray(answer)) {
+      return answer.length === 1 ? '1 photo' : (answer.length > 1 ? answer.length + ' photos' : '—');
+    }
     if (typeof answer === 'string' && /^https?:\/\//i.test(answer)) {
       return '<a href="' + escapeHtml(answer) + '" target="_blank" rel="noopener" class="text-primary font-semibold hover:underline">View file</a>';
     }
@@ -591,7 +597,7 @@
     var questionsHtml = '';
     (req.questionsAnswers || []).forEach(function(item) {
       if (!item || !item.question) return;
-      questionsHtml += '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + formatAnswerForDisplay(item.answer) + '</p></div>';
+      questionsHtml += '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + formatAnswerForDisplay(item.answer, item.type) + '</p></div>';
     });
 
     var availabilityHtml = req.isManaged ? buildAvailabilityHtml(req.availabilityDetails) : '';

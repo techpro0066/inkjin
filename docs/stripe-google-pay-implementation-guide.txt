@@ -1,0 +1,364 @@
+InkJin — Google Pay via Stripe — Implementation Guide
+======================================================
+Date: June 2026
+Audience: Developers adding Google Pay (and optionally Apple Pay) to existing
+          Stripe card checkout on InkJin
+
+
+================================================================================
+1. SUMMARY
+================================================================================
+
+YES — Google Pay works through Stripe on InkJin. You do NOT need a separate
+Google Pay merchant integration. Stripe handles wallet tokenization; money still
+flows through your existing PaymentIntent → booking → ArtistPayoutService path.
+
+Recommended UX on the Card tab:
+
+  [ Google Pay button ]     ← one tap (when browser/device supports it)
+  — or pay with card —
+  [ Card number / expiry / CVV fields ]
+  [ Confirm & Pay ]
+
+IRIS tab stays separate (Viva QR). Google Pay lives on the Card tab only.
+
+
+================================================================================
+2. CURRENT CODEBASE (what you already have)
+================================================================================
+
+BACKEND — already wallet-ready
+  PaymentIntent creation uses automatic_payment_methods:
+
+    'automatic_payment_methods' => ['enabled' => true],
+
+  Files:
+    app/Http/Controllers/InkJinController.php          → createBookingPaymentIntent
+    app/Http/Controllers/UserController/RequestsController.php
+    app/Http/Controllers/UserController/CustomRequestsController.php
+
+  No backend change required for basic Google Pay support.
+
+FRONTEND — card-only today
+  Split Stripe Elements (cardNumber, cardExpiry, cardCvc) + confirmCardPayment:
+
+    resources/views/public/book.blade.php
+    resources/views/user/requests/payment.blade.php
+    resources/views/user/custom-requests/payment.blade.php
+
+  Commented placeholder buttons exist in book.blade.php (googlePayBtn, applePayBtn)
+  but are NOT wired to Stripe — do not uncomment those; use Stripe Elements instead.
+
+
+================================================================================
+3. STRIPE DASHBOARD SETUP (do this first)
+================================================================================
+
+1. Log in: https://dashboard.stripe.com
+2. Settings → Payment methods
+3. Enable:
+     - Google Pay
+     - (optional) Apple Pay — useful for Safari/iPhone users
+4. For Apple Pay on web (optional):
+     Settings → Payment methods → Apple Pay → Add domain
+     Add: book.inkjin.com (and localhost is NOT supported for Apple Pay)
+5. Confirm account country / currency:
+     Google Pay on Stripe supports EUR for EU merchants.
+     InkJin uses currency 'eur' — correct.
+
+Test mode: use Stripe test cards AND Google Pay test environment in Chrome.
+
+
+================================================================================
+4. RECOMMENDED APPROACH — Express Checkout Element
+================================================================================
+
+Stripe's current recommended way to show Google Pay + Apple Pay + Link in one
+widget. Works with your existing PaymentIntent + client_secret flow.
+
+WHY THIS (not manual googlePayBtn)
+  - Stripe renders the official Google Pay button
+  - Button only appears when the user's device/browser supports it
+  - Same PaymentIntent, same confirm endpoint, same booking save logic
+  - Less code than legacy Payment Request Button API
+
+DOCS
+  https://docs.stripe.com/elements/express-checkout-element
+
+
+================================================================================
+5. STEP-BY-STEP IMPLEMENTATION
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE A — Shared partial (recommended)
+────────────────────────────────────────────────────────────────────────────────
+
+Create a reusable partial so all 3 checkout pages stay in sync:
+
+  resources/views/partials/checkout-express-wallet.blade.php
+
+HTML (inside the Card panel, ABOVE card fields):
+
+  <div id="expressCheckoutElement" class="mb-4"></div>
+  <div id="expressCheckoutDivider" class="hidden flex items-center gap-3 mb-4">
+    <div class="flex-1 h-px bg-outline-variant/30"></div>
+    <span class="text-xs text-on-surface-variant font-medium">or pay with card</span>
+    <div class="flex-1 h-px bg-outline-variant/30"></div>
+  </div>
+
+Include in each Card panel:
+  @include('partials.checkout-express-wallet')
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE B — JavaScript (mount Express Checkout)
+────────────────────────────────────────────────────────────────────────────────
+
+Add to each payment page's Stripe script block (or extract to a shared partial
+like checkout-express-wallet-script.blade.php).
+
+Pseudocode — adapt variable names per page (amount, createIntent, saveBooking):
+
+  var expressCheckoutElement = null;
+  var expressCheckoutMounted = false;
+
+  async function mountExpressCheckout(amountCents, currency) {
+    if (!stripe || expressCheckoutMounted) return;
+
+    var elements = stripe.elements({
+      mode: 'payment',
+      amount: amountCents,
+      currency: currency || 'eur',
+    });
+
+    expressCheckoutElement = elements.create('expressCheckout', {
+      buttonHeight
+      layout: { maxColumns: 1, maxRows: 1 },
+    });
+
+    expressCheckoutElement.mount('#expressCheckoutElement');
+
+    expressCheckoutElement.on('ready', function(event) {
+      // Show divider only if at least one wallet button is available
+      if (event.availablePaymentMethods && event.availablePaymentMethods.googlePay) {
+        document.getElementById('expressCheckoutDivider')?.classList.remove('hidden');
+      }
+    });
+
+    expressCheckoutElement.on('confirm', async function(event) {
+      try {
+        // 1. Create PaymentIntent on server (same endpoint as card flow)
+        var clientSecret = await createIntent();  // your existing function
+
+        // 2. Confirm with Elements (handles Google Pay token)
+        var result = await stripe.confirmPayment({
+          elements: elements,
+          clientSecret: clientSecret,
+          confirmParams: {
+            return_url: window.location.href,  // fallback redirect
+          },
+          redirect: 'if_required',
+        });
+
+        if (result.error) throw new Error(result.error.message);
+
+        // 3. Save booking — same as card success path
+        var pi = result.paymentIntent;
+        if (pi && pi.status === 'succeeded') {
+          var saved = await saveBooking(pi.id);
+          window.location.href = saved.redirect_url || '/';
+        }
+      } catch (e) {
+        showError(e.message || 'Payment failed.');
+      }
+    });
+
+    expressCheckoutMounted = true;
+  }
+
+WHEN TO CALL mountExpressCheckout
+  - After Stripe.js loads and you know the payment amount
+  - Public book: call when user reaches payment step (amount from deposit + fee)
+  - Request/custom-request pages: amount is fixed server-side — mount on page load
+
+IMPORTANT: Express Checkout Element in "mode: payment" needs amount upfront.
+Your card flow creates PaymentIntent on button click; wallet flow needs amount
+when mounting. Pass amount_cents from Blade:
+
+  mountExpressCheckout({{ (int) round($totals['total_due'] * 100) }}, 'eur');
+
+For public book (dynamic total), remount or update amount when total changes.
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE C — Card flow stays as-is (minimal change)
+────────────────────────────────────────────────────────────────────────────────
+
+Keep existing confirmCardPayment for manual card entry. Two parallel paths:
+
+  Path A — Google Pay / Apple Pay
+    expressCheckout confirm → stripe.confirmPayment → saveBooking
+
+  Path B — Card fields
+    btnConfirmPay → createIntent → confirmCardPayment → saveBooking
+
+Both paths must call the SAME saveBooking / confirm endpoint after success.
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE D — Policy checkbox for wallet pay
+────────────────────────────────────────────────────────────────────────────────
+
+Card flow requires agreePolicy checkbox before pay. Apply same rule to wallet:
+
+  expressCheckoutElement.on('click', function(event) {
+    if (!document.getElementById('agreePolicy').checked) {
+      event.preventDefault();
+      showError('Please accept the cancellation policy and terms.');
+      expandCancellationPolicy();  // if you have this helper
+    }
+  });
+
+Or disable wallet mount until policy is checked (simpler UX).
+
+
+================================================================================
+6. ALTERNATIVE — Legacy Payment Request Button (not recommended for new work)
+================================================================================
+
+If you prefer older API:
+
+  var paymentRequest = stripe.paymentRequest({
+    country: 'GR',       // or merchant country
+    currency: 'eur',
+    total: { label: 'InkJin booking', amount: amountCents },
+    requestPayerName: true,
+  });
+
+  paymentRequest.canMakePayment().then(function(result) {
+    if (result && result.googlePay) {
+      var prButton = elements.create('paymentRequestButton', { paymentRequest });
+      prButton.mount('#googlePayMount');
+    }
+  });
+
+  paymentRequest.on('paymentmethod', async function(ev) {
+    var clientSecret = await createIntent();
+    var { error, paymentIntent } = await stripe.confirmCardPayment(
+      clientSecret,
+      { payment_method: ev.paymentMethod.id },
+      { handleActions: false }
+    );
+    if (error) { ev.complete('fail'); return; }
+    ev.complete('success');
+    await saveBooking(paymentIntent.id);
+  });
+
+Stripe docs mark Payment Request Button as legacy; prefer Express Checkout Element.
+
+
+================================================================================
+7. FILES TO TOUCH (checklist)
+================================================================================
+
+  [ ] Stripe Dashboard — enable Google Pay
+  [ ] resources/views/partials/checkout-express-wallet.blade.php   (new)
+  [ ] resources/views/partials/checkout-express-wallet-script.blade.php (new, optional)
+  [ ] resources/views/public/book.blade.php
+  [ ] resources/views/user/requests/payment.blade.php
+  [ ] resources/views/user/custom-requests/payment.blade.php
+  [ ] (optional) Pass amount_cents from controllers to views for mountExpressCheckout
+
+  NO change required unless you hit issues:
+  [ ] PaymentIntent controllers (automatic_payment_methods already set)
+  [ ] ArtistPayoutService (wallet payments still have payment_intent_id)
+  [ ] Webhooks (same payment_intent.succeeded events)
+
+
+================================================================================
+8. TESTING
+================================================================================
+
+REQUIREMENTS
+  - HTTPS (localhost http works for card; Google Pay often needs secure context)
+  - Chrome or Edge (best Google Pay support on desktop)
+  - Google account with a card saved in Google Pay
+  - Stripe test mode keys in .env
+
+TEST STEPS
+  1. Open payment page → Card tab
+  2. Google Pay button should appear above card fields (if supported)
+  3. Click Google Pay → complete test payment
+  4. Verify booking created with payment_intent_id
+  5. Verify Stripe Dashboard → Payments shows "Google Pay" as payment method
+  6. Test fallback: browser without Google Pay → only card fields show
+
+STRIPE TEST MODE
+  Use test PaymentIntent; Google Pay in test mode uses Stripe's test wallet flow.
+  See: https://docs.stripe.com/google-pay#test
+
+COMMON ISSUES
+  - Button not showing → browser/device doesn't support Google Pay, or HTTP site
+  - "Payment method not available" → enable Google Pay in Stripe Dashboard
+  - Amount mismatch → Express Checkout amount must match PaymentIntent amount
+  - confirmCardPayment fails for wallet → use confirmPayment for wallet path
+
+
+================================================================================
+9. UX WITH IRIS TAB (Greek users)
+================================================================================
+
+Current tabs: [ Card ] [ IRIS ]
+
+On Card tab:
+  Google Pay + card fields
+
+On IRIS tab:
+  Viva QR only (unchanged)
+
+Greek clients with +30 phone see both tabs. Google Pay is NOT a replacement for
+IRIS — it is an extra option on the Card/Stripe side for users who prefer wallet
+pay over typing card numbers.
+
+
+================================================================================
+10. OPTIONAL — Apple Pay
+================================================================================
+
+Express Checkout Element shows Apple Pay automatically on Safari/macOS/iOS when:
+  - Enabled in Stripe Dashboard
+  - Domain verified (book.inkjin.com)
+  - User has Apple Pay set up
+
+Same code as Google Pay — no separate implementation.
+
+
+================================================================================
+11. ESTIMATED EFFORT
+================================================================================
+
+  Dashboard setup ...................... 15 min
+  Shared partial + script .............. 2–3 hours
+  Wire 3 checkout pages ................ 1–2 hours
+  Policy checkbox + error handling ....... 30 min
+  Test on staging (HTTPS) .............. 1 hour
+
+  Total: ~ half day for one developer
+
+
+================================================================================
+12. QUICK REFERENCE — Stripe.js load
+================================================================================
+
+Ensure Stripe.js v3 is loaded (you likely already have):
+
+  <script src="https://js.stripe.com/v3/"></script>
+
+Express Checkout requires a recent Stripe.js — use the CDN URL above, not an
+old pinned version.
+
+
+================================================================================
+END
+================================================================================

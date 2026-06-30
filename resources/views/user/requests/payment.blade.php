@@ -96,7 +96,7 @@
           'sessionDateTime' => $sessionDateTime,
           'durationLabel' => $durationLabel,
           'sizeLabel' => $sizeLabel,
-          'locationLabel' => $locationLabel,
+          'userDetail' => $userDetail,
           'priceEstimateLabel' => $priceEstimateLabel,
           'depositLabel' => $depositLabel,
           'balanceLabel' => $balanceLabel,

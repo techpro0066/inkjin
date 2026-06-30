@@ -5,7 +5,7 @@
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Book Your Tattoo | Inkjin</title>
   <meta name="description" content="Book and pay for your tattoo design — select a date, enter your details, and secure your appointment.">
-  <link rel="icon" href="images/favicon.png">
+  <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -308,6 +308,19 @@
 
   <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8" id="bookingMainContent">
 
+    @php
+      $studioCityCountry = trim(implode(', ', array_filter([
+          $userDetail->city ?? '',
+          $userDetail->country ?? '',
+      ])));
+      $studioNamePlain = trim((string) ($userDetail->studio_name ?? ''));
+      $studioNameDisplay = $studioNamePlain !== '' ? $studioNamePlain : 'Studio';
+      if ($studioCityCountry !== '') {
+          $studioNameDisplay .= ' (' . $studioCityCountry . ')';
+      }
+      $studioAddressLine = trim((string) ($userDetail->studio_address ?? ''));
+    @endphp
+
     <!-- STEP DOTS -->
     <div class="flex items-start justify-center mb-10" id="progressDots">
       <div class="progress-step active text-center" data-step="1"><div class="step-dot mx-auto">1</div><div class="step-label">Questions</div></div>
@@ -334,7 +347,7 @@
         </div>
           <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
             <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0"><span class="text-white text-[10px] font-bold cc-artistAvatar">{{ strtoupper($userDetail->user->first_name[0]) }}{{ strtoupper($userDetail->user->last_name[0]) }}</span></div>
-            <span class="leading-relaxed break-words">with <strong class="cc-artistName">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</strong> at <strong class="cc-studioName">{{ $userDetail->studio_name }}</strong></span>
+            <span class="leading-relaxed break-words">with <strong class="cc-artistName">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</strong> at <strong class="cc-studioName">{{ $studioNameDisplay }}</strong></span>
       </div>
           </div>
         </div>
@@ -376,9 +389,13 @@
       <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
         <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
         <div>
-          <p class="text-sm font-semibold text-on-surface">{{$userDetail->studio_name}}</p>
-          <p class="text-xs text-on-surface-variant"> {{$userDetail->studio_address}} </p>
-          <a href="{{$userDetail->google_maps_link}}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+          <p class="text-sm font-semibold text-on-surface cc-studioName">{{ $studioNameDisplay }}</p>
+          @if ($studioAddressLine !== '')
+          <p class="text-xs text-on-surface-variant cc-studioAddress">{{ $studioAddressLine }}</p>
+          @endif
+          @if (!empty($userDetail->google_maps_link))
+          <a href="{{ $userDetail->google_maps_link }}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+          @endif
         </div>
       </div>
       <div id="confirmBar" class="hidden mt-6 bg-white rounded-2xl border border-primary/20 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
@@ -422,9 +439,11 @@
           <div class="consult-type-card" data-type="studio" onclick="selectConsultType(this,'studio')">
             <div class="ct-icon mb-3"><span class="material-symbols-outlined">storefront</span></div>
             <h4 class="font-bold text-sm text-on-surface mb-0.5">In-Studio Visit</h4>
-            <p class="text-xs text-on-surface-variant">Visit <span class="cc-studioName">Black Lotus Studio</span> in person</p>
+            <p class="text-xs text-on-surface-variant">Visit <span class="cc-studioName">{{ $studioNameDisplay }}</span> in person</p>
             <p class="text-xs text-on-surface-variant mt-1">Meet your artist and see the space</p>
-            <p class="text-xs text-primary font-medium mt-1 cc-studioAddress">Athens, Greece</p>
+            @if ($studioAddressLine !== '')
+            <p class="text-xs text-primary font-medium mt-1 cc-studioAddress">{{ $studioAddressLine }}</p>
+            @endif
           </div>
         </div>
         <p id="ccConsultTypeError" class="hidden text-sm text-error mt-3">Please select a consultation type before continuing.</p>
@@ -490,9 +509,13 @@
       <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
         <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
         <div>
-          <p class="text-sm font-semibold text-on-surface">Ink & Soul Tattoo Studio</p>
-          <p class="text-xs text-on-surface-variant">742 Evergreen Terrace, Athens, 10001, Greece</p>
-          <a href="https://maps.google.com/?q=Ink+Soul+Tattoo+Studio+Athens" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+          <p class="text-sm font-semibold text-on-surface cc-studioName">{{ $studioNameDisplay }}</p>
+          @if ($studioAddressLine !== '')
+          <p class="text-xs text-on-surface-variant cc-studioAddress">{{ $studioAddressLine }}</p>
+          @endif
+          @if (!empty($userDetail->google_maps_link))
+          <a href="{{ $userDetail->google_maps_link }}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+          @endif
         </div>
       </div>
       <!-- Bottom summary -->
@@ -542,9 +565,13 @@
       <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
         <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
         <div>
-          <p class="text-sm font-semibold text-on-surface">Ink & Soul Tattoo Studio</p>
-          <p class="text-xs text-on-surface-variant">742 Evergreen Terrace, Athens, 10001, Greece</p>
-          <a href="https://maps.google.com/?q=Ink+Soul+Tattoo+Studio+Athens" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+          <p class="text-sm font-semibold text-on-surface cc-studioName">{{ $studioNameDisplay }}</p>
+          @if ($studioAddressLine !== '')
+          <p class="text-xs text-on-surface-variant cc-studioAddress">{{ $studioAddressLine }}</p>
+          @endif
+          @if (!empty($userDetail->google_maps_link))
+          <a href="{{ $userDetail->google_maps_link }}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+          @endif
         </div>
       </div>
       <button onclick="goToStep(3)" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm mt-4">Continue to Your Details</button>
@@ -573,7 +600,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="mcConsultTypeCards">
           <div class="consult-type-card" data-type="video" onclick="selectMcConsultType(this,'video')"><div class="ct-icon mb-3"><span class="material-symbols-outlined">videocam</span></div><h4 class="font-bold text-sm text-on-surface mb-0.5">📹 Video Call</h4><p class="text-xs text-on-surface-variant">15-minute call on Inkjin</p><p class="text-xs text-on-surface-variant mt-1">Convenient — join from anywhere</p></div>
           <div class="consult-type-card" data-type="phone" onclick="selectMcConsultType(this,'phone')"><div class="ct-icon mb-3"><span class="material-symbols-outlined">call</span></div><h4 class="font-bold text-sm text-on-surface mb-0.5">Phone Call</h4><p class="text-xs text-on-surface-variant">15-minute phone consultation</p><p class="text-xs text-on-surface-variant mt-1">Quick and easy</p></div>
-          <div class="consult-type-card" data-type="studio" onclick="selectMcConsultType(this,'studio')"><div class="ct-icon mb-3"><span class="material-symbols-outlined">storefront</span></div><h4 class="font-bold text-sm text-on-surface mb-0.5">In-Studio Visit</h4><p class="text-xs text-on-surface-variant">Visit <span class="mc-studioName">Black Lotus Studio</span> in person</p><p class="text-xs text-on-surface-variant mt-1">Meet your artist and see the space</p><p class="text-xs text-primary font-medium mt-1 mc-studioAddress">Athens, Greece</p></div>
+          <div class="consult-type-card" data-type="studio" onclick="selectMcConsultType(this,'studio')"><div class="ct-icon mb-3"><span class="material-symbols-outlined">storefront</span></div><h4 class="font-bold text-sm text-on-surface mb-0.5">In-Studio Visit</h4><p class="text-xs text-on-surface-variant">Visit <span class="mc-studioName">{{ $studioNameDisplay }}</span> in person</p><p class="text-xs text-on-surface-variant mt-1">Meet your artist and see the space</p>@if ($studioAddressLine !== '')<p class="text-xs text-primary font-medium mt-1 mc-studioAddress">{{ $studioAddressLine }}</p>@endif</div>
         </div>
       </div>
       <!-- Single availability block (shown after type selected) -->
@@ -607,9 +634,13 @@
         <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
           <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
           <div>
-            <p class="text-sm font-semibold text-on-surface">Ink & Soul Tattoo Studio</p>
-            <p class="text-xs text-on-surface-variant">742 Evergreen Terrace, Athens, 10001, Greece</p>
-            <a href="https://maps.google.com/?q=Ink+Soul+Tattoo+Studio+Athens" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+            <p class="text-sm font-semibold text-on-surface mc-studioName">{{ $studioNameDisplay }}</p>
+            @if ($studioAddressLine !== '')
+            <p class="text-xs text-on-surface-variant mc-studioAddress">{{ $studioAddressLine }}</p>
+            @endif
+            @if (!empty($userDetail->google_maps_link))
+            <a href="{{ $userDetail->google_maps_link }}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+            @endif
           </div>
         </div>
         <button onclick="goToStep(3)" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm flex items-center justify-center gap-2 mt-4">Continue <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>
@@ -1006,6 +1037,7 @@
         });
         if (matched) {
           var val = questionAnswers[q.id];
+          if (Array.isArray(val) && val.length) return val.join(', ');
           if (typeof val === 'string' && val.trim()) return val.trim();
           if (typeof val === 'number' || typeof val === 'boolean') return String(val);
         }
@@ -1045,8 +1077,8 @@
       var maxBalance = Math.max(0, maxPrice - deposit);
       var balanceLabel = formatEUR(minBalance) + ' - ' + formatEUR(maxBalance);
       var artistName = @json(($userDetail->user->first_name ?? '') . ' ' . ($userDetail->user->last_name ?? ''));
-      var studioName = @json($userDetail->studio_name ?? 'Studio');
-      var studioAddress = @json($userDetail->studio_address ?? '');
+      var studioName = @json($studioNameDisplay);
+      var studioAddress = @json($studioAddressLine);
       var mapsLink = @json($userDetail->google_maps_link ?? '');
 
       var mainDateTime = '—';
@@ -1079,7 +1111,7 @@
       var placement = getAnswerByKeywords(['placement', 'body part', 'where']);
       var requestedSize = getAnswerByKeywords(['size', 'cm', 'inch']);
       var sizeLabel = requestedSize || ((parseInt(@json($tattoo->min_size ?? 0), 10) || 0) + ' - ' + (parseInt(@json($tattoo->max_size ?? 0), 10) || 0) + ' cm');
-      var locationLabel = studioAddress ? (studioName + ', ' + studioAddress) : studioName;
+      var locationLabel = studioAddress ? (studioName + ' — ' + studioAddress) : studioName;
 
       $('#payDesign').text(@json($tattoo->title ?? '—'));
       $('#payArtist').text(artistName);
@@ -1254,7 +1286,8 @@
         var rawAnswer = questionAnswers[q.id];
         var answer = rawAnswer;
         if (typeof answer === 'string') answer = answer.trim();
-        if (typeof answer === 'undefined' || answer === null || answer === '') return;
+        if (answer === undefined || answer === null || answer === '') return;
+        if (Array.isArray(answer) && answer.length === 0) return;
         output[qId] = {
           id: q.id,
           question: String(q.title || ''),
@@ -1344,6 +1377,15 @@
       }
       return data.file_url;
     }
+
+    if (window.QuestionImageField) {
+      window.QuestionImageField.setUploadHandler(uploadQuestionImage);
+    }
+
+    $(document).on('qimages:updated', '.q-image-upload', function(_event, questionId, urls) {
+      if (!questionId) return;
+      questionAnswers[questionId] = Array.isArray(urls) ? urls.slice() : [];
+    });
 
     async function confirmBooking() {
       $('#formError').addClass('hidden').text('');
@@ -1482,7 +1524,8 @@
       } else if (qType === 'input' || qType === 'textarea') {
         hasValue = !!String($active.find('.js-question-input').val() || '').trim();
       } else if (qType === 'image') {
-        hasValue = !!String(questionAnswers[qId] || '').trim();
+        var imageAnswer = questionAnswers[qId];
+        hasValue = Array.isArray(imageAnswer) ? imageAnswer.length > 0 : !!String(imageAnswer || '').trim();
       } else if (qType === 'toggle') {
         hasValue = $active.find('.js-question-toggle').is(':checked');
       } else {
@@ -2359,36 +2402,12 @@
       goToStep(2);
     });
 
-    $(document).on('change', '.js-select2-question, .js-question-file, .js-question-toggle', async function() {
+    $(document).on('change', '.js-select2-question, .js-question-toggle', async function() {
       var $question = $(this).closest('.question-div');
       var qId = $question.data('question-id');
       if (!qId) return;
       if ($(this).hasClass('js-question-toggle')) {
         questionAnswers[qId] = $(this).is(':checked');
-      } else if ($(this).hasClass('js-question-file')) {
-        var $zone = $(this).closest('.q-image-upload');
-        var file = this.files && this.files.length ? this.files[0] : null;
-        questionAnswers[qId] = '';
-        if (!file) {
-          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
-          return;
-        }
-        var fileError = window.QuestionImageField ? window.QuestionImageField.validateFile(file) : '';
-        if (fileError) {
-          $question.find('.js-question-error').removeClass('hidden').text(fileError);
-          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
-          return;
-        }
-        if (window.QuestionImageField) window.QuestionImageField.showLocalPreview($zone, file);
-        try {
-          var imageUrl = await uploadQuestionImage(file, qId);
-          questionAnswers[qId] = imageUrl;
-          if (window.QuestionImageField) window.QuestionImageField.showPreview($zone, imageUrl);
-        } catch (error) {
-          if (window.QuestionImageField) window.QuestionImageField.clear($zone);
-          $question.find('.js-question-error').removeClass('hidden').text(error.message || 'Image upload failed. Please try again.');
-          return;
-        }
       } else {
         questionAnswers[qId] = String($(this).val() || '').trim();
       }

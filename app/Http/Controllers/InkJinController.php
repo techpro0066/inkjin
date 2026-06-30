@@ -386,7 +386,7 @@ class InkJinController extends Controller
 
         $design = $userDetail->user->artistDesigns()
             ->where('slug', $validated['tattoo_slug'])
-            ->where('is_visible', true)
+            ->where('is_active', true)
             ->first();
 
         if (!$design) {
@@ -425,7 +425,10 @@ class InkJinController extends Controller
             abort(404, 'Artist not found');
         }
 
-        $artistDesigns = $userDetail->user->artistDesigns()->where('is_visible', true)->get();
+        $artistDesigns = $userDetail->user->artistDesigns()
+            ->where('is_active', true)
+            ->withSoldOutState()
+            ->get();
 
         $artistPortfolios = $userDetail->user->portfolios()->where('is_active', true)->get();
 
@@ -509,14 +512,28 @@ class InkJinController extends Controller
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
-        $tattoo = $userDetail->user->artistDesigns()->where('slug', $tattooSlug)->first();
+        $tattoo = $userDetail->user->artistDesigns()
+            ->where('slug', $tattooSlug)
+            ->where('is_active', true)
+            ->withSoldOutState()
+            ->first();
 
-        $relatedTattoos = $userDetail->user->artistDesigns()->where('is_visible', true)->where('id', '!=', $tattoo->id)->take(3)->get();
+        if (! $tattoo) {
+            return redirect()->route('public.artist', ['username' => $userName]);
+        }
+
+        $relatedTattoos = $userDetail->user->artistDesigns()
+            ->where('is_active', true)
+            ->where('id', '!=', $tattoo->id)
+            ->withSoldOutState()
+            ->take(3)
+            ->get();
 
         return view('public.tattoo', [
             'userDetail' => $userDetail,
             'tattoo' => $tattoo,
             'relatedTattoos' => $relatedTattoos,
+            'isSoldOut' => $tattoo->isSoldOut(),
         ]);
     }
 
@@ -534,13 +551,22 @@ class InkJinController extends Controller
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
-        $tattoo = $userDetail->user->artistDesigns()->where('slug', $tattooSlug)->first();
+        $tattoo = $userDetail->user->artistDesigns()
+            ->where('slug', $tattooSlug)
+            ->where('is_active', true)
+            ->withSoldOutState()
+            ->first();
 
         if (! $tattoo) {
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
-
+        if ($tattoo->isSoldOut()) {
+            return redirect()->route('public.tattoo', [
+                'user_name' => $userName,
+                'tattoo_slug' => $tattooSlug,
+            ]);
+        }
 
         $questions = QuestionSorting::activeQuestionsPayloadForArtist($userDetail->user_id, 'default');
 
@@ -670,11 +696,15 @@ class InkJinController extends Controller
 
         $tattoo = $userDetail->user->artistDesigns()
             ->where('slug', $validated['tattoo_slug'])
-            ->where('is_visible', true)
+            ->where('is_active', true)
             ->first();
 
         if (!$tattoo) {
             return response()->json(['message' => 'Tattoo not found.'], 404);
+        }
+
+        if ($response = $this->rejectIfDesignSoldOut($tattoo)) {
+            return $response;
         }
 
         $stripeSecret = env('STRIPE_SECRET');
@@ -763,10 +793,14 @@ class InkJinController extends Controller
 
         $design = $userDetail->user->artistDesigns()
             ->where('slug', $validated['tattoo_slug'])
-            ->where('is_visible', true)
+            ->where('is_active', true)
             ->first();
         if (!$design) {
             return response()->json(['message' => 'Tattoo design not found.'], 404);
+        }
+
+        if ($response = $this->rejectIfDesignSoldOut($design)) {
+            return $response;
         }
 
         $stripeSecret = env('STRIPE_SECRET');
@@ -1014,11 +1048,15 @@ class InkJinController extends Controller
 
         $design = $userDetail->user->artistDesigns()
             ->where('slug', $validated['tattoo_slug'])
-            ->where('is_visible', true)
+            ->where('is_active', true)
             ->first();
 
         if (!$design) {
             return response()->json(['message' => 'Tattoo design not found.'], 404);
+        }
+
+        if ($response = $this->rejectIfDesignSoldOut($design)) {
+            return $response;
         }
 
         $consultationRequired = (bool) ($payload['consultation_required'] ?? false);
@@ -1200,11 +1238,15 @@ class InkJinController extends Controller
 
         $tattoo = $userDetail->user->artistDesigns()
             ->where('slug', $validated['tattoo_slug'])
-            ->where('is_visible', true)
+            ->where('is_active', true)
             ->first();
 
         if (! $tattoo) {
             return response()->json(['message' => 'Tattoo not found.'], 404);
+        }
+
+        if ($response = $this->rejectIfDesignSoldOut($tattoo)) {
+            return $response;
         }
 
         $payload = $validated['booking_payload'];
@@ -1280,5 +1322,16 @@ class InkJinController extends Controller
         }
 
         return response()->json($status);
+    }
+
+    private function rejectIfDesignSoldOut(ArtistDesign $design): ?JsonResponse
+    {
+        if ($design->isSoldOut()) {
+            return response()->json([
+                'message' => 'This design is sold out and is no longer available to book.',
+            ], 422);
+        }
+
+        return null;
     }
 }

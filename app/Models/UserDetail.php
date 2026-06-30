@@ -59,6 +59,8 @@ class UserDetail extends Model
         'personal_page_tagline',
         'personal_page_description',
         'personal_page_name_alias',
+        'design_whats_included',
+        'design_whats_included_is_active',
     ];
 
     protected $casts = [
@@ -66,6 +68,8 @@ class UserDetail extends Model
         'tattoo_styles' => 'array',
         'social_links' => 'array',
         'google_calendar_token' => 'array',
+        'design_whats_included' => 'array',
+        'design_whats_included_is_active' => 'boolean',
         'require_consultation' => 'boolean',
         'require_gap_between_consultation_tattoo' => 'boolean',
         'payout_waiting_list_at' => 'datetime',
@@ -82,5 +86,51 @@ class UserDetail extends Model
     public function studio(): BelongsTo
     {
         return $this->belongsTo(Studio::class);
+    }
+
+    /**
+     * Studio location as separate lines for checkout summaries.
+     *
+     * @return list<string>
+     */
+    public function studioLocationLines(): array
+    {
+        $studioName = trim((string) ($this->studio_name ?? ''));
+
+        $streetLine = trim(trim((string) ($this->street_number ?? '')).' '.trim((string) ($this->street_name ?? '')));
+        if ($streetLine === '') {
+            $streetLine = trim((string) ($this->studio_address ?? ''));
+        }
+
+        $cityZip = trim(implode(' ', array_filter([
+            trim((string) ($this->city ?? '')),
+            trim((string) ($this->postal_code ?? '')),
+        ], fn (string $part) => $part !== '')));
+
+        $country = trim((string) ($this->country ?? ''));
+
+        return array_values(array_filter([
+            $studioName,
+            $streetLine,
+            $cityZip,
+            $country,
+        ], fn (string $line) => $line !== ''));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function activeDesignWhatsIncludedItems(): array
+    {
+        if (! $this->design_whats_included_is_active) {
+            return [];
+        }
+
+        $items = is_array($this->design_whats_included) ? $this->design_whats_included : [];
+
+        return array_values(array_filter(array_map(
+            fn ($item) => trim((string) $item),
+            $items
+        ), fn (string $item) => $item !== ''));
     }
 }

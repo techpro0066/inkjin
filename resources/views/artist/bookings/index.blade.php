@@ -647,6 +647,7 @@
 @endsection
 
 @section('scripts')
+<script src="{{ asset('js/question-answer-display.js') }}"></script>
 <script>
 (function () {
   var tableBody = document.getElementById('bookingsTableBody');
@@ -1248,41 +1249,24 @@
         qaSectionEl.classList.remove('hidden');
         entries.forEach(function (pair) {
           var qKey = String(pair[0] || '').trim();
-          var ans = pair[1];
-          var answerPayload = (ans && typeof ans === 'object' && !Array.isArray(ans))
-            ? ans
-            : { answer: ans };
-          var questionText = String(answerPayload.question || ('Question #' + (qKey || '—')));
-          var answerType = String(answerPayload.type || '');
-          var answerValue = answerPayload.answer;
-          var answerText = Array.isArray(answerValue) ? answerValue.join(', ') : String(answerValue ?? '');
-          var isImageAnswer = answerType === 'image'
-            || /^https?:\/\//i.test(answerText)
-            || answerText.indexOf('/uploads/') === 0;
-          var item = document.createElement('div');
-          item.className = 'border-b border-outline-variant/15 pb-2 last:border-b-0 last:pb-0';
-
-          var q = document.createElement('p');
-          q.className = 'text-xs font-semibold text-on-surface-variant';
-          q.textContent = questionText;
-
-          var a;
-          if (isImageAnswer && answerText) {
-            a = document.createElement('a');
-            a.className = 'text-primary mt-1 inline-block break-all underline';
-            a.href = answerText;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            a.textContent = 'View uploaded image';
+          var payload = window.QuestionAnswerDisplay
+            ? window.QuestionAnswerDisplay.normalizePayload(pair[1], 'Question #' + (qKey || '—'))
+            : { question: 'Question #' + (qKey || '—'), type: '', answer: pair[1] };
+          if (window.QuestionAnswerDisplay) {
+            window.QuestionAnswerDisplay.appendAnswerBlock(qaListEl, payload);
           } else {
-            a = document.createElement('p');
+            var item = document.createElement('div');
+            item.className = 'border-b border-outline-variant/15 pb-2 last:border-b-0 last:pb-0';
+            var q = document.createElement('p');
+            q.className = 'text-xs font-semibold text-on-surface-variant';
+            q.textContent = payload.question;
+            var a = document.createElement('p');
             a.className = 'text-on-surface mt-1 break-words';
-            a.textContent = answerText || '—';
+            a.textContent = Array.isArray(payload.answer) ? payload.answer.join(', ') : String(payload.answer ?? '—');
+            item.appendChild(q);
+            item.appendChild(a);
+            qaListEl.appendChild(item);
           }
-
-          item.appendChild(q);
-          item.appendChild(a);
-          qaListEl.appendChild(item);
         });
       }
     }
