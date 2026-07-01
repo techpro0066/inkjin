@@ -556,7 +556,7 @@
         <h2 class="text-2xl sm:text-3xl font-extrabold text-on-surface mb-3">Request Submitted! 🎉</h2>
         <p class="text-sm text-on-surface-variant mb-2">Reference: <strong id="successRequestRef">—</strong></p>
         <p class="text-on-surface-variant text-lg mb-8">
-          <span id="successArtistName">{{ $artistName }}</span> will review your request @if(!empty($isManagedScheduling)) and confirm a time that works for both of you@endif. You'll receive updates via email.
+          <span id="successArtistName">{{ $artistName }}</span> will review your request @if(!empty($isManagedScheduling)) and confirm a time that works for both of you @endif. You'll receive updates via email.
         </p>
         <div class="bg-surface-container-low rounded-2xl p-5 mb-8 text-left">
           <h3 class="text-sm font-bold mb-3">What happens next?</h3>

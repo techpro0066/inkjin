@@ -296,6 +296,14 @@
 
   @if($userDetail->availability_status !== 'closed')
 
+  <!-- About Section -->
+  <div class="max-w-4xl mx-auto px-4 sm:px-6">
+    <div class="mb-6">
+      <h3 class="text-lg font-bold text-on-surface mb-3">About</h3>
+      <p class="text-on-surface-variant text-sm leading-relaxed">{{ $userDetail->personal_page_description ?? '' }}</p>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════════════ -->
   <!-- TABS                                            -->
   <!-- ═══════════════════════════════════════════════ -->
@@ -320,11 +328,6 @@
   <!-- AVAILABLE DESIGNS TAB                           -->
   <!-- ═══════════════════════════════════════════════ -->
   <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-    <!-- About Section -->
-    <div class="mb-8">
-      <h3 class="text-lg font-bold text-on-surface mb-3">About</h3>
-      <p class="text-on-surface-variant text-sm leading-relaxed">{{ $userDetail->personal_page_description ?? '' }}</p>
-    </div>
     @if($hasVisibleDesigns)
         <div id="content-designs" class="tab-content {{ $designsTabActive ? 'active' : '' }}">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
