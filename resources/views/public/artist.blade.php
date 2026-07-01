@@ -148,6 +148,10 @@
       border-color: {{ $selectedTheme['primary'] }};
     }
 
+    #artistDesignsSection {
+      scroll-margin-top: 1rem;
+    }
+
     .get-this-tattoo-btn{
       background-color: {{ $selectedTheme['primary'] }};
       color: white;
@@ -265,7 +269,7 @@
         @if($userDetail->availability_status != 'closed')
             <div id="ctaButtons" class="flex flex-wrap gap-3">
                 @if($userDetail->availability_status == 'design_only' || $userDetail->availability_status == 'design_custom')
-                    <button id="btnBrowseDesigns" onclick="switchTab('designs')" class="px-6 py-2.5  bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors shadow-md shadow-primary/20">
+                    <button id="btnBrowseDesigns" onclick="browseDesigns()" class="px-6 py-2.5  bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors shadow-md shadow-primary/20">
                         Browse Available Designs
                     </button>
                 @endif
@@ -308,7 +312,7 @@
   <!-- TABS                                            -->
   <!-- ═══════════════════════════════════════════════ -->
   @if($hasVisibleDesigns || $hasPortfolio)
-  <nav class="border-b border-outline-variant sticky top-0 bg-surface/95 backdrop-blur-sm z-30">
+  <nav id="artistDesignsSection" class="border-b border-outline-variant sticky top-0 bg-surface/95 backdrop-blur-sm z-30">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 flex gap-0">
       @if($hasVisibleDesigns)
         <button id="tab-designs" onclick="switchTab('designs')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $designsTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} transition-colors">
@@ -415,8 +419,8 @@
   <span class="text-[9px] font-medium text-on-surface-variant uppercase tracking-widest leading-tight">Tattoo artist platform<br>by Inkjin</span>
 </div>
       <div class="flex items-center gap-4 text-sm text-on-surface-variant">
-        <a href="#" class="hover:text-primary transition-colors">Privacy</a>
-        <a href="#" class="hover:text-primary transition-colors">Terms</a>
+        <a href="https://inkjin.com/en/privacy" class="hover:text-primary transition-colors" target="_blank">Privacy</a>
+        <a href="https://inkjin.com/en/terms" class="hover:text-primary transition-colors" target="_blank">Terms</a>
       </div>
     </div>
   </footer>
@@ -519,10 +523,21 @@
         el.classList.remove('border-tab-btn', 'text-primary');
         el.classList.add('border-transparent', 'text-on-surface-variant');
       });
-      document.getElementById('content-' + tab).classList.add('active');
+      const content = document.getElementById('content-' + tab);
+      if (content) content.classList.add('active');
       const btn = document.getElementById('tab-' + tab);
-      btn.classList.remove('border-transparent', 'text-on-surface-variant');
-      btn.classList.add('border-tab-btn', 'text-primary');
+      if (btn) {
+        btn.classList.remove('border-transparent', 'text-on-surface-variant');
+        btn.classList.add('border-tab-btn', 'text-primary');
+      }
+    }
+
+    function browseDesigns() {
+      switchTab('designs');
+      const target = document.getElementById('artistDesignsSection') || document.getElementById('content-designs');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
 
     // ── Modal Helpers ─────────────────────────────────

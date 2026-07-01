@@ -334,8 +334,8 @@
         <span>Book & Pay</span>
       </div>
       <div class="flex items-center gap-4 text-sm text-on-surface-variant">
-        <a href="#" class="hover:text-primary transition-colors">Privacy</a>
-        <a href="#" class="hover:text-primary transition-colors">Terms</a>
+        <a href="https://inkjin.com/en/privacy" class="hover:text-primary transition-colors" target="_blank">Privacy</a>
+        <a href="https://inkjin.com/en/terms" class="hover:text-primary transition-colors" target="_blank">Terms</a>
       </div>
     </div>
   </footer>
