@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserBankDetail;
 use App\Models\Studio;
+use App\Models\Style;
 use App\Mail\ArtistWelcomeMail;
 use App\Mail\StudioPayoutDeclinedArtistMail;
 use App\Mail\StudioPayoutInfoRequestMail;
@@ -32,6 +33,33 @@ class OnboardingController extends Controller
         'traditional', 'neo-traditional', 'japanese', 'realism', 'blackwork',
         'minimalist', 'geometric', 'watercolor', 'tribal', 'dotwork', 'new-school', 'illustrative',
     ];
+
+    private function activeStyleOptions(): array
+    {
+        $fromDb = Style::query()
+            ->active()
+            ->ordered()
+            ->pluck('name', 'name')
+            ->toArray();
+
+        if (! empty($fromDb)) {
+            return $fromDb;
+        }
+
+        // Fallback for environments where styles table is not seeded yet.
+        $fallback = [];
+        foreach (self::TATTOO_STYLE_SLUGS as $slug) {
+            $label = ucwords(str_replace('-', ' ', $slug));
+            $fallback[$slug] = $label;
+        }
+
+        return $fallback;
+    }
+
+    private function activeStyleValues(): array
+    {
+        return array_keys($this->activeStyleOptions());
+    }
 
     /**
      * Legacy entry: send users to the correct step in the multi-page onboarding flow.
@@ -135,7 +163,10 @@ class OnboardingController extends Controller
             return $redirect;
         }
 
-        return view('onboarding.styles-social', $this->onboardingViewData($request) + ['activeNav' => 'styles-social']);
+        return view('onboarding.styles-social', $this->onboardingViewData($request) + [
+            'activeNav' => 'styles-social',
+            'styleOptions' => $this->activeStyleOptions(),
+        ]);
     }
 
     public function studio(Request $request)
@@ -711,9 +742,10 @@ class OnboardingController extends Controller
     {
         try {
             $maxYear = (int) date('Y');
+            $allowedStyles = $this->activeStyleValues();
             $validated = $request->validate([
                 'tattooing_since' => ['required', 'integer', 'min:1970', 'max:'.$maxYear],
-                'primary_style' => ['required', 'string', Rule::in(self::TATTOO_STYLE_SLUGS)],
+                'primary_style' => ['required', 'string', Rule::in($allowedStyles)],
                 'other_styles' => ['nullable', 'string', 'max:2000'],
                 'social_links' => ['nullable', 'array'],
                 'social_links.instagram' => ['nullable', 'string', 'max:255'],
@@ -728,7 +760,7 @@ class OnboardingController extends Controller
 
             $other = array_filter(array_map('trim', explode(',', (string) ($validated['other_styles'] ?? ''))));
             foreach ($other as $slug) {
-                if (! in_array($slug, self::TATTOO_STYLE_SLUGS, true)) {
+                if (! in_array($slug, $allowedStyles, true)) {
                     throw ValidationException::withMessages([
                         'other_styles' => ['One or more additional styles are invalid. Please pick styles from the list.'],
                     ]);
@@ -795,9 +827,10 @@ class OnboardingController extends Controller
     {
         try {
             $maxYear = (int) date('Y');
+            $allowedStyles = $this->activeStyleValues();
             $validated = $request->validate([
                 'tattooing_since' => ['required', 'integer', 'min:1970', 'max:'.$maxYear],
-                'primary_style' => ['required', 'string', Rule::in(self::TATTOO_STYLE_SLUGS)],
+                'primary_style' => ['required', 'string', Rule::in($allowedStyles)],
                 'other_styles' => ['nullable', 'string', 'max:2000'],
                 'social_links' => ['nullable', 'array'],
                 'social_links.instagram' => ['nullable', 'string', 'max:255'],
@@ -812,7 +845,7 @@ class OnboardingController extends Controller
 
             $other = array_filter(array_map('trim', explode(',', (string) ($validated['other_styles'] ?? ''))));
             foreach ($other as $slug) {
-                if (! in_array($slug, self::TATTOO_STYLE_SLUGS, true)) {
+                if (! in_array($slug, $allowedStyles, true)) {
                     throw ValidationException::withMessages([
                         'other_styles' => ['One or more additional styles are invalid. Please pick styles from the list.'],
                     ]);

@@ -127,6 +127,17 @@
     .single-choice-radio-button { padding: 0.75rem 1.5rem; border-radius: 9999px; border: 2px solid #cac4d3; font-size: 0.95rem; font-weight: 600; color: #494552; cursor: pointer; transition: all 0.15s; background: white; }
     .single-choice-radio-button:hover { border-color: #310f7a; color: #310f7a; }
     .single-choice-radio-button.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .single-choice-radio-button.option-other { background: #f2ecf5; border-color: #b69fff; color: #310f7a; }
+    .single-choice-radio-button.option-other:hover { background: #e8ddff; border-color: #664db1; color: #21005e; }
+    .single-choice-radio-button.option-other.selected { background: #310f7a; border-color: #310f7a; color: #ffffff; }
+    .style-other-picker { margin-top: 1rem; }
+    .style-other-search { width: 100%; border: 1px solid rgba(122, 117, 131, 0.35); background: #fdf7ff; border-radius: 1rem; padding: 0.875rem 1rem; font-size: 1rem; color: #1c1b21; }
+    .style-other-search:focus { outline: none; box-shadow: 0 0 0 2px rgba(49, 15, 122, 0.25); border-color: #310f7a; }
+    .style-other-results { margin-top: 0.75rem; height: calc(0.75rem * 2 + 2.75rem * 3 + 0.5rem * 2); max-height: calc(0.75rem * 2 + 2.75rem * 3 + 0.5rem * 2); overflow-y: auto; border: 1px solid #ece6ef; border-radius: 1rem; background: white; padding: 0.75rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-content: start; }
+    .style-other-results .style-other-empty { grid-column: 1 / -1; }
+    .style-other-result-item { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 2.75rem; text-align: center; padding: 0.65rem 0.5rem; font-size: 0.82rem; font-weight: 600; color: #494552; background: white; border: 2px solid #cac4d3; border-radius: 9999px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; line-height: 1.2; word-break: break-word; }
+    .style-other-result-item:hover { background: #f8f1fb; color: #310f7a; border-color: #310f7a; }
+    .style-other-result-item.selected { background: #310f7a; color: #ffffff; border-color: #310f7a; }
     .question-kicker {
       display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.85rem; border-radius: 9999px;
       border: 1px solid #ddd0ff; background: linear-gradient(135deg, #f8f1fb 0%, #f2ecf5 100%);
@@ -588,6 +599,8 @@
     var artistUsername = @json($artistUsername ?? '');
     var fallbackTattooSlug = @json($fallbackTattooSlug ?? '');
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
+    var styleQuestionId = @json($styleQuestionId ?? 0);
+    var hiddenStyleOptions = @json($hiddenStyleOptions ?? []);
     var questionAnswers = {};
     var currentQuestionIndex = 0;
     var questionDefinitions = (Array.isArray(serverQuestions) ? serverQuestions : []).map(function(q) {
@@ -649,6 +662,61 @@
       questionAnswers[questionId] = Array.isArray(urls) ? urls.slice() : [];
     });
 
+    function isStyleQuestionId(qId) {
+      return styleQuestionId > 0 && String(qId) === String(styleQuestionId);
+    }
+
+    function buildStyleOtherPickerHtml() {
+      return '<div class="js-style-other-picker style-other-picker hidden">' +
+        '<input type="text" class="js-style-other-search style-other-search" placeholder="Choose style from this list" autocomplete="off">' +
+        '<div class="js-style-other-results style-other-results"></div>' +
+        '</div>';
+    }
+
+    function renderStyleOtherResults($container, query) {
+      var needle = String(query || '').trim().toLowerCase();
+      var filtered = (Array.isArray(hiddenStyleOptions) ? hiddenStyleOptions : []).filter(function(name) {
+        return !needle || String(name).toLowerCase().indexOf(needle) !== -1;
+      });
+      var $results = $container.find('.js-style-other-results');
+      if (!filtered.length) {
+        $results.html('<p class="style-other-empty text-sm text-on-surface-variant py-3 px-2 text-center">No matching styles found.</p>');
+        return;
+      }
+      var currentAnswer = String(questionAnswers[$container.data('question-id')] || '').trim();
+      $results.html(filtered.map(function(name) {
+        var selectedClass = name === currentAnswer ? ' selected' : '';
+        return '<button type="button" class="js-style-other-result-item style-other-result-item' + selectedClass + '" data-value="' + escapeHtml(name) + '">' + escapeHtml(name) + '</button>';
+      }).join(''));
+    }
+
+    function restoreStyleQuestionUi($div) {
+      if (!$div.length || !isStyleQuestionId($div.data('question-id'))) return;
+      var qId = $div.data('question-id');
+      var answer = String(questionAnswers[qId] || '').trim();
+      var $buttons = $div.find('.single-choice-radio-button');
+      if (!answer) {
+        $div.find('.js-style-other-picker').addClass('hidden');
+        return;
+      }
+      var isHiddenStyle = (hiddenStyleOptions || []).indexOf(answer) !== -1;
+      if (isHiddenStyle) {
+        $buttons.removeClass('selected');
+        $buttons.filter(function() {
+          return String($(this).data('value') || '').trim().toLowerCase() === 'other';
+        }).addClass('selected');
+        $div.find('.js-style-other-picker').removeClass('hidden');
+        $div.find('.js-style-other-search').val(answer);
+        renderStyleOtherResults($div, answer);
+      } else {
+        $div.find('.js-style-other-picker').addClass('hidden');
+        $buttons.removeClass('selected');
+        $buttons.filter(function() {
+          return String($(this).data('value') || '') === answer;
+        }).addClass('selected');
+      }
+    }
+
     function renderQuestions() {
       var html = '';
       questionDefinitions.forEach(function(q, idx) {
@@ -657,8 +725,11 @@
         var body = '';
         if (q.type === 'radio') {
           body = '<div class="flex flex-wrap gap-2 single-choice-group">' + q.options.map(function(opt) {
-            return '<button type="button" class="single-choice-radio-button" data-value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>';
+            var isOther = String(opt || '').trim().toLowerCase() === 'other';
+            var optionClass = (isStyleQuestionId(q.id) && isOther) ? ' option-other' : '';
+            return '<button type="button" class="single-choice-radio-button' + optionClass + '" data-value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>';
           }).join('') + '</div>';
+          if (isStyleQuestionId(q.id)) body += buildStyleOtherPickerHtml();
         } else if (q.type === 'select') {
           body = '<select class="w-full js-select2-question" data-question-id="' + q.id + '"><option value="">Choose an option</option>' +
             q.options.map(function(opt) { return '<option value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</option>'; }).join('') + '</select>';
@@ -695,7 +766,17 @@
       var qType = String($active.data('question-type') || '');
       var qId = $active.data('question-id');
       var hasValue = false;
-      if (qType === 'radio') hasValue = !!$active.find('.single-choice-radio-button.selected').length;
+      if (qType === 'radio') {
+        var $selected = $active.find('.single-choice-radio-button.selected');
+        hasValue = $selected.length > 0;
+        if (hasValue && isStyleQuestionId(qId)) {
+          var selectedVal = String($selected.data('value') || '').trim().toLowerCase();
+          if (selectedVal === 'other') {
+            var pickedStyle = String(questionAnswers[qId] || '').trim();
+            hasValue = pickedStyle !== '' && pickedStyle.toLowerCase() !== 'other';
+          }
+        }
+      }
       else if (qType === 'select') hasValue = !!String($active.find('.js-select2-question').val() || '').trim();
       else if (qType === 'input' || qType === 'textarea') hasValue = !!String($active.find('.js-question-input').val() || '').trim();
       else if (qType === 'image') {
@@ -715,6 +796,7 @@
       questions.removeClass('active reverse');
       questions.filter('[data-q="' + index + '"]').addClass('active');
       currentQuestionIndex = index;
+      restoreStyleQuestionUi(questions.filter('[data-q="' + index + '"]'));
       if (typeof window.rcSyncQuestionProgress === 'function') window.rcSyncQuestionProgress(index);
     }
 
@@ -736,12 +818,44 @@
     window.rcPrevQuestion = function() { moveQuestion(-1); };
 
     $(document).on('click', '.single-choice-radio-button', function() {
-      $(this).closest('div.single-choice-group').find('.single-choice-radio-button').removeClass('selected');
-      var main_div = $(this).closest('div.question-div');
+      var $btn = $(this);
+      var main_div = $btn.closest('div.question-div');
       var current_question = parseInt(main_div.data('q'), 10);
       var qId = main_div.data('question-id');
+      var value = String($btn.data('value') || '');
+      var isOther = value.trim().toLowerCase() === 'other';
+      var isStyleQuestion = isStyleQuestionId(qId);
+
+      main_div.find('.single-choice-radio-button').removeClass('selected');
+      $btn.addClass('selected');
+      main_div.find('.js-question-error').addClass('hidden');
+
+      if (isStyleQuestion && isOther) {
+        main_div.find('.js-style-other-picker').removeClass('hidden');
+        main_div.find('.js-style-other-search').val('').trigger('focus');
+        delete questionAnswers[qId];
+        renderStyleOtherResults(main_div, '');
+        return;
+      }
+
+      main_div.find('.js-style-other-picker').addClass('hidden');
+      if (qId) questionAnswers[qId] = value;
+      if (!isNaN(current_question)) setTimeout(function() { moveQuestion(1); }, 180);
+    });
+    $(document).on('input', '.js-style-other-search', function() {
+      var main_div = $(this).closest('.question-div');
+      renderStyleOtherResults(main_div, $(this).val());
+    });
+    $(document).on('click', '.js-style-other-result-item', function() {
+      var styleName = String($(this).data('value') || '');
+      var main_div = $(this).closest('.question-div');
+      var current_question = parseInt(main_div.data('q'), 10);
+      var qId = main_div.data('question-id');
+      if (!styleName || !qId) return;
+      questionAnswers[qId] = styleName;
+      main_div.find('.js-style-other-search').val(styleName);
+      main_div.find('.js-style-other-result-item').removeClass('selected');
       $(this).addClass('selected');
-      if (qId) questionAnswers[qId] = String($(this).data('value') || '');
       main_div.find('.js-question-error').addClass('hidden');
       if (!isNaN(current_question)) setTimeout(function() { moveQuestion(1); }, 180);
     });

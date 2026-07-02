@@ -13,6 +13,15 @@
     $otherList = $ts;
   }
   $sl = $userDetail->social_links ?? [];
+  $styleOptions = $styleOptions ?? [];
+  if ($primary && !array_key_exists($primary, $styleOptions)) {
+    $styleOptions[$primary] = ucwords(str_replace('-', ' ', $primary));
+  }
+  foreach ($otherList as $otherStyle) {
+    if ($otherStyle && !array_key_exists($otherStyle, $styleOptions)) {
+      $styleOptions[$otherStyle] = ucwords(str_replace('-', ' ', $otherStyle));
+    }
+  }
 @endphp
 
 @section('content')
@@ -40,7 +49,7 @@
           <label for="primary_style" class="block text-sm font-semibold text-on-surface mb-2">Primary Style <span class="text-error">*</span></label>
           <select id="primary_style" name="primary_style" class="select w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface">
             <option value="" disabled {{ !$primary ? 'selected' : '' }}>Select style</option>
-            @foreach (['traditional'=>'Traditional','neo-traditional'=>'Neo Traditional','japanese'=>'Japanese','realism'=>'Realism','blackwork'=>'Blackwork','minimalist'=>'Minimalist','geometric'=>'Geometric','watercolor'=>'Watercolor','tribal'=>'Tribal','dotwork'=>'Dotwork','new-school'=>'New School','illustrative'=>'Illustrative'] as $val => $lab)
+            @foreach ($styleOptions as $val => $lab)
               <option value="{{ $val }}" {{ ($primary ?? '') === $val ? 'selected' : '' }}>{{ $lab }}</option>
             @endforeach
           </select>
@@ -58,7 +67,7 @@
               onclick="toggleStylesDropdown(true)" oninput="filterStyles()">
           </div>
           <div id="stylesDropdownList" class="hidden absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg shadow-primary/5 border border-outline-variant/20 max-h-48 overflow-y-auto z-20">
-            @foreach (['neo-traditional'=>'Neo Traditional','japanese'=>'Japanese','geometric'=>'Geometric','watercolor'=>'Watercolor','minimalist'=>'Minimalist','realism'=>'Realism','blackwork'=>'Blackwork','dotwork'=>'Dotwork','tribal'=>'Tribal','traditional'=>'Traditional','new-school'=>'New School','illustrative'=>'Illustrative'] as $val => $lab)
+            @foreach ($styleOptions as $val => $lab)
               <div class="style-option" data-value="{{ $val }}" onclick="toggleStyle(this)">{{ $lab }} <span class="material-symbols-outlined text-lg text-outline-variant">check_box_outline_blank</span></div>
             @endforeach
           </div>

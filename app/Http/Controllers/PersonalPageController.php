@@ -21,10 +21,20 @@ class PersonalPageController extends Controller
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $userDetail = $user->userDetail;
+
+        if (
+            $request->query('from') === 'dashboard_notice'
+            && $userDetail
+            && ! $userDetail->customize_page_notice_dismissed
+        ) {
+            $userDetail->update(['customize_page_notice_dismissed' => true]);
+
+            return redirect()->route('personal-page.index');
+        }
 
         return view('artist.personal-page.index', [
             'user' => $user,
@@ -41,8 +51,8 @@ class PersonalPageController extends Controller
             'personal_page_background_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'remove_personal_page_background_image' => ['sometimes', 'boolean'],
             'personal_page_color' => ['required', 'string', 'max:50'],
-            'personal_page_tagline' => ['required', 'string', 'max:255'],
-            'personal_page_description' => ['required', 'string', 'max:500'],
+            'personal_page_tagline' => ['nullable', 'string', 'max:255'],
+            'personal_page_description' => ['nullable', 'string', 'max:500'],
             'personal_page_name_alias' => ['required', 'in:full,username,both'],
         ]);
 

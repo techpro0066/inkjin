@@ -59,6 +59,7 @@ class UserDetail extends Model
         'personal_page_tagline',
         'personal_page_description',
         'personal_page_name_alias',
+        'customize_page_notice_dismissed',
         'design_whats_included',
         'design_whats_included_is_active',
     ];
@@ -70,6 +71,7 @@ class UserDetail extends Model
         'google_calendar_token' => 'array',
         'design_whats_included' => 'array',
         'design_whats_included_is_active' => 'boolean',
+        'customize_page_notice_dismissed' => 'boolean',
         'require_consultation' => 'boolean',
         'require_gap_between_consultation_tattoo' => 'boolean',
         'payout_waiting_list_at' => 'datetime',

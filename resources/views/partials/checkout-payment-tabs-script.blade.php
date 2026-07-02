@@ -16,6 +16,36 @@
   var irisOrderLoaded = false;
   var irisPollTimer = null;
   var irisExpiryTimer = null;
+  var irisCheckoutUrl = null;
+
+  function isMobileCheckout() {
+    return window.matchMedia('(max-width: 768px)').matches
+      || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+  }
+
+  function setIrisRegenerateLabel() {
+    var btn = document.getElementById('irisQrRegenerate');
+    if (!btn) return;
+    btn.textContent = isMobileCheckout() ? 'Try again' : 'Regenerate QR';
+  }
+
+  function showIrisDesktopQr(show) {
+    document.getElementById('irisQrDesktopWrap')?.classList.toggle('hidden', !show);
+    var canvas = document.getElementById('irisQrCanvas');
+    if (canvas) canvas.classList.toggle('hidden', !show);
+  }
+
+  function showIrisMobilePayButton(show, checkoutUrl) {
+    var btn = document.getElementById('irisMobilePayBtn');
+    if (!btn) return;
+    if (show && checkoutUrl) {
+      btn.href = checkoutUrl;
+      btn.classList.remove('hidden');
+    } else {
+      btn.href = '#';
+      btn.classList.add('hidden');
+    }
+  }
 
   function setActiveTab(tab) {
     var isCard = tab === 'card';
@@ -88,15 +118,21 @@
     function tick() {
       var remainingMs = new Date(expiresAtIso).getTime() - Date.now();
       if (remainingMs <= 0) {
-        expiryEl.textContent = 'QR expired';
+        expiryEl.textContent = isMobileCheckout() ? 'Payment link expired' : 'QR expired';
         clearIrisTimers();
         document.getElementById('irisQrRegenerate')?.classList.remove('hidden');
-        showIrisStatus('Payment window expired. Regenerate the QR to try again.', true);
+        showIrisMobilePayButton(false);
+        showIrisStatus(
+          isMobileCheckout()
+            ? 'Payment window expired. Tap try again to get a new link.'
+            : 'Payment window expired. Regenerate the QR to try again.',
+          true
+        );
         return;
       }
       var mins = Math.floor(remainingMs / 60000);
       var secs = Math.floor((remainingMs % 60000) / 1000);
-      expiryEl.textContent = 'QR expires in ' + mins + ':' + String(secs).padStart(2, '0');
+      expiryEl.textContent = (isMobileCheckout() ? 'Link expires in ' : 'QR expires in ') + mins + ':' + String(secs).padStart(2, '0');
     }
 
     tick();
@@ -128,8 +164,14 @@
 
         if (data.status === 'expired' || data.status === 'failed' || data.status === 'cancelled') {
           clearIrisTimers();
+          showIrisMobilePayButton(false);
           document.getElementById('irisQrRegenerate')?.classList.remove('hidden');
-          showIrisStatus('Payment ' + data.status + '. Please regenerate the QR.', true);
+          showIrisStatus(
+            isMobileCheckout()
+              ? 'Payment ' + data.status + '. Please tap try again.'
+              : 'Payment ' + data.status + '. Please regenerate the QR.',
+            true
+          );
         }
       } catch (e) {
         // Keep polling
@@ -156,12 +198,29 @@
   }
 
   async function renderIrisOrder(data) {
+    irisCheckoutUrl = data.checkout_url || null;
+    setIrisRegenerateLabel();
+
+    if (isMobileCheckout()) {
+      showIrisDesktopQr(false);
+      showIrisMobilePayButton(true, irisCheckoutUrl);
+      document.getElementById('irisQrRegenerate')?.classList.add('hidden');
+      showIrisStatus('Tap the button below to open your banking app and complete payment.', false);
+      startExpiryCountdown(data.expires_at);
+      pollVivaStatus(data.order_code);
+      irisOrderLoaded = true;
+      return;
+    }
+
     await ensureQrLibrary();
 
     var canvas = document.getElementById('irisQrCanvas');
     if (!canvas || !window.QRious) {
       throw new Error('QR renderer is unavailable.');
     }
+
+    showIrisMobilePayButton(false);
+    showIrisDesktopQr(true);
 
     new window.QRious({
       element: canvas,
@@ -190,8 +249,10 @@
       return;
     }
 
-    showIrisStatus('Preparing QR code…', false);
+    showIrisStatus(isMobileCheckout() ? 'Preparing payment link…' : 'Preparing QR code…', false);
     document.getElementById('irisQrRegenerate')?.classList.add('hidden');
+    showIrisMobilePayButton(false);
+    showIrisDesktopQr(false);
 
     try {
       var fetchOptions = {
@@ -220,9 +281,12 @@
 
   document.getElementById('irisQrRegenerate')?.addEventListener('click', function () {
     irisOrderLoaded = false;
+    irisCheckoutUrl = null;
     clearIrisTimers();
     window.startIrisQrPayment(true);
   });
+
+  setIrisRegenerateLabel();
 })();
 </script>
 @endif

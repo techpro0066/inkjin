@@ -30,9 +30,12 @@ class ArtistDashboardController extends Controller
             ->count();
 
         $dashboard = $this->dashboardService->buildForArtist((int) Auth::id());
+        $userDetail = $user?->userDetail;
+        $showCustomizePageNotice = $userDetail && ! $userDetail->customize_page_notice_dismissed;
 
         return view('artist.dashboard', [
             'needsWeeklyAvailabilitySetup' => $needsWeeklyAvailabilitySetup,
+            'showCustomizePageNotice' => $showCustomizePageNotice,
             'recentCustomRequests' => $recentCustomRequests,
             'pendingCustomRequestsCount' => $pendingCustomRequestsCount,
             'dashboardStats' => $dashboard['stats'],

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Admin\FormController;
+use App\Http\Controllers\Admin\StyleController;
 use App\Http\Controllers\QuestionsController;
 
 use App\Http\Controllers\UserController\BookingsController;
@@ -161,6 +162,12 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     Route::post('/forms/questions/reorder', [QuestionsController::class, 'reorder'])->name('admin.forms.questions.reorder');
     Route::delete('/forms/questions/{id}', [QuestionsController::class, 'destroy'])->name('admin.forms.questions.destroy');
 
+    Route::get('/styles', [StyleController::class, 'index'])->name('admin.styles.index');
+    Route::post('/styles', [StyleController::class, 'store'])->name('admin.styles.store');
+    Route::put('/styles/{style}', [StyleController::class, 'update'])->name('admin.styles.update');
+    Route::delete('/styles/{style}', [StyleController::class, 'destroy'])->name('admin.styles.destroy');
+    Route::post('/styles/reorder', [StyleController::class, 'reorder'])->name('admin.styles.reorder');
+
     // Route::get('/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'index'])->name('admin.questions.index');
     // Route::post('/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'store'])->name('admin.questions.store');
     // Route::put('/questions/{id}', [\App\Http\Controllers\Admin\QuestionController::class, 'update'])->name('admin.questions.update');
@@ -180,7 +187,23 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/settings/styles', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
         $userDetail = $user->userDetail;
-        return view('artist.settings.styles', compact('userDetail'));
+        $styleOptions = \App\Models\Style::query()
+            ->active()
+            ->ordered()
+            ->pluck('name', 'name')
+            ->toArray();
+
+        if (empty($styleOptions)) {
+            $fallbackSlugs = [
+                'traditional', 'neo-traditional', 'japanese', 'realism', 'blackwork',
+                'minimalist', 'geometric', 'watercolor', 'tribal', 'dotwork', 'new-school', 'illustrative',
+            ];
+            foreach ($fallbackSlugs as $slug) {
+                $styleOptions[$slug] = ucwords(str_replace('-', ' ', $slug));
+            }
+        }
+
+        return view('artist.settings.styles', compact('userDetail', 'styleOptions'));
     })->name('settings.styles');
     
     Route::post('/settings/styles', [OnboardingController::class, 'updateStylesSocial'])->name('settings.styles.update');

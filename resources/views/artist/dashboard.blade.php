@@ -140,16 +140,18 @@
         ])
       @endif
 
-      @include('artist.dashboard.partials.notice', [
-        'id' => 'customizePageNotice',
-        'theme' => 'blue',
-        'icon' => 'palette',
-        'title' => 'Customize your booking page',
-        'description' => 'Manage your colors, bio, flash designs, portfolio, and intake forms.',
-        'buttonText' => 'Customize page',
-        'buttonIcon' => 'tune',
-        'buttonUrl' => route('personal-page.index'),
-      ])
+      @if(!empty($showCustomizePageNotice))
+        @include('artist.dashboard.partials.notice', [
+          'id' => 'customizePageNotice',
+          'theme' => 'blue',
+          'icon' => 'palette',
+          'title' => 'Customize your booking page',
+          'description' => 'Manage your colors, bio, flash designs, portfolio, and intake forms.',
+          'buttonText' => 'Customize page',
+          'buttonIcon' => 'tune',
+          'buttonUrl' => route('personal-page.index', ['from' => 'dashboard_notice']),
+        ])
+      @endif
 
       @if($ud && $ud->availability_status == 'closed')
         @include('artist.dashboard.partials.notice', [

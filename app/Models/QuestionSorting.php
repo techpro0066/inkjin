@@ -38,6 +38,24 @@ class QuestionSorting extends Model
      */
     public static function activeQuestionsPayloadForArtist(int $userId, string $formContext): array
     {
+        $overrideQuestionId = (int) env('Question_ID', 0);
+        $activeStylesQuery = Style::query()->active();
+
+        $styleOptions = (clone $activeStylesQuery)
+            ->where('appear_on_question', true)
+            ->ordered()
+            ->pluck('name')
+            ->values()
+            ->all();
+
+        $hasHiddenActiveStyles = (clone $activeStylesQuery)
+            ->where('appear_on_question', false)
+            ->exists();
+
+        if ($hasHiddenActiveStyles && ! in_array('Other', $styleOptions, true)) {
+            $styleOptions[] = 'Other';
+        }
+
         return self::query()
             ->where('user_id', $userId)
             ->where('is_active', true)
@@ -45,7 +63,7 @@ class QuestionSorting extends Model
             ->with('question')
             ->orderBy('order')
             ->get()
-            ->map(function (self $sorting) {
+            ->map(function (self $sorting) use ($overrideQuestionId, $styleOptions) {
                 $question = $sorting->question;
                 if (! $question) {
                     return null;
@@ -59,7 +77,11 @@ class QuestionSorting extends Model
                     'type' => $question->type,
                     'is_required' => $question->is_required,
                     'is_active' => $sorting->is_active,
-                    'options' => $question->options,
+                    'options' => ($overrideQuestionId > 0
+                        && (int) $sorting->question_id === $overrideQuestionId
+                        && ! empty($styleOptions))
+                        ? $styleOptions
+                        : $question->options,
                 ];
             })
             ->filter()

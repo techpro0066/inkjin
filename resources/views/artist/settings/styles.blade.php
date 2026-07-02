@@ -58,20 +58,15 @@
     $otherList = $ts;
   }
   $sl = $userDetail->social_links ?? [];
-  $styleOptions = [
-    'traditional' => 'Traditional',
-    'neo-traditional' => 'Neo Traditional',
-    'japanese' => 'Japanese',
-    'realism' => 'Realism',
-    'blackwork' => 'Blackwork',
-    'minimalist' => 'Minimalist',
-    'geometric' => 'Geometric',
-    'watercolor' => 'Watercolor',
-    'tribal' => 'Tribal',
-    'dotwork' => 'Dotwork',
-    'new-school' => 'New School',
-    'illustrative' => 'Illustrative',
-  ];
+  $styleOptions = $styleOptions ?? [];
+  if ($primary && !array_key_exists($primary, $styleOptions)) {
+    $styleOptions[$primary] = ucwords(str_replace('-', ' ', $primary));
+  }
+  foreach ($otherList as $otherStyle) {
+    if ($otherStyle && !array_key_exists($otherStyle, $styleOptions)) {
+      $styleOptions[$otherStyle] = ucwords(str_replace('-', ' ', $otherStyle));
+    }
+  }
 @endphp
 
 <main class="main-content flex-1 min-h-screen flex flex-col">

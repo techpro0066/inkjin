@@ -181,7 +181,7 @@
 
         <!-- Tagline -->
         <div class="mt-6">
-          <label for="tagline" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Tagline <span class="text-red-600">*</span></label>
+          <label for="tagline" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Tagline</label>
           <p class="text-xs text-on-surface-variant mb-2">Your one-liner that appears under your name</p>
           <input type="text" id="tagline" name="personal_page_tagline" value="{{ old('personal_page_tagline', $tagline) }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" oninput="updatePreview()">
           <p id="personal_page_tagline_error" class="text-error text-xs mt-1 hidden"></p>
@@ -189,7 +189,7 @@
 
         <!-- Bio -->
         <div class="mt-6">
-          <label for="bio" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Bio <span class="text-red-600">*</span></label>
+          <label for="bio" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Bio</label>
           <p class="text-xs text-on-surface-variant mb-2">This will appear on your public artist page.</p>
           <textarea id="bio" name="personal_page_description" rows="5" maxlength="500" placeholder="Tell clients about yourself — your journey, your passion, what inspires your work..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" oninput="updateBioCount()">{{ old('personal_page_description', $description) }}</textarea>
           <div class="flex justify-end mt-1">
@@ -636,19 +636,9 @@
 
     function validatePersonalPageForm() {
       let ok = true;
-      const tagline = (document.getElementById('tagline')?.value || '').trim();
-      const bio = (document.getElementById('bio')?.value || '').trim();
       const alias = (document.getElementById('personal_page_name_alias')?.value || '').trim();
       const color = (document.getElementById('personal_page_color')?.value || '').trim();
 
-      if (!tagline) {
-        setFieldError('personal_page_tagline', 'Tagline is required.');
-        ok = false;
-      }
-      if (!bio) {
-        setFieldError('personal_page_description', 'Bio is required.');
-        ok = false;
-      }
       if (!alias) {
         setFieldError('personal_page_name_alias', 'Please select how your name should appear.');
         ok = false;

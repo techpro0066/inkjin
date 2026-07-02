@@ -6,6 +6,7 @@ use App\Mail\CustomRequestSubmittedArtistMail;
 use App\Mail\CustomRequestSubmittedUserMail;
 use App\Models\CustomRequest;
 use App\Models\QuestionSorting;
+use App\Models\Style;
 use App\Models\User;
 use App\Models\UserDetail;
 use Illuminate\Http\JsonResponse;
@@ -53,6 +54,15 @@ class CustomRequestController extends Controller
 
         $isManagedScheduling = ($userDetail->scheduling_type ?? '') === 'managed';
 
+        $styleQuestionId = (int) env('Question_ID', 0);
+        $hiddenStyleOptions = Style::query()
+            ->active()
+            ->where('appear_on_question', false)
+            ->ordered()
+            ->pluck('name')
+            ->values()
+            ->all();
+
         return view('public.request-custom', [
             'userDetail' => $userDetail,
             'artistName' => $artistName !== '' ? $artistName : 'Artist',
@@ -63,6 +73,8 @@ class CustomRequestController extends Controller
             'fallbackTattooSlug' => $fallbackTattooSlug,
             'artistProfileUrl' => route('public.artist', ['username' => $userDetail->user_name]),
             'isManagedScheduling' => $isManagedScheduling,
+            'styleQuestionId' => $styleQuestionId,
+            'hiddenStyleOptions' => $hiddenStyleOptions,
         ]);
     }
 
