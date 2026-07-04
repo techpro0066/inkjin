@@ -130,12 +130,17 @@
     .single-choice-radio-button.option-other { background: #f2ecf5; border-color: #b69fff; color: #310f7a; }
     .single-choice-radio-button.option-other:hover { background: #e8ddff; border-color: #664db1; color: #21005e; }
     .single-choice-radio-button.option-other.selected { background: #310f7a; border-color: #310f7a; color: #ffffff; }
-    .style-other-picker { margin-top: 1rem; }
-    .style-other-search { width: 100%; border: 1px solid rgba(122, 117, 131, 0.35); background: #fdf7ff; border-radius: 1rem; padding: 0.875rem 1rem; font-size: 1rem; color: #1c1b21; }
-    .style-other-search:focus { outline: none; box-shadow: 0 0 0 2px rgba(49, 15, 122, 0.25); border-color: #310f7a; }
-    .style-other-results { margin-top: 0.75rem; height: calc(0.75rem * 2 + 2.75rem * 3 + 0.5rem * 2); max-height: calc(0.75rem * 2 + 2.75rem * 3 + 0.5rem * 2); overflow-y: auto; border: 1px solid #ece6ef; border-radius: 1rem; background: white; padding: 0.75rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-content: start; }
-    .style-other-results .style-other-empty { grid-column: 1 / -1; }
-    .style-other-result-item { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 2.75rem; text-align: center; padding: 0.65rem 0.5rem; font-size: 0.82rem; font-weight: 600; color: #494552; background: white; border: 2px solid #cac4d3; border-radius: 9999px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; line-height: 1.2; word-break: break-word; }
+    .style-other-modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .style-other-modal.hidden { display: none !important; }
+    .style-other-modal-backdrop { position: absolute; inset: 0; background: rgba(28, 27, 33, 0.55); backdrop-filter: blur(2px); }
+    .style-other-modal-panel { position: relative; z-index: 1; width: 100%; max-width: min(42rem, calc(100vw - 2rem)); background: #ffffff; border-radius: 1.25rem; border: 1px solid #ece6ef; box-shadow: 0 24px 48px rgba(49, 15, 122, 0.18); padding: 1.25rem 1.25rem 1rem; max-height: min(90vh, 40rem); display: flex; flex-direction: column; }
+    .style-other-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    .style-other-modal-title { font-size: 1.125rem; font-weight: 700; color: #1c1b21; }
+    .style-other-modal-close { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; border-radius: 9999px; border: none; background: #f2ecf5; color: #494552; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .style-other-modal-close:hover { background: #e8ddff; color: #310f7a; }
+    .style-other-results { margin-top: 0; overflow-y: auto; border: 1px solid #ece6ef; border-radius: 1rem; background: white; padding: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-content: flex-start; flex: 1 1 auto; min-height: 0; max-height: calc(90vh - 7rem); }
+    .style-other-results .style-other-empty { width: 100%; }
+    .style-other-result-item { display: inline-flex; align-items: center; justify-content: center; width: auto; max-width: 100%; text-align: center; padding: 0.65rem 1rem; font-size: 0.875rem; font-weight: 600; color: #494552; background: white; border: 2px solid #cac4d3; border-radius: 9999px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; line-height: 1.25; white-space: normal; word-break: break-word; }
     .style-other-result-item:hover { background: #f8f1fb; color: #310f7a; border-color: #310f7a; }
     .style-other-result-item.selected { background: #310f7a; color: #ffffff; border-color: #310f7a; }
     .question-kicker {
@@ -306,6 +311,18 @@
   <!-- Dynamic artist questions (same engine as managed booking) -->
   <div class="tf-screen" data-screen="questions" id="questionsStep">
     <div id="questionsMount" class="w-full max-w-xl mx-auto"></div>
+    <div id="styleOtherModal" class="style-other-modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="styleOtherModalTitle">
+      <div class="style-other-modal-backdrop js-style-other-close" aria-hidden="true"></div>
+      <div class="style-other-modal-panel">
+        <div class="style-other-modal-header">
+          <h3 id="styleOtherModalTitle" class="style-other-modal-title">Choose a style</h3>
+          <button type="button" class="style-other-modal-close js-style-other-close" aria-label="Close">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        <div class="js-style-other-results style-other-results"></div>
+      </div>
+    </div>
   </div>
 
   @if(!empty($isManagedScheduling))
@@ -601,6 +618,7 @@
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
     var styleQuestionId = @json($styleQuestionId ?? 0);
     var hiddenStyleOptions = @json($hiddenStyleOptions ?? []);
+    var styleOtherModalContext = null;
     var questionAnswers = {};
     var currentQuestionIndex = 0;
     var questionDefinitions = (Array.isArray(serverQuestions) ? serverQuestions : []).map(function(q) {
@@ -666,37 +684,61 @@
       return styleQuestionId > 0 && String(qId) === String(styleQuestionId);
     }
 
-    function buildStyleOtherPickerHtml() {
-      return '<div class="js-style-other-picker style-other-picker hidden">' +
-        '<input type="text" class="js-style-other-search style-other-search" placeholder="Choose style from this list" autocomplete="off">' +
-        '<div class="js-style-other-results style-other-results"></div>' +
-        '</div>';
+    function getStyleOtherModal() {
+      return $('#styleOtherModal');
     }
 
-    function renderStyleOtherResults($container, query) {
-      var needle = String(query || '').trim().toLowerCase();
-      var filtered = (Array.isArray(hiddenStyleOptions) ? hiddenStyleOptions : []).filter(function(name) {
-        return !needle || String(name).toLowerCase().indexOf(needle) !== -1;
-      });
-      var $results = $container.find('.js-style-other-results');
+    function renderStyleOtherResults() {
+      var filtered = Array.isArray(hiddenStyleOptions) ? hiddenStyleOptions : [];
+      var qId = styleOtherModalContext ? styleOtherModalContext.qId : null;
+      var $results = getStyleOtherModal().find('.js-style-other-results');
       if (!filtered.length) {
-        $results.html('<p class="style-other-empty text-sm text-on-surface-variant py-3 px-2 text-center">No matching styles found.</p>');
+        $results.html('<p class="style-other-empty text-sm text-on-surface-variant py-3 px-2 text-center">No styles available.</p>');
         return;
       }
-      var currentAnswer = String(questionAnswers[$container.data('question-id')] || '').trim();
+      var currentAnswer = qId != null ? String(questionAnswers[qId] || '').trim() : '';
       $results.html(filtered.map(function(name) {
         var selectedClass = name === currentAnswer ? ' selected' : '';
         return '<button type="button" class="js-style-other-result-item style-other-result-item' + selectedClass + '" data-value="' + escapeHtml(name) + '">' + escapeHtml(name) + '</button>';
       }).join(''));
     }
 
+    function closeStyleOtherModal(resetOtherSelection) {
+      var ctx = styleOtherModalContext;
+      styleOtherModalContext = null;
+      getStyleOtherModal().addClass('hidden').attr('aria-hidden', 'true');
+      document.body.style.overflow = '';
+
+      if (!resetOtherSelection || !ctx || !ctx.$questionDiv || !ctx.$questionDiv.length) return;
+
+      var qId = ctx.qId;
+      var answer = qId != null ? String(questionAnswers[qId] || '').trim() : '';
+      var isHiddenStyle = answer !== '' && (hiddenStyleOptions || []).indexOf(answer) !== -1;
+      if (isHiddenStyle) return;
+
+      ctx.$questionDiv.find('.single-choice-radio-button').removeClass('selected');
+      if (qId != null) delete questionAnswers[qId];
+    }
+
+    function openStyleOtherModal($questionDiv) {
+      if (!$questionDiv.length) return;
+      var qId = $questionDiv.data('question-id');
+      var questionIndex = parseInt($questionDiv.data('q'), 10);
+      styleOtherModalContext = { qId: qId, questionIndex: questionIndex, $questionDiv: $questionDiv };
+
+      getStyleOtherModal().removeClass('hidden').attr('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      renderStyleOtherResults();
+    }
+
     function restoreStyleQuestionUi($div) {
       if (!$div.length || !isStyleQuestionId($div.data('question-id'))) return;
+      closeStyleOtherModal(false);
       var qId = $div.data('question-id');
       var answer = String(questionAnswers[qId] || '').trim();
       var $buttons = $div.find('.single-choice-radio-button');
       if (!answer) {
-        $div.find('.js-style-other-picker').addClass('hidden');
+        $buttons.removeClass('selected');
         return;
       }
       var isHiddenStyle = (hiddenStyleOptions || []).indexOf(answer) !== -1;
@@ -705,11 +747,7 @@
         $buttons.filter(function() {
           return String($(this).data('value') || '').trim().toLowerCase() === 'other';
         }).addClass('selected');
-        $div.find('.js-style-other-picker').removeClass('hidden');
-        $div.find('.js-style-other-search').val(answer);
-        renderStyleOtherResults($div, answer);
       } else {
-        $div.find('.js-style-other-picker').addClass('hidden');
         $buttons.removeClass('selected');
         $buttons.filter(function() {
           return String($(this).data('value') || '') === answer;
@@ -729,7 +767,6 @@
             var optionClass = (isStyleQuestionId(q.id) && isOther) ? ' option-other' : '';
             return '<button type="button" class="single-choice-radio-button' + optionClass + '" data-value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>';
           }).join('') + '</div>';
-          if (isStyleQuestionId(q.id)) body += buildStyleOtherPickerHtml();
         } else if (q.type === 'select') {
           body = '<select class="w-full js-select2-question" data-question-id="' + q.id + '"><option value="">Choose an option</option>' +
             q.options.map(function(opt) { return '<option value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</option>'; }).join('') + '</select>';
@@ -790,6 +827,7 @@
     }
 
     function showQuestion(index) {
+      closeStyleOtherModal(false);
       var questions = $('div.question-div[data-q]');
       if (!questions.length) return;
       index = Math.max(0, Math.min(index, questions.length - 1));
@@ -831,33 +869,31 @@
       main_div.find('.js-question-error').addClass('hidden');
 
       if (isStyleQuestion && isOther) {
-        main_div.find('.js-style-other-picker').removeClass('hidden');
-        main_div.find('.js-style-other-search').val('').trigger('focus');
         delete questionAnswers[qId];
-        renderStyleOtherResults(main_div, '');
+        openStyleOtherModal(main_div);
         return;
       }
 
-      main_div.find('.js-style-other-picker').addClass('hidden');
+      closeStyleOtherModal(false);
       if (qId) questionAnswers[qId] = value;
       if (!isNaN(current_question)) setTimeout(function() { moveQuestion(1); }, 180);
     });
-    $(document).on('input', '.js-style-other-search', function() {
-      var main_div = $(this).closest('.question-div');
-      renderStyleOtherResults(main_div, $(this).val());
+    $(document).on('click', '.js-style-other-close', function() {
+      closeStyleOtherModal(true);
     });
     $(document).on('click', '.js-style-other-result-item', function() {
       var styleName = String($(this).data('value') || '');
-      var main_div = $(this).closest('.question-div');
-      var current_question = parseInt(main_div.data('q'), 10);
-      var qId = main_div.data('question-id');
-      if (!styleName || !qId) return;
-      questionAnswers[qId] = styleName;
-      main_div.find('.js-style-other-search').val(styleName);
-      main_div.find('.js-style-other-result-item').removeClass('selected');
-      $(this).addClass('selected');
-      main_div.find('.js-question-error').addClass('hidden');
-      if (!isNaN(current_question)) setTimeout(function() { moveQuestion(1); }, 180);
+      var ctx = styleOtherModalContext;
+      if (!styleName || !ctx || ctx.qId == null) return;
+      questionAnswers[ctx.qId] = styleName;
+      ctx.$questionDiv.find('.js-question-error').addClass('hidden');
+      closeStyleOtherModal(false);
+      if (!isNaN(ctx.questionIndex)) setTimeout(function() { moveQuestion(1); }, 180);
+    });
+    $(document).on('keydown', function(e) {
+      if (e.key === 'Escape' && !getStyleOtherModal().hasClass('hidden')) {
+        closeStyleOtherModal(true);
+      }
     });
     $(document).on('click', '.js-prev-question', function() { moveQuestion(-1); });
     $(document).on('click', '.js-next-question', function() {

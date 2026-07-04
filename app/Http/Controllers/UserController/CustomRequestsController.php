@@ -144,6 +144,7 @@ class CustomRequestsController extends Controller
             'totals' => $totals,
             'stripePublishableKey' => env('STRIPE_KEY', ''),
             'showIrisTab' => PaymentMethods::showIrisTab($userDetail, Auth::user()?->phone_number),
+            'artistSupportsIris' => PaymentMethods::isGreekArtist($userDetail),
             'showConsultRow' => $customRequest->autoRequiresConsultation(),
             'sessionDateTimeLabel' => $customRequest->autoRequiresConsultation() ? 'Tattoo session' : 'Session',
             'sessionDateTime' => $customRequest->clientSlotSummary() ?? '—',

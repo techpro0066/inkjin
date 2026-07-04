@@ -1,22 +1,31 @@
-@php
-  $showIrisCheckout = (bool) ($showIrisTab ?? false);
-  $artistSupportsIris = (bool) ($artistSupportsIris ?? false);
-  $renderDualCheckout = $showIrisCheckout || $artistSupportsIris;
-@endphp
-@if ($renderDualCheckout)
 <script src="{{ asset('js/qrious.min.js') }}"></script>
 <script>
 (function () {
   var tabCard = document.getElementById('tabPayCard');
+  var tabGooglePay = document.getElementById('tabPayGooglePay');
+  var tabApplePay = document.getElementById('tabPayApplePay');
   var tabIris = document.getElementById('tabPayIris');
   var panelCard = document.getElementById('panelPayCard');
+  var panelGooglePay = document.getElementById('panelPayGooglePay');
+  var panelApplePay = document.getElementById('panelPayApplePay');
   var panelIris = document.getElementById('panelPayIris');
   var btnConfirmPay = document.getElementById('btnConfirmPay');
   var cardExtras = document.getElementById('panelPayCardExtras');
+  var activePayTab = 'card';
   var irisOrderLoaded = false;
   var irisPollTimer = null;
   var irisExpiryTimer = null;
   var irisCheckoutUrl = null;
+
+  function styleTab(btn, isActive) {
+    if (!btn) return;
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    btn.classList.toggle('border-primary', isActive);
+    btn.classList.toggle('bg-primary', isActive);
+    btn.classList.toggle('text-white', isActive);
+    btn.classList.toggle('border-outline-variant/60', !isActive);
+    btn.classList.toggle('text-on-surface-variant', !isActive);
+  }
 
   function isMobileCheckout() {
     return window.matchMedia('(max-width: 768px)').matches
@@ -48,36 +57,45 @@
   }
 
   function setActiveTab(tab) {
-    var isCard = tab === 'card';
-
-    if (tabCard && tabIris) {
-      tabCard.setAttribute('aria-selected', isCard ? 'true' : 'false');
-      tabIris.setAttribute('aria-selected', isCard ? 'false' : 'true');
-      tabCard.classList.toggle('border-primary', isCard);
-      tabCard.classList.toggle('bg-primary', isCard);
-      tabCard.classList.toggle('text-white', isCard);
-      tabCard.classList.toggle('border-outline-variant/60', !isCard);
-      tabCard.classList.toggle('text-on-surface-variant', !isCard);
-      tabIris.classList.toggle('border-primary', !isCard);
-      tabIris.classList.toggle('bg-primary', !isCard);
-      tabIris.classList.toggle('text-white', !isCard);
-      tabIris.classList.toggle('border-outline-variant/60', isCard);
-      tabIris.classList.toggle('text-on-surface-variant', isCard);
+    if (tab === 'iris' && tabIris && tabIris.classList.contains('hidden')) {
+      tab = 'card';
+    }
+    if (tab === 'google_pay' && tabGooglePay && tabGooglePay.classList.contains('hidden')) {
+      tab = 'card';
+    }
+    if (tab === 'apple_pay' && tabApplePay && tabApplePay.classList.contains('hidden')) {
+      tab = 'card';
     }
 
+    activePayTab = tab;
+    var isCard = tab === 'card';
+    var isGooglePay = tab === 'google_pay';
+    var isApplePay = tab === 'apple_pay';
+    var isIris = tab === 'iris';
+
+    styleTab(tabCard, isCard);
+    styleTab(tabGooglePay, isGooglePay);
+    styleTab(tabApplePay, isApplePay);
+    styleTab(tabIris, isIris);
+
     if (panelCard) panelCard.classList.toggle('hidden', !isCard);
-    if (panelIris) panelIris.classList.toggle('hidden', isCard);
-    if (cardExtras) cardExtras.classList.toggle('hidden', !isCard);
+    if (panelGooglePay) panelGooglePay.classList.toggle('hidden', !isGooglePay);
+    if (panelApplePay) panelApplePay.classList.toggle('hidden', !isApplePay);
+    if (panelIris) panelIris.classList.toggle('hidden', !isIris);
+    if (cardExtras) cardExtras.classList.toggle('hidden', isIris);
     if (btnConfirmPay) btnConfirmPay.classList.toggle('hidden', !isCard);
 
-    if (!isCard && !irisOrderLoaded && typeof window.startIrisQrPayment === 'function') {
+    if (isIris && !irisOrderLoaded && typeof window.startIrisQrPayment === 'function') {
       window.startIrisQrPayment();
     }
   }
 
   window.checkoutSetActivePayTab = setActiveTab;
+  window.checkoutGetActivePayTab = function () { return activePayTab; };
 
   tabCard?.addEventListener('click', function () { setActiveTab('card'); });
+  tabGooglePay?.addEventListener('click', function () { setActiveTab('google_pay'); });
+  tabApplePay?.addEventListener('click', function () { setActiveTab('apple_pay'); });
   tabIris?.addEventListener('click', function () { setActiveTab('iris'); });
 
   function showIrisStatus(message, isError) {
@@ -240,7 +258,7 @@
   }
 
   window.startIrisQrPayment = async function (forceNew) {
-    if (!window.vivaOrderUrl) {
+    if (!window.vivaOrderUrl || !tabIris) {
       showIrisStatus('IRIS payment is not configured.', true);
       return;
     }
@@ -287,6 +305,6 @@
   });
 
   setIrisRegenerateLabel();
+  setActiveTab('card');
 })();
 </script>
-@endif

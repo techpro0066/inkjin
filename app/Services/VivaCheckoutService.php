@@ -170,7 +170,12 @@ class VivaCheckoutService
     ): array {
         $this->ensureConfigured();
 
-        if (! PaymentMethods::showIrisTab($userDetail, $client->phone_number ?? ($bookingPayload['phone'] ?? null))) {
+        $clientPhone = PaymentMethods::checkoutPhoneForIris(
+            $bookingPayload['phone'] ?? null,
+            $client->phone_number
+        );
+
+        if (! PaymentMethods::showIrisTab($userDetail, $clientPhone)) {
             throw new RuntimeException('IRIS payment is not available for this checkout.');
         }
 

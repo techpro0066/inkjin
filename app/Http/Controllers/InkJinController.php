@@ -1257,7 +1257,12 @@ class InkJinController extends Controller
             return response()->json(['message' => 'Booking user not found. Please verify email again.'], 422);
         }
 
-        if (! PaymentMethods::showIrisTab($userDetail, $payload['phone'] ?? $bookingUser->phone_number)) {
+        $clientPhone = PaymentMethods::checkoutPhoneForIris(
+            $payload['phone'] ?? null,
+            $bookingUser->phone_number
+        );
+
+        if (! PaymentMethods::showIrisTab($userDetail, $clientPhone)) {
             return response()->json(['message' => 'IRIS payment is not available for this checkout.'], 422);
         }
 

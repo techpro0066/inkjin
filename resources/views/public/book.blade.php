@@ -811,6 +811,10 @@
             </div>
             </div>
 
+            @include('partials.checkout-google-pay-panel')
+
+            @include('partials.checkout-apple-pay-panel')
+
             @include('partials.checkout-iris-panel', [
               'showIrisTab' => $showIrisTab ?? false,
               'artistSupportsIris' => $artistSupportsIris ?? false,
@@ -1046,24 +1050,23 @@
     }
 
     function isGreekClientPhone(phone) {
-      return /^\+30/.test(String(phone || '').replace(/[\s\-()]/g, ''));
+      var normalized = String(phone || '').trim().replace(/[\s\-().]/g, '').replace(/^00/, '+');
+      if (/^\+30/.test(normalized)) return true;
+      return /^30\d{10}$/.test(normalized);
     }
 
     function updateIrisTabVisibility() {
       if (!@json($artistSupportsIris ?? false)) {
         return;
       }
-      var tablist = document.getElementById('checkoutPayTablist');
-      if (!tablist) {
+      var tabIris = document.getElementById('tabPayIris');
+      if (!tabIris) {
         return;
       }
       var showIris = isGreekClientPhone($('#bdPhone').val());
-      tablist.classList.toggle('hidden', !showIris);
-      if (!showIris) {
-        var tabIris = document.getElementById('tabPayIris');
-        if (tabIris && tabIris.getAttribute('aria-selected') === 'true' && window.checkoutSetActivePayTab) {
-          window.checkoutSetActivePayTab('card');
-        }
+      tabIris.classList.toggle('hidden', !showIris);
+      if (!showIris && tabIris.getAttribute('aria-selected') === 'true' && window.checkoutSetActivePayTab) {
+        window.checkoutSetActivePayTab('card');
       }
     }
     window.updateIrisTabVisibility = updateIrisTabVisibility;
@@ -1127,6 +1130,9 @@
       $('#payTotal').text(formatEUR(total));
       $('#payBalance').text(balanceLabel);
       $('#btnPayTotalAmount').text(formatEUR(total));
+      if (typeof window.checkoutUpdateWalletAmounts === 'function') {
+        window.checkoutUpdateWalletAmounts();
+      }
       $('#confPriceEstimate').text(formatEUR(minPrice) + ' - ' + formatEUR(maxPrice));
       $('#confDepositLabel').text(getDepositLabel());
       $('#confDeposit').text(formatEUR(deposit));
@@ -1565,6 +1571,9 @@
         $('#stepPayment').addClass('active');
         updatePaymentSummary();
         updateIrisTabVisibility();
+        if (typeof window.checkoutBootstrapStripeWallets === 'function') {
+          window.checkoutBootstrapStripeWallets();
+        }
       }
       if (step === 5) $('#stepConfirmation').addClass('active');
       updateProgressDots();
@@ -2588,9 +2597,73 @@
       renderMainCal();
     });
   </script>
-  @include('partials.checkout-payment-tabs-script', [
-    'showIrisTab' => $showIrisTab ?? false,
-    'artistSupportsIris' => $artistSupportsIris ?? false,
-  ])
+  @include('partials.checkout-stripe-wallets')
+  <script>
+    window.checkoutStripeWalletConfig = {
+      country: @json(strtoupper($userDetail->payout_bank_country ?? 'GR')),
+      currency: 'eur',
+      label: 'InkJin booking',
+      getAmountCents: function () {
+        return Math.round(getDueNow() * 100);
+      },
+      isPolicyAccepted: function () {
+        return $('#agreePolicy').is(':checked');
+      },
+      getClientSecret: async function (ev) {
+        var cardholderName = (ev && ev.payerName)
+          ? String(ev.payerName).trim()
+          : String($('#inputCardName').val() || $('#bdName').val() || '').trim();
+        var response = await fetch('/api/public/create-booking-payment-intent', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+          },
+          body: JSON.stringify({
+            artist_username: bookingArtistUsername,
+            tattoo_slug: bookingTattooSlug,
+            cardholder_name: cardholderName || 'Google Pay'
+          })
+        });
+        var data = await response.json();
+        if (!response.ok || !data || !data.client_secret) {
+          throw new Error((data && data.message) || 'Unable to initialize payment.');
+        }
+        return data.client_secret;
+      },
+      onSuccess: async function (paymentIntentId) {
+        goToStep(5);
+        $('#processingView').removeClass('hidden');
+        $('#confirmationCalendar, #confirmationManaged').addClass('hidden');
+        $('#processingText').text('Processing your payment...');
+        try {
+          var savedBooking = await persistBookingRecord(paymentIntentId);
+          $('#confRef').text(savedBooking.booking_reference || ('#INK-' + String(paymentIntentId || '').replace('pi_', '').slice(-6).toUpperCase()));
+          var bookingLink = (savedBooking && savedBooking.post_booking_login_url) ? savedBooking.post_booking_login_url : @json(route('login'));
+          $('#viewMyBookingPostLoginLink').attr('href', bookingLink);
+          $('#processingView').addClass('hidden');
+          $('#confirmationCalendar').removeClass('hidden');
+        } catch (error) {
+          goToStep(4);
+          $('#formError').removeClass('hidden').text(error.message || 'Payment succeeded but booking could not be saved.');
+        }
+      },
+      onError: function (error) {
+        $('#formError').removeClass('hidden').text(error.message || 'Google Pay payment failed.');
+      }
+    };
+  </script>
+  <script>
+    window.checkoutBootstrapStripeWallets = function () {
+      if (typeof mountStripeElements === 'function' && (!stripe || !isStripeMounted)) {
+        mountStripeElements();
+      }
+      if (stripe && stripeElements && typeof window.checkoutInitStripeWallets === 'function') {
+        window.checkoutInitStripeWallets(stripe, stripeElements);
+      }
+    };
+  </script>
+  @include('partials.checkout-payment-tabs-script')
 </body>
 </html>

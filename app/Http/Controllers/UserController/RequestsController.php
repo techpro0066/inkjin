@@ -145,6 +145,7 @@ class RequestsController extends Controller
             'totals' => $totals,
             'stripePublishableKey' => env('STRIPE_KEY', ''),
             'showIrisTab' => PaymentMethods::showIrisTab($userDetail, Auth::user()?->phone_number),
+            'artistSupportsIris' => PaymentMethods::isGreekArtist($userDetail),
             'showConsultRow' => $showConsultRow,
             'sessionDateTimeLabel' => $showConsultRow ? 'Tattoo Date & Time' : 'Date & Time',
             'sessionDateTime' => $sessionDateTime,

@@ -33,7 +33,10 @@
         <p class="text-sm text-on-surface-variant mb-2">{{ $customRequest->referenceLabel() }}</p>
         <p class="text-sm text-on-surface-variant mb-6">Pay your deposit to confirm this custom tattoo booking with {{ $artistName }}.</p>
 
-        @include('partials.checkout-payment-tabs', ['showIrisTab' => $showIrisTab ?? false])
+        @include('partials.checkout-payment-tabs', [
+          'showIrisTab' => $showIrisTab ?? false,
+          'artistSupportsIris' => $artistSupportsIris ?? false,
+        ])
 
         <div id="panelPayCard">
         <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
@@ -59,6 +62,10 @@
           </div>
         </div>
         </div>
+
+        @include('partials.checkout-google-pay-panel')
+
+        @include('partials.checkout-apple-pay-panel')
 
         @include('partials.checkout-iris-panel', [
           'showIrisTab' => $showIrisTab ?? false,
@@ -106,6 +113,7 @@
 
 @section('scripts')
 <script src="https://js.stripe.com/v3/"></script>
+@include('partials.checkout-stripe-wallets')
 <script>
 (function() {
   var csrfToken = @json(csrf_token());
@@ -142,6 +150,10 @@
     stripeCardNumber.on('change', onChange);
     stripeCardExpiry.on('change', onChange);
     stripeCardCvc.on('change', onChange);
+
+    if (typeof window.checkoutInitStripeWallets === 'function') {
+      window.checkoutInitStripeWallets(stripe, stripeElements);
+    }
   }
   function checkReady() {
     var name = String(document.getElementById('inputCardName').value || '').trim().length > 1;
@@ -198,11 +210,47 @@
       checkReady();
     }
   });
+
+  window.checkoutStripeWalletConfig = {
+    country: @json(strtoupper($userDetail->payout_bank_country ?? 'GR')),
+    currency: 'eur',
+    label: @json('Custom request #' . $customRequest->id),
+    getAmountCents: function () {
+      return Math.round(@json($totals['total_due']) * 100);
+    },
+    isPolicyAccepted: function () {
+      return document.getElementById('agreePolicy').checked;
+    },
+    getClientSecret: async function (ev) {
+      var payerName = (ev && ev.payerName)
+        ? String(ev.payerName).trim()
+        : String(document.getElementById('inputCardName').value || '').trim();
+      var res = await fetch(intentUrl, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ cardholder_name: payerName || 'Google Pay' })
+      });
+      var data = await res.json();
+      if (!res.ok || !data.client_secret) throw new Error(data.message || 'Unable to start payment.');
+      return data.client_secret;
+    },
+    onSuccess: async function (paymentIntentId) {
+      var savedRes = await fetch(confirmUrl, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ payment_intent_id: paymentIntentId })
+      });
+      var saved = await savedRes.json();
+      if (!savedRes.ok || !saved.saved) throw new Error(saved.message || 'Unable to save booking.');
+      window.location.href = saved.redirect_url || @json(route('user.bookings.index'));
+    },
+    onError: function (error) {
+      showError(error.message || 'Google Pay payment failed.');
+    }
+  };
+
   mountStripe();
 })();
 </script>
-@include('partials.checkout-payment-tabs-script', [
-  'showIrisTab' => $showIrisTab ?? false,
-  'artistSupportsIris' => false,
-])
+@include('partials.checkout-payment-tabs-script')
 @endsection
