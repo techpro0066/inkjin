@@ -1333,6 +1333,7 @@ class InkJinController extends Controller
             $confirmed = Booking::query()->where('viva_order_code', $pending->viva_order_code)->first();
             if ($confirmed) {
                 $status['redirect_url'] = $this->makePostBookingAccessUrl($bookingUser, $confirmed);
+                $status['post_booking_login_url'] = $status['redirect_url'];
             }
         }
 

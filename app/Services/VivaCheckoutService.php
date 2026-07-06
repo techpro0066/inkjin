@@ -371,7 +371,7 @@ class VivaCheckoutService
     private function orderResponse(PendingVivaPayment $pending): array
     {
         return [
-            'order_code' => (int) $pending->viva_order_code,
+            'order_code' => (string) $pending->viva_order_code,
             'checkout_url' => $this->viva->buildIrisCheckoutUrl($pending->viva_order_code),
             'amount_cents' => (int) $pending->amount_cents,
             'currency' => strtolower((string) $pending->currency),

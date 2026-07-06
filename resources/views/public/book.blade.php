@@ -951,6 +951,22 @@
     window.vivaStatusExtraQuery = function () {
       return 'email=' + encodeURIComponent(String(bookingConnectedEmail || $('#bdEmail').val() || '').trim());
     };
+    window.vivaOnPaymentPaid = async function (data) {
+      if (typeof window.clearBookingDraftSession === 'function') {
+        window.clearBookingDraftSession();
+      }
+      goToStep(5);
+      $('#processingView').removeClass('hidden');
+      $('#confirmationCalendar, #confirmationManaged').addClass('hidden');
+      $('#processingText').text('Confirming your payment...');
+      $('#confRef').text(data.booking_reference || '#INK-000000');
+      $('#viewMyBookingPostLoginLink').attr(
+        'href',
+        data.post_booking_login_url || data.redirect_url || @json(route('login'))
+      );
+      $('#processingView').addClass('hidden');
+      $('#confirmationCalendar').removeClass('hidden');
+    };
     var stripePublishableKey = @json($stripePublishableKey ?? '');
     var minimumDepositType = @json($minimumDepositType ?? 'percentage');
     var minimumDepositAmount = parseFloat(@json($minimumDepositAmount ?? 30)) || 0;

@@ -145,48 +145,66 @@
     irisExpiryTimer = setInterval(tick, 1000);
   }
 
+  async function checkVivaStatusOnce(orderCode) {
+    if (!window.vivaStatusUrl || !orderCode) return false;
+
+    var extra = typeof window.vivaStatusExtraQuery === 'function' ? window.vivaStatusExtraQuery() : '';
+    var url = window.vivaStatusUrl + (window.vivaStatusUrl.indexOf('?') >= 0 ? '&' : '?') + 'order_code=' + encodeURIComponent(String(orderCode));
+    if (extra) {
+      url += '&' + extra;
+    }
+
+    var res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    var data = await res.json();
+    if (!res.ok) return false;
+
+    if (data.status === 'paid') {
+      clearIrisTimers();
+      if (typeof window.vivaOnPaymentPaid === 'function') {
+        showIrisStatus('Payment confirmed.', false);
+        await window.vivaOnPaymentPaid(data);
+      } else {
+        showIrisStatus('Payment confirmed. Redirecting…', false);
+        if (typeof window.clearBookingDraftSession === 'function') {
+          window.clearBookingDraftSession();
+        }
+        window.location.href = data.redirect_url || '/';
+      }
+      return true;
+    }
+
+    if (data.status === 'expired' || data.status === 'failed' || data.status === 'cancelled') {
+      clearIrisTimers();
+      irisOrderLoaded = false;
+      showIrisMobilePayButton(false);
+      document.getElementById('irisQrRegenerate')?.classList.remove('hidden');
+      showIrisStatus(
+        isMobileCheckout()
+          ? 'Payment ' + data.status + '. Please tap try again.'
+          : 'Payment ' + data.status + '. Please regenerate the QR.',
+        true
+      );
+    }
+
+    return false;
+  }
+
   function pollVivaStatus(orderCode) {
-    if (!window.vivaStatusUrl) return;
+    if (!window.vivaStatusUrl || !orderCode) return;
 
     clearPollTimer();
+    orderCode = String(orderCode);
 
-    irisPollTimer = setInterval(async function () {
+    async function tick() {
       try {
-        var extra = typeof window.vivaStatusExtraQuery === 'function' ? window.vivaStatusExtraQuery() : '';
-        var url = window.vivaStatusUrl + (window.vivaStatusUrl.indexOf('?') >= 0 ? '&' : '?') + 'order_code=' + encodeURIComponent(orderCode);
-        if (extra) {
-          url += '&' + extra;
-        }
-        var res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        var data = await res.json();
-        if (!res.ok) return;
-
-        if (data.status === 'paid') {
-          clearIrisTimers();
-          showIrisStatus('Payment confirmed. Redirecting…', false);
-          if (typeof window.clearBookingDraftSession === 'function') {
-            window.clearBookingDraftSession();
-          }
-          window.location.href = data.redirect_url || '/';
-          return;
-        }
-
-        if (data.status === 'expired' || data.status === 'failed' || data.status === 'cancelled') {
-          clearIrisTimers();
-          irisOrderLoaded = false;
-          showIrisMobilePayButton(false);
-          document.getElementById('irisQrRegenerate')?.classList.remove('hidden');
-          showIrisStatus(
-            isMobileCheckout()
-              ? 'Payment ' + data.status + '. Please tap try again.'
-              : 'Payment ' + data.status + '. Please regenerate the QR.',
-            true
-          );
-        }
+        await checkVivaStatusOnce(orderCode);
       } catch (e) {
         // Keep polling
       }
-    }, 5000);
+    }
+
+    tick();
+    irisPollTimer = setInterval(tick, 3000);
 
     setTimeout(function () {
       clearPollTimer();
@@ -208,7 +226,7 @@
   }
 
   async function renderIrisOrder(data) {
-    irisOrderCode = data.order_code || null;
+    irisOrderCode = data.order_code != null ? String(data.order_code) : null;
     irisCheckoutUrl = data.checkout_url || null;
     syncIrisIntroCopy();
     setIrisRegenerateLabel();
@@ -307,6 +325,12 @@
 
   setIrisRegenerateLabel();
   syncIrisIntroCopy();
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && irisOrderCode) {
+      checkVivaStatusOnce(irisOrderCode).catch(function () {});
+    }
+  });
 
   var vivaReturnError = @json(session('viva_error'));
   if (vivaReturnError || window.vivaRestoreToPaymentStep || new URLSearchParams(window.location.search).get('viva') === 'fail') {
