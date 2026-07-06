@@ -21,12 +21,21 @@ class VivaBookingConfirmationService
 
     public function confirmFromWebhookPayload(array $payload): ?Booking
     {
-        $statusId = (string) ($payload['StatusId'] ?? '');
-        $orderCode = $payload['OrderCode'] ?? null;
-        $transactionId = (string) ($payload['TransactionId'] ?? '');
-        $amount = (int) ($payload['Amount'] ?? 0);
+        $event = $payload['EventData'] ?? $payload;
+
+        $statusId = (string) ($event['StatusId'] ?? $event['statusId'] ?? '');
+        $orderCode = $event['OrderCode'] ?? $event['orderCode'] ?? null;
+        $transactionId = (string) ($event['TransactionId'] ?? $event['transactionId'] ?? '');
+        $amount = $event['Amount'] ?? $event['amount'] ?? null;
 
         if ($statusId !== 'F' || ! $orderCode || $transactionId === '') {
+            Log::info('Viva webhook ignored', [
+                'status_id' => $statusId,
+                'order_code' => $orderCode,
+                'transaction_id' => $transactionId,
+                'event_type_id' => $payload['EventTypeId'] ?? null,
+            ]);
+
             return null;
         }
 
@@ -40,7 +49,7 @@ class VivaBookingConfirmationService
             return null;
         }
 
-        if ($pending->amount_cents !== $amount) {
+        if (! $this->viva->amountMatchesCents($amount, $pending->amount_cents)) {
             Log::error('Viva webhook amount mismatch', [
                 'order_code' => $orderCode,
                 'expected' => $pending->amount_cents,

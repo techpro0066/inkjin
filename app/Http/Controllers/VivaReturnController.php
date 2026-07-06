@@ -71,7 +71,25 @@ class VivaReturnController extends Controller
             : null;
 
         if ($pending) {
-            $pending->update(['status' => PendingVivaPayment::STATUS_CANCELLED]);
+            if ($transactionId !== '') {
+                try {
+                    $this->confirmation->confirmPaid($pending, $transactionId);
+                    $pending = $pending->fresh();
+
+                    if ($pending?->isPaid()) {
+                        return redirect()->to($this->vivaCheckout->successRedirectUrl($pending));
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Viva failure return could not confirm payment', [
+                        'order_code' => $orderCode,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            if (! $pending->fresh()?->isPaid()) {
+                $pending->update(['status' => PendingVivaPayment::STATUS_CANCELLED]);
+            }
 
             return redirect()->to($this->vivaCheckout->failureRedirectUrl($pending))
                 ->with('viva_error', $message);

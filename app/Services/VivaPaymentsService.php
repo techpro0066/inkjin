@@ -157,17 +157,46 @@ class VivaPaymentsService
     }
 
     /**
+     * Viva order creation uses cents; retrieve/webhook responses use major units (e.g. 22.0 for €22).
+     */
+    public function amountMatchesCents(float|int|string|null $amount, int $expectedAmountCents): bool
+    {
+        if ($amount === null || $amount === '') {
+            return false;
+        }
+
+        $raw = (float) $amount;
+        $asCentsDirect = (int) round($raw);
+        $asCentsFromMajor = (int) round($raw * 100);
+
+        return $asCentsDirect === $expectedAmountCents
+            || $asCentsFromMajor === $expectedAmountCents;
+    }
+
+    /**
      * @param  array<string, mixed>  $transaction
      */
     public function isTransactionPaid(array $transaction, int $expectedAmountCents, int|string $expectedOrderCode): bool
     {
-        $statusId = (string) ($transaction['statusId'] ?? '');
-        $amount = (int) ($transaction['amount'] ?? -1);
-        $orderCode = (string) ($transaction['orderCode'] ?? '');
+        $statusId = (string) ($transaction['statusId'] ?? $transaction['StatusId'] ?? '');
+        $amount = $transaction['amount'] ?? $transaction['Amount'] ?? null;
+        $orderCode = (string) ($transaction['orderCode'] ?? $transaction['OrderCode'] ?? '');
 
-        return $statusId === 'F'
-            && $amount === $expectedAmountCents
+        $paid = $statusId === 'F'
+            && $this->amountMatchesCents($amount, $expectedAmountCents)
             && $orderCode === (string) $expectedOrderCode;
+
+        if (! $paid) {
+            Log::warning('Viva transaction verification mismatch', [
+                'status_id' => $statusId,
+                'amount' => $amount,
+                'expected_amount_cents' => $expectedAmountCents,
+                'order_code' => $orderCode,
+                'expected_order_code' => (string) $expectedOrderCode,
+            ]);
+        }
+
+        return $paid;
     }
 
     /**

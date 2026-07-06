@@ -44,9 +44,11 @@ class VivaWebhookController extends Controller
         try {
             $this->confirmation->confirmFromWebhookPayload($payload);
         } catch (\Throwable $e) {
+            $event = $payload['EventData'] ?? $payload;
+
             Log::error('Viva webhook processing failed', [
                 'error' => $e->getMessage(),
-                'order_code' => $payload['OrderCode'] ?? null,
+                'order_code' => $event['OrderCode'] ?? $event['orderCode'] ?? null,
             ]);
         }
 
