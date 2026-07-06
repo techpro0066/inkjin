@@ -811,10 +811,6 @@
             </div>
             </div>
 
-            @include('partials.checkout-google-pay-panel')
-
-            @include('partials.checkout-apple-pay-panel')
-
             @include('partials.checkout-iris-panel', [
               'showIrisTab' => $showIrisTab ?? false,
               'artistSupportsIris' => $artistSupportsIris ?? false,
@@ -1569,14 +1565,21 @@
       if (step === 3) $('#stepRegister').addClass('active');
       if (step === 4) {
         $('#stepPayment').addClass('active');
+        clearBookingDraftSession();
         updatePaymentSummary();
         updateIrisTabVisibility();
         if (typeof window.checkoutBootstrapStripeWallets === 'function') {
           window.checkoutBootstrapStripeWallets();
         }
       }
-      if (step === 5) $('#stepConfirmation').addClass('active');
+      if (step === 5) {
+        $('#stepConfirmation').addClass('active');
+        clearBookingDraftSession();
+      }
       updateProgressDots();
+      if (step < 4) {
+        saveBookingDraftToSession();
+      }
     }
     window.goToStep = goToStep;
 
@@ -1634,6 +1637,254 @@
     var ccCalMonth = today.getMonth();
     var ccTatCalYear = today.getFullYear();
     var ccTatCalMonth = today.getMonth();
+
+    function parseIsoDateToLocal(ymd) {
+      if (!ymd || typeof ymd !== 'string') return null;
+      var parts = ymd.split('-');
+      if (parts.length !== 3) return null;
+      var y = parseInt(parts[0], 10);
+      var m = parseInt(parts[1], 10) - 1;
+      var d = parseInt(parts[2], 10);
+      if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+      return new Date(y, m, d, 0, 0, 0, 0);
+    }
+
+    var BOOKING_DRAFT_VERSION = 1;
+    var bookingDraftSaveTimer = null;
+
+    function bookingDraftStorageKey() {
+      return 'inkjin_book_draft:' + bookingArtistUsername + ':' + bookingTattooSlug;
+    }
+
+    function serializeDraftDate(dateObj) {
+      return dateObj instanceof Date ? formatDateToIso(dateObj) : null;
+    }
+
+    function clearBookingDraftSession() {
+      try {
+        sessionStorage.removeItem(bookingDraftStorageKey());
+      } catch (e) {
+        // Ignore storage errors.
+      }
+    }
+    window.clearBookingDraftSession = clearBookingDraftSession;
+
+    function collectBookingDraftState() {
+      if (currentStep >= 4) return null;
+
+      return {
+        v: BOOKING_DRAFT_VERSION,
+        artist: bookingArtistUsername,
+        slug: bookingTattooSlug,
+        savedAt: Date.now(),
+        currentStep: currentStep,
+        currentQuestionIndex: currentQuestionIndex,
+        currentRegIndex: currentRegIndex,
+        questionAnswers: questionAnswers,
+        bookingOtpVerified: bookingOtpVerified,
+        bookingConnectedEmail: bookingConnectedEmail,
+        bookingConnectedName: bookingConnectedName,
+        bdName: String($('#bdName').val() || '').trim(),
+        bdEmail: String($('#bdEmail').val() || '').trim(),
+        bdPhone: String($('#bdPhone').val() || '').trim(),
+        bdOtpEmail: String($('#bdOtpEmail').val() || '').trim(),
+        selectedDate: serializeDraftDate(selectedDate),
+        selectedTime: selectedTime ? String(selectedTime) : null,
+        calYear: calYear,
+        calMonth: calMonth,
+        ccConsultDate: serializeDraftDate(ccConsultDate),
+        ccConsultTime: ccConsultTime ? String(ccConsultTime) : null,
+        ccTattooDate: serializeDraftDate(ccTattooDate),
+        ccTattooTime: ccTattooTime ? String(ccTattooTime) : null,
+        ccConsultType: ccConsultType ? String(ccConsultType) : null,
+        ccCalYear: ccCalYear,
+        ccCalMonth: ccCalMonth,
+        ccTatCalYear: ccTatCalYear,
+        ccTatCalMonth: ccTatCalMonth,
+      };
+    }
+
+    function saveBookingDraftToSession() {
+      if (currentStep >= 4) return;
+
+      var state = collectBookingDraftState();
+      if (!state) return;
+
+      try {
+        sessionStorage.setItem(bookingDraftStorageKey(), JSON.stringify(state));
+      } catch (e) {
+        // Ignore quota / private mode errors.
+      }
+    }
+
+    function scheduleBookingDraftSave() {
+      if (currentStep >= 4) return;
+      if (bookingDraftSaveTimer) clearTimeout(bookingDraftSaveTimer);
+      bookingDraftSaveTimer = setTimeout(saveBookingDraftToSession, 250);
+    }
+
+    function restoreQuestionAnswersToDom() {
+      questionDefinitions.forEach(function(q) {
+        if (!q || q.id == null) return;
+        var answer = questionAnswers[q.id];
+        if (answer === undefined || answer === null || answer === '') return;
+
+        var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
+        if (!$panel.length) return;
+
+        if (q.type === 'radio') {
+          $panel.find('.single-choice-radio-button').each(function() {
+            $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
+          });
+        } else if (q.type === 'select') {
+          $panel.find('.js-select2-question').val(String(answer)).trigger('change');
+        } else if (q.type === 'input' || q.type === 'textarea') {
+          $panel.find('.js-question-input').val(String(answer));
+        } else if (q.type === 'toggle') {
+          $panel.find('.js-question-toggle').prop('checked', !!answer);
+        } else if (q.type === 'image' && window.QuestionImageField) {
+          var $zone = $panel.find('.q-image-upload');
+          if ($zone.length) {
+            window.QuestionImageField.setUrls($zone, Array.isArray(answer) ? answer : []);
+          }
+        }
+      });
+    }
+
+    function restoreSchedulingUiAfterDraft() {
+      if (currentStep !== 2) return;
+
+      if (!consultationRequired) {
+        renderMainCal();
+        if (selectedDate) {
+          showMainTimeSlots();
+          if (selectedTime) {
+            var $slot = $('#timeSlots .time-slot-card[data-time="' + selectedTime + '"]');
+            $slot.addClass('selected');
+            $slot.closest('.time-slot-wrap').addClass('selected');
+            $('#confirmBarText').text(selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ' at ' + selectedTime);
+            $('#confirmBar').removeClass('hidden');
+          }
+        }
+        return;
+      }
+
+      if (ccConsultType) {
+        var $card = $('#ccConsultTypeCards .consult-type-card[data-type="' + ccConsultType + '"]');
+        $('#ccConsultTypeCards .consult-type-card').removeClass('selected');
+        $card.addClass('selected');
+        $('#ccConsultSection').removeClass('hidden');
+        if (consultationTiming === 'separate') {
+          $('#ccTattooSection').toggleClass('hidden', !(ccConsultDate && ccConsultTime));
+        }
+      }
+
+      renderCcConsultCal();
+      if (ccConsultDate && ccConsultTime) {
+        showCcConsultSlots();
+        $('.js-cc-consult-slot[data-time="' + ccConsultTime + '"]').addClass('selected');
+        $('#ccConsultChip').removeClass('hidden');
+        $('#ccConsultChipText').text('📹 Consultation: ' + ccConsultDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccConsultTime);
+
+        if (consultationTiming === 'separate') {
+          $('#ccTattooSection').removeClass('hidden');
+          renderCcTattooCal();
+          if (ccTattooDate && ccTattooTime) {
+            showCcTattooSlots();
+            $('.js-cc-tattoo-slot[data-time="' + ccTattooTime + '"]').addClass('selected');
+            $('#ccTattooChip').removeClass('hidden');
+            $('#ccTattooChipText').text('🎨 Tattoo Session: ' + ccTattooDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccTattooTime);
+            $('#ccBottomSummary').removeClass('hidden');
+          }
+        } else if (ccTattooDate && ccTattooTime) {
+          $('#ccSumConsult').text('📹 Consultation: ' + ccConsultDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccConsultTime + ' (' + consultDurationMinutes + ' min)');
+          $('#ccSumTattoo').text('🎨 Tattoo Session: ' + ccTattooDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccTattooTime);
+          $('#ccBottomSummary').removeClass('hidden');
+        }
+      }
+    }
+
+    function applyBookingDraftFromSession(state) {
+      if (!state || typeof state !== 'object') return false;
+      if (state.artist !== bookingArtistUsername || state.slug !== bookingTattooSlug) return false;
+      if (parseInt(state.currentStep, 10) >= 4) return false;
+
+      questionAnswers = state.questionAnswers && typeof state.questionAnswers === 'object'
+        ? state.questionAnswers
+        : {};
+      currentQuestionIndex = parseInt(state.currentQuestionIndex, 10) || 0;
+      currentRegIndex = parseInt(state.currentRegIndex, 10) || 0;
+      currentStep = parseInt(state.currentStep, 10) || 1;
+
+      bookingOtpVerified = !!state.bookingOtpVerified;
+      bookingConnectedEmail = String(state.bookingConnectedEmail || '');
+      bookingConnectedName = String(state.bookingConnectedName || '');
+
+      $('#bdName').val(String(state.bdName || ''));
+      $('#bdEmail').val(String(state.bdEmail || ''));
+      $('#bdPhone').val(String(state.bdPhone || ''));
+      $('#bdOtpEmail').val(String(state.bdOtpEmail || state.bdEmail || ''));
+
+      selectedDate = parseIsoDateToLocal(state.selectedDate);
+      selectedTime = state.selectedTime ? String(state.selectedTime) : null;
+      calYear = parseInt(state.calYear, 10);
+      calMonth = parseInt(state.calMonth, 10);
+      if (isNaN(calYear)) calYear = today.getFullYear();
+      if (isNaN(calMonth)) calMonth = today.getMonth();
+
+      ccConsultDate = parseIsoDateToLocal(state.ccConsultDate);
+      ccConsultTime = state.ccConsultTime ? String(state.ccConsultTime) : null;
+      ccTattooDate = parseIsoDateToLocal(state.ccTattooDate);
+      ccTattooTime = state.ccTattooTime ? String(state.ccTattooTime) : null;
+      ccConsultType = state.ccConsultType ? String(state.ccConsultType) : null;
+      ccCalYear = parseInt(state.ccCalYear, 10);
+      ccCalMonth = parseInt(state.ccCalMonth, 10);
+      ccTatCalYear = parseInt(state.ccTatCalYear, 10);
+      ccTatCalMonth = parseInt(state.ccTatCalMonth, 10);
+      if (isNaN(ccCalYear)) ccCalYear = today.getFullYear();
+      if (isNaN(ccCalMonth)) ccCalMonth = today.getMonth();
+      if (isNaN(ccTatCalYear)) ccTatCalYear = today.getFullYear();
+      if (isNaN(ccTatCalMonth)) ccTatCalMonth = today.getMonth();
+
+      restoreQuestionAnswersToDom();
+      updateConnectedUi();
+
+      $('.step-panel').removeClass('active');
+      if (currentStep === 1) {
+        $('#stepQuestions').addClass('active');
+        showQuestion(currentQuestionIndex);
+      } else if (currentStep === 2) {
+        if (consultationRequired) {
+          $('#step2CalendarConsult').addClass('active');
+        } else {
+          $('#step2Calendar').addClass('active');
+        }
+        restoreSchedulingUiAfterDraft();
+      } else if (currentStep === 3) {
+        $('#stepRegister').addClass('active');
+        showReg(currentRegIndex);
+      }
+
+      updateProgressDots();
+      return true;
+    }
+
+    function tryRestoreBookingDraftFromSession() {
+      var raw;
+      try {
+        raw = sessionStorage.getItem(bookingDraftStorageKey());
+      } catch (e) {
+        return false;
+      }
+      if (!raw) return false;
+
+      try {
+        return applyBookingDraftFromSession(JSON.parse(raw));
+      } catch (e) {
+        clearBookingDraftSession();
+        return false;
+      }
+    }
 
     function formatTo12Hour(hour, minute) {
       var suffix = hour >= 12 ? 'PM' : 'AM';
@@ -2453,15 +2704,18 @@
       renderQuestions();
       updateProgressDots();
 
-      if (!Array.isArray(questionDefinitions) || questionDefinitions.length === 0) {
-        $('.js-back-to-questions').addClass('hidden');
-        goToStep(2);
-      }
-
       $('.js-select2-question').select2({
         width: '100%',
         minimumResultsForSearch: Infinity
       });
+
+      var draftRestored = tryRestoreBookingDraftFromSession();
+
+      if (!draftRestored && (!Array.isArray(questionDefinitions) || questionDefinitions.length === 0)) {
+        $('.js-back-to-questions').addClass('hidden');
+        goToStep(2);
+      }
+
       updatePaymentSummary();
       mountStripeElements();
       checkPayReady();
@@ -2595,6 +2849,18 @@
     });
 
       renderMainCal();
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+          saveBookingDraftToSession();
+        }
+      });
+      window.addEventListener('pagehide', saveBookingDraftToSession);
+
+      $(document).on('input change', '#bdName, #bdEmail, #bdPhone, #bdOtpEmail, #bdOtpCode, .js-question-input, .js-select2-question, .js-question-toggle', scheduleBookingDraftSave);
+      $(document).on('click', '.single-choice-radio-button, .time-slot-card, .js-cc-consult-slot, .js-cc-tattoo-slot, .consult-type-card', function () {
+        scheduleBookingDraftSave();
+      });
     });
   </script>
   @include('partials.checkout-stripe-wallets')

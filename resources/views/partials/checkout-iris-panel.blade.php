@@ -6,8 +6,14 @@
 @if ($renderDualCheckout)
   <div id="panelPayIris" class="hidden">
     <div class="bg-white rounded-2xl border border-outline-variant/20 p-8 mb-6 text-center">
+      <p id="irisIntroDesktop" class="text-sm text-on-surface-variant mb-4">
+        Scan with your Greek banking app to pay via IRIS.
+      </p>
+      <p id="irisIntroMobile" class="hidden text-sm text-on-surface-variant mb-4">
+        Tap below to open IRIS in your banking app.
+      </p>
       <div id="irisQrDesktopWrap">
-        <canvas id="irisQrCanvas" class="mx-auto mb-4 hidden"></canvas>
+        <canvas id="irisQrCanvas" class="mx-auto mb-4 hidden max-w-full"></canvas>
       </div>
       <a
         id="irisMobilePayBtn"

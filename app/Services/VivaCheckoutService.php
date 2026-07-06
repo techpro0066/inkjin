@@ -9,6 +9,7 @@ use App\Models\PendingVivaPayment;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Support\PaymentMethods;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -62,7 +63,7 @@ class VivaCheckoutService
             ->first();
 
         if ($existing) {
-            return $this->orderResponse($existing);
+            $existing->update(['status' => PendingVivaPayment::STATUS_CANCELLED]);
         }
 
         $merchantTrns = 'inkjin:managed_request:'.$bookingRequest->id.':'.Str::uuid();
@@ -126,7 +127,7 @@ class VivaCheckoutService
             ->first();
 
         if ($existing) {
-            return $this->orderResponse($existing);
+            $existing->update(['status' => PendingVivaPayment::STATUS_CANCELLED]);
         }
 
         $merchantTrns = 'inkjin:custom_request:'.$customRequest->id.':'.Str::uuid();
@@ -201,9 +202,7 @@ class VivaCheckoutService
             ->first();
 
         if ($existing) {
-            $existing->update(['metadata' => $metadata]);
-
-            return $this->orderResponse($existing);
+            $existing->update(['status' => PendingVivaPayment::STATUS_CANCELLED]);
         }
 
         $merchantTrns = 'inkjin:public_booking:'.$userDetail->user_id.':'.Str::uuid();
@@ -272,6 +271,101 @@ class VivaCheckoutService
     }
 
     /**
+     * @return array{booking_payload: array<string, mixed>, order_code: int|string}|null
+     */
+    public function publicBookingRestorePayload(
+        int|string $orderCode,
+        string $artistUsername,
+        string $tattooSlug,
+    ): ?array {
+        $pending = $this->findPendingByOrderCode($orderCode);
+        if (! $pending || $pending->flow !== PendingVivaPayment::FLOW_PUBLIC_BOOKING) {
+            return null;
+        }
+
+        $metadata = is_array($pending->metadata) ? $pending->metadata : [];
+        if ((string) ($metadata['artist_username'] ?? '') !== $artistUsername) {
+            return null;
+        }
+        if ((string) ($metadata['tattoo_slug'] ?? '') !== $tattooSlug) {
+            return null;
+        }
+
+        $bookingPayload = $metadata['booking_payload'] ?? null;
+        if (! is_array($bookingPayload)) {
+            return null;
+        }
+
+        return [
+            'booking_payload' => $bookingPayload,
+            'order_code' => $pending->viva_order_code,
+        ];
+    }
+
+    public function successRedirectUrl(PendingVivaPayment $pending): string
+    {
+        if ($pending->flow === PendingVivaPayment::FLOW_PUBLIC_BOOKING) {
+            $booking = Booking::query()
+                ->where('viva_order_code', $pending->viva_order_code)
+                ->first();
+            $client = $pending->client;
+            if ($booking && $client) {
+                return URL::temporarySignedRoute(
+                    'user.post-booking.access',
+                    now()->addDays(14),
+                    ['user' => $client->id, 'booking' => $booking->id]
+                );
+            }
+
+            return $this->failureRedirectUrl($pending);
+        }
+
+        if ($pending->flow === PendingVivaPayment::FLOW_MANAGED_REQUEST) {
+            return route('user.bookings.index');
+        }
+
+        if ($pending->flow === PendingVivaPayment::FLOW_CUSTOM_REQUEST) {
+            return route('user.bookings.index');
+        }
+
+        return route('login');
+    }
+
+    public function failureRedirectUrl(PendingVivaPayment $pending): string
+    {
+        if ($pending->flow === PendingVivaPayment::FLOW_PUBLIC_BOOKING) {
+            $metadata = is_array($pending->metadata) ? $pending->metadata : [];
+            $artistUsername = (string) ($metadata['artist_username'] ?? '');
+            $tattooSlug = (string) ($metadata['tattoo_slug'] ?? '');
+
+            if ($artistUsername !== '' && $tattooSlug !== '') {
+                return route('public.tattoo.book', [
+                    'user_name' => $artistUsername,
+                    'tattoo_slug' => $tattooSlug,
+                ]).'?viva=fail&s='.urlencode((string) $pending->viva_order_code);
+            }
+        }
+
+        if ($pending->flow === PendingVivaPayment::FLOW_MANAGED_REQUEST) {
+            $request = BookingRequest::query()->find($pending->reference_id);
+            if ($request) {
+                return route('user.requests.payment', $request)
+                    .'?viva=fail&s='.urlencode((string) $pending->viva_order_code);
+            }
+        }
+
+        if ($pending->flow === PendingVivaPayment::FLOW_CUSTOM_REQUEST) {
+            $request = CustomRequest::query()->find($pending->reference_id);
+            if ($request) {
+                return route('user.custom-requests.payment', $request)
+                    .'?viva=fail&s='.urlencode((string) $pending->viva_order_code);
+            }
+        }
+
+        return route('login').'?viva=fail';
+    }
+
+    /**
      * @return array{order_code: int, checkout_url: string, amount_cents: int, currency: string, expires_at: string}
      */
     private function orderResponse(PendingVivaPayment $pending): array
@@ -295,7 +389,8 @@ class VivaCheckoutService
             throw new RuntimeException('A phone number is required for IRIS payment.');
         }
 
-        $countryCode = PaymentMethods::isGreekClientPhone($phone) ? 'GR' : 'GB';
+        $normalized = PaymentMethods::normalizePhone($phone);
+        $countryCode = PaymentMethods::isGreekClientPhone($normalized) ? 'GR' : 'GB';
 
         return [
             'email' => (string) $client->email,
@@ -303,7 +398,7 @@ class VivaCheckoutService
                 (string) ($client->first_name ?? ''),
                 (string) ($client->last_name ?? ''),
             ]))) ?: (string) $client->email,
-            'phone' => $phone,
+            'phone' => $this->viva->formatCustomerPhone($normalized, $countryCode),
             'countryCode' => $countryCode,
         ];
     }

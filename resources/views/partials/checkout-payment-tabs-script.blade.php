@@ -1,13 +1,8 @@
-<script src="{{ asset('js/qrious.min.js') }}"></script>
 <script>
 (function () {
   var tabCard = document.getElementById('tabPayCard');
-  var tabGooglePay = document.getElementById('tabPayGooglePay');
-  var tabApplePay = document.getElementById('tabPayApplePay');
   var tabIris = document.getElementById('tabPayIris');
   var panelCard = document.getElementById('panelPayCard');
-  var panelGooglePay = document.getElementById('panelPayGooglePay');
-  var panelApplePay = document.getElementById('panelPayApplePay');
   var panelIris = document.getElementById('panelPayIris');
   var btnConfirmPay = document.getElementById('btnConfirmPay');
   var cardExtras = document.getElementById('panelPayCardExtras');
@@ -15,6 +10,7 @@
   var irisOrderLoaded = false;
   var irisPollTimer = null;
   var irisExpiryTimer = null;
+  var irisOrderCode = null;
   var irisCheckoutUrl = null;
 
   function styleTab(btn, isActive) {
@@ -36,6 +32,12 @@
     var btn = document.getElementById('irisQrRegenerate');
     if (!btn) return;
     btn.textContent = isMobileCheckout() ? 'Try again' : 'Regenerate QR';
+  }
+
+  function syncIrisIntroCopy() {
+    var mobile = isMobileCheckout();
+    document.getElementById('irisIntroDesktop')?.classList.toggle('hidden', mobile);
+    document.getElementById('irisIntroMobile')?.classList.toggle('hidden', !mobile);
   }
 
   function showIrisDesktopQr(show) {
@@ -60,27 +62,15 @@
     if (tab === 'iris' && tabIris && tabIris.classList.contains('hidden')) {
       tab = 'card';
     }
-    if (tab === 'google_pay' && tabGooglePay && tabGooglePay.classList.contains('hidden')) {
-      tab = 'card';
-    }
-    if (tab === 'apple_pay' && tabApplePay && tabApplePay.classList.contains('hidden')) {
-      tab = 'card';
-    }
 
     activePayTab = tab;
     var isCard = tab === 'card';
-    var isGooglePay = tab === 'google_pay';
-    var isApplePay = tab === 'apple_pay';
     var isIris = tab === 'iris';
 
     styleTab(tabCard, isCard);
-    styleTab(tabGooglePay, isGooglePay);
-    styleTab(tabApplePay, isApplePay);
     styleTab(tabIris, isIris);
 
     if (panelCard) panelCard.classList.toggle('hidden', !isCard);
-    if (panelGooglePay) panelGooglePay.classList.toggle('hidden', !isGooglePay);
-    if (panelApplePay) panelApplePay.classList.toggle('hidden', !isApplePay);
     if (panelIris) panelIris.classList.toggle('hidden', !isIris);
     if (cardExtras) cardExtras.classList.toggle('hidden', isIris);
     if (btnConfirmPay) btnConfirmPay.classList.toggle('hidden', !isCard);
@@ -94,8 +84,6 @@
   window.checkoutGetActivePayTab = function () { return activePayTab; };
 
   tabCard?.addEventListener('click', function () { setActiveTab('card'); });
-  tabGooglePay?.addEventListener('click', function () { setActiveTab('google_pay'); });
-  tabApplePay?.addEventListener('click', function () { setActiveTab('apple_pay'); });
   tabIris?.addEventListener('click', function () { setActiveTab('iris'); });
 
   function showIrisStatus(message, isError) {
@@ -142,7 +130,7 @@
         showIrisMobilePayButton(false);
         showIrisStatus(
           isMobileCheckout()
-            ? 'Payment window expired. Tap try again to get a new link.'
+            ? 'Payment window expired. Tap try again to reopen IRIS.'
             : 'Payment window expired. Regenerate the QR to try again.',
           true
         );
@@ -176,12 +164,16 @@
         if (data.status === 'paid') {
           clearIrisTimers();
           showIrisStatus('Payment confirmed. Redirecting…', false);
+          if (typeof window.clearBookingDraftSession === 'function') {
+            window.clearBookingDraftSession();
+          }
           window.location.href = data.redirect_url || '/';
           return;
         }
 
         if (data.status === 'expired' || data.status === 'failed' || data.status === 'cancelled') {
           clearIrisTimers();
+          irisOrderLoaded = false;
           showIrisMobilePayButton(false);
           document.getElementById('irisQrRegenerate')?.classList.remove('hidden');
           showIrisStatus(
@@ -216,14 +208,16 @@
   }
 
   async function renderIrisOrder(data) {
+    irisOrderCode = data.order_code || null;
     irisCheckoutUrl = data.checkout_url || null;
+    syncIrisIntroCopy();
     setIrisRegenerateLabel();
 
     if (isMobileCheckout()) {
       showIrisDesktopQr(false);
       showIrisMobilePayButton(true, irisCheckoutUrl);
       document.getElementById('irisQrRegenerate')?.classList.add('hidden');
-      showIrisStatus('Tap the button below to open your banking app and complete payment.', false);
+      showIrisStatus('Tap below to open IRIS in your banking app.', false);
       startExpiryCountdown(data.expires_at);
       pollVivaStatus(data.order_code);
       irisOrderLoaded = true;
@@ -239,6 +233,7 @@
 
     showIrisMobilePayButton(false);
     showIrisDesktopQr(true);
+    document.getElementById('irisQrRegenerate')?.classList.add('hidden');
 
     new window.QRious({
       element: canvas,
@@ -250,7 +245,6 @@
     });
 
     canvas.classList.remove('hidden');
-    document.getElementById('irisQrRegenerate')?.classList.add('hidden');
     showIrisStatus('Waiting for payment… Scan the QR with your banking app.', false);
     startExpiryCountdown(data.expires_at);
     pollVivaStatus(data.order_code);
@@ -267,44 +261,52 @@
       return;
     }
 
-    showIrisStatus(isMobileCheckout() ? 'Preparing payment link…' : 'Preparing QR code…', false);
+    syncIrisIntroCopy();
+    showIrisStatus(isMobileCheckout() ? 'Preparing IRIS redirect…' : 'Preparing QR code…', false);
     document.getElementById('irisQrRegenerate')?.classList.add('hidden');
     showIrisMobilePayButton(false);
     showIrisDesktopQr(false);
 
     try {
-      var fetchOptions = {
+      var res = await fetch(window.vivaOrderUrl, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': window.vivaCsrfToken || ''
+          'X-CSRF-TOKEN': window.vivaCsrfToken || '',
+          'X-Requested-With': 'XMLHttpRequest'
         },
+        credentials: 'same-origin',
         body: JSON.stringify(typeof window.vivaOrderBody === 'function' ? window.vivaOrderBody() : {})
-      };
-
-      var res = await fetch(window.vivaOrderUrl, fetchOptions);
+      });
       var data = await res.json();
       if (!res.ok || !data.checkout_url) {
         throw new Error(data.message || 'Unable to start IRIS payment.');
       }
 
       irisOrderLoaded = false;
+      clearIrisTimers();
       await renderIrisOrder(data);
     } catch (e) {
       irisOrderLoaded = false;
-      showIrisStatus(e.message || 'Unable to start IRIS payment.', true);
+      var message = e && e.message ? e.message : 'Unable to start IRIS payment.';
+      if (message === 'NetworkError when attempting to fetch resource.' || message === 'Failed to fetch') {
+        message = 'Could not reach the payment server. Check your connection and try again.';
+      }
+      showIrisStatus(message, true);
     }
   };
 
   document.getElementById('irisQrRegenerate')?.addEventListener('click', function () {
     irisOrderLoaded = false;
+    irisOrderCode = null;
     irisCheckoutUrl = null;
     clearIrisTimers();
     window.startIrisQrPayment(true);
   });
 
   setIrisRegenerateLabel();
+  syncIrisIntroCopy();
   setActiveTab('card');
 })();
 </script>

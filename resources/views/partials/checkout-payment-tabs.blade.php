@@ -3,6 +3,45 @@
   $artistSupportsIris = (bool) ($artistSupportsIris ?? false);
   $showIrisTabButton = $showIrisCheckout || $artistSupportsIris;
 @endphp
+<style>
+  .checkout-wallet-btn-mount {
+    width: 100%;
+    min-height: 48px;
+    display: flex;
+    align-items: stretch;
+  }
+  .checkout-wallet-btn-mount > div,
+  .checkout-wallet-btn-mount .StripeElement {
+    width: 100% !important;
+    flex: 1 1 auto;
+  }
+  .checkout-wallet-btn-mount iframe {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+</style>
+
+{{-- Express wallets (Google Pay / Apple Pay) --}}
+<div id="checkoutWalletSection" class="hidden mb-2">
+  <div class="space-y-3">
+    <div id="googlePayWalletRow" class="hidden">
+      <div id="googlePayButtonMount" class="checkout-wallet-btn-mount rounded-xl overflow-hidden"></div>
+      <p id="googlePayPolicyHint" class="hidden text-sm text-error mt-2">Please accept the cancellation policy below before paying.</p>
+    </div>
+    <div id="applePayWalletRow" class="hidden">
+      <div id="applePayButtonMount" class="checkout-wallet-btn-mount rounded-xl overflow-hidden"></div>
+      <p id="applePayPolicyHint" class="hidden text-sm text-error mt-2">Please accept the cancellation policy below before paying.</p>
+    </div>
+  </div>
+
+  <div id="checkoutWalletDivider" class="flex items-center gap-3 my-6">
+    <div class="flex-1 h-px bg-outline-variant/30"></div>
+    <span class="text-xs font-medium text-on-surface-variant whitespace-nowrap">or pay another way</span>
+    <div class="flex-1 h-px bg-outline-variant/30"></div>
+  </div>
+</div>
+
+{{-- Card / IRIS --}}
 <div
   id="checkoutPayTablist"
   class="flex flex-wrap gap-2 mb-4"
@@ -18,26 +57,6 @@
   >
     <span class="material-symbols-outlined text-[16px] align-middle">credit_card</span>
     Card
-  </button>
-  <button
-    type="button"
-    id="tabPayGooglePay"
-    role="tab"
-    aria-selected="false"
-    class="checkout-pay-tab hidden flex-1 min-w-[7rem] rounded-xl border border-outline-variant/60 px-4 py-2.5 text-sm font-semibold text-on-surface-variant hover:border-primary/40 transition"
-  >
-    <span class="material-symbols-outlined text-[16px] align-middle">account_balance_wallet</span>
-    Google Pay
-  </button>
-  <button
-    type="button"
-    id="tabPayApplePay"
-    role="tab"
-    aria-selected="false"
-    class="checkout-pay-tab hidden flex-1 min-w-[7rem] rounded-xl border border-outline-variant/60 px-4 py-2.5 text-sm font-semibold text-on-surface-variant hover:border-primary/40 transition"
-  >
-    <span class="material-symbols-outlined text-[16px] align-middle">phone_iphone</span>
-    Apple Pay
   </button>
   @if ($showIrisTabButton)
     <button

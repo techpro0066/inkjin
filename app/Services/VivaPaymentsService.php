@@ -80,6 +80,7 @@ class VivaPaymentsService
 
         if ($preselectIris) {
             $body['preselectedPaymentMethod'] = 'IRIS';
+            $body['disableWallet'] = true;
         }
 
         if ($tags !== []) {
@@ -111,13 +112,29 @@ class VivaPaymentsService
         ];
     }
 
+    public function formatCustomerPhone(string $normalizedPhone, string $countryCode): string
+    {
+        if ($countryCode === 'GR') {
+            if (str_starts_with($normalizedPhone, '+30')) {
+                return substr($normalizedPhone, 3);
+            }
+
+            if (preg_match('/^30(\d{10})$/', $normalizedPhone, $matches)) {
+                return $matches[1];
+            }
+        }
+
+        return ltrim($normalizedPhone, '+');
+    }
+
     public function buildIrisCheckoutUrl(int|string $orderCode): string
     {
         $base = rtrim((string) config('services.viva.checkout_base'), '/');
         $paymentMethod = (int) config('services.viva.iris_payment_method', 29);
         $color = ltrim((string) config('services.viva.checkout_color', '310f7a'), '#');
+        $ref = (string) $orderCode;
 
-        return $base.'/web/checkout?ref='.$orderCode
+        return $base.'/web/checkout?ref='.$ref
             .'&paymentMethod='.$paymentMethod
             .'&color='.$color
             .'&lang=el-GR';
@@ -151,5 +168,56 @@ class VivaPaymentsService
         return $statusId === 'F'
             && $amount === $expectedAmountCents
             && $orderCode === (string) $expectedOrderCode;
+    }
+
+    /**
+     * Retrieve the webhook verification key (Settings → API Access → Webhooks → Verify).
+     *
+     * @return array{Key: string}
+     */
+    public function retrieveWebhookVerificationKey(): array
+    {
+        $merchantId = (string) config('services.viva.merchant_id');
+        $apiKey = (string) config('services.viva.api_key');
+
+        if ($merchantId === '' || $apiKey === '') {
+            throw new RuntimeException('Set VIVA_MERCHANT_ID and VIVA_API_KEY to retrieve the webhook verification key.');
+        }
+
+        $bases = array_values(array_unique(array_filter([
+            rtrim((string) config('services.viva.checkout_base'), '/'),
+            rtrim((string) config('services.viva.api_base'), '/'),
+        ])));
+
+        $lastStatus = null;
+        $lastBody = null;
+        $lastUrl = null;
+
+        foreach ($bases as $base) {
+            $url = $base.'/api/messages/config/token';
+            $response = Http::withBasicAuth($merchantId, $apiKey)
+                ->acceptJson()
+                ->get($url);
+
+            if ($response->successful()) {
+                $key = (string) ($response->json('Key') ?? '');
+
+                if ($key !== '') {
+                    return ['Key' => $key];
+                }
+            }
+
+            $lastStatus = $response->status();
+            $lastBody = $response->json() ?? $response->body();
+            $lastUrl = $url;
+        }
+
+        Log::error('Viva webhook key request failed', [
+            'status' => $lastStatus,
+            'body' => $lastBody,
+            'url' => $lastUrl,
+        ]);
+
+        throw new RuntimeException('Unable to retrieve Viva webhook verification key.');
     }
 }

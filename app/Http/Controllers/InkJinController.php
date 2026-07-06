@@ -537,7 +537,7 @@ class InkJinController extends Controller
         ]);
     }
 
-    public function bookTattoo(string $userName, string $tattooSlug)
+    public function bookTattoo(Request $request, string $userName, string $tattooSlug)
     {
         $userDetail = UserDetail::where('user_name', $userName)->first();
 

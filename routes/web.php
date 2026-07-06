@@ -375,8 +375,8 @@ Route::post('/api/public/create-booking-payment-intent', [InkJinController::clas
 Route::post('/api/public/booking/payment/viva/order', [InkJinController::class, 'createPublicVivaOrder'])->name('public.booking.payment.viva.order');
 Route::get('/api/public/booking/payment/viva/status', [InkJinController::class, 'publicVivaPaymentStatus'])->name('public.booking.payment.viva.status');
 Route::post('/api/public/confirm-booking-payment', [InkJinController::class, 'confirmBookingAfterPayment'])->name('public.booking.payment.confirm');
-Route::match(['get', 'post'], '/webhooks/viva', [\App\Http\Controllers\Webhooks\VivaWebhookController::class, 'handle'])
-    ->name('webhooks.viva');
+Route::get('/webhooks/viva', [\App\Http\Controllers\Webhooks\VivaWebhookController::class, 'verify'])->name('webhooks.viva.verify');
+Route::post('/webhooks/viva', [\App\Http\Controllers\Webhooks\VivaWebhookController::class, 'handle'])->name('webhooks.viva');
 Route::post('/api/public/submit-managed-booking', [InkJinController::class, 'submitManagedBooking'])->name('public.booking.managed.submit');
 Route::post('/api/public/submit-waitlist', [InkJinController::class, 'submitWaitlist'])->name('public.waitlist.submit');
 Route::post('/api/public/submit-custom-request', [CustomRequestController::class, 'submitCustomRequest'])->name('public.custom-request.submit');

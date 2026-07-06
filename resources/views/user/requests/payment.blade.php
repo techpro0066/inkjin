@@ -65,10 +65,6 @@
         </div>
         </div>
 
-        @include('partials.checkout-google-pay-panel')
-
-        @include('partials.checkout-apple-pay-panel')
-
         @include('partials.checkout-iris-panel', [
           'showIrisTab' => $showIrisTab ?? false,
         ])
@@ -124,10 +120,8 @@
   var stripePublishableKey = @json($stripePublishableKey);
   var intentUrl = @json(route('user.requests.payment.intent', $bookingRequest));
   var confirmUrl = @json(route('user.requests.payment.confirm', $bookingRequest));
-  var vivaOrderUrl = @json(route('user.requests.payment.viva.order', $bookingRequest));
-  var vivaStatusUrl = @json(route('user.requests.payment.viva.status', $bookingRequest));
-  window.vivaOrderUrl = vivaOrderUrl;
-  window.vivaStatusUrl = vivaStatusUrl;
+  window.vivaOrderUrl = @json(route('user.requests.payment.viva.order', $bookingRequest));
+  window.vivaStatusUrl = @json(route('user.requests.payment.viva.status', $bookingRequest));
   window.vivaCsrfToken = csrfToken;
   window.vivaOrderBody = function () { return {}; };
   var payButtonLabel = @json('€' . number_format($totals['total_due'], 2));

@@ -2,6 +2,7 @@
 (function () {
   var googlePaymentRequest = null;
   var applePaymentRequest = null;
+  var walletVisibility = { google: false, apple: false };
 
   function getWalletConfig() {
     return window.checkoutStripeWalletConfig || null;
@@ -26,20 +27,21 @@
     });
   }
 
-  function showWalletTab(tabId, show, activeTabKey) {
-    var tab = document.getElementById(tabId);
-    if (!tab) return;
-    tab.classList.toggle('hidden', !show);
-    if (!show && window.checkoutGetActivePayTab && window.checkoutGetActivePayTab() === activeTabKey) {
-      window.checkoutSetActivePayTab('card');
+  function updateWalletSectionVisibility() {
+    var section = document.getElementById('checkoutWalletSection');
+    var hasWallet = walletVisibility.google || walletVisibility.apple;
+    if (section) {
+      section.classList.toggle('hidden', !hasWallet);
     }
   }
 
-  function setWalletUnavailable(unavailableId, mountId, visible) {
-    var el = document.getElementById(unavailableId);
-    if (el) el.classList.toggle('hidden', !visible);
-    var mount = document.getElementById(mountId);
-    if (mount) mount.classList.toggle('hidden', visible);
+  function showWalletRow(rowId, storeKey, show) {
+    walletVisibility[storeKey] = !!show;
+    var row = document.getElementById(rowId);
+    if (row) {
+      row.classList.toggle('hidden', !show);
+    }
+    updateWalletSectionVisibility();
   }
 
   async function handleWalletPayment(ev, stripe, cfg, policyHintId) {
@@ -95,7 +97,6 @@
     if (applePaymentRequest) applePaymentRequest.update({ total: total });
   };
 
-  // Backward compatible alias
   window.checkoutUpdateGooglePayAmount = window.checkoutUpdateWalletAmounts;
 
   function initWallet(stripe, elements, cfg, options) {
@@ -103,7 +104,7 @@
 
     var amount = getAmountCents();
     if (amount < 30) {
-      showWalletTab(options.tabId, false, options.tabKey);
+      showWalletRow(options.rowId, options.storeKey, false);
       return;
     }
 
@@ -115,12 +116,9 @@
       var canUse = options.storeKey === 'google'
         ? !!(result && (result.googlePay || result.googlepay))
         : !!(result && result[options.canMakePaymentKey]);
-      showWalletTab(options.tabId, canUse, options.tabKey);
+      showWalletRow(options.rowId, options.storeKey, canUse);
 
-      if (!canUse) {
-        setWalletUnavailable(options.unavailableId, options.mountId, false);
-        return;
-      }
+      if (!canUse) return;
 
       var button = elements.create('paymentRequestButton', {
         paymentRequest: paymentRequest,
@@ -133,10 +131,9 @@
       if (!mount) return;
 
       button.mount('#' + options.mountId);
-      setWalletUnavailable(options.unavailableId, options.mountId, false);
       window[options.mountedFlag] = true;
     }).catch(function () {
-      showWalletTab(options.tabId, false, options.tabKey);
+      showWalletRow(options.rowId, options.storeKey, false);
     });
 
     paymentRequest.on('paymentmethod', function (ev) {
@@ -147,17 +144,15 @@
   window.checkoutInitStripeWallets = function (stripe, elements) {
     var cfg = getWalletConfig();
     if (!stripe || !elements || !cfg || typeof cfg.getClientSecret !== 'function') {
-      showWalletTab('tabPayGooglePay', false, 'google_pay');
-      showWalletTab('tabPayApplePay', false, 'apple_pay');
+      showWalletRow('googlePayWalletRow', 'google', false);
+      showWalletRow('applePayWalletRow', 'apple', false);
       return;
     }
 
     initWallet(stripe, elements, cfg, {
       storeKey: 'google',
-      tabId: 'tabPayGooglePay',
-      tabKey: 'google_pay',
+      rowId: 'googlePayWalletRow',
       mountId: 'googlePayButtonMount',
-      unavailableId: 'googlePayUnavailable',
       policyHintId: 'googlePayPolicyHint',
       mountedFlag: '_checkoutGooglePayMounted',
       canMakePaymentKey: 'googlePay',
@@ -166,10 +161,8 @@
 
     initWallet(stripe, elements, cfg, {
       storeKey: 'apple',
-      tabId: 'tabPayApplePay',
-      tabKey: 'apple_pay',
+      rowId: 'applePayWalletRow',
       mountId: 'applePayButtonMount',
-      unavailableId: 'applePayUnavailable',
       policyHintId: 'applePayPolicyHint',
       mountedFlag: '_checkoutApplePayMounted',
       canMakePaymentKey: 'applePay',
@@ -177,7 +170,6 @@
     });
   };
 
-  // Backward compatible alias
   window.checkoutInitGooglePay = window.checkoutInitStripeWallets;
 })();
 </script>

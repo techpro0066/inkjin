@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Observers\BookingObserver;
 use App\Services\StreamChatService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,6 +27,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (! $this->app->runningInConsole()) {
+            $request = request();
+            if ($request->hasHeader('Host')) {
+                URL::forceRootUrl($request->getSchemeAndHttpHost().rtrim($request->getBaseUrl(), '/'));
+            }
+        }
+
         Booking::observe(BookingObserver::class);
 
         View::composer([
