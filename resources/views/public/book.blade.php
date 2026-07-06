@@ -937,6 +937,7 @@
     var bookingOtpResendEmail = '';
     var bookingOtpResendTimer = null;
     var csrfToken = @json(csrf_token());
+    window.vivaRestoreToPaymentStep = @json(! empty($vivaRestore));
     window.vivaOrderUrl = @json(route('public.booking.payment.viva.order'));
     window.vivaStatusUrl = @json(route('public.booking.payment.viva.status'));
     window.vivaCsrfToken = csrfToken;
@@ -1649,6 +1650,63 @@
       return new Date(y, m, d, 0, 0, 0, 0);
     }
 
+    var vivaRestorePayload = @json($vivaRestore ?? null);
+
+    function applyBookingPayloadFromRestore(payload) {
+      if (!payload || typeof payload !== 'object') return;
+
+      var structuredAnswers = payload.questions_answers || {};
+      Object.keys(structuredAnswers).forEach(function(key) {
+        var entry = structuredAnswers[key];
+        if (!entry || entry.id == null || entry.answer == null) return;
+        questionAnswers[entry.id] = entry.answer;
+      });
+
+      var email = String(payload.email || '').trim();
+      var phone = String(payload.phone || '').trim();
+      var name = String(payload.name || '').trim();
+      bookingConnectedEmail = email;
+      bookingConnectedName = name;
+      bookingOtpVerified = true;
+      $('#bdEmail').val(email);
+      $('#bdPhone').val(phone);
+      $('#bdName').val(name);
+      $('#bdOtpEmail').val(email);
+
+      if (payload.consultation_required) {
+        consultationTiming = payload.consultation_timing === 'separate' ? 'separate' : 'combined';
+        ccConsultType = ccConsultType || 'video';
+        if (consultationTiming === 'separate') {
+          ccConsultDate = parseIsoDateToLocal(payload.consultation_date);
+          ccConsultTime = payload.consultation_time ? String(payload.consultation_time) : null;
+          ccTattooDate = parseIsoDateToLocal(payload.tattoo_date);
+          ccTattooTime = payload.tattoo_time ? String(payload.tattoo_time) : null;
+          if (ccConsultDate) {
+            ccCalYear = ccConsultDate.getFullYear();
+            ccCalMonth = ccConsultDate.getMonth();
+          }
+          if (ccTattooDate) {
+            ccTatCalYear = ccTattooDate.getFullYear();
+            ccTatCalMonth = ccTattooDate.getMonth();
+          }
+        } else {
+          ccConsultDate = parseIsoDateToLocal(payload.date);
+          ccConsultTime = payload.time ? String(payload.time) : null;
+          if (ccConsultDate) {
+            ccCalYear = ccConsultDate.getFullYear();
+            ccCalMonth = ccConsultDate.getMonth();
+          }
+        }
+      } else {
+        selectedDate = parseIsoDateToLocal(payload.date);
+        selectedTime = payload.time ? String(payload.time) : null;
+        if (selectedDate) {
+          calYear = selectedDate.getFullYear();
+          calMonth = selectedDate.getMonth();
+        }
+      }
+    }
+
     var BOOKING_DRAFT_VERSION = 1;
     var bookingDraftSaveTimer = null;
 
@@ -1670,7 +1728,7 @@
     window.clearBookingDraftSession = clearBookingDraftSession;
 
     function collectBookingDraftState() {
-      if (currentStep >= 4) return null;
+      if (currentStep >= 4 || vivaRestorePayload) return null;
 
       return {
         v: BOOKING_DRAFT_VERSION,
@@ -1705,7 +1763,7 @@
     }
 
     function saveBookingDraftToSession() {
-      if (currentStep >= 4) return;
+      if (currentStep >= 4 || vivaRestorePayload) return;
 
       var state = collectBookingDraftState();
       if (!state) return;
@@ -1718,7 +1776,7 @@
     }
 
     function scheduleBookingDraftSave() {
-      if (currentStep >= 4) return;
+      if (currentStep >= 4 || vivaRestorePayload) return;
       if (bookingDraftSaveTimer) clearTimeout(bookingDraftSaveTimer);
       bookingDraftSaveTimer = setTimeout(saveBookingDraftToSession, 250);
     }
@@ -1870,6 +1928,8 @@
     }
 
     function tryRestoreBookingDraftFromSession() {
+      if (vivaRestorePayload) return false;
+
       var raw;
       try {
         raw = sessionStorage.getItem(bookingDraftStorageKey());
@@ -2711,7 +2771,7 @@
 
       var draftRestored = tryRestoreBookingDraftFromSession();
 
-      if (!draftRestored && (!Array.isArray(questionDefinitions) || questionDefinitions.length === 0)) {
+      if (!draftRestored && !vivaRestorePayload && (!Array.isArray(questionDefinitions) || questionDefinitions.length === 0)) {
         $('.js-back-to-questions').addClass('hidden');
         goToStep(2);
       }
@@ -2849,6 +2909,18 @@
     });
 
       renderMainCal();
+
+      if (vivaRestorePayload && vivaRestorePayload.booking_payload) {
+        applyBookingPayloadFromRestore(vivaRestorePayload.booking_payload);
+        restoreQuestionAnswersToDom();
+        updateConnectedUi();
+        updateIrisTabVisibility();
+        goToStep(4);
+        window.vivaRestoreToPaymentStep = false;
+        if (typeof window.checkoutSetActivePayTab === 'function') {
+          window.checkoutSetActivePayTab('iris');
+        }
+      }
 
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'hidden') {

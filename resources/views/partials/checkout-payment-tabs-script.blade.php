@@ -75,7 +75,7 @@
     if (cardExtras) cardExtras.classList.toggle('hidden', isIris);
     if (btnConfirmPay) btnConfirmPay.classList.toggle('hidden', !isCard);
 
-    if (isIris && !irisOrderLoaded && typeof window.startIrisQrPayment === 'function') {
+    if (isIris && !irisOrderLoaded && typeof window.startIrisQrPayment === 'function' && !window.vivaRestoreToPaymentStep) {
       window.startIrisQrPayment();
     }
   }
@@ -307,6 +307,16 @@
 
   setIrisRegenerateLabel();
   syncIrisIntroCopy();
-  setActiveTab('card');
+
+  var vivaReturnError = @json(session('viva_error'));
+  if (vivaReturnError || window.vivaRestoreToPaymentStep || new URLSearchParams(window.location.search).get('viva') === 'fail') {
+    irisOrderLoaded = false;
+    setActiveTab('iris');
+    if (vivaReturnError) {
+      showIrisStatus(vivaReturnError, true);
+    }
+  } else {
+    setActiveTab('card');
+  }
 })();
 </script>

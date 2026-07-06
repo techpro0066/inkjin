@@ -629,6 +629,15 @@ class InkJinController extends Controller
             // Refreshing the booking page should require reconnecting again.
             session()->forget('booking_verified_emails');
 
+            $vivaRestore = null;
+            if ($request->query('viva') === 'fail' && $request->filled('s')) {
+                $vivaRestore = app(VivaCheckoutService::class)->publicBookingRestorePayload(
+                    $request->query('s'),
+                    $userName,
+                    $tattooSlug,
+                );
+            }
+
             return view('public.book', [
                 'userDetail' => $userDetail,
                 'tattoo' => $tattoo,
@@ -656,6 +665,7 @@ class InkJinController extends Controller
                 'bookingFeeType' => $userDetail->booking_fee_type ?: 'client',
                 'artistSupportsIris' => PaymentMethods::isGreekArtist($userDetail),
                 'showIrisTab' => false,
+                'vivaRestore' => $vivaRestore,
             ]);
         }
         else{
