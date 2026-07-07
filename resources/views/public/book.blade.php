@@ -690,8 +690,9 @@
       <!-- Auth -->
       <div class="question-div" data-reg="3" id="reg-3">
         <div class="w-full max-w-md mx-auto">
+          <button type="button" onclick="editBookingContactDetails()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to edit email or phone</button>
           <div id="bdAuthCreate">
-            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We are sending a secure 4-digit code to your email—check your inbox (and spam). You can resend below if you need a new code.</p></div>
+            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We sent a secure 4-digit code to <strong id="bdOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p></div>
             <div class="mb-4 hidden">
               <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpEmail">Email</label>
               <input type="email" id="bdOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
@@ -717,10 +718,11 @@
                 <option value="other">Other</option>
               </select>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <button id="bdSendOtpBtn" onclick="sendBookingOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Resend code</button>
               <button id="bdVerifyOtpBtn" onclick="verifyBookingOtp()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Verify & Continue</button>
             </div>
+            <p class="text-center text-sm text-on-surface-variant mb-4"><button type="button" onclick="editBookingContactDetails()" class="text-primary font-medium hover:underline">Wrong email or phone? Go back and edit</button></p>
             <p id="bdConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
             <div class="flex items-center gap-3 mb-4"><div class="flex-1 h-px bg-outline-variant/30"></div><span class="text-sm text-on-surface-variant">or</span><div class="flex-1 h-px bg-outline-variant/30"></div></div>
             <div class="space-y-2 mb-5 hidden">
@@ -1921,6 +1923,7 @@
       if (isNaN(ccTatCalMonth)) ccTatCalMonth = today.getMonth();
 
       restoreQuestionAnswersToDom();
+      syncBookingOtpEmailDisplay();
       updateConnectedUi();
 
       $('.step-panel').removeClass('active');
@@ -2418,6 +2421,32 @@
     }
     window.prevQuestion = prevQuestion;
 
+    function syncBookingOtpEmailDisplay() {
+      var email = String($('#bdEmail').val() || $('#bdOtpEmail').val() || '').trim();
+      if (email) {
+        $('#bdOtpEmail').val(email);
+        $('#bdOtpSentToEmail').text(email);
+      } else {
+        $('#bdOtpSentToEmail').text('your email');
+      }
+    }
+
+    function resetBookingOtpUi() {
+      $('#bdOtpCode').val('');
+      $('#bdOtpError').addClass('hidden');
+      $('#bdOtpStatus').addClass('hidden').removeClass('flex').text('');
+      bookingOtpVerified = false;
+      bookingConnectedEmail = '';
+      bookingConnectedName = '';
+      updateConnectedUi();
+    }
+
+    function editBookingContactDetails() {
+      resetBookingOtpUi();
+      showReg(1);
+    }
+    window.editBookingContactDetails = editBookingContactDetails;
+
     function showReg(index) {
       var regs = $('div.question-div[data-reg]');
       if (!regs.length) return;
@@ -2430,10 +2459,7 @@
       currentRegIndex = index;
 
       if (index === 3) {
-        var currentEmail = String($('#bdEmail').val() || '').trim();
-        if (currentEmail && !$('#bdOtpEmail').val().trim()) {
-          $('#bdOtpEmail').val(currentEmail);
-        }
+        syncBookingOtpEmailDisplay();
         updateConnectedUi();
       }
     }
@@ -2531,6 +2557,7 @@
       }
       showReg(nextIndex);
       if (nextIndex === 3 && !bookingOtpVerified) {
+        syncBookingOtpEmailDisplay();
         await sendBookingOtp();
       }
     }
@@ -2572,7 +2599,7 @@
     }
 
     function applyOtpResendUi() {
-      var currentEmail = String($('#bdOtpEmail').val() || '').trim().toLowerCase();
+      var currentEmail = String($('#bdEmail').val() || $('#bdOtpEmail').val() || '').trim().toLowerCase();
       if (bookingOtpResendRemaining > 0 && bookingOtpResendEmail && bookingOtpResendEmail === currentEmail) {
         $('#bdSendOtpBtn').prop('disabled', true).text('Resend in ' + formatSecondsToMMSS(bookingOtpResendRemaining));
       } else {
@@ -2600,7 +2627,9 @@
     }
 
     async function sendBookingOtp() {
-      var email = String($('#bdOtpEmail').val() || '').trim();
+      syncBookingOtpEmailDisplay();
+      var email = String($('#bdEmail').val() || $('#bdOtpEmail').val() || '').trim();
+      $('#bdOtpEmail').val(email);
       $('#bdOtpError').addClass('hidden');
       if (bookingOtpResendRemaining > 0 && bookingOtpResendEmail === email.toLowerCase()) {
         $('#bdOtpError').removeClass('hidden').text('Please wait ' + formatSecondsToMMSS(bookingOtpResendRemaining) + ' before requesting another code.');
@@ -2630,7 +2659,8 @@
           }
           throw new Error((data && data.message) || 'Could not send verification code.');
         }
-        $('#bdOtpStatus').removeClass('hidden').addClass('flex').html('<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>4-digit code sent to your email.</span>');
+        $('#bdOtpStatus').removeClass('hidden').addClass('flex').html('<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>4-digit code sent to <strong>' + $('<span>').text(email).html() + '</strong>.</span>');
+        syncBookingOtpEmailDisplay();
         bookingOtpResendEmail = email.toLowerCase();
         startOtpResendCountdown(data && data.resend_available_in_seconds ? data.resend_available_in_seconds : 60);
       } catch (err) {
@@ -2651,7 +2681,8 @@
         return;
       }
 
-      var email = String($('#bdOtpEmail').val() || '').trim();
+      syncBookingOtpEmailDisplay();
+      var email = String($('#bdEmail').val() || $('#bdOtpEmail').val() || '').trim();
       var code = String($('#bdOtpCode').val() || '').trim();
       var name = String($('#bdName').val() || '').trim();
       $('#bdOtpError').addClass('hidden');
@@ -2758,7 +2789,12 @@
       $question.find('.js-question-error').addClass('hidden');
     });
     $('#bdName').on('input', function() { clearRegError('bdName', 'bdNameError'); });
-    $('#bdEmail').on('input', function() { clearRegError('bdEmail', 'bdEmailError'); });
+    $('#bdEmail').on('input', function() {
+      clearRegError('bdEmail', 'bdEmailError');
+      if (bookingOtpVerified && String($(this).val() || '').trim().toLowerCase() !== String(bookingConnectedEmail || '').toLowerCase()) {
+        resetBookingOtpUi();
+      }
+    });
     $('#bdPhone').on('input', function() { clearRegError('bdPhone', 'bdPhoneError'); });
     $('#bdOtpEmail').on('input', function() {
       $('#bdOtpError').addClass('hidden');
@@ -2832,7 +2868,7 @@
       var r0 = parseInt($('div.question-div.active[data-reg]').data('reg'), 10);
       if (!isNaN(r0)) currentRegIndex = r0;
       if ($('#bdEmail').length && $('#bdOtpEmail').length) {
-        $('#bdOtpEmail').val(String($('#bdEmail').val() || '').trim());
+        syncBookingOtpEmailDisplay();
         updateConnectedUi();
       }
 
