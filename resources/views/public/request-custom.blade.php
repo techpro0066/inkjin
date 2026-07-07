@@ -460,11 +460,12 @@
   <!-- Screen 13: Verify email (same flow as managed booking) -->
   <div class="tf-screen" data-screen="13">
     <div class="w-full max-w-md mx-auto">
+      <button type="button" onclick="editRcContactDetails()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to edit email or phone</button>
       <div id="rcAuthCreate">
         <div class="text-center mb-6">
           <span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span>
           <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2>
-          <p class="text-on-surface-variant">We are sending a secure 4-digit code to your email—check your inbox (and spam). You can resend below if you need a new code.</p>
+          <p class="text-on-surface-variant">We sent a secure 4-digit code to <strong id="rcOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p>
         </div>
         <div class="mb-4 hidden">
           <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpEmail">Email</label>
@@ -489,10 +490,11 @@
             <option value="other">Other</option>
           </select>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <button id="rcSendOtpBtn" type="button" onclick="sendRcOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Resend code</button>
           <button id="rcVerifyOtpBtn" type="button" onclick="verifyRcOtp()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Verify & Continue</button>
         </div>
+        <p class="text-center text-sm text-on-surface-variant mb-4"><button type="button" onclick="editRcContactDetails()" class="text-primary font-medium hover:underline">Wrong email or phone? Go back and edit</button></p>
         <p id="rcConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
         <p class="text-center text-sm text-on-surface-variant">Email verified once will stay connected for this request session.</p>
       </div>
@@ -851,6 +853,49 @@
       showQuestion(nextIndex);
     }
 
+    function restoreQuestionAnswersToDom() {
+      questionDefinitions.forEach(function(q) {
+        if (!q || q.id == null) return;
+        var answer = questionAnswers[q.id];
+        if (answer === undefined || answer === null || answer === '') return;
+        var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
+        if (!$panel.length) return;
+        if (q.type === 'radio') {
+          $panel.find('.single-choice-radio-button').each(function() {
+            $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
+          });
+          restoreStyleQuestionUi($panel);
+        } else if (q.type === 'select') {
+          $panel.find('.js-select2-question').val(String(answer)).trigger('change');
+        } else if (q.type === 'input' || q.type === 'textarea') {
+          $panel.find('.js-question-input').val(String(answer));
+        } else if (q.type === 'toggle') {
+          $panel.find('.js-question-toggle').prop('checked', !!answer);
+        } else if (q.type === 'image' && window.QuestionImageField) {
+          var $zone = $panel.find('.q-image-upload');
+          if ($zone.length) {
+            window.QuestionImageField.setUrls($zone, Array.isArray(answer) ? answer : []);
+          }
+        }
+      });
+    }
+
+    window.rcExportQuestionDraft = function() {
+      return {
+        questionAnswers: questionAnswers,
+        currentQuestionIndex: currentQuestionIndex
+      };
+    };
+
+    window.rcRestoreQuestionDraft = function(draft) {
+      if (!draft || typeof draft !== 'object') return;
+      questionAnswers = draft.questionAnswers && typeof draft.questionAnswers === 'object'
+        ? draft.questionAnswers
+        : {};
+      restoreQuestionAnswersToDom();
+      showQuestion(parseInt(draft.currentQuestionIndex, 10) || 0);
+    };
+
     window.rcBuildStructuredQuestionAnswers = buildStructuredQuestionAnswers;
     window.rcGetTotalQuestions = function() { return questionDefinitions.length; };
     window.rcPrevQuestion = function() { moveQuestion(-1); };
@@ -923,6 +968,9 @@
     $(function() {
       renderQuestions();
       $('.js-select2-question').select2({ width: '100%', minimumResultsForSearch: Infinity });
+      if (typeof window.rcTryRestoreDraftFromSession === 'function') {
+        window.rcTryRestoreDraftFromSession();
+      }
     });
   })(jQuery);
   </script>
@@ -932,6 +980,7 @@
     'use strict';
 
     var artistName = @json($artistName ?? 'Artist');
+    var rcArtistUsername = @json($artistUsername ?? '');
     var isManagedScheduling = @json(!empty($isManagedScheduling));
     var questionCount = (typeof window.rcGetTotalQuestions === 'function') ? window.rcGetTotalQuestions() : 0;
     var postScreens = isManagedScheduling ? [9, 10, 11, 12, 13, 14, 15, 16] : [10, 11, 12, 13, 14, 15, 16];
@@ -955,6 +1004,117 @@
     var rcOtpResendRemaining = 0;
     var rcOtpResendEmail = '';
     var rcOtpResendTimer = null;
+
+    var RC_DRAFT_VERSION = 1;
+    var rcDraftSaveTimer = null;
+
+    function rcDraftStorageKey() {
+      return 'inkjin_custom_request_draft:' + rcArtistUsername;
+    }
+
+    function clearRcDraftSession() {
+      try {
+        sessionStorage.removeItem(rcDraftStorageKey());
+      } catch (e) {
+        // Ignore storage errors.
+      }
+    }
+    window.clearRcDraftSession = clearRcDraftSession;
+
+    function collectRcDraftState() {
+      if (!inQuestions && typeof current === 'number' && current >= 14) return null;
+      var questionDraft = (typeof window.rcExportQuestionDraft === 'function')
+        ? window.rcExportQuestionDraft()
+        : null;
+      return {
+        v: RC_DRAFT_VERSION,
+        artist: rcArtistUsername,
+        savedAt: Date.now(),
+        screen: inQuestions ? 'questions' : current,
+        inQuestions: inQuestions,
+        rcCurrentQuestion: rcCurrentQuestion,
+        questionDraft: questionDraft,
+        tfName: String(document.getElementById('tfName')?.value || data.name || '').trim(),
+        tfEmail: String(document.getElementById('tfEmail')?.value || data.email || '').trim(),
+        tfPhone: String(document.getElementById('tfPhone')?.value || data.phone || '').trim(),
+        rcOtpVerified: rcOtpVerified,
+        rcConnectedEmail: rcConnectedEmail,
+        rcConnectedName: rcConnectedName,
+      };
+    }
+
+    function saveRcDraftToSession() {
+      var state = collectRcDraftState();
+      if (!state) return;
+      try {
+        sessionStorage.setItem(rcDraftStorageKey(), JSON.stringify(state));
+      } catch (e) {
+        // Ignore quota / private mode errors.
+      }
+    }
+
+    function scheduleRcDraftSave() {
+      if (!inQuestions && typeof current === 'number' && current >= 14) return;
+      if (rcDraftSaveTimer) clearTimeout(rcDraftSaveTimer);
+      rcDraftSaveTimer = setTimeout(saveRcDraftToSession, 250);
+    }
+
+    function applyRcDraftFromSession(state) {
+      if (!state || typeof state !== 'object') return false;
+      if (state.artist !== rcArtistUsername) return false;
+      if (!state.inQuestions && typeof state.screen === 'number' && state.screen >= 14) return false;
+
+      rcOtpVerified = !!state.rcOtpVerified;
+      rcConnectedEmail = String(state.rcConnectedEmail || '');
+      rcConnectedName = String(state.rcConnectedName || '');
+
+      data.name = String(state.tfName || '');
+      data.email = String(state.tfEmail || '');
+      data.phone = String(state.tfPhone || '');
+
+      var tfName = document.getElementById('tfName');
+      var tfEmail = document.getElementById('tfEmail');
+      var tfPhone = document.getElementById('tfPhone');
+      if (tfName) tfName.value = data.name;
+      if (tfEmail) tfEmail.value = data.email;
+      if (tfPhone) tfPhone.value = data.phone;
+
+      rcCurrentQuestion = parseInt(state.rcCurrentQuestion, 10) || 0;
+
+      if (state.inQuestions || state.screen === 'questions') {
+        if (typeof window.rcRestoreQuestionDraft === 'function' && state.questionDraft) {
+          showQuestionsPhase(false);
+          window.rcRestoreQuestionDraft(state.questionDraft);
+        } else {
+          showQuestionsPhase(false);
+        }
+      } else if (typeof state.screen === 'number') {
+        showScreen(state.screen, false);
+        current = state.screen;
+      }
+
+      syncRcOtpEmailFromForm();
+      if (typeof window.rcUpdateConnectedUi === 'function') window.rcUpdateConnectedUi();
+      updateBookingChrome();
+      return true;
+    }
+
+    function tryRestoreRcDraftFromSession() {
+      var raw;
+      try {
+        raw = sessionStorage.getItem(rcDraftStorageKey());
+      } catch (e) {
+        return false;
+      }
+      if (!raw) return false;
+      try {
+        return applyRcDraftFromSession(JSON.parse(raw));
+      } catch (e) {
+        clearRcDraftSession();
+        return false;
+      }
+    }
+    window.rcTryRestoreDraftFromSession = tryRestoreRcDraftFromSession;
 
     function rcResolveStep() {
       if (current === 0) return 0;
@@ -1016,6 +1176,8 @@
         if (reverse) target.classList.add('reverse');
       }
       updateBookingChrome();
+      if (screenId === 13) syncRcOtpEmailFromForm();
+      scheduleRcDraftSave();
       window.scrollTo({ top: 0 });
     }
 
@@ -1038,6 +1200,7 @@
         }
       }
       updateBookingChrome();
+      scheduleRcDraftSave();
       window.scrollTo({ top: 0 });
     }
 
@@ -1058,6 +1221,7 @@
     window.rcSyncQuestionProgress = function(questionIndex) {
       rcCurrentQuestion = Math.max(0, parseInt(questionIndex, 10) || 0);
       updateTopProgress();
+      scheduleRcDraftSave();
     };
 
     function clearRcError(inputId, errorId) {
@@ -1094,14 +1258,40 @@
       return !!payload.is_user;
     }
 
+    function escapeHtml(text) {
+      var div = document.createElement('div');
+      div.textContent = String(text || '');
+      return div.innerHTML;
+    }
+
     function syncRcOtpEmailFromForm() {
-      var emailVal = String(document.getElementById('tfEmail')?.value || '').trim();
+      var emailVal = String(document.getElementById('tfEmail')?.value || document.getElementById('rcOtpEmail')?.value || '').trim();
       var otpEmail = document.getElementById('rcOtpEmail');
       var loginEmail = document.getElementById('rcAuthLoginEmail');
+      var sentTo = document.getElementById('rcOtpSentToEmail');
       if (otpEmail) otpEmail.value = emailVal;
       if (loginEmail) loginEmail.textContent = emailVal || 'you@example.com';
+      if (sentTo) sentTo.textContent = emailVal || 'your email';
       if (typeof window.rcUpdateConnectedUi === 'function') window.rcUpdateConnectedUi();
     }
+
+    function resetRcOtpUi() {
+      var code = document.getElementById('rcOtpCode');
+      var otpError = document.getElementById('rcOtpError');
+      var otpStatus = document.getElementById('rcOtpStatus');
+      if (code) code.value = '';
+      if (otpError) otpError.classList.add('hidden');
+      if (otpStatus) { otpStatus.textContent = ''; otpStatus.classList.add('hidden'); otpStatus.classList.remove('flex'); }
+      rcOtpVerified = false;
+      rcConnectedEmail = '';
+      rcConnectedName = '';
+      window.rcUpdateConnectedUi();
+    }
+
+    window.editRcContactDetails = function() {
+      resetRcOtpUi();
+      showScreen(11, true);
+    };
 
     function formatSecondsToMMSS(seconds) {
       var s = Math.max(0, parseInt(seconds || 0, 10) || 0);
@@ -1113,7 +1303,7 @@
     function applyRcOtpResendUi() {
       var sendBtn = document.getElementById('rcSendOtpBtn');
       if (!sendBtn) return;
-      var currentEmail = String(document.getElementById('rcOtpEmail')?.value || '').trim().toLowerCase();
+      var currentEmail = String(document.getElementById('tfEmail')?.value || document.getElementById('rcOtpEmail')?.value || '').trim().toLowerCase();
       if (rcOtpResendRemaining > 0 && rcOtpResendEmail && rcOtpResendEmail === currentEmail) {
         sendBtn.disabled = true;
         sendBtn.textContent = 'Resend in ' + formatSecondsToMMSS(rcOtpResendRemaining);
@@ -1164,7 +1354,10 @@
     };
 
     window.sendRcOtp = async function() {
-      var email = String(document.getElementById('rcOtpEmail')?.value || '').trim();
+      syncRcOtpEmailFromForm();
+      var email = String(document.getElementById('tfEmail')?.value || document.getElementById('rcOtpEmail')?.value || '').trim();
+      var otpEmail = document.getElementById('rcOtpEmail');
+      if (otpEmail) otpEmail.value = email;
       var otpError = document.getElementById('rcOtpError');
       var otpStatus = document.getElementById('rcOtpStatus');
       var sendBtn = document.getElementById('rcSendOtpBtn');
@@ -1195,8 +1388,9 @@
         if (otpStatus) {
           otpStatus.classList.remove('hidden');
           otpStatus.classList.add('flex');
-          otpStatus.innerHTML = '<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>4-digit code sent to your email.</span>';
+          otpStatus.innerHTML = '<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>4-digit code sent to <strong>' + escapeHtml(email) + '</strong>.</span>';
         }
+        syncRcOtpEmailFromForm();
         rcOtpResendEmail = email.toLowerCase();
         startRcOtpResendCountdown(payload && payload.resend_available_in_seconds ? payload.resend_available_in_seconds : 60);
       } catch (err) {
@@ -1209,7 +1403,8 @@
 
     window.verifyRcOtp = async function() {
       if (rcOtpVerified) { window.finishRcAuth(); return; }
-      var email = String(document.getElementById('rcOtpEmail')?.value || '').trim();
+      syncRcOtpEmailFromForm();
+      var email = String(document.getElementById('tfEmail')?.value || document.getElementById('rcOtpEmail')?.value || '').trim();
       var code = String(document.getElementById('rcOtpCode')?.value || '').trim();
       var name = String(document.getElementById('tfName')?.value || '').trim();
       var otpError = document.getElementById('rcOtpError');
@@ -1239,6 +1434,7 @@
         if (tfEmail) tfEmail.value = rcConnectedEmail;
         data.email = rcConnectedEmail;
         window.rcUpdateConnectedUi();
+        scheduleRcDraftSave();
         window.finishRcAuth();
       } catch (err) {
         if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = err.message || 'Verification failed.'; }
@@ -1254,6 +1450,7 @@
         return;
       }
       collectData();
+      clearRcDraftSession();
       showScreen(14, false);
       current = 14;
     };
@@ -1473,6 +1670,7 @@
         showScreen(13, false);
         current = 13;
         if (!rcOtpVerified) await window.sendRcOtp();
+        scheduleRcDraftSave();
         return;
       }
 
@@ -1650,6 +1848,7 @@
         }
         var refEl = document.getElementById('successRequestRef');
         if (refEl) refEl.textContent = result.request_reference || '—';
+        clearRcDraftSession();
         document.getElementById('submitLoading').classList.add('hidden');
         document.getElementById('submitSuccess').classList.remove('hidden');
       } catch (err) {
@@ -1706,13 +1905,22 @@
       }
     }
 
-    ['tfName', 'tfEmail', 'tfPhone'].forEach(function(id) {
+    ['tfName', 'tfPhone'].forEach(function(id) {
       var el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('input', function() {
         clearRcError(id, id + 'Error');
       });
     });
+    var tfEmailEl = document.getElementById('tfEmail');
+    if (tfEmailEl) {
+      tfEmailEl.addEventListener('input', function() {
+        clearRcError('tfEmail', 'tfEmailError');
+        if (rcOtpVerified && String(this.value || '').trim().toLowerCase() !== String(rcConnectedEmail || '').toLowerCase()) {
+          resetRcOtpUi();
+        }
+      });
+    }
 
     var otpEmailEl = document.getElementById('rcOtpEmail');
     if (otpEmailEl) {
@@ -1737,8 +1945,19 @@
         this.value = String(this.value || '').replace(/\D/g, '').slice(0, 4);
         var otpError = document.getElementById('rcOtpError');
         if (otpError) otpError.classList.add('hidden');
+        scheduleRcDraftSave();
       });
     }
+
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'hidden') saveRcDraftToSession();
+    });
+    window.addEventListener('pagehide', saveRcDraftToSession);
+    ['tfName', 'tfEmail', 'tfPhone'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', scheduleRcDraftSave);
+    });
 
     syncRcOtpEmailFromForm();
 

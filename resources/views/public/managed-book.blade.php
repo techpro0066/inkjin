@@ -403,8 +403,9 @@
       <!-- Auth -->
       <div class="question-div" data-reg="3" id="reg-3">
         <div class="w-full max-w-md mx-auto">
+          <button type="button" onclick="editBookingContactDetails()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to edit email or phone</button>
           <div id="bdAuthCreate">
-            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We are sending a secure 4-digit code to your email—check your inbox (and spam). You can resend below if you need a new code.</p></div>
+            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We sent a secure 4-digit code to <strong id="bdOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p></div>
             <div class="mb-4 hidden">
               <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpEmail">Email</label>
               <input type="email" id="bdOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
@@ -428,10 +429,11 @@
                 <option value="other">Other</option>
               </select>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <button id="bdSendOtpBtn" type="button" onclick="sendBookingOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Resend code</button>
               <button id="bdVerifyOtpBtn" type="button" onclick="verifyBookingOtp()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Verify & Continue</button>
             </div>
+            <p class="text-center text-sm text-on-surface-variant mb-4"><button type="button" onclick="editBookingContactDetails()" class="text-primary font-medium hover:underline">Wrong email or phone? Go back and edit</button></p>
             <p id="bdConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
             <p class="text-center text-sm text-on-surface-variant">Email verified once will stay connected for this booking session.</p>
           </div>
@@ -678,6 +680,48 @@
       moveQuestion(-1);
     }
 
+    function restoreQuestionAnswersToDom() {
+      questionDefinitions.forEach(function(q) {
+        if (!q || q.id == null) return;
+        var answer = questionAnswers[q.id];
+        if (answer === undefined || answer === null || answer === '') return;
+        var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
+        if (!$panel.length) return;
+        if (q.type === 'radio') {
+          $panel.find('.single-choice-radio-button').each(function() {
+            $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
+          });
+        } else if (q.type === 'select') {
+          $panel.find('.js-select2-question').val(String(answer)).trigger('change');
+        } else if (q.type === 'input' || q.type === 'textarea') {
+          $panel.find('.js-question-input').val(String(answer));
+        } else if (q.type === 'toggle') {
+          $panel.find('.js-question-toggle').prop('checked', !!answer);
+        } else if (q.type === 'image' && window.QuestionImageField) {
+          var $zone = $panel.find('.q-image-upload');
+          if ($zone.length) {
+            window.QuestionImageField.setUrls($zone, Array.isArray(answer) ? answer : []);
+          }
+        }
+      });
+    }
+
+    window.mbExportQuestionDraft = function() {
+      return {
+        questionAnswers: questionAnswers,
+        currentQuestionIndex: currentQuestionIndex
+      };
+    };
+
+    window.mbRestoreQuestionDraft = function(draft) {
+      if (!draft || typeof draft !== 'object') return;
+      questionAnswers = draft.questionAnswers && typeof draft.questionAnswers === 'object'
+        ? draft.questionAnswers
+        : {};
+      restoreQuestionAnswersToDom();
+      showQuestion(parseInt(draft.currentQuestionIndex, 10) || 0);
+    };
+
     window.mbBuildStructuredQuestionAnswers = buildStructuredQuestionAnswers;
     window.mbGetAnswerByKeywords = getAnswerByKeywords;
     window.mbGetTotalQuestions = function() { return questionDefinitions.length; };
@@ -720,10 +764,16 @@
       renderQuestions();
       if (!questionDefinitions.length) {
         $('.js-back-to-questions').addClass('hidden');
+        if (typeof window.mbTryRestoreDraftFromSession === 'function') {
+          if (window.mbTryRestoreDraftFromSession()) return;
+        }
         if (typeof window.mbOnQuestionsReady === 'function') window.mbOnQuestionsReady(true);
         return;
       }
       $('.js-select2-question').select2({ width: '100%', minimumResultsForSearch: Infinity });
+      if (typeof window.mbTryRestoreDraftFromSession === 'function') {
+        if (window.mbTryRestoreDraftFromSession()) return;
+      }
       if (typeof window.mbOnQuestionsReady === 'function') window.mbOnQuestionsReady(false);
     });
   })(jQuery);
@@ -833,8 +883,124 @@
       }
     };
 
+    // ── Session draft (reload restores OTP step like public book) ──
+    const MANAGED_BOOK_DRAFT_VERSION = 1;
+    let managedBookDraftSaveTimer = null;
+
+    function managedBookDraftStorageKey() {
+      return 'inkjin_managed_book_draft:' + bookingArtistUsername + ':' + bookingTattooSlug;
+    }
+
+    function clearManagedBookDraftSession() {
+      try {
+        sessionStorage.removeItem(managedBookDraftStorageKey());
+      } catch (e) {
+        // Ignore storage errors.
+      }
+    }
+    window.clearManagedBookDraftSession = clearManagedBookDraftSession;
+
+    function collectManagedBookDraftState() {
+      if (currentStep >= 4) return null;
+      const questionDraft = (typeof window.mbExportQuestionDraft === 'function')
+        ? window.mbExportQuestionDraft()
+        : null;
+      return {
+        v: MANAGED_BOOK_DRAFT_VERSION,
+        artist: bookingArtistUsername,
+        slug: bookingTattooSlug,
+        savedAt: Date.now(),
+        currentStep: currentStep,
+        currentQuestion: currentQuestion,
+        currentReg: currentReg,
+        questionDraft: questionDraft,
+        bookingOtpVerified: bookingOtpVerified,
+        bookingConnectedEmail: bookingConnectedEmail,
+        bookingConnectedName: bookingConnectedName,
+        bdName: String(document.getElementById('bdName')?.value || '').trim(),
+        bdEmail: String(document.getElementById('bdEmail')?.value || '').trim(),
+        bdPhone: String(document.getElementById('bdPhone')?.value || '').trim(),
+      };
+    }
+
+    function saveManagedBookDraftToSession() {
+      if (currentStep >= 4) return;
+      const state = collectManagedBookDraftState();
+      if (!state) return;
+      try {
+        sessionStorage.setItem(managedBookDraftStorageKey(), JSON.stringify(state));
+      } catch (e) {
+        // Ignore quota / private mode errors.
+      }
+    }
+
+    function scheduleManagedBookDraftSave() {
+      if (currentStep >= 4) return;
+      if (managedBookDraftSaveTimer) clearTimeout(managedBookDraftSaveTimer);
+      managedBookDraftSaveTimer = setTimeout(saveManagedBookDraftToSession, 250);
+    }
+
+    function applyManagedBookDraftFromSession(state) {
+      if (!state || typeof state !== 'object') return false;
+      if (state.artist !== bookingArtistUsername || state.slug !== bookingTattooSlug) return false;
+      if (parseInt(state.currentStep, 10) >= 4) return false;
+
+      currentStep = parseInt(state.currentStep, 10) || 1;
+      currentQuestion = parseInt(state.currentQuestion, 10) || 0;
+      currentReg = parseInt(state.currentReg, 10) || 0;
+
+      bookingOtpVerified = !!state.bookingOtpVerified;
+      bookingConnectedEmail = String(state.bookingConnectedEmail || '');
+      bookingConnectedName = String(state.bookingConnectedName || '');
+
+      const bdName = document.getElementById('bdName');
+      const bdEmail = document.getElementById('bdEmail');
+      const bdPhone = document.getElementById('bdPhone');
+      if (bdName) bdName.value = String(state.bdName || '');
+      if (bdEmail) bdEmail.value = String(state.bdEmail || '');
+      if (bdPhone) bdPhone.value = String(state.bdPhone || '');
+
+      if (typeof window.mbRestoreQuestionDraft === 'function' && state.questionDraft) {
+        window.mbRestoreQuestionDraft(state.questionDraft);
+      }
+
+      document.querySelectorAll('.step-panel').forEach(function(p) { p.classList.remove('active', 'reverse'); });
+      if (currentStep === 1) {
+        document.getElementById('stepQuestions')?.classList.add('active');
+      } else if (currentStep === 2) {
+        showStep2(false);
+      } else if (currentStep === 3) {
+        document.getElementById('stepRegister')?.classList.add('active');
+        showRegScreen(currentReg);
+      }
+
+      syncBookingOtpEmailDisplay();
+      if (typeof window.mbUpdateConnectedUi === 'function') window.mbUpdateConnectedUi();
+      updateProgressDots();
+      updateTopProgress();
+      return true;
+    }
+
+    function tryRestoreManagedBookDraftFromSession() {
+      let raw;
+      try {
+        raw = sessionStorage.getItem(managedBookDraftStorageKey());
+      } catch (e) {
+        return false;
+      }
+      if (!raw) return false;
+      try {
+        return applyManagedBookDraftFromSession(JSON.parse(raw));
+      } catch (e) {
+        clearManagedBookDraftSession();
+        return false;
+      }
+    }
+    window.mbTryRestoreDraftFromSession = tryRestoreManagedBookDraftFromSession;
+
     // ── Step Navigation ──
-    window.goToStep = function(step, reverse) {
+    window.goToStep = function(step, reverse, opts) {
+      opts = opts || {};
       if (step === 3 && currentStep === 2) {
         if (consultationRequired && !mcConsultType) {
           document.getElementById('mcConsultTypeError').classList.remove('hidden');
@@ -848,10 +1014,26 @@
       currentStep = step;
       if (step === 1) { const p = document.getElementById('stepQuestions'); if(reverse) p.classList.add('reverse'); p.classList.add('active'); }
       else if (step === 2) showStep2(reverse);
-      else if (step === 3) { const p = document.getElementById('stepRegister'); if(reverse) p.classList.add('reverse'); p.classList.add('active'); currentReg = 0; showRegScreen(0); }
-      else if (step === 4) { const p = document.getElementById('stepPayment'); if(reverse) p.classList.add('reverse'); p.classList.add('active'); populatePaymentStep(); }
-      else if (step === 5) document.getElementById('stepConfirmation').classList.add('active');
+      else if (step === 3) {
+        const p = document.getElementById('stepRegister');
+        if(reverse) p.classList.add('reverse');
+        p.classList.add('active');
+        if (opts.preserveReg) showRegScreen(currentReg);
+        else { currentReg = 0; showRegScreen(0); }
+      }
+      else if (step === 4) {
+        clearManagedBookDraftSession();
+        const p = document.getElementById('stepPayment');
+        if(reverse) p.classList.add('reverse');
+        p.classList.add('active');
+        populatePaymentStep();
+      }
+      else if (step === 5) {
+        clearManagedBookDraftSession();
+        document.getElementById('stepConfirmation').classList.add('active');
+      }
       updateProgressDots(); updateTopProgress();
+      scheduleManagedBookDraftSave();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -982,6 +1164,38 @@
     let bookingOtpResendTimer = null;
     const mbCsrfToken = @json(csrf_token());
 
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = String(text || '');
+      return div.innerHTML;
+    }
+
+    function syncBookingOtpEmailDisplay() {
+      const email = String(document.getElementById('bdEmail')?.value || document.getElementById('bdOtpEmail')?.value || '').trim();
+      const otpEmail = document.getElementById('bdOtpEmail');
+      const sentTo = document.getElementById('bdOtpSentToEmail');
+      if (otpEmail && email) otpEmail.value = email;
+      if (sentTo) sentTo.textContent = email || 'your email';
+    }
+
+    function resetBookingOtpUi() {
+      const code = document.getElementById('bdOtpCode');
+      const otpError = document.getElementById('bdOtpError');
+      const otpStatus = document.getElementById('bdOtpStatus');
+      if (code) code.value = '';
+      if (otpError) otpError.classList.add('hidden');
+      if (otpStatus) { otpStatus.textContent = ''; otpStatus.classList.add('hidden'); otpStatus.classList.remove('flex'); }
+      bookingOtpVerified = false;
+      bookingConnectedEmail = '';
+      bookingConnectedName = '';
+      window.mbUpdateConnectedUi();
+    }
+
+    window.editBookingContactDetails = function() {
+      resetBookingOtpUi();
+      showRegScreen(1);
+    };
+
     function showRegScreen(index) {
       const regs = document.querySelectorAll('#stepRegister .question-div[data-reg]');
       if (!regs.length) return;
@@ -992,12 +1206,11 @@
       if (target) target.classList.add('active');
       currentReg = index;
       if (index === 3) {
-        const currentEmail = String(document.getElementById('bdEmail')?.value || '').trim();
-        const otpEmail = document.getElementById('bdOtpEmail');
-        if (otpEmail && currentEmail && !otpEmail.value.trim()) otpEmail.value = currentEmail;
+        syncBookingOtpEmailDisplay();
         if (typeof window.mbUpdateConnectedUi === 'function') window.mbUpdateConnectedUi();
       }
       updateTopProgress();
+      if (typeof scheduleManagedBookDraftSave === 'function') scheduleManagedBookDraftSave();
     }
 
     function clearRegError(inputId, errorId) {
@@ -1069,7 +1282,7 @@
     function applyOtpResendUi() {
       const sendBtn = document.getElementById('bdSendOtpBtn');
       if (!sendBtn) return;
-      const currentEmail = String(document.getElementById('bdOtpEmail')?.value || '').trim().toLowerCase();
+      const currentEmail = String(document.getElementById('bdEmail')?.value || document.getElementById('bdOtpEmail')?.value || '').trim().toLowerCase();
       if (bookingOtpResendRemaining > 0 && bookingOtpResendEmail && bookingOtpResendEmail === currentEmail) {
         sendBtn.disabled = true;
         sendBtn.textContent = 'Resend in ' + formatSecondsToMMSS(bookingOtpResendRemaining);
@@ -1095,7 +1308,10 @@
     }
 
     window.sendBookingOtp = async function() {
-      const email = String(document.getElementById('bdOtpEmail')?.value || '').trim();
+      syncBookingOtpEmailDisplay();
+      const email = String(document.getElementById('bdEmail')?.value || document.getElementById('bdOtpEmail')?.value || '').trim();
+      const otpEmail = document.getElementById('bdOtpEmail');
+      if (otpEmail) otpEmail.value = email;
       const otpError = document.getElementById('bdOtpError');
       const otpStatus = document.getElementById('bdOtpStatus');
       const sendBtn = document.getElementById('bdSendOtpBtn');
@@ -1126,8 +1342,9 @@
         if (otpStatus) {
           otpStatus.classList.remove('hidden');
           otpStatus.classList.add('flex');
-          otpStatus.innerHTML = '<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>4-digit code sent to your email.</span>';
+          otpStatus.innerHTML = '<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>4-digit code sent to <strong>' + escapeHtml(email) + '</strong>.</span>';
         }
+        syncBookingOtpEmailDisplay();
         bookingOtpResendEmail = email.toLowerCase();
         startOtpResendCountdown(data && data.resend_available_in_seconds ? data.resend_available_in_seconds : 60);
       } catch (err) {
@@ -1140,7 +1357,8 @@
 
     window.verifyBookingOtp = async function() {
       if (bookingOtpVerified) { window.finishRegister(); return; }
-      const email = String(document.getElementById('bdOtpEmail')?.value || '').trim();
+      syncBookingOtpEmailDisplay();
+      const email = String(document.getElementById('bdEmail')?.value || document.getElementById('bdOtpEmail')?.value || '').trim();
       const code = String(document.getElementById('bdOtpCode')?.value || '').trim();
       const name = String(document.getElementById('bdName')?.value || '').trim();
       const otpError = document.getElementById('bdOtpError');
@@ -1169,6 +1387,7 @@
         const bdEmail = document.getElementById('bdEmail');
         if (bdEmail) bdEmail.value = bookingConnectedEmail;
         window.mbUpdateConnectedUi();
+        scheduleManagedBookDraftSave();
         window.finishRegister();
       } catch (err) {
         if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = err.message || 'Verification failed.'; }
@@ -1212,7 +1431,11 @@
       const nextIndex = currentReg + 1;
       if (nextIndex >= regs.length) { goToStep(4); return; }
       showRegScreen(nextIndex);
-      if (nextIndex === 3 && !bookingOtpVerified) await window.sendBookingOtp();
+      if (nextIndex === 3 && !bookingOtpVerified) {
+        syncBookingOtpEmailDisplay();
+        await window.sendBookingOtp();
+      }
+      scheduleManagedBookDraftSave();
     };
 
     window.prevReg = function() {
@@ -1237,13 +1460,22 @@
       document.getElementById('bdAuthLogin')?.classList.toggle('hidden');
     };
 
-    ['bdName', 'bdEmail', 'bdPhone'].forEach(function(id) {
+    ['bdName', 'bdPhone'].forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('input', function() {
         clearRegError(id, id + 'Error');
       });
     });
+    const bdEmailEl = document.getElementById('bdEmail');
+    if (bdEmailEl) {
+      bdEmailEl.addEventListener('input', function() {
+        clearRegError('bdEmail', 'bdEmailError');
+        if (bookingOtpVerified && String(this.value || '').trim().toLowerCase() !== String(bookingConnectedEmail || '').toLowerCase()) {
+          resetBookingOtpUi();
+        }
+      });
+    }
     const otpEmailEl = document.getElementById('bdOtpEmail');
     if (otpEmailEl) {
       otpEmailEl.addEventListener('input', function() {
@@ -1467,6 +1699,9 @@
         }
         const refEl = document.getElementById('confManagedRef');
         if (refEl) refEl.textContent = data.booking_reference || '—';
+        if (data.booking_reference || data.saved) {
+          clearManagedBookDraftSession();
+        }
         showManagedConfirmationCopy();
         document.getElementById('processingView').classList.add('hidden');
         document.getElementById('confirmationManaged').classList.remove('hidden');
@@ -1492,14 +1727,23 @@
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }
 
-    const _bdOtp = document.getElementById('bdOtpEmail');
     const _bdEm = document.getElementById('bdEmail');
-    if (_bdOtp && _bdEm) {
-      _bdOtp.value = String(_bdEm.value || '').trim();
+    if (_bdEm) {
+      syncBookingOtpEmailDisplay();
       if (typeof window.mbUpdateConnectedUi === 'function') window.mbUpdateConnectedUi();
     }
 
     if (consultationRequired) configureMcConsultTypeCards();
+
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'hidden') saveManagedBookDraftToSession();
+    });
+    window.addEventListener('pagehide', saveManagedBookDraftToSession);
+    ['bdName', 'bdEmail', 'bdPhone', 'bdOtpCode'].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', scheduleManagedBookDraftSave);
+    });
 
     // ── Booking Status Check ──
     const statusParam = params.get('status');
