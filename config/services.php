@@ -86,8 +86,12 @@ return [
         'merchant_id' => env('VIVA_MERCHANT_ID'),
         'api_key' => env('VIVA_API_KEY'),
         'source_code' => env('VIVA_SOURCE_CODE', '2461'),
+        // Optional dedicated payment source with only IRIS enabled (ask Viva support to configure).
+        'iris_source_code' => env('VIVA_IRIS_SOURCE_CODE'),
         'webhook_key' => env('VIVA_WEBHOOK_KEY'),
         'env' => env('VIVA_ENV', 'production'),
+        // Reject card/wallet payments on Viva IRIS orders (set false for demo card testing).
+        'iris_only_payments' => filter_var(env('VIVA_IRIS_ONLY_PAYMENTS', true), FILTER_VALIDATE_BOOL),
         'accounts_base' => env('VIVA_ACCOUNTS_BASE', 'https://accounts.vivapayments.com'),
         'api_base' => env('VIVA_API_BASE', 'https://api.vivapayments.com'),
         'checkout_base' => env('VIVA_CHECKOUT_BASE', 'https://www.vivapayments.com'),
