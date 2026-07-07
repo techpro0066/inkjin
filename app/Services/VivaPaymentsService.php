@@ -79,14 +79,7 @@ class VivaPaymentsService
         ];
 
         if ($preselectIris) {
-            $irisSource = (string) config('services.viva.iris_source_code');
-            if ($irisSource !== '') {
-                $body['sourceCode'] = $irisSource;
-            }
-
             $body['preselectedPaymentMethod'] = 'IRIS';
-            $body['disableWallet'] = true;
-            $body['disableCash'] = true;
         }
 
         if ($tags !== []) {
@@ -182,26 +175,8 @@ class VivaPaymentsService
     /**
      * @param  array<string, mixed>  $transaction
      */
-    public function isIrisTransaction(array $transaction): bool
+    public function isTransactionPaid(array $transaction, int $expectedAmountCents, int|string $expectedOrderCode): bool
     {
-        $bankId = strtoupper((string) ($transaction['bankId'] ?? $transaction['BankId'] ?? ''));
-
-        if ($bankId === 'NET_IRIS') {
-            return true;
-        }
-
-        $paymentMethodId = (int) ($transaction['paymentMethodId'] ?? $transaction['PaymentMethodId'] ?? 0);
-
-        return $paymentMethodId === (int) config('services.viva.iris_payment_method', 29);
-    }
-
-    /**
-     * @param  array<string, mixed>  $transaction
-     */
-    public function isTransactionPaid(array $transaction, int $expectedAmountCents, int|string $expectedOrderCode, ?bool $irisOnly = null): bool
-    {
-        $irisOnly ??= (bool) config('services.viva.iris_only_payments', true);
-
         $statusId = (string) ($transaction['statusId'] ?? $transaction['StatusId'] ?? '');
         $amount = $transaction['amount'] ?? $transaction['Amount'] ?? null;
         $orderCode = (string) ($transaction['orderCode'] ?? $transaction['OrderCode'] ?? '');
@@ -210,15 +185,6 @@ class VivaPaymentsService
         $paid = $statusId === 'F'
             && $this->amountMatchesCents($amount, $expectedAmountCents)
             && $orderCode === (string) $expectedOrderCode;
-
-        if ($paid && $irisOnly && ! $this->isIrisTransaction($transaction)) {
-            Log::warning('Viva payment rejected: IRIS-only order paid with non-IRIS method', [
-                'bank_id' => $bankId,
-                'order_code' => $orderCode,
-            ]);
-
-            return false;
-        }
 
         if (! $paid) {
             Log::warning('Viva transaction verification mismatch', [

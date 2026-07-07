@@ -59,16 +59,6 @@ class VivaBookingConfirmationService
             return null;
         }
 
-        $bankId = strtoupper((string) ($event['BankId'] ?? $event['bankId'] ?? ''));
-        if ((bool) config('services.viva.iris_only_payments', true) && $bankId !== '' && $bankId !== 'NET_IRIS') {
-            Log::warning('Viva webhook ignored: non-IRIS payment on IRIS-only order', [
-                'order_code' => $orderCode,
-                'bank_id' => $bankId,
-            ]);
-
-            return null;
-        }
-
         return $this->confirmPaid($pending, $transactionId);
     }
 
