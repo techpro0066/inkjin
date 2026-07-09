@@ -348,7 +348,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])
 
 require __DIR__.'/auth.php';
 
-Route::get('/artists', [InkJinController::class, 'publicArtistsList'])->name('public.artists.list');
+// Route::get('/artists', [InkJinController::class, 'publicArtistsList'])->name('public.artists.list');
 Route::get('/chat', function () {
     if (Auth::check()) {
         return match (Auth::user()->role) {
