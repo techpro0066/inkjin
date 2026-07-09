@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  @include('layouts.partials.google-analytics')
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }} - Tattoo Artist | Inkjin</title>
-  <meta name="description" content="Book tattoo designs or request custom work from Julian Ink at Open Ink Studio, Athens, Greece.">
+  <meta name="description" content="Book tattoo designs or request custom work from {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }} at {{ $userDetail->studio_name }}, {{ $userDetail->city }}, {{ $userDetail->country }}.">
   <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -298,8 +299,6 @@
     </div>
   </header>
 
-  @if($userDetail->availability_status !== 'closed')
-
   <!-- About Section -->
   <div class="max-w-4xl mx-auto px-4 sm:px-6">
     <div class="mb-6">
@@ -406,8 +405,6 @@
     </div>
     @endif
   </main>
-
-  @endif
 
   <!-- ═══════════════════════════════════════════════ -->
   <!-- FOOTER                                          -->

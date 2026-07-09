@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Inbox — Inkjin Book & Pay</title>
-  <meta name="description" content="Messages with your tattoo artists on Inkjin Book & Pay.">
+  <title>Inbox — Inkjin BookPay</title>
+  <meta name="description" content="Messages with your tattoo artists on Inkjin BookPay.">
   <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   <link href="{{ asset('design/css/inkjin_bookpay.css') }}" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -116,7 +116,7 @@
     <div>
       <div class="mb-10">
         <h1 class="text-white text-xl font-bold">inkjin</h1>
-        <p class="text-white/50 text-[10px] uppercase tracking-[2px] mt-1">Book & Pay</p>
+        <p class="text-white/50 text-[10px] uppercase tracking-[2px] mt-1">BookPay</p>
       </div>
       <nav class="flex flex-col gap-1">
         <a href="{{ route('user.dashboard') }}" class="nav-item"><span class="material-symbols-outlined">dashboard</span> Dashboard</a>

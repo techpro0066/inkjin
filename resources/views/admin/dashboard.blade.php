@@ -22,21 +22,21 @@
           <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
             <span class="material-symbols-outlined text-primary text-xl">brush</span>
           </div>
-          <p class="text-2xl font-extrabold text-on-surface">342</p>
+          <p class="text-2xl font-extrabold text-on-surface">{{ number_format($stats['artists']) }}</p>
           <p class="text-xs font-semibold text-on-surface-variant mt-1">Total Artists</p>
         </div>
         <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
           <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-3">
             <span class="material-symbols-outlined text-blue-600 text-xl">group</span>
           </div>
-          <p class="text-2xl font-extrabold text-on-surface">1,847</p>
+          <p class="text-2xl font-extrabold text-on-surface">{{ number_format($stats['clients']) }}</p>
           <p class="text-xs font-semibold text-on-surface-variant mt-1">Total Clients</p>
         </div>
         <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
           <div class="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center mb-3">
             <span class="material-symbols-outlined text-green-600 text-xl">calendar_month</span>
           </div>
-          <p class="text-2xl font-extrabold text-on-surface">156</p>
+          <p class="text-2xl font-extrabold text-on-surface">{{ number_format($stats['active_bookings']) }}</p>
           <p class="text-xs font-semibold text-on-surface-variant mt-1">Active Bookings</p>
         </div>
         <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
@@ -63,52 +63,34 @@
       </div>
 
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-10">
-        <!-- Recent Activity -->
+        <!-- Recent Users -->
         <div class="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden">
           <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15">
-            <h3 class="text-lg font-bold text-on-surface">Recent Activity</h3>
+            <h3 class="text-lg font-bold text-on-surface">Recent Users</h3>
+            <a href="{{ route('admin.users.index') }}" class="text-xs font-semibold text-primary hover:underline">View all users →</a>
           </div>
           <div class="divide-y divide-outline-variant/10">
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-green-600" style="font-size:18px;">check_circle</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface"><span class="font-semibold">Julian Ink</span> completed onboarding</p><p class="text-xs text-outline mt-0.5">2h ago</p></div>
-            </div>
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-blue-600" style="font-size:18px;">calendar_month</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface"><span class="font-semibold">Julian Ink</span> booked Dragon Sleeve with Julian Ink</p><p class="text-xs text-outline mt-0.5">3h ago</p></div>
-            </div>
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-purple-600" style="font-size:18px;">edit</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface"><span class="font-semibold">Maya Tattoo</span> updated pricing for Rose Mandala</p><p class="text-xs text-outline mt-0.5">5h ago</p></div>
-            </div>
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-amber-600" style="font-size:18px;">person_add</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface">New artist signup: <span class="font-semibold">Alex Fine Line</span></p><p class="text-xs text-outline mt-0.5">Yesterday</p></div>
-            </div>
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-green-600" style="font-size:18px;">payments</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface">Payment of <span class="font-semibold">€240</span> processed for booking #INK-384729</p><p class="text-xs text-outline mt-0.5">Yesterday</p></div>
-            </div>
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-red-600" style="font-size:18px;">flag</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface">Design <span class="font-semibold">"Tribal Wolf"</span> flagged for review</p><p class="text-xs text-outline mt-0.5">Yesterday</p></div>
-            </div>
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-blue-600" style="font-size:18px;">person_add</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface">New client signup: <span class="font-semibold">Emma Rodriguez</span></p><p class="text-xs text-outline mt-0.5">2 days ago</p></div>
-            </div>
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-amber-600" style="font-size:18px;">warning</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface">Dispute opened on booking <span class="font-semibold">#INK-382104</span></p><p class="text-xs text-outline mt-0.5">2 days ago</p></div>
-            </div>
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-green-600" style="font-size:18px;">check_circle</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface"><span class="font-semibold">Nina Blackwork</span> verified payout details</p><p class="text-xs text-outline mt-0.5">3 days ago</p></div>
-            </div>
-            <div class="px-6 py-4 flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined text-purple-600" style="font-size:18px;">photo_library</span></div>
-              <div class="flex-1"><p class="text-sm text-on-surface"><span class="font-semibold">Sofia Color</span> added 5 new portfolio items</p><p class="text-xs text-outline mt-0.5">3 days ago</p></div>
-            </div>
+            @forelse($recentUsers as $user)
+              <div class="px-6 py-4 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-9 h-9 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
+                    {{ strtoupper(substr($user->first_name ?? 'U', 0, 1) . substr($user->last_name ?? '', 0, 1)) }}
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-on-surface truncate">{{ $user->name ?: 'N/A' }}</p>
+                    <p class="text-xs text-outline truncate">{{ $user->email }}</p>
+                  </div>
+                </div>
+                <div class="text-right shrink-0">
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold {{ $user->role === 'artist' ? 'bg-primary/10 text-primary' : 'bg-surface-container text-on-surface-variant' }}">
+                    {{ $user->role === 'artist' ? 'Artist' : 'Client' }}
+                  </span>
+                  <p class="text-[11px] text-outline mt-1">{{ $user->created_at?->diffForHumans() }}</p>
+                </div>
+              </div>
+            @empty
+              <div class="px-6 py-10 text-center text-sm text-on-surface-variant">No users yet.</div>
+            @endforelse
           </div>
         </div>
 

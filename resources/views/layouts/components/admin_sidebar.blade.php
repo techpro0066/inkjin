@@ -24,6 +24,7 @@
       <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><span class="material-symbols-outlined">dashboard</span> Dashboard</a>
       <a href="{{ route('admin.forms.index') }}" class="nav-item {{ request()->routeIs('admin.forms.index') ? 'active' : '' }}"><span class="material-symbols-outlined">description</span> Forms</a>
       <a href="{{ route('admin.styles.index') }}" class="nav-item {{ request()->routeIs('admin.styles.*') ? 'active' : '' }}"><span class="material-symbols-outlined">brush</span> Styles</a>
+      <a href="{{ route('admin.users.index') }}" class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}"><span class="material-symbols-outlined">group</span> Users</a>
     </nav>
   </div>
   <div>

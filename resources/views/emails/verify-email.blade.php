@@ -15,7 +15,7 @@
   </head>
   <body style="margin: 0; padding: 0; background-color: #fdf7ff; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
     <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
-      Your verification code for {{ config('app.name', 'Inkjin') }} Book &amp; Pay.
+      Your verification code for Inkjin BookPay.
     </div>
 
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fdf7ff;">

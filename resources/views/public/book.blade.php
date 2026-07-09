@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+  @include('layouts.partials.google-analytics')
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Book Your Tattoo | Inkjin</title>
@@ -1294,8 +1295,7 @@
 
     function formatDateToIso(dateObj) {
       if (!(dateObj instanceof Date)) return '';
-      // Match slot / blocked-day logic (artist timezone calendar day).
-      return formatYmdArtistLocal(dateObj);
+      return formatYmdFromParts(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
     }
 
     function buildStructuredQuestionAnswers() {
@@ -1985,6 +1985,38 @@
       }
     }
 
+    function formatYmdFromParts(year, monthIndex, day) {
+      return year + '-' + String(monthIndex + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    }
+
+    function weekdayKeyFromYmd(ymd) {
+      var parts = String(ymd || '').split('-');
+      if (parts.length !== 3) return weekdayKeys[0];
+      var date = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 12, 0, 0));
+      return weekdayKeys[date.getUTCDay()];
+    }
+
+    function artistNowMinutes() {
+      try {
+        var parts = new Intl.DateTimeFormat('en-GB', {
+          timeZone: artistTimezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }).formatToParts(new Date());
+        var hour = 0;
+        var minute = 0;
+        parts.forEach(function(part) {
+          if (part.type === 'hour') hour = parseInt(part.value, 10);
+          if (part.type === 'minute') minute = parseInt(part.value, 10);
+        });
+        return (hour * 60) + minute;
+      } catch (e) {
+        var now = new Date();
+        return (now.getHours() * 60) + now.getMinutes();
+      }
+    }
+
     function isArtistDateBlocked(ymd) {
       if (!ymd || !Array.isArray(artistBlockedPeriods) || !artistBlockedPeriods.length) return false;
       for (var i = 0; i < artistBlockedPeriods.length; i++) {
@@ -2044,25 +2076,26 @@
       return slots;
     }
 
-    function getSlotsForDate(dateObj, requiredMinutes) {
+    function getSlotsForDate(dateObj, requiredMinutes, ymdArtist) {
       if (!(dateObj instanceof Date)) return [];
       var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
       if (dayStart < todayStart) return [];
 
-      var ymdArtist = formatYmdArtistLocal(dateObj);
+      if (!ymdArtist) {
+        ymdArtist = formatYmdFromParts(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      }
       if (ymdArtist && isArtistDateBlocked(ymdArtist)) {
         return [];
       }
 
-      var weekdayKey = weekdayKeys[dateObj.getDay()];
+      var weekdayKey = weekdayKeyFromYmd(ymdArtist);
       var dayRanges = artistAvailabilitySchedule[weekdayKey];
       if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
       var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
 
-      // For today, only show slots strictly after current time.
-      if (dayStart.getTime() === todayStart.getTime()) {
-        var now = new Date();
-        var nowMinutes = now.getHours() * 60 + now.getMinutes();
+      var todayYmdArtist = formatYmdArtistLocal(new Date());
+      if (ymdArtist === todayYmdArtist) {
+        var nowMinutes = artistNowMinutes();
         slots = slots.filter(function(slot) {
           return parseTime12hToMinutes(slot.time) > nowMinutes;
         });
@@ -2080,24 +2113,26 @@
     }
 
     /** Slots that could exist from weekly hours only (ignores existing bookings). Same "today" filter as getSlotsForDate. */
-    function getHypotheticalSlotsForDate(dateObj, requiredMinutes) {
+    function getHypotheticalSlotsForDate(dateObj, requiredMinutes, ymdArtist) {
       if (!(dateObj instanceof Date)) return [];
       var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
       if (dayStart < todayStart) return [];
 
-      var ymdArtist = formatYmdArtistLocal(dateObj);
+      if (!ymdArtist) {
+        ymdArtist = formatYmdFromParts(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      }
       if (ymdArtist && isArtistDateBlocked(ymdArtist)) {
         return [];
       }
 
-      var weekdayKey = weekdayKeys[dateObj.getDay()];
+      var weekdayKey = weekdayKeyFromYmd(ymdArtist);
       var dayRanges = artistAvailabilitySchedule[weekdayKey];
       if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
       var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
 
-      if (dayStart.getTime() === todayStart.getTime()) {
-        var now = new Date();
-        var nowMinutes = now.getHours() * 60 + now.getMinutes();
+      var todayYmdArtist = formatYmdArtistLocal(new Date());
+      if (ymdArtist === todayYmdArtist) {
+        var nowMinutes = artistNowMinutes();
         slots = slots.filter(function(slot) {
           return parseTime12hToMinutes(slot.time) > nowMinutes;
         });
@@ -2107,15 +2142,15 @@
     }
 
     /** Weekly hours allow at least one slot, but none remain after bookings + buffer. */
-    function isDateFullyBookedOut(dateObj, requiredMinutes) {
+    function isDateFullyBookedOut(dateObj, requiredMinutes, ymdArtist) {
       if (!(dateObj instanceof Date)) return false;
       var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
       if (dayStart < todayStart) return false;
-      var ymd = formatYmdArtistLocal(dateObj);
+      var ymd = ymdArtist || formatYmdFromParts(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
       if (ymd && isArtistDateBlocked(ymd)) return false;
-      var hypo = getHypotheticalSlotsForDate(dateObj, requiredMinutes);
+      var hypo = getHypotheticalSlotsForDate(dateObj, requiredMinutes, ymd);
       if (!hypo.length) return false;
-      return getSlotsForDate(dateObj, requiredMinutes).length === 0;
+      return getSlotsForDate(dateObj, requiredMinutes, ymd).length === 0;
     }
 
     function getMainRequiredMinutes() {
@@ -2160,11 +2195,11 @@
           var div = document.createElement('div');
           div.textContent = day;
 
-          var ymdCell = formatYmdArtistLocal(dt);
+          var ymdCell = formatYmdFromParts(calYear, calMonth, day);
           var isBlockedDay = !!(ymdCell && isArtistDateBlocked(ymdCell));
           var reqMinMain = getMainRequiredMinutes();
-          var isAvail = getSlotsForDate(dt, reqMinMain).length > 0;
-          var isFullyBooked = !isAvail && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, reqMinMain);
+          var isAvail = getSlotsForDate(dt, reqMinMain, ymdCell).length > 0;
+          var isFullyBooked = !isAvail && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, reqMinMain, ymdCell);
           var isSel = selectedDate && dt.toDateString() === selectedDate.toDateString();
           var isToday = dt.toDateString() === today.toDateString();
           var isFuture = dt > today;
@@ -2273,14 +2308,14 @@
           var dt = new Date(year, month, day);
           var div = document.createElement('div');
           div.textContent = day;
-          var ymdCell = formatYmdArtistLocal(dt);
+          var ymdCell = formatYmdFromParts(year, month, day);
           var isBlockedDay = !!(ymdCell && isArtistDateBlocked(ymdCell));
           var isSel = selectedDateObj && dt.toDateString() === selectedDateObj.toDateString();
           var isToday = dt.toDateString() === today.toDateString();
           var isFuture = dt > today;
           var isBeforeMin = minDay && dt < minDay;
-          var isAvail = getSlotsForDate(dt, requiredMinutes).length > 0;
-          var isFullyBooked = !isBeforeMin && !isAvail && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, requiredMinutes);
+          var isAvail = getSlotsForDate(dt, requiredMinutes, ymdCell).length > 0;
+          var isFullyBooked = !isBeforeMin && !isAvail && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, requiredMinutes, ymdCell);
 
           var cls = 'cal-day';
         if (isSel) cls += ' selected';

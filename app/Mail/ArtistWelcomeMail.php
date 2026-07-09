@@ -20,7 +20,7 @@ class ArtistWelcomeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Welcome to Inkjin Book & Pay!'
+            subject: 'Welcome to Inkjin BookPay!'
         );
     }
 

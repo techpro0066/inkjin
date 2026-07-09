@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Welcome to Inkjin Book &amp; Pay! 🎉</title>
+  <title>Welcome to Inkjin BookPay! 🎉</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
@@ -14,7 +14,7 @@
 </head>
 <body style="margin: 0; padding: 0; background-color: #fdf7ff; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
   <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
-    You're all set! Your Inkjin Book &amp; Pay profile is live. Here's what you can do next.
+    You're all set! Your Inkjin BookPay profile is live. Here's what you can do next.
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fdf7ff;">
@@ -41,7 +41,7 @@
                 </tr>
                 <tr>
                   <td align="center" style="font-size: 24px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 12px 0;">
-                    Welcome to Inkjin Book &amp; Pay!
+                    Welcome to Inkjin BookPay!
                   </td>
                 </tr>
                 <tr>

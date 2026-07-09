@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Rules\ReservedArtistUsername;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\UserDetail;
@@ -31,6 +32,7 @@ class ProfileUpdateRequest extends FormRequest
                 'max:30',
                 'regex:/^[A-Za-z0-9._]+$/',
                 Rule::unique(UserDetail::class, 'user_name')->ignore($userDetail?->id),
+                new ReservedArtistUsername($user->email),
             ],
             'mobile_number' => [
                 'required',

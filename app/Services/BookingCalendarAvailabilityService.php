@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\GoogleCalendarController;
 use App\Models\ArtistDesign;
 use App\Models\Availability;
 use App\Models\CustomRequest;
 use App\Models\AvailabilityOverride;
 use App\Models\Booking;
+use App\Models\UserDetail;
 use Carbon\Carbon;
 
 /**
@@ -88,6 +90,7 @@ class BookingCalendarAvailabilityService
             }
             $this->appendBookingOccupancyToBusyMap($b, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
         }
+        $this->appendGoogleCalendarBusyToBusyMap($userDetail, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
 
         $timing = strtolower((string) ($booking->consultation_timing_type ?? 'combined'));
         if ($timing !== 'separate') {
@@ -180,6 +183,7 @@ class BookingCalendarAvailabilityService
         foreach ($existingBookings as $booking) {
             $this->appendBookingOccupancyToBusyMap($booking, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
         }
+        $this->appendGoogleCalendarBusyToBusyMap($userDetail, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
 
         return [
             'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
@@ -302,6 +306,89 @@ class BookingCalendarAvailabilityService
                 }
                 if ($endMinutes > $startMinutes) {
                     if (! isset($map[$key])) {
+                        $map[$key] = [];
+                    }
+                    $map[$key][] = ['start' => $startMinutes, 'end' => $endMinutes];
+                }
+            }
+
+            $d->addDay();
+        }
+    }
+
+    /**
+     * Merge connected Google Calendar events into the local busy map.
+     *
+     * @param  array<string, list<array{start:int,end:int}>>  $map
+     */
+    private function appendGoogleCalendarBusyToBusyMap(UserDetail $userDetail, string $artistTz, array &$map, int $bufferAfterMinutes = 0): void
+    {
+        if (empty($userDetail->google_calendar_token)) {
+            return;
+        }
+
+        $startDate = Carbon::now($artistTz)->startOfDay();
+        $endDate = $startDate->copy()->addDays(180);
+        $busyBlocks = GoogleCalendarController::getBusyBlocksForDateRange(
+            $userDetail,
+            $startDate->format('Y-m-d'),
+            $endDate->format('Y-m-d'),
+            $artistTz
+        );
+
+        foreach ($busyBlocks as $block) {
+            $startUtc = $block['start_datetime_utc'] ?? null;
+            $endUtc = $block['end_datetime_utc'] ?? null;
+            if (!$startUtc || !$endUtc) {
+                continue;
+            }
+
+            try {
+                $startAt = $startUtc instanceof Carbon ? $startUtc->copy() : Carbon::parse((string) $startUtc, 'UTC');
+                $endAt = $endUtc instanceof Carbon ? $endUtc->copy() : Carbon::parse((string) $endUtc, 'UTC');
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $this->appendDateTimeRangeToBusyMap($map, $startAt, $endAt, $artistTz, $bufferAfterMinutes);
+        }
+    }
+
+    /**
+     * @param  array<string, list<array{start:int,end:int}>>  $map
+     */
+    private function appendDateTimeRangeToBusyMap(array &$map, Carbon $startAtUtc, Carbon $endAtUtc, string $tz, int $bufferAfterMinutes = 0): void
+    {
+        $startAt = $startAtUtc->copy()->setTimezone($tz);
+        $endAt = $endAtUtc->copy()->setTimezone($tz);
+
+        if ($bufferAfterMinutes > 0) {
+            $endAt = $endAt->copy()->addMinutes(max(0, $bufferAfterMinutes));
+        }
+
+        if ($endAt <= $startAt) {
+            return;
+        }
+
+        $d = $startAt->copy()->startOfDay();
+        $lastDay = $endAt->copy()->startOfDay();
+        $guard = 0;
+
+        while ($d->lte($lastDay) && $guard++ < 14) {
+            $dayStart = $d->copy()->startOfDay();
+            $dayEndExclusive = $d->copy()->addDay()->startOfDay();
+            $segFrom = $startAt->copy()->max($dayStart);
+            $segTo = $endAt->copy()->min($dayEndExclusive);
+
+            if ($segTo > $segFrom) {
+                $key = $d->format('Y-m-d');
+                $startMinutes = ($segFrom->hour * 60) + $segFrom->minute;
+                $endMinutes = $startMinutes + (int) max(1, $segFrom->diffInMinutes($segTo));
+                if ($endMinutes > 24 * 60) {
+                    $endMinutes = 24 * 60;
+                }
+                if ($endMinutes > $startMinutes) {
+                    if (!isset($map[$key])) {
                         $map[$key] = [];
                     }
                     $map[$key][] = ['start' => $startMinutes, 'end' => $endMinutes];

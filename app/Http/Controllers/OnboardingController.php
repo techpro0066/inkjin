@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
+use App\Rules\ReservedArtistUsername;
 use App\Models\QuestionSorting;
 use App\Services\StripeConnectService;
 use App\Services\StripeCountrySpecService;
@@ -673,7 +674,8 @@ class OnboardingController extends Controller
                     'min:1',
                     'max:30',
                     'regex:/^[A-Za-z0-9._]+$/',
-                    'unique:user_details,user_name,' . ($userDetail ? $userDetail->id : 'NULL') . ',id'
+                    'unique:user_details,user_name,' . ($userDetail ? $userDetail->id : 'NULL') . ',id',
+                    new ReservedArtistUsername($user->email),
                 ],
                 'mobile_number' => [
                     'required', 

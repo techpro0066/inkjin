@@ -163,22 +163,40 @@ class BookingCancellationController extends Controller
 
             $booking->refresh();
 
-            // Cancel Google Calendar event
-            if ($booking->google_calendar_event_id) {
-                try {
-                    $artistUserDetail = $booking->artist->userDetail;
-                    if ($artistUserDetail && $artistUserDetail->google_calendar_token) {
+            // Cancel Google Calendar event(s)
+            try {
+                $artistUserDetail = $booking->artist->userDetail;
+                if ($artistUserDetail && $artistUserDetail->google_calendar_token) {
+                    if ($booking->google_calendar_event_id) {
                         GoogleCalendarController::deleteCalendarEvent(
                             $artistUserDetail,
                             $booking->google_calendar_event_id
                         );
+                        $booking->update([
+                            'google_calendar_event_id' => null,
+                            'google_meet_link' => null,
+                        ]);
                     }
-                } catch (\Exception $e) {
-                    Log::error('Failed to delete Google Calendar event (non-critical)', [
-                        'booking_id' => $booking->id,
-                        'error' => $e->getMessage(),
-                    ]);
+
+                    if ($booking->consultation_booking_id) {
+                        $consultationBooking = Booking::find($booking->consultation_booking_id);
+                        if ($consultationBooking && $consultationBooking->google_calendar_event_id) {
+                            GoogleCalendarController::deleteCalendarEvent(
+                                $artistUserDetail,
+                                $consultationBooking->google_calendar_event_id
+                            );
+                            $consultationBooking->update([
+                                'google_calendar_event_id' => null,
+                                'google_meet_link' => null,
+                            ]);
+                        }
+                    }
                 }
+            } catch (\Exception $e) {
+                Log::error('Failed to delete Google Calendar event(s) (non-critical)', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             // Send email notifications
@@ -310,6 +328,43 @@ class BookingCancellationController extends Controller
                 'platform_fee_refunded' => $refundData['platform_fee_refunded'],
                 'action_history' => $actionHistory,
             ]);
+
+            // Remove Google Calendar event(s) for no-show bookings.
+            try {
+                $booking->refresh();
+                $artistUserDetail = $booking->artist->userDetail;
+                if ($artistUserDetail && $artistUserDetail->google_calendar_token) {
+                    if ($booking->google_calendar_event_id) {
+                        GoogleCalendarController::deleteCalendarEvent(
+                            $artistUserDetail,
+                            $booking->google_calendar_event_id
+                        );
+                        $booking->update([
+                            'google_calendar_event_id' => null,
+                            'google_meet_link' => null,
+                        ]);
+                    }
+
+                    if ($booking->consultation_booking_id) {
+                        $consultationBooking = Booking::find($booking->consultation_booking_id);
+                        if ($consultationBooking && $consultationBooking->google_calendar_event_id) {
+                            GoogleCalendarController::deleteCalendarEvent(
+                                $artistUserDetail,
+                                $consultationBooking->google_calendar_event_id
+                            );
+                            $consultationBooking->update([
+                                'google_calendar_event_id' => null,
+                                'google_meet_link' => null,
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to delete Google Calendar event(s) on no-show (non-critical)', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             // Process refund if needed
             if ($refundData['refund_amount'] > 0) {

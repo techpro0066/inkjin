@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  @include('layouts.partials.google-analytics')
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Inkjin | {{ $tattoo->title }}</title>
-  <meta name="description" content="View tattoo design details and book your session with Inkjin Book & Pay.">
+  <meta name="description" content="View tattoo design details and book your session with Inkjin BookPay.">
   <link rel="icon" href="{{asset('design/images/icons/favicon.png')}}">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -331,7 +332,7 @@
         </div>
         <span>Powered by <strong class="text-on-surface">Inkjin</strong></span>
         <span class="text-outline">·</span>
-        <span>Book & Pay</span>
+        <span>BookPay</span>
       </div>
       <div class="flex items-center gap-4 text-sm text-on-surface-variant">
         <a href="https://inkjin.com/en/privacy" class="hover:text-primary transition-colors" target="_blank">Privacy</a>

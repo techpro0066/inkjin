@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Google_Client;
 use Google_Service_Calendar;
+use Google\Service\Calendar\FreeBusyRequest;
+use Google\Service\Calendar\FreeBusyRequestItem;
+use GuzzleHttp\Client as GuzzleClient;
 
 class GoogleCalendarController extends Controller
 {
@@ -437,121 +440,311 @@ class GoogleCalendarController extends Controller
 
     /**
      * Get Google Calendar events for a specific date
-     * 
-     * @param UserDetail $userDetail
-     * @param string $date Date in Y-m-d format
-     * @param string $timezone User's timezone
-     * @return array Array of events with start_time and end_time in UTC
+     *
+     * @return array<int, array<string, mixed>>
      */
     public static function getEventsForDate($userDetail, $date, $timezone = 'UTC')
     {
+        return self::getEventsForDateRange($userDetail, $date, $date, $timezone);
+    }
+
+    /**
+     * Get Google Calendar events for a date range (single API request with pagination).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function getEventsForDateRange($userDetail, string $startDate, string $endDate, string $timezone = 'UTC'): array
+    {
         try {
-            if (!$userDetail || !$userDetail->google_calendar_token || !$userDetail->google_calendar_id) {
-                Log::info('Google Calendar not connected for event fetching', [
-                    'user_id' => $userDetail->user_id ?? null,
-                    'date' => $date
-                ]);
+            $service = self::calendarServiceForUserDetail($userDetail);
+            if (! $service) {
                 return [];
             }
 
-            $token = is_array($userDetail->google_calendar_token) 
-                ? $userDetail->google_calendar_token 
-                : json_decode($userDetail->google_calendar_token, true);
-
-            if (!$token) {
-                Log::warning('Invalid token format for event fetching', [
-                    'user_id' => $userDetail->user_id ?? null,
-                    'date' => $date
-                ]);
-                return [];
-            }
-
-            $client = new Google_Client();
-            $client->setClientId(config('services.google.client_id'));
-            $client->setClientSecret(config('services.google.client_secret'));
-            $client->setAccessToken($token);
-
-            // Check if token is expired and refresh if needed
-            if ($client->isAccessTokenExpired()) {
-                $calendarController = new self();
-                $newToken = $calendarController->refreshToken($userDetail);
-                if ($newToken) {
-                    $client->setAccessToken($newToken);
-                    Log::info('Token refreshed successfully for event fetching', [
-                        'user_id' => $userDetail->user_id,
-                        'date' => $date
-                    ]);
-                } else {
-                    // Check if refresh token is missing
-                    if (!isset($token['refresh_token']) || empty($token['refresh_token'])) {
-                        Log::error('Refresh token missing - user needs to reconnect Google Calendar for event fetching', [
-                            'user_id' => $userDetail->user_id,
-                            'date' => $date
-                        ]);
-                    } else {
-                        Log::error('Token refresh failed - refresh token may be invalid or revoked', [
-                            'user_id' => $userDetail->user_id,
-                            'date' => $date
-                        ]);
-                    }
-                    return [];
-                }
-            }
-
-            $service = new Google_Service_Calendar($client);
             $calendarId = $userDetail->google_calendar_id ?? 'primary';
+            $startOfRange = Carbon::createFromFormat('Y-m-d', $startDate, $timezone)->startOfDay();
+            $endOfRange = Carbon::createFromFormat('Y-m-d', $endDate, $timezone)->endOfDay();
+            $timeMin = $startOfRange->copy()->setTimezone('UTC')->toRfc3339String();
+            $timeMax = $endOfRange->copy()->setTimezone('UTC')->toRfc3339String();
 
-            // Create date range for the entire day in user's timezone
-            $startOfDay = \Carbon\Carbon::createFromFormat('Y-m-d', $date, $timezone)->startOfDay();
-            $endOfDay = $startOfDay->copy()->endOfDay();
-
-            // Convert to UTC for Google Calendar API
-            $timeMin = $startOfDay->setTimezone('UTC')->toRfc3339String();
-            $timeMax = $endOfDay->setTimezone('UTC')->toRfc3339String();
-
-            // Fetch events
-            $optParams = [
-                'timeMin' => $timeMin,
-                'timeMax' => $timeMax,
-                'singleEvents' => true,
-                'orderBy' => 'startTime',
-            ];
-
-            $events = $service->events->listEvents($calendarId, $optParams);
             $eventList = [];
+            $pageToken = null;
 
-            foreach ($events->getItems() as $event) {
-                $start = $event->getStart();
-                $end = $event->getEnd();
+            do {
+                $optParams = [
+                    'timeMin' => $timeMin,
+                    'timeMax' => $timeMax,
+                    'singleEvents' => true,
+                    'orderBy' => 'startTime',
+                    'maxResults' => 250,
+                    'timeZone' => $timezone,
+                ];
 
-                if ($start && $end) {
-                    $startTime = $start->getDateTime() ?: $start->getDate();
-                    $endTime = $end->getDateTime() ?: $end->getDate();
-
-                    if ($startTime && $endTime) {
-                        // Parse and convert to UTC Carbon instances
-                        $startUTC = \Carbon\Carbon::parse($startTime)->setTimezone('UTC');
-                        $endUTC = \Carbon\Carbon::parse($endTime)->setTimezone('UTC');
-
-                        $eventList[] = [
-                            'start_time_utc' => $startUTC->format('H:i:s'),
-                            'end_time_utc' => $endUTC->format('H:i:s'),
-                            'start_datetime_utc' => $startUTC,
-                            'end_datetime_utc' => $endUTC,
-                            'summary' => $event->getSummary() ?? 'Busy',
-                        ];
-                    }
+                if ($pageToken) {
+                    $optParams['pageToken'] = $pageToken;
                 }
-            }
+
+                $events = $service->events->listEvents($calendarId, $optParams);
+                $eventList = array_merge($eventList, self::mapCalendarEventItems($events->getItems(), $timezone));
+                $pageToken = $events->getNextPageToken();
+            } while ($pageToken);
 
             return $eventList;
         } catch (\Exception $e) {
-            Log::error('Google Calendar fetch events error: ' . $e->getMessage(), [
+            Log::error('Google Calendar fetch events error: '.$e->getMessage(), [
                 'user_id' => $userDetail->user_id ?? null,
-                'date' => $date,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
             ]);
+
             return [];
         }
+    }
+
+    /**
+     * Fetch busy blocks from all selected Google calendars (FreeBusy API).
+     * Queries are chunked to stay within Google's ~90-day FreeBusy window.
+     *
+     * @return array<int, array{start_datetime_utc: Carbon, end_datetime_utc: Carbon}>
+     */
+    public static function getBusyBlocksForDateRange($userDetail, string $startDate, string $endDate, string $timezone = 'UTC'): array
+    {
+        try {
+            $service = self::calendarServiceForUserDetail($userDetail);
+            if (! $service) {
+                return [];
+            }
+
+            $calendarIds = self::selectedCalendarIds($service, $userDetail);
+            $rangeStart = Carbon::createFromFormat('Y-m-d', $startDate, $timezone)->startOfDay();
+            $rangeEnd = Carbon::createFromFormat('Y-m-d', $endDate, $timezone)->endOfDay();
+            $blocks = [];
+            $chunkStart = $rangeStart->copy();
+            $maxChunkDays = 90;
+
+            while ($chunkStart->lte($rangeEnd)) {
+                $chunkEnd = $chunkStart->copy()->addDays($maxChunkDays - 1)->endOfDay();
+                if ($chunkEnd->gt($rangeEnd)) {
+                    $chunkEnd = $rangeEnd->copy();
+                }
+
+                $blocks = array_merge(
+                    $blocks,
+                    self::queryFreeBusyBlocks($service, $calendarIds, $chunkStart, $chunkEnd, $timezone)
+                );
+
+                if ($chunkEnd->gte($rangeEnd)) {
+                    break;
+                }
+
+                $chunkStart = $chunkEnd->copy()->addSecond()->startOfDay();
+            }
+
+            if ($blocks === []) {
+                $events = self::getEventsForDateRange($userDetail, $startDate, $endDate, $timezone);
+                foreach ($events as $event) {
+                    $startUtc = $event['start_datetime_utc'] ?? null;
+                    $endUtc = $event['end_datetime_utc'] ?? null;
+                    if (! $startUtc || ! $endUtc) {
+                        continue;
+                    }
+
+                    $blocks[] = [
+                        'start_datetime_utc' => $startUtc instanceof Carbon ? $startUtc->copy() : Carbon::parse((string) $startUtc, 'UTC'),
+                        'end_datetime_utc' => $endUtc instanceof Carbon ? $endUtc->copy() : Carbon::parse((string) $endUtc, 'UTC'),
+                    ];
+                }
+            }
+
+            return $blocks;
+        } catch (\Exception $e) {
+            Log::error('Google Calendar freebusy error: '.$e->getMessage(), [
+                'user_id' => $userDetail->user_id ?? null,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * @param  list<string>  $calendarIds
+     * @return array<int, array{start_datetime_utc: Carbon, end_datetime_utc: Carbon}>
+     */
+    private static function queryFreeBusyBlocks(
+        Google_Service_Calendar $service,
+        array $calendarIds,
+        Carbon $startOfRange,
+        Carbon $endOfRange,
+        string $timezone
+    ): array {
+        $request = new FreeBusyRequest();
+        $request->setTimeMin($startOfRange->copy()->setTimezone('UTC')->toRfc3339String());
+        $request->setTimeMax($endOfRange->copy()->setTimezone('UTC')->toRfc3339String());
+        $request->setTimeZone($timezone);
+        $request->setItems(array_map(static function (string $calendarId) {
+            $item = new FreeBusyRequestItem();
+            $item->setId($calendarId);
+
+            return $item;
+        }, $calendarIds));
+
+        $response = $service->freebusy->query($request);
+        $blocks = [];
+
+        foreach ($response->getCalendars() ?? [] as $calendarBusy) {
+            foreach ($calendarBusy->getBusy() ?? [] as $period) {
+                $start = $period->getStart();
+                $end = $period->getEnd();
+                if (! $start || ! $end) {
+                    continue;
+                }
+
+                try {
+                    $blocks[] = [
+                        'start_datetime_utc' => Carbon::parse($start)->utc(),
+                        'end_datetime_utc' => Carbon::parse($end)->utc(),
+                    ];
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function selectedCalendarIds(Google_Service_Calendar $service, UserDetail $userDetail): array
+    {
+        $ids = [];
+
+        try {
+            $calendarList = $service->calendarList->listCalendarList([
+                'minAccessRole' => 'reader',
+                'showHidden' => false,
+            ]);
+
+            foreach ($calendarList->getItems() ?? [] as $calendar) {
+                if ($calendar->getSelected()) {
+                    $id = $calendar->getId();
+                    if (is_string($id) && $id !== '') {
+                        $ids[] = $id;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Google Calendar list failed while resolving busy calendars: '.$e->getMessage(), [
+                'user_id' => $userDetail->user_id ?? null,
+            ]);
+        }
+
+        if ($ids === []) {
+            $fallback = $userDetail->google_calendar_id ?: 'primary';
+            $ids[] = $fallback;
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    private static function calendarServiceForUserDetail(?UserDetail $userDetail): ?Google_Service_Calendar
+    {
+        if (! $userDetail || ! $userDetail->google_calendar_token) {
+            return null;
+        }
+
+        $token = is_array($userDetail->google_calendar_token)
+            ? $userDetail->google_calendar_token
+            : json_decode($userDetail->google_calendar_token, true);
+
+        if (! $token) {
+            return null;
+        }
+
+        $client = new Google_Client();
+        $client->setClientId(config('services.google.client_id'));
+        $client->setClientSecret(config('services.google.client_secret'));
+        $client->setHttpClient(new GuzzleClient([
+            'timeout' => 15,
+            'connect_timeout' => 5,
+        ]));
+        $client->setAccessToken($token);
+
+        if ($client->isAccessTokenExpired()) {
+            $calendarController = new self();
+            $newToken = $calendarController->refreshToken($userDetail);
+            if (! $newToken) {
+                return null;
+            }
+
+            $client->setAccessToken($newToken);
+        }
+
+        return new Google_Service_Calendar($client);
+    }
+
+    /**
+     * @param  array<int, mixed>|null  $items
+     * @return array<int, array<string, mixed>>
+     */
+    private static function mapCalendarEventItems(?array $items, string $timezone = 'UTC'): array
+    {
+        $eventList = [];
+
+        foreach ($items ?? [] as $event) {
+            if (method_exists($event, 'getStatus') && $event->getStatus() === 'cancelled') {
+                continue;
+            }
+
+            if (method_exists($event, 'getTransparency') && $event->getTransparency() === 'transparent') {
+                continue;
+            }
+
+            $start = $event->getStart();
+            $end = $event->getEnd();
+
+            if (! $start || ! $end) {
+                continue;
+            }
+
+            $startDateTime = $start->getDateTime();
+            $endDateTime = $end->getDateTime();
+
+            if ($startDateTime && $endDateTime) {
+                $startUTC = Carbon::parse($startDateTime)->utc();
+                $endUTC = Carbon::parse($endDateTime)->utc();
+            } else {
+                $startDate = $start->getDate();
+                $endDate = $end->getDate();
+                if (! $startDate || ! $endDate) {
+                    continue;
+                }
+
+                try {
+                    $startUTC = Carbon::createFromFormat('Y-m-d', $startDate, $timezone)->startOfDay()->utc();
+                    $endUTC = Carbon::createFromFormat('Y-m-d', $endDate, $timezone)->startOfDay()->utc();
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+
+            if ($endUTC <= $startUTC) {
+                continue;
+            }
+
+            $eventList[] = [
+                'start_time_utc' => $startUTC->format('H:i:s'),
+                'end_time_utc' => $endUTC->format('H:i:s'),
+                'start_datetime_utc' => $startUTC,
+                'end_datetime_utc' => $endUTC,
+                'summary' => $event->getSummary() ?? 'Busy',
+            ];
+        }
+
+        return $eventList;
     }
 
     /**

@@ -98,6 +98,11 @@ class User extends Authenticatable implements MustVerifyEmail
         $this->forceFill(['phone_number' => $phone])->save();
     }
 
+    public function getNameAttribute(): string
+    {
+        return trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
+    }
+
     /**
      * Get the user detail associated with the user.
      */

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Admin\FormController;
 use App\Http\Controllers\Admin\StyleController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\QuestionsController;
 
 use App\Http\Controllers\UserController\BookingsController;
@@ -154,7 +155,18 @@ Route::middleware(['auth', 'onboarding', 'client_password'])->group(function () 
 // Admin routes
 Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', function () {
-        return view('admin.dashboard');
+        $stats = [
+            'artists' => \App\Models\User::query()->where('role', 'artist')->count(),
+            'clients' => \App\Models\User::query()->where('role', 'user')->count(),
+            'active_bookings' => \App\Models\Booking::query()->where('status', 'confirmed')->count(),
+        ];
+        $recentUsers = \App\Models\User::with('userDetail')
+            ->where('role', '!=', 'admin')
+            ->orderByDesc('created_at')
+            ->limit(8)
+            ->get();
+
+        return view('admin.dashboard', compact('stats', 'recentUsers'));
     })->name('admin.dashboard');
 
     Route::get('/forms', [FormController::class, 'index'])->name('admin.forms.index');
@@ -174,8 +186,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     // Route::put('/questions/{id}', [\App\Http\Controllers\Admin\QuestionController::class, 'update'])->name('admin.questions.update');
     // Route::delete('/questions/{id}', [\App\Http\Controllers\Admin\QuestionController::class, 'destroy'])->name('admin.questions.destroy');
     
-    // Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
-    // Route::get('/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('admin.users.show');
+    Route::get('/users', [AdminUserController::class, 'index'])->name('admin.users.index');
+    Route::get('/users/{id}', [AdminUserController::class, 'show'])->name('admin.users.show');
 });
 
 // Artist routes

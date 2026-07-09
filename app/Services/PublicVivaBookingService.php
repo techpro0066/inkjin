@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\GoogleCalendarController;
 use App\Mail\BookingConfirmationMail;
 use App\Models\Booking;
 use App\Models\PendingVivaPayment;
@@ -151,6 +152,8 @@ class PublicVivaBookingService
             $booking->save();
         }
 
+        $this->createGoogleCalendarEvent($booking);
+
         $this->sendEmails($booking, $bookingUser, $userDetail);
 
         return $booking;
@@ -181,6 +184,35 @@ class PublicVivaBookingService
                     'error' => $e->getMessage(),
                 ]);
             }
+        }
+    }
+
+    private function createGoogleCalendarEvent(Booking $booking): void
+    {
+        try {
+            $booking->loadMissing(['artist.userDetail']);
+            $artistUserDetail = $booking->artist?->userDetail;
+            if (! $artistUserDetail || ! $artistUserDetail->google_calendar_token) {
+                return;
+            }
+
+            $calendarResult = GoogleCalendarController::createCalendarEvent(
+                $artistUserDetail,
+                $booking,
+                (bool) $booking->has_consultation
+            );
+
+            if (is_array($calendarResult) && ! empty($calendarResult['event_id'])) {
+                $booking->update([
+                    'google_calendar_event_id' => $calendarResult['event_id'],
+                    'google_meet_link' => $calendarResult['meet_link'] ?? null,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to create Google Calendar event (Viva public)', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

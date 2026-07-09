@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\GoogleCalendarController;
 use App\Mail\BookingConfirmationMail;
 use App\Models\AvailabilityOverride;
 use App\Models\Booking;
@@ -174,6 +175,8 @@ class ManagedRequestBookingService
             $booking->save();
         }
 
+        $this->createGoogleCalendarEvent($booking);
+
         $this->linkRequestToBooking($bookingRequest, $booking);
         $this->sendConfirmationEmails($booking);
 
@@ -285,6 +288,8 @@ class ManagedRequestBookingService
             $booking->save();
         }
 
+        $this->createGoogleCalendarEvent($booking);
+
         $this->linkRequestToBooking($bookingRequest, $booking);
         $this->sendConfirmationEmails($booking);
 
@@ -327,6 +332,35 @@ class ManagedRequestBookingService
                     'error' => $e->getMessage(),
                 ]);
             }
+        }
+    }
+
+    private function createGoogleCalendarEvent(Booking $booking): void
+    {
+        try {
+            $booking->loadMissing(['artist.userDetail']);
+            $artistUserDetail = $booking->artist?->userDetail;
+            if (! $artistUserDetail || ! $artistUserDetail->google_calendar_token) {
+                return;
+            }
+
+            $calendarResult = GoogleCalendarController::createCalendarEvent(
+                $artistUserDetail,
+                $booking,
+                (bool) $booking->has_consultation
+            );
+
+            if (is_array($calendarResult) && ! empty($calendarResult['event_id'])) {
+                $booking->update([
+                    'google_calendar_event_id' => $calendarResult['event_id'],
+                    'google_meet_link' => $calendarResult['meet_link'] ?? null,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to create Google Calendar event (managed request)', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

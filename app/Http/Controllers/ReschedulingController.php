@@ -325,42 +325,60 @@ class ReschedulingController extends Controller
                 ]);
             }
 
-            // Update Google Calendar event for tattoo session
-            if ($booking->google_calendar_event_id) {
-                try {
-                    $artistUserDetail = $booking->artist->userDetail;
-                    if ($artistUserDetail && $artistUserDetail->google_calendar_token) {
-                        GoogleCalendarController::updateCalendarEvent(
+            // Recreate Google Calendar event for tattoo session (delete old, add new)
+            try {
+                $artistUserDetail = $booking->artist->userDetail;
+                if ($artistUserDetail && $artistUserDetail->google_calendar_token) {
+                    if ($booking->google_calendar_event_id) {
+                        GoogleCalendarController::deleteCalendarEvent(
                             $artistUserDetail,
-                            $booking->google_calendar_event_id,
-                            $request->new_date,
-                            $request->new_start_time_utc,
-                            $request->new_end_time_utc
+                            $booking->google_calendar_event_id
                         );
                     }
-                } catch (\Exception $e) {
-                    Log::error('Failed to update Google Calendar event (non-critical)', [
-                        'booking_id' => $booking->id,
-                        'error' => $e->getMessage(),
+
+                    $newMainCalendarEvent = GoogleCalendarController::createCalendarEvent(
+                        $artistUserDetail,
+                        $booking,
+                        (bool) $booking->has_consultation
+                    );
+
+                    $booking->update([
+                        'google_calendar_event_id' => is_array($newMainCalendarEvent) ? ($newMainCalendarEvent['event_id'] ?? null) : null,
+                        'google_meet_link' => is_array($newMainCalendarEvent) ? ($newMainCalendarEvent['meet_link'] ?? null) : null,
                     ]);
                 }
+            } catch (\Exception $e) {
+                Log::error('Failed to recreate Google Calendar event (non-critical)', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
-            
-            // Update Google Calendar event for consultation if rescheduled
-            if ($consultationBooking && $consultationBooking->google_calendar_event_id) {
+
+            // Recreate Google Calendar event for linked consultation booking (if present)
+            if ($consultationBooking) {
                 try {
                     $artistUserDetail = $booking->artist->userDetail;
                     if ($artistUserDetail && $artistUserDetail->google_calendar_token) {
-                        GoogleCalendarController::updateCalendarEvent(
+                        if ($consultationBooking->google_calendar_event_id) {
+                            GoogleCalendarController::deleteCalendarEvent(
+                                $artistUserDetail,
+                                $consultationBooking->google_calendar_event_id
+                            );
+                        }
+
+                        $newConsultCalendarEvent = GoogleCalendarController::createCalendarEvent(
                             $artistUserDetail,
-                            $consultationBooking->google_calendar_event_id,
-                            $request->consultation_date,
-                            $request->consultation_start_time_utc,
-                            $request->consultation_end_time_utc
+                            $consultationBooking,
+                            true
                         );
+
+                        $consultationBooking->update([
+                            'google_calendar_event_id' => is_array($newConsultCalendarEvent) ? ($newConsultCalendarEvent['event_id'] ?? null) : null,
+                            'google_meet_link' => is_array($newConsultCalendarEvent) ? ($newConsultCalendarEvent['meet_link'] ?? null) : null,
+                        ]);
                     }
                 } catch (\Exception $e) {
-                    Log::error('Failed to update consultation Google Calendar event (non-critical)', [
+                    Log::error('Failed to recreate consultation Google Calendar event (non-critical)', [
                         'booking_id' => $consultationBooking->id,
                         'error' => $e->getMessage(),
                     ]);
