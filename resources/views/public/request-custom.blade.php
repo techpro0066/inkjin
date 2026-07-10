@@ -446,9 +446,7 @@
     <div class="w-full max-w-xl">
       <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your phone number?</h2>
       <p class="text-on-surface-variant mb-6">In case the artist needs to reach you quickly.</p>
-      <input type="tel" id="tfPhone" placeholder="+30 694 123 4567"
-        class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-      <p id="tfPhoneError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+      @include('partials.phone-country-input', ['idPrefix' => 'tf'])
       <div class="flex items-center justify-between mt-6">
         <button onclick="nextScreen()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
           Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -612,6 +610,7 @@
   @include('public.partials.question-image-upload')
   <script src="{{ asset('js/question-answer-display.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  @include('partials.phone-country-scripts')
   <script>
   (function($) {
     'use strict';
@@ -619,7 +618,6 @@
     var artistUsername = @json($artistUsername ?? '');
     var fallbackTattooSlug = @json($fallbackTattooSlug ?? '');
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
-    var styleQuestionId = @json($styleQuestionId ?? 0);
     var hiddenStyleOptions = @json($hiddenStyleOptions ?? []);
     var styleOtherModalContext = null;
     var questionAnswers = {};
@@ -683,8 +681,9 @@
       questionAnswers[questionId] = Array.isArray(urls) ? urls.slice() : [];
     });
 
-    function isStyleQuestionId(qId) {
-      return styleQuestionId > 0 && String(qId) === String(styleQuestionId);
+    function isStyleQuestion(qId) {
+      var def = questionDefinitions.find(function(q) { return String(q.id) === String(qId); });
+      return !!(def && def.type === 'style');
     }
 
     function getStyleOtherModal() {
@@ -735,7 +734,7 @@
     }
 
     function restoreStyleQuestionUi($div) {
-      if (!$div.length || !isStyleQuestionId($div.data('question-id'))) return;
+      if (!$div.length || !isStyleQuestion($div.data('question-id'))) return;
       closeStyleOtherModal(false);
       var qId = $div.data('question-id');
       var answer = String(questionAnswers[qId] || '').trim();
@@ -764,10 +763,10 @@
         var isFirst = idx === 0;
         var isLast = idx === questionDefinitions.length - 1;
         var body = '';
-        if (q.type === 'radio') {
+        if (q.type === 'radio' || q.type === 'style') {
           body = '<div class="flex flex-wrap gap-2 single-choice-group">' + q.options.map(function(opt) {
             var isOther = String(opt || '').trim().toLowerCase() === 'other';
-            var optionClass = (isStyleQuestionId(q.id) && isOther) ? ' option-other' : '';
+            var optionClass = (isStyleQuestion(q.id) && isOther) ? ' option-other' : '';
             return '<button type="button" class="single-choice-radio-button' + optionClass + '" data-value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>';
           }).join('') + '</div>';
         } else if (q.type === 'select') {
@@ -806,10 +805,10 @@
       var qType = String($active.data('question-type') || '');
       var qId = $active.data('question-id');
       var hasValue = false;
-      if (qType === 'radio') {
+      if (qType === 'radio' || qType === 'style') {
         var $selected = $active.find('.single-choice-radio-button.selected');
         hasValue = $selected.length > 0;
-        if (hasValue && isStyleQuestionId(qId)) {
+        if (hasValue && isStyleQuestion(qId)) {
           var selectedVal = String($selected.data('value') || '').trim().toLowerCase();
           if (selectedVal === 'other') {
             var pickedStyle = String(questionAnswers[qId] || '').trim();
@@ -861,7 +860,7 @@
         if (answer === undefined || answer === null || answer === '') return;
         var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
         if (!$panel.length) return;
-        if (q.type === 'radio') {
+        if (q.type === 'radio' || q.type === 'style') {
           $panel.find('.single-choice-radio-button').each(function() {
             $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
           });
@@ -908,13 +907,13 @@
       var qId = main_div.data('question-id');
       var value = String($btn.data('value') || '');
       var isOther = value.trim().toLowerCase() === 'other';
-      var isStyleQuestion = isStyleQuestionId(qId);
+      var styleQ = isStyleQuestion(qId);
 
       main_div.find('.single-choice-radio-button').removeClass('selected');
       $btn.addClass('selected');
       main_div.find('.js-question-error').addClass('hidden');
 
-      if (isStyleQuestion && isOther) {
+      if (styleQ && isOther) {
         delete questionAnswers[qId];
         openStyleOtherModal(main_div);
         return;
@@ -1037,7 +1036,8 @@
         questionDraft: questionDraft,
         tfName: String(document.getElementById('tfName')?.value || data.name || '').trim(),
         tfEmail: String(document.getElementById('tfEmail')?.value || data.email || '').trim(),
-        tfPhone: String(document.getElementById('tfPhone')?.value || data.phone || '').trim(),
+        tfPhone: (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getFullPhone('tf')) || String(data.phone || '').trim(),
+        tfPhoneCountry: (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getSelectedIso('tf')) || '',
         rcOtpVerified: rcOtpVerified,
         rcConnectedEmail: rcConnectedEmail,
         rcConnectedName: rcConnectedName,
@@ -1075,10 +1075,16 @@
 
       var tfName = document.getElementById('tfName');
       var tfEmail = document.getElementById('tfEmail');
-      var tfPhone = document.getElementById('tfPhone');
+      var tfPhoneCountry = document.getElementById('tfPhoneCountry');
       if (tfName) tfName.value = data.name;
       if (tfEmail) tfEmail.value = data.email;
-      if (tfPhone) tfPhone.value = data.phone;
+      if (window.InkjinPhoneCountry) {
+        window.InkjinPhoneCountry.setFullPhone('tf', data.phone);
+      }
+      if (tfPhoneCountry && state.tfPhoneCountry) {
+        tfPhoneCountry.value = String(state.tfPhoneCountry);
+        if (window.jQuery) window.jQuery(tfPhoneCountry).val(String(state.tfPhoneCountry)).trigger('change');
+      }
 
       rcCurrentQuestion = parseInt(state.rcCurrentQuestion, 10) || 0;
 
@@ -1244,7 +1250,10 @@
     }
 
     function isValidPhoneWithCountryCode(phone) {
-      return /^\+[0-9][0-9\s\-()]{5,}$/.test(String(phone || '').trim());
+      if (window.InkjinPhoneCountry && window.InkjinPhoneCountry.isValidFullPhone('tf')) {
+        return true;
+      }
+      return /^\+[1-9]\d{7,14}$/.test(String(phone || '').trim());
     }
 
     async function validateBookingEmailRole(email) {
@@ -1659,10 +1668,16 @@
       }
 
       if (current === 12) {
-        var phoneVal = String(document.getElementById('tfPhone')?.value || '').trim();
-        if (!phoneVal) { setRcError('tfPhone', 'tfPhoneError', 'This field is required.'); shakeInput(document.getElementById('tfPhone')); return; }
+        var phoneVal = (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getFullPhone('tf')) || '';
+        var nationalVal = String(document.getElementById('tfPhone')?.value || '').trim();
+        if (!nationalVal) { setRcError('tfPhone', 'tfPhoneError', 'This field is required.'); shakeInput(document.getElementById('tfPhone')); return; }
+        if (!document.getElementById('tfPhoneCountry')?.value) {
+          setRcError('tfPhone', 'tfPhoneError', 'Please select a country code.');
+          shakeInput(document.getElementById('tfPhoneCountry'));
+          return;
+        }
         if (!isValidPhoneWithCountryCode(phoneVal)) {
-          setRcError('tfPhone', 'tfPhoneError', 'Phone must start with country code, e.g. +30 694 123 4567.');
+          setRcError('tfPhone', 'tfPhoneError', 'Enter a valid phone number for the selected country.');
           shakeInput(document.getElementById('tfPhone'));
           return;
         }
@@ -1749,7 +1764,7 @@
     function collectData() {
       data.name = document.getElementById('tfName')?.value.trim() || data.name;
       data.email = document.getElementById('tfEmail')?.value.trim() || data.email;
-      data.phone = document.getElementById('tfPhone')?.value.trim() || data.phone;
+      data.phone = (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getFullPhone('tf')) || data.phone;
       data.notes = document.getElementById('tfNotes')?.value.trim() || data.notes;
     }
 
@@ -1906,7 +1921,7 @@
       }
     }
 
-    ['tfName', 'tfPhone'].forEach(function(id) {
+    ['tfName', 'tfPhone', 'tfPhoneCountry'].forEach(function(id) {
       var el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('input', function() {
@@ -1954,7 +1969,7 @@
       if (document.visibilityState === 'hidden') saveRcDraftToSession();
     });
     window.addEventListener('pagehide', saveRcDraftToSession);
-    ['tfName', 'tfEmail', 'tfPhone'].forEach(function(id) {
+    ['tfName', 'tfEmail', 'tfPhone', 'tfPhoneCountry'].forEach(function(id) {
       var el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('input', scheduleRcDraftSave);

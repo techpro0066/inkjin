@@ -97,6 +97,27 @@ class ArtistDesign extends Model
         return $this->claimedBookingCount() >= $this->effectiveRepeatLimit();
     }
 
+    /**
+     * Width (min_size) and/or height (max_size) display label.
+     */
+    public function sizeLabel(): string
+    {
+        $width = (int) ($this->min_size ?? 0);
+        $height = (int) ($this->max_size ?? 0);
+
+        if ($width > 0 && $height > 0) {
+            return $width.' × '.$height.' cm';
+        }
+        if ($width > 0) {
+            return 'Width '.$width.' cm';
+        }
+        if ($height > 0) {
+            return 'Height '.$height.' cm';
+        }
+
+        return '—';
+    }
+
     public function canBeDeleted(): bool
     {
         if ($this->relationLoaded('booking_requests_count') || $this->relationLoaded('bookings_count')) {

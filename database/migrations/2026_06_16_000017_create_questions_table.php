@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('question');
             $table->text('description')->nullable();
             $table->text('placeholder')->nullable();
-            $table->enum('type', ['input', 'textarea', 'toggle', 'select', 'image', 'radio']);
+            $table->enum('type', ['input', 'textarea', 'toggle', 'select', 'image', 'radio', 'style']);
             $table->json('options')->nullable();
             $table->unsignedTinyInteger('max_images')->nullable();
             $table->boolean('is_required');

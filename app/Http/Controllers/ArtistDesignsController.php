@@ -72,8 +72,9 @@ class ArtistDesignsController extends Controller
             'tags.*' => ['string', 'max:64'],
             'min_price' => ['required', 'integer', 'min:0'],
             'max_price' => ['required', 'integer', 'min:0', 'gte:min_price'],
-            'min_size' => ['required', 'integer', 'min:1'],
-            'max_size' => ['required', 'integer', 'min:1', 'gte:min_size'],
+            // min_size = width (cm), max_size = height (cm)
+            'min_size' => ['nullable', 'required_without:max_size', 'integer', 'min:1'],
+            'max_size' => ['nullable', 'required_without:min_size', 'integer', 'min:1'],
             'max_sessions' => ['nullable', 'integer', 'min:1'],
             'session_duration' => ['required', 'string', Rule::in($this->sessionDurations())],
         ];
@@ -82,6 +83,42 @@ class ArtistDesignsController extends Controller
             : ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240'];
 
         return $rules;
+    }
+
+    private function normalizeSizeInputs(Request $request): void
+    {
+        $request->merge([
+            'min_size' => $request->filled('min_size') ? $request->input('min_size') : null,
+            'max_size' => $request->filled('max_size') ? $request->input('max_size') : null,
+        ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function designValidationMessages(): array
+    {
+        $sizeMessage = 'Enter the width or height. At least one is required. You can enter both if you\'d like.';
+
+        return [
+            'min_size.required_without' => $sizeMessage,
+            'max_size.required_without' => $sizeMessage,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{0: int|null, 1: int|null}
+     */
+    private function normalizedSizeDimensions(array $validated): array
+    {
+        $width = $validated['min_size'] ?? null;
+        $height = $validated['max_size'] ?? null;
+
+        return [
+            $width !== null && $width !== '' ? (int) $width : null,
+            $height !== null && $height !== '' ? (int) $height : null,
+        ];
     }
 
     private function normalizeArrays(array $validated): array
@@ -166,9 +203,11 @@ class ArtistDesignsController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate($this->designRules($request, true));
+        $this->normalizeSizeInputs($request);
+        $validated = $request->validate($this->designRules($request, true), $this->designValidationMessages());
         [$other, $tags] = $this->normalizeArrays($validated);
         [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
+        [$width, $height] = $this->normalizedSizeDimensions($validated);
         $imagePath = $this->storeUploadedImage($request);
         $repeatLimit = $this->normalizedRepeatLimit($request);
 
@@ -188,8 +227,8 @@ class ArtistDesignsController extends Controller
             'tags' => $tags,
             'min_price' => $validated['min_price'],
             'max_price' => $validated['max_price'],
-            'min_size' => $validated['min_size'],
-            'max_size' => $validated['max_size'],
+            'min_size' => $width,
+            'max_size' => $height,
             'min_sessions' => $minSessions,
             'max_sessions' => $maxSessions,
             'session_duration' => $validated['session_duration'],
@@ -205,9 +244,11 @@ class ArtistDesignsController extends Controller
     public function update(Request $request, ArtistDesign $artistDesign)
     {
         $this->assertOwns($artistDesign);
-        $validated = $request->validate($this->designRules($request, false));
+        $this->normalizeSizeInputs($request);
+        $validated = $request->validate($this->designRules($request, false), $this->designValidationMessages());
         [$other, $tags] = $this->normalizeArrays($validated);
         [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
+        [$width, $height] = $this->normalizedSizeDimensions($validated);
         $repeatLimit = $this->normalizedRepeatLimit($request, $artistDesign);
 
         $imagePath = $artistDesign->image;
@@ -231,8 +272,8 @@ class ArtistDesignsController extends Controller
             'tags' => $tags,
             'min_price' => $validated['min_price'],
             'max_price' => $validated['max_price'],
-            'min_size' => $validated['min_size'],
-            'max_size' => $validated['max_size'],
+            'min_size' => $width,
+            'max_size' => $height,
             'min_sessions' => $minSessions,
             'max_sessions' => $maxSessions,
             'session_duration' => $validated['session_duration'],

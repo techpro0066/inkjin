@@ -54,7 +54,6 @@ class CustomRequestController extends Controller
 
         $isManagedScheduling = ($userDetail->scheduling_type ?? '') === 'managed';
 
-        $styleQuestionId = (int) env('Question_ID', 0);
         $hiddenStyleOptions = Style::query()
             ->active()
             ->where('appear_on_question', false)
@@ -73,7 +72,6 @@ class CustomRequestController extends Controller
             'fallbackTattooSlug' => $fallbackTattooSlug,
             'artistProfileUrl' => route('public.artist', ['username' => $userDetail->user_name]),
             'isManagedScheduling' => $isManagedScheduling,
-            'styleQuestionId' => $styleQuestionId,
             'hiddenStyleOptions' => $hiddenStyleOptions,
         ]);
     }

@@ -103,6 +103,22 @@
     .single-choice-radio-button { padding: 0.75rem 1.5rem; border-radius: 9999px; border: 2px solid #cac4d3; font-size: 0.95rem; font-weight: 600; color: #494552; cursor: pointer; transition: all 0.15s; background: white; }
     .single-choice-radio-button:hover { border-color: #310f7a; color: #310f7a; }
     .single-choice-radio-button.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .single-choice-radio-button.option-other { background: #f2ecf5; border-color: #b69fff; color: #310f7a; }
+    .single-choice-radio-button.option-other:hover { background: #e8ddff; border-color: #664db1; color: #21005e; }
+    .single-choice-radio-button.option-other.selected { background: #310f7a; border-color: #310f7a; color: #ffffff; }
+    .style-other-modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .style-other-modal.hidden { display: none !important; }
+    .style-other-modal-backdrop { position: absolute; inset: 0; background: rgba(28, 27, 33, 0.55); backdrop-filter: blur(2px); }
+    .style-other-modal-panel { position: relative; z-index: 1; width: 100%; max-width: min(42rem, calc(100vw - 2rem)); background: #ffffff; border-radius: 1.25rem; border: 1px solid #ece6ef; box-shadow: 0 24px 48px rgba(49, 15, 122, 0.18); padding: 1.25rem 1.25rem 1rem; max-height: min(90vh, 40rem); display: flex; flex-direction: column; }
+    .style-other-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    .style-other-modal-title { font-size: 1.125rem; font-weight: 700; color: #1c1b21; }
+    .style-other-modal-close { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; border-radius: 9999px; border: none; background: #f2ecf5; color: #494552; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .style-other-modal-close:hover { background: #e8ddff; color: #310f7a; }
+    .style-other-results { margin-top: 0; overflow-y: auto; border: 1px solid #ece6ef; border-radius: 1rem; background: white; padding: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-content: flex-start; flex: 1 1 auto; min-height: 0; max-height: calc(90vh - 7rem); }
+    .style-other-results .style-other-empty { width: 100%; }
+    .style-other-result-item { display: inline-flex; align-items: center; justify-content: center; width: auto; max-width: 100%; text-align: center; padding: 0.65rem 1rem; font-size: 0.875rem; font-weight: 600; color: #494552; background: white; border: 2px solid #cac4d3; border-radius: 9999px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; line-height: 1.25; white-space: normal; word-break: break-word; }
+    .style-other-result-item:hover { background: #f8f1fb; color: #310f7a; border-color: #310f7a; }
+    .style-other-result-item.selected { background: #310f7a; color: #ffffff; border-color: #310f7a; }
     .pref-block { background: white; border: 1px solid #e6e0ea; border-radius: 1rem; padding: 1.25rem; }
     .day-pill { padding: 0.5rem 1rem; border-radius: 9999px; border: 1.5px solid #cac4d3; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; background: white; }
     .day-pill:hover { border-color: #310f7a; color: #310f7a; }
@@ -358,6 +374,18 @@
     <!-- ================================== -->
     <div class="step-panel active" id="stepQuestions">
       <div id="questionsMount"></div>
+      <div id="styleOtherModal" class="style-other-modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="styleOtherModalTitle">
+        <div class="style-other-modal-backdrop js-style-other-close" aria-hidden="true"></div>
+        <div class="style-other-modal-panel">
+          <div class="style-other-modal-header">
+            <h3 id="styleOtherModalTitle" class="style-other-modal-title">Choose a style</h3>
+            <button type="button" class="style-other-modal-close js-style-other-close" aria-label="Close">
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+          <div class="js-style-other-results style-other-results"></div>
+        </div>
+      </div>
     </div>
 
     <!-- ====================================== -->
@@ -683,8 +711,7 @@
           <p class="text-sm font-semibold text-primary mb-2">3 →</p>
           <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Your phone number?</h2>
           <p class="text-on-surface-variant mb-6">In case the artist needs to reach you.</p>
-          <input type="tel" id="bdPhone" placeholder="+30 694 123 4567" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="bdPhoneError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          @include('partials.phone-country-input', ['idPrefix' => 'bd'])
           <div class="flex items-center justify-between mt-6"><button onclick="nextReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button><span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span></div>
         </div>
       </div>
@@ -931,6 +958,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   @include('public.partials.question-image-upload')
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  @include('partials.phone-country-scripts')
   <script src="https://js.stripe.com/v3/"></script>
   <script>
     var currentStep = 1;
@@ -988,6 +1016,8 @@
     var isStripeMounted = false;
     var stripeCardComplete = { number: false, expiry: false, cvc: false };
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
+    var hiddenStyleOptions = @json($hiddenStyleOptions ?? []);
+    var styleOtherModalContext = null;
     var questionDefinitions = (Array.isArray(serverQuestions) ? serverQuestions : []).map(function(q) {
       var typeMap = { text: 'input', free: 'input', images: 'image', checkbox: 'toggle' };
       var normalizedType = typeMap[q.type] || q.type || 'input';
@@ -1003,6 +1033,86 @@
         required: !!q.is_required
       };
     });
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function isStyleQuestion(qId) {
+      var def = questionDefinitions.find(function(q) { return String(q.id) === String(qId); });
+      return !!(def && def.type === 'style');
+    }
+
+    function getStyleOtherModal() {
+      return $('#styleOtherModal');
+    }
+
+    function renderStyleOtherResults() {
+      var filtered = Array.isArray(hiddenStyleOptions) ? hiddenStyleOptions : [];
+      var qId = styleOtherModalContext ? styleOtherModalContext.qId : null;
+      var $results = getStyleOtherModal().find('.js-style-other-results');
+      if (!filtered.length) {
+        $results.html('<p class="style-other-empty text-sm text-on-surface-variant py-3 px-2 text-center">No styles available.</p>');
+        return;
+      }
+      var currentAnswer = qId != null ? String(questionAnswers[qId] || '').trim() : '';
+      $results.html(filtered.map(function(name) {
+        var selectedClass = name === currentAnswer ? ' selected' : '';
+        return '<button type="button" class="js-style-other-result-item style-other-result-item' + selectedClass + '" data-value="' + escapeHtml(name) + '">' + escapeHtml(name) + '</button>';
+      }).join(''));
+    }
+
+    function closeStyleOtherModal(resetOtherSelection) {
+      var ctx = styleOtherModalContext;
+      styleOtherModalContext = null;
+      getStyleOtherModal().addClass('hidden').attr('aria-hidden', 'true');
+      document.body.style.overflow = '';
+
+      if (!resetOtherSelection || !ctx || !ctx.$questionDiv || !ctx.$questionDiv.length) return;
+
+      var qId = ctx.qId;
+      var answer = qId != null ? String(questionAnswers[qId] || '').trim() : '';
+      var isHiddenStyle = answer !== '' && (hiddenStyleOptions || []).indexOf(answer) !== -1;
+      if (isHiddenStyle) return;
+
+      ctx.$questionDiv.find('.single-choice-radio-button').removeClass('selected');
+      if (qId != null) delete questionAnswers[qId];
+    }
+
+    function openStyleOtherModal($questionDiv) {
+      if (!$questionDiv.length) return;
+      var qId = $questionDiv.data('question-id');
+      var questionIndex = parseInt($questionDiv.data('q'), 10);
+      styleOtherModalContext = { qId: qId, questionIndex: questionIndex, $questionDiv: $questionDiv };
+
+      getStyleOtherModal().removeClass('hidden').attr('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      renderStyleOtherResults();
+    }
+
+    function restoreStyleQuestionUi($div) {
+      if (!$div.length || !isStyleQuestion($div.data('question-id'))) return;
+      closeStyleOtherModal(false);
+      var qId = $div.data('question-id');
+      var answer = String(questionAnswers[qId] || '').trim();
+      var $buttons = $div.find('.single-choice-radio-button');
+      if (!answer) {
+        $buttons.removeClass('selected');
+        return;
+      }
+      var isHiddenStyle = (hiddenStyleOptions || []).indexOf(answer) !== -1;
+      if (isHiddenStyle) {
+        $buttons.removeClass('selected');
+        $buttons.filter(function() {
+          return String($(this).data('value') || '').trim().toLowerCase() === 'other';
+        }).addClass('selected');
+      } else {
+        $buttons.removeClass('selected');
+        $buttons.filter(function() {
+          return String($(this).data('value') || '') === answer;
+        }).addClass('selected');
+      }
+    }
 
     function getBookingDeposit() {
       var minPrice = parseFloat(@json($tattoo->min_price ?? 0)) || 0;
@@ -1047,6 +1157,20 @@
       '40': 'RO', '43': 'AT', '45': 'DK', '46': 'SE', '48': 'PL', '49': 'DE', '351': 'PT'
     };
 
+    function bookingPhone() {
+      return (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getFullPhone('bd')) || '';
+    }
+
+    function bookingPhoneIso() {
+      return (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getSelectedIso('bd')) || '';
+    }
+
+    function setBookingPhone(e164) {
+      if (window.InkjinPhoneCountry) {
+        window.InkjinPhoneCountry.setFullPhone('bd', e164 || '');
+      }
+    }
+
     function normalizeCheckoutPhone(phone) {
       var normalized = String(phone || '').trim().replace(/[\s\-().]/g, '').replace(/^00/, '+');
       return normalized;
@@ -1066,7 +1190,7 @@
 
     function getBookingFeeVat() {
       var fee = getBookingFee();
-      var country = euCountryFromPhone($('#bdPhone').val());
+      var country = euCountryFromPhone(bookingPhone());
       if (!country || !euVatCountries[country] || fee <= 0) {
         return { amount: 0, label: null, rate: 0, country: null };
       }
@@ -1142,7 +1266,7 @@
       if (!tabIris) {
         return;
       }
-      var showIris = isGreekClientPhone($('#bdPhone').val());
+      var showIris = isGreekClientPhone(bookingPhone());
       tabIris.classList.toggle('hidden', !showIris);
       if (!showIris && tabIris.getAttribute('aria-selected') === 'true' && window.checkoutSetActivePayTab) {
         window.checkoutSetActivePayTab('card');
@@ -1195,7 +1319,7 @@
 
       var placement = getAnswerByKeywords(['placement', 'body part', 'where']);
       var requestedSize = getAnswerByKeywords(['size', 'cm', 'inch']);
-      var sizeLabel = requestedSize || ((parseInt(@json($tattoo->min_size ?? 0), 10) || 0) + ' - ' + (parseInt(@json($tattoo->max_size ?? 0), 10) || 0) + ' cm');
+      var sizeLabel = requestedSize || @json($tattoo->sizeLabel());
       var locationLabel = studioAddress ? (studioName + ' — ' + studioAddress) : studioName;
 
       $('#payDesign').text(@json($tattoo->title ?? '—'));
@@ -1366,7 +1490,7 @@
           artist_username: bookingArtistUsername,
           tattoo_slug: bookingTattooSlug,
           cardholder_name: String($('#inputCardName').val() || '').trim(),
-          phone: String($('#bdPhone').val() || '').trim()
+          phone: bookingPhone()
         })
       });
       var data = await response.json();
@@ -1407,7 +1531,7 @@
       var timing = consultationTiming === 'separate' ? 'separate' : 'combined';
       var payload = {
         email: String(bookingConnectedEmail || $('#bdEmail').val() || '').trim(),
-        phone: String($('#bdPhone').val() || '').trim(),
+        phone: bookingPhone(),
         name: String($('#bdName').val() || '').trim(),
         consultation_required: isConsultRequired,
         consultation_timing: timing,
@@ -1560,24 +1684,26 @@
         var isLast = idx === questionDefinitions.length - 1;
         var body = '';
 
-        if (q.type === 'radio') {
+        if (q.type === 'radio' || q.type === 'style') {
           var radioButtons = q.options.map(function(opt) {
-            return '<button class="single-choice-radio-button" data-value="' + opt + '">' + opt + '</button>';
+            var isOther = String(opt || '').trim().toLowerCase() === 'other';
+            var optionClass = (isStyleQuestion(q.id) && isOther) ? ' option-other' : '';
+            return '<button type="button" class="single-choice-radio-button' + optionClass + '" data-value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>';
           }).join('');
           body = '<div class="flex flex-wrap gap-2 single-choice-group">' + radioButtons + '</div>';
         } else if (q.type === 'select') {
           var selectOptions = '<option value="">Choose an option</option>' + q.options.map(function(opt) {
-            return '<option value="' + opt + '">' + opt + '</option>';
+            return '<option value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</option>';
           }).join('');
           body = '<select class="w-full js-select2-question" data-question-id="' + q.id + '">' + selectOptions + '</select>';
         } else if (q.type === 'input') {
-          body = '<input type="text" placeholder="' + q.placeholder + '" data-question-id="' + q.id + '" class="js-question-input w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">';
+          body = '<input type="text" placeholder="' + escapeHtml(q.placeholder) + '" data-question-id="' + q.id + '" class="js-question-input w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">';
         } else if (q.type === 'textarea') {
-          body = '<textarea rows="4" placeholder="' + q.placeholder + '" data-question-id="' + q.id + '" class="js-question-input w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>';
+          body = '<textarea rows="4" placeholder="' + escapeHtml(q.placeholder) + '" data-question-id="' + q.id + '" class="js-question-input w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>';
         } else if (q.type === 'image') {
           body = window.QuestionImageField.buildHtml(q.id);
         } else if (q.type === 'toggle') {
-          body = '<label class="q-toggle-row"><span class="q-toggle-control"><input type="checkbox" data-question-id="' + q.id + '" class="q-toggle-input js-question-toggle"><span class="q-toggle-ui"></span></span><span class="q-toggle-label">' + q.subtitle + '</span></label>';
+          body = '<label class="q-toggle-row"><span class="q-toggle-control"><input type="checkbox" data-question-id="' + q.id + '" class="q-toggle-input js-question-toggle"><span class="q-toggle-ui"></span></span><span class="q-toggle-label">' + escapeHtml(q.subtitle) + '</span></label>';
         }
 
         var navButton = isLast
@@ -1589,8 +1715,8 @@
             '<div class="w-full max-w-xl mx-auto">' +
               (isFirst ? '' : '<button class="js-prev-question flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>') +
               '<p class="question-kicker"><span class="dot"></span>Question ' + (idx + 1) + ':</p>' +
-              '<h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">' + q.title + '</h2>' +
-              '<p class="text-on-surface-variant mb-6">' + q.subtitle + (q.required ? ' <span class="text-error">*</span>' : '') + '</p>' +
+              '<h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">' + escapeHtml(q.title) + '</h2>' +
+              '<p class="text-on-surface-variant mb-6">' + escapeHtml(q.subtitle) + (q.required ? ' <span class="text-error">*</span>' : '') + '</p>' +
               body +
               '<p class="text-sm text-error hidden mt-3 js-question-error">Please answer this required question.</p>' +
               '<div class="flex items-center justify-end mt-6">' + navButton + '</div>' +
@@ -1622,8 +1748,16 @@
       var qId = $active.data('question-id');
       var hasValue = false;
 
-      if (qType === 'radio') {
-        hasValue = !!$active.find('.single-choice-radio-button.selected').length;
+      if (qType === 'radio' || qType === 'style') {
+        var $selected = $active.find('.single-choice-radio-button.selected');
+        hasValue = $selected.length > 0;
+        if (hasValue && isStyleQuestion(qId)) {
+          var selectedVal = String($selected.data('value') || '').trim().toLowerCase();
+          if (selectedVal === 'other') {
+            var pickedStyle = String(questionAnswers[qId] || '').trim();
+            hasValue = pickedStyle !== '' && pickedStyle.toLowerCase() !== 'other';
+          }
+        }
       } else if (qType === 'select') {
         hasValue = !!String($active.find('.js-select2-question').val() || '').trim();
       } else if (qType === 'input' || qType === 'textarea') {
@@ -1771,7 +1905,7 @@
       bookingConnectedName = name;
       bookingOtpVerified = true;
       $('#bdEmail').val(email);
-      $('#bdPhone').val(phone);
+      setBookingPhone(phone);
       $('#bdName').val(name);
       $('#bdOtpEmail').val(email);
 
@@ -1846,7 +1980,8 @@
         bookingConnectedName: bookingConnectedName,
         bdName: String($('#bdName').val() || '').trim(),
         bdEmail: String($('#bdEmail').val() || '').trim(),
-        bdPhone: String($('#bdPhone').val() || '').trim(),
+        bdPhone: bookingPhone(),
+        bdPhoneCountry: bookingPhoneIso(),
         bdOtpEmail: String($('#bdOtpEmail').val() || '').trim(),
         selectedDate: serializeDraftDate(selectedDate),
         selectedTime: selectedTime ? String(selectedTime) : null,
@@ -1892,10 +2027,11 @@
         var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
         if (!$panel.length) return;
 
-        if (q.type === 'radio') {
+        if (q.type === 'radio' || q.type === 'style') {
           $panel.find('.single-choice-radio-button').each(function() {
             $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
           });
+          restoreStyleQuestionUi($panel);
         } else if (q.type === 'select') {
           $panel.find('.js-select2-question').val(String(answer)).trigger('change');
         } else if (q.type === 'input' || q.type === 'textarea') {
@@ -1982,7 +2118,10 @@
 
       $('#bdName').val(String(state.bdName || ''));
       $('#bdEmail').val(String(state.bdEmail || ''));
-      $('#bdPhone').val(String(state.bdPhone || ''));
+      setBookingPhone(String(state.bdPhone || ''));
+      if (state.bdPhoneCountry) {
+        $('#bdPhoneCountry').val(String(state.bdPhoneCountry)).trigger('change');
+      }
       $('#bdOtpEmail').val(String(state.bdOtpEmail || state.bdEmail || ''));
 
       selectedDate = parseIsoDateToLocal(state.selectedDate);
@@ -2497,6 +2636,7 @@
     }
 
     function showQuestion(index) {
+      closeStyleOtherModal(false);
       var questions = $('div.question-div[data-q]');
       if (!questions.length) return;
 
@@ -2506,6 +2646,7 @@
       questions.removeClass('active');
       questions.filter('[data-q="' + index + '"]').addClass('active');
       currentQuestionIndex = index;
+      restoreStyleQuestionUi(questions.filter('[data-q="' + index + '"]'));
     }
 
     function moveQuestion(step) {
@@ -2598,7 +2739,10 @@
     }
 
     function isValidPhoneWithCountryCode(phone) {
-      return /^\+[0-9][0-9\s\-()]{5,}$/.test(String(phone || '').trim());
+      if (window.InkjinPhoneCountry && window.InkjinPhoneCountry.isValidFullPhone('bd')) {
+        return true;
+      }
+      return /^\+[1-9]\d{7,14}$/.test(String(phone || '').trim());
     }
 
     async function validateBookingEmailRole(email) {
@@ -2658,13 +2802,18 @@
       }
 
       if (currentRegIndex === 2) {
-        var phoneVal = $('#bdPhone').val().trim();
-        if (!phoneVal) {
+        var phoneVal = bookingPhone();
+        var nationalVal = String($('#bdPhone').val() || '').trim();
+        if (!nationalVal) {
           setRegError('bdPhone', 'bdPhoneError', 'This field is required.');
           return;
         }
+        if (!$('#bdPhoneCountry').val()) {
+          setRegError('bdPhone', 'bdPhoneError', 'Please select a country code.');
+          return;
+        }
         if (!isValidPhoneWithCountryCode(phoneVal)) {
-          setRegError('bdPhone', 'bdPhoneError', 'Phone must start with country code, e.g. +30 694 123 4567.');
+          setRegError('bdPhone', 'bdPhoneError', 'Enter a valid phone number for the selected country.');
           return;
         }
       }
@@ -2858,21 +3007,53 @@
     window.toggleBdAuth = toggleBdAuth;
 
     $(document).on('click', '.single-choice-radio-button', function() {
-      var choice_group = $(this).closest('div.single-choice-group');
-      choice_group.find('.single-choice-radio-button').removeClass('selected');
+      var $btn = $(this);
+      var main_div = $btn.closest('div.question-div');
+      if (!main_div.length) return;
 
-      var main_div = $(this).closest('div.question-div');
       var current_question = parseInt(main_div.data('q'), 10);
+      var qId = main_div.data('question-id');
+      var value = String($btn.data('value') || '');
+      var isOther = value.trim().toLowerCase() === 'other';
+      var styleQ = isStyleQuestion(qId);
 
-      $(this).addClass('selected');
+      main_div.find('.single-choice-radio-button').removeClass('selected');
+      $btn.addClass('selected');
       main_div.find('.js-question-error').addClass('hidden');
 
+      if (styleQ && isOther) {
+        delete questionAnswers[qId];
+        openStyleOtherModal(main_div);
+        return;
+      }
+
+      closeStyleOtherModal(false);
+      if (qId) questionAnswers[qId] = value;
       if (isNaN(current_question)) return;
 
-      // Move to the next question with a small delay.
       setTimeout(function() {
         nextQuestion(current_question);
       }, 180);
+    });
+
+    $(document).on('click', '.js-style-other-close', function() {
+      closeStyleOtherModal(true);
+    });
+
+    $(document).on('click', '.js-style-other-result-item', function() {
+      var styleName = String($(this).data('value') || '');
+      var ctx = styleOtherModalContext;
+      if (!styleName || !ctx || ctx.qId == null) return;
+      questionAnswers[ctx.qId] = styleName;
+      ctx.$questionDiv.find('.js-question-error').addClass('hidden');
+      closeStyleOtherModal(false);
+      if (!isNaN(ctx.questionIndex)) setTimeout(function() { nextQuestion(ctx.questionIndex); }, 180);
+    });
+
+    $(document).on('keydown', function(e) {
+      if (e.key === 'Escape' && !getStyleOtherModal().hasClass('hidden')) {
+        closeStyleOtherModal(true);
+      }
     });
 
     $(document).on('click', '.js-prev-question', function() {
@@ -2914,7 +3095,7 @@
         resetBookingOtpUi();
       }
     });
-    $('#bdPhone').on('input', function() {
+    $('#bdPhone, #bdPhoneCountry').on('input change', function() {
       clearRegError('bdPhone', 'bdPhoneError');
       updateIrisTabVisibility();
       updatePaymentSummary();
@@ -3104,7 +3285,7 @@
       });
       window.addEventListener('pagehide', saveBookingDraftToSession);
 
-      $(document).on('input change', '#bdName, #bdEmail, #bdPhone, #bdOtpEmail, #bdOtpCode, .js-question-input, .js-select2-question, .js-question-toggle', scheduleBookingDraftSave);
+      $(document).on('input change', '#bdName, #bdEmail, #bdPhone, #bdPhoneCountry, #bdOtpEmail, #bdOtpCode, .js-question-input, .js-select2-question, .js-question-toggle', scheduleBookingDraftSave);
       $(document).on('click', '.single-choice-radio-button, .time-slot-card, .js-cc-consult-slot, .js-cc-tattoo-slot, .consult-type-card', function () {
         scheduleBookingDraftSave();
       });

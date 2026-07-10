@@ -212,7 +212,7 @@
           <span class="material-symbols-outlined text-[18px] text-primary">straighten</span>
           <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Size</span>
         </div>
-        <p id="infoSize" class="text-sm font-semibold text-on-surface">{{ $tattoo->min_size }} cm - {{ $tattoo->max_size }} cm</p>
+        <p id="infoSize" class="text-sm font-semibold text-on-surface">{{ $tattoo->sizeLabel() }}</p>
       </div>
       <div class="bg-surface-container-low rounded-xl p-4">
         <div class="flex items-center gap-2 mb-1.5">

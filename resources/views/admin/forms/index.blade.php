@@ -109,6 +109,7 @@
               'input' => ['bg-sky-50 text-sky-800', 'Input'],
               'textarea' => ['bg-indigo-50 text-indigo-800', 'Textarea'],
               'images' => ['bg-amber-50 text-amber-900', 'Images'],
+              'style' => ['bg-rose-50 text-rose-800', 'Style'],
             ];
             $badge = $badgeMap[$type] ?? ['bg-gray-100 text-gray-700', ucfirst($type)];
             $options = is_array($question->options) ? $question->options : [];
@@ -184,6 +185,7 @@
               'input' => ['bg-sky-50 text-sky-800', 'Input'],
               'textarea' => ['bg-indigo-50 text-indigo-800', 'Textarea'],
               'images' => ['bg-amber-50 text-amber-900', 'Images'],
+              'style' => ['bg-rose-50 text-rose-800', 'Style'],
             ];
             $badge = $badgeMap[$type] ?? ['bg-gray-100 text-gray-700', ucfirst($type)];
             $options = is_array($question->options) ? $question->options : [];
@@ -281,6 +283,7 @@
             <option value="toggle">Toggle (a yes/no question)</option>
             <option value="images">Images (a field for uploading images)</option>
             <option value="radio">Radio (a list of options where the user picks only one)</option>
+            <option value="style">Style (tattoo style selection)</option>
           </select>
           <p id="newQuestionTypeError" class="hidden text-sm text-error mt-1"></p>
         </div>

@@ -502,7 +502,7 @@ class BookingRequest extends Model
         $min = (int) ($tattoo->min_size ?? 0);
         $max = (int) ($tattoo->max_size ?? 0);
         if ($min > 0 || $max > 0) {
-            return $min.' - '.$max.' cm';
+            return $tattoo->sizeLabel();
         }
 
         return '—';

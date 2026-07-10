@@ -32,6 +32,7 @@ use App\Models\UserDetail;
 use App\Models\Waitlist;
 use App\Models\Question;
 use App\Models\QuestionSorting;
+use App\Models\Style;
 use App\Models\UserQuestion;
 use App\Support\PaymentMethods;
 use App\Support\EuVat;
@@ -654,6 +655,14 @@ class InkJinController extends Controller
 
         $questions = QuestionSorting::activeQuestionsPayloadForArtist($userDetail->user_id, 'default');
 
+        $hiddenStyleOptions = Style::query()
+            ->active()
+            ->where('appear_on_question', false)
+            ->ordered()
+            ->pluck('name')
+            ->values()
+            ->all();
+
         if($userDetail->scheduling_type == 'auto'){
 
             $artistTimezone = $userDetail->timezone ?: 'UTC';
@@ -729,6 +738,7 @@ class InkJinController extends Controller
                 'questions' => $questions,
                 'requiredBookingQuestions' => $questions,
                 'hasArtistQuestions' => !empty($questions),
+                'hiddenStyleOptions' => $hiddenStyleOptions,
                 'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
                 'artistTimezone' => $artistTimezone,
                 'artistBlockedPeriods' => $artistBlockedPeriods,
@@ -760,6 +770,7 @@ class InkJinController extends Controller
                 'questions' => $questions,
                 'requiredBookingQuestions' => $questions,
                 'hasArtistQuestions' => !empty($questions),
+                'hiddenStyleOptions' => $hiddenStyleOptions,
                 'artistConsultationSettings' => [
                     'required' => (bool) ($userDetail->require_consultation ?? false),
                     'timing' => $userDetail->consultation_timing ?: 'combined',

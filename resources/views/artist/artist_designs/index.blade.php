@@ -346,7 +346,7 @@
             @endif
             <div class="text-xs text-on-surface-variant space-y-0.5 mb-3">
               <p><span class="font-semibold text-on-surface">Price:</span> €{{ $design->min_price }} — €{{ $design->max_price }}</p>
-              <p><span class="font-semibold text-on-surface">Size:</span> {{ $design->min_size }} — {{ $design->max_size }} cm</p>
+              <p><span class="font-semibold text-on-surface">Size:</span> {{ $design->sizeLabel() }}</p>
               <p><span class="font-semibold text-on-surface">Sessions:</span> {{ $sessionsLabel }}, {{ $sessionLabel }} each</p>
             </div>
             <div class="flex items-center gap-1 pt-2 mt-1 border-t border-outline-variant/10">
@@ -559,22 +559,22 @@
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_price"></p>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="max_price"></p>
             </div>
-            <!-- Size Range -->
+            <!-- Size (width / height) -->
             <div class="design-field-section scroll-mt-6" data-design-field="min_size">
-              <label class="block text-sm font-semibold text-on-surface mb-2">Size Range</label>
-              <div class="flex items-center gap-3">
+              <label class="block text-sm font-semibold text-on-surface mb-2">Size</label>
+              <div class="flex items-center gap-3 flex-wrap">
                 <div class="flex items-center gap-2">
-                  <span class="text-xs text-on-surface-variant">Min</span>
-                  <input type="number" id="size_min" name="size_min" placeholder="10" min="1" class="w-20 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
+                  <span class="text-xs text-on-surface-variant">Width</span>
+                  <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" class="w-24 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
                 </div>
-                <span class="text-on-surface-variant">—</span>
+                <span class="text-on-surface-variant">×</span>
                 <div class="flex items-center gap-2">
-                  <span class="text-xs text-on-surface-variant">Max</span>
-                  <input type="number" id="size_max" name="size_max" placeholder="20" min="1" class="w-20 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
+                  <span class="text-xs text-on-surface-variant">Height</span>
+                  <input type="number" id="size_max" name="size_max" placeholder="e.g. 20" min="1" class="w-24 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
                 </div>
                 <span class="text-sm font-medium text-on-surface-variant" id="sizeUnitLabel">cm</span>
               </div>
-              <p class="text-xs text-on-surface-variant mt-1.5">Based on your <a href="settings-preferences.html" class="text-primary hover:underline">unit preference</a></p>
+              <p class="text-xs text-on-surface-variant mt-1.5">Enter width, height, or both.</p>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_size"></p>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="max_size"></p>
             </div>
@@ -682,8 +682,8 @@
             'tags' => array_values($d->tags ?? []),
             'min_price' => (int) $d->min_price,
             'max_price' => (int) $d->max_price,
-            'min_size' => (int) $d->min_size,
-            'max_size' => (int) $d->max_size,
+            'min_size' => $d->min_size !== null ? (int) $d->min_size : null,
+            'max_size' => $d->max_size !== null ? (int) $d->max_size : null,
             'min_sessions' => (int) $d->min_sessions,
             'max_sessions' => (int) $d->max_sessions,
             'session_duration' => $d->session_duration,
@@ -1066,18 +1066,21 @@
         if (!errors.min_price && !errors.max_price && minP > maxP) {
           errors.max_price = 'Maximum price must be greater than or equal to minimum price.';
         }
-        var minSv = $('#size_min').val();
-        var maxSv = $('#size_max').val();
-        var minS = parseInt(minSv, 10);
-        var maxS = parseInt(maxSv, 10);
-        if (minSv === '' || isNaN(minS) || minS < 1) {
-          errors.min_size = 'Please enter a minimum size (cm) of at least 1.';
-        }
-        if (maxSv === '' || isNaN(maxS) || maxS < 1) {
-          errors.max_size = 'Please enter a maximum size (cm) of at least 1.';
-        }
-        if (!errors.min_size && !errors.max_size && minS > maxS) {
-          errors.max_size = 'Maximum size must be greater than or equal to minimum size.';
+        var widthV = $('#size_min').val();
+        var heightV = $('#size_max').val();
+        var width = parseInt(widthV, 10);
+        var height = parseInt(heightV, 10);
+        var hasWidth = widthV !== '' && !isNaN(width) && width >= 1;
+        var hasHeight = heightV !== '' && !isNaN(height) && height >= 1;
+        if (!hasWidth && !hasHeight) {
+          errors.min_size = 'Enter the width or height. At least one is required. You can enter both if you\'d like.';
+        } else {
+          if (widthV !== '' && (isNaN(width) || width < 1)) {
+            errors.min_size = 'Width must be at least 1 cm.';
+          }
+          if (heightV !== '' && (isNaN(height) || height < 1)) {
+            errors.max_size = 'Height must be at least 1 cm.';
+          }
         }
         var maxSev = String($('#designSessionsMax').val() || '').trim();
         if (maxSev !== '') {
