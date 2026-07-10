@@ -5,76 +5,71 @@ namespace App\Support;
 class PhoneCountryCodes
 {
     /**
+     * Calling codes for artist registration countries.
+     *
+     * @var array<string, string>
+     */
+    private const DIAL_BY_ISO = [
+        'AT' => '43',
+        'AU' => '61',
+        'BE' => '32',
+        'BG' => '359',
+        'CA' => '1',
+        'CH' => '41',
+        'CY' => '357',
+        'CZ' => '420',
+        'DE' => '49',
+        'DK' => '45',
+        'EE' => '372',
+        'ES' => '34',
+        'FI' => '358',
+        'FR' => '33',
+        'GB' => '44',
+        'GR' => '30',
+        'HR' => '385',
+        'HU' => '36',
+        'IE' => '353',
+        'IT' => '39',
+        'LT' => '370',
+        'LU' => '352',
+        'LV' => '371',
+        'MT' => '356',
+        'NL' => '31',
+        'NO' => '47',
+        'NZ' => '64',
+        'PL' => '48',
+        'PT' => '351',
+        'RO' => '40',
+        'SE' => '46',
+        'SG' => '65',
+        'SI' => '386',
+        'SK' => '421',
+        'US' => '1',
+    ];
+
+    /**
      * Dial-code options for booking/request phone fields.
-     * Prefer ISO in the UI; compose E.164 as +{dial}{national}.
+     * Same country set as artist signup (`StripeConnectCountries` registration list).
      *
      * @return list<array{iso: string, name: string, dial: string}>
      */
     public static function all(): array
     {
-        $countries = [
-            ['iso' => 'GR', 'name' => 'Greece', 'dial' => '30'],
-            ['iso' => 'AL', 'name' => 'Albania', 'dial' => '355'],
-            ['iso' => 'AD', 'name' => 'Andorra', 'dial' => '376'],
-            ['iso' => 'AE', 'name' => 'United Arab Emirates', 'dial' => '971'],
-            ['iso' => 'AR', 'name' => 'Argentina', 'dial' => '54'],
-            ['iso' => 'AT', 'name' => 'Austria', 'dial' => '43'],
-            ['iso' => 'AU', 'name' => 'Australia', 'dial' => '61'],
-            ['iso' => 'BA', 'name' => 'Bosnia and Herzegovina', 'dial' => '387'],
-            ['iso' => 'BE', 'name' => 'Belgium', 'dial' => '32'],
-            ['iso' => 'BG', 'name' => 'Bulgaria', 'dial' => '359'],
-            ['iso' => 'BR', 'name' => 'Brazil', 'dial' => '55'],
-            ['iso' => 'CA', 'name' => 'Canada', 'dial' => '1'],
-            ['iso' => 'CH', 'name' => 'Switzerland', 'dial' => '41'],
-            ['iso' => 'CL', 'name' => 'Chile', 'dial' => '56'],
-            ['iso' => 'CN', 'name' => 'China', 'dial' => '86'],
-            ['iso' => 'CY', 'name' => 'Cyprus', 'dial' => '357'],
-            ['iso' => 'CZ', 'name' => 'Czechia', 'dial' => '420'],
-            ['iso' => 'DE', 'name' => 'Germany', 'dial' => '49'],
-            ['iso' => 'DK', 'name' => 'Denmark', 'dial' => '45'],
-            ['iso' => 'EE', 'name' => 'Estonia', 'dial' => '372'],
-            ['iso' => 'EG', 'name' => 'Egypt', 'dial' => '20'],
-            ['iso' => 'ES', 'name' => 'Spain', 'dial' => '34'],
-            ['iso' => 'FI', 'name' => 'Finland', 'dial' => '358'],
-            ['iso' => 'FR', 'name' => 'France', 'dial' => '33'],
-            ['iso' => 'GB', 'name' => 'United Kingdom', 'dial' => '44'],
-            ['iso' => 'GE', 'name' => 'Georgia', 'dial' => '995'],
-            ['iso' => 'HR', 'name' => 'Croatia', 'dial' => '385'],
-            ['iso' => 'HU', 'name' => 'Hungary', 'dial' => '36'],
-            ['iso' => 'IE', 'name' => 'Ireland', 'dial' => '353'],
-            ['iso' => 'IL', 'name' => 'Israel', 'dial' => '972'],
-            ['iso' => 'IN', 'name' => 'India', 'dial' => '91'],
-            ['iso' => 'IS', 'name' => 'Iceland', 'dial' => '354'],
-            ['iso' => 'IT', 'name' => 'Italy', 'dial' => '39'],
-            ['iso' => 'JP', 'name' => 'Japan', 'dial' => '81'],
-            ['iso' => 'KR', 'name' => 'South Korea', 'dial' => '82'],
-            ['iso' => 'LT', 'name' => 'Lithuania', 'dial' => '370'],
-            ['iso' => 'LU', 'name' => 'Luxembourg', 'dial' => '352'],
-            ['iso' => 'LV', 'name' => 'Latvia', 'dial' => '371'],
-            ['iso' => 'MA', 'name' => 'Morocco', 'dial' => '212'],
-            ['iso' => 'MD', 'name' => 'Moldova', 'dial' => '373'],
-            ['iso' => 'ME', 'name' => 'Montenegro', 'dial' => '382'],
-            ['iso' => 'MK', 'name' => 'North Macedonia', 'dial' => '389'],
-            ['iso' => 'MT', 'name' => 'Malta', 'dial' => '356'],
-            ['iso' => 'MX', 'name' => 'Mexico', 'dial' => '52'],
-            ['iso' => 'NL', 'name' => 'Netherlands', 'dial' => '31'],
-            ['iso' => 'NO', 'name' => 'Norway', 'dial' => '47'],
-            ['iso' => 'NZ', 'name' => 'New Zealand', 'dial' => '64'],
-            ['iso' => 'PL', 'name' => 'Poland', 'dial' => '48'],
-            ['iso' => 'PT', 'name' => 'Portugal', 'dial' => '351'],
-            ['iso' => 'RO', 'name' => 'Romania', 'dial' => '40'],
-            ['iso' => 'RS', 'name' => 'Serbia', 'dial' => '381'],
-            ['iso' => 'RU', 'name' => 'Russia', 'dial' => '7'],
-            ['iso' => 'SA', 'name' => 'Saudi Arabia', 'dial' => '966'],
-            ['iso' => 'SE', 'name' => 'Sweden', 'dial' => '46'],
-            ['iso' => 'SI', 'name' => 'Slovenia', 'dial' => '386'],
-            ['iso' => 'SK', 'name' => 'Slovakia', 'dial' => '421'],
-            ['iso' => 'TR', 'name' => 'Turkey', 'dial' => '90'],
-            ['iso' => 'UA', 'name' => 'Ukraine', 'dial' => '380'],
-            ['iso' => 'US', 'name' => 'United States', 'dial' => '1'],
-            ['iso' => 'XK', 'name' => 'Kosovo', 'dial' => '383'],
-            ['iso' => 'ZA', 'name' => 'South Africa', 'dial' => '27'],
-        ];
+        $countries = [];
+
+        foreach (StripeConnectCountries::registrationCountriesForSelect() as $row) {
+            $iso = strtoupper((string) ($row['code'] ?? ''));
+            $dial = self::DIAL_BY_ISO[$iso] ?? null;
+            if ($iso === '' || $dial === null) {
+                continue;
+            }
+
+            $countries[] = [
+                'iso' => $iso,
+                'name' => (string) ($row['name'] ?? $iso),
+                'dial' => $dial,
+            ];
+        }
 
         usort($countries, static function (array $a, array $b): int {
             if ($a['iso'] === 'GR') {
@@ -98,13 +93,8 @@ class PhoneCountryCodes
     public static function dialForIso(string $iso): ?string
     {
         $iso = strtoupper(trim($iso));
-        foreach (self::all() as $row) {
-            if ($row['iso'] === $iso) {
-                return $row['dial'];
-            }
-        }
 
-        return null;
+        return self::DIAL_BY_ISO[$iso] ?? null;
     }
 
     /**
