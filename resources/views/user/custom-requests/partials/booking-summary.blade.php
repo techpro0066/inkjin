@@ -56,6 +56,16 @@
         </span>
         <span class="font-semibold">€{{ number_format($totals['platform_fee'], 2) }}</span>
       </div>
+      <div class="flex justify-between">
+        <span class="text-on-surface-variant">Subtotal</span>
+        <span class="font-semibold">€{{ number_format($totals['subtotal'] ?? ($totals['deposit'] + $totals['platform_fee']), 2) }}</span>
+      </div>
+      @if(!empty($totals['tax_amount']) && $totals['tax_amount'] > 0)
+        <div class="flex justify-between">
+          <span class="text-on-surface-variant">{{ $totals['tax_label'] ?? 'VAT' }}</span>
+          <span class="font-semibold">€{{ number_format($totals['tax_amount'], 2) }}</span>
+        </div>
+      @endif
       <div class="flex justify-between pt-2 border-t border-outline-variant/20 font-bold">
         <span>Total due now</span>
         <span>€{{ number_format($totals['total_due'], 2) }}</span>

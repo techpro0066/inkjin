@@ -133,7 +133,7 @@ class CustomRequestsController extends Controller
         }
 
         $quotePrice = $customRequest->checkoutPriceAmount();
-        $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice);
+        $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice, Auth::user()?->phone_number);
         $deposit = (float) $totals['deposit'];
         $balance = max(0, $quotePrice - $deposit);
 
@@ -182,7 +182,7 @@ class CustomRequestsController extends Controller
             return response()->json(['message' => 'Stripe is not configured.'], 500);
         }
 
-        $totals = $this->pricing->checkoutTotals($userDetail, $customRequest->checkoutPriceAmount());
+        $totals = $this->pricing->checkoutTotals($userDetail, $customRequest->checkoutPriceAmount(), Auth::user()?->phone_number);
         $amountCents = (int) round($totals['total_due'] * 100);
 
         if ($amountCents < 50) {
@@ -202,6 +202,8 @@ class CustomRequestsController extends Controller
                     'artist_user_id' => (string) $customRequest->artist_id,
                     'flow' => 'custom_request',
                     'cardholder_name' => $request->input('cardholder_name'),
+                    'tax_amount' => (string) $totals['tax_amount'],
+                    'tax_label' => (string) ($totals['tax_label'] ?? ''),
                 ],
             ]);
 

@@ -46,7 +46,7 @@ class VivaCheckoutService
             throw new RuntimeException('IRIS payment is not available for this checkout.');
         }
 
-        $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price);
+        $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, $client->phone_number);
         $amountCents = (int) round($totals['total_due'] * 100);
 
         if ($amountCents < 30) {
@@ -110,7 +110,7 @@ class VivaCheckoutService
             throw new RuntimeException('IRIS payment is not available for this checkout.');
         }
 
-        $totals = $this->pricing->checkoutTotals($userDetail, $customRequest->checkoutPriceAmount());
+        $totals = $this->pricing->checkoutTotals($userDetail, $customRequest->checkoutPriceAmount(), $client->phone_number);
         $amountCents = (int) round($totals['total_due'] * 100);
 
         if ($amountCents < 30) {

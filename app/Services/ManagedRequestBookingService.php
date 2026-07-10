@@ -137,7 +137,8 @@ class ManagedRequestBookingService
             $consultationTiming = 'separate';
         }
 
-        $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price);
+        $clientPhone = $bookingRequest->user?->phone_number;
+        $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, $clientPhone);
 
         $booking = Booking::create([
             'user_id' => $bookingRequest->user_id,
@@ -159,6 +160,10 @@ class ManagedRequestBookingService
             'payment_status' => 'paid',
             'deposit_amount' => $totals['deposit'],
             'platform_fee' => $totals['platform_fee'],
+            'tax_amount' => $totals['tax_amount'],
+            'tax_rate' => $totals['tax_rate'],
+            'tax_country' => $totals['tax_country'],
+            'tax_label' => $totals['tax_label'],
             'total_amount_paid' => $totals['total_due'],
             'currency' => strtoupper((string) ($intent->currency ?: 'eur')),
             'questions_answers' => is_array($bookingRequest->questions_answers)
@@ -175,7 +180,8 @@ class ManagedRequestBookingService
             $booking->save();
         }
 
-        $this->createGoogleCalendarEvent($booking);
+        $consultType = trim((string) ($bookingRequest->consultationDetailsArray()['type'] ?? ''));
+        $this->createGoogleCalendarEvent($booking, $consultType !== '' ? $consultType : null);
 
         $this->linkRequestToBooking($bookingRequest, $booking);
         $this->sendConfirmationEmails($booking);
@@ -247,7 +253,8 @@ class ManagedRequestBookingService
             $consultationTiming = 'separate';
         }
 
-        $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price);
+        $clientPhone = $bookingRequest->user?->phone_number;
+        $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, $clientPhone);
 
         $booking = Booking::create([
             'user_id' => $bookingRequest->user_id,
@@ -272,6 +279,10 @@ class ManagedRequestBookingService
             'payment_status' => 'paid',
             'deposit_amount' => $totals['deposit'],
             'platform_fee' => $totals['platform_fee'],
+            'tax_amount' => $totals['tax_amount'],
+            'tax_rate' => $totals['tax_rate'],
+            'tax_country' => $totals['tax_country'],
+            'tax_label' => $totals['tax_label'],
             'total_amount_paid' => $totals['total_due'],
             'currency' => 'EUR',
             'questions_answers' => is_array($bookingRequest->questions_answers)
@@ -288,7 +299,8 @@ class ManagedRequestBookingService
             $booking->save();
         }
 
-        $this->createGoogleCalendarEvent($booking);
+        $consultType = trim((string) ($bookingRequest->consultationDetailsArray()['type'] ?? ''));
+        $this->createGoogleCalendarEvent($booking, $consultType !== '' ? $consultType : null);
 
         $this->linkRequestToBooking($bookingRequest, $booking);
         $this->sendConfirmationEmails($booking);
@@ -335,7 +347,7 @@ class ManagedRequestBookingService
         }
     }
 
-    private function createGoogleCalendarEvent(Booking $booking): void
+    private function createGoogleCalendarEvent(Booking $booking, ?string $consultationType = null): void
     {
         try {
             $booking->loadMissing(['artist.userDetail']);
@@ -347,7 +359,8 @@ class ManagedRequestBookingService
             $calendarResult = GoogleCalendarController::createCalendarEvent(
                 $artistUserDetail,
                 $booking,
-                (bool) $booking->has_consultation
+                (bool) $booking->has_consultation,
+                $consultationType
             );
 
             if (is_array($calendarResult) && ! empty($calendarResult['event_id'])) {
@@ -355,6 +368,7 @@ class ManagedRequestBookingService
                     'google_calendar_event_id' => $calendarResult['event_id'],
                     'google_meet_link' => $calendarResult['meet_link'] ?? null,
                 ]);
+                $booking->refresh();
             }
         } catch (\Throwable $e) {
             Log::error('Failed to create Google Calendar event (managed request)', [

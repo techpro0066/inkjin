@@ -346,6 +346,7 @@ class ReschedulingController extends Controller
                         'google_calendar_event_id' => is_array($newMainCalendarEvent) ? ($newMainCalendarEvent['event_id'] ?? null) : null,
                         'google_meet_link' => is_array($newMainCalendarEvent) ? ($newMainCalendarEvent['meet_link'] ?? null) : null,
                     ]);
+                    $booking->refresh();
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to recreate Google Calendar event (non-critical)', [

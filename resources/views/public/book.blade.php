@@ -777,6 +777,8 @@
                   <div class="flex justify-between hidden" id="payConsultFeeRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold text-green-600">Free</span></div>
                   <div class="flex justify-between"><span class="text-on-surface-variant" id="payDepositLabel">Deposit</span><span class="font-semibold" id="payDeposit">—</span></div>
                   <div class="flex justify-between items-center"><span class="text-on-surface-variant flex items-center gap-1">Inkjin Booking Fee <span class="info-tooltip"><span class="material-symbols-outlined text-[14px] text-outline">info</span><span class="tooltip-text">This fee helps us maintain the platform, provide secure payments, and offer customer support.</span></span></span><span class="font-semibold" id="payBookingFee">—</span></div>
+                  <div class="flex justify-between" id="paySubtotalRow"><span class="text-on-surface-variant">Subtotal</span><span class="font-semibold" id="paySubtotal">—</span></div>
+                  <div class="flex justify-between hidden" id="payTaxRow"><span class="text-on-surface-variant" id="payTaxLabel">VAT</span><span class="font-semibold" id="payTax">—</span></div>
                   <hr class="border-outline-variant/20">
                   <div class="flex justify-between"><span class="font-bold text-on-surface">Total Due Now</span><span class="font-bold text-primary text-lg" id="payTotal">—</span></div>
                 </div>
@@ -881,6 +883,8 @@
             <div class="flex justify-between hidden" id="confConsultFeeRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold text-green-600">Free</span></div>
             <div class="flex justify-between"><span class="text-on-surface-variant" id="confDepositLabel">Deposit</span><span class="font-semibold" id="confDeposit">—</span></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Inkjin Booking Fee</span><span class="font-semibold" id="confBookingFee">—</span></div>
+            <div class="flex justify-between" id="confSubtotalRow"><span class="text-on-surface-variant">Subtotal</span><span class="font-semibold" id="confSubtotal">—</span></div>
+            <div class="flex justify-between hidden" id="confTaxRow"><span class="text-on-surface-variant" id="confTaxLabel">VAT</span><span class="font-semibold" id="confTax">—</span></div>
             <div class="flex justify-between"><span class="font-bold text-on-surface">Total Paid</span><span class="font-bold text-primary" id="confTotalPaid">—</span></div>
             <hr class="border-outline-variant/10">
             <div class="flex justify-between"><span class="text-on-surface-variant">Remaining Balance (est.)</span><span class="font-semibold" id="confBalance">—</span></div>
@@ -1024,8 +1028,67 @@
       return baseFee;
     }
 
-    function getDueNow() {
+    // EU VAT on booking fee only — mirrors App\Support\EuVat
+    var euVatCountries = {
+      AT: { name: 'Austria', rate: 20 }, BE: { name: 'Belgium', rate: 21 }, BG: { name: 'Bulgaria', rate: 20 },
+      HR: { name: 'Croatia', rate: 25 }, CY: { name: 'Cyprus', rate: 19 }, CZ: { name: 'Czechia', rate: 21 },
+      DK: { name: 'Denmark', rate: 25 }, EE: { name: 'Estonia', rate: 22 }, FI: { name: 'Finland', rate: 25.5 },
+      FR: { name: 'France', rate: 20 }, DE: { name: 'Germany', rate: 19 }, GR: { name: 'Greece', rate: 24 },
+      HU: { name: 'Hungary', rate: 27 }, IE: { name: 'Ireland', rate: 23 }, IT: { name: 'Italy', rate: 22 },
+      LV: { name: 'Latvia', rate: 21 }, LT: { name: 'Lithuania', rate: 21 }, LU: { name: 'Luxembourg', rate: 17 },
+      MT: { name: 'Malta', rate: 18 }, NL: { name: 'Netherlands', rate: 21 }, PL: { name: 'Poland', rate: 23 },
+      PT: { name: 'Portugal', rate: 23 }, RO: { name: 'Romania', rate: 19 }, SK: { name: 'Slovakia', rate: 23 },
+      SI: { name: 'Slovenia', rate: 22 }, ES: { name: 'Spain', rate: 21 }, SE: { name: 'Sweden', rate: 25 }
+    };
+    var euDialCodes = {
+      '359': 'BG', '358': 'FI', '357': 'CY', '356': 'MT', '353': 'IE', '352': 'LU',
+      '370': 'LT', '371': 'LV', '372': 'EE', '385': 'HR', '386': 'SI', '420': 'CZ', '421': 'SK',
+      '30': 'GR', '31': 'NL', '32': 'BE', '33': 'FR', '34': 'ES', '36': 'HU', '39': 'IT',
+      '40': 'RO', '43': 'AT', '45': 'DK', '46': 'SE', '48': 'PL', '49': 'DE', '351': 'PT'
+    };
+
+    function normalizeCheckoutPhone(phone) {
+      var normalized = String(phone || '').trim().replace(/[\s\-().]/g, '').replace(/^00/, '+');
+      return normalized;
+    }
+
+    function euCountryFromPhone(phone) {
+      var normalized = normalizeCheckoutPhone(phone);
+      if (!normalized || normalized.charAt(0) !== '+') return null;
+      var digits = normalized.slice(1);
+      if (!/^\d+$/.test(digits)) return null;
+      var prefix3 = digits.slice(0, 3);
+      var prefix2 = digits.slice(0, 2);
+      if (euDialCodes[prefix3]) return euDialCodes[prefix3];
+      if (euDialCodes[prefix2]) return euDialCodes[prefix2];
+      return null;
+    }
+
+    function getBookingFeeVat() {
+      var fee = getBookingFee();
+      var country = euCountryFromPhone($('#bdPhone').val());
+      if (!country || !euVatCountries[country] || fee <= 0) {
+        return { amount: 0, label: null, rate: 0, country: null };
+      }
+      var meta = euVatCountries[country];
+      var rate = Number(meta.rate) || 0;
+      var amount = Math.round((fee * (rate / 100)) * 100) / 100;
+      var rateLabel = Number.isInteger(rate) ? String(rate) : String(rate);
+      return {
+        amount: amount,
+        label: meta.name + ' VAT (' + rateLabel + '%)',
+        rate: rate,
+        country: country
+      };
+    }
+
+    function getSubtotalDueNow() {
       return Math.round((getBookingDeposit() + getBookingFee()) * 100) / 100;
+    }
+
+    function getDueNow() {
+      var vat = getBookingFeeVat();
+      return Math.round((getSubtotalDueNow() + (vat.amount || 0)) * 100) / 100;
     }
 
     function formatEUR(amount) {
@@ -1091,6 +1154,9 @@
       var minPrice = parseFloat(@json($tattoo->min_price ?? 0)) || 0;
       var maxPrice = parseFloat(@json($tattoo->max_price ?? 0)) || 0;
       var deposit = getBookingDeposit();
+      var fee = getBookingFee();
+      var subtotal = getSubtotalDueNow();
+      var vat = getBookingFeeVat();
       var total = getDueNow();
       var minBalance = Math.max(0, minPrice - deposit);
       var maxBalance = Math.max(0, maxPrice - deposit);
@@ -1142,7 +1208,15 @@
       $('#payPriceEstimate').text(formatEUR(minPrice) + ' - ' + formatEUR(maxPrice));
       $('#payDepositLabel').text(getDepositLabel());
       $('#payDeposit').text(formatEUR(deposit));
-      $('#payBookingFee').text(formatEUR(getBookingFee()));
+      $('#payBookingFee').text(formatEUR(fee));
+      $('#paySubtotal').text(formatEUR(subtotal));
+      if (vat.amount > 0 && vat.label) {
+        $('#payTaxLabel').text(vat.label);
+        $('#payTax').text(formatEUR(vat.amount));
+        $('#payTaxRow').removeClass('hidden');
+      } else {
+        $('#payTaxRow').addClass('hidden');
+      }
       $('#payTotal').text(formatEUR(total));
       $('#payBalance').text(balanceLabel);
       $('#btnPayTotalAmount').text(formatEUR(total));
@@ -1152,7 +1226,15 @@
       $('#confPriceEstimate').text(formatEUR(minPrice) + ' - ' + formatEUR(maxPrice));
       $('#confDepositLabel').text(getDepositLabel());
       $('#confDeposit').text(formatEUR(deposit));
-      $('#confBookingFee').text(formatEUR(getBookingFee()));
+      $('#confBookingFee').text(formatEUR(fee));
+      $('#confSubtotal').text(formatEUR(subtotal));
+      if (vat.amount > 0 && vat.label) {
+        $('#confTaxLabel').text(vat.label);
+        $('#confTax').text(formatEUR(vat.amount));
+        $('#confTaxRow').removeClass('hidden');
+      } else {
+        $('#confTaxRow').addClass('hidden');
+      }
       $('#confTotalPaid').text(formatEUR(total));
       $('#confBalance').text(balanceLabel);
       $('#confDesign').text(@json($tattoo->title ?? '—'));
@@ -1283,7 +1365,8 @@
         body: JSON.stringify({
           artist_username: bookingArtistUsername,
           tattoo_slug: bookingTattooSlug,
-          cardholder_name: String($('#inputCardName').val() || '').trim()
+          cardholder_name: String($('#inputCardName').val() || '').trim(),
+          phone: String($('#bdPhone').val() || '').trim()
         })
       });
       var data = await response.json();
@@ -1338,6 +1421,7 @@
       };
 
       if (isConsultRequired) {
+        payload.consultation_type = ccConsultType ? String(ccConsultType) : null;
         if (timing === 'separate') {
           payload.consultation_date = formatDateToIso(ccConsultDate);
           payload.consultation_time = String(ccConsultTime || '');
@@ -1693,7 +1777,7 @@
 
       if (payload.consultation_required) {
         consultationTiming = payload.consultation_timing === 'separate' ? 'separate' : 'combined';
-        ccConsultType = ccConsultType || 'video';
+        ccConsultType = payload.consultation_type ? String(payload.consultation_type) : (ccConsultType || 'video');
         if (consultationTiming === 'separate') {
           ccConsultDate = parseIsoDateToLocal(payload.consultation_date);
           ccConsultTime = payload.consultation_time ? String(payload.consultation_time) : null;
@@ -2830,7 +2914,11 @@
         resetBookingOtpUi();
       }
     });
-    $('#bdPhone').on('input', function() { clearRegError('bdPhone', 'bdPhoneError'); });
+    $('#bdPhone').on('input', function() {
+      clearRegError('bdPhone', 'bdPhoneError');
+      updateIrisTabVisibility();
+      updatePaymentSummary();
+    });
     $('#bdOtpEmail').on('input', function() {
       $('#bdOtpError').addClass('hidden');
       $('#bdOtpStatus').text('').addClass('hidden').removeClass('flex');

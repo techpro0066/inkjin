@@ -126,7 +126,8 @@ class RequestsController extends Controller
 
         $minPrice = (float) ($tattoo->min_price ?? 0);
         $maxPrice = (float) ($tattoo->max_price ?? 0);
-        $totals = $this->pricing->checkoutTotals($userDetail, $minPrice);
+        $clientPhone = Auth::user()?->phone_number;
+        $totals = $this->pricing->checkoutTotals($userDetail, $minPrice, $clientPhone);
         $deposit = (float) $totals['deposit'];
         $minBalance = max(0, $minPrice - $deposit);
         $maxBalance = max(0, $maxPrice - $deposit);
@@ -183,7 +184,7 @@ class RequestsController extends Controller
             return response()->json(['message' => 'Stripe is not configured.'], 500);
         }
 
-        $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price);
+        $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, Auth::user()?->phone_number);
         $amountCents = (int) round($totals['total_due'] * 100);
 
         if ($amountCents < 50) {
@@ -204,6 +205,8 @@ class RequestsController extends Controller
                     'tattoo_design_id' => (string) $tattoo->id,
                     'flow' => 'managed_request',
                     'cardholder_name' => $request->input('cardholder_name'),
+                    'tax_amount' => (string) $totals['tax_amount'],
+                    'tax_label' => (string) ($totals['tax_label'] ?? ''),
                 ],
             ]);
 

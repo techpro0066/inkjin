@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\UserDetail;
+use App\Support\EuVat;
 
 class BookingCheckoutPricingService
 {
@@ -13,7 +14,7 @@ class BookingCheckoutPricingService
     {
         $baseFee = 10.00;
         $feeType = (string) ($userDetail->booking_fee_type ?: 'client');
-        if (!in_array($feeType, ['client', 'artist', 'split'], true)) {
+        if (! in_array($feeType, ['client', 'artist', 'split'], true)) {
             $feeType = 'client';
         }
 
@@ -64,23 +65,37 @@ class BookingCheckoutPricingService
      * @return array{
      *     deposit: float,
      *     platform_fee: float,
+     *     subtotal: float,
+     *     tax_amount: float,
+     *     tax_rate: float|null,
+     *     tax_country: string|null,
+     *     tax_label: string|null,
      *     total_due: float,
      *     deposit_meta: array,
      *     booking_fee: array
      * }
      */
-    public function checkoutTotals(UserDetail $userDetail, float $tattooMinPrice): array
+    public function checkoutTotals(UserDetail $userDetail, float $tattooMinPrice, ?string $clientPhone = null): array
     {
         $depositMeta = $this->resolveDepositForTattoo($userDetail, $tattooMinPrice);
         $bookingFee = $this->resolveBookingFee($userDetail);
         $deposit = (float) $depositMeta['deposit'];
         $platformFee = (float) $bookingFee['client_fee'];
-        $totalDue = $deposit + $platformFee;
+        $subtotal = round($deposit + $platformFee, 2);
+
+        $vat = EuVat::taxOnBookingFee($platformFee, $clientPhone);
+        $taxAmount = (float) $vat['tax_amount'];
+        $totalDue = round($subtotal + $taxAmount, 2);
 
         return [
             'deposit' => $deposit,
             'platform_fee' => $platformFee,
-            'total_due' => round($totalDue, 2),
+            'subtotal' => $subtotal,
+            'tax_amount' => $taxAmount,
+            'tax_rate' => $vat['is_eu'] ? (float) $vat['rate'] : null,
+            'tax_country' => $vat['country_code'],
+            'tax_label' => $vat['label'],
+            'total_due' => $totalDue,
             'deposit_meta' => $depositMeta,
             'booking_fee' => $bookingFee,
         ];

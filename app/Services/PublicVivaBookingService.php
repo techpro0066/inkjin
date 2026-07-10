@@ -110,9 +110,10 @@ class PublicVivaBookingService
         }
 
         $pricing = app(BookingCheckoutPricingService::class);
-        $totals = $pricing->checkoutTotals($userDetail, (float) $design->min_price);
+        $totals = $pricing->checkoutTotals($userDetail, (float) $design->min_price, $payload['phone'] ?? $bookingUser->phone_number);
         $depositAmount = (float) $totals['deposit'];
         $platformFee = (float) $totals['platform_fee'];
+        $taxAmount = (float) $totals['tax_amount'];
         $totalPaid = (float) $totals['total_due'];
 
         $booking = Booking::create([
@@ -138,6 +139,10 @@ class PublicVivaBookingService
             'payment_status' => 'paid',
             'deposit_amount' => $depositAmount,
             'platform_fee' => $platformFee,
+            'tax_amount' => $taxAmount,
+            'tax_rate' => $totals['tax_rate'],
+            'tax_country' => $totals['tax_country'],
+            'tax_label' => $totals['tax_label'],
             'total_amount_paid' => $totalPaid,
             'currency' => 'EUR',
             'questions_answers' => $payload['questions_answers'] ?? [],
@@ -196,10 +201,12 @@ class PublicVivaBookingService
                 return;
             }
 
+            $consultationType = trim((string) ($payload['consultation_type'] ?? ''));
             $calendarResult = GoogleCalendarController::createCalendarEvent(
                 $artistUserDetail,
                 $booking,
-                (bool) $booking->has_consultation
+                (bool) $booking->has_consultation,
+                $consultationType !== '' ? $consultationType : null
             );
 
             if (is_array($calendarResult) && ! empty($calendarResult['event_id'])) {
@@ -207,6 +214,7 @@ class PublicVivaBookingService
                     'google_calendar_event_id' => $calendarResult['event_id'],
                     'google_meet_link' => $calendarResult['meet_link'] ?? null,
                 ]);
+                $booking->refresh();
             }
         } catch (\Throwable $e) {
             Log::error('Failed to create Google Calendar event (Viva public)', [

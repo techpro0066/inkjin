@@ -748,14 +748,51 @@ class GoogleCalendarController extends Controller
     }
 
     /**
+     * Whether a Google Meet link should be attached for this consultation.
+     * Uses the artist's onboarding/preferences session_type (online / physical / both).
+     */
+    public static function shouldAttachGoogleMeet(
+        UserDetail $userDetail,
+        bool $hasConsultation,
+        ?string $consultationType = null
+    ): bool {
+        if (! $hasConsultation) {
+            return false;
+        }
+
+        $sessionType = strtolower(trim((string) ($userDetail->session_type ?? '')));
+
+        if ($sessionType === 'physical') {
+            return false;
+        }
+
+        if ($sessionType === 'online') {
+            return true;
+        }
+
+        // both (or unset but consultation required): respect client-selected type when present
+        $type = strtolower(trim((string) ($consultationType ?? '')));
+        if (in_array($type, ['studio', 'physical'], true)) {
+            return false;
+        }
+        if (in_array($type, ['video', 'online', 'phone'], true)) {
+            return true;
+        }
+
+        // Artist allows online sessions (both) and type was not captured — attach Meet
+        return $sessionType === 'both';
+    }
+
+    /**
      * Create a calendar event for a booking with Google Meet link
      * 
      * @param \App\Models\UserDetail $userDetail Artist's user detail
      * @param \App\Models\Booking $booking Booking instance
-     * @param bool $requiresConsultation Whether to create Google Meet link
+     * @param bool $requiresConsultation Whether booking includes a consultation
+     * @param string|null $consultationType Client-selected type: video|phone|studio
      * @return array|null Array with 'event_id' and 'meet_link' keys, or null on failure
      */
-    public static function createCalendarEvent($userDetail, $booking, $requiresConsultation = false)
+    public static function createCalendarEvent($userDetail, $booking, $requiresConsultation = false, ?string $consultationType = null)
     {
         try {
             if (!$userDetail || !$userDetail->google_calendar_token || !$userDetail->google_calendar_id) {
@@ -935,8 +972,14 @@ class GoogleCalendarController extends Controller
             $eventReminders->setOverrides([$reminder]);
             $event->setReminders($eventReminders);
 
-            // Enable Google Meet ONLY if consultation is required
-            if ($requiresConsultation) {
+            // Enable Google Meet when artist offers online consultation (session_type preference)
+            $attachGoogleMeet = self::shouldAttachGoogleMeet(
+                $userDetail,
+                (bool) $requiresConsultation,
+                $consultationType
+            );
+
+            if ($attachGoogleMeet) {
                 $conferenceData = new \Google_Service_Calendar_ConferenceData();
                 $createRequest = new \Google_Service_Calendar_CreateConferenceRequest();
                 $createRequest->setRequestId(uniqid()); // Unique request ID required
@@ -949,15 +992,15 @@ class GoogleCalendarController extends Controller
 
             // Insert event (with conferenceDataVersion only if Meet is enabled)
             $insertParams = [];
-            if ($requiresConsultation) {
+            if ($attachGoogleMeet) {
                 $insertParams['conferenceDataVersion'] = 1; // Required to enable Google Meet
             }
             $createdEvent = $service->events->insert($calendarId, $event, $insertParams);
             $eventId = $createdEvent->getId();
 
-            // Extract Google Meet link from the created event (only if consultation required)
+            // Extract Google Meet link from the created event (only if Meet was requested)
             $meetLink = null;
-            if ($requiresConsultation && $createdEvent->getConferenceData() && $createdEvent->getConferenceData()->getEntryPoints()) {
+            if ($attachGoogleMeet && $createdEvent->getConferenceData() && $createdEvent->getConferenceData()->getEntryPoints()) {
                 $entryPoints = $createdEvent->getConferenceData()->getEntryPoints();
                 if (!empty($entryPoints) && isset($entryPoints[0])) {
                     $meetLink = $entryPoints[0]->getUri();
@@ -969,10 +1012,13 @@ class GoogleCalendarController extends Controller
                 'event_id' => $eventId,
                 'artist_user_id' => $artist->id,
                 'requires_consultation' => $requiresConsultation,
+                'attach_google_meet' => $attachGoogleMeet,
+                'session_type' => $userDetail->session_type,
+                'consultation_type' => $consultationType,
                 'meet_link' => $meetLink,
             ]);
 
-            // Return both event ID and Meet link (Meet link will be null if consultation not required)
+            // Return both event ID and Meet link (Meet link will be null if not online)
             return [
                 'event_id' => $eventId,
                 'meet_link' => $meetLink

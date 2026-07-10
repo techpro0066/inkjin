@@ -34,6 +34,7 @@ use App\Models\Question;
 use App\Models\QuestionSorting;
 use App\Models\UserQuestion;
 use App\Support\PaymentMethods;
+use App\Support\EuVat;
 use App\Models\PendingVivaPayment;
 use App\Services\VivaCheckoutService;
 use Stripe\Exception\ApiErrorException;
@@ -778,6 +779,7 @@ class InkJinController extends Controller
             'artist_username' => ['required', 'string'],
             'tattoo_slug' => ['required', 'string'],
             'cardholder_name' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
         ]);
 
         $userDetail = UserDetail::query()
@@ -810,7 +812,8 @@ class InkJinController extends Controller
         $bookingFee = $this->resolveBookingFee($userDetail);
         $deposit = (float) $depositMeta['deposit'];
         $platformFee = (float) $bookingFee['client_fee'];
-        $totalDueNow = $deposit + $platformFee;
+        $vat = EuVat::taxOnBookingFee($platformFee, $validated['phone'] ?? null);
+        $totalDueNow = round($deposit + $platformFee + (float) $vat['tax_amount'], 2);
         $amountCents = (int) round($totalDueNow * 100);
 
         $payoutPreference = $this->artistPayoutPreferenceLabel($userDetail);
@@ -836,6 +839,10 @@ class InkJinController extends Controller
                     'booking_fee_type' => (string) $bookingFee['fee_type'],
                     'booking_fee_client' => (string) $bookingFee['client_fee'],
                     'booking_fee_artist' => (string) $bookingFee['artist_fee'],
+                    'tax_amount' => (string) $vat['tax_amount'],
+                    'tax_rate' => (string) ($vat['rate'] ?? 0),
+                    'tax_country' => (string) ($vat['country_code'] ?? ''),
+                    'tax_label' => (string) ($vat['label'] ?? ''),
                 ],
             ];
 
@@ -847,6 +854,9 @@ class InkJinController extends Controller
                 'amount_cents' => $amountCents,
                 'currency' => 'eur',
                 'payout_type' => $payoutPreference,
+                'tax_amount' => $vat['tax_amount'],
+                'tax_label' => $vat['label'],
+                'total_due' => $totalDueNow,
             ]);
         } catch (ApiErrorException $e) {
             return response()->json([
@@ -867,6 +877,7 @@ class InkJinController extends Controller
             'booking_payload.name' => ['nullable', 'string', 'max:255'],
             'booking_payload.consultation_required' => ['nullable', 'boolean'],
             'booking_payload.consultation_timing' => ['nullable', 'string', 'in:separate,combined'],
+            'booking_payload.consultation_type' => ['nullable', 'string', 'in:video,phone,studio'],
             'booking_payload.consult_duration_minutes' => ['nullable', 'integer', 'min:1'],
             'booking_payload.tattoo_duration_minutes' => ['nullable', 'integer', 'min:1'],
             'booking_payload.questions_answers' => ['nullable', 'array'],
@@ -991,7 +1002,9 @@ class InkJinController extends Controller
         $bookingFee = $this->resolveBookingFee($userDetail);
         $depositAmount = (float) $depositMeta['deposit'];
         $platformFee = (float) $bookingFee['client_fee'];
-        $totalPaid = $depositAmount + $platformFee;
+        $vat = EuVat::taxOnBookingFee($platformFee, $payload['phone'] ?? null);
+        $taxAmount = (float) $vat['tax_amount'];
+        $totalPaid = round($depositAmount + $platformFee + $taxAmount, 2);
 
         $booking = Booking::create([
             'user_id' => $bookingUser->id,
@@ -1013,6 +1026,10 @@ class InkJinController extends Controller
             'payment_status' => 'paid',
             'deposit_amount' => $depositAmount,
             'platform_fee' => $platformFee,
+            'tax_amount' => $taxAmount,
+            'tax_rate' => $vat['is_eu'] ? $vat['rate'] : null,
+            'tax_country' => $vat['country_code'],
+            'tax_label' => $vat['label'],
             'total_amount_paid' => $totalPaid,
             'currency' => strtoupper((string) ($intent->currency ?: 'eur')),
             'questions_answers' => $payload['questions_answers'] ?? [],
@@ -1031,16 +1048,19 @@ class InkJinController extends Controller
         try {
             $artistUserDetail = $booking->artist?->userDetail;
             if ($artistUserDetail && $artistUserDetail->google_calendar_token) {
+                $consultationType = trim((string) ($payload['consultation_type'] ?? ''));
                 $calendarResult = GoogleCalendarController::createCalendarEvent(
                     $artistUserDetail,
                     $booking,
-                    (bool) $booking->has_consultation
+                    (bool) $booking->has_consultation,
+                    $consultationType !== '' ? $consultationType : null
                 );
                 if (is_array($calendarResult) && !empty($calendarResult['event_id'])) {
                     $booking->update([
                         'google_calendar_event_id' => $calendarResult['event_id'],
                         'google_meet_link' => $calendarResult['meet_link'] ?? null,
                     ]);
+                    $booking->refresh();
                 }
             }
         } catch (\Throwable $e) {
@@ -1333,6 +1353,7 @@ class InkJinController extends Controller
             'booking_payload.name' => ['nullable', 'string', 'max:255'],
             'booking_payload.consultation_required' => ['nullable', 'boolean'],
             'booking_payload.consultation_timing' => ['nullable', 'string', 'in:separate,combined'],
+            'booking_payload.consultation_type' => ['nullable', 'string', 'in:video,phone,studio'],
             'booking_payload.consult_duration_minutes' => ['nullable', 'integer', 'min:1'],
             'booking_payload.tattoo_duration_minutes' => ['nullable', 'integer', 'min:1'],
             'booking_payload.questions_answers' => ['nullable', 'array'],
@@ -1385,7 +1406,8 @@ class InkJinController extends Controller
 
         $depositMeta = $this->resolveDepositForTattoo($userDetail, (float) $tattoo->min_price);
         $bookingFee = $this->resolveBookingFee($userDetail);
-        $amountCents = (int) round(((float) $depositMeta['deposit'] + (float) $bookingFee['client_fee']) * 100);
+        $vat = EuVat::taxOnBookingFee((float) $bookingFee['client_fee'], $clientPhone);
+        $amountCents = (int) round(((float) $depositMeta['deposit'] + (float) $bookingFee['client_fee'] + (float) $vat['tax_amount']) * 100);
 
         try {
             $order = $vivaCheckout->createOrReuseOrderForPublicBooking(

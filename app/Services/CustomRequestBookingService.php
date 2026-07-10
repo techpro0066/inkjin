@@ -113,7 +113,8 @@ class CustomRequestBookingService
         }
 
         $quotePrice = $customRequest->checkoutPriceAmount();
-        $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice);
+        $clientPhone = $customRequest->user?->phone_number;
+        $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice, $clientPhone);
 
         $booking = Booking::create([
             'user_id' => $customRequest->user_id,
@@ -142,6 +143,10 @@ class CustomRequestBookingService
             'payment_status' => 'paid',
             'deposit_amount' => $totals['deposit'],
             'platform_fee' => $totals['platform_fee'],
+            'tax_amount' => $totals['tax_amount'],
+            'tax_rate' => $totals['tax_rate'],
+            'tax_country' => $totals['tax_country'],
+            'tax_label' => $totals['tax_label'],
             'total_amount_paid' => $totals['total_due'],
             'currency' => strtoupper((string) ($intent->currency ?: 'eur')),
             'questions_answers' => is_array($customRequest->questions_answers)
@@ -232,7 +237,8 @@ class CustomRequestBookingService
         }
 
         $quotePrice = $customRequest->checkoutPriceAmount();
-        $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice);
+        $clientPhone = $customRequest->user?->phone_number;
+        $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice, $clientPhone);
 
         $booking = Booking::create([
             'user_id' => $customRequest->user_id,
@@ -264,6 +270,10 @@ class CustomRequestBookingService
             'payment_status' => 'paid',
             'deposit_amount' => $totals['deposit'],
             'platform_fee' => $totals['platform_fee'],
+            'tax_amount' => $totals['tax_amount'],
+            'tax_rate' => $totals['tax_rate'],
+            'tax_country' => $totals['tax_country'],
+            'tax_label' => $totals['tax_label'],
             'total_amount_paid' => $totals['total_due'],
             'currency' => 'EUR',
             'questions_answers' => is_array($customRequest->questions_answers)
@@ -349,6 +359,7 @@ class CustomRequestBookingService
                     'google_calendar_event_id' => $calendarResult['event_id'],
                     'google_meet_link' => $calendarResult['meet_link'] ?? null,
                 ]);
+                $booking->refresh();
             }
         } catch (\Throwable $e) {
             Log::error('Failed to create Google Calendar event (custom request)', [
