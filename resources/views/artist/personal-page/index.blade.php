@@ -90,6 +90,11 @@
       display: block;
     }
 
+    .toggle-switch { width: 48px; height: 26px; border-radius: 13px; background: #cac4d3; cursor: pointer; position: relative; transition: background 0.3s; flex-shrink: 0; }
+    .toggle-switch.active { background: #310f7a; }
+    .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: transform 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    .toggle-switch.active::after { transform: translateX(22px); }
+
     /* Mobile overflow fixes */
     @media (max-width: 1023px) {
       .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
@@ -102,6 +107,8 @@
 @php
   $selectedAlias = $userDetail->personal_page_name_alias ?? 'full';
   $selectedTheme = $userDetail->personal_page_color ?? 'default';
+  $displayPolicies = (bool) ($userDetail->display_policies ?? true);
+  $policyCopy = \App\Support\ArtistPolicyCopy::for($userDetail);
   $tagline = $userDetail->personal_page_tagline ?? '';
   $description = $userDetail->personal_page_description ?? '';
   $bannerUrl = $userDetail->personal_page_background_image ? asset($userDetail->personal_page_background_image) : '';
@@ -261,7 +268,49 @@
         <p id="personal_page_name_alias_error" class="text-error text-xs mt-3 hidden"></p>
       </div>
 
-      <!-- 3. Color Scheme Section -->
+      <!-- 3. Policies Section -->
+      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
+        <div class="flex items-start sm:items-center justify-between gap-4 mb-5">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary text-lg">gavel</span>
+            </div>
+            <div>
+              <h3 class="font-bold text-on-surface">Policies</h3>
+              <p class="text-xs text-on-surface-variant">Control whether clients see your booking policies on your public page.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <span class="text-sm font-semibold text-on-surface whitespace-nowrap">Display Policies</span>
+            <div
+              id="displayPoliciesToggle"
+              class="toggle-switch {{ $displayPolicies ? 'active' : '' }}"
+              role="switch"
+              aria-checked="{{ $displayPolicies ? 'true' : 'false' }}"
+              tabindex="0"
+              title="Show or hide Policies on your public page"
+              onclick="toggleDisplayPolicies()"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDisplayPolicies();}"
+            ></div>
+            <input type="hidden" id="display_policies" name="display_policies" value="{{ $displayPolicies ? '1' : '0' }}">
+          </div>
+        </div>
+
+        <div id="policiesPreviewWrap" class="{{ $displayPolicies ? '' : 'hidden' }}">
+          <div class="rounded-xl border border-outline-variant/30 bg-surface-container-low p-4 sm:p-5 space-y-3 text-sm text-on-surface-variant leading-relaxed">
+            <p><span class="font-semibold text-on-surface">Deposit:</span> {{ $policyCopy['deposit'] }}</p>
+            <p><span class="font-semibold text-on-surface">Rescheduling:</span> {{ $policyCopy['rescheduling'] }}</p>
+            <p><span class="font-semibold text-on-surface">Cancellation:</span> {{ $policyCopy['cancellation'] }}</p>
+            <p><span class="font-semibold text-on-surface">No-show or late cancellation:</span> {{ $policyCopy['no_show'] }}</p>
+          </div>
+          <p class="text-xs text-on-surface-variant mt-3">
+            Edit in <a href="{{ route('settings.preferences') }}" class="text-primary hover:underline">Preference Settings</a>.
+          </p>
+        </div>
+        <p id="displayPoliciesStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>
+      </div>
+
+      <!-- 4. Color Scheme Section -->
       <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
         <div class="flex items-center gap-3 mb-2">
           <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -520,6 +569,82 @@
       });
       clearFieldError('personal_page_name_alias');
       refreshPreviewModal();
+    }
+
+    let displayPoliciesSaving = false;
+
+    function setDisplayPoliciesUi(enabled) {
+      const toggle = document.getElementById('displayPoliciesToggle');
+      const input = document.getElementById('display_policies');
+      const preview = document.getElementById('policiesPreviewWrap');
+      if (toggle) {
+        toggle.classList.toggle('active', enabled);
+        toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
+      }
+      if (input) input.value = enabled ? '1' : '0';
+      if (preview) preview.classList.toggle('hidden', !enabled);
+    }
+
+    function setDisplayPoliciesStatus(message, isError) {
+      const status = document.getElementById('displayPoliciesStatus');
+      if (!status) return;
+      if (!message) {
+        status.textContent = '';
+        status.classList.add('hidden');
+        status.classList.remove('text-error', 'text-emerald-700');
+        return;
+      }
+      status.textContent = message;
+      status.classList.remove('hidden', 'text-error', 'text-emerald-700');
+      status.classList.add(isError ? 'text-error' : 'text-emerald-700');
+    }
+
+    function toggleDisplayPolicies() {
+      const toggle = document.getElementById('displayPoliciesToggle');
+      if (!toggle || displayPoliciesSaving) return;
+
+      const previous = toggle.classList.contains('active');
+      const next = !previous;
+      setDisplayPoliciesUi(next);
+      setDisplayPoliciesStatus('');
+      displayPoliciesSaving = true;
+      toggle.style.pointerEvents = 'none';
+      toggle.style.opacity = '0.7';
+
+      const body = new FormData();
+      body.append('display_policies', next ? '1' : '0');
+      body.append('_token', @json(csrf_token()));
+
+      fetch(@json(route('personal-page.display-policies')), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: body,
+      })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.data || !result.data.success) {
+            throw new Error((result.data && result.data.message) || 'Could not update policies visibility.');
+          }
+          const enabled = !!result.data.display_policies;
+          setDisplayPoliciesUi(enabled);
+          setDisplayPoliciesStatus(result.data.message || (enabled ? 'Policies will be shown on your public page.' : 'Policies are hidden from your public page.'), false);
+        })
+        .catch(function (err) {
+          setDisplayPoliciesUi(previous);
+          setDisplayPoliciesStatus(err.message || 'Could not update policies visibility.', true);
+        })
+        .finally(function () {
+          displayPoliciesSaving = false;
+          toggle.style.pointerEvents = '';
+          toggle.style.opacity = '';
+        });
     }
 
     function selectTheme(card) {

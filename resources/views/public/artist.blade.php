@@ -26,8 +26,17 @@
     $showAvailableDesigns = in_array($userDetail->availability_status, ['design_custom', 'design_only'], true);
     $hasVisibleDesigns = $showAvailableDesigns && $artistDesigns->count() > 0;
     $hasPortfolio = $artistPortfolios->count() > 0;
+    $displayPolicies = (bool) ($userDetail->display_policies ?? true);
     $designsTabActive = $hasVisibleDesigns;
     $portfolioTabActive = ! $hasVisibleDesigns && $hasPortfolio;
+    $policiesTabActive = $displayPolicies && ! $hasVisibleDesigns && ! $hasPortfolio;
+    $showTabsNav = $hasVisibleDesigns || $hasPortfolio || $displayPolicies;
+
+    $policyCopy = \App\Support\ArtistPolicyCopy::for($userDetail);
+    $depositPolicyText = $policyCopy['deposit'];
+    $reschedulePolicyText = $policyCopy['rescheduling'];
+    $cancellationPolicyText = $policyCopy['cancellation'];
+    $noShowPolicyText = $policyCopy['no_show'];
     $portfolioForJs = $artistPortfolios->values()->map(function ($portfolio) {
         $colorLabel = match ($portfolio->color) {
             'color' => 'Full Color',
@@ -129,11 +138,9 @@
       background-color: {{ $selectedTheme['bg'] }};
     }
 
-    #tab-designs {
-      color: {{ $selectedTheme['primary'] }};
-    }
-
-    #tab-portfolio {
+    #tab-designs,
+    #tab-portfolio,
+    #tab-policies {
       color: {{ $selectedTheme['primary'] }};
     }
 
@@ -201,31 +208,121 @@
       </div>
 
       <div class="pt-16 pb-6">
+        @php
+          $stylesPayload = is_array($userDetail->tattoo_styles ?? null) ? $userDetail->tattoo_styles : [];
+          $primaryStyleRaw = trim((string) ($stylesPayload['primary_style'] ?? ''));
+          $otherStylesRaw = $stylesPayload['other_styles'] ?? [];
+          if (! is_array($otherStylesRaw)) {
+              $otherStylesRaw = array_filter(array_map('trim', explode(',', (string) $otherStylesRaw)));
+          }
+          $formatStyleLabel = static function (string $style): string {
+              return ucwords(str_replace(['-', '_'], ' ', $style));
+          };
+          $styleLabels = [];
+          if ($primaryStyleRaw !== '') {
+              $styleLabels[] = $formatStyleLabel($primaryStyleRaw);
+          }
+          foreach ($otherStylesRaw as $style) {
+              $style = trim((string) $style);
+              if ($style === '') {
+                  continue;
+              }
+              $label = $formatStyleLabel($style);
+              if (! in_array($label, $styleLabels, true)) {
+                  $styleLabels[] = $label;
+              }
+          }
+          $stylesLine = implode(', ', $styleLabels);
+          $tattooingSince = trim((string) ($stylesPayload['tattooing_since'] ?? ''));
+          $locationParts = array_filter([
+              trim((string) ($userDetail->city ?? '')),
+              trim((string) ($userDetail->country ?? '')),
+          ]);
+          $locationLine = implode(', ', $locationParts);
+          $tagline = trim((string) ($userDetail->personal_page_tagline ?? ''));
+          $studioName = trim((string) ($userDetail->studio_name ?? ''));
+          $currencyCode = strtoupper(trim((string) ($userDetail->currency ?? 'EUR')));
+          $currencySymbol = match ($currencyCode) {
+              'EUR' => '€',
+              'GBP' => '£',
+              'USD', 'CAD', 'AUD', 'NZD', 'SGD' => '$',
+              default => $currencyCode !== '' ? $currencyCode.' ' : '€',
+          };
+          $formatRate = static function ($amount) use ($currencySymbol): string {
+              if ($amount === null || $amount === '') {
+                  return '';
+              }
+              $number = rtrim(rtrim(number_format((float) $amount, 2, '.', ''), '0'), '.');
+
+              return $currencySymbol.$number;
+          };
+          $rateParts = [];
+          if ($userDetail->hourly_rate !== null && $userDetail->hourly_rate !== '') {
+              $rateParts[] = $formatRate($userDetail->hourly_rate).'/hr';
+          }
+          if ($userDetail->half_day_rate !== null && $userDetail->half_day_rate !== '') {
+              $rateParts[] = $formatRate($userDetail->half_day_rate).' half-day';
+          }
+          if ($userDetail->full_day_rate !== null && $userDetail->full_day_rate !== '') {
+              $rateParts[] = $formatRate($userDetail->full_day_rate).' full-day';
+          }
+          $ratesLine = implode(' • ', $rateParts);
+          $nameAlias = $userDetail->personal_page_name_alias ?: 'full';
+        @endphp
+
         <!-- Name -->
         <div class="flex flex-wrap items-baseline gap-2 mb-1">
-            @if($userDetail->personal_page_name_alias == 'full')
-              <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</h1>
-            @elseif($userDetail->personal_page_name_alias == 'username')
-              <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user_name }}</h1>   
-            @elseif($userDetail->personal_page_name_alias == 'both')
-              <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</h1>
-              <span class="text-lg text-on-surface-variant font-light">({{ $userDetail->user_name }})</span>
-            @endif
+          @if($nameAlias === 'username')
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user_name }}</h1>
+          @elseif($nameAlias === 'both')
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</h1>
+            <span class="text-lg text-on-surface-variant font-light">({{ $userDetail->user_name }})</span>
+          @else
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</h1>
+          @endif
         </div>
 
-        <!-- Studio -->
-        <p class="text-base font-semibold studio-name-color mb-2">{{ $userDetail->studio_name }}</p>
+        @if($tagline !== '')
+          <p class="text-base text-on-surface-variant mb-3">{{ $tagline }}</p>
+        @endif
 
-        <!-- Meta row -->
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-on-surface-variant mb-4">
-          <span class="flex items-center gap-1">
-            <span class="material-symbols-outlined text-[16px] mr-1 align-bottom">location_on</span> {{ $userDetail->city }}, {{ $userDetail->country }}
-          </span>
-          <span class="flex items-center gap-1">
-            <span class="material-symbols-outlined text-[18px]">calendar_month</span>
-            Tattooing since {{ $userDetail->tattoo_styles['tattooing_since'] ?? '' }}
-          </span>
+        <!-- Studio / location / tattooing since -->
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-on-surface-variant mb-2">
+          @if($studioName !== '')
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px] studio-name-color">storefront</span>
+              <span class="font-semibold studio-name-color">{{ $studioName }}</span>
+            </span>
+          @endif
+          @if($locationLine !== '')
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]">location_on</span>
+              {{ $locationLine }}
+            </span>
+          @endif
+          @if($tattooingSince !== '')
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]">calendar_month</span>
+              Tattooing since {{ $tattooingSince }}
+            </span>
+          @endif
         </div>
+
+        @if($stylesLine !== '')
+          <div class="flex flex-wrap items-start gap-1 text-sm text-on-surface-variant mb-2">
+            <span class="material-symbols-outlined text-[18px] mt-0.5 shrink-0">palette</span>
+            <span>{{ $stylesLine }}</span>
+          </div>
+        @endif
+
+        @if($ratesLine !== '')
+          <div class="flex flex-wrap items-center gap-1 text-sm text-on-surface-variant mb-4">
+            <span class="material-symbols-outlined text-[18px] shrink-0">payments</span>
+            <span>{{ $ratesLine }}</span>
+          </div>
+        @else
+          <div class="mb-4"></div>
+        @endif
 
         <!-- Social icons -->
         <div class="flex items-center gap-2 mb-5">
@@ -267,8 +364,8 @@
             </div>
         @endif
         
-        @if($userDetail->availability_status != 'closed')
-            <div id="ctaButtons" class="flex flex-wrap gap-3">
+        <div id="ctaButtons" class="flex flex-wrap gap-3 {{ $userDetail->availability_status == 'closed' ? 'mb-4' : '' }}">
+            @if($userDetail->availability_status != 'closed')
                 @if($userDetail->availability_status == 'design_only' || $userDetail->availability_status == 'design_custom')
                     <button id="btnBrowseDesigns" onclick="browseDesigns()" class="px-6 py-2.5  bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors shadow-md shadow-primary/20">
                         Browse Available Designs
@@ -279,8 +376,14 @@
                         Request Custom Tattoo
                     </a>
                 @endif
-            </div>
-        @endif
+            @endif
+            @if($displayPolicies)
+            <button type="button" id="btnPolicies" onclick="openPolicies()" class="px-6 py-2.5 border-2 border-outline-variant text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container transition-colors inline-flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[18px]">gavel</span>
+                Policies
+            </button>
+            @endif
+        </div>
 
         <!-- Closed Banner (shown when bookings closed) -->
         @if($userDetail->availability_status == 'closed')
@@ -310,18 +413,23 @@
   <!-- ═══════════════════════════════════════════════ -->
   <!-- TABS                                            -->
   <!-- ═══════════════════════════════════════════════ -->
-  @if($hasVisibleDesigns || $hasPortfolio)
+  @if($showTabsNav)
   <nav id="artistDesignsSection" class="border-b border-outline-variant sticky top-0 bg-surface/95 backdrop-blur-sm z-30">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 flex gap-0">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 flex gap-0 overflow-x-auto">
       @if($hasVisibleDesigns)
-        <button id="tab-designs" onclick="switchTab('designs')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $designsTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} transition-colors">
+        <button id="tab-designs" onclick="switchTab('designs')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $designsTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} transition-colors whitespace-nowrap">
           Available Designs
         </button>
       @endif
       @if($hasPortfolio)
-        <button id="tab-portfolio" onclick="switchTab('portfolio')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $portfolioTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors">
+        <button id="tab-portfolio" onclick="switchTab('portfolio')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $portfolioTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap">
           Portfolio
         </button>
+      @endif
+      @if($displayPolicies)
+      <button id="tab-policies" onclick="switchTab('policies')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $policiesTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap">
+        Policies
+      </button>
       @endif
     </div>
   </nav>
@@ -401,6 +509,26 @@
             </div>
             </div>
         @endforeach
+      </div>
+    </div>
+    @endif
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- POLICIES TAB                                    -->
+    <!-- ═══════════════════════════════════════════════ -->
+    @if($displayPolicies)
+    <div id="content-policies" class="tab-content {{ $policiesTabActive ? 'active' : '' }}">
+      <div class="bg-white rounded-2xl border border-outline-variant/40 shadow-sm p-5 sm:p-6 space-y-5">
+        <div>
+          <h3 class="text-lg font-bold text-on-surface mb-1">Policies</h3>
+          <p class="text-sm text-on-surface-variant">Booking terms for appointments with this artist.</p>
+        </div>
+        <div class="space-y-4 text-sm text-on-surface-variant leading-relaxed">
+          <p><span class="font-semibold text-on-surface">Deposit:</span> {{ $depositPolicyText }}</p>
+          <p><span class="font-semibold text-on-surface">Rescheduling:</span> {{ $reschedulePolicyText }}</p>
+          <p><span class="font-semibold text-on-surface">Cancellation:</span> {{ $cancellationPolicyText }}</p>
+          <p><span class="font-semibold text-on-surface">No-show or late cancellation:</span> {{ $noShowPolicyText }}</p>
+        </div>
       </div>
     </div>
     @endif
@@ -532,6 +660,14 @@
     function browseDesigns() {
       switchTab('designs');
       const target = document.getElementById('artistDesignsSection') || document.getElementById('content-designs');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function openPolicies() {
+      switchTab('policies');
+      const target = document.getElementById('artistDesignsSection') || document.getElementById('content-policies');
       if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
@@ -820,11 +956,11 @@
       const designCards = designsContent ? designsContent.querySelectorAll('.design-card') : [];
 
       // Reset everything
-      btnBrowse.style.display = '';
-      btnCustom.style.display = '';
-      ctaButtons.classList.remove('hidden');
-      closedBanner.classList.add('hidden');
-      statusBadge.classList.add('hidden');
+      if (btnBrowse) btnBrowse.style.display = '';
+      if (btnCustom) btnCustom.style.display = '';
+      if (ctaButtons) ctaButtons.classList.remove('hidden');
+      if (closedBanner) closedBanner.classList.add('hidden');
+      if (statusBadge) statusBadge.classList.add('hidden');
 
       // Re-enable all "Get This Tattoo" buttons
       designCards.forEach(card => {
@@ -850,16 +986,16 @@
 
         case 'flash':
           // Hide custom button, show badge
-          btnCustom.style.display = 'none';
-          statusBadge.classList.remove('hidden');
-          statusBadgeText.textContent = 'Currently accepting available design bookings only';
+          if (btnCustom) btnCustom.style.display = 'none';
+          if (statusBadge) statusBadge.classList.remove('hidden');
+          if (statusBadgeText) statusBadgeText.textContent = 'Currently accepting available design bookings only';
           break;
 
         case 'custom':
           // Hide browse button, disable design cards
-          btnBrowse.style.display = 'none';
-          statusBadge.classList.remove('hidden');
-          statusBadgeText.textContent = 'Currently accepting custom requests only';
+          if (btnBrowse) btnBrowse.style.display = 'none';
+          if (statusBadge) statusBadge.classList.remove('hidden');
+          if (statusBadgeText) statusBadgeText.textContent = 'Currently accepting custom requests only';
           if (tabDesigns) {
             tabDesigns.style.display = 'none';
           }
@@ -870,10 +1006,11 @@
           break;
 
         case 'closed':
-          // Hide CTA buttons, show closed banner
-          ctaButtons.classList.add('hidden');
-          closedBanner.classList.remove('hidden');
-          statusBadge.classList.add('hidden');
+          // Hide booking CTAs, keep Policies, show closed banner
+          if (btnBrowse) btnBrowse.style.display = 'none';
+          if (btnCustom) btnCustom.style.display = 'none';
+          if (closedBanner) closedBanner.classList.remove('hidden');
+          if (statusBadge) statusBadge.classList.add('hidden');
           if (tabDesigns) {
             tabDesigns.style.display = 'none';
           }

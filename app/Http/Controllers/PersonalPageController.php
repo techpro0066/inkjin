@@ -54,6 +54,7 @@ class PersonalPageController extends Controller
             'personal_page_tagline' => ['nullable', 'string', 'max:255'],
             'personal_page_description' => ['nullable', 'string', 'max:500'],
             'personal_page_name_alias' => ['required', 'in:full,username,both'],
+            'display_policies' => ['sometimes', 'boolean'],
         ]);
 
         $backgroundPath = $userDetail->personal_page_background_image;
@@ -80,12 +81,36 @@ class PersonalPageController extends Controller
             'personal_page_tagline' => trim((string) ($validated['personal_page_tagline'] ?? '')) ?: null,
             'personal_page_description' => trim((string) ($validated['personal_page_description'] ?? '')) ?: null,
             'personal_page_name_alias' => $validated['personal_page_name_alias'],
+            'display_policies' => $request->boolean('display_policies'),
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Personal page updated successfully.',
             'banner' => $backgroundPath ? asset($backgroundPath) : null,
+        ]);
+    }
+
+    public function updateDisplayPolicies(Request $request)
+    {
+        $user = Auth::user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+        $request->validate([
+            'display_policies' => ['required', 'boolean'],
+        ]);
+
+        $displayPolicies = $request->boolean('display_policies');
+        $userDetail->update([
+            'display_policies' => $displayPolicies,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'display_policies' => $displayPolicies,
+            'message' => $displayPolicies
+                ? 'Policies will be shown on your public page.'
+                : 'Policies are hidden from your public page.',
         ]);
     }
 }
