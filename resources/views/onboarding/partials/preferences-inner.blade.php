@@ -51,6 +51,30 @@
         </div>
       </div>
       <div class="mt-4">
+        <p class="text-sm font-medium mb-1">Rates</p>
+        <p class="text-xs text-on-surface-variant mb-3">These are reference rates. Final pricing for custom work is always confirmed by you with a quote.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-2" for="hourly_rate">Hourly rate <span class="text-red-600">*</span></label>
+            <input type="number" step="0.01" min="0" name="hourly_rate" id="hourly_rate" value="{{ $ud->hourly_rate ?? '' }}" class="form-input w-full" />
+            <p class="text-xs text-on-surface-variant mt-1">Your typical rate per hour, before any custom quote</p>
+            <p id="hourly_rate_error" class="text-red-600 text-sm mt-1 hidden"></p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2" for="half_day_rate">Half-day rate (optional)</label>
+            <input type="number" step="0.01" min="0" name="half_day_rate" id="half_day_rate" value="{{ $ud->half_day_rate ?? '' }}" class="form-input w-full" />
+            <p class="text-xs text-on-surface-variant mt-1">For sessions typically booked in half-day blocks</p>
+            <p id="half_day_rate_error" class="text-red-600 text-sm mt-1 hidden"></p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2" for="full_day_rate">Full-day rate (optional)</label>
+            <input type="number" step="0.01" min="0" name="full_day_rate" id="full_day_rate" value="{{ $ud->full_day_rate ?? '' }}" class="form-input w-full" />
+            <p class="text-xs text-on-surface-variant mt-1">For sessions typically booked as a full day</p>
+            <p id="full_day_rate_error" class="text-red-600 text-sm mt-1 hidden"></p>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4">
         <p class="text-sm font-medium mb-2">Inkjin booking fee <span class="text-red-600">*</span></p>
         <label class="flex items-start gap-2 mb-2 cursor-pointer"><input type="radio" name="booking_fee_type" value="client" class="mt-1" {{ ($ud->booking_fee_type ?? '') == 'client' ? 'checked' : '' }} /><span class="text-sm">Client pays — fee added to client total</span></label>
         <label class="flex items-start gap-2 mb-2 cursor-pointer"><input type="radio" name="booking_fee_type" value="artist" class="mt-1" {{ ($ud->booking_fee_type ?? '') == 'artist' ? 'checked' : '' }} /><span class="text-sm">Artist pays — fee deducted from payout</span></label>

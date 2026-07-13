@@ -47,6 +47,9 @@ return new class extends Migration
             $table->string('currency')->nullable();
             $table->enum('minimum_deposit_type', ['amount', 'percentage'])->nullable();
             $table->decimal('minimum_deposit_amount', 10, 2)->nullable();
+            $table->decimal('hourly_rate', 10, 2)->nullable();
+            $table->decimal('half_day_rate', 10, 2)->nullable();
+            $table->decimal('full_day_rate', 10, 2)->nullable();
             $table->enum('booking_fee_type', ['client', 'artist', 'split'])->nullable();
             $table->string('reschedule_times')->nullable();
             $table->string('cancellation_window')->nullable();

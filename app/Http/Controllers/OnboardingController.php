@@ -1292,6 +1292,10 @@ class OnboardingController extends Controller
                     'size_unit' => ['required'],
                     'minimum_deposit_amount' => ['required', 'numeric', 'min:0'],
                     'minimum_deposit_type' => ['required'],
+                    'hourly_rate' => ['required', 'numeric', 'min:0'],
+                    'half_day_rate' => ['nullable', 'numeric', 'min:0'],
+                    'full_day_rate' => ['nullable', 'numeric', 'min:0'],
+                    'booking_fee_type' => ['required', 'in:client,artist,split'],
                     'cancellation_window' => ['required'],
                     'reschedule_times' => ['required'],
                     'session_buffer_period' => ['required', 'integer', 'min:0'],
@@ -1326,6 +1330,11 @@ class OnboardingController extends Controller
                     $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
                 }
                 
+                $request->merge([
+                    'half_day_rate' => $request->filled('half_day_rate') ? $request->input('half_day_rate') : null,
+                    'full_day_rate' => $request->filled('full_day_rate') ? $request->input('full_day_rate') : null,
+                ]);
+
                 $validated = $request->validate($validationRules);
 
                 $minimumDepositAmount = (float) $validated['minimum_deposit_amount'];
@@ -1337,6 +1346,10 @@ class OnboardingController extends Controller
                     'size_unit' => $validated['size_unit'],
                     'minimum_deposit_amount' => $minimumDepositAmount,
                     'minimum_deposit_type' => $validated['minimum_deposit_type'],
+                    'hourly_rate' => (float) $validated['hourly_rate'],
+                    'half_day_rate' => isset($validated['half_day_rate']) ? (float) $validated['half_day_rate'] : null,
+                    'full_day_rate' => isset($validated['full_day_rate']) ? (float) $validated['full_day_rate'] : null,
+                    'booking_fee_type' => $validated['booking_fee_type'],
                     'cancellation_window' => $validated['cancellation_window'],
                     'reschedule_times' => $validated['reschedule_times'],
                     'session_buffer_period' => (int) $validated['session_buffer_period'],
@@ -1463,6 +1476,9 @@ class OnboardingController extends Controller
                 'size_unit' => ['required'],
                 'minimum_deposit_amount' => ['required', 'numeric', 'min:0'],
                 'minimum_deposit_type' => ['required'],
+                'hourly_rate' => ['required', 'numeric', 'min:0'],
+                'half_day_rate' => ['nullable', 'numeric', 'min:0'],
+                'full_day_rate' => ['nullable', 'numeric', 'min:0'],
                 'booking_fee_type' => ['required', 'in:client,artist,split'],
                 'reschedule_times' => ['required'],
                 'cancellation_window' => ['required'],
@@ -1498,6 +1514,11 @@ class OnboardingController extends Controller
                 $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
             }
             
+            $request->merge([
+                'half_day_rate' => $request->filled('half_day_rate') ? $request->input('half_day_rate') : null,
+                'full_day_rate' => $request->filled('full_day_rate') ? $request->input('full_day_rate') : null,
+            ]);
+
             $validated = $request->validate($validationRules);
 
             $user = $request->user();
@@ -1514,6 +1535,9 @@ class OnboardingController extends Controller
                 'size_unit' => $validated['size_unit'],
                 'minimum_deposit_amount' => $minimumDepositAmount,
                 'minimum_deposit_type' => $validated['minimum_deposit_type'],
+                'hourly_rate' => (float) $validated['hourly_rate'],
+                'half_day_rate' => isset($validated['half_day_rate']) ? (float) $validated['half_day_rate'] : null,
+                'full_day_rate' => isset($validated['full_day_rate']) ? (float) $validated['full_day_rate'] : null,
                 'booking_fee_type' => $validated['booking_fee_type'],
                 'reschedule_times' => $validated['reschedule_times'],
                 'cancellation_window' => $validated['cancellation_window'],
