@@ -14,7 +14,7 @@ return new class extends Migration
 
         Schema::table('user_details', function (Blueprint $table) {
             if (! Schema::hasColumn('user_details', 'display_policies')) {
-                $table->boolean('display_policies')->default(true)->after('personal_page_name_alias');
+                $table->boolean('display_policies')->default(false)->after('personal_page_name_alias');
             }
         });
     }
