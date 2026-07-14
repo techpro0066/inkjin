@@ -112,7 +112,7 @@
                               <p style="margin:0 0 8px 0;font-size:14px;color:#4d4d4d;">A:</p>
                               @foreach($imageUrls as $imageUrl)
                                 <p style="margin:0 0 8px 0;font-size:14px;color:#4d4d4d;">
-                                  <a href="{{ str_starts_with($imageUrl, 'http') ? $imageUrl : url($imageUrl) }}" target="_blank" style="color:#310f7a;text-decoration:underline;">View uploaded image {{ $loop->iteration }}</a>
+                                  <a href="{{ str_starts_with($imageUrl, 'http') ? $imageUrl : url($imageUrl) }}" target="_blank" style="color:#310f7a;text-decoration:underline;">Photo {{ $loop->iteration }}</a>
                                 </p>
                               @endforeach
                             @else

@@ -1292,7 +1292,7 @@ class OnboardingController extends Controller
                     'size_unit' => ['required'],
                     'minimum_deposit_amount' => ['required', 'numeric', 'min:0'],
                     'minimum_deposit_type' => ['required'],
-                    'hourly_rate' => ['required', 'numeric', 'min:0'],
+                    'hourly_rate' => ['nullable', 'numeric', 'min:0'],
                     'half_day_rate' => ['nullable', 'numeric', 'min:0'],
                     'full_day_rate' => ['nullable', 'numeric', 'min:0'],
                     'booking_fee_type' => ['required', 'in:client,artist,split'],
@@ -1331,6 +1331,7 @@ class OnboardingController extends Controller
                 }
                 
                 $request->merge([
+                    'hourly_rate' => $request->filled('hourly_rate') ? $request->input('hourly_rate') : null,
                     'half_day_rate' => $request->filled('half_day_rate') ? $request->input('half_day_rate') : null,
                     'full_day_rate' => $request->filled('full_day_rate') ? $request->input('full_day_rate') : null,
                 ]);
@@ -1346,7 +1347,7 @@ class OnboardingController extends Controller
                     'size_unit' => $validated['size_unit'],
                     'minimum_deposit_amount' => $minimumDepositAmount,
                     'minimum_deposit_type' => $validated['minimum_deposit_type'],
-                    'hourly_rate' => (float) $validated['hourly_rate'],
+                    'hourly_rate' => isset($validated['hourly_rate']) ? (float) $validated['hourly_rate'] : null,
                     'half_day_rate' => isset($validated['half_day_rate']) ? (float) $validated['half_day_rate'] : null,
                     'full_day_rate' => isset($validated['full_day_rate']) ? (float) $validated['full_day_rate'] : null,
                     'booking_fee_type' => $validated['booking_fee_type'],
@@ -1476,7 +1477,7 @@ class OnboardingController extends Controller
                 'size_unit' => ['required'],
                 'minimum_deposit_amount' => ['required', 'numeric', 'min:0'],
                 'minimum_deposit_type' => ['required'],
-                'hourly_rate' => ['required', 'numeric', 'min:0'],
+                'hourly_rate' => ['nullable', 'numeric', 'min:0'],
                 'half_day_rate' => ['nullable', 'numeric', 'min:0'],
                 'full_day_rate' => ['nullable', 'numeric', 'min:0'],
                 'booking_fee_type' => ['required', 'in:client,artist,split'],
@@ -1515,6 +1516,7 @@ class OnboardingController extends Controller
             }
             
             $request->merge([
+                'hourly_rate' => $request->filled('hourly_rate') ? $request->input('hourly_rate') : null,
                 'half_day_rate' => $request->filled('half_day_rate') ? $request->input('half_day_rate') : null,
                 'full_day_rate' => $request->filled('full_day_rate') ? $request->input('full_day_rate') : null,
             ]);
@@ -1535,7 +1537,7 @@ class OnboardingController extends Controller
                 'size_unit' => $validated['size_unit'],
                 'minimum_deposit_amount' => $minimumDepositAmount,
                 'minimum_deposit_type' => $validated['minimum_deposit_type'],
-                'hourly_rate' => (float) $validated['hourly_rate'],
+                'hourly_rate' => isset($validated['hourly_rate']) ? (float) $validated['hourly_rate'] : null,
                 'half_day_rate' => isset($validated['half_day_rate']) ? (float) $validated['half_day_rate'] : null,
                 'full_day_rate' => isset($validated['full_day_rate']) ? (float) $validated['full_day_rate'] : null,
                 'booking_fee_type' => $validated['booking_fee_type'],

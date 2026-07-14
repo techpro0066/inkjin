@@ -1773,7 +1773,9 @@
         return window.QuestionAnswerDisplay.formatAnswerForReview(val, type);
       }
       if (typeof val === 'boolean') return val ? 'Yes' : 'No';
-      if (Array.isArray(val)) return val.length === 1 ? '1 photo' : (val.length > 1 ? val.length + ' photos' : '—');
+      if (Array.isArray(val) && val.length) {
+        return val.map(function (_, idx) { return 'Photo ' + (idx + 1); }).join(', ');
+      }
       return String(val || '—');
     }
 

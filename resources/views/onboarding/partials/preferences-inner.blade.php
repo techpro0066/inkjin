@@ -55,7 +55,7 @@
         <p class="text-xs text-on-surface-variant mb-3">These are reference rates. Final pricing for custom work is always confirmed by you with a quote.</p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label class="block text-sm font-medium mb-2" for="hourly_rate">Hourly rate <span class="text-red-600">*</span></label>
+            <label class="block text-sm font-medium mb-2" for="hourly_rate">Hourly rate (optional)</label>
             <input type="number" step="0.01" min="0" name="hourly_rate" id="hourly_rate" value="{{ $ud->hourly_rate ?? '' }}" class="form-input w-full" />
             <p class="text-xs text-on-surface-variant mt-1">Your typical rate per hour, before any custom quote</p>
             <p id="hourly_rate_error" class="text-red-600 text-sm mt-1 hidden"></p>

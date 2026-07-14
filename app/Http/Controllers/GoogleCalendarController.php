@@ -915,9 +915,19 @@ class GoogleCalendarController extends Controller
                         $answerType = (string) ($answerPayload['type'] ?? '');
                         $answerValue = $answerPayload['answer'] ?? '';
 
+                        $imageCount = 0;
                         if ($answerType === 'image' || (is_array($answerValue) && $answerValue !== [] && preg_match('#^(https?://|/uploads/|uploads/)#i', (string) reset($answerValue)))) {
-                            $count = is_array($answerValue) ? count($answerValue) : 1;
-                            $description .= "\n{$questionText}: {$count} image(s) uploaded\n";
+                            $imageCount = is_array($answerValue) ? count($answerValue) : 1;
+                        } elseif (is_string($answerValue) && preg_match('#^(https?://|/uploads/|uploads/)#i', trim($answerValue))) {
+                            $imageCount = 1;
+                        }
+
+                        if ($imageCount > 0) {
+                            $photoLabels = [];
+                            for ($photoIndex = 1; $photoIndex <= $imageCount; $photoIndex++) {
+                                $photoLabels[] = 'Photo '.$photoIndex;
+                            }
+                            $description .= "\n{$questionText}: ".implode(', ', $photoLabels)."\n";
                         } else {
                             $answerText = is_array($answerValue) ? implode(', ', $answerValue) : (string) $answerValue;
                             $answerText = trim($answerText);

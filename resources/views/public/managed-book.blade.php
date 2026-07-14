@@ -660,6 +660,13 @@
         var subtitle = String(q.subtitle || '').toLowerCase();
         if (!keywords.some(function(k) { return title.indexOf(k) !== -1 || subtitle.indexOf(k) !== -1; })) continue;
         var val = questionAnswers[q.id];
+        var imageUrls = window.QuestionAnswerDisplay
+          ? window.QuestionAnswerDisplay.imageUrlsFromAnswer(val, q.type)
+          : [];
+        // Skip uploads so placement/size never dump raw image URLs.
+        if (String(q.type || '') === 'image' || imageUrls.length) {
+          continue;
+        }
         if (Array.isArray(val) && val.length) return val.join(', ');
         if (typeof val === 'string' && val.trim()) return val.trim();
         if (typeof val === 'number' || typeof val === 'boolean') return String(val);
@@ -1745,7 +1752,9 @@
           : (function() {
             var answer = item.answer;
             if (typeof answer === 'boolean') return answer ? 'Yes' : 'No';
-            if (Array.isArray(answer)) return answer.length === 1 ? '1 photo' : (answer.length > 1 ? answer.length + ' photos' : '—');
+            if (Array.isArray(answer) && answer.length) {
+              return answer.map(function (_, idx) { return 'Photo ' + (idx + 1); }).join(', ');
+            }
             return answer || '—';
           })();
         html += '<div class="flex justify-between gap-4"><span class="text-on-surface-variant shrink-0">' + item.question + '</span><span class="font-semibold text-right">' + answerText + '</span></div>';

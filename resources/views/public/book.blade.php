@@ -900,11 +900,11 @@
             <div class="flex justify-between"><span class="text-on-surface-variant" id="confDateTimeLabel">Date & Time</span><span class="font-semibold" id="confDateTime">—</span></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Artist</span><span class="font-semibold" id="confArtist">—</span></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Studio</span><span class="font-semibold" id="confStudio">—</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Location</span><span class="font-semibold" id="confLocationName">—</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant"></span><span class="text-xs text-on-surface-variant" id="confLocationAddress">—</span></div>
+            <div class="flex justify-between gap-3 items-start"><span class="text-on-surface-variant shrink-0">Location</span><span class="font-semibold text-right text-xs sm:text-sm leading-snug" id="confLocationName">—</span></div>
             <div class="flex justify-between"><span></span><a href="#" id="confDirectionsLink" target="_blank" class="text-xs text-primary font-medium hover:underline">Get Directions →</a></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Placement</span><span class="font-semibold" id="confPlacement">—</span></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Size</span><span class="font-semibold" id="confSize">—</span></div>
+            <div id="confImageAnswers" class="space-y-2.5"></div>
             <hr class="border-outline-variant/20">
             <div class="flex justify-between"><span class="text-on-surface-variant">Price Estimate</span><span class="font-semibold" id="confPriceEstimate">—</span></div>
             <div class="flex justify-between hidden" id="confConsultFeeRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold text-green-600">Free</span></div>
@@ -1244,6 +1244,13 @@
         });
         if (matched) {
           var val = questionAnswers[q.id];
+          var imageUrls = window.QuestionAnswerDisplay
+            ? window.QuestionAnswerDisplay.imageUrlsFromAnswer(val, q.type)
+            : [];
+          // Skip uploads so placement/size never dump raw image URLs.
+          if (String(q.type || '') === 'image' || imageUrls.length) {
+            continue;
+          }
           if (Array.isArray(val) && val.length) return val.join(', ');
           if (typeof val === 'string' && val.trim()) return val.trim();
           if (typeof val === 'number' || typeof val === 'boolean') return String(val);
@@ -1367,8 +1374,30 @@
       $('#confPlacement').text(placement || 'To be confirmed');
       $('#confSize').text(sizeLabel);
       $('#confStudio').text(studioName);
-      $('#confLocationName').text(studioName || '—');
-      $('#confLocationAddress').text(studioAddress || '—');
+      $('#confLocationName').text(studioAddress || '—');
+      var $confImageAnswers = $('#confImageAnswers');
+      $confImageAnswers.empty();
+      var structuredForConf = buildStructuredQuestionAnswers();
+      Object.keys(structuredForConf).forEach(function (key) {
+        var entry = structuredForConf[key];
+        if (!entry) return;
+        var imageUrls = window.QuestionAnswerDisplay
+          ? window.QuestionAnswerDisplay.imageUrlsFromAnswer(entry.answer, entry.type)
+          : [];
+        if (!imageUrls.length && String(entry.type || '') !== 'image') return;
+        var photoCount = imageUrls.length
+          || (Array.isArray(entry.answer) ? entry.answer.length : (entry.answer ? 1 : 0));
+        if (!photoCount) return;
+        var labels = window.QuestionAnswerDisplay
+          ? window.QuestionAnswerDisplay.formatPhotoLabels(photoCount)
+          : Array.from({ length: photoCount }, function (_, idx) { return 'Photo ' + (idx + 1); }).join(', ');
+        $confImageAnswers.append(
+          '<div class="flex justify-between gap-3">' +
+            '<span class="text-on-surface-variant shrink-0">' + $('<div>').text(entry.question || 'Photos').html() + '</span>' +
+            '<span class="font-semibold text-right">' + $('<div>').text(labels).html() + '</span>' +
+          '</div>'
+        );
+      });
       if (mapsLink) {
         $('#confDirectionsLink').attr('href', mapsLink).removeClass('pointer-events-none opacity-50');
       } else {

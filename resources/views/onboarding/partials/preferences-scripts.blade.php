@@ -115,8 +115,6 @@
     if (!$('#minimum_deposit_type').val()) errors.minimum_deposit_type = ['Required'];
     var mda = $.trim($('#minimum_deposit_amount').val());
     if (!mda) errors.minimum_deposit_amount = ['Required'];
-    var hourly = $.trim($('#hourly_rate').val());
-    if (!hourly) errors.hourly_rate = ['Required'];
     if (!$('input[name="booking_fee_type"]:checked').length) errors.booking_fee_type = ['Required'];
     if (!$('#reschedule_times').val()) errors.reschedule_times = ['Required'];
     if (!$('#cancellation_window').val()) errors.cancellation_window = ['Required'];

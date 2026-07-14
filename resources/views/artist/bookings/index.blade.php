@@ -1262,7 +1262,11 @@
             q.textContent = payload.question;
             var a = document.createElement('p');
             a.className = 'text-on-surface mt-1 break-words';
-            a.textContent = Array.isArray(payload.answer) ? payload.answer.join(', ') : String(payload.answer ?? '—');
+            a.textContent = window.QuestionAnswerDisplay
+              ? window.QuestionAnswerDisplay.formatAnswerForReview(payload.answer, payload.type)
+              : (Array.isArray(payload.answer)
+                ? payload.answer.map(function (_, idx) { return 'Photo ' + (idx + 1); }).join(', ')
+                : String(payload.answer ?? '—'));
             item.appendChild(q);
             item.appendChild(a);
             qaListEl.appendChild(item);

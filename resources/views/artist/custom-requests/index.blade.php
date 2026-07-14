@@ -463,11 +463,22 @@
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function formatAnswer(answer) {
+  function formatAnswer(answer, answerType) {
+    if (window.QuestionAnswerDisplay) {
+      var imageUrls = window.QuestionAnswerDisplay.imageUrlsFromAnswer(answer, answerType);
+      if (imageUrls.length) {
+        return imageUrls.map(function (url, idx) {
+          return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="text-primary font-semibold hover:underline">Photo ' + (idx + 1) + '</a>';
+        }).join(', ');
+      }
+      return escapeHtml(window.QuestionAnswerDisplay.formatAnswerForReview(answer, answerType));
+    }
     if (typeof answer === 'boolean') return answer ? 'Yes' : 'No';
-    if (Array.isArray(answer)) return answer.join(', ');
+    if (Array.isArray(answer) && answer.length) {
+      return answer.map(function (_, idx) { return 'Photo ' + (idx + 1); }).join(', ');
+    }
     if (typeof answer === 'string' && /^https?:\/\//i.test(answer)) {
-      return '<a href="' + escapeHtml(answer) + '" target="_blank" rel="noopener" class="text-primary font-semibold hover:underline">View file</a>';
+      return '<a href="' + escapeHtml(answer) + '" target="_blank" rel="noopener" class="text-primary font-semibold hover:underline">Photo 1</a>';
     }
     return escapeHtml(String(answer || '—'));
   }
@@ -578,7 +589,7 @@
       if (!item || !item.question) return;
       questionsHtml += window.QuestionAnswerDisplay
         ? window.QuestionAnswerDisplay.renderAnswerHtml(item)
-        : '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + escapeHtml(String(item.answer || '—')) + '</p></div>';
+        : '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + formatAnswer(item.answer, item.type) + '</p></div>';
     });
 
     var availabilityHtml = (req.type === 'managed') ? buildAvailabilityHtml(req.availabilityDetails || {}) : '';
