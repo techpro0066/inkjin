@@ -310,9 +310,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'user', 'client_password'])
     Route::post('/password/booking-initial', [ClientPasswordController::class, 'storeBookingInitial'])
         ->name('user.password.booking-initial.store');
 
-    Route::get('/dashboard', function () {
-        return view('user.dashboard');
-    })->name('user.dashboard');
+    Route::get('/dashboard', [\App\Http\Controllers\UserController\DashboardController::class, 'index'])
+        ->name('user.dashboard');
 
     Route::get('/settings', [UserSettingsController::class, 'edit'])->name('user.settings');
     Route::post('/settings/avatar', [UserSettingsController::class, 'updateAvatar'])->name('user.settings.avatar');

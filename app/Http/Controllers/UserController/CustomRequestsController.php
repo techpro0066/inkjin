@@ -5,12 +5,14 @@ namespace App\Http\Controllers\UserController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomRequestAutoSlotRequest;
 use App\Http\Requests\StoreCustomRequestClientSlotsRequest;
+use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Models\Booking;
 use App\Models\CustomRequest;
 use App\Services\BookingCalendarAvailabilityService;
 use App\Services\BookingCheckoutPricingService;
 use App\Support\PaymentMethods;
 use App\Services\CustomRequestBookingService;
+use App\Services\GoogleCalendarBookingSyncService;
 use App\Services\VivaCheckoutService;
 use App\Models\PendingVivaPayment;
 use Illuminate\Http\JsonResponse;
@@ -177,6 +179,12 @@ class CustomRequestsController extends Controller
             return response()->json(['message' => 'Artist not found.'], 404);
         }
 
+        try {
+            app(GoogleCalendarBookingSyncService::class)->assertReadyForPayment($userDetail);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
         $stripeSecret = env('STRIPE_SECRET');
         if (!$stripeSecret) {
             return response()->json(['message' => 'Stripe is not configured.'], 500);
@@ -266,6 +274,8 @@ class CustomRequestsController extends Controller
                 'booking_reference' => '#INK-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
                 'redirect_url' => route('user.bookings.index'),
             ]);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             Log::error('Custom request payment confirm failed', [
                 'custom_request_id' => $customRequest->id,
@@ -287,12 +297,16 @@ class CustomRequestsController extends Controller
         }
 
         try {
+            $customRequest->loadMissing(['artist.userDetail']);
+            app(GoogleCalendarBookingSyncService::class)->assertReadyForPayment($customRequest->artist?->userDetail);
             $order = $this->vivaCheckout->createOrReuseOrderForCustomRequest(
                 $customRequest,
                 Auth::user(),
             );
 
             return response()->json($order);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             Log::error('Viva order create failed (custom request)', [
                 'custom_request_id' => $customRequest->id,

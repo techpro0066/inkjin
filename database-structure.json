@@ -1,0 +1,4737 @@
+{
+    "database": "inkjin",
+    "generated_at": "2026-07-13T20:40:32+00:00",
+    "tables": {
+        "artist_designs": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "title",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "description",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "image",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "is_active",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "is_visible",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "is_repeatable",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "repeat_limit",
+                    "Type": "smallint(5) unsigned",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "is_sensitive",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "primary_style",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "other_styles",
+                    "Type": "longtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "color",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tags",
+                    "Type": "longtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "min_price",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "max_price",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "min_size",
+                    "Type": "int(11)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "max_size",
+                    "Type": "int(11)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "min_sessions",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "max_sessions",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "session_duration",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "slug",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "artist_designs",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "artist_designs",
+                    "Non_unique": 1,
+                    "Key_name": "artist_designs_user_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `artist_designs` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `title` varchar(255) NOT NULL,\n  `description` varchar(255) NOT NULL,\n  `image` varchar(255) NOT NULL,\n  `is_active` tinyint(1) NOT NULL,\n  `is_visible` tinyint(1) NOT NULL,\n  `is_repeatable` tinyint(1) NOT NULL,\n  `repeat_limit` smallint(5) unsigned DEFAULT NULL,\n  `is_sensitive` tinyint(1) NOT NULL,\n  `primary_style` varchar(255) NOT NULL,\n  `other_styles` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`other_styles`)),\n  `color` varchar(255) NOT NULL,\n  `tags` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`tags`)),\n  `min_price` int(11) NOT NULL,\n  `max_price` int(11) NOT NULL,\n  `min_size` int(11) DEFAULT NULL,\n  `max_size` int(11) DEFAULT NULL,\n  `min_sessions` int(11) NOT NULL,\n  `max_sessions` int(11) NOT NULL,\n  `session_duration` varchar(255) NOT NULL,\n  `slug` varchar(255) NOT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `artist_designs_user_id_foreign` (`user_id`),\n  CONSTRAINT `artist_designs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "artist_payouts": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "booking_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "amount",
+                    "Type": "decimal(10,2)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0.00",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "stripe_transfer_id",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "stripe_account_id",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "currency",
+                    "Type": "varchar(3)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "EUR",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "status",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "pending",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "failure_reason",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "artist_payouts",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "artist_payouts",
+                    "Non_unique": 0,
+                    "Key_name": "artist_payouts_stripe_transfer_id_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "stripe_transfer_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "artist_payouts",
+                    "Non_unique": 1,
+                    "Key_name": "artist_payouts_booking_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "booking_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `artist_payouts` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `booking_id` bigint(20) unsigned NOT NULL,\n  `amount` decimal(10,2) NOT NULL DEFAULT 0.00,\n  `stripe_transfer_id` varchar(255) DEFAULT NULL,\n  `stripe_account_id` varchar(255) DEFAULT NULL,\n  `currency` varchar(3) NOT NULL DEFAULT 'EUR',\n  `status` varchar(255) NOT NULL DEFAULT 'pending',\n  `failure_reason` text DEFAULT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `artist_payouts_stripe_transfer_id_unique` (`stripe_transfer_id`),\n  KEY `artist_payouts_booking_id_foreign` (`booking_id`),\n  CONSTRAINT `artist_payouts_booking_id_foreign` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "availabilities": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "day_of_week",
+                    "Type": "varchar(20)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "start_time",
+                    "Type": "time",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "end_time",
+                    "Type": "time",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "availabilities",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "availabilities",
+                    "Non_unique": 0,
+                    "Key_name": "availabilities_user_id_day_of_week_start_time_end_time_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "availabilities",
+                    "Non_unique": 0,
+                    "Key_name": "availabilities_user_id_day_of_week_start_time_end_time_unique",
+                    "Seq_in_index": 2,
+                    "Column_name": "day_of_week",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "availabilities",
+                    "Non_unique": 0,
+                    "Key_name": "availabilities_user_id_day_of_week_start_time_end_time_unique",
+                    "Seq_in_index": 3,
+                    "Column_name": "start_time",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "availabilities",
+                    "Non_unique": 0,
+                    "Key_name": "availabilities_user_id_day_of_week_start_time_end_time_unique",
+                    "Seq_in_index": 4,
+                    "Column_name": "end_time",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `availabilities` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `day_of_week` varchar(20) NOT NULL,\n  `start_time` time NOT NULL,\n  `end_time` time NOT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `availabilities_user_id_day_of_week_start_time_end_time_unique` (`user_id`,`day_of_week`,`start_time`,`end_time`),\n  CONSTRAINT `availabilities_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "availability_overrides": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "start_date",
+                    "Type": "date",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "end_date",
+                    "Type": "date",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reason",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "availability_overrides",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "availability_overrides",
+                    "Non_unique": 1,
+                    "Key_name": "availability_overrides_user_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `availability_overrides` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `start_date` date DEFAULT NULL,\n  `end_date` date DEFAULT NULL,\n  `reason` varchar(255) DEFAULT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `availability_overrides_user_id_foreign` (`user_id`),\n  CONSTRAINT `availability_overrides_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "booking_requests": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tattoo_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "status",
+                    "Type": "enum('pending','confirmed','cancelled','moved_to_booking')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "pending",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "booking_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "questions_answers",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "consultation_details",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "preferences",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "preferred_days",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "avoid_dates",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "how_much_flexible",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "urgency",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reason_decline",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_consultation_slots",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_session_slots",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_notes_to_client",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "client_consultation_slots",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "client_session_slots",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "booking_requests",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "booking_requests",
+                    "Non_unique": 1,
+                    "Key_name": "booking_requests_user_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "booking_requests",
+                    "Non_unique": 1,
+                    "Key_name": "booking_requests_artist_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "artist_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "booking_requests",
+                    "Non_unique": 1,
+                    "Key_name": "booking_requests_tattoo_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "tattoo_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "booking_requests",
+                    "Non_unique": 1,
+                    "Key_name": "booking_requests_booking_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "booking_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `booking_requests` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `artist_id` bigint(20) unsigned NOT NULL,\n  `tattoo_id` bigint(20) unsigned NOT NULL,\n  `status` enum('pending','confirmed','cancelled','moved_to_booking') NOT NULL DEFAULT 'pending',\n  `booking_id` bigint(20) unsigned DEFAULT NULL,\n  `questions_answers` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`questions_answers`)),\n  `consultation_details` varchar(255) DEFAULT NULL,\n  `preferences` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`preferences`)),\n  `preferred_days` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`preferred_days`)),\n  `avoid_dates` varchar(255) DEFAULT NULL,\n  `how_much_flexible` varchar(255) DEFAULT NULL,\n  `urgency` varchar(255) DEFAULT NULL,\n  `reason_decline` text DEFAULT NULL,\n  `artist_consultation_slots` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`artist_consultation_slots`)),\n  `artist_session_slots` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`artist_session_slots`)),\n  `artist_notes_to_client` text DEFAULT NULL,\n  `client_consultation_slots` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`client_consultation_slots`)),\n  `client_session_slots` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`client_session_slots`)),\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `booking_requests_user_id_foreign` (`user_id`),\n  KEY `booking_requests_artist_id_foreign` (`artist_id`),\n  KEY `booking_requests_tattoo_id_foreign` (`tattoo_id`),\n  KEY `booking_requests_booking_id_foreign` (`booking_id`),\n  CONSTRAINT `booking_requests_artist_id_foreign` FOREIGN KEY (`artist_id`) REFERENCES `users` (`id`),\n  CONSTRAINT `booking_requests_booking_id_foreign` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE SET NULL,\n  CONSTRAINT `booking_requests_tattoo_id_foreign` FOREIGN KEY (`tattoo_id`) REFERENCES `artist_designs` (`id`),\n  CONSTRAINT `booking_requests_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "bookings": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tattoo_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "booking_type",
+                    "Type": "enum('custom','flash')",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": "flash",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "custom_tattoo_details",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "booking_date",
+                    "Type": "date",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "start_time_utc",
+                    "Type": "time",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "end_time_utc",
+                    "Type": "time",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "timezone",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "UTC",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "has_consultation",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "consultation_date",
+                    "Type": "date",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "consultation_start_time_utc",
+                    "Type": "time",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "consultation_end_time_utc",
+                    "Type": "time",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "consultation_completed",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "consultation_timing_type",
+                    "Type": "enum('combined','separate')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": "Stores the artist's consultation timing preference at time of booking"
+                },
+                {
+                    "Field": "consultation_booking_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "status",
+                    "Type": "enum('pending','confirmed','cancelled','completed','no_show','rescheduled')",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": "pending",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cancelled_by",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cancelled_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cancellation_initiated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cancellation_reason",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cancellation_type",
+                    "Type": "enum('client','artist','system')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cancellation_deadline",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cancellation_window_hours",
+                    "Type": "int(11)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "rescheduled_from_booking_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "rescheduled_by",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "rescheduled_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reschedule_reason",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reschedule_count",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reschedule_limit",
+                    "Type": "int(11)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reschedule_status",
+                    "Type": "enum('pending','accepted','declined','completed')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reschedule_requested_by",
+                    "Type": "enum('client','artist')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payment_intent_id",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payment_provider",
+                    "Type": "varchar(20)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "stripe",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "viva_order_code",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "viva_transaction_id",
+                    "Type": "varchar(64)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payment_status",
+                    "Type": "enum('pending','paid','refunded','failed')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "pending",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "deposit_amount",
+                    "Type": "decimal(10,2)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0.00",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "full_amount_paid",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "platform_fee",
+                    "Type": "decimal(10,2)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0.00",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tax_amount",
+                    "Type": "decimal(10,2)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0.00",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tax_rate",
+                    "Type": "decimal(5,2)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tax_country",
+                    "Type": "varchar(2)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tax_label",
+                    "Type": "varchar(100)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "total_amount_paid",
+                    "Type": "decimal(10,2)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0.00",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "currency",
+                    "Type": "varchar(3)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "USD",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "deposit_released",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "deposit_released_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "remaining_amount_released",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "remaining_amount_released_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "completion_code",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "completion_code_entered_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "refund_amount",
+                    "Type": "decimal(10,2)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0.00",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "deposit_forfeited",
+                    "Type": "decimal(10,2)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0.00",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "refund_intent_id",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "refunded_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "refund_reason",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "refund_status",
+                    "Type": "enum('pending','processing','completed','failed','partial')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "platform_fee_refunded",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "completed_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "completion_notes",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "no_show_marked_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "questions_answers",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "action_history",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "notes",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reminder_sent_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "google_calendar_event_id",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "google_meet_link",
+                    "Type": "varchar(500)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "pay_artist",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "bookings",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 0,
+                    "Key_name": "bookings_completion_code_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "completion_code",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_rescheduled_by_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "rescheduled_by",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_user_id_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_artist_user_id_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "artist_user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_tattoo_id_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "tattoo_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_booking_date_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "booking_date",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_status_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "status",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_cancelled_by_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "cancelled_by",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_rescheduled_from_booking_id_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "rescheduled_from_booking_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_booking_type_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "booking_type",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_deposit_released_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "deposit_released",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_remaining_amount_released_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "remaining_amount_released",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_completion_code_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "completion_code",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_cancellation_deadline_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "cancellation_deadline",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_consultation_date_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "consultation_date",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_google_calendar_event_id_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "google_calendar_event_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "bookings",
+                    "Non_unique": 1,
+                    "Key_name": "bookings_consultation_booking_id_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "consultation_booking_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `bookings` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `artist_user_id` bigint(20) unsigned NOT NULL,\n  `tattoo_id` bigint(20) unsigned DEFAULT NULL,\n  `booking_type` enum('custom','flash') NOT NULL DEFAULT 'flash',\n  `custom_tattoo_details` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`custom_tattoo_details`)),\n  `booking_date` date NOT NULL,\n  `start_time_utc` time NOT NULL,\n  `end_time_utc` time NOT NULL,\n  `timezone` varchar(255) NOT NULL DEFAULT 'UTC',\n  `has_consultation` tinyint(1) NOT NULL DEFAULT 0,\n  `consultation_date` date DEFAULT NULL,\n  `consultation_start_time_utc` time DEFAULT NULL,\n  `consultation_end_time_utc` time DEFAULT NULL,\n  `consultation_completed` tinyint(1) NOT NULL DEFAULT 0,\n  `consultation_timing_type` enum('combined','separate') DEFAULT NULL COMMENT 'Stores the artist''s consultation timing preference at time of booking',\n  `consultation_booking_id` bigint(20) unsigned DEFAULT NULL,\n  `status` enum('pending','confirmed','cancelled','completed','no_show','rescheduled') NOT NULL DEFAULT 'pending',\n  `cancelled_by` bigint(20) unsigned DEFAULT NULL,\n  `cancelled_at` timestamp NULL DEFAULT NULL,\n  `cancellation_initiated_at` timestamp NULL DEFAULT NULL,\n  `cancellation_reason` text DEFAULT NULL,\n  `cancellation_type` enum('client','artist','system') DEFAULT NULL,\n  `cancellation_deadline` timestamp NULL DEFAULT NULL,\n  `cancellation_window_hours` int(11) DEFAULT NULL,\n  `rescheduled_from_booking_id` bigint(20) unsigned DEFAULT NULL,\n  `rescheduled_by` bigint(20) unsigned DEFAULT NULL,\n  `rescheduled_at` timestamp NULL DEFAULT NULL,\n  `reschedule_reason` text DEFAULT NULL,\n  `reschedule_count` int(11) NOT NULL DEFAULT 0,\n  `reschedule_limit` int(11) DEFAULT NULL,\n  `reschedule_status` enum('pending','accepted','declined','completed') DEFAULT NULL,\n  `reschedule_requested_by` enum('client','artist') DEFAULT NULL,\n  `payment_intent_id` varchar(255) DEFAULT NULL,\n  `payment_provider` varchar(20) NOT NULL DEFAULT 'stripe',\n  `viva_order_code` bigint(20) unsigned DEFAULT NULL,\n  `viva_transaction_id` varchar(64) DEFAULT NULL,\n  `payment_status` enum('pending','paid','refunded','failed') NOT NULL DEFAULT 'pending',\n  `deposit_amount` decimal(10,2) NOT NULL DEFAULT 0.00,\n  `full_amount_paid` tinyint(1) NOT NULL DEFAULT 0,\n  `platform_fee` decimal(10,2) NOT NULL DEFAULT 0.00,\n  `tax_amount` decimal(10,2) NOT NULL DEFAULT 0.00,\n  `tax_rate` decimal(5,2) DEFAULT NULL,\n  `tax_country` varchar(2) DEFAULT NULL,\n  `tax_label` varchar(100) DEFAULT NULL,\n  `total_amount_paid` decimal(10,2) NOT NULL DEFAULT 0.00,\n  `currency` varchar(3) NOT NULL DEFAULT 'USD',\n  `deposit_released` tinyint(1) NOT NULL DEFAULT 0,\n  `deposit_released_at` timestamp NULL DEFAULT NULL,\n  `remaining_amount_released` tinyint(1) NOT NULL DEFAULT 0,\n  `remaining_amount_released_at` timestamp NULL DEFAULT NULL,\n  `completion_code` varchar(255) DEFAULT NULL,\n  `completion_code_entered_at` timestamp NULL DEFAULT NULL,\n  `refund_amount` decimal(10,2) NOT NULL DEFAULT 0.00,\n  `deposit_forfeited` decimal(10,2) NOT NULL DEFAULT 0.00,\n  `refund_intent_id` varchar(255) DEFAULT NULL,\n  `refunded_at` timestamp NULL DEFAULT NULL,\n  `refund_reason` text DEFAULT NULL,\n  `refund_status` enum('pending','processing','completed','failed','partial') DEFAULT NULL,\n  `platform_fee_refunded` tinyint(1) NOT NULL DEFAULT 0,\n  `completed_at` timestamp NULL DEFAULT NULL,\n  `completion_notes` text DEFAULT NULL,\n  `no_show_marked_at` timestamp NULL DEFAULT NULL,\n  `questions_answers` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`questions_answers`)),\n  `action_history` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`action_history`)),\n  `notes` text DEFAULT NULL,\n  `reminder_sent_at` timestamp NULL DEFAULT NULL,\n  `google_calendar_event_id` varchar(255) DEFAULT NULL,\n  `google_meet_link` varchar(500) DEFAULT NULL,\n  `pay_artist` tinyint(1) NOT NULL DEFAULT 0,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `bookings_completion_code_unique` (`completion_code`),\n  KEY `bookings_rescheduled_by_foreign` (`rescheduled_by`),\n  KEY `bookings_user_id_index` (`user_id`),\n  KEY `bookings_artist_user_id_index` (`artist_user_id`),\n  KEY `bookings_tattoo_id_index` (`tattoo_id`),\n  KEY `bookings_booking_date_index` (`booking_date`),\n  KEY `bookings_status_index` (`status`),\n  KEY `bookings_cancelled_by_index` (`cancelled_by`),\n  KEY `bookings_rescheduled_from_booking_id_index` (`rescheduled_from_booking_id`),\n  KEY `bookings_booking_type_index` (`booking_type`),\n  KEY `bookings_deposit_released_index` (`deposit_released`),\n  KEY `bookings_remaining_amount_released_index` (`remaining_amount_released`),\n  KEY `bookings_completion_code_index` (`completion_code`),\n  KEY `bookings_cancellation_deadline_index` (`cancellation_deadline`),\n  KEY `bookings_consultation_date_index` (`consultation_date`),\n  KEY `bookings_google_calendar_event_id_index` (`google_calendar_event_id`),\n  KEY `bookings_consultation_booking_id_index` (`consultation_booking_id`),\n  CONSTRAINT `bookings_artist_user_id_foreign` FOREIGN KEY (`artist_user_id`) REFERENCES `users` (`id`),\n  CONSTRAINT `bookings_cancelled_by_foreign` FOREIGN KEY (`cancelled_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,\n  CONSTRAINT `bookings_consultation_booking_id_foreign` FOREIGN KEY (`consultation_booking_id`) REFERENCES `bookings` (`id`) ON DELETE SET NULL,\n  CONSTRAINT `bookings_rescheduled_by_foreign` FOREIGN KEY (`rescheduled_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,\n  CONSTRAINT `bookings_rescheduled_from_booking_id_foreign` FOREIGN KEY (`rescheduled_from_booking_id`) REFERENCES `bookings` (`id`) ON DELETE SET NULL,\n  CONSTRAINT `bookings_tattoo_id_foreign` FOREIGN KEY (`tattoo_id`) REFERENCES `artist_designs` (`id`),\n  CONSTRAINT `bookings_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "cache": {
+            "columns": [
+                {
+                    "Field": "key",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "value",
+                    "Type": "mediumtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "expiration",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "cache",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "key",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `cache` (\n  `key` varchar(255) NOT NULL,\n  `value` mediumtext NOT NULL,\n  `expiration` int(11) NOT NULL,\n  PRIMARY KEY (`key`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "cache_locks": {
+            "columns": [
+                {
+                    "Field": "key",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "owner",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "expiration",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "cache_locks",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "key",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `cache_locks` (\n  `key` varchar(255) NOT NULL,\n  `owner` varchar(255) NOT NULL,\n  `expiration` int(11) NOT NULL,\n  PRIMARY KEY (`key`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "chat_channels": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "stream_channel_id",
+                    "Type": "varchar(100)",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "client_user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "booking_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "chat_channels",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "chat_channels",
+                    "Non_unique": 0,
+                    "Key_name": "chat_channels_booking_id_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "booking_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "chat_channels",
+                    "Non_unique": 0,
+                    "Key_name": "chat_channels_stream_channel_id_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "stream_channel_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "chat_channels",
+                    "Non_unique": 1,
+                    "Key_name": "chat_channels_artist_user_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "artist_user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "chat_channels",
+                    "Non_unique": 1,
+                    "Key_name": "chat_channels_pair_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "client_user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "chat_channels",
+                    "Non_unique": 1,
+                    "Key_name": "chat_channels_pair_index",
+                    "Seq_in_index": 2,
+                    "Column_name": "artist_user_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `chat_channels` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `stream_channel_id` varchar(100) NOT NULL,\n  `client_user_id` bigint(20) unsigned NOT NULL,\n  `artist_user_id` bigint(20) unsigned NOT NULL,\n  `booking_id` bigint(20) unsigned NOT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `chat_channels_booking_id_unique` (`booking_id`),\n  UNIQUE KEY `chat_channels_stream_channel_id_unique` (`stream_channel_id`),\n  KEY `chat_channels_artist_user_id_foreign` (`artist_user_id`),\n  KEY `chat_channels_pair_index` (`client_user_id`,`artist_user_id`),\n  CONSTRAINT `chat_channels_artist_user_id_foreign` FOREIGN KEY (`artist_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `chat_channels_booking_id_foreign` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `chat_channels_client_user_id_foreign` FOREIGN KEY (`client_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "custom_requests": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "status",
+                    "Type": "enum('pending','confirmed','cancelled','moved_to_booking')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "pending",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "booking_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "type",
+                    "Type": "enum('auto','managed')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "auto",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "preferences",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "preferred_days",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "avoid_dates",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "how_much_flexible",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "urgency",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "questions_answers",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "anything_else_notes",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reason_decline",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "estimated_price",
+                    "Type": "decimal(10,2)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": "0.00",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "estimated_time",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "number_of_sessions",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "message_for_client",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_consultation_slots",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_session_slots",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "client_session_slots",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "client_consultation_slots",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "custom_requests",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "custom_requests",
+                    "Non_unique": 1,
+                    "Key_name": "custom_requests_user_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "custom_requests",
+                    "Non_unique": 1,
+                    "Key_name": "custom_requests_artist_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "artist_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "custom_requests",
+                    "Non_unique": 1,
+                    "Key_name": "custom_requests_booking_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "booking_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `custom_requests` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `artist_id` bigint(20) unsigned NOT NULL,\n  `status` enum('pending','confirmed','cancelled','moved_to_booking') NOT NULL DEFAULT 'pending',\n  `booking_id` bigint(20) unsigned DEFAULT NULL,\n  `type` enum('auto','managed') NOT NULL DEFAULT 'auto',\n  `preferences` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`preferences`)),\n  `preferred_days` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`preferred_days`)),\n  `avoid_dates` varchar(255) DEFAULT NULL,\n  `how_much_flexible` varchar(255) DEFAULT NULL,\n  `urgency` varchar(255) DEFAULT NULL,\n  `questions_answers` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`questions_answers`)),\n  `anything_else_notes` varchar(255) DEFAULT NULL,\n  `reason_decline` varchar(255) DEFAULT NULL,\n  `estimated_price` decimal(10,2) DEFAULT 0.00,\n  `estimated_time` varchar(255) DEFAULT NULL,\n  `number_of_sessions` varchar(255) DEFAULT NULL,\n  `message_for_client` varchar(255) DEFAULT NULL,\n  `artist_consultation_slots` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`artist_consultation_slots`)),\n  `artist_session_slots` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`artist_session_slots`)),\n  `client_session_slots` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`client_session_slots`)),\n  `client_consultation_slots` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`client_consultation_slots`)),\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `custom_requests_user_id_foreign` (`user_id`),\n  KEY `custom_requests_artist_id_foreign` (`artist_id`),\n  KEY `custom_requests_booking_id_foreign` (`booking_id`),\n  CONSTRAINT `custom_requests_artist_id_foreign` FOREIGN KEY (`artist_id`) REFERENCES `users` (`id`),\n  CONSTRAINT `custom_requests_booking_id_foreign` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE SET NULL,\n  CONSTRAINT `custom_requests_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "failed_jobs": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "uuid",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "connection",
+                    "Type": "text",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "queue",
+                    "Type": "text",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payload",
+                    "Type": "longtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "exception",
+                    "Type": "longtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "failed_at",
+                    "Type": "timestamp",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "current_timestamp()",
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "failed_jobs",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "failed_jobs",
+                    "Non_unique": 0,
+                    "Key_name": "failed_jobs_uuid_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "uuid",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `failed_jobs` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) NOT NULL,\n  `connection` text NOT NULL,\n  `queue` text NOT NULL,\n  `payload` longtext NOT NULL,\n  `exception` longtext NOT NULL,\n  `failed_at` timestamp NOT NULL DEFAULT current_timestamp(),\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "inkjin_artists": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_handle",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "visibility",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "email",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "first_name",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "last_name",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "mobile_phone",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "nickname",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "profile_name",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "city",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "state_province",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "country",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "style",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "other_styles",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "since",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "studio",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "instagram",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tiktok",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "website",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_dashboard_signup",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "inkjin_artists",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "inkjin_artists",
+                    "Non_unique": 0,
+                    "Key_name": "inkjin_artists_artist_handle_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "artist_handle",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `inkjin_artists` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `artist_handle` varchar(255) NOT NULL,\n  `visibility` varchar(255) DEFAULT NULL,\n  `email` varchar(255) DEFAULT NULL,\n  `first_name` varchar(255) DEFAULT NULL,\n  `last_name` varchar(255) DEFAULT NULL,\n  `mobile_phone` varchar(255) DEFAULT NULL,\n  `nickname` varchar(255) DEFAULT NULL,\n  `profile_name` varchar(255) DEFAULT NULL,\n  `city` varchar(255) DEFAULT NULL,\n  `state_province` varchar(255) DEFAULT NULL,\n  `country` varchar(255) DEFAULT NULL,\n  `style` varchar(255) DEFAULT NULL,\n  `other_styles` text DEFAULT NULL,\n  `since` varchar(255) DEFAULT NULL,\n  `studio` text DEFAULT NULL,\n  `instagram` varchar(255) DEFAULT NULL,\n  `tiktok` varchar(255) DEFAULT NULL,\n  `website` varchar(255) DEFAULT NULL,\n  `artist_dashboard_signup` text DEFAULT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `inkjin_artists_artist_handle_unique` (`artist_handle`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "inkjin_tattoos": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_handle",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "type",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "visibility",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "filename",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "ink",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "ar",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "repeatable",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "sensitive",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "title",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "description",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "primary_style",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "other_styles",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "suggested_placement",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "color",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tags",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "price",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "max_price",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "size_height",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "size_width",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cost_per_session",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "min_sessions",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "max_sessions",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "session_time_h",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "currency",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "price_model",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "notes",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "inkjin_tattoos",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `inkjin_tattoos` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `artist_handle` varchar(255) NOT NULL,\n  `type` varchar(255) DEFAULT NULL,\n  `visibility` text DEFAULT NULL,\n  `filename` varchar(255) DEFAULT NULL,\n  `ink` varchar(255) DEFAULT NULL,\n  `ar` varchar(255) DEFAULT NULL,\n  `repeatable` varchar(255) DEFAULT NULL,\n  `sensitive` varchar(255) DEFAULT NULL,\n  `title` varchar(255) DEFAULT NULL,\n  `description` text DEFAULT NULL,\n  `primary_style` varchar(255) DEFAULT NULL,\n  `other_styles` text DEFAULT NULL,\n  `suggested_placement` varchar(255) DEFAULT NULL,\n  `color` varchar(255) DEFAULT NULL,\n  `tags` text DEFAULT NULL,\n  `price` varchar(255) DEFAULT NULL,\n  `max_price` varchar(255) DEFAULT NULL,\n  `size_height` varchar(255) DEFAULT NULL,\n  `size_width` varchar(255) DEFAULT NULL,\n  `cost_per_session` varchar(255) DEFAULT NULL,\n  `min_sessions` varchar(255) DEFAULT NULL,\n  `max_sessions` varchar(255) DEFAULT NULL,\n  `session_time_h` varchar(255) DEFAULT NULL,\n  `currency` varchar(255) DEFAULT NULL,\n  `price_model` varchar(255) DEFAULT NULL,\n  `notes` text DEFAULT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "job_batches": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "name",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "total_jobs",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "pending_jobs",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "failed_jobs",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "failed_job_ids",
+                    "Type": "longtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "options",
+                    "Type": "mediumtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cancelled_at",
+                    "Type": "int(11)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "finished_at",
+                    "Type": "int(11)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "job_batches",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `job_batches` (\n  `id` varchar(255) NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `total_jobs` int(11) NOT NULL,\n  `pending_jobs` int(11) NOT NULL,\n  `failed_jobs` int(11) NOT NULL,\n  `failed_job_ids` longtext NOT NULL,\n  `options` mediumtext DEFAULT NULL,\n  `cancelled_at` int(11) DEFAULT NULL,\n  `created_at` int(11) NOT NULL,\n  `finished_at` int(11) DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "jobs": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "queue",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payload",
+                    "Type": "longtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "attempts",
+                    "Type": "tinyint(3) unsigned",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reserved_at",
+                    "Type": "int(10) unsigned",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "available_at",
+                    "Type": "int(10) unsigned",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "int(10) unsigned",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "jobs",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "jobs",
+                    "Non_unique": 1,
+                    "Key_name": "jobs_queue_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "queue",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `jobs` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `queue` varchar(255) NOT NULL,\n  `payload` longtext NOT NULL,\n  `attempts` tinyint(3) unsigned NOT NULL,\n  `reserved_at` int(10) unsigned DEFAULT NULL,\n  `available_at` int(10) unsigned NOT NULL,\n  `created_at` int(10) unsigned NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `jobs_queue_index` (`queue`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "migrations": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "int(10) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "migration",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "batch",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "migrations",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `migrations` (\n  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,\n  `migration` varchar(255) NOT NULL,\n  `batch` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=94 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "password_reset_tokens": {
+            "columns": [
+                {
+                    "Field": "email",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "token",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "password_reset_tokens",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "email",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `password_reset_tokens` (\n  `email` varchar(255) NOT NULL,\n  `token` varchar(255) NOT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "pending_viva_payments": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "viva_order_code",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "viva_transaction_id",
+                    "Type": "varchar(64)",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "flow",
+                    "Type": "varchar(40)",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reference_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "artist_user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "client_user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "amount_cents",
+                    "Type": "int(10) unsigned",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "currency",
+                    "Type": "varchar(3)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "EUR",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "merchant_trns",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "status",
+                    "Type": "varchar(20)",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": "pending",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "metadata",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "paid_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "expires_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "pending_viva_payments",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "pending_viva_payments",
+                    "Non_unique": 0,
+                    "Key_name": "pending_viva_payments_viva_order_code_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "viva_order_code",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "pending_viva_payments",
+                    "Non_unique": 0,
+                    "Key_name": "pending_viva_payments_merchant_trns_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "merchant_trns",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "pending_viva_payments",
+                    "Non_unique": 1,
+                    "Key_name": "pending_viva_payments_flow_reference_id_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "flow",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "pending_viva_payments",
+                    "Non_unique": 1,
+                    "Key_name": "pending_viva_payments_flow_reference_id_index",
+                    "Seq_in_index": 2,
+                    "Column_name": "reference_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "pending_viva_payments",
+                    "Non_unique": 1,
+                    "Key_name": "pending_viva_payments_status_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "status",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "pending_viva_payments",
+                    "Non_unique": 1,
+                    "Key_name": "pending_viva_payments_viva_transaction_id_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "viva_transaction_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `pending_viva_payments` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `viva_order_code` bigint(20) unsigned NOT NULL,\n  `viva_transaction_id` varchar(64) DEFAULT NULL,\n  `flow` varchar(40) NOT NULL,\n  `reference_id` bigint(20) unsigned NOT NULL,\n  `artist_user_id` bigint(20) unsigned NOT NULL,\n  `client_user_id` bigint(20) unsigned DEFAULT NULL,\n  `amount_cents` int(10) unsigned NOT NULL,\n  `currency` varchar(3) NOT NULL DEFAULT 'EUR',\n  `merchant_trns` varchar(255) NOT NULL,\n  `status` varchar(20) NOT NULL DEFAULT 'pending',\n  `metadata` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`metadata`)),\n  `paid_at` timestamp NULL DEFAULT NULL,\n  `expires_at` timestamp NULL DEFAULT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `pending_viva_payments_viva_order_code_unique` (`viva_order_code`),\n  UNIQUE KEY `pending_viva_payments_merchant_trns_unique` (`merchant_trns`),\n  KEY `pending_viva_payments_flow_reference_id_index` (`flow`,`reference_id`),\n  KEY `pending_viva_payments_status_index` (`status`),\n  KEY `pending_viva_payments_viva_transaction_id_index` (`viva_transaction_id`)\n) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "portfolios": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "title",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "description",
+                    "Type": "text",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "is_active",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "image",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "primary_style",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "other_styles",
+                    "Type": "longtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "color",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tags",
+                    "Type": "longtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "portfolios",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "portfolios",
+                    "Non_unique": 1,
+                    "Key_name": "portfolios_user_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `portfolios` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `title` varchar(255) NOT NULL,\n  `description` text NOT NULL,\n  `is_active` tinyint(1) NOT NULL,\n  `image` varchar(255) NOT NULL,\n  `primary_style` varchar(255) NOT NULL,\n  `other_styles` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`other_styles`)),\n  `color` varchar(255) NOT NULL,\n  `tags` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`tags`)),\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `portfolios_user_id_foreign` (`user_id`),\n  CONSTRAINT `portfolios_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "question_sorting": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "question_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "order",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "is_active",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "question_sorting",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "question_sorting",
+                    "Non_unique": 1,
+                    "Key_name": "question_sorting_user_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "question_sorting",
+                    "Non_unique": 1,
+                    "Key_name": "question_sorting_question_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "question_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `question_sorting` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `question_id` bigint(20) unsigned NOT NULL,\n  `order` int(11) NOT NULL,\n  `is_active` tinyint(1) NOT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `question_sorting_user_id_foreign` (`user_id`),\n  KEY `question_sorting_question_id_foreign` (`question_id`),\n  CONSTRAINT `question_sorting_question_id_foreign` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `question_sorting_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "questions": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "question",
+                    "Type": "text",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "description",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "placeholder",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "type",
+                    "Type": "enum('input','textarea','toggle','select','image','radio','style')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "options",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "max_images",
+                    "Type": "tinyint(3) unsigned",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "is_required",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "form_context",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "questions",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "questions",
+                    "Non_unique": 1,
+                    "Key_name": "questions_user_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `questions` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `question` text NOT NULL,\n  `description` text DEFAULT NULL,\n  `placeholder` text DEFAULT NULL,\n  `type` enum('input','textarea','toggle','select','image','radio','style') NOT NULL,\n  `options` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`options`)),\n  `max_images` tinyint(3) unsigned DEFAULT NULL,\n  `is_required` tinyint(1) NOT NULL,\n  `form_context` varchar(255) NOT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `questions_user_id_foreign` (`user_id`),\n  CONSTRAINT `questions_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "sessions": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "ip_address",
+                    "Type": "varchar(45)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_agent",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payload",
+                    "Type": "longtext",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "last_activity",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "sessions",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "sessions",
+                    "Non_unique": 1,
+                    "Key_name": "sessions_user_id_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "sessions",
+                    "Non_unique": 1,
+                    "Key_name": "sessions_last_activity_index",
+                    "Seq_in_index": 1,
+                    "Column_name": "last_activity",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `sessions` (\n  `id` varchar(255) NOT NULL,\n  `user_id` bigint(20) unsigned DEFAULT NULL,\n  `ip_address` varchar(45) DEFAULT NULL,\n  `user_agent` text DEFAULT NULL,\n  `payload` longtext NOT NULL,\n  `last_activity` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `sessions_user_id_index` (`user_id`),\n  KEY `sessions_last_activity_index` (`last_activity`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "studios": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "name",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "email",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "stripe_account_id",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "studios",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "studios",
+                    "Non_unique": 0,
+                    "Key_name": "studios_email_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "email",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `studios` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  `email` varchar(255) NOT NULL,\n  `stripe_account_id` varchar(255) DEFAULT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `studios_email_unique` (`email`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "styles": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "name",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "status",
+                    "Type": "enum('active','inactive')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "active",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "sort_order",
+                    "Type": "int(10) unsigned",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "appear_on_question",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "styles",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `styles` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  `status` enum('active','inactive') NOT NULL DEFAULT 'active',\n  `sort_order` int(10) unsigned NOT NULL DEFAULT 0,\n  `appear_on_question` tinyint(1) NOT NULL DEFAULT 0,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "user_bank_details": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "account_holder_name",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "bank_name",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "account_number",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "swift_bic",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "bank_currency",
+                    "Type": "varchar(3)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "user_bank_details",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "user_bank_details",
+                    "Non_unique": 0,
+                    "Key_name": "user_bank_details_user_id_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `user_bank_details` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `account_holder_name` varchar(255) NOT NULL,\n  `bank_name` varchar(255) NOT NULL,\n  `account_number` varchar(255) NOT NULL,\n  `swift_bic` varchar(255) NOT NULL,\n  `bank_currency` varchar(3) NOT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `user_bank_details_user_id_unique` (`user_id`),\n  CONSTRAINT `user_bank_details_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "user_details": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "avatar",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_name",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "mobile_number",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "tattoo_styles",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "social_links",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "studio_name",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "studio_address",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "street_name",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "street_number",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "city",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "state",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "postal_code",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "country",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "google_maps_link",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "workspace_type",
+                    "Type": "varchar(32)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "timezone",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "date_time_format",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "size_unit",
+                    "Type": "enum('cm','in')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "currency",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "minimum_deposit_type",
+                    "Type": "enum('amount','percentage')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "minimum_deposit_amount",
+                    "Type": "decimal(10,2)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "hourly_rate",
+                    "Type": "decimal(10,2)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "half_day_rate",
+                    "Type": "decimal(10,2)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "full_day_rate",
+                    "Type": "decimal(10,2)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "booking_fee_type",
+                    "Type": "enum('client','artist','split')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "reschedule_times",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "cancellation_window",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "session_buffer_period",
+                    "Type": "int(11)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "require_consultation",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "session_type",
+                    "Type": "enum('online','physical','both')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "session_duration_minutes",
+                    "Type": "int(11)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "consultation_timing",
+                    "Type": "enum('combined','separate')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "require_gap_between_consultation_tattoo",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "consultation_tattoo_gap_value",
+                    "Type": "int(11)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "consultation_tattoo_gap_unit",
+                    "Type": "enum('minutes','hours','days')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "google_calendar_token",
+                    "Type": "text",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "google_calendar_id",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "scheduling_type",
+                    "Type": "enum('auto','managed')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payment_type",
+                    "Type": "enum('artist_account','studio_account','inkjin_account')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "stripe_account_id",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payout_bank_country",
+                    "Type": "varchar(2)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payout_waiting_list_country",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payout_waiting_list_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "studio_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "payment_status",
+                    "Type": "enum('pending','approved','rejected')",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "availability_status",
+                    "Type": "enum('design_custom','design_only','custom_only','closed')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "closed",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "personal_page_background_image",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "personal_page_color",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "personal_page_tagline",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "personal_page_description",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "personal_page_name_alias",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "display_policies",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "1",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "customize_page_notice_dismissed",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "design_whats_included",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "design_whats_included_is_active",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "current_step",
+                    "Type": "int(11)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "1",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "completed_steps",
+                    "Type": "longtext",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "user_details",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "user_details",
+                    "Non_unique": 0,
+                    "Key_name": "user_details_user_id_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "user_details",
+                    "Non_unique": 0,
+                    "Key_name": "user_details_user_name_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_name",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "user_details",
+                    "Non_unique": 0,
+                    "Key_name": "user_details_mobile_number_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "mobile_number",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "user_details",
+                    "Non_unique": 1,
+                    "Key_name": "user_details_studio_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "studio_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `user_details` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `avatar` varchar(255) DEFAULT NULL,\n  `user_name` varchar(255) DEFAULT NULL,\n  `mobile_number` varchar(255) DEFAULT NULL,\n  `tattoo_styles` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`tattoo_styles`)),\n  `social_links` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`social_links`)),\n  `studio_name` varchar(255) DEFAULT NULL,\n  `studio_address` text DEFAULT NULL,\n  `street_name` varchar(255) DEFAULT NULL,\n  `street_number` varchar(255) DEFAULT NULL,\n  `city` varchar(255) DEFAULT NULL,\n  `state` varchar(255) DEFAULT NULL,\n  `postal_code` varchar(255) DEFAULT NULL,\n  `country` varchar(255) DEFAULT NULL,\n  `google_maps_link` varchar(255) DEFAULT NULL,\n  `workspace_type` varchar(32) DEFAULT NULL,\n  `timezone` varchar(255) DEFAULT NULL,\n  `date_time_format` varchar(255) DEFAULT NULL,\n  `size_unit` enum('cm','in') DEFAULT NULL,\n  `currency` varchar(255) DEFAULT NULL,\n  `minimum_deposit_type` enum('amount','percentage') DEFAULT NULL,\n  `minimum_deposit_amount` decimal(10,2) DEFAULT NULL,\n  `hourly_rate` decimal(10,2) DEFAULT NULL,\n  `half_day_rate` decimal(10,2) DEFAULT NULL,\n  `full_day_rate` decimal(10,2) DEFAULT NULL,\n  `booking_fee_type` enum('client','artist','split') DEFAULT NULL,\n  `reschedule_times` varchar(255) DEFAULT NULL,\n  `cancellation_window` varchar(255) DEFAULT NULL,\n  `session_buffer_period` int(11) DEFAULT NULL,\n  `require_consultation` tinyint(1) NOT NULL DEFAULT 0,\n  `session_type` enum('online','physical','both') DEFAULT NULL,\n  `session_duration_minutes` int(11) DEFAULT NULL,\n  `consultation_timing` enum('combined','separate') DEFAULT NULL,\n  `require_gap_between_consultation_tattoo` tinyint(1) NOT NULL DEFAULT 0,\n  `consultation_tattoo_gap_value` int(11) DEFAULT NULL,\n  `consultation_tattoo_gap_unit` enum('minutes','hours','days') DEFAULT NULL,\n  `google_calendar_token` text DEFAULT NULL,\n  `google_calendar_id` varchar(255) DEFAULT NULL,\n  `scheduling_type` enum('auto','managed') DEFAULT NULL,\n  `payment_type` enum('artist_account','studio_account','inkjin_account') DEFAULT NULL,\n  `stripe_account_id` varchar(255) DEFAULT NULL,\n  `payout_bank_country` varchar(2) DEFAULT NULL,\n  `payout_waiting_list_country` varchar(255) DEFAULT NULL,\n  `payout_waiting_list_at` timestamp NULL DEFAULT NULL,\n  `studio_id` bigint(20) unsigned DEFAULT NULL,\n  `payment_status` enum('pending','approved','rejected') DEFAULT NULL,\n  `availability_status` enum('design_custom','design_only','custom_only','closed') NOT NULL DEFAULT 'closed',\n  `personal_page_background_image` varchar(255) DEFAULT NULL,\n  `personal_page_color` varchar(255) DEFAULT NULL,\n  `personal_page_tagline` varchar(255) DEFAULT NULL,\n  `personal_page_description` varchar(255) DEFAULT NULL,\n  `personal_page_name_alias` varchar(255) DEFAULT NULL,\n  `display_policies` tinyint(1) NOT NULL DEFAULT 1,\n  `customize_page_notice_dismissed` tinyint(1) NOT NULL DEFAULT 0,\n  `design_whats_included` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`design_whats_included`)),\n  `design_whats_included_is_active` tinyint(1) NOT NULL DEFAULT 0,\n  `current_step` int(11) NOT NULL DEFAULT 1,\n  `completed_steps` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`completed_steps`)),\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `user_details_user_id_unique` (`user_id`),\n  UNIQUE KEY `user_details_user_name_unique` (`user_name`),\n  UNIQUE KEY `user_details_mobile_number_unique` (`mobile_number`),\n  KEY `user_details_studio_id_foreign` (`studio_id`),\n  CONSTRAINT `user_details_studio_id_foreign` FOREIGN KEY (`studio_id`) REFERENCES `studios` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `user_details_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "user_not_registered": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "email",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "country",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "hear_about_us",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "user_not_registered",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `user_not_registered` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `email` varchar(255) NOT NULL,\n  `country` varchar(255) NOT NULL,\n  `hear_about_us` varchar(255) NOT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "users": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "first_name",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "last_name",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "email",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "UNI",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "phone_number",
+                    "Type": "varchar(50)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "email_verified_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "password",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "must_set_password",
+                    "Type": "tinyint(1)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "role",
+                    "Type": "enum('admin','artist','user')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "user",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "on_boarding",
+                    "Type": "enum('yes','no')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "no",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "on_app",
+                    "Type": "tinyint(4)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "0",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "app_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "country_user_belongs_in",
+                    "Type": "varchar(255)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "remember_token",
+                    "Type": "varchar(100)",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "users",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "users",
+                    "Non_unique": 0,
+                    "Key_name": "users_email_unique",
+                    "Seq_in_index": 1,
+                    "Column_name": "email",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `users` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `first_name` varchar(255) DEFAULT NULL,\n  `last_name` varchar(255) DEFAULT NULL,\n  `email` varchar(255) NOT NULL,\n  `phone_number` varchar(50) DEFAULT NULL,\n  `email_verified_at` timestamp NULL DEFAULT NULL,\n  `password` varchar(255) NOT NULL,\n  `must_set_password` tinyint(1) NOT NULL DEFAULT 0,\n  `role` enum('admin','artist','user') NOT NULL DEFAULT 'user',\n  `on_boarding` enum('yes','no') NOT NULL DEFAULT 'no',\n  `on_app` tinyint(4) NOT NULL DEFAULT 0,\n  `app_id` bigint(20) unsigned DEFAULT NULL,\n  `country_user_belongs_in` varchar(255) DEFAULT NULL,\n  `remember_token` varchar(100) DEFAULT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `users_email_unique` (`email`)\n) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        },
+        "waitlists": {
+            "columns": [
+                {
+                    "Field": "id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "PRI",
+                    "Default": null,
+                    "Extra": "auto_increment",
+                    "Comment": ""
+                },
+                {
+                    "Field": "user_id",
+                    "Type": "bigint(20) unsigned",
+                    "Null": "NO",
+                    "Key": "MUL",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "status",
+                    "Type": "enum('pending','sent')",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": "pending",
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "name",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "email",
+                    "Type": "varchar(255)",
+                    "Null": "NO",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "created_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                },
+                {
+                    "Field": "updated_at",
+                    "Type": "timestamp",
+                    "Null": "YES",
+                    "Key": "",
+                    "Default": null,
+                    "Extra": "",
+                    "Comment": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "Table": "waitlists",
+                    "Non_unique": 0,
+                    "Key_name": "PRIMARY",
+                    "Seq_in_index": 1,
+                    "Column_name": "id",
+                    "Index_type": "BTREE"
+                },
+                {
+                    "Table": "waitlists",
+                    "Non_unique": 1,
+                    "Key_name": "waitlists_user_id_foreign",
+                    "Seq_in_index": 1,
+                    "Column_name": "user_id",
+                    "Index_type": "BTREE"
+                }
+            ],
+            "create_sql": "CREATE TABLE `waitlists` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `user_id` bigint(20) unsigned NOT NULL,\n  `status` enum('pending','sent') NOT NULL DEFAULT 'pending',\n  `name` varchar(255) NOT NULL,\n  `email` varchar(255) NOT NULL,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `waitlists_user_id_foreign` (`user_id`),\n  CONSTRAINT `waitlists_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        }
+    }
+}

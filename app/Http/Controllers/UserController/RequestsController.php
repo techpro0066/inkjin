@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\UserController;
 
+use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreClientSelectedSlotsRequest;
 use App\Models\Booking;
@@ -10,6 +11,7 @@ use App\Models\CustomRequest;
 use App\Support\PaymentMethods;
 use App\Services\ManagedRequestBookingService;
 use App\Services\BookingCheckoutPricingService;
+use App\Services\GoogleCalendarBookingSyncService;
 use App\Services\VivaCheckoutService;
 use App\Models\PendingVivaPayment;
 use Carbon\Carbon;
@@ -179,6 +181,12 @@ class RequestsController extends Controller
             return response()->json(['message' => 'Artist or design not found.'], 404);
         }
 
+        try {
+            app(GoogleCalendarBookingSyncService::class)->assertReadyForPayment($userDetail);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
         $stripeSecret = env('STRIPE_SECRET');
         if (!$stripeSecret) {
             return response()->json(['message' => 'Stripe is not configured.'], 500);
@@ -269,6 +277,8 @@ class RequestsController extends Controller
                 'booking_reference' => '#INK-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
                 'redirect_url' => route('user.bookings.index'),
             ]);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             Log::error('Managed request payment confirm failed', [
                 'booking_request_id' => $bookingRequest->id,
@@ -290,12 +300,16 @@ class RequestsController extends Controller
         }
 
         try {
+            $bookingRequest->loadMissing(['artist.userDetail']);
+            app(GoogleCalendarBookingSyncService::class)->assertReadyForPayment($bookingRequest->artist?->userDetail);
             $order = $this->vivaCheckout->createOrReuseOrderForBookingRequest(
                 $bookingRequest,
                 Auth::user(),
             );
 
             return response()->json($order);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             Log::error('Viva order create failed (managed request)', [
                 'booking_request_id' => $bookingRequest->id,

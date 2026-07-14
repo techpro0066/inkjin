@@ -2,9 +2,9 @@
 
 namespace App\Mail;
 
+use App\Services\ArtistPayoutService;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -37,7 +37,7 @@ class BookingConfirmationMail extends Mailable
         $subject = $this->isArtistEmail
             ? 'New Booking Notification - '.$title
             : 'Booking Confirmation - '.$title;
-            
+
         return new Envelope(
             subject: $subject,
         );
@@ -48,10 +48,10 @@ class BookingConfirmationMail extends Mailable
      */
     public function content(): Content
     {
-        $view = $this->isArtistEmail 
+        $view = $this->isArtistEmail
             ? 'emails.booking-confirmation-artist'
             : 'emails.booking-confirmation-user';
-            
+
         return new Content(
             view: $view,
             with: $this->getEmailData(),
@@ -66,7 +66,7 @@ class BookingConfirmationMail extends Mailable
         $booking = $this->booking;
         $artist = $booking->artist;
         $customer = $booking->user;
-        
+
         // Format booking date and time
         $bookingDate = \Carbon\Carbon::parse($booking->booking_date)->format('l, F j, Y');
         $startTime = \Carbon\Carbon::createFromFormat('H:i:s', $booking->start_time_utc)
@@ -75,13 +75,13 @@ class BookingConfirmationMail extends Mailable
         $endTime = \Carbon\Carbon::createFromFormat('H:i:s', $booking->end_time_utc)
             ->setTimezone($booking->timezone)
             ->format('g:i A');
-        $bookingTime = $startTime . ' - ' . $endTime;
-        
+        $bookingTime = $startTime.' - '.$endTime;
+
         // Calculate duration
         $start = \Carbon\Carbon::createFromFormat('H:i:s', $booking->start_time_utc);
         $end = \Carbon\Carbon::createFromFormat('H:i:s', $booking->end_time_utc);
         $duration = $start->diffInHours($end);
-        
+
         // Currency symbol
         $currencySymbols = [
             'USD' => '$',
@@ -94,8 +94,8 @@ class BookingConfirmationMail extends Mailable
             'CAD' => 'C$',
             'AUD' => 'A$',
         ];
-        $currencySymbol = $currencySymbols[strtoupper($booking->currency)] ?? $booking->currency . ' ';
-        
+        $currencySymbol = $currencySymbols[strtoupper($booking->currency)] ?? $booking->currency.' ';
+
         $baseData = [
             'bookingId' => $booking->id,
             'completionCode' => (string) ($booking->completion_code ?? ''),
@@ -105,36 +105,49 @@ class BookingConfirmationMail extends Mailable
             'duration' => $duration,
             'currencySymbol' => $currencySymbol,
             'meetLink' => $booking->google_meet_link,
-            'meetingTime' => $bookingDate . ' at ' . $startTime,
+            'meetingTime' => $bookingDate.' at '.$startTime,
         ];
-        
+
         if ($this->isArtistEmail) {
-            // Artist email data
+            // Artist email — tax is platform-collected and excluded from artist amount
             return array_merge($baseData, [
                 'artistName' => ucfirst($artist->first_name).' '.ucfirst($artist->last_name),
                 'customerName' => ucfirst($customer->first_name).' '.ucfirst($customer->last_name),
-                'amountReceived' => $booking->total_amount_paid - $booking->platform_fee, // Amount after platform fee
+                'amountReceived' => $this->resolveArtistAmountReceived($booking, $artist),
                 'questionsAnswers' => $booking->questions_answers ?? [],
                 'questions' => $this->questions,
             ]);
-        } else {
-            $seeBookingUrl = null;
-            if ($customer) {
-                $seeBookingUrl = URL::temporarySignedRoute(
-                    'user.post-booking.access',
-                    now()->addDays(14),
-                    ['user' => $customer->id, 'booking' => $booking->id]
-                );
-            }
-
-            // Customer email data
-            return array_merge($baseData, [
-                'userName' => ucfirst($customer->first_name).' '.ucfirst($customer->last_name),
-                'artistName' => ucfirst($artist->first_name).' '.ucfirst($artist->last_name),
-                'totalAmount' => $booking->total_amount_paid,
-                'seeBookingUrl' => $seeBookingUrl,
-            ]);
         }
+
+        $seeBookingUrl = null;
+        if ($customer) {
+            $seeBookingUrl = URL::temporarySignedRoute(
+                'user.post-booking.access',
+                now()->addDays(14),
+                ['user' => $customer->id, 'booking' => $booking->id]
+            );
+        }
+
+        // Customer email — full amount paid (includes fee + tax)
+        return array_merge($baseData, [
+            'userName' => ucfirst($customer->first_name).' '.ucfirst($customer->last_name),
+            'artistName' => ucfirst($artist->first_name).' '.ucfirst($artist->last_name),
+            'totalAmount' => $booking->total_amount_paid,
+            'seeBookingUrl' => $seeBookingUrl,
+        ]);
+    }
+
+    /**
+     * Artist receives deposit (minus any artist-paid booking fee). Tax is not included.
+     */
+    private function resolveArtistAmountReceived($booking, $artist): float
+    {
+        $userDetail = $artist?->userDetail;
+        if ($userDetail) {
+            return app(ArtistPayoutService::class)->computeArtistPayoutAmount($booking, $userDetail);
+        }
+
+        return max(0, round((float) ($booking->deposit_amount ?? 0), 2));
     }
 
     /**

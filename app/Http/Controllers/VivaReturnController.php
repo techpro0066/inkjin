@@ -33,6 +33,14 @@ class VivaReturnController extends Controller
         if ($pending && $transactionId !== '') {
             try {
                 $this->confirmation->confirmPaid($pending, $transactionId);
+            } catch (\App\Exceptions\GoogleCalendarEventRequiredException $e) {
+                Log::error('Viva success return blocked by Google Calendar requirement', [
+                    'order_code' => $orderCode,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return redirect()->to($this->vivaCheckout->failureRedirectUrl($pending))
+                    ->with('viva_error', $e->getMessage());
             } catch (\Throwable $e) {
                 Log::warning('Viva success return could not confirm immediately', [
                     'order_code' => $orderCode,

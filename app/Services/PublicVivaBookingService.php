@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Mail\BookingConfirmationMail;
 use App\Models\Booking;
@@ -17,6 +18,7 @@ class PublicVivaBookingService
 {
     public function __construct(
         private readonly ManagedRequestBookingService $managedBooking,
+        private readonly GoogleCalendarBookingSyncService $calendarSync,
     ) {}
 
     public function createFromPending(PendingVivaPayment $pending, string $transactionId): Booking
@@ -30,6 +32,8 @@ class PublicVivaBookingService
         if (! $userDetail || ! $userDetail->user || $userDetail->user->role !== 'artist') {
             throw new \RuntimeException('Artist not found.');
         }
+
+        $this->calendarSync->assertReadyForPayment($userDetail);
 
         $design = $userDetail->user->artistDesigns()
             ->where('slug', $tattooSlug)
@@ -157,7 +161,7 @@ class PublicVivaBookingService
             $booking->save();
         }
 
-        $this->createGoogleCalendarEvent($booking);
+        $this->createGoogleCalendarEvent($booking, $payload);
 
         $this->sendEmails($booking, $bookingUser, $userDetail);
 
@@ -192,35 +196,20 @@ class PublicVivaBookingService
         }
     }
 
-    private function createGoogleCalendarEvent(Booking $booking): void
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function createGoogleCalendarEvent(Booking $booking, array $payload = []): void
     {
         try {
-            $booking->loadMissing(['artist.userDetail']);
-            $artistUserDetail = $booking->artist?->userDetail;
-            if (! $artistUserDetail || ! $artistUserDetail->google_calendar_token) {
-                return;
-            }
-
             $consultationType = trim((string) ($payload['consultation_type'] ?? ''));
-            $calendarResult = GoogleCalendarController::createCalendarEvent(
-                $artistUserDetail,
+            $this->calendarSync->syncForBooking(
                 $booking,
-                (bool) $booking->has_consultation,
                 $consultationType !== '' ? $consultationType : null
             );
-
-            if (is_array($calendarResult) && ! empty($calendarResult['event_id'])) {
-                $booking->update([
-                    'google_calendar_event_id' => $calendarResult['event_id'],
-                    'google_meet_link' => $calendarResult['meet_link'] ?? null,
-                ]);
-                $booking->refresh();
-            }
-        } catch (\Throwable $e) {
-            Log::error('Failed to create Google Calendar event (Viva public)', [
-                'booking_id' => $booking->id,
-                'error' => $e->getMessage(),
-            ]);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            $this->calendarSync->abortFailedCalendarBooking($booking, $e->getMessage());
+            throw $e;
         }
     }
 }

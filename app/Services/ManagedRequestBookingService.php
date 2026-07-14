@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Http\Controllers\GoogleCalendarController;
+use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Mail\BookingConfirmationMail;
 use App\Models\AvailabilityOverride;
 use App\Models\Booking;
@@ -99,6 +99,8 @@ class ManagedRequestBookingService
         if (!$userDetail || !$tattoo || !$bookingRequest->user) {
             throw new \RuntimeException('Booking request is missing required relations.');
         }
+
+        app(GoogleCalendarBookingSyncService::class)->assertReadyForPayment($userDetail);
 
         $artistTimezone = $userDetail->timezone ?: 'UTC';
         $sessionRange = $this->firstClientRange($bookingRequest, 'session');
@@ -215,6 +217,8 @@ class ManagedRequestBookingService
         if (!$userDetail || !$tattoo || !$bookingRequest->user) {
             throw new \RuntimeException('Booking request is missing required relations.');
         }
+
+        app(GoogleCalendarBookingSyncService::class)->assertReadyForPayment($userDetail);
 
         $artistTimezone = $userDetail->timezone ?: 'UTC';
         $sessionRange = $this->firstClientRange($bookingRequest, 'session');
@@ -349,32 +353,13 @@ class ManagedRequestBookingService
 
     private function createGoogleCalendarEvent(Booking $booking, ?string $consultationType = null): void
     {
+        $calendarSync = app(GoogleCalendarBookingSyncService::class);
+
         try {
-            $booking->loadMissing(['artist.userDetail']);
-            $artistUserDetail = $booking->artist?->userDetail;
-            if (! $artistUserDetail || ! $artistUserDetail->google_calendar_token) {
-                return;
-            }
-
-            $calendarResult = GoogleCalendarController::createCalendarEvent(
-                $artistUserDetail,
-                $booking,
-                (bool) $booking->has_consultation,
-                $consultationType
-            );
-
-            if (is_array($calendarResult) && ! empty($calendarResult['event_id'])) {
-                $booking->update([
-                    'google_calendar_event_id' => $calendarResult['event_id'],
-                    'google_meet_link' => $calendarResult['meet_link'] ?? null,
-                ]);
-                $booking->refresh();
-            }
-        } catch (\Throwable $e) {
-            Log::error('Failed to create Google Calendar event (managed request)', [
-                'booking_id' => $booking->id,
-                'error' => $e->getMessage(),
-            ]);
+            $calendarSync->syncForBooking($booking, $consultationType);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            $calendarSync->abortFailedCalendarBooking($booking, $e->getMessage());
+            throw $e;
         }
     }
 }

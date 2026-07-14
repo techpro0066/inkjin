@@ -28,6 +28,8 @@ use App\Mail\ManagedBookingRequestArtistMail;
 use App\Mail\ManagedBookingRequestMail;
 use App\Mail\UserWelcomeMail;
 use App\Services\CancellationService;
+use App\Services\GoogleCalendarBookingSyncService;
+use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Models\UserDetail;
 use App\Models\Waitlist;
 use App\Models\Question;
@@ -814,6 +816,12 @@ class InkJinController extends Controller
             return $response;
         }
 
+        try {
+            app(GoogleCalendarBookingSyncService::class)->assertReadyForPayment($userDetail);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
         $stripeSecret = env('STRIPE_SECRET');
         if (!$stripeSecret) {
             return response()->json(['message' => 'Stripe is not configured.'], 500);
@@ -1055,30 +1063,17 @@ class InkJinController extends Controller
             $booking->save();
         }
 
-        // Create Google Calendar event for connected artists.
+        // Create Google Calendar event — required for auto-scheduling artists.
         try {
-            $artistUserDetail = $booking->artist?->userDetail;
-            if ($artistUserDetail && $artistUserDetail->google_calendar_token) {
-                $consultationType = trim((string) ($payload['consultation_type'] ?? ''));
-                $calendarResult = GoogleCalendarController::createCalendarEvent(
-                    $artistUserDetail,
-                    $booking,
-                    (bool) $booking->has_consultation,
-                    $consultationType !== '' ? $consultationType : null
-                );
-                if (is_array($calendarResult) && !empty($calendarResult['event_id'])) {
-                    $booking->update([
-                        'google_calendar_event_id' => $calendarResult['event_id'],
-                        'google_meet_link' => $calendarResult['meet_link'] ?? null,
-                    ]);
-                    $booking->refresh();
-                }
-            }
-        } catch (\Throwable $e) {
-            Log::error('Failed to create Google Calendar event (non-critical)', [
-                'booking_id' => $booking->id,
-                'error' => $e->getMessage(),
-            ]);
+            $consultationType = trim((string) ($payload['consultation_type'] ?? ''));
+            app(GoogleCalendarBookingSyncService::class)->syncForBooking(
+                $booking,
+                $consultationType !== '' ? $consultationType : null
+            );
+        } catch (GoogleCalendarEventRequiredException $e) {
+            app(GoogleCalendarBookingSyncService::class)->abortFailedCalendarBooking($booking, $e->getMessage());
+
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         $clientEmail = (string) ($bookingUser->email ?? '');
@@ -1396,6 +1391,12 @@ class InkJinController extends Controller
 
         if ($response = $this->rejectIfDesignSoldOut($tattoo)) {
             return $response;
+        }
+
+        try {
+            app(GoogleCalendarBookingSyncService::class)->assertReadyForPayment($userDetail);
+        } catch (GoogleCalendarEventRequiredException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         $payload = $validated['booking_payload'];

@@ -851,26 +851,33 @@ class GoogleCalendarController extends Controller
             $calendarId = $userDetail->google_calendar_id ?? 'primary';
 
             // Get booking details
-            $tattoo = $booking->tattoo;
+            $tattoo = $booking->relationLoaded('tattoo') || method_exists($booking, 'tattoo')
+                ? $booking->tattoo
+                : null;
             $customer = $booking->user;
             $artist = $booking->artist;
+            $tattooTitle = $tattoo?->title ?: (method_exists($booking, 'displayTitle') ? $booking->displayTitle() : 'Custom Tattoo');
+            if ($tattooTitle === '') {
+                $tattooTitle = 'Custom Tattoo';
+            }
 
             // Format event title - include consultation info for combined mode
             $isCombinedConsultation = $booking->consultation_timing_type === 'combined' && $booking->has_consultation;
             if ($isCombinedConsultation) {
-                $eventTitle = 'Tattoo Session + Consultation: ' . ($tattoo->title ?? 'Custom Tattoo');
+                $eventTitle = 'Tattoo Session + Consultation: '.$tattooTitle;
             } else {
-            $eventTitle = 'Tattoo Session: ' . ($tattoo->title ?? 'Custom Tattoo');
+                $eventTitle = 'Tattoo Session: '.$tattooTitle;
             }
-            
+
             // Format event description
-            $description = "Customer: {$customer->name} ({$customer->email})\n";
-            $description .= "Tattoo: " . ($tattoo->title ?? 'Custom Tattoo') . "\n";
+            $customerName = trim((string) ($customer->name ?? ($customer->first_name ?? '').' '.($customer->last_name ?? '')));
+            $description = "Customer: {$customerName} ({$customer->email})\n";
+            $description .= "Tattoo: {$tattooTitle}\n";
             $description .= "Booking ID: #{$booking->id}\n";
-            
+
             // Add consultation timing info for combined mode
             if ($isCombinedConsultation) {
-                $tattooDurationHours = $tattoo->session_time_h ?? 0;
+                $tattooDurationHours = $tattoo?->session_time_h ?? $tattoo?->session_duration ?? 0;
                 $consultationDurationMinutes = 0;
                 if ($booking->consultation_start_time_utc && $booking->consultation_end_time_utc) {
                     $consultationStart = \Carbon\Carbon::createFromFormat('H:i:s', $booking->consultation_start_time_utc);
@@ -880,7 +887,7 @@ class GoogleCalendarController extends Controller
                 $description .= "\nConsultation Timing: Combined\n";
                 $description .= "Consultation Duration: {$consultationDurationMinutes} minutes\n";
                 $description .= "Tattoo Session Duration: {$tattooDurationHours} hour(s)\n";
-                $description .= "Total Duration: " . ($tattooDurationHours + ($consultationDurationMinutes / 60)) . " hour(s)\n";
+                $description .= 'Total Duration: '.($tattooDurationHours + ($consultationDurationMinutes / 60))." hour(s)\n";
             }
             
             $description .= "\n";
@@ -890,26 +897,42 @@ class GoogleCalendarController extends Controller
             $description .= "Payment: {$currencySymbol}" . number_format($booking->total_amount_paid, 2) . "\n";
             $description .= $booking->full_amount_paid ? "Full amount paid" : "Deposit: {$currencySymbol}" . number_format($booking->deposit_amount, 2);
             
-            // Add questions/answers if available
-            if (!empty($booking->questions_answers)) {
-                $description .= "\n\nCustomer Responses:\n";
-                // Get question texts
-                $questionModels = \App\Models\UserQuestion::whereIn('id', array_keys($booking->questions_answers))
-                    ->where('user_id', $artist->id)
-                    ->get()
-                    ->keyBy('id');
-                
-                foreach ($booking->questions_answers as $questionId => $answer) {
-                    $question = $questionModels->get($questionId);
-                    if ($question) {
-                        if ($question->type === 'image' && is_array($answer)) {
-                            $description .= "\n{$question->question}: " . count($answer) . " image(s) uploaded\n";
+            // Add questions/answers if available (answers already include question text).
+            // Never block calendar creation if Q&A formatting fails.
+            try {
+                if (! empty($booking->questions_answers) && is_array($booking->questions_answers)) {
+                    $description .= "\n\nCustomer Responses:\n";
+                    foreach ($booking->questions_answers as $questionId => $answer) {
+                        if ($questionId === '_contact') {
+                            continue;
+                        }
+
+                        $answerPayload = is_array($answer) ? $answer : ['answer' => $answer];
+                        $questionText = trim((string) ($answerPayload['question'] ?? ''));
+                        if ($questionText === '') {
+                            $questionText = 'Question #'.$questionId;
+                        }
+                        $answerType = (string) ($answerPayload['type'] ?? '');
+                        $answerValue = $answerPayload['answer'] ?? '';
+
+                        if ($answerType === 'image' || (is_array($answerValue) && $answerValue !== [] && preg_match('#^(https?://|/uploads/|uploads/)#i', (string) reset($answerValue)))) {
+                            $count = is_array($answerValue) ? count($answerValue) : 1;
+                            $description .= "\n{$questionText}: {$count} image(s) uploaded\n";
                         } else {
-                            $answerText = is_array($answer) ? implode(', ', $answer) : $answer;
-                            $description .= "\n{$question->question}: {$answerText}\n";
+                            $answerText = is_array($answerValue) ? implode(', ', $answerValue) : (string) $answerValue;
+                            $answerText = trim($answerText);
+                            if ($answerText === '') {
+                                continue;
+                            }
+                            $description .= "\n{$questionText}: {$answerText}\n";
                         }
                     }
                 }
+            } catch (\Throwable $qaError) {
+                Log::warning('Skipped questions_answers in Google Calendar description', [
+                    'booking_id' => $booking->id ?? null,
+                    'error' => $qaError->getMessage(),
+                ]);
             }
 
             // Create datetime objects for the booking
