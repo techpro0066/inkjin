@@ -48,6 +48,23 @@
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .book-meta-row {
+      display: grid;
+      grid-template-columns: minmax(5.5rem, 34%) minmax(0, 1fr);
+      column-gap: 0.75rem;
+      align-items: start;
+    }
+    .book-meta-row > .book-meta-label {
+      color: inherit;
+      padding-top: 0.1rem;
+    }
+    .book-meta-row > .book-meta-value {
+      min-width: 0;
+      text-align: right;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.35;
+    }
     .tf-progress { position: fixed; top: 0; left: 0; height: 3px; background: #310f7a; transition: width 0.4s ease; z-index: 100; }
     .step-panel { display: none; }
     .step-panel.active { display: block; animation: fadeUp 0.35s ease-out; }
@@ -788,13 +805,13 @@
             <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 lg:sticky lg:top-24">
               <h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">Booking Summary</h3>
               <div class="space-y-3 text-sm">
-                <div class="flex justify-between"><span class="text-on-surface-variant">Design</span><span class="font-semibold" id="payDesign">—</span></div>
-                <div class="flex justify-between"><span class="text-on-surface-variant">Artist</span><span class="font-semibold" id="payArtist">—</span></div>
-                <div class="flex justify-between hidden" id="payConsultRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold" id="payConsultDateTime">—</span></div>
-                <div class="flex justify-between"><span class="text-on-surface-variant" id="payDateTimeLabel">Date & Time</span><span class="font-semibold" id="payDateTime">—</span></div>
-                <div class="flex justify-between"><span class="text-on-surface-variant">Duration</span><span class="font-semibold" id="payDuration">—</span></div>
-                <div class="flex justify-between"><span class="text-on-surface-variant">Size</span><span class="font-semibold" id="paySize">—</span></div>
-                <div class="flex justify-between"><span class="text-on-surface-variant">Location</span><span class="font-semibold text-xs text-right" id="payLocation">—</span></div>
+                <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Design</span><span class="book-meta-value font-semibold" id="payDesign">—</span></div>
+                <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Artist</span><span class="book-meta-value font-semibold" id="payArtist">—</span></div>
+                <div class="book-meta-row hidden" id="payConsultRow"><span class="book-meta-label text-on-surface-variant">Consultation</span><span class="book-meta-value font-semibold" id="payConsultDateTime">—</span></div>
+                <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant" id="payDateTimeLabel">Date & Time</span><span class="book-meta-value font-semibold" id="payDateTime">—</span></div>
+                <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Duration</span><span class="book-meta-value font-semibold" id="payDuration">—</span></div>
+                <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Size</span><span class="book-meta-value font-semibold" id="paySize">—</span></div>
+                <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Location</span><span class="book-meta-value font-semibold text-xs sm:text-sm" id="payLocation">—</span></div>
               </div>
               <hr class="border-outline-variant/20 my-4">
               <div class="space-y-2 text-sm mb-3"><div class="flex justify-between"><span class="font-semibold text-on-surface">Price Estimate</span><span class="font-semibold text-on-surface" id="payPriceEstimate">—</span></div></div>
@@ -894,27 +911,27 @@
         <p class="text-sm text-on-surface-variant text-center mb-8">Your deposit has been received and your appointment is secured.</p>
         <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 mb-8">
           <div class="space-y-2.5 text-sm">
-            <div class="flex justify-between"><span class="text-on-surface-variant">Booking Ref</span><span class="font-bold text-primary" id="confRef">#INK-000000</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Design</span><span class="font-semibold" id="confDesign">—</span></div>
-            <div class="flex justify-between hidden" id="confConsultRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold" id="confConsultDateTime">—</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant" id="confDateTimeLabel">Date & Time</span><span class="font-semibold" id="confDateTime">—</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Artist</span><span class="font-semibold" id="confArtist">—</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Studio</span><span class="font-semibold" id="confStudio">—</span></div>
-            <div class="flex justify-between gap-3 items-start"><span class="text-on-surface-variant shrink-0">Location</span><span class="font-semibold text-right text-xs sm:text-sm leading-snug" id="confLocationName">—</span></div>
-            <div class="flex justify-between"><span></span><a href="#" id="confDirectionsLink" target="_blank" class="text-xs text-primary font-medium hover:underline">Get Directions →</a></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Placement</span><span class="font-semibold" id="confPlacement">—</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Size</span><span class="font-semibold" id="confSize">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Booking Ref</span><span class="book-meta-value font-bold text-primary" id="confRef">#INK-000000</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Design</span><span class="book-meta-value font-semibold" id="confDesign">—</span></div>
+            <div class="book-meta-row hidden" id="confConsultRow"><span class="book-meta-label text-on-surface-variant">Consultation</span><span class="book-meta-value font-semibold" id="confConsultDateTime">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant" id="confDateTimeLabel">Date & Time</span><span class="book-meta-value font-semibold" id="confDateTime">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Artist</span><span class="book-meta-value font-semibold" id="confArtist">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Studio</span><span class="book-meta-value font-semibold" id="confStudio">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Location</span><span class="book-meta-value font-semibold text-xs sm:text-sm" id="confLocationName">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label"></span><span class="book-meta-value"><a href="#" id="confDirectionsLink" target="_blank" class="text-xs text-primary font-medium hover:underline">Get Directions →</a></span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Placement</span><span class="book-meta-value font-semibold" id="confPlacement">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Size</span><span class="book-meta-value font-semibold" id="confSize">—</span></div>
             <div id="confImageAnswers" class="space-y-2.5"></div>
             <hr class="border-outline-variant/20">
-            <div class="flex justify-between"><span class="text-on-surface-variant">Price Estimate</span><span class="font-semibold" id="confPriceEstimate">—</span></div>
-            <div class="flex justify-between hidden" id="confConsultFeeRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold text-green-600">Free</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant" id="confDepositLabel">Deposit</span><span class="font-semibold" id="confDeposit">—</span></div>
-            <div class="flex justify-between"><span class="text-on-surface-variant">Inkjin Booking Fee</span><span class="font-semibold" id="confBookingFee">—</span></div>
-            <div class="flex justify-between" id="confSubtotalRow"><span class="text-on-surface-variant">Subtotal</span><span class="font-semibold" id="confSubtotal">—</span></div>
-            <div class="flex justify-between hidden" id="confTaxRow"><span class="text-on-surface-variant" id="confTaxLabel">VAT</span><span class="font-semibold" id="confTax">—</span></div>
-            <div class="flex justify-between"><span class="font-bold text-on-surface">Total Paid</span><span class="font-bold text-primary" id="confTotalPaid">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Price Estimate</span><span class="book-meta-value font-semibold" id="confPriceEstimate">—</span></div>
+            <div class="book-meta-row hidden" id="confConsultFeeRow"><span class="book-meta-label text-on-surface-variant">Consultation</span><span class="book-meta-value font-semibold text-green-600">Free</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant" id="confDepositLabel">Deposit</span><span class="book-meta-value font-semibold" id="confDeposit">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Inkjin Booking Fee</span><span class="book-meta-value font-semibold" id="confBookingFee">—</span></div>
+            <div class="book-meta-row" id="confSubtotalRow"><span class="book-meta-label text-on-surface-variant">Subtotal</span><span class="book-meta-value font-semibold" id="confSubtotal">—</span></div>
+            <div class="book-meta-row hidden" id="confTaxRow"><span class="book-meta-label text-on-surface-variant" id="confTaxLabel">VAT</span><span class="book-meta-value font-semibold" id="confTax">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label font-bold text-on-surface">Total Paid</span><span class="book-meta-value font-bold text-primary" id="confTotalPaid">—</span></div>
             <hr class="border-outline-variant/10">
-            <div class="flex justify-between"><span class="text-on-surface-variant">Remaining Balance (est.)</span><span class="font-semibold" id="confBalance">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Remaining Balance (est.)</span><span class="book-meta-value font-semibold" id="confBalance">—</span></div>
             <p class="text-xs text-on-surface-variant italic">If you get this design as-is (original size, no modifications), expect to pay the minimum. Final price confirmed by the artist based on size, placement, and any customizations.</p>
           </div>
           <div class="mt-3 pt-3 border-t border-outline-variant/20"><a href="javascript:void(0)" onclick="scrollToCancellationPolicy()" class="text-xs text-primary font-medium hover:underline">View cancellation policy →</a></div>
@@ -1392,9 +1409,9 @@
           ? window.QuestionAnswerDisplay.formatPhotoLabels(photoCount)
           : Array.from({ length: photoCount }, function (_, idx) { return 'Photo ' + (idx + 1); }).join(', ');
         $confImageAnswers.append(
-          '<div class="flex justify-between gap-3">' +
-            '<span class="text-on-surface-variant shrink-0">' + $('<div>').text(entry.question || 'Photos').html() + '</span>' +
-            '<span class="font-semibold text-right">' + $('<div>').text(labels).html() + '</span>' +
+          '<div class="book-meta-row">' +
+            '<span class="book-meta-label text-on-surface-variant">' + $('<div>').text(entry.question || 'Photos').html() + '</span>' +
+            '<span class="book-meta-value font-semibold">' + $('<div>').text(labels).html() + '</span>' +
           '</div>'
         );
       });

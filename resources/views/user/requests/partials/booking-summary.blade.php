@@ -26,11 +26,11 @@
     </div>
     <div class="flex justify-between gap-3">
       <span class="text-on-surface-variant shrink-0">Size</span>
-      <span class="font-semibold text-right">{{ $sizeLabel }}</span>
+      <span class="font-semibold text-right min-w-0 break-words">{{ $sizeLabel }}</span>
     </div>
-    <div class="flex justify-between gap-3 items-start">
-      <span class="text-on-surface-variant shrink-0 pt-0.5">Location</span>
-      <div class="font-semibold text-xs sm:text-sm text-right leading-snug min-w-0 max-w-[65%]">
+    <div class="grid grid-cols-[minmax(5.5rem,34%)_minmax(0,1fr)] gap-x-3 items-start">
+      <span class="text-on-surface-variant pt-0.5">Location</span>
+      <div class="font-semibold text-xs sm:text-sm text-right leading-snug min-w-0 break-words">
         @php
           $locationLines = isset($userDetail) ? $userDetail->studioLocationLines() : [];
         @endphp
