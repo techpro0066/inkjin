@@ -14,22 +14,9 @@ use Illuminate\Support\Str;
 
 class ArtistDesignsController extends Controller
 {
-    private function styleSlugs(): array
+    private function styles(): array
     {
-        return [
-            'japanese',
-            'traditional',
-            'neo-traditional',
-            'realism',
-            'fine-line',
-            'blackwork',
-            'geometric',
-            'watercolor',
-            'tribal',
-            'surrealism',
-            'minimalist',
-            'dotwork',
-        ];
+        return Style::active()->ordered()->pluck('name')->values()->all();
     }
 
     private function sessionDurations(): array
@@ -50,7 +37,6 @@ class ArtistDesignsController extends Controller
 
     private function designRules(Request $request, bool $requireImage): array
     {
-        $styles = $this->styleSlugs();
         $rules = [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
@@ -65,9 +51,9 @@ class ArtistDesignsController extends Controller
                 'max:999',
             ],
             'is_sensitive' => ['required', 'boolean'],
-            'primary_style' => ['required', 'string', Rule::in($styles)],
+            'primary_style' => ['required', 'string', Rule::in($this->styles())],
             'other_styles' => ['nullable', 'array', 'max:2'],
-            'other_styles.*' => ['string', Rule::in($styles)],
+            'other_styles.*' => ['string', Rule::in($this->styles())],
             'color' => ['required', 'string', Rule::in(['color', 'black-grey', 'both'])],
             'tags' => ['nullable', 'array', 'max:30'],
             'tags.*' => ['string', 'max:64'],
@@ -195,7 +181,7 @@ class ArtistDesignsController extends Controller
             ? array_values($userDetail->design_whats_included)
             : [];
         
-        $styles = Style::where('status', 'active')->orderBy('sort_order')->get()->pluck('name');
+        $styles = $this->styles();
 
         return view('artist.artist_designs.index', [
             'artistDesigns' => $artistDesigns,

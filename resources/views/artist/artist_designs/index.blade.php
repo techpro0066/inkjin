@@ -517,32 +517,14 @@
                 <span class="text-sm font-bold tabular-nums text-on-surface"><span id="designOtherStylesCount">0</span><span class="text-on-surface-variant font-semibold"> / 2</span></span>
               </div>
               <div id="designOtherStylesChips" class="flex flex-wrap gap-2" role="group" aria-label="Other tattoo styles">
-                <button type="button" class="style-chip" data-value="japanese" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Japanese</button>
-                <button type="button" class="style-chip" data-value="traditional" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Traditional</button>
-                <button type="button" class="style-chip" data-value="neo-traditional" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Neo-Traditional</button>
-                <button type="button" class="style-chip" data-value="realism" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Realism</button>
-                <button type="button" class="style-chip" data-value="fine-line" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Fine Line</button>
-                <button type="button" class="style-chip" data-value="blackwork" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Blackwork</button>
-                <button type="button" class="style-chip" data-value="geometric" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Geometric</button>
-                <button type="button" class="style-chip" data-value="watercolor" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Watercolor</button>
-                <button type="button" class="style-chip" data-value="tribal" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Tribal</button>
-                <button type="button" class="style-chip" data-value="surrealism" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Surrealism</button>
-                <button type="button" class="style-chip" data-value="minimalist" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Minimalist</button>
-                <button type="button" class="style-chip" data-value="dotwork" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Dotwork</button>
+                @foreach ($styles as $style)
+                <button type="button" class="style-chip" data-value="{{ $style }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $style }}</button>
+                @endforeach
               </div>
               <select id="designOtherStyles" name="designOtherStyles" multiple class="hidden" tabindex="-1" aria-hidden="true">
-                <option value="japanese">Japanese</option>
-                <option value="traditional">Traditional</option>
-                <option value="neo-traditional">Neo-Traditional</option>
-                <option value="realism">Realism</option>
-                <option value="fine-line">Fine Line</option>
-                <option value="blackwork">Blackwork</option>
-                <option value="geometric">Geometric</option>
-                <option value="watercolor">Watercolor</option>
-                <option value="tribal">Tribal</option>
-                <option value="surrealism">Surrealism</option>
-                <option value="minimalist">Minimalist</option>
-                <option value="dotwork">Dotwork</option>
+                @foreach ($styles as $style)
+                <option value="{{ $style }}">{{ $style }}</option>
+                @endforeach
               </select>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="other_styles"></p>
             </div>
@@ -721,6 +703,7 @@
     var WHATS_INCLUDED_UPDATE_URL = @json(route('artist-designs.whats-included.update'));
     var WHATS_INCLUDED_INITIAL = @json(['is_active' => $whatsIncludedIsActive, 'items' => $whatsIncludedItems]);
     var ARTIST_DESIGNS_BY_ID = @json($designsForEdit);
+    var ARTIST_DESIGN_STYLE_OPTIONS = @json($styles);
     $(function () {
       var MODAL_MS = 350;
       var $newDesignModal = $('#newDesignModal');
@@ -953,10 +936,40 @@
         }
       }
 
+      function designOtherStyleOptionByValue(val) {
+        return $('#designOtherStyles option').filter(function () {
+          return $(this).val() === val;
+        });
+      }
+
+      function designStyleChipByValue(val) {
+        return $('#designOtherStylesChips .style-chip').filter(function () {
+          return $(this).attr('data-value') === val;
+        });
+      }
+
+      function ensureDesignStyleSelectValue($select, value) {
+        if (!value) {
+          return;
+        }
+        var exists = false;
+        $select.find('option').each(function () {
+          if ($(this).val() === value) {
+            exists = true;
+            return false;
+          }
+        });
+        if (!exists) {
+          $select.append($('<option></option>').attr('value', value).text(value));
+        }
+        $select.val(value);
+      }
+
       function populateDesignFormFromPayload(d) {
         $('#designTitle').val(d.title || '');
         $('#designDescription').val(d.description || '');
-        $('#designPrimaryStyle').val(d.primary_style || '').trigger('change');
+        ensureDesignStyleSelectValue($('#designPrimaryStyle'), d.primary_style || '');
+        $('#designPrimaryStyle').trigger('change');
         $('#designColors').val(d.color || '').trigger('change');
         $('#designTags').val(Array.isArray(d.tags) ? d.tags.join(', ') : '');
         $('#designPriceMin').val(d.min_price != null ? d.min_price : '');
@@ -972,8 +985,8 @@
         syncRepeatLimitFieldVisibility();
         $('#toggleSensitive').toggleClass('active', !!d.is_sensitive);
         $('#designOtherStyles option').prop('selected', false);
-        (d.other_styles || []).forEach(function (slug) {
-          $('#designOtherStyles option[value="' + slug + '"]').prop('selected', true);
+        (d.other_styles || []).forEach(function (styleValue) {
+          designOtherStyleOptionByValue(styleValue).prop('selected', true);
         });
         syncDesignOtherStylesChipsFromSelect();
       }
@@ -1045,7 +1058,7 @@
           }
         }
         var primary = $('#designPrimaryStyle').val();
-        var allowedStyles = ['japanese', 'traditional', 'neo-traditional', 'realism', 'fine-line', 'blackwork', 'geometric', 'watercolor', 'tribal', 'surrealism', 'minimalist', 'dotwork'];
+        var allowedStyles = Array.isArray(ARTIST_DESIGN_STYLE_OPTIONS) ? ARTIST_DESIGN_STYLE_OPTIONS : [];
         if (!primary) {
           errors.primary_style = 'Please select a primary style.';
         } else if (allowedStyles.indexOf(primary) === -1) {
@@ -1210,7 +1223,7 @@
         $('#designOtherStylesChips .style-chip').removeClass('is-selected').prop('disabled', false);
         $('#designOtherStyles option').each(function () {
           if (this.selected) {
-            $('#designOtherStylesChips .style-chip[data-value="' + this.value + '"]').addClass('is-selected');
+            designStyleChipByValue(this.value).addClass('is-selected');
           }
         });
         updateDesignOtherStylesChipsUI();
@@ -1623,7 +1636,7 @@
         var $btn = $(this);
         if ($btn.prop('disabled')) return;
         var val = $btn.attr('data-value');
-        var $opt = $('#designOtherStyles option[value="' + val + '"]');
+        var $opt = designOtherStyleOptionByValue(val);
         if ($btn.hasClass('is-selected')) {
           $btn.removeClass('is-selected');
           $opt.prop('selected', false);
