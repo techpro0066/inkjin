@@ -24,7 +24,7 @@
         <span class="material-symbols-outlined">payments</span> Payments
       </a>
       <a href="{{ route('artist.forms.index') }}" class="nav-item {{ request()->routeIs('personal-page.index') || request()->routeIs('artist.forms.index') || request()->routeIs('portfolio.index')  || request()->routeIs('artist-designs.index') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">folder_open</span> Content
+        <span class="material-symbols-outlined">folder_open</span> Booking Page
       </a>
       <a href="{{ route('artist.chat.index') }}" class="nav-item {{ request()->routeIs('artist.chat.*') ? 'active' : '' }}">
         <span class="material-symbols-outlined">mail</span> Inbox

@@ -189,19 +189,36 @@
   <main class="main-content flex-1 min-h-screen">
     <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
 
+      <!-- Page Header -->
+      @php
+        $bookingPageUsername = Auth::user()->userDetail->user_name ?? null;
+        $bookingPageUrl = $bookingPageUsername ? route('public.artist', ['username' => $bookingPageUsername]) : null;
+      @endphp
+      <div class="mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Booking Page</h2>
+            <p class="text-on-surface-variant mt-1">Manage your intake forms, available designs, portfolio and the style of your page</p>
+          </div>
+          @if ($bookingPageUrl)
+          <a href="{{ $bookingPageUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors shrink-0">
+            <span class="material-symbols-outlined text-lg">open_in_new</span> Open your booking page
+          </a>
+          @endif
+        </div>
+      </div>
+
       <!-- Content Tabs -->
       <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
         <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary">Forms</a>
         <a href="{{route('artist-designs.index')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Available Designs</a>
         <a href="{{route('portfolio.index')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Portfolio</a>
-        <a href="{{route('personal-page.index')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Personal Page</a>
+        <a href="{{route('personal-page.index')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Style & Colors</a>
       </div>
 
-      <!-- Page Header -->
+      <!-- Section intro -->
       <div class="mb-8">
-        <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Form Builder</h2>
-        <p class="text-on-surface-variant mt-1">Customize the questions clients see when booking or requesting a tattoo.
-        </p>
+        <p class="text-on-surface-variant">Customize the questions clients see when booking or requesting a tattoo.</p>
       </div>
 
       <!-- Form Type Tabs -->

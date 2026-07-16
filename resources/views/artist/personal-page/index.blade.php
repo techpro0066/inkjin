@@ -122,24 +122,36 @@
     <form id="personalPageForm" class="p-6 md:p-10 lg:p-12 max-w-6xl" enctype="multipart/form-data">
       @csrf
 
+      <!-- Page Header -->
+      @php
+        $bookingPageUrl = !empty($username) ? route('public.artist', ['username' => $username]) : null;
+      @endphp
+      <div class="mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Booking Page</h2>
+            <p class="text-on-surface-variant mt-1">Manage your intake forms, available designs, portfolio and the style of your page</p>
+          </div>
+          @if ($bookingPageUrl)
+          <a href="{{ $bookingPageUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors shrink-0">
+            <span class="material-symbols-outlined text-lg">open_in_new</span> Open your booking page
+          </a>
+          @endif
+        </div>
+      </div>
+
       <!-- Content Tabs -->
       <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
         <a href="{{ route('artist.forms.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Forms</a>
         <a href="{{ route('artist-designs.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Available Designs</a>
         <a href="{{ route('portfolio.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Portfolio</a>
-        <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Personal Page</a>
+        <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Style & Colors</a>
       </div>
 
 
-      <!-- Page Header -->
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-        <div>
-          <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Personal Page</h2>
-          <p class="text-on-surface-variant mt-1">Customize how your booking page looks to clients.</p>
-        </div>
-        <button type="button" onclick="copyPageLink('{{ $username }}')" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors">
-          <span class="material-symbols-outlined text-lg">content_copy</span> Copy Your Personal Page Link
-        </button>
+      <!-- Section intro -->
+      <div class="mb-8">
+        <p class="text-on-surface-variant">Customize how your booking page looks to clients.</p>
       </div>
       <div id="personalPageSuccessAlert" class="hidden mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
       <div id="personalPageErrorAlert" class="hidden mb-6 rounded-xl border border-error/30 bg-error/10 text-error px-4 py-3 text-sm"></div>
@@ -375,13 +387,6 @@
 
     </form>
   </main>
-
-  <div id="copyLinkToast" class="pointer-events-none fixed top-6 right-6 z-[70] transform translate-x-full opacity-0 transition-all duration-300">
-    <div class="pointer-events-auto flex items-center gap-3 bg-on-surface text-white px-5 py-3 rounded-xl shadow-lg max-w-sm">
-      <span class="material-symbols-outlined text-green-400 shrink-0" style="font-size:20px;">check_circle</span>
-      <span class="text-sm font-medium" id="copyLinkToastMessage">Personal page link copied.</span>
-    </div>
-  </div>
 
   <!-- Preview Modal -->
   <div id="previewPersonalPageModal" class="fixed inset-0 z-50 hidden">
@@ -674,36 +679,6 @@
       if (!bioInput || !bioCount) return;
       bioCount.textContent = bioInput.value.length + '/500';
       refreshPreviewModal();
-    }
-
-    var copyLinkToastTimer = null;
-    function showCopyLinkToast(message) {
-      var toast = document.getElementById('copyLinkToast');
-      var msgEl = document.getElementById('copyLinkToastMessage');
-      if (!toast || !msgEl) return;
-      msgEl.textContent = message || 'Personal page link copied.';
-      toast.classList.remove('translate-x-full', 'opacity-0');
-      toast.classList.add('translate-x-0', 'opacity-100');
-      clearTimeout(copyLinkToastTimer);
-      copyLinkToastTimer = setTimeout(function () {
-        toast.classList.add('translate-x-full', 'opacity-0');
-        toast.classList.remove('translate-x-0', 'opacity-100');
-      }, 3000);
-    }
-
-    function copyPageLink(username) {
-      const pageUrl = "https://inkjin.com/@" + username;
-      var done = function () {
-        showCopyLinkToast('Personal page link copied.');
-      };
-      var fail = function () {
-        showCopyLinkToast('Could not copy link. Copy it manually from the address bar.');
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(pageUrl).then(done).catch(fail);
-      } else {
-        fail();
-      }
     }
 
     function clearAlerts() {

@@ -112,9 +112,9 @@
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
 
-    <div class="mb-6">
-      <h2 class="text-2xl font-extrabold text-on-surface tracking-tight">Inbox</h2>
-      <p class="text-sm text-on-surface-variant mt-1">
+    <div class="mb-8">
+      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Inbox</h2>
+      <p class="text-on-surface-variant mt-1">
         @if ($showChatInbox)
           <span id="chatInboxSubtitle">Messages with your {{ $role === 'artist' ? 'clients' : 'artists' }}</span>
         @else
