@@ -176,7 +176,7 @@
     .work-image-upload-preview-wrap {
       position: relative;
       line-height: 0;
-      background: #ece6ef;
+      background: transparent;
       overflow: hidden;
     }
     #workImagePreviewImg.work-image-preview-img {
@@ -233,7 +233,7 @@
             </div>
             <h4 class="font-bold text-on-surface text-sm mb-1.5">{{ $portfolio->title }}</h4>
             <div class="flex flex-wrap items-center gap-2 mb-2">
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary">{{ ucwords(str_replace('-', ' ', $portfolio->primary_style)) }}</span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary">{{ $portfolio->primary_style }}</span>
               <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-container-high text-on-surface-variant">
                 @if ($portfolio->color === 'color') Color @elseif ($portfolio->color === 'black-grey') Black & Grey @elseif ($portfolio->color === 'both') Both @else {{ $portfolio->color }} @endif
               </span>
@@ -349,18 +349,9 @@
             <span class="text-sm font-bold tabular-nums text-on-surface"><span id="workOtherStylesCount">0</span><span class="text-on-surface-variant font-semibold"> / 2</span></span>
           </div>
           <div id="workOtherStylesChips" class="flex flex-wrap gap-2" role="group" aria-label="Other tattoo styles">
-            <button type="button" class="style-chip" data-value="japanese" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Japanese</button>
-            <button type="button" class="style-chip" data-value="traditional" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Traditional</button>
-            <button type="button" class="style-chip" data-value="neo-traditional" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Neo-Traditional</button>
-            <button type="button" class="style-chip" data-value="realism" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Realism</button>
-            <button type="button" class="style-chip" data-value="fine-line" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Fine Line</button>
-            <button type="button" class="style-chip" data-value="blackwork" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Blackwork</button>
-            <button type="button" class="style-chip" data-value="geometric" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Geometric</button>
-            <button type="button" class="style-chip" data-value="watercolor" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Watercolor</button>
-            <button type="button" class="style-chip" data-value="tribal" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Tribal</button>
-            <button type="button" class="style-chip" data-value="surrealism" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Surrealism</button>
-            <button type="button" class="style-chip" data-value="minimalist" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Minimalist</button>
-            <button type="button" class="style-chip" data-value="dotwork" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Dotwork</button>
+            @foreach ($styles as $style)
+            <button type="button" class="style-chip" data-value="{{ $style }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $style }}</button>
+            @endforeach
           </div>
           <select id="workOtherStyles" name="workOtherStyles" multiple class="hidden" tabindex="-1" aria-hidden="true">
             @foreach ($styles as $style)
@@ -466,6 +457,7 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
     window.PORTFOLIO_EDITOR_DATA = @json($portfolioEditorData);
+    var PORTFOLIO_STYLE_OPTIONS = @json($styles);
     var PORTFOLIO_STORE_URL = @json(route('portfolio.store'));
     $(function () {
       var MODAL_MS = 350;
@@ -558,7 +550,8 @@
           alert('Could not read the crop. Try again.');
           return;
         }
-        var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        // Use PNG so alpha/transparent areas stay transparent (JPEG strips alpha).
+        var dataUrl = canvas.toDataURL('image/png');
         $('#workImageData').val(dataUrl);
         $('#workImagePreviewImg').attr('src', dataUrl);
         $('#workImageUploadEmpty').addClass('hidden');
@@ -579,11 +572,40 @@
         });
       }
 
+      function workOtherStyleOptionByValue(val) {
+        return $('#workOtherStyles option').filter(function () {
+          return $(this).val() === val;
+        });
+      }
+
+      function workStyleChipByValue(val) {
+        return $('#workOtherStylesChips .style-chip').filter(function () {
+          return $(this).attr('data-value') === val;
+        });
+      }
+
+      function ensureWorkStyleSelectValue($select, value) {
+        if (!value) {
+          return;
+        }
+        var exists = false;
+        $select.find('option').each(function () {
+          if ($(this).val() === value) {
+            exists = true;
+            return false;
+          }
+        });
+        if (!exists) {
+          $select.append($('<option></option>').attr('value', value).text(value));
+        }
+        $select.val(value);
+      }
+
       function syncOtherStylesChipsFromSelect() {
         $('#workOtherStylesChips .style-chip').removeClass('is-selected').prop('disabled', false);
         $('#workOtherStyles option').each(function () {
           if (this.selected) {
-            $('#workOtherStylesChips .style-chip[data-value="' + this.value + '"]').addClass('is-selected');
+            workStyleChipByValue(this.value).addClass('is-selected');
           }
         });
         updateOtherStylesChipsUI();
@@ -804,7 +826,7 @@
         } else if (['color', 'black-grey', 'both'].indexOf(color) === -1) {
           errors.color = 'Please select a valid color option.';
         }
-        var allowedStyles = ['japanese', 'traditional', 'neo-traditional', 'realism', 'fine-line', 'blackwork', 'geometric', 'watercolor', 'tribal', 'surrealism', 'minimalist', 'dotwork'];
+        var allowedStyles = Array.isArray(PORTFOLIO_STYLE_OPTIONS) ? PORTFOLIO_STYLE_OPTIONS : [];
         if (primary && allowedStyles.indexOf(primary) === -1) {
           errors.primary_style = 'Please select a valid primary style.';
         }
@@ -890,12 +912,13 @@
         if (!p) return;
         $('#workTitle').val(p.title || '');
         $('#workDescription').val(p.description || '');
-        $('#workPrimaryStyle').val(p.primary_style || '').trigger('change');
+        ensureWorkStyleSelectValue($('#workPrimaryStyle'), p.primary_style || '');
+        $('#workPrimaryStyle').trigger('change');
         $('#workColors').val(p.color || '').trigger('change');
         $('#workTags').val((p.tags && p.tags.length) ? p.tags.join(', ') : '');
         $('#workOtherStyles option').prop('selected', false);
         (p.other_styles || []).forEach(function (v) {
-          $('#workOtherStyles option[value="' + v + '"]').prop('selected', true);
+          workOtherStyleOptionByValue(v).prop('selected', true);
         });
         syncOtherStylesChipsFromSelect();
         $('#workToggleVisibility').toggleClass('active', !!p.is_active);
@@ -930,7 +953,8 @@
         var blob = dataUrl ? dataUrlToBlob(dataUrl) : null;
         var fd = new FormData();
         if (blob) {
-          fd.append('image', blob, 'work.jpg');
+          // Keep PNG extension so the server stores it as PNG (alpha preserved).
+          fd.append('image', blob, 'work.png');
         }
         fd.append('title', $.trim($('#workTitle').val()));
         fd.append('description', $.trim($('#workDescription').val()));
@@ -1186,7 +1210,7 @@
         var $btn = $(this);
         if ($btn.prop('disabled')) return;
         var val = $btn.attr('data-value');
-        var $opt = $('#workOtherStyles option[value="' + val + '"]');
+        var $opt = workOtherStyleOptionByValue(val);
         if ($btn.hasClass('is-selected')) {
           $btn.removeClass('is-selected');
           $opt.prop('selected', false);

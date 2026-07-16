@@ -11,27 +11,14 @@ use Illuminate\Validation\Rule;
 
 class PortfolioController extends Controller
 {
-    private function styleSlugRules(): array
+    private function styles(): array
     {
-        return [
-            'japanese',
-            'traditional',
-            'neo-traditional',
-            'realism',
-            'fine-line',
-            'blackwork',
-            'geometric',
-            'watercolor',
-            'tribal',
-            'surrealism',
-            'minimalist',
-            'dotwork',
-        ];
+        return Style::active()->ordered()->pluck('name')->values()->all();
     }
 
     private function basePortfolioRules(bool $requireImage): array
     {
-        $styleValues = $this->styleSlugRules();
+        $styleValues = $this->styles();
 
         $rules = [
             'title' => ['required', 'string', 'max:255'],
@@ -84,7 +71,7 @@ class PortfolioController extends Controller
     {
         $portfolios = Auth::user()->portfolios()->latest()->get();
 
-        $styles = Style::where('status', 'active')->orderBy('sort_order')->get()->pluck('name');
+        $styles = $this->styles();
 
         return view('artist.portfolio.index', compact('portfolios', 'styles'));
     }

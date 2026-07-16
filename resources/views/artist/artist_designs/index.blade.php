@@ -441,7 +441,7 @@
                   <p class="text-xs text-outline mt-2">PNG, JPG up to 10MB</p>
                 </div>
               </div>
-              <div id="designImageUploadPreview" class="hidden absolute inset-0 bg-surface-container-high">
+              <div id="designImageUploadPreview" class="hidden absolute inset-0 bg-transparent">
                 <img id="designImagePreviewImg" src="" alt="Design preview" class="w-full h-full object-contain">
                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-2 px-3">
                   <p class="text-[11px] text-white/90 text-center font-medium">Tap to replace image</p>
@@ -786,7 +786,8 @@
           alert('Could not read the crop. Try again.');
           return;
         }
-        var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        // Use PNG so alpha/transparent areas stay transparent (JPEG strips alpha).
+        var dataUrl = canvas.toDataURL('image/png');
         $('#designImageData').val(dataUrl);
         var $slot = $('#designImageUpload');
         var w = canvas.width || CROP_OUT_W;
@@ -1308,7 +1309,8 @@
         var blob = dataUrl ? dataUrlToBlob(dataUrl) : null;
         var fd = new FormData();
         if (blob) {
-          fd.append('image', blob, 'design.jpg');
+          // Keep PNG extension so the server stores it as PNG (alpha preserved).
+          fd.append('image', blob, 'design.png');
         }
         fd.append('title', $.trim($('#designTitle').val()));
         fd.append('description', $.trim($('#designDescription').val()));
