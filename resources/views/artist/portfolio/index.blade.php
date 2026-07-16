@@ -543,6 +543,8 @@
         var canvas = workCropper.getCroppedCanvas({
           width: CROP_OUT_W,
           height: CROP_OUT_H,
+          // Flatten transparent areas onto light grey (avoids black JPEG fill).
+          fillColor: '#e8e8e8',
           imageSmoothingEnabled: true,
           imageSmoothingQuality: 'high'
         });
@@ -550,8 +552,7 @@
           alert('Could not read the crop. Try again.');
           return;
         }
-        // Use PNG so alpha/transparent areas stay transparent (JPEG strips alpha).
-        var dataUrl = canvas.toDataURL('image/png');
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         $('#workImageData').val(dataUrl);
         $('#workImagePreviewImg').attr('src', dataUrl);
         $('#workImageUploadEmpty').addClass('hidden');
@@ -953,8 +954,7 @@
         var blob = dataUrl ? dataUrlToBlob(dataUrl) : null;
         var fd = new FormData();
         if (blob) {
-          // Keep PNG extension so the server stores it as PNG (alpha preserved).
-          fd.append('image', blob, 'work.png');
+          fd.append('image', blob, 'work.jpg');
         }
         fd.append('title', $.trim($('#workTitle').val()));
         fd.append('description', $.trim($('#workDescription').val()));

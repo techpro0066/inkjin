@@ -183,7 +183,7 @@
     <!-- Banner -->
     <div class="w-full h-[300px] relative overflow-hidden">
       @if($userDetail->personal_page_background_image && $userDetail->personal_page_background_image != '')
-        <img src="{{ asset($userDetail->personal_page_background_image) }}" alt="Tattoo Header" class="w-full h-full object-cover absolute inset-0">
+        <img src="{{ asset($userDetail->personal_page_background_image) }}" alt="Tattoo Header" class="w-full h-full absolute inset-0">
       @else
         <div class="absolute inset-0" style="background-color: {{ $selectedTheme['bg'] }};"></div> <!-- Subtle dark overlay to ensure avatar/text stands out -->
       @endif

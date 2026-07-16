@@ -779,6 +779,8 @@
         var canvas = designCropper.getCroppedCanvas({
           width: CROP_OUT_W,
           height: CROP_OUT_H,
+          // Flatten transparent areas onto light grey (avoids black JPEG fill).
+          fillColor: '#e8e8e8',
           imageSmoothingEnabled: true,
           imageSmoothingQuality: 'high'
         });
@@ -786,8 +788,7 @@
           alert('Could not read the crop. Try again.');
           return;
         }
-        // Use PNG so alpha/transparent areas stay transparent (JPEG strips alpha).
-        var dataUrl = canvas.toDataURL('image/png');
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         $('#designImageData').val(dataUrl);
         var $slot = $('#designImageUpload');
         var w = canvas.width || CROP_OUT_W;
@@ -1309,8 +1310,7 @@
         var blob = dataUrl ? dataUrlToBlob(dataUrl) : null;
         var fd = new FormData();
         if (blob) {
-          // Keep PNG extension so the server stores it as PNG (alpha preserved).
-          fd.append('image', blob, 'design.png');
+          fd.append('image', blob, 'design.jpg');
         }
         fd.append('title', $.trim($('#designTitle').val()));
         fd.append('description', $.trim($('#designDescription').val()));
