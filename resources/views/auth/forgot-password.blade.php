@@ -78,7 +78,7 @@
         <!-- Secondary Help Text -->
         <p class="mt-8 text-center text-sm text-on-surface-variant">
           Having trouble?
-          <a class="text-primary font-medium underline underline-offset-4 decoration-primary/30 hover:decoration-primary" href="#">
+          <a class="text-primary font-medium underline underline-offset-4 decoration-primary/30 hover:decoration-primary" href="mailto:support@inkjin.com">
             Contact Support
           </a>
         </p>
