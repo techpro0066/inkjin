@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Models\Style;
 use Illuminate\Support\Str;
 
 class ArtistDesignsController extends Controller
@@ -193,11 +194,14 @@ class ArtistDesignsController extends Controller
         $whatsIncludedItems = is_array($userDetail?->design_whats_included)
             ? array_values($userDetail->design_whats_included)
             : [];
+        
+        $styles = Style::where('status', 'active')->orderBy('sort_order')->get()->pluck('name');
 
         return view('artist.artist_designs.index', [
             'artistDesigns' => $artistDesigns,
             'whatsIncludedIsActive' => (bool) ($userDetail?->design_whats_included_is_active ?? false),
             'whatsIncludedItems' => $whatsIncludedItems,
+            'styles' => $styles,
         ]);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Portfolio;
+use App\Models\Style;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
@@ -83,7 +84,9 @@ class PortfolioController extends Controller
     {
         $portfolios = Auth::user()->portfolios()->latest()->get();
 
-        return view('artist.portfolio.index', compact('portfolios'));
+        $styles = Style::where('status', 'active')->orderBy('sort_order')->get()->pluck('name');
+
+        return view('artist.portfolio.index', compact('portfolios', 'styles'));
     }
 
     public function store(Request $request)

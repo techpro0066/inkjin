@@ -17,6 +17,58 @@ class GoogleCalendarController extends Controller
 {
     private const RETURN_SESSION_KEY = 'google_calendar_return_to';
 
+    /** Must match scopes declared in Google Cloud Console OAuth consent screen. */
+    private const SCOPE_CALENDAR_EVENTS_OWNED = 'https://www.googleapis.com/auth/calendar.events.owned';
+
+    private const SCOPE_CALENDAR_FREEBUSY = 'https://www.googleapis.com/auth/calendar.freebusy';
+
+    /**
+     * @return list<string>
+     */
+    public static function oauthScopes(): array
+    {
+        return [
+            self::SCOPE_CALENDAR_EVENTS_OWNED,
+            self::SCOPE_CALENDAR_FREEBUSY,
+        ];
+    }
+
+    private function configureOAuthClient(Google_Client $client): void
+    {
+        $client->setClientId(config('services.google.client_id'));
+        $client->setClientSecret(config('services.google.client_secret'));
+        $client->setRedirectUri(config('services.google.redirect'));
+
+        foreach (self::oauthScopes() as $scope) {
+            $client->addScope($scope);
+        }
+    }
+
+    /**
+     * Resolve the artist's primary Google Calendar ID after OAuth connect.
+     * Falls back to "primary" when calendar list is unavailable (narrow OAuth scopes).
+     */
+    private function resolvePrimaryCalendarId(Google_Service_Calendar $service): string
+    {
+        try {
+            $calendarList = $service->calendarList->listCalendarList();
+
+            foreach ($calendarList->getItems() ?? [] as $calendar) {
+                if ($calendar->getPrimary()) {
+                    $id = $calendar->getId();
+
+                    return is_string($id) && $id !== '' ? $id : 'primary';
+                }
+            }
+        } catch (\Exception $e) {
+            Log::info('Using primary calendar ID fallback after OAuth connect', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return 'primary';
+    }
+
     private function storeCalendarReturnTo(Request $request): void
     {
         $returnTo = $request->query('return_to') === 'settings' ? 'settings' : 'onboarding';
@@ -49,10 +101,7 @@ class GoogleCalendarController extends Controller
             $this->storeCalendarReturnTo($request);
 
             $client = new Google_Client();
-            $client->setClientId(config('services.google.client_id'));
-            $client->setClientSecret(config('services.google.client_secret'));
-            $client->setRedirectUri(config('services.google.redirect'));
-            $client->addScope(Google_Service_Calendar::CALENDAR);
+            $this->configureOAuthClient($client);
             $client->setAccessType('offline');
             $client->setPrompt('consent'); // Force consent screen to get refresh token
 
@@ -83,9 +132,7 @@ class GoogleCalendarController extends Controller
             }
 
             $client = new Google_Client();
-            $client->setClientId(config('services.google.client_id'));
-            $client->setClientSecret(config('services.google.client_secret'));
-            $client->setRedirectUri(config('services.google.redirect'));
+            $this->configureOAuthClient($client);
 
             // Exchange authorization code for tokens
             $accessToken = $client->fetchAccessTokenWithAuthCode($code);
@@ -99,19 +146,8 @@ class GoogleCalendarController extends Controller
             // Store tokens
             $client->setAccessToken($accessToken);
 
-            // Get user's primary calendar ID
             $service = new Google_Service_Calendar($client);
-            $calendarList = $service->calendarList->listCalendarList();
-            
-            $primaryCalendarId = 'primary'; // Default to primary calendar
-            
-            // Try to find the primary calendar
-            foreach ($calendarList->getItems() as $calendar) {
-                if ($calendar->getPrimary()) {
-                    $primaryCalendarId = $calendar->getId();
-                    break;
-                }
-            }
+            $primaryCalendarId = $this->resolvePrimaryCalendarId($service);
 
             // Get authenticated user
             $user = Auth::user();
@@ -540,22 +576,6 @@ class GoogleCalendarController extends Controller
                 $chunkStart = $chunkEnd->copy()->addSecond()->startOfDay();
             }
 
-            if ($blocks === []) {
-                $events = self::getEventsForDateRange($userDetail, $startDate, $endDate, $timezone);
-                foreach ($events as $event) {
-                    $startUtc = $event['start_datetime_utc'] ?? null;
-                    $endUtc = $event['end_datetime_utc'] ?? null;
-                    if (! $startUtc || ! $endUtc) {
-                        continue;
-                    }
-
-                    $blocks[] = [
-                        'start_datetime_utc' => $startUtc instanceof Carbon ? $startUtc->copy() : Carbon::parse((string) $startUtc, 'UTC'),
-                        'end_datetime_utc' => $endUtc instanceof Carbon ? $endUtc->copy() : Carbon::parse((string) $endUtc, 'UTC'),
-                    ];
-                }
-            }
-
             return $blocks;
         } catch (\Exception $e) {
             Log::error('Google Calendar freebusy error: '.$e->getMessage(), [
@@ -637,13 +657,17 @@ class GoogleCalendarController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            Log::warning('Google Calendar list failed while resolving busy calendars: '.$e->getMessage(), [
+            Log::info('Google Calendar list unavailable with narrow OAuth scopes; using stored primary calendar for FreeBusy', [
                 'user_id' => $userDetail->user_id ?? null,
+                'error' => $e->getMessage(),
             ]);
         }
 
+        $fallback = $userDetail->google_calendar_id ?: 'primary';
         if ($ids === []) {
-            $fallback = $userDetail->google_calendar_id ?: 'primary';
+            $ids[] = $fallback;
+        } elseif (! in_array($fallback, $ids, true) && $fallback !== 'primary') {
+            // Ensure the connected primary calendar is always included in busy checks.
             $ids[] = $fallback;
         }
 

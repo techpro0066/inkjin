@@ -5,6 +5,7 @@
 @section('styles')
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <style>
     /* Modal (animated open / close) */
     .modal-backdrop {
@@ -180,6 +181,35 @@
       color: #310f7a;
     }
     .included-preset-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Select2 (New Design modal — dropdown on body so it is not clipped by overflow) */
+    #newDesignModal .select2-container { width: 100% !important; z-index: 1; }
+    .select2-container--open { z-index: 10060 !important; }
+    #newDesignModal .select2-container--default .select2-selection--single {
+      min-height: 46px;
+      padding: 4px 10px;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(202,196,211,0.5) !important;
+      background: #fff !important;
+    }
+    #newDesignModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+      line-height: 2.15rem;
+      padding-left: 2px;
+      color: #1c1b21;
+      font-size: 0.875rem;
+    }
+    #newDesignModal .select2-container--default .select2-selection--single .select2-selection__arrow { height: 44px; }
+    #newDesignModal .select2-container--default.select2-container--focus .select2-selection--single,
+    #newDesignModal .select2-container--default.select2-container--open .select2-selection--single {
+      border-color: rgba(26, 26, 26, 0.35) !important;
+      box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.12);
+    }
+    .select2-dropdown { border-radius: 0.75rem; border-color: rgba(202,196,211,0.5); overflow: hidden; }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #1a1a1a !important; }
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+      border-radius: 0.5rem;
+      border-color: rgba(202,196,211,0.5);
+    }
 </style>
 @endsection
 
@@ -467,20 +497,11 @@
             <!-- Primary Style -->
             <div class="design-field-section scroll-mt-6" data-design-field="primary_style">
               <label for="designPrimaryStyle" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Primary Style</label>
-              <select id="designPrimaryStyle" name="designPrimaryStyle" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <select id="designPrimaryStyle" name="designPrimaryStyle" class="js-design-modal-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
                 <option value="">Select style…</option>
-                <option value="japanese">Japanese</option>
-                <option value="traditional">Traditional</option>
-                <option value="neo-traditional">Neo-Traditional</option>
-                <option value="realism">Realism</option>
-                <option value="fine-line">Fine Line</option>
-                <option value="blackwork">Blackwork</option>
-                <option value="geometric">Geometric</option>
-                <option value="watercolor">Watercolor</option>
-                <option value="tribal">Tribal</option>
-                <option value="surrealism">Surrealism</option>
-                <option value="minimalist">Minimalist</option>
-                <option value="dotwork">Dotwork</option>
+                @foreach ($styles as $style)
+                <option value="{{ $style }}">{{ $style }}</option>
+                @endforeach
               </select>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="primary_style"></p>
             </div>
@@ -528,7 +549,7 @@
             <!-- Colors -->
             <div class="design-field-section scroll-mt-6" data-design-field="color">
               <label for="designColors" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Colors</label>
-              <select id="designColors" name="designColors" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <select id="designColors" name="designColors" class="js-design-modal-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
                 <option value="">Select…</option>
                 <option value="color">Color</option>
                 <option value="black-grey">Black & Grey</option>
@@ -693,6 +714,7 @@
     });
 @endphp
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
     var ARTIST_DESIGNS_STORE_URL = @json(route('artist-designs.store'));
     var ARTIST_DESIGNS_INDEX_URL = @json(route('artist-designs.index'));
@@ -877,22 +899,36 @@
           var $section = $err.closest('.design-field-section');
           var $target = $section.length ? $section : $err;
           scrollDesignModalToElement($target[0]);
-          var $focus = $section.find('input:visible, textarea:visible, select:visible, button.style-chip:visible').filter(function () {
-            return $(this).attr('type') !== 'file';
-          }).first();
-          if ($focus.length) {
+          if (f === 'primary_style' || f === 'color') {
+            var $sel = f === 'primary_style' ? $('#designPrimaryStyle') : $('#designColors');
             setTimeout(function ($node) {
               return function () {
                 try {
-                  $node.trigger('focus');
+                  var $box = $node.next('.select2-container').find('.select2-selection');
+                  if ($box.length) {
+                    $box.trigger('focus');
+                  }
                 } catch (e) { /* ignore */ }
               };
-            }($focus), 320);
+            }($sel), 320);
           } else if (f === 'image') {
             setTimeout(function () {
               var z = document.getElementById('designImageUpload');
               if (z) z.focus();
             }, 320);
+          } else {
+            var $focus = $section.find('input:visible, textarea:visible, select:visible, button.style-chip:visible').filter(function () {
+              return $(this).attr('type') !== 'file';
+            }).first();
+            if ($focus.length) {
+              setTimeout(function ($node) {
+                return function () {
+                  try {
+                    $node.trigger('focus');
+                  } catch (e) { /* ignore */ }
+                };
+              }($focus), 320);
+            }
           }
           break;
         }
@@ -920,8 +956,8 @@
       function populateDesignFormFromPayload(d) {
         $('#designTitle').val(d.title || '');
         $('#designDescription').val(d.description || '');
-        $('#designPrimaryStyle').val(d.primary_style || '');
-        $('#designColors').val(d.color || '');
+        $('#designPrimaryStyle').val(d.primary_style || '').trigger('change');
+        $('#designColors').val(d.color || '').trigger('change');
         $('#designTags').val(Array.isArray(d.tags) ? d.tags.join(', ') : '');
         $('#designPriceMin').val(d.min_price != null ? d.min_price : '');
         $('#designPriceMax').val(d.max_price != null ? d.max_price : '');
@@ -1142,8 +1178,8 @@
         resetDesignImageState();
         $('#designTitle').val('');
         $('#designDescription').val('');
-        $('#designPrimaryStyle').val('');
-        $('#designColors').val('');
+        $('#designPrimaryStyle').val('').trigger('change');
+        $('#designColors').val('').trigger('change');
         $('#designTags').val('');
         $('#designPriceMin').val('');
         $('#designPriceMax').val('');
@@ -1180,6 +1216,40 @@
         updateDesignOtherStylesChipsUI();
       }
 
+      function initDesignModalSelect2() {
+        if (!window.jQuery || !$.fn.select2) return;
+        var $primary = $('#designPrimaryStyle');
+        var $colors = $('#designColors');
+        if ($primary.length && !$primary.hasClass('select2-hidden-accessible')) {
+          $primary.select2({
+            width: '100%',
+            dropdownParent: $('body'),
+            placeholder: 'Select style…',
+            allowClear: true
+          });
+        }
+        if ($colors.length && !$colors.hasClass('select2-hidden-accessible')) {
+          $colors.select2({
+            width: '100%',
+            dropdownParent: $('body'),
+            placeholder: 'Select…',
+            allowClear: true,
+            minimumResultsForSearch: Infinity
+          });
+        }
+      }
+
+      function closeDesignModalSelect2() {
+        ['#designPrimaryStyle', '#designColors'].forEach(function (sel) {
+          var $n = $(sel);
+          if ($n.length && $n.hasClass('select2-hidden-accessible')) {
+            try {
+              $n.select2('close');
+            } catch (e) { /* ignore */ }
+          }
+        });
+      }
+
       function openNewDesignModal() {
         clearTimeout($newDesignModal.data('closeTimer'));
         $newDesignModal.addClass('modal-visible').attr('aria-hidden', 'false');
@@ -1188,11 +1258,18 @@
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
             $newDesignModal.addClass('modal-open');
+            initDesignModalSelect2();
+            $('#designPrimaryStyle, #designColors').each(function () {
+              if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).trigger('change.select2');
+              }
+            });
           });
         });
       }
 
       function closeNewDesignModal() {
+        closeDesignModalSelect2();
         resetNewDesignFormFields();
         $newDesignModal.removeClass('modal-open');
         clearTimeout($newDesignModal.data('closeTimer'));

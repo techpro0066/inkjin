@@ -116,7 +116,7 @@
       <div class="flex flex-wrap justify-center gap-4 mb-3">
         <a class="hover:text-primary transition-colors duration-300" href="https://inkjin.com/en/privacy">Privacy Policy</a>
         <span class="text-outline-variant/40">·</span>
-        <a class="hover:text-primary transition-colors duration-300" href="https://inkjin.com/en/terms">Terms of Service</a>
+        <a class="hover:text-primary transition-colors duration-300" href="https://inkjin.com/en/artist-terms">Terms of Service</a>
         <span class="text-outline-variant/40">·</span>
         <a class="hover:text-primary transition-colors duration-300" href="https://help.inkjin.com">Help Center</a>
       </div>

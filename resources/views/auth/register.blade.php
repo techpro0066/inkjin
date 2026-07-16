@@ -159,7 +159,7 @@
   </div>
   <p class="text-sm text-on-surface-variant text-center leading-relaxed">
     By continuing you agree to our
-    <a href="https://inkjin.com/en/terms" class="text-primary font-semibold hover:underline underline-offset-2" target="_blank" rel="noopener noreferrer">terms</a>
+    <a href="https://inkjin.com/en/artist-terms" class="text-primary font-semibold hover:underline underline-offset-2" target="_blank" rel="noopener noreferrer">terms</a>
     and
     <a href="https://inkjin.com/en/privacy" class="text-primary font-semibold hover:underline underline-offset-2" target="_blank" rel="noopener noreferrer">privacy policy</a>.
   </p>

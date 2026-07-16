@@ -331,18 +331,9 @@
           <label for="workPrimaryStyle" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Primary Style</label>
           <select id="workPrimaryStyle" name="workPrimaryStyle" class="js-portfolio-modal-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
             <option value="">Select style…</option>
-            <option value="japanese">Japanese</option>
-            <option value="traditional">Traditional</option>
-            <option value="neo-traditional">Neo-Traditional</option>
-            <option value="realism">Realism</option>
-            <option value="fine-line">Fine Line</option>
-            <option value="blackwork">Blackwork</option>
-            <option value="geometric">Geometric</option>
-            <option value="watercolor">Watercolor</option>
-            <option value="tribal">Tribal</option>
-            <option value="surrealism">Surrealism</option>
-            <option value="minimalist">Minimalist</option>
-            <option value="dotwork">Dotwork</option>
+            @foreach ($styles as $style)
+            <option value="{{ $style }}">{{ $style }}</option>
+            @endforeach
           </select>
           <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="primary_style"></p>
         </div>
@@ -372,18 +363,9 @@
             <button type="button" class="style-chip" data-value="dotwork" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>Dotwork</button>
           </div>
           <select id="workOtherStyles" name="workOtherStyles" multiple class="hidden" tabindex="-1" aria-hidden="true">
-            <option value="japanese">Japanese</option>
-            <option value="traditional">Traditional</option>
-            <option value="neo-traditional">Neo-Traditional</option>
-            <option value="realism">Realism</option>
-            <option value="fine-line">Fine Line</option>
-            <option value="blackwork">Blackwork</option>
-            <option value="geometric">Geometric</option>
-            <option value="watercolor">Watercolor</option>
-            <option value="tribal">Tribal</option>
-            <option value="surrealism">Surrealism</option>
-            <option value="minimalist">Minimalist</option>
-            <option value="dotwork">Dotwork</option>
+            @foreach ($styles as $style)
+            <option value="{{ $style }}">{{ $style }}</option>
+            @endforeach
           </select>
           <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="other_styles"></p>
         </div>
