@@ -267,6 +267,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/personal-page', [\App\Http\Controllers\PersonalPageController::class, 'index'])->name('personal-page.index');
     Route::post('/personal-page', [\App\Http\Controllers\PersonalPageController::class, 'update'])->name('personal-page.update');
     Route::post('/personal-page/display-policies', [\App\Http\Controllers\PersonalPageController::class, 'updateDisplayPolicies'])->name('personal-page.display-policies');
+    Route::post('/personal-page/profile-content-visibility', [\App\Http\Controllers\PersonalPageController::class, 'updateProfileContentVisibility'])->name('personal-page.profile-content-visibility');
 
     Route::get('/portfolio', [\App\Http\Controllers\PortfolioController::class, 'index'])->name('portfolio.index');
     Route::post('/portfolio', [\App\Http\Controllers\PortfolioController::class, 'store'])->name('portfolio.store');

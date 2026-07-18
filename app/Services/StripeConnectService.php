@@ -1050,9 +1050,9 @@ class StripeConnectService
             $aliasMode = $userDetail->personal_page_name_alias;
             $displayName = match ($aliasMode) {
                 'username' => $this->nonEmpty($userDetail->user_name) ?? $fullName,
-                'both' => $fullName !== ''
-                    ? trim($fullName.' ('.($userDetail->user_name ?? '').')')
-                    : ($this->nonEmpty($userDetail->user_name) ?? ''),
+                'display_name' => $this->nonEmpty($userDetail->display_name) ?? ($fullName !== ''
+                    ? $fullName
+                    : ($this->nonEmpty($userDetail->user_name) ?? '')),
                 default => $fullName !== '' ? $fullName : ($this->nonEmpty($userDetail->user_name) ?? ''),
             };
 

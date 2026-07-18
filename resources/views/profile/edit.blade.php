@@ -68,6 +68,30 @@
             </div>
 
             <div>
+              <label for="display_name" class="block text-sm font-semibold text-on-surface mb-2">Display name</label>
+              <input type="text" id="display_name" name="display_name" maxlength="100" value="{{ old('display_name', $userDetail->display_name ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p class="text-on-surface-variant text-xs mt-1">You can display it on your booking page.</p>
+              <p id="display_name_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+
+            <div>
+              <label for="personal_page_tagline" class="block text-sm font-semibold text-on-surface mb-2">Tagline <span class="font-normal text-on-surface-variant">(optional)</span></label>
+              <input type="text" id="personal_page_tagline" name="personal_page_tagline" maxlength="255" value="{{ old('personal_page_tagline', $userDetail->personal_page_tagline ?? '') }}" placeholder="Your one-liner" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p class="text-on-surface-variant text-xs mt-1">This appears under your name on your booking page.</p>
+              <p id="personal_page_tagline_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+
+            <div>
+              <label for="personal_page_description" class="block text-sm font-semibold text-on-surface mb-2">Bio <span class="font-normal text-on-surface-variant">(optional)</span></label>
+              <textarea id="personal_page_description" name="personal_page_description" rows="5" maxlength="500" placeholder="Tell clients about yourself — your journey, your passion, what inspires your work..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none">{{ old('personal_page_description', $userDetail->personal_page_description ?? '') }}</textarea>
+              <div class="flex items-center justify-between gap-3 mt-1">
+                <p class="text-on-surface-variant text-xs">This appears on your booking page.</p>
+                <span id="profileBioCount" class="text-on-surface-variant text-xs">0/500</span>
+              </div>
+              <p id="personal_page_description_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+
+            <div>
               <label for="mobile_number" class="block text-sm font-semibold text-on-surface mb-2">Mobile Number</label>
               <input type="tel" id="mobile_number" name="mobile_number" value="{{ old('mobile_number', $userDetail->mobile_number ?? '') }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
               <p class="text-on-surface-variant text-xs mt-1">Use E.164 format: starts with + and country code, no spaces or symbols.</p>
@@ -162,7 +186,7 @@
       }
 
       function clearAllErrors() {
-        ['avatar', 'first_name', 'last_name', 'user_name', 'mobile_number'].forEach(clearFieldError);
+        ['avatar', 'first_name', 'last_name', 'user_name', 'display_name', 'personal_page_tagline', 'personal_page_description', 'mobile_number'].forEach(clearFieldError);
       }
 
       function scrollToFirstError() {
@@ -176,6 +200,8 @@
         var firstName = (document.getElementById('first_name').value || '').trim();
         var lastName = (document.getElementById('last_name').value || '').trim();
         var userName = (document.getElementById('user_name').value || '').trim();
+        var tagline = (document.getElementById('personal_page_tagline').value || '').trim();
+        var bio = (document.getElementById('personal_page_description').value || '').trim();
         var mobile = (document.getElementById('mobile_number').value || '').trim();
 
         if (!firstName) {
@@ -196,6 +222,16 @@
           ok = false;
         }
 
+        if (tagline.length > 255) {
+          setFieldError('personal_page_tagline', 'Tagline must not exceed 255 characters.');
+          ok = false;
+        }
+
+        if (bio.length > 500) {
+          setFieldError('personal_page_description', 'Bio must not exceed 500 characters.');
+          ok = false;
+        }
+
         if (!mobile) {
           setFieldError('mobile_number', 'Mobile number is required.');
           ok = false;
@@ -207,10 +243,20 @@
         return ok;
       }
 
-      ['first_name', 'last_name', 'user_name', 'mobile_number'].forEach(function (field) {
+      ['first_name', 'last_name', 'user_name', 'display_name', 'personal_page_tagline', 'personal_page_description', 'mobile_number'].forEach(function (field) {
         var el = document.getElementById(field);
         if (el) el.addEventListener('input', function () { clearFieldError(field); });
       });
+
+      var profileBioInput = document.getElementById('personal_page_description');
+      var profileBioCount = document.getElementById('profileBioCount');
+      function updateProfileBioCount() {
+        if (profileBioInput && profileBioCount) {
+          profileBioCount.textContent = profileBioInput.value.length + '/500';
+        }
+      }
+      if (profileBioInput) profileBioInput.addEventListener('input', updateProfileBioCount);
+      updateProfileBioCount();
 
       openUploadBtn.addEventListener('click', function () {
         profileImageInput.click();

@@ -34,6 +34,9 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(UserDetail::class, 'user_name')->ignore($userDetail?->id),
                 new ReservedArtistUsername($user->email),
             ],
+            'display_name' => ['nullable', 'string', 'max:100'],
+            'personal_page_tagline' => ['nullable', 'string', 'max:255'],
+            'personal_page_description' => ['nullable', 'string', 'max:500'],
             'mobile_number' => [
                 'required',
                 'string',

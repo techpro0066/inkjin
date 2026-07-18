@@ -274,15 +274,16 @@
         <div class="flex flex-wrap items-baseline gap-2 mb-1">
           @if($nameAlias === 'username')
             <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user_name }}</h1>
-          @elseif($nameAlias === 'both')
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</h1>
-            <span class="text-lg text-on-surface-variant font-light">({{ $userDetail->user_name }})</span>
+          @elseif($nameAlias === 'display_name')
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">
+              {{ trim((string) $userDetail->display_name) !== '' ? $userDetail->display_name : trim($userDetail->user->first_name.' '.$userDetail->user->last_name) }}
+            </h1>
           @else
             <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</h1>
           @endif
         </div>
 
-        @if($tagline !== '')
+        @if(($userDetail->display_tagline ?? true) && $tagline !== '')
           <p class="text-base text-on-surface-variant mb-3">{{ $tagline }}</p>
         @endif
 
@@ -402,13 +403,15 @@
     </div>
   </header>
 
-  <!-- About Section -->
-  <div class="max-w-4xl mx-auto px-4 sm:px-6">
-    <div class="mb-6">
-      <h3 class="text-lg font-bold text-on-surface mb-3">About</h3>
-      <p class="text-on-surface-variant text-sm leading-relaxed">{{ $userDetail->personal_page_description ?? '' }}</p>
+  @if($userDetail->display_bio ?? true)
+    <!-- About Section -->
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <div class="mb-6">
+        <h3 class="text-lg font-bold text-on-surface mb-3">About</h3>
+        <p class="text-on-surface-variant text-sm leading-relaxed">{{ $userDetail->personal_page_description ?? '' }}</p>
+      </div>
     </div>
-  </div>
+  @endif
 
   <!-- ═══════════════════════════════════════════════ -->
   <!-- TABS                                            -->

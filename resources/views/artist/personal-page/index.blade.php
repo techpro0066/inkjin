@@ -105,9 +105,13 @@
 
 @section('content')
 @php
-  $selectedAlias = $userDetail->personal_page_name_alias ?? 'full';
+  $selectedAlias = in_array($userDetail->personal_page_name_alias, ['full', 'username', 'display_name'], true)
+      ? $userDetail->personal_page_name_alias
+      : 'full';
   $selectedTheme = $userDetail->personal_page_color ?? 'default';
   $displayPolicies = (bool) ($userDetail->display_policies ?? true);
+  $displayTagline = (bool) ($userDetail->display_tagline ?? true);
+  $displayBio = (bool) ($userDetail->display_bio ?? true);
   $policyCopy = \App\Support\ArtistPolicyCopy::for($userDetail);
   $tagline = $userDetail->personal_page_tagline ?? '';
   $description = $userDetail->personal_page_description ?? '';
@@ -117,6 +121,7 @@
       $fullName = $user->name ?? 'Artist Name';
   }
   $username = $userDetail->user_name ?? 'username';
+  $displayName = trim((string) ($userDetail->display_name ?? ''));
 @endphp
 <main class="main-content flex-1 min-h-screen">
     <form id="personalPageForm" class="p-6 md:p-10 lg:p-12 max-w-6xl" enctype="multipart/form-data">
@@ -198,24 +203,6 @@
           <p class="text-xs text-on-surface-variant mt-1 ml-6">Change your photo in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.</p>
         </div>
 
-        <!-- Tagline -->
-        <div class="mt-6">
-          <label for="tagline" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Tagline</label>
-          <p class="text-xs text-on-surface-variant mb-2">Your one-liner that appears under your name</p>
-          <input type="text" id="tagline" name="personal_page_tagline" value="{{ old('personal_page_tagline', $tagline) }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" oninput="updatePreview()">
-          <p id="personal_page_tagline_error" class="text-error text-xs mt-1 hidden"></p>
-        </div>
-
-        <!-- Bio -->
-        <div class="mt-6">
-          <label for="bio" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Bio</label>
-          <p class="text-xs text-on-surface-variant mb-2">This will appear on your public artist page.</p>
-          <textarea id="bio" name="personal_page_description" rows="5" maxlength="500" placeholder="Tell clients about yourself — your journey, your passion, what inspires your work..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" oninput="updateBioCount()">{{ old('personal_page_description', $description) }}</textarea>
-          <div class="flex justify-end mt-1">
-            <span class="text-xs text-on-surface-variant" id="bioCount">0/255</span>
-          </div>
-          <p id="personal_page_description_error" class="text-error text-xs mt-1 hidden"></p>
-        </div>
       </div>
 
       <!-- 2. Display Name Section -->
@@ -252,20 +239,20 @@
               </div>
             </div>
           </div>
-          <div class="radio-card {{ $selectedAlias === 'both' ? 'selected' : '' }}" data-name-option="both" onclick="selectNameOption('both')">
+          <div class="radio-card {{ $selectedAlias === 'display_name' ? 'selected' : '' }}" data-name-option="display_name" onclick="selectNameOption('display_name')">
             <div class="flex items-start gap-3">
               <div class="radio-dot mt-0.5"><div></div></div>
               <div>
-                <p class="text-sm font-bold text-on-surface">Both</p>
-                <p class="text-lg font-extrabold text-primary mt-1">{{ $fullName }} ({{ $username }})</p>
-                <p class="text-xs text-on-surface-variant mt-1">Show full name with username in parentheses</p>
+                <p class="text-sm font-bold text-on-surface">Display name</p>
+                <p class="text-lg font-extrabold text-primary mt-1">{{ $displayName !== '' ? $displayName : 'Not set' }}</p>
+                <p class="text-xs text-on-surface-variant mt-1">Show your custom display name</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Name Inputs -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label for="fullName" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Full Name</label>
             <input type="text" id="fullName" name="fullName" value="{{ $fullName }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-surface-container-highest text-on-surface-variant cursor-not-allowed focus:outline-none focus:ring-0" readonly oninput="updatePreview()">
@@ -276,11 +263,79 @@
             <input type="text" id="username" name="username" value="{{ $username }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-surface-container-highest text-on-surface-variant cursor-not-allowed focus:outline-none focus:ring-0" readonly oninput="updatePreview()">
             <p class="text-xs text-on-surface-variant mt-1">Edit in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.</p>
           </div>
+          <div>
+            <label for="displayName" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Display name</label>
+            <input type="text" id="displayName" name="displayName" value="{{ $displayName }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-surface-container-highest text-on-surface-variant cursor-not-allowed focus:outline-none focus:ring-0" readonly oninput="updatePreview()">
+            <p class="text-xs text-on-surface-variant mt-1">Edit in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.</p>
+          </div>
         </div>
         <p id="personal_page_name_alias_error" class="text-error text-xs mt-3 hidden"></p>
       </div>
 
-      <!-- 3. Policies Section -->
+      <!-- 3. Profile Content Section -->
+      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary text-lg">badge</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-on-surface">Profile Content</h3>
+            <p class="text-xs text-on-surface-variant">Choose which profile details appear on your public booking page.</p>
+          </div>
+        </div>
+
+        <div class="divide-y divide-outline-variant/20">
+          <div class="flex items-center justify-between gap-4 py-4 first:pt-0">
+            <div>
+              <p class="text-sm font-semibold text-on-surface">Tagline</p>
+              <p class="text-xs text-on-surface-variant mt-1">Show your tagline below your name.</p>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <span class="text-sm font-semibold text-on-surface">Display Tagline</span>
+              <div
+                id="displayTaglineToggle"
+                class="toggle-switch {{ $displayTagline ? 'active' : '' }}"
+                role="switch"
+                aria-checked="{{ $displayTagline ? 'true' : 'false' }}"
+                tabindex="0"
+                title="Show or hide your tagline on your public page"
+                onclick="toggleProfileContentVisibility('display_tagline')"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleProfileContentVisibility('display_tagline');}"
+              ></div>
+              <input type="hidden" id="display_tagline" name="display_tagline" value="{{ $displayTagline ? '1' : '0' }}">
+            </div>
+          </div>
+          <p id="displayTaglineStatus" class="text-xs text-on-surface-variant -mt-2 pb-3 hidden"></p>
+
+          <div class="flex items-center justify-between gap-4 py-4">
+            <div>
+              <p class="text-sm font-semibold text-on-surface">Bio</p>
+              <p class="text-xs text-on-surface-variant mt-1">Show the About section containing your bio.</p>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <span class="text-sm font-semibold text-on-surface">Display Bio</span>
+              <div
+                id="displayBioToggle"
+                class="toggle-switch {{ $displayBio ? 'active' : '' }}"
+                role="switch"
+                aria-checked="{{ $displayBio ? 'true' : 'false' }}"
+                tabindex="0"
+                title="Show or hide your bio on your public page"
+                onclick="toggleProfileContentVisibility('display_bio')"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleProfileContentVisibility('display_bio');}"
+              ></div>
+              <input type="hidden" id="display_bio" name="display_bio" value="{{ $displayBio ? '1' : '0' }}">
+            </div>
+          </div>
+          <p id="displayBioStatus" class="text-xs text-on-surface-variant -mt-2 hidden"></p>
+        </div>
+
+        <p class="text-xs text-on-surface-variant mt-4">
+          Edit your tagline and bio in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.
+        </p>
+      </div>
+
+      <!-- 4. Policies Section -->
       <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
         <div class="flex items-start sm:items-center justify-between gap-4 mb-5">
           <div class="flex items-center gap-3">
@@ -322,7 +377,7 @@
         <p id="displayPoliciesStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>
       </div>
 
-      <!-- 4. Color Scheme Section -->
+      <!-- 5. Color Scheme Section -->
       <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
         <div class="flex items-center gap-3 mb-2">
           <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -420,8 +475,8 @@
               @endif
             </div>
             <h4 class="text-2xl font-extrabold text-on-surface mt-4" id="modalPreviewName">{{ $fullName ?? 'Artist Name' }}</h4>
-            <p class="text-sm text-on-surface-variant mt-1 text-center font-medium" id="modalPreviewTagline">{{ $tagline ?? 'Add your artist tagline' }}</p>
-            <p class="text-sm text-on-surface mt-4 text-center max-w-lg" id="modalPreviewBio">{{ $description ?? 'Add your bio so clients can learn more about your style and journey.' }}</p>
+            <p class="text-sm text-on-surface-variant mt-1 text-center font-medium {{ $displayTagline ? '' : 'hidden' }}" id="modalPreviewTagline">{{ $tagline ?: 'Add your artist tagline' }}</p>
+            <p class="text-sm text-on-surface mt-4 text-center max-w-lg {{ $displayBio ? '' : 'hidden' }}" id="modalPreviewBio">{{ $description ?: 'Add your bio so clients can learn more about your style and journey.' }}</p>
             <button class="mt-8 px-8 py-3 rounded-2xl text-white font-bold text-sm transition-colors shadow-sm w-full max-w-xs" id="modalPreviewBookBtn" style="background: {{ $userDetail->personal_page_color ?? '#310F7A' }};">
               Book Now
             </button>
@@ -456,6 +511,8 @@
 
   <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script>
+    const PROFILE_TAGLINE = @json($tagline);
+    const PROFILE_BIO = @json($description);
     const THEME_MAP = {
       default: { primary: '#310F7A', bg: '#F8F1FB' },
       ocean: { primary: '#1565C0', bg: '#E3F2FD' },
@@ -530,9 +587,10 @@
     function getDisplayName() {
       const fullName = (document.getElementById('fullName')?.value || '').trim() || 'Artist Name';
       const username = (document.getElementById('username')?.value || '').trim() || 'username';
+      const displayName = (document.getElementById('displayName')?.value || '').trim();
 
       if (selectedNameOption === 'username') return username;
-      if (selectedNameOption === 'both') return fullName + ' (' + username + ')';
+      if (selectedNameOption === 'display_name') return displayName || fullName;
       return fullName;
     }
 
@@ -542,12 +600,10 @@
       const modalPreviewBio = document.getElementById('modalPreviewBio');
       const modalPreviewBookBtn = document.getElementById('modalPreviewBookBtn');
       const modalPreviewCard = document.getElementById('previewModalCard');
-      const taglineInput = document.getElementById('tagline');
-      const bioInput = document.getElementById('bio');
 
       if (modalPreviewName) modalPreviewName.textContent = getDisplayName();
-      if (modalPreviewTagline) modalPreviewTagline.textContent = (taglineInput?.value || '').trim() || 'Add your artist tagline';
-      if (modalPreviewBio) modalPreviewBio.textContent = (bioInput?.value || '').trim() || 'Add your bio so clients can learn more about your style and journey.';
+      if (modalPreviewTagline) modalPreviewTagline.textContent = PROFILE_TAGLINE.trim() || 'Add your artist tagline';
+      if (modalPreviewBio) modalPreviewBio.textContent = PROFILE_BIO.trim() || 'Add your bio so clients can learn more about your style and journey.';
       if (modalPreviewBookBtn) modalPreviewBookBtn.style.background = selectedTheme.primary;
       if (modalPreviewCard) modalPreviewCard.style.background = selectedTheme.bg;
     }
@@ -574,6 +630,93 @@
       });
       clearFieldError('personal_page_name_alias');
       refreshPreviewModal();
+    }
+
+    const profileContentVisibilitySaving = {
+      display_tagline: false,
+      display_bio: false
+    };
+
+    function profileContentElements(field) {
+      const isTagline = field === 'display_tagline';
+      return {
+        toggle: document.getElementById(isTagline ? 'displayTaglineToggle' : 'displayBioToggle'),
+        input: document.getElementById(field),
+        status: document.getElementById(isTagline ? 'displayTaglineStatus' : 'displayBioStatus'),
+        preview: document.getElementById(isTagline ? 'modalPreviewTagline' : 'modalPreviewBio')
+      };
+    }
+
+    function setProfileContentVisibilityUi(field, enabled) {
+      const elements = profileContentElements(field);
+      if (elements.toggle) {
+        elements.toggle.classList.toggle('active', enabled);
+        elements.toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
+      }
+      if (elements.input) elements.input.value = enabled ? '1' : '0';
+      if (elements.preview) elements.preview.classList.toggle('hidden', !enabled);
+    }
+
+    function setProfileContentVisibilityStatus(field, message, isError) {
+      const status = profileContentElements(field).status;
+      if (!status) return;
+      if (!message) {
+        status.textContent = '';
+        status.classList.add('hidden');
+        status.classList.remove('text-error', 'text-emerald-700');
+        return;
+      }
+      status.textContent = message;
+      status.classList.remove('hidden', 'text-error', 'text-emerald-700');
+      status.classList.add(isError ? 'text-error' : 'text-emerald-700');
+    }
+
+    function toggleProfileContentVisibility(field) {
+      const elements = profileContentElements(field);
+      if (!elements.toggle || profileContentVisibilitySaving[field]) return;
+
+      const previous = elements.toggle.classList.contains('active');
+      const next = !previous;
+      setProfileContentVisibilityUi(field, next);
+      setProfileContentVisibilityStatus(field, '');
+      profileContentVisibilitySaving[field] = true;
+      elements.toggle.style.pointerEvents = 'none';
+      elements.toggle.style.opacity = '0.7';
+
+      const body = new FormData();
+      body.append('field', field);
+      body.append('enabled', next ? '1' : '0');
+      body.append('_token', @json(csrf_token()));
+
+      fetch(@json(route('personal-page.profile-content-visibility')), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: body,
+      })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.data || !result.data.success) {
+            throw new Error((result.data && result.data.message) || 'Could not update visibility.');
+          }
+          setProfileContentVisibilityUi(field, !!result.data.enabled);
+          setProfileContentVisibilityStatus(field, result.data.message || 'Visibility updated.', false);
+        })
+        .catch(function (err) {
+          setProfileContentVisibilityUi(field, previous);
+          setProfileContentVisibilityStatus(field, err.message || 'Could not update visibility.', true);
+        })
+        .finally(function () {
+          profileContentVisibilitySaving[field] = false;
+          elements.toggle.style.pointerEvents = '';
+          elements.toggle.style.opacity = '';
+        });
     }
 
     let displayPoliciesSaving = false;
@@ -670,14 +813,6 @@
     }
 
     function updatePreview() {
-      refreshPreviewModal();
-    }
-
-    function updateBioCount() {
-      const bioInput = document.getElementById('bio');
-      const bioCount = document.getElementById('bioCount');
-      if (!bioInput || !bioCount) return;
-      bioCount.textContent = bioInput.value.length + '/500';
       refreshPreviewModal();
     }
 
@@ -872,18 +1007,12 @@
       const form = document.getElementById('personalPageForm');
       const saveBtn = document.getElementById('savePersonalPageBtn');
 
-      ['personal_page_tagline', 'personal_page_description', 'personal_page_background_image'].forEach(function (field) {
-        const id = field === 'personal_page_tagline' ? 'tagline' : (field === 'personal_page_description' ? 'bio' : 'bannerInput');
-        const el = document.getElementById(id);
-        if (el) {
-          el.addEventListener('input', function () {
-            clearFieldError(field);
-          });
-          el.addEventListener('change', function () {
-            clearFieldError(field);
-          });
-        }
-      });
+      const bannerInput = document.getElementById('bannerInput');
+      if (bannerInput) {
+        bannerInput.addEventListener('change', function () {
+          clearFieldError('personal_page_background_image');
+        });
+      }
 
       const selectedThemeCard = document.querySelector('.theme-card.selected');
       if (selectedThemeCard) {
@@ -893,14 +1022,13 @@
       const selectedNameCard = document.querySelector('[data-name-option].selected');
       if (selectedNameCard) selectNameOption(selectedNameCard.dataset.nameOption || 'full');
 
-      updateBioCount();
       refreshPreviewModal();
 
       if (!form || !saveBtn) return;
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         clearAlerts();
-        ['personal_page_background_image', 'personal_page_tagline', 'personal_page_description', 'personal_page_name_alias', 'personal_page_color'].forEach(clearFieldError);
+        ['personal_page_background_image', 'personal_page_name_alias', 'personal_page_color'].forEach(clearFieldError);
 
         if (!validatePersonalPageForm()) {
           scrollToFirstPersonalPageError();

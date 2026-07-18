@@ -60,6 +60,9 @@ class ProfileController extends Controller
         $userDetail->update([
             'avatar' => $avatarPath,
             'user_name' => $validated['user_name'],
+            'display_name' => trim((string) ($validated['display_name'] ?? '')) ?: null,
+            'personal_page_tagline' => trim((string) ($validated['personal_page_tagline'] ?? '')) ?: null,
+            'personal_page_description' => trim((string) ($validated['personal_page_description'] ?? '')) ?: null,
             'mobile_number' => $validated['mobile_number'],
         ]);
 

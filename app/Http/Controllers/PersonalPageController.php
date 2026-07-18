@@ -51,10 +51,10 @@ class PersonalPageController extends Controller
             'personal_page_background_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'remove_personal_page_background_image' => ['sometimes', 'boolean'],
             'personal_page_color' => ['required', 'string', 'max:50'],
-            'personal_page_tagline' => ['nullable', 'string', 'max:255'],
-            'personal_page_description' => ['nullable', 'string', 'max:500'],
-            'personal_page_name_alias' => ['required', 'in:full,username,both'],
+            'personal_page_name_alias' => ['required', 'in:full,username,display_name'],
             'display_policies' => ['sometimes', 'boolean'],
+            'display_tagline' => ['sometimes', 'boolean'],
+            'display_bio' => ['sometimes', 'boolean'],
         ]);
 
         $backgroundPath = $userDetail->personal_page_background_image;
@@ -78,10 +78,10 @@ class PersonalPageController extends Controller
         $userDetail->update([
             'personal_page_background_image' => $backgroundPath,
             'personal_page_color' => $validated['personal_page_color'] ?? null,
-            'personal_page_tagline' => trim((string) ($validated['personal_page_tagline'] ?? '')) ?: null,
-            'personal_page_description' => trim((string) ($validated['personal_page_description'] ?? '')) ?: null,
             'personal_page_name_alias' => $validated['personal_page_name_alias'],
             'display_policies' => $request->boolean('display_policies'),
+            'display_tagline' => $request->boolean('display_tagline'),
+            'display_bio' => $request->boolean('display_bio'),
         ]);
 
         return response()->json([
@@ -111,6 +111,32 @@ class PersonalPageController extends Controller
             'message' => $displayPolicies
                 ? 'Policies will be shown on your public page.'
                 : 'Policies are hidden from your public page.',
+        ]);
+    }
+
+    public function updateProfileContentVisibility(Request $request)
+    {
+        $validated = $request->validate([
+            'field' => ['required', 'in:display_tagline,display_bio'],
+            'enabled' => ['required', 'boolean'],
+        ]);
+
+        $user = Auth::user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+        $field = $validated['field'];
+        $enabled = $request->boolean('enabled');
+
+        $userDetail->update([$field => $enabled]);
+
+        $label = $field === 'display_tagline' ? 'Tagline' : 'Bio';
+
+        return response()->json([
+            'success' => true,
+            'field' => $field,
+            'enabled' => $enabled,
+            'message' => $enabled
+                ? $label.' will be shown on your public page.'
+                : $label.' is hidden from your public page.',
         ]);
     }
 }

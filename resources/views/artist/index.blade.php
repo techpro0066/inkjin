@@ -106,9 +106,12 @@
               <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</h1>
             @elseif($userDetail->personal_page_name_alias == 'username')
               <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user_name }}</h1>   
-            @elseif($userDetail->personal_page_name_alias == 'both')
+            @elseif($userDetail->personal_page_name_alias == 'display_name')
+              <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">
+                {{ trim((string) $userDetail->display_name) !== '' ? $userDetail->display_name : trim($userDetail->user->first_name.' '.$userDetail->user->last_name) }}
+              </h1>
+            @else
               <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</h1>
-              <span class="text-lg text-on-surface-variant font-light">({{ $userDetail->user_name }})</span>
             @endif
         </div>
 
