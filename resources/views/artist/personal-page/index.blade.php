@@ -129,7 +129,7 @@
 
       <!-- Page Header -->
       @php
-        $bookingPageUrl = !empty($username) ? route('public.artist', ['username' => $username]) : null;
+        $bookingPageUrl = !empty($username) ? 'https://inkjin.com/@'.$username : null;
       @endphp
       <div class="mb-8">
         <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
