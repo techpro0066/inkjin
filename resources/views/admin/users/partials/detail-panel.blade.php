@@ -61,6 +61,10 @@
       </div>
     </div>
 
+    @if($user['role'] === 'artist' && !empty($user['onboarding_progress']))
+      @include('admin.users.partials.onboarding-progress', ['user' => $user])
+    @endif
+
     @if($user['role'] === 'artist')
       <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-0">
         <h4 class="text-sm font-bold mb-2">Studio & Scheduling</h4>

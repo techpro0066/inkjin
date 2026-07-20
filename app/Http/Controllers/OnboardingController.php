@@ -24,6 +24,7 @@ use App\Rules\ReservedArtistUsername;
 use App\Models\QuestionSorting;
 use App\Services\StripeConnectService;
 use App\Services\StripeCountrySpecService;
+use App\Support\SocialLinks;
 use App\Support\StripeConnectCountries;
 use Stripe\Exception\ApiErrorException;
 
@@ -769,25 +770,10 @@ class OnboardingController extends Controller
                 }
             }
 
-            $socialIn = $validated['social_links'] ?? [];
-            $website = isset($socialIn['website']) ? trim((string) $socialIn['website']) : '';
-            if ($website !== '') {
-                if (! preg_match('#^https?://#i', $website)) {
-                    throw ValidationException::withMessages([
-                        'social_links.website' => ['Website must start with http:// or https://'],
-                    ]);
-                }
-                if (filter_var($website, FILTER_VALIDATE_URL) === false) {
-                    throw ValidationException::withMessages([
-                        'social_links.website' => ['Please enter a valid website URL.'],
-                    ]);
-                }
-            }
+            $social = SocialLinks::normalize($validated['social_links'] ?? []);
 
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
-
-            $social = array_filter($validated['social_links'] ?? [], fn ($v) => $v !== null && $v !== '');
 
             $stylePayload = array_filter([
                 'tattooing_since' => $validated['tattooing_since'] ?? null,
@@ -854,24 +840,10 @@ class OnboardingController extends Controller
                 }
             }
 
-            $socialIn = $validated['social_links'] ?? [];
-            $website = isset($socialIn['website']) ? trim((string) $socialIn['website']) : '';
-            if ($website !== '') {
-                if (! preg_match('#^https?://#i', $website)) {
-                    throw ValidationException::withMessages([
-                        'social_links.website' => ['Website must start with http:// or https://'],
-                    ]);
-                }
-                if (filter_var($website, FILTER_VALIDATE_URL) === false) {
-                    throw ValidationException::withMessages([
-                        'social_links.website' => ['Please enter a valid website URL.'],
-                    ]);
-                }
-            }
+            $social = SocialLinks::normalize($validated['social_links'] ?? []);
 
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
-            $social = array_filter($validated['social_links'] ?? [], fn ($v) => $v !== null && $v !== '');
             $stylePayload = array_filter([
                 'tattooing_since' => $validated['tattooing_since'] ?? null,
                 'primary_style' => $validated['primary_style'] ?? null,

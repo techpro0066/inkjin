@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Style;
 use App\Models\User;
+use App\Support\OnboardingProgress;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -181,6 +182,9 @@ class UserController extends Controller
         $location = $locationParts !== [] ? implode(', ', $locationParts) : '—';
 
         $status = $this->resolveUserStatus($user);
+        $onboardingProgress = ($isArtist && $user->on_boarding !== 'yes')
+            ? OnboardingProgress::for($detail)
+            : null;
 
         return [
             'id' => $user->id,
@@ -205,6 +209,7 @@ class UserController extends Controller
             'join_date_label' => $user->created_at?->format('M j, Y') ?? '—',
             'email_verified' => (bool) $user->email_verified_at,
             'on_boarding_complete' => $user->on_boarding === 'yes',
+            'onboarding_progress' => $onboardingProgress,
             'scheduling_type' => $detail?->scheduling_type,
             'payment_type' => $detail?->payment_type,
             'payment_status' => $detail?->payment_status,

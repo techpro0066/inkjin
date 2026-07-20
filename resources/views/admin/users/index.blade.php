@@ -120,7 +120,12 @@
                 </td>
                 <td class="px-5 py-4 font-semibold">{{ number_format($user['bookings']) }}</td>
                 <td class="px-5 py-4 font-semibold">€{{ number_format($user['revenue'], 0) }}</td>
-                <td class="px-5 py-4">@include('admin.users.partials.status-badge', ['status' => $user['status']])</td>
+                <td class="px-5 py-4">
+                  @include('admin.users.partials.status-cell', [
+                    'status' => $user['status'],
+                    'onboardingProgress' => $user['onboarding_progress'] ?? null,
+                  ])
+                </td>
                 <td class="px-5 py-4">
                   <button type="button" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low" onclick="event.stopPropagation(); toggleUserDetail({{ $user['id'] }})">
                     <span class="material-symbols-outlined text-on-surface-variant text-lg user-toggle-icon" data-user-id="{{ $user['id'] }}">{{ $expanded ? 'expand_less' : 'visibility' }}</span>
@@ -157,7 +162,10 @@
                   <p class="text-xs text-on-surface-variant">{{ $user['email'] }}</p>
                 </div>
               </div>
-              @include('admin.users.partials.status-badge', ['status' => $user['status']])
+              @include('admin.users.partials.status-cell', [
+                'status' => $user['status'],
+                'onboardingProgress' => $user['onboarding_progress'] ?? null,
+              ])
             </div>
             <div class="flex flex-wrap gap-3 text-xs text-on-surface-variant mt-1">
               <span>{{ $user['studio'] }}</span>
