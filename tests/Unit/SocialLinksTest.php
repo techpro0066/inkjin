@@ -61,4 +61,28 @@ class SocialLinksTest extends TestCase
             $this->assertArrayHasKey('social_links.facebook', $e->errors());
         }
     }
+
+    public function test_public_href_normalizes_legacy_username_values(): void
+    {
+        $this->assertSame(
+            'https://www.instagram.com/inkjin',
+            SocialLinks::publicHref('instagram', '@inkjin')
+        );
+
+        $this->assertSame(
+            'https://www.tiktok.com/@inkjin',
+            SocialLinks::publicHref('tiktok', 'inkjin')
+        );
+
+        $this->assertSame(
+            'https://www.youtube.com/@inkjin',
+            SocialLinks::publicHref('youtube', 'inkjin')
+        );
+    }
+
+    public function test_public_href_rejects_invalid_website_and_facebook_handle(): void
+    {
+        $this->assertNull(SocialLinks::publicHref('website', 'inkjin.com'));
+        $this->assertNull(SocialLinks::publicHref('facebook', 'inkjin'));
+    }
 }

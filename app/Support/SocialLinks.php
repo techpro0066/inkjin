@@ -75,6 +75,33 @@ class SocialLinks
         return $normalized;
     }
 
+    public static function publicHref(string $platform, ?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        if ($platform === 'website') {
+            if (! preg_match('#^https?://#i', $value)) {
+                return null;
+            }
+
+            if (filter_var($value, FILTER_VALIDATE_URL) === false) {
+                return null;
+            }
+
+            return self::canonicalizeHttpUrl($value);
+        }
+
+        $url = self::normalizePlatformValue($platform, $value);
+        if ($url === null || ! self::matchesPlatform($platform, $url)) {
+            return null;
+        }
+
+        return $url;
+    }
+
     private static function normalizePlatformValue(string $platform, string $raw): ?string
     {
         $raw = trim($raw);
