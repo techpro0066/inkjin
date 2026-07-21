@@ -1,6 +1,6 @@
 @extends('layouts.onboarding_bookpay')
 
-@section('title', 'Payments')
+@section('title', 'Payouts')
 
 @php
   $ud = $userDetail;
@@ -39,7 +39,7 @@
     </div>
 
     <div id="payoutOptionLockBanner" class="rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant mb-6 max-w-2xl {{ $payoutOptionLocked ? '' : 'hidden' }}">
-      Your payout option is locked after setup is saved. Disconnect your current setup in Payment Settings before switching between Artist and Studio.
+      Your payout option is locked after setup is saved. Disconnect your current setup in Payout Settings before switching between Artist and Studio.
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -639,7 +639,7 @@ const artistStripeConnected = @json($artistStripeConnected);
 function selectPayout(type, el) {
   if (window.payoutOptionLocked && type !== window.activePayoutKey) {
     if (typeof window.showOnboardingAlert === 'function') {
-      window.showOnboardingAlert('payAlert', 'Disconnect your current payout setup in Payment Settings before switching between Artist and Studio.', 'warning');
+      window.showOnboardingAlert('payAlert', 'Disconnect your current payout setup in Payout Settings before switching between Artist and Studio.', 'warning');
     } else {
       $('#payAlert').attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-amber-50 text-amber-900 border border-amber-200').text('Disconnect your current payout setup before switching between Artist and Studio.').removeClass('hidden');
     }

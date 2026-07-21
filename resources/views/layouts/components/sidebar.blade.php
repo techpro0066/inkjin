@@ -60,7 +60,7 @@
               <li class="menu-item {{ request()->routeIs('settings.payment') ? 'active' : '' }}">
                 <a href="{{ route('settings.payment') }}" class="menu-link">
                   <i class="menu-icon tf-icons ti ti-credit-card me-2"></i>
-                  <div data-i18n="Payment">Payment</div>
+                  <div data-i18n="Payouts">Payouts</div>
                 </a>
               </li>
             @endif

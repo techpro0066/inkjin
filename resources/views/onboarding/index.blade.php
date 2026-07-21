@@ -162,7 +162,7 @@
                 @endif
               </div>
               <div class="text-center">
-                <small class="d-block fw-semibold">Payments</small>
+                <small class="d-block fw-semibold">Payouts</small>
               </div>
             </div>
           </div>
@@ -635,9 +635,9 @@
             </form>
           </div>
 
-          <!-- Payment -->
+          <!-- Payouts -->
           <div class="step-content {{ $currentStep == 5 ? 'active' : '' }}" id="onboarding-payment">
-            <h5 class="mb-4">Payment Setup</h5>
+            <h5 class="mb-4">Payout Setup</h5>
             <form id="onboardingPaymentForm">
               @csrf
               <div class="row g-3">

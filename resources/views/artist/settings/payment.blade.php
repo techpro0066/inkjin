@@ -1,6 +1,6 @@
 @extends('layouts.artist_dashboard_layout')
 
-@section('title', 'Payment Settings')
+@section('title', 'Payout Settings')
 
 @section('styles')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
@@ -51,7 +51,7 @@
 @endphp
 <div class="container-xxl flex-grow-1 container-p-y">
   <h4 class="fw-bold py-3 mb-4">
-    <span class="text-muted fw-light">Settings /</span> Payment
+    <span class="text-muted fw-light">Settings /</span> Payouts
   </h4>
 
   @if (session('success'))
@@ -74,7 +74,7 @@
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h5 class="card-title mb-0">Payment Setup</h5>
+          <h5 class="card-title mb-0">Payout Setup</h5>
           <p class="text-muted mb-0">Choose who receives payments and connect Stripe if needed</p>
         </div>
         <div class="card-body">
@@ -306,14 +306,14 @@
       <a href="{{ route('settings.studio') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Studio</a>
       <a href="{{ route('settings.preferences') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Preferences</a>
       <a href="{{ route('settings.calendar') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Calendar</a>
-      <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Payments</a>
+      <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Payouts</a>
       {{-- <a href="{{route('settings.notifications')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Notifications</a> --}}
     </div>
 
 
     <!-- Page Header -->
     <div class="mb-8">
-      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Payment Settings</h2>
+      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Payout Settings</h2>
       <p class="text-on-surface-variant mt-1">Manage how your earnings are handled and update payout methods.</p>
     </div>
     <p id="payment_type_error" class="text-error text-sm mt-1 mb-4 hidden"></p>

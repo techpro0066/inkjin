@@ -366,7 +366,7 @@
               <span class="design-availability-badge toggle-badge {{ $design->is_active ? 'on' : 'off' }}">
                 <span class="design-availability-label">{{ $design->is_active ? 'Available' : 'Unavailable' }}</span>
               </span>
-              <span class="toggle-badge {{ $design->is_visible ? 'on' : 'off' }}">Visibility</span>
+              <span class="toggle-badge {{ $design->is_visible ? 'on' : 'off' }} hidden">Visibility</span>
               <span class="toggle-badge {{ $design->is_repeatable ? 'on' : 'off' }}">
                 @if ($design->is_repeatable && $design->repeat_limit)
                   Repeatable ×{{ $design->repeat_limit }}
@@ -486,7 +486,7 @@
             <div class="design-field-section scroll-mt-6" data-design-field="settings">
               <label class="block text-xs font-semibold text-on-surface-variant mb-2">Settings</label>
               <div class="flex flex-wrap gap-4">
-                <div class="flex items-center gap-2">
+                <div class="hidden">
                   <div id="toggleVisibility" class="toggle-switch active"></div>
                   <span class="text-sm text-on-surface">Visibility</span>
                 </div>

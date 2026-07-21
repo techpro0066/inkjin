@@ -200,7 +200,7 @@
             ['key'=>'studio','route'=>'onboarding.studio','label'=>'Studio','icon'=>'storefront'],
             ['key'=>'preferences','route'=>'onboarding.preferences','label'=>'Preferences','icon'=>'tune'],
             ['key'=>'calendar','route'=>'onboarding.calendar','label'=>'Calendar','icon'=>'calendar_today'],
-            ['key'=>'payment','route'=>'onboarding.payment','label'=>'Payments','icon'=>'payments'],
+            ['key'=>'payment','route'=>'onboarding.payment','label'=>'Payouts','icon'=>'payments'],
           ];
         @endphp
         @foreach ($items as $item)

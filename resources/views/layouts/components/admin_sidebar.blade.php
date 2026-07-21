@@ -25,6 +25,10 @@
       <a href="{{ route('admin.forms.index') }}" class="nav-item {{ request()->routeIs('admin.forms.index') ? 'active' : '' }}"><span class="material-symbols-outlined">description</span> Forms</a>
       <a href="{{ route('admin.styles.index') }}" class="nav-item {{ request()->routeIs('admin.styles.*') ? 'active' : '' }}"><span class="material-symbols-outlined">brush</span> Styles</a>
       <a href="{{ route('admin.users.index') }}" class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}"><span class="material-symbols-outlined">group</span> Users</a>
+      <div class="text-white/35 text-[10px] uppercase tracking-[2px] font-bold px-4 pt-5 pb-1">Financials</div>
+      <a href="{{ route('admin.revenue.index') }}" class="nav-item {{ request()->routeIs('admin.revenue.*') ? 'active' : '' }}"><span class="material-symbols-outlined">trending_up</span> Revenue</a>
+      <a href="{{ route('admin.fees.index') }}" class="nav-item {{ request()->routeIs('admin.fees.*') ? 'active' : '' }}"><span class="material-symbols-outlined">receipt_long</span> Fees</a>
+      <a href="{{ route('admin.payouts.index') }}" class="nav-item {{ request()->routeIs('admin.payouts.*') ? 'active' : '' }}"><span class="material-symbols-outlined">payments</span> Payouts</a>
     </nav>
   </div>
   <div>

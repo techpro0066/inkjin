@@ -15,7 +15,7 @@ class OnboardingProgress
         3 => 'Studio',
         4 => 'Preferences',
         5 => 'Calendar',
-        6 => 'Payment',
+        6 => 'Payouts',
     ];
 
     /**

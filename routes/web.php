@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\FinancialController as AdminFinancialController;
 use App\Http\Controllers\Admin\FormController;
 use App\Http\Controllers\Admin\StyleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -154,20 +156,10 @@ Route::middleware(['auth', 'onboarding', 'client_password'])->group(function () 
 
 // Admin routes
 Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')->group(function () {
-    Route::get('/dashboard', function () {
-        $stats = [
-            'artists' => \App\Models\User::query()->where('role', 'artist')->count(),
-            'clients' => \App\Models\User::query()->where('role', 'user')->count(),
-            'active_bookings' => \App\Models\Booking::query()->where('status', 'confirmed')->count(),
-        ];
-        $recentUsers = \App\Models\User::with('userDetail')
-            ->where('role', '!=', 'admin')
-            ->orderByDesc('created_at')
-            ->limit(8)
-            ->get();
-
-        return view('admin.dashboard', compact('stats', 'recentUsers'));
-    })->name('admin.dashboard');
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/revenue', [AdminFinancialController::class, 'revenue'])->name('admin.revenue.index');
+    Route::get('/fees', [AdminFinancialController::class, 'fees'])->name('admin.fees.index');
+    Route::get('/payouts', [AdminFinancialController::class, 'payouts'])->name('admin.payouts.index');
 
     Route::get('/forms', [FormController::class, 'index'])->name('admin.forms.index');
     Route::post('/forms/questions', [QuestionsController::class, 'store'])->name('admin.forms.questions.store');

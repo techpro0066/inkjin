@@ -26,12 +26,32 @@
     }
   </script>
   <style>
+    html, body { max-width: 100%; overflow-x: hidden; }
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     .mobile-header { display: none; }
     @media (max-width: 1023px) { .mobile-header { display: flex; } }
     .sidebar { width: 260px; min-height: 100vh; }
-    @media (min-width: 1024px) { .sidebar { display: flex !important; } .main-content { margin-left: 260px; } }
+    .main-content {
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+    .main-content > div {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    @media (min-width: 1024px) {
+      .sidebar { display: flex !important; }
+      .main-content {
+        flex: none;
+        margin-left: 260px;
+        width: calc(100% - 260px);
+        max-width: calc(100% - 260px);
+      }
+    }
     @media (max-width: 1023px) { .main-content { padding-top: 70px; } }
     .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); transition: all 0.2s; cursor: pointer; text-decoration: none; }
     .nav-item:hover { background: rgba(255,255,255,0.1); }
@@ -41,8 +61,7 @@
     .stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(49,15,122,0.1); }
     @media (max-width: 1023px) {
-      .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
-      body { overflow-x: hidden; }
+      .main-content { padding: 16px; padding-top: 70px; }
       /* Full-screen mobile nav (below fixed header z-50) */
       #mobileSidebar.mobile-menu-open {
         display: flex !important;
@@ -65,8 +84,7 @@
   </style>
   @yield('styles')
 </head>
-<body>
-    <body class="bg-surface text-on-surface min-h-screen flex">
+<body class="bg-surface text-on-surface min-h-screen">
 
         @include('layouts.components.admin_sidebar')
 
@@ -128,5 +146,5 @@
         </script>
 
         @yield('scripts')
-    </body>
+</body>
 </html>
