@@ -1,6 +1,6 @@
 @extends('layouts.artist_dashboard_layout')
 
-@section('title', 'Payments')
+@section('title', 'Earnings')
 
 @section('styles')
 <style>
@@ -38,7 +38,7 @@
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
 
     <div class="mb-8">
-      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Payments</h2>
+      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Earnings</h2>
       <p class="text-on-surface-variant mt-1">Track your earnings, payouts, and payment history.</p>
     </div>
 

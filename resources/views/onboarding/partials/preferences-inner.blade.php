@@ -1,6 +1,6 @@
 @php $ud = $userDetail; @endphp
 <div class="rounded-2xl bg-white/90 border border-[#e6e0ea] shadow-sm p-6 md:p-8">
-  <h1 class="text-2xl font-bold text-on-surface mb-1">Preferences</h1>
+  <h1 class="text-2xl font-bold text-on-surface mb-1">Payments</h1>
   <p class="text-on-surface/70 text-sm mb-6">Currency, scheduling rules, and consultation defaults.</p>
 
   <form id="preferencesForm" class="space-y-6">

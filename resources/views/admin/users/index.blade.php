@@ -78,11 +78,10 @@
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-surface-container-low/50 text-on-surface-variant text-xs uppercase tracking-wider">
+              <th class="text-left px-5 py-3 font-semibold">Date</th>
               <th class="text-left px-5 py-3 font-semibold">{{ $roleFilter === 'user' ? 'Client' : ($roleFilter === 'artist' ? 'Artist' : 'User') }}</th>
               <th class="text-left px-5 py-3 font-semibold">Email</th>
-              <th class="text-left px-5 py-3 font-semibold">Studio</th>
               <th class="text-left px-5 py-3 font-semibold">Location</th>
-              <th class="text-left px-5 py-3 font-semibold">Styles</th>
               <th class="text-left px-5 py-3 font-semibold">Bookings</th>
               <th class="text-left px-5 py-3 font-semibold">Revenue</th>
               <th class="text-left px-5 py-3 font-semibold">Status</th>
@@ -93,6 +92,7 @@
             @forelse($users as $user)
               @php $expanded = (int) $expandedId === (int) $user['id']; @endphp
               <tr class="user-row" data-user-id="{{ $user['id'] }}" onclick="toggleUserDetail({{ $user['id'] }})">
+                <td class="px-5 py-4 text-on-surface-variant whitespace-nowrap">{{ $user['join_date_label'] }}</td>
                 <td class="px-5 py-4">
                   <div class="flex items-center gap-3">
                     @if(!empty($user['avatar']))
@@ -107,17 +107,7 @@
                   </div>
                 </td>
                 <td class="px-5 py-4 text-on-surface-variant">{{ $user['email'] }}</td>
-                <td class="px-5 py-4 text-on-surface-variant">{{ $user['studio'] }}</td>
                 <td class="px-5 py-4 text-on-surface-variant">{{ $user['location'] }}</td>
-                <td class="px-5 py-4">
-                  <div class="flex flex-wrap gap-1">
-                    @forelse(array_slice($user['styles'], 0, 3) as $style)
-                      <span class="inline-block bg-primary/5 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">{{ $style }}</span>
-                    @empty
-                      <span class="text-on-surface-variant">—</span>
-                    @endforelse
-                  </div>
-                </td>
                 <td class="px-5 py-4 font-semibold">{{ number_format($user['bookings']) }}</td>
                 <td class="px-5 py-4 font-semibold">€{{ number_format($user['revenue'], 0) }}</td>
                 <td class="px-5 py-4">
@@ -133,13 +123,13 @@
                 </td>
               </tr>
               <tr class="detail-row" data-detail-for="{{ $user['id'] }}" style="{{ $expanded ? '' : 'display:none;' }}">
-                <td colspan="9" class="p-0">
+                <td colspan="8" class="p-0">
                   @include('admin.users.partials.detail-panel', ['user' => $user, 'open' => $expanded])
                 </td>
               </tr>
             @empty
               <tr>
-                <td colspan="9" class="px-6 py-12 text-center text-sm text-on-surface-variant">No users found for this filter.</td>
+                <td colspan="8" class="px-6 py-12 text-center text-sm text-on-surface-variant">No users found for this filter.</td>
               </tr>
             @endforelse
           </tbody>
@@ -168,7 +158,8 @@
               ])
             </div>
             <div class="flex flex-wrap gap-3 text-xs text-on-surface-variant mt-1">
-              <span>{{ $user['studio'] }}</span>
+              <span>Signed up {{ $user['join_date_label'] }}</span>
+              <span>{{ $user['location'] }}</span>
               <span>{{ number_format($user['bookings']) }} bookings</span>
               <span>€{{ number_format($user['revenue'], 0) }}</span>
             </div>

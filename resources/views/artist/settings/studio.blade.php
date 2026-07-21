@@ -37,9 +37,10 @@
         <a href="{{ route('profile.edit') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Profile</a>
         <a href="{{ route('settings.styles') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Styles &amp; Social</a>
         <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Studio</a>
-        <a href="{{ route('settings.preferences') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Preferences</a>
+        <a href="{{ route('settings.preferences') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Payments</a>
         <a href="{{ route('settings.calendar') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Calendar</a>
         <a href="{{ route('settings.payment') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Payouts</a>
+        <a href="{{ route('settings.other') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Other</a>
         {{-- <a href="{{ route('settings.notifications') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Notifications</a> --}}
       </div>
 
@@ -71,6 +72,8 @@
             <p class="text-on-surface-variant text-xs mt-1.5">Start typing and select from Google suggestions to auto-fill address fields.</p>
           </div>
           <input type="hidden" name="studio_address" id="studio_address" value="{{ old('studio_address', $userDetail->studio_address ?? '') }}">
+          <input type="hidden" name="latitude" id="latitude" value="">
+          <input type="hidden" name="longitude" id="longitude" value="">
           <p id="studio_address_error" class="text-error text-xs -mt-4 hidden"></p>
 
           <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
@@ -196,10 +199,14 @@ $(function () {
   (function () {
     var input = document.getElementById('address_search');
     if (!input || typeof google === 'undefined' || !google.maps || !google.maps.places) return;
-    var ac = new google.maps.places.Autocomplete(input, { types: ['address'], fields: ['address_components', 'formatted_address', 'place_id'] });
+    var ac = new google.maps.places.Autocomplete(input, { types: ['address'], fields: ['address_components', 'formatted_address', 'place_id', 'geometry'] });
     ac.addListener('place_changed', function () {
       var place = ac.getPlace();
       if (!place.address_components) return;
+      if (place.geometry && place.geometry.location) {
+        $('#latitude').val(place.geometry.location.lat());
+        $('#longitude').val(place.geometry.location.lng());
+      }
       var sn = '', st = '', city = '', state = '', zip = '', country = '';
       for (var i = 0; i < place.address_components.length; i++) {
         var c = place.address_components[i];

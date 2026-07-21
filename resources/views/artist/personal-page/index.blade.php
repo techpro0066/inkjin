@@ -371,7 +371,7 @@
             <p><span class="font-semibold text-on-surface">No-show or late cancellation:</span> {{ $policyCopy['no_show'] }}</p>
           </div>
           <p class="text-xs text-on-surface-variant mt-3">
-            Edit in <a href="{{ route('settings.preferences') }}" class="text-primary hover:underline">Preference Settings</a>.
+            Edit in <a href="{{ route('settings.preferences') }}" class="text-primary hover:underline">Payment Settings</a>.
           </p>
         </div>
         <p id="displayPoliciesStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>

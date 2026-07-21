@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use App\Rules\ReservedArtistUsername;
 use App\Models\QuestionSorting;
+use App\Services\LocationPreferencesService;
 use App\Services\StripeConnectService;
 use App\Services\StripeCountrySpecService;
 use App\Support\SocialLinks;
@@ -890,6 +891,8 @@ class OnboardingController extends Controller
                 'country' => ['required', 'string', 'max:255'],
                 'google_maps_link' => ['nullable', 'url', 'max:500'],
                 'workspace_type' => ['required', 'string', 'max:32'],
+                'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+                'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             ], [
                 'workspace_type.required' => 'Please select a workspace type.',
             ]);
@@ -897,7 +900,7 @@ class OnboardingController extends Controller
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
-            $userDetail->update([
+            $studioData = [
                 'studio_name' => $validated['studio_name'],
                 'studio_address' => $validated['studio_address'],
                 'street_name' => $validated['street_name'],
@@ -910,7 +913,17 @@ class OnboardingController extends Controller
                 'workspace_type' => $validated['workspace_type'] ?? null,
                 'current_step' => 4,
                 'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [3])),
-            ]);
+            ];
+
+            $userDetail->update(array_merge(
+                $studioData,
+                $this->resolveLocationPreferences(
+                    $validated['country'],
+                    isset($validated['latitude']) ? (float) $validated['latitude'] : null,
+                    isset($validated['longitude']) ? (float) $validated['longitude'] : null,
+                    $validated['studio_address']
+                )
+            ));
 
             return response()->json([
                 'success' => true,
@@ -933,6 +946,33 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Derive locale preferences from the studio location.
+     *
+     * Timezone comes from the Google Time Zone API (via coordinates, falling
+     * back to geocoding the address). Date format and units follow the
+     * United States (MM/DD/YYYY + inches) vs. rest-of-world (DD/MM/YYYY + cm)
+     * rule.
+     *
+     * @return array{timezone?: string, date_time_format: string, size_unit: string}
+     */
+    private function resolveLocationPreferences(?string $country, ?float $latitude, ?float $longitude, ?string $address): array
+    {
+        $service = app(LocationPreferencesService::class);
+
+        $preferences = [
+            'date_time_format' => $service->dateFormatForCountry($country),
+            'size_unit' => $service->sizeUnitForCountry($country),
+        ];
+
+        $timezone = $service->resolveTimezone($latitude, $longitude, $address);
+        if ($timezone !== null) {
+            $preferences['timezone'] = $timezone;
+        }
+
+        return $preferences;
+    }
+
+    /**
      * Update studio information (for settings page)
      */
     public function updateStudio(Request $request)
@@ -949,6 +989,8 @@ class OnboardingController extends Controller
                 'country' => ['required', 'string', 'max:255'],
                 'google_maps_link' => ['nullable', 'url', 'max:500'],
                 'workspace_type' => ['required', 'string', Rule::in(['private', 'shop', 'home', 'mobile'])],
+                'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+                'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             ], [
                 'workspace_type.required' => 'Please select a workspace type.',
                 'workspace_type.in' => 'Please select a valid workspace type.',
@@ -957,7 +999,7 @@ class OnboardingController extends Controller
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
-            $userDetail->update([
+            $studioData = [
                 'studio_name' => $validated['studio_name'],
                 'studio_address' => $validated['studio_address'],
                 'street_name' => $validated['street_name'],
@@ -968,7 +1010,23 @@ class OnboardingController extends Controller
                 'country' => $validated['country'],
                 'google_maps_link' => $validated['google_maps_link'] ?? null,
                 'workspace_type' => $validated['workspace_type'],
-            ]);
+            ];
+
+            // Only fill locale preferences that the artist hasn't set yet so we
+            // never override their manual choices on the "Other" settings tab.
+            $derived = $this->resolveLocationPreferences(
+                $validated['country'],
+                isset($validated['latitude']) ? (float) $validated['latitude'] : null,
+                isset($validated['longitude']) ? (float) $validated['longitude'] : null,
+                $validated['studio_address']
+            );
+            foreach ($derived as $key => $value) {
+                if (empty($userDetail->{$key})) {
+                    $studioData[$key] = $value;
+                }
+            }
+
+            $userDetail->update($studioData);
 
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
@@ -1006,23 +1064,22 @@ class OnboardingController extends Controller
     /**
      * Update calendar/scheduling type (for settings page)
      */
+    /**
+     * Update calendar / scheduling settings (settings page).
+     */
     public function updateCalendar(Request $request)
     {
         try {
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
-            $validated = $request->validate([
-                'scheduling_type' => ['required', 'in:auto,managed'],
-            ]);
-
+            $validated = $this->validateCalendarPayload($request);
             $schedulingType = $validated['scheduling_type'];
 
-            // If auto scheduling is selected, calendar connection is required
             if ($schedulingType === 'auto') {
-                $calendarConnected = !empty($userDetail->google_calendar_token);
-                
-                if (!$calendarConnected) {
+                $calendarConnected = ! empty($userDetail->google_calendar_token);
+
+                if (! $calendarConnected) {
                     if ($request->expectsJson() || $request->ajax()) {
                         return response()->json([
                             'success' => false,
@@ -1030,21 +1087,22 @@ class OnboardingController extends Controller
                             'errors' => ['google_calendar_connected' => ['Google Calendar connection is required for auto scheduling.']],
                         ], 422);
                     }
+
                     return redirect()->back()
                         ->with('error', 'Please connect your Google Calendar for auto scheduling.')
                         ->withInput();
                 }
-            } else if ($schedulingType === 'managed') {
-                // Clear calendar connection when switching to managed
+            } elseif ($schedulingType === 'managed') {
                 $userDetail->update([
                     'google_calendar_token' => null,
                     'google_calendar_id' => null,
                 ]);
             }
 
-            $userDetail->update([
-                'scheduling_type' => $schedulingType,
-            ]);
+            $userDetail->update(array_merge(
+                ['scheduling_type' => $schedulingType],
+                $this->scheduleConsultationUpdateData($validated, $request)
+            ));
 
             $message = $schedulingType === 'auto'
                 ? 'Calendar settings updated successfully. Auto scheduling with Google Calendar is enabled.'
@@ -1067,6 +1125,7 @@ class OnboardingController extends Controller
                     'errors' => $e->errors(),
                 ], 422);
             }
+
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput();
@@ -1074,11 +1133,12 @@ class OnboardingController extends Controller
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'An error occurred: ' . $e->getMessage(),
+                    'message' => 'An error occurred: '.$e->getMessage(),
                 ], 500);
             }
+
             return redirect()->back()
-                ->with('error', 'An error occurred: ' . $e->getMessage())
+                ->with('error', 'An error occurred: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -1243,171 +1303,49 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Save onboarding calendar / scheduling type (auto vs managed, Google Calendar when auto).
+     * Save onboarding calendar / scheduling type plus schedule & consultation rules.
      */
     public function saveCalendar(Request $request)
     {
         try {
-            $user = $request->user();   
+            $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
-            // Check if this is a preferences update from settings page
-            if ($request->has('currency') || $request->has('session_buffer_period')) {
-                // This is a preferences update from settings page
-                // Check if consultation is required
-                $requireConsultation = $request->has('require_consultation') && $request->require_consultation == '1';
-                
-                $validationRules = [
-                    'currency' => ['required'],
-                    'timezone' => ['required'],
-                    'date_time_format' => ['required'],
-                    'size_unit' => ['required'],
-                    'minimum_deposit_amount' => ['required', 'numeric', 'min:0'],
-                    'minimum_deposit_type' => ['required'],
-                    'hourly_rate' => ['nullable', 'numeric', 'min:0'],
-                    'half_day_rate' => ['nullable', 'numeric', 'min:0'],
-                    'full_day_rate' => ['nullable', 'numeric', 'min:0'],
-                    'booking_fee_type' => ['required', 'in:client,artist,split'],
-                    'cancellation_window' => ['required'],
-                    'reschedule_times' => ['required'],
-                    'session_buffer_period' => ['required', 'integer', 'min:0'],
-                    'require_consultation' => ['nullable', 'boolean'],
-                ];
-                
-                // Only require session type, duration, and consultation timing if consultation is required
-                if ($requireConsultation) {
-                    $validationRules['session_type'] = ['required', 'in:online,physical,both'];
-                    $validationRules['session_duration_minutes'] = ['required', 'integer', 'min:15', 'max:480'];
-                    $validationRules['consultation_timing'] = ['required', 'in:combined,separate'];
-                    
-                    // Validate gap fields if consultation timing is separate
-                    $consultationTiming = $request->input('consultation_timing');
-                    if ($consultationTiming === 'separate') {
-                        $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
-                        $requireGap = $request->has('require_gap_between_consultation_tattoo') && $request->require_gap_between_consultation_tattoo == '1';
-                        if ($requireGap) {
-                            $validationRules['consultation_tattoo_gap_value'] = ['required', 'integer', 'min:1'];
-                        } else {
-                            $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                        }
-                    } else {
-                        $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
-                        $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                    }
-                } else {
-                    $validationRules['session_type'] = ['nullable', 'in:online,physical,both'];
-                    $validationRules['session_duration_minutes'] = ['nullable', 'integer', 'min:15', 'max:480'];
-                    $validationRules['consultation_timing'] = ['nullable', 'in:combined,separate'];
-                    $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
-                    $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                }
-                
-                $request->merge([
-                    'hourly_rate' => $request->filled('hourly_rate') ? $request->input('hourly_rate') : null,
-                    'half_day_rate' => $request->filled('half_day_rate') ? $request->input('half_day_rate') : null,
-                    'full_day_rate' => $request->filled('full_day_rate') ? $request->input('full_day_rate') : null,
-                ]);
-
-                $validated = $request->validate($validationRules);
-
-                $minimumDepositAmount = (float) $validated['minimum_deposit_amount'];
-
-                $updateData = [
-                    'currency' => $validated['currency'],
-                    'timezone' => $validated['timezone'],
-                    'date_time_format' => $validated['date_time_format'],
-                    'size_unit' => $validated['size_unit'],
-                    'minimum_deposit_amount' => $minimumDepositAmount,
-                    'minimum_deposit_type' => $validated['minimum_deposit_type'],
-                    'hourly_rate' => isset($validated['hourly_rate']) ? (float) $validated['hourly_rate'] : null,
-                    'half_day_rate' => isset($validated['half_day_rate']) ? (float) $validated['half_day_rate'] : null,
-                    'full_day_rate' => isset($validated['full_day_rate']) ? (float) $validated['full_day_rate'] : null,
-                    'booking_fee_type' => $validated['booking_fee_type'],
-                    'cancellation_window' => $validated['cancellation_window'],
-                    'reschedule_times' => $validated['reschedule_times'],
-                    'session_buffer_period' => (int) $validated['session_buffer_period'],
-                    'require_consultation' => $requireConsultation,
-                ];
-                
-                // Only save session type, duration, and consultation timing if consultation is required
-                if ($requireConsultation) {
-                    $updateData['session_type'] = $validated['session_type'];
-                    $updateData['session_duration_minutes'] = (int) $validated['session_duration_minutes'];
-                    $updateData['consultation_timing'] = $validated['consultation_timing'];
-                    
-                    // Handle gap fields for separate consultation timing
-                    $consultationTiming = $validated['consultation_timing'] ?? null;
-                    if ($consultationTiming === 'separate') {
-                        $requireGap = isset($validated['require_gap_between_consultation_tattoo']) && $validated['require_gap_between_consultation_tattoo'];
-                        $updateData['require_gap_between_consultation_tattoo'] = $requireGap;
-                        if ($requireGap && isset($validated['consultation_tattoo_gap_value'])) {
-                            $updateData['consultation_tattoo_gap_value'] = (int) $validated['consultation_tattoo_gap_value'];
-                        } else {
-                            $updateData['consultation_tattoo_gap_value'] = null;
-                        }
-                        $updateData['consultation_tattoo_gap_unit'] = null;
-                    } else {
-                        // Clear gap fields when not separate
-                        $updateData['require_gap_between_consultation_tattoo'] = false;
-                        $updateData['consultation_tattoo_gap_value'] = null;
-                        $updateData['consultation_tattoo_gap_unit'] = null;
-                    }
-                } else {
-                    // Clear session type, duration, consultation timing, and gap fields when consultation is disabled
-                    $updateData['session_type'] = null;
-                    $updateData['session_duration_minutes'] = null;
-                    $updateData['consultation_timing'] = null;
-                    $updateData['require_gap_between_consultation_tattoo'] = false;
-                    $updateData['consultation_tattoo_gap_value'] = null;
-                    $updateData['consultation_tattoo_gap_unit'] = null;
-                }
-                
-                $userDetail->update($updateData);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Preferences updated successfully',
-                ]);
-            }
-
-            // This is the scheduling type selection step (onboarding step 3)
-            $validated = $request->validate([
-                'scheduling_type' => ['required', 'in:auto,managed'],
-            ]);
-
+            $validated = $this->validateCalendarPayload($request);
             $schedulingType = $validated['scheduling_type'];
 
-            // If auto scheduling is selected, calendar connection is required
             if ($schedulingType === 'auto') {
-            $calendarConnected = !empty($userDetail->google_calendar_token);
-                
-                if (!$calendarConnected) {
+                $calendarConnected = ! empty($userDetail->google_calendar_token);
+
+                if (! $calendarConnected) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Please connect your Google Calendar for auto scheduling.',
                         'errors' => [
-                            'google_calendar_connected' => ['Google Calendar connection is required for auto scheduling.']
+                            'google_calendar_connected' => ['Google Calendar connection is required for auto scheduling.'],
                         ],
                     ], 422);
                 }
-            }
-            else if($schedulingType === 'managed'){
+            } elseif ($schedulingType === 'managed') {
                 $userDetail->update([
                     'google_calendar_token' => null,
                     'google_calendar_id' => null,
                 ]);
             }
-            
+
             $completedSteps = $userDetail->completed_steps ?? [];
             if (! in_array(5, $completedSteps)) {
                 $completedSteps[] = 5;
             }
 
-            $userDetail->update([
-                'scheduling_type' => $schedulingType,
-                'current_step' => 6,
-                'completed_steps' => $completedSteps,
-            ]);
+            $userDetail->update(array_merge(
+                [
+                    'scheduling_type' => $schedulingType,
+                    'current_step' => 6,
+                    'completed_steps' => $completedSteps,
+                ],
+                $this->scheduleConsultationUpdateData($validated, $request)
+            ));
 
             $message = $schedulingType === 'auto'
                 ? 'Scheduling saved. Auto scheduling with Google Calendar is enabled.'
@@ -1428,65 +1366,125 @@ class OnboardingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred: ' . $e->getMessage(),
+                'message' => 'An error occurred: '.$e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Save onboarding preferences (currency, deposits, booking rules, consultation options).
+     * Validate scheduling type plus schedule rules and consultation settings.
+     *
+     * @return array<string, mixed>
+     */
+    private function validateCalendarPayload(Request $request): array
+    {
+        $requireConsultation = $request->has('require_consultation') && $request->require_consultation == '1';
+
+        $validationRules = [
+            'scheduling_type' => ['required', 'in:auto,managed'],
+            'cancellation_window' => ['required'],
+            'reschedule_times' => ['required'],
+            'session_buffer_period' => ['required', 'integer', 'min:0'],
+            'require_consultation' => ['nullable', 'boolean'],
+        ];
+
+        if ($requireConsultation) {
+            $validationRules['session_type'] = ['required', 'in:online,physical,both'];
+            $validationRules['session_duration_minutes'] = ['required', 'integer', 'min:15', 'max:480'];
+            $validationRules['consultation_timing'] = ['required', 'in:combined,separate'];
+
+            $consultationTiming = $request->input('consultation_timing');
+            if ($consultationTiming === 'separate') {
+                $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
+                $requireGap = $request->has('require_gap_between_consultation_tattoo') && $request->require_gap_between_consultation_tattoo == '1';
+                if ($requireGap) {
+                    $validationRules['consultation_tattoo_gap_value'] = ['required', 'integer', 'min:1'];
+                } else {
+                    $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
+                }
+            } else {
+                $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
+                $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
+            }
+        } else {
+            $validationRules['session_type'] = ['nullable', 'in:online,physical,both'];
+            $validationRules['session_duration_minutes'] = ['nullable', 'integer', 'min:15', 'max:480'];
+            $validationRules['consultation_timing'] = ['nullable', 'in:combined,separate'];
+            $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
+            $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
+        }
+
+        return $request->validate($validationRules);
+    }
+
+    /**
+     * Build schedule rules + consultation fields for UserDetail update.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function scheduleConsultationUpdateData(array $validated, Request $request): array
+    {
+        $requireConsultation = $request->has('require_consultation') && $request->require_consultation == '1';
+
+        $updateData = [
+            'cancellation_window' => $validated['cancellation_window'],
+            'reschedule_times' => $validated['reschedule_times'],
+            'session_buffer_period' => (int) $validated['session_buffer_period'],
+            'require_consultation' => $requireConsultation,
+        ];
+
+        if ($requireConsultation) {
+            $updateData['session_type'] = $validated['session_type'];
+            $updateData['session_duration_minutes'] = (int) $validated['session_duration_minutes'];
+            $updateData['consultation_timing'] = $validated['consultation_timing'];
+
+            $consultationTiming = $validated['consultation_timing'] ?? null;
+            if ($consultationTiming === 'separate') {
+                $requireGap = isset($validated['require_gap_between_consultation_tattoo']) && $validated['require_gap_between_consultation_tattoo'];
+                $updateData['require_gap_between_consultation_tattoo'] = $requireGap;
+                if ($requireGap && isset($validated['consultation_tattoo_gap_value'])) {
+                    $updateData['consultation_tattoo_gap_value'] = (int) $validated['consultation_tattoo_gap_value'];
+                } else {
+                    $updateData['consultation_tattoo_gap_value'] = null;
+                }
+                $updateData['consultation_tattoo_gap_unit'] = null;
+            } else {
+                $updateData['require_gap_between_consultation_tattoo'] = false;
+                $updateData['consultation_tattoo_gap_value'] = null;
+                $updateData['consultation_tattoo_gap_unit'] = null;
+            }
+        } else {
+            $updateData['session_type'] = null;
+            $updateData['session_duration_minutes'] = null;
+            $updateData['consultation_timing'] = null;
+            $updateData['require_gap_between_consultation_tattoo'] = false;
+            $updateData['consultation_tattoo_gap_value'] = null;
+            $updateData['consultation_tattoo_gap_unit'] = null;
+        }
+
+        return $updateData;
+    }
+
+    /**
+     * Save payment preferences (currency, deposits, rates, booking fee).
      */
     public function savePreferences(Request $request)
     {
         try {
-            // Check if consultation is required
-            $requireConsultation = $request->has('require_consultation') && $request->require_consultation == '1';
-            
             $validationRules = [
                 'currency' => ['required'],
-                'timezone' => ['required'],
-                'date_time_format' => ['required'],
-                'size_unit' => ['required'],
+                'timezone' => ['required', Rule::in(\DateTimeZone::listIdentifiers())],
+                'date_time_format' => ['required', Rule::in(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'])],
+                'size_unit' => ['required', Rule::in(['cm', 'in'])],
                 'minimum_deposit_amount' => ['required', 'numeric', 'min:0'],
                 'minimum_deposit_type' => ['required'],
                 'hourly_rate' => ['nullable', 'numeric', 'min:0'],
                 'half_day_rate' => ['nullable', 'numeric', 'min:0'],
                 'full_day_rate' => ['nullable', 'numeric', 'min:0'],
                 'booking_fee_type' => ['required', 'in:client,artist,split'],
-                'reschedule_times' => ['required'],
-                'cancellation_window' => ['required'],
-                'session_buffer_period' => ['required', 'integer', 'min:0'],
-                'require_consultation' => ['nullable', 'boolean'],
             ];
-            
-            // Only require session type, duration, and consultation timing if consultation is required
-            if ($requireConsultation) {
-                $validationRules['session_type'] = ['required', 'in:online,physical,both'];
-                $validationRules['session_duration_minutes'] = ['required', 'integer', 'min:15', 'max:480'];
-                $validationRules['consultation_timing'] = ['required', 'in:combined,separate'];
-                
-                // Validate gap fields if consultation timing is separate
-                $consultationTiming = $request->input('consultation_timing');
-                if ($consultationTiming === 'separate') {
-                    $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
-                    $requireGap = $request->has('require_gap_between_consultation_tattoo') && $request->require_gap_between_consultation_tattoo == '1';
-                    if ($requireGap) {
-                        $validationRules['consultation_tattoo_gap_value'] = ['required', 'integer', 'min:1'];
-                    } else {
-                        $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                    }
-                } else {
-                    $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
-                    $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-                }
-            } else {
-                $validationRules['session_type'] = ['nullable', 'in:online,physical,both'];
-                $validationRules['session_duration_minutes'] = ['nullable', 'integer', 'min:15', 'max:480'];
-                $validationRules['consultation_timing'] = ['nullable', 'in:combined,separate'];
-                $validationRules['require_gap_between_consultation_tattoo'] = ['nullable', 'boolean'];
-                $validationRules['consultation_tattoo_gap_value'] = ['nullable', 'integer', 'min:1'];
-            }
-            
+
             $request->merge([
                 'hourly_rate' => $request->filled('hourly_rate') ? $request->input('hourly_rate') : null,
                 'half_day_rate' => $request->filled('half_day_rate') ? $request->input('half_day_rate') : null,
@@ -1498,10 +1496,8 @@ class OnboardingController extends Controller
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
-            // Convert minimum_deposit_amount to decimal
             $minimumDepositAmount = (float) $validated['minimum_deposit_amount'];
 
-            // Only update onboarding progress if user is still in onboarding process
             $updateData = [
                 'currency' => $validated['currency'],
                 'timezone' => $validated['timezone'],
@@ -1513,56 +1509,18 @@ class OnboardingController extends Controller
                 'half_day_rate' => isset($validated['half_day_rate']) ? (float) $validated['half_day_rate'] : null,
                 'full_day_rate' => isset($validated['full_day_rate']) ? (float) $validated['full_day_rate'] : null,
                 'booking_fee_type' => $validated['booking_fee_type'],
-                'reschedule_times' => $validated['reschedule_times'],
-                'cancellation_window' => $validated['cancellation_window'],
-                'session_buffer_period' => (int) $validated['session_buffer_period'],
-                'require_consultation' => $requireConsultation,
             ];
-            
-            // Only save session type, duration, and consultation timing if consultation is required
-            if ($requireConsultation) {
-                $updateData['session_type'] = $validated['session_type'];
-                $updateData['session_duration_minutes'] = (int) $validated['session_duration_minutes'];
-                $updateData['consultation_timing'] = $validated['consultation_timing'];
-                
-                // Handle gap fields for separate consultation timing
-                $consultationTiming = $validated['consultation_timing'] ?? null;
-                if ($consultationTiming === 'separate') {
-                    $requireGap = isset($validated['require_gap_between_consultation_tattoo']) && $validated['require_gap_between_consultation_tattoo'];
-                    $updateData['require_gap_between_consultation_tattoo'] = $requireGap;
-                    if ($requireGap && isset($validated['consultation_tattoo_gap_value'])) {
-                        $updateData['consultation_tattoo_gap_value'] = (int) $validated['consultation_tattoo_gap_value'];
-                    } else {
-                        $updateData['consultation_tattoo_gap_value'] = null;
-                    }
-                    $updateData['consultation_tattoo_gap_unit'] = null;
-                } else {
-                    // Clear gap fields when not separate
-                    $updateData['require_gap_between_consultation_tattoo'] = false;
-                    $updateData['consultation_tattoo_gap_value'] = null;
-                    $updateData['consultation_tattoo_gap_unit'] = null;
-                }
-            } else {
-                // Clear session type, duration, consultation timing, and gap fields when consultation is disabled
-                $updateData['session_type'] = null;
-                $updateData['session_duration_minutes'] = null;
-                $updateData['consultation_timing'] = null;
-                $updateData['require_gap_between_consultation_tattoo'] = false;
-                $updateData['consultation_tattoo_gap_value'] = null;
-                $updateData['consultation_tattoo_gap_unit'] = null;
-            }
-            
-            // Only update onboarding progress if user hasn't completed onboarding
+
             if ($user->on_boarding !== 'yes') {
                 $updateData['current_step'] = 5;
                 $updateData['completed_steps'] = array_unique(array_merge($userDetail->completed_steps ?? [], [4]));
             }
-            
+
             $userDetail->update($updateData);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Preferences saved',
+                'message' => 'Payment settings saved',
                 'nextStep' => 5,
                 'redirect' => route('onboarding.calendar'),
             ]);
@@ -1575,7 +1533,7 @@ class OnboardingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred: ' . $e->getMessage(),
+                'message' => 'An error occurred: '.$e->getMessage(),
             ], 500);
         }
     }

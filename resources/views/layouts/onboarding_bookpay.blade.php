@@ -198,7 +198,7 @@
             ['key'=>'profile','route'=>'onboarding.profile','label'=>'Profile','icon'=>'person'],
             ['key'=>'styles-social','route'=>'onboarding.styles-social','label'=>'Styles & Social','icon'=>'brush'],
             ['key'=>'studio','route'=>'onboarding.studio','label'=>'Studio','icon'=>'storefront'],
-            ['key'=>'preferences','route'=>'onboarding.preferences','label'=>'Preferences','icon'=>'tune'],
+            ['key'=>'preferences','route'=>'onboarding.preferences','label'=>'Payments','icon'=>'tune'],
             ['key'=>'calendar','route'=>'onboarding.calendar','label'=>'Calendar','icon'=>'calendar_today'],
             ['key'=>'payment','route'=>'onboarding.payment','label'=>'Payouts','icon'=>'payments'],
           ];

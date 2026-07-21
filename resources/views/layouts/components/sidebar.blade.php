@@ -54,7 +54,7 @@
               <li class="menu-item {{ request()->routeIs('settings.preferences') ? 'active' : '' }}">
                 <a href="{{ route('settings.preferences') }}" class="menu-link">
                   <i class="menu-icon tf-icons ti ti-adjustments me-2"></i>
-                  <div data-i18n="Preferences">Preferences</div>
+                  <div data-i18n="Payments">Payments</div>
                 </a>
               </li>
               <li class="menu-item {{ request()->routeIs('settings.payment') ? 'active' : '' }}">

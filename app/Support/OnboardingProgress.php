@@ -13,7 +13,7 @@ class OnboardingProgress
         1 => 'Profile',
         2 => 'Styles & Social',
         3 => 'Studio',
-        4 => 'Preferences',
+        4 => 'Payments',
         5 => 'Calendar',
         6 => 'Payouts',
     ];

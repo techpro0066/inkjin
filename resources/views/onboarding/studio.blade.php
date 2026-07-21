@@ -35,6 +35,8 @@
         </div>
       </div>
       <input type="hidden" name="studio_address" id="studio_address" value="{{ $userDetail->studio_address ?? '' }}">
+  <input type="hidden" name="latitude" id="latitude" value="">
+  <input type="hidden" name="longitude" id="longitude" value="">
       <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
         <div class="sm:col-span-4">
           <label for="street_number" class="block text-sm font-semibold text-on-surface mb-2">Street number <span class="text-red-600">*</span></label>
@@ -147,10 +149,14 @@ $(function () {
   (function () {
     var input = document.getElementById('address_search');
     if (!input || typeof google === 'undefined' || !google.maps || !google.maps.places) return;
-    var ac = new google.maps.places.Autocomplete(input, { types: ['address'], fields: ['address_components', 'formatted_address', 'place_id'] });
+    var ac = new google.maps.places.Autocomplete(input, { types: ['address'], fields: ['address_components', 'formatted_address', 'place_id', 'geometry'] });
     ac.addListener('place_changed', function () {
       var place = ac.getPlace();
       if (!place.address_components) return;
+      if (place.geometry && place.geometry.location) {
+        $('#latitude').val(place.geometry.location.lat());
+        $('#longitude').val(place.geometry.location.lng());
+      }
       var sn = '', st = '', city = '', state = '', zip = '', country = '';
       for (var i = 0; i < place.address_components.length; i++) {
         var c = place.address_components[i];

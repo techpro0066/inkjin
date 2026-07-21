@@ -149,7 +149,7 @@
                 @endif
               </div>
               <div class="text-center">
-                <small class="d-block fw-semibold">Preferences</small>
+                <small class="d-block fw-semibold">Payments</small>
               </div>
             </div>
             
@@ -399,7 +399,7 @@
 
           <!-- Preferences -->
           <div class="step-content {{ $currentStep == 4 ? 'active' : '' }}" id="onboarding-preferences">
-            <h5 class="mb-4">Preferences</h5>
+            <h5 class="mb-4">Payments</h5>
             <form id="preferencesForm">
               @csrf
               

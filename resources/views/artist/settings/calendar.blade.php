@@ -9,12 +9,41 @@
     .schedule-card .radio-indicator { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #cac4d3; position: absolute; top: 20px; right: 20px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
     .schedule-card.selected .radio-indicator { border-color: #310f7a; background: #310f7a; }
     .schedule-card.selected .radio-indicator::after { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; }
+  .buffer-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1.5px solid #cac4d3; background: white; color: #494552; }
+  .buffer-btn.active { background: #310f7a; color: white; border-color: #310f7a; }
+  .toggle-switch { width: 48px; height: 26px; border-radius: 13px; background: #cac4d3; cursor: pointer; position: relative; transition: background 0.3s; flex-shrink: 0; }
+  .toggle-switch.active { background: #310f7a; }
+  .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: transform 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+  .toggle-switch.active::after { transform: translateX(22px); }
+  .select2-container { width: 100% !important; z-index: 1; }
+  .select2-container--open { z-index: 10060 !important; }
+  .select2-container--default .select2-selection--single {
+    min-height: 48px;
+    padding: 6px 12px;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(202,196,211,0.5) !important;
+    background: #fff !important;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 2.25rem;
+    padding-left: 4px;
+    color: #1c1b21;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__arrow { height: 46px; }
+  .select2-container--default.select2-container--focus .select2-selection--single,
+  .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: #310f7a !important;
+    box-shadow: 0 0 0 2px rgba(49,15,122,0.25);
+  }
+  .select2-dropdown { border-radius: 0.75rem; border-color: rgba(202,196,211,0.5); overflow: hidden; }
+  .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #310f7a !important; }
 
     @media (max-width: 1023px) {
       .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
       body { overflow-x: hidden; }
     }
 </style>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 @endsection
 
 @section('content')
@@ -190,9 +219,10 @@
         <a href="{{route('profile.edit')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Profile</a>
         <a href="{{route('settings.styles')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Styles &amp; Social</a>
         <a href="{{route('settings.studio')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Studio</a>
-        <a href="{{route('settings.preferences')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Preferences</a>
+        <a href="{{route('settings.preferences')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Payments</a>
         <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Calendar</a>
         <a href="{{route('settings.payment')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Payouts</a>
+        <a href="{{ route('settings.other') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Other</a>
         {{-- <a href="{{ route('settings.notifications') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Notifications</a> --}}
       </div>
 
@@ -200,7 +230,7 @@
       <!-- Page Header -->
       <div class="mb-8">
         <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Calendar Settings</h2>
-        <p class="text-on-surface-variant mt-1">Choose your scheduling model and manage calendar integrations.</p>
+        <p class="text-on-surface-variant mt-1">Choose your scheduling model, schedule rules, and consultation settings.</p>
       </div>
       <p id="scheduling_type_error" class="text-error text-sm mt-1 mb-4 hidden"></p>
       <div id="calAlert" class="hidden rounded-xl px-4 py-3 text-sm mb-6"></div>
@@ -282,6 +312,8 @@
           </div>
         </div>
       </div>
+
+      @include('partials.schedule-consultation-settings', ['ud' => $userDetail])
     </div>
 
     <!-- Footer: Save Changes -->
@@ -306,12 +338,23 @@
 @endsection
 
 @section('scripts')
-
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
   function showCalAlert(msg) {
     var $alertEl = $('#calAlert');
     $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mb-6 bg-red-50 text-red-800 border border-red-200');
     $alertEl.text(msg).removeClass('hidden');
+  }
+  function showCalFieldErrors(errors) {
+    $.each(errors, function (k, messages) {
+      var $err = $('#' + k + '_error');
+      if ($err.length) $err.text(messages[0]).removeClass('hidden');
+      if (k === 'consultation_timing') {
+        $('#consultation_timing_group').addClass('ring-2 ring-error/40 rounded-xl p-2');
+      } else {
+        $('#' + k).addClass('border-error');
+      }
+    });
   }
   function selectSchedule(type, el) {
     document.querySelectorAll('.schedule-card').forEach(c => c.classList.remove('selected'));
@@ -320,7 +363,6 @@
     $('#scheduling_type_error').addClass('hidden').text('');
     $('#calAlert').addClass('hidden').text('');
 
-    // Show/hide Google Calendar status based on selection
     const gcStatus = document.getElementById('google-calendar-status');
     if (type === 'auto') {
       gcStatus.style.display = '';
@@ -328,8 +370,74 @@
       gcStatus.style.display = 'none';
     }
   }
+  function setBuffer(btn, value) {
+    document.querySelectorAll('.buffer-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('session_buffer_period').value = value;
+    $('#session_buffer_period_error').text('').addClass('hidden');
+  }
+  function requireConsultationEnabled() {
+    return $('#require_consultation').val() === '1';
+  }
+  function toggleSessionFields() {
+    var show = requireConsultationEnabled();
+    $('#session_type_container').css('display', show ? 'block' : 'none');
+    $('#session_duration_container').css('display', show ? 'block' : 'none');
+    $('#consultation_timing_container').css('display', show ? 'block' : 'none');
+    if (show) {
+      if (window.jQuery && $.fn.select2 && !$('#session_type').hasClass('select2-hidden-accessible')) {
+        $('#session_type').select2({ width: '100%', dropdownParent: $('body') });
+      }
+    } else {
+      $('#session_type').val('');
+      $('#session_duration_minutes').val('');
+      $('input[name="consultation_timing"]').prop('checked', false);
+      $('#session_type_error, #session_duration_minutes_error, #consultation_timing_error').text('').addClass('hidden');
+      toggleGapFields();
+    }
+  }
+  function toggleGapFields() {
+    var ct = $('input[name="consultation_timing"]:checked').val() || '';
+    var show = requireConsultationEnabled() && ct === 'separate';
+    $('#gap_fields_container').css('display', show ? 'block' : 'none');
+    $('#gap_duration_container').css('display', show ? 'block' : 'none');
+    $('#require_gap_between_consultation_tattoo').val(show ? '1' : '0');
+    if (!show) {
+      $('#consultation_tattoo_gap_value').val('');
+      $('#consultation_tattoo_gap_value_error').text('').addClass('hidden');
+    }
+  }
+  function toggleConsultation() {
+    const toggle = document.getElementById('consultation_toggle');
+    const input = document.getElementById('require_consultation');
+    const isActive = toggle.classList.toggle('active');
+    toggle.setAttribute('aria-checked', isActive);
+    input.value = isActive ? '1' : '0';
+    toggleSessionFields();
+    toggleGapFields();
+  }
   $(function () {
     const googleCalendarRedirectUrl = @json(route('google.calendar.redirect', ['return_to' => 'settings']));
+    toggleSessionFields();
+    toggleGapFields();
+    if (window.jQuery && $.fn.select2) {
+      $('#calendarForm .js-select2, #calendarForm select.select').select2({ width: '100%', dropdownParent: $('body') });
+    }
+
+    $.each(['cancellation_window', 'session_type', 'session_duration_minutes', 'consultation_tattoo_gap_value'], function (_, id) {
+      $('#' + id).on('change input', function () {
+        $(this).removeClass('border-error');
+        $('#' + id + '_error').text('').addClass('hidden');
+      });
+    });
+    $('#calendarForm input[name="consultation_timing"]').on('change', function () {
+      $('#consultation_timing_error').text('').addClass('hidden');
+      $('#consultation_timing_group').removeClass('ring-2 ring-error/40 rounded-xl p-2');
+      toggleGapFields();
+    });
+    $('#calendarForm input[name="reschedule_times"]').on('change', function () {
+      $('#reschedule_times_error').text('').addClass('hidden');
+    });
 
     function bindConnectButton() {
       $('#connectCalendarBtn').off('click').on('click', function () {
@@ -382,6 +490,9 @@
     $('#calendarForm').on('submit', function (e) {
       e.preventDefault();
       var st = $('#scheduling_type').val();
+      $('#calendarForm [id$="_error"]').text('').addClass('hidden');
+      $('#calendarForm input, #calendarForm select').removeClass('border-error');
+      $('#consultation_timing_group').removeClass('ring-2 ring-error/40 rounded-xl p-2');
       if (!st) {
         $('#scheduling_type_error').text('Choose a scheduling model.').removeClass('hidden');
         return;
@@ -391,6 +502,16 @@
       var $btn = $('#calSubmit');
       $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-lg">hourglass_top</span> Saving...');
       var fd = new FormData(this);
+      if ($('#require_consultation').val() !== '1') {
+        fd.delete('session_type');
+        fd.delete('session_duration_minutes');
+        fd.delete('consultation_timing');
+        fd.delete('require_gap_between_consultation_tattoo');
+        fd.delete('consultation_tattoo_gap_value');
+      } else if (($('input[name="consultation_timing"]:checked').val() || '') !== 'separate') {
+        fd.set('require_gap_between_consultation_tattoo', '0');
+        fd.delete('consultation_tattoo_gap_value');
+      }
       $.ajax({
         url: @json(route('settings.calendar.update')),
         type: 'POST',
@@ -408,12 +529,15 @@
             showSaveToast();
             return;
           }
+          if (data.errors) {
+            showCalFieldErrors(data.errors);
+            return;
+          }
           showCalAlert(data.message || 'Could not save');
         })
         .fail(function (xhr) {
           if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-            var first = Object.values(xhr.responseJSON.errors)[0];
-            showCalAlert((first && first[0]) || xhr.responseJSON.message || 'Please fix the validation errors.');
+            showCalFieldErrors(xhr.responseJSON.errors);
           } else {
             showCalAlert((xhr.responseJSON && xhr.responseJSON.message) || 'Network error');
           }

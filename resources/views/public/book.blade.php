@@ -880,7 +880,7 @@
             </div> --}}
             <div id="panelPayCardExtras">
             @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
-            <label class="flex items-start gap-2 mb-4 cursor-pointer"><input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary" onchange="checkPayReady()"><span class="text-xs text-on-surface-variant">I agree to the <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">cancellation policy</a> and <a href="#" class="text-primary underline">terms of service</a>.</span></label>
+            <label class="flex items-start gap-2 mb-4 cursor-pointer"><input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary" onchange="checkPayReady()"><span class="text-xs text-on-surface-variant">I agree to the <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">artist's cancellation policy</a> and <a href="https://inkjin.com/en/terms" target="_blank" rel="noopener noreferrer" class="text-primary underline">InkJin terms of service</a>.</span></label>
             <p class="text-sm text-error hidden mb-3" id="formError"></p>
             <button id="btnConfirmPay" disabled onclick="confirmBooking()" class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all text-base shadow-lg shadow-primary/20">Confirm & Pay <span id="btnPayTotalAmount">€250</span></button>
             </div>

@@ -78,7 +78,9 @@
           <input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary">
           <span class="text-xs text-on-surface-variant">
             I agree to the
-            <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">cancellation policy</a>.
+            <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">artist's cancellation policy</a>
+            and
+            <a href="https://inkjin.com/en/terms" target="_blank" rel="noopener noreferrer" class="text-primary underline">InkJin terms of service</a>.
           </span>
         </label>
 

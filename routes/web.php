@@ -26,6 +26,7 @@ use App\Http\Controllers\ArtistDashboardController;
 use App\Http\Controllers\Artist\ChatController as ArtistChatController;
 use App\Http\Controllers\Artist\ClientsController as ArtistClientsController;
 use App\Http\Controllers\Artist\PaymentsController as ArtistPaymentsController;
+use App\Http\Controllers\Artist\OtherSettingsController;
 use App\Http\Controllers\Api\ChatController as ApiChatController;
 use App\Http\Controllers\CustomRequestController;
 use App\Http\Controllers\RequestsController;
@@ -243,6 +244,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/settings/payment/waiting-list', [OnboardingController::class, 'savePayoutWaitingList'])->name('settings.payment.waiting-list');
     Route::post('/settings/payment/stripe/session', [OnboardingController::class, 'createStripeConnectSession'])->name('settings.payment.stripe.session');
     Route::get('/settings/payment/stripe/status', [OnboardingController::class, 'stripeConnectStatus'])->name('settings.payment.stripe.status');
+    Route::get('/settings/other', [OtherSettingsController::class, 'edit'])->name('settings.other');
+    Route::post('/settings/other', [OtherSettingsController::class, 'update'])->name('settings.other.update');
 
     // Availability routes (for artists)
     Route::get('/availability', [\App\Http\Controllers\AvailabilityController::class, 'index'])->name('availability.index');

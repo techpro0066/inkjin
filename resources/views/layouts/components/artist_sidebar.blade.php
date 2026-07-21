@@ -21,7 +21,7 @@
         <span class="material-symbols-outlined">edit_note</span> Requests
       </a>
       <a href="{{ route('artist.payments.index') }}" class="nav-item {{ request()->routeIs('artist.payments.*') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">payments</span> Payments
+        <span class="material-symbols-outlined">payments</span> Earnings
       </a>
       <a href="{{ route('artist.forms.index') }}" class="nav-item {{ request()->routeIs('personal-page.index') || request()->routeIs('artist.forms.index') || request()->routeIs('portfolio.index')  || request()->routeIs('artist-designs.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">folder_open</span> Booking Page
