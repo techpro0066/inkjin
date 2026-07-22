@@ -3,10 +3,38 @@
 <head>
   @include('layouts.partials.google-analytics')
   <meta charset="utf-8" />
-  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-  <title>@yield('title')</title>
-  <meta name="description"
-    content="Log in to Inkjin Book & Pay — 100% free for tattoo artists. Manage bookings, payments, and client inquiries.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  @php
+    $seoTitle = trim($__env->yieldContent('title')) ?: 'Bookpay by Inkjin';
+    $seoDescription = trim($__env->yieldContent('meta_description')) ?: 'Bookpay by Inkjin — bookings and payments built for tattoo artists.';
+    $seoOgTitle = trim($__env->yieldContent('og_title')) ?: $seoTitle;
+    $seoOgDescription = trim($__env->yieldContent('og_description')) ?: $seoDescription;
+    $seoOgImage = trim($__env->yieldContent('og_image')) ?: asset('design/images/bookpay-og.jpeg');
+    $seoTwitterTitle = trim($__env->yieldContent('twitter_title')) ?: $seoOgTitle;
+    $seoTwitterDescription = trim($__env->yieldContent('twitter_description')) ?: $seoOgDescription;
+    $seoTwitterImage = trim($__env->yieldContent('twitter_image')) ?: $seoOgImage;
+  @endphp
+  <title>{{ $seoTitle }}</title>
+  <meta name="description" content="{{ $seoDescription }}">
+  @hasSection('canonical')
+  <link rel="canonical" href="@yield('canonical')">
+  @endif
+  <meta name="robots" content="@yield('robots', 'noindex, follow')">
+
+  <meta property="og:title" content="{{ $seoOgTitle }}">
+  <meta property="og:description" content="{{ $seoOgDescription }}">
+  <meta property="og:type" content="website">
+  @hasSection('og_url')
+  <meta property="og:url" content="@yield('og_url')">
+  @endif
+  <meta property="og:image" content="{{ $seoOgImage }}">
+  <meta property="og:site_name" content="Bookpay by Inkjin">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ $seoTwitterTitle }}">
+  <meta name="twitter:description" content="{{ $seoTwitterDescription }}">
+  <meta name="twitter:image" content="{{ $seoTwitterImage }}">
+
   <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   <link href="{{ asset('design/css/inkjin_main.css') }}" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>

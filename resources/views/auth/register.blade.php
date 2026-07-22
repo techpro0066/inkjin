@@ -1,6 +1,20 @@
 @extends('layouts.inkjin_auth_layout')
 
-@section('title', 'Register')
+@section('title', 'Sign Up Free | Bookpay by Inkjin')
+@section('meta_description', 'Create your free Bookpay artist account. 100% free, no subscriptions — keep 100% of what you earn. Bookings and payments built for tattoo artists.')
+@section('canonical', 'https://bookpay.inkjin.com/register')
+@section('robots', 'noindex, follow')
+@section('og_title', 'Sign Up Free | Bookpay by Inkjin')
+@section('og_description', '100% free for artists. Keep 100% of what you earn. No monthly subscriptions.')
+@section('og_url', 'https://bookpay.inkjin.com/register')
+@section('og_image')
+{{ asset('design/images/bookpay-og.jpeg') }}
+@endsection
+@section('twitter_title', 'Sign Up Free | Bookpay by Inkjin')
+@section('twitter_description', '100% free for artists. Keep 100% of what you earn. No monthly subscriptions.')
+@section('twitter_image')
+{{ asset('design/images/bookpay-og.jpeg') }}
+@endsection
 
 @push('styles')
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">

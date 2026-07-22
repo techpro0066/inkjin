@@ -1,6 +1,20 @@
 @extends('layouts.inkjin_auth_layout')
 
-@section('title', 'Login')
+@section('title', 'Log In | Bookpay by Inkjin')
+@section('meta_description', 'Log in to Bookpay to manage your bookings, client intake, and payouts. The booking platform built for tattoo artists.')
+@section('canonical', 'https://bookpay.inkjin.com/login')
+@section('robots', 'noindex, follow')
+@section('og_title', 'Log In | Bookpay by Inkjin')
+@section('og_description', 'Log in to Bookpay to manage your bookings, client intake, and payouts.')
+@section('og_url', 'https://bookpay.inkjin.com/login')
+@section('og_image')
+{{ asset('design/images/bookpay-og.jpeg') }}
+@endsection
+@section('twitter_title', 'Log In | Bookpay by Inkjin')
+@section('twitter_description', 'Log in to Bookpay to manage your bookings, client intake, and payouts.')
+@section('twitter_image')
+{{ asset('design/images/bookpay-og.jpeg') }}
+@endsection
 
 @section('content')
   <!-- Background Decoration: The "ij" Watermark -->

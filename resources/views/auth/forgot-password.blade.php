@@ -1,6 +1,20 @@
 @extends('layouts.inkjin_auth_layout')
 
-@section('title', 'Forgot Password')
+@section('title', 'Reset Password | Bookpay by Inkjin')
+@section('meta_description', 'Forgot your Bookpay password? Reset it here to get back to managing your bookings and payments.')
+@section('canonical', 'https://bookpay.inkjin.com/forgot-password')
+@section('robots', 'noindex, follow')
+@section('og_title', 'Reset Password | Bookpay by Inkjin')
+@section('og_description', 'Reset your Bookpay password to get back to your bookings and payments.')
+@section('og_url', 'https://bookpay.inkjin.com/forgot-password')
+@section('og_image')
+{{ asset('design/images/bookpay-og.jpeg') }}
+@endsection
+@section('twitter_title', 'Reset Password | Bookpay by Inkjin')
+@section('twitter_description', 'Reset your Bookpay password to get back to your bookings and payments.')
+@section('twitter_image')
+{{ asset('design/images/bookpay-og.jpeg') }}
+@endsection
 
 @section('content')
   <main class="flex-grow flex items-center justify-center p-6 md:p-12 relative z-10">
