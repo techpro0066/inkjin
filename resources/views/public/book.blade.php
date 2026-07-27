@@ -380,8 +380,8 @@
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> <span class="cc-designTime">{{ $tattoo->session_duration }} hours</span></span>
         </div>
           <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
-            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0"><span class="text-white text-[10px] font-bold cc-artistAvatar">{{ strtoupper($userDetail->user->first_name[0]) }}{{ strtoupper($userDetail->user->last_name[0]) }}</span></div>
-            <span class="leading-relaxed break-words">with <strong class="cc-artistName">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</strong> at <strong class="cc-studioName">{{ $studioNameDisplay }}</strong></span>
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0"><span class="text-white text-[10px] font-bold cc-artistAvatar">{{ $userDetail->publicDisplayInitials() }}</span></div>
+            <span class="leading-relaxed break-words">with <strong class="cc-artistName">{{ $userDetail->publicDisplayName() }}</strong> at <strong class="cc-studioName">{{ $studioNameDisplay }}</strong></span>
       </div>
           </div>
         </div>
@@ -1034,6 +1034,7 @@
     var stripeCardComplete = { number: false, expiry: false, cvc: false };
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
     var hiddenStyleOptions = @json($hiddenStyleOptions ?? []);
+    var hiddenPlacementOptions = @json($hiddenPlacementOptions ?? []);
     var styleOtherModalContext = null;
     var questionDefinitions = (Array.isArray(serverQuestions) ? serverQuestions : []).map(function(q) {
       var typeMap = { text: 'input', free: 'input', images: 'image', checkbox: 'toggle' };
@@ -1055,9 +1056,27 @@
       return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function isStyleQuestion(qId) {
+    function getQuestionType(qId) {
       var def = questionDefinitions.find(function(q) { return String(q.id) === String(qId); });
-      return !!(def && def.type === 'style');
+      return def ? String(def.type || '') : '';
+    }
+
+    function isStyleQuestion(qId) {
+      return getQuestionType(qId) === 'style';
+    }
+
+    function isPlacementQuestion(qId) {
+      return getQuestionType(qId) === 'placement';
+    }
+
+    function isCatalogChoiceQuestion(qId) {
+      var type = getQuestionType(qId);
+      return type === 'style' || type === 'placement';
+    }
+
+    function getHiddenCatalogOptions(qId) {
+      if (isPlacementQuestion(qId)) return Array.isArray(hiddenPlacementOptions) ? hiddenPlacementOptions : [];
+      return Array.isArray(hiddenStyleOptions) ? hiddenStyleOptions : [];
     }
 
     function getStyleOtherModal() {
@@ -1065,11 +1084,14 @@
     }
 
     function renderStyleOtherResults() {
-      var filtered = Array.isArray(hiddenStyleOptions) ? hiddenStyleOptions : [];
       var qId = styleOtherModalContext ? styleOtherModalContext.qId : null;
-      var $results = getStyleOtherModal().find('.js-style-other-results');
+      var filtered = getHiddenCatalogOptions(qId);
+      var $modal = getStyleOtherModal();
+      var $results = $modal.find('.js-style-other-results');
+      var emptyLabel = isPlacementQuestion(qId) ? 'No placements available.' : 'No styles available.';
+      $modal.find('.style-other-modal-title').text(isPlacementQuestion(qId) ? 'Choose a placement' : 'Choose a style');
       if (!filtered.length) {
-        $results.html('<p class="style-other-empty text-sm text-on-surface-variant py-3 px-2 text-center">No styles available.</p>');
+        $results.html('<p class="style-other-empty text-sm text-on-surface-variant py-3 px-2 text-center">' + emptyLabel + '</p>');
         return;
       }
       var currentAnswer = qId != null ? String(questionAnswers[qId] || '').trim() : '';
@@ -1089,8 +1111,9 @@
 
       var qId = ctx.qId;
       var answer = qId != null ? String(questionAnswers[qId] || '').trim() : '';
-      var isHiddenStyle = answer !== '' && (hiddenStyleOptions || []).indexOf(answer) !== -1;
-      if (isHiddenStyle) return;
+      var hiddenOptions = getHiddenCatalogOptions(qId);
+      var isHiddenCatalog = answer !== '' && hiddenOptions.indexOf(answer) !== -1;
+      if (isHiddenCatalog) return;
 
       ctx.$questionDiv.find('.single-choice-radio-button').removeClass('selected');
       if (qId != null) delete questionAnswers[qId];
@@ -1108,7 +1131,7 @@
     }
 
     function restoreStyleQuestionUi($div) {
-      if (!$div.length || !isStyleQuestion($div.data('question-id'))) return;
+      if (!$div.length || !isCatalogChoiceQuestion($div.data('question-id'))) return;
       closeStyleOtherModal(false);
       var qId = $div.data('question-id');
       var answer = String(questionAnswers[qId] || '').trim();
@@ -1117,8 +1140,8 @@
         $buttons.removeClass('selected');
         return;
       }
-      var isHiddenStyle = (hiddenStyleOptions || []).indexOf(answer) !== -1;
-      if (isHiddenStyle) {
+      var isHiddenCatalog = getHiddenCatalogOptions(qId).indexOf(answer) !== -1;
+      if (isHiddenCatalog) {
         $buttons.removeClass('selected');
         $buttons.filter(function() {
           return String($(this).data('value') || '').trim().toLowerCase() === 'other';
@@ -1309,7 +1332,7 @@
       var minBalance = Math.max(0, minPrice - deposit);
       var maxBalance = Math.max(0, maxPrice - deposit);
       var balanceLabel = formatEUR(minBalance) + ' - ' + formatEUR(maxBalance);
-      var artistName = @json(($userDetail->user->first_name ?? '') . ' ' . ($userDetail->user->last_name ?? ''));
+      var artistName = @json($userDetail->publicDisplayName());
       var studioName = @json($studioNameDisplay);
       var studioAddress = @json($studioAddressLine);
       var mapsLink = @json($userDetail->google_maps_link ?? '');
@@ -1730,10 +1753,10 @@
         var isLast = idx === questionDefinitions.length - 1;
         var body = '';
 
-        if (q.type === 'radio' || q.type === 'style') {
+        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement') {
           var radioButtons = q.options.map(function(opt) {
             var isOther = String(opt || '').trim().toLowerCase() === 'other';
-            var optionClass = (isStyleQuestion(q.id) && isOther) ? ' option-other' : '';
+            var optionClass = (isCatalogChoiceQuestion(q.id) && isOther) ? ' option-other' : '';
             return '<button type="button" class="single-choice-radio-button' + optionClass + '" data-value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>';
           }).join('');
           body = '<div class="flex flex-wrap gap-2 single-choice-group">' + radioButtons + '</div>';
@@ -1794,14 +1817,14 @@
       var qId = $active.data('question-id');
       var hasValue = false;
 
-      if (qType === 'radio' || qType === 'style') {
+      if (qType === 'radio' || qType === 'style' || qType === 'placement') {
         var $selected = $active.find('.single-choice-radio-button.selected');
         hasValue = $selected.length > 0;
-        if (hasValue && isStyleQuestion(qId)) {
+        if (hasValue && isCatalogChoiceQuestion(qId)) {
           var selectedVal = String($selected.data('value') || '').trim().toLowerCase();
           if (selectedVal === 'other') {
-            var pickedStyle = String(questionAnswers[qId] || '').trim();
-            hasValue = pickedStyle !== '' && pickedStyle.toLowerCase() !== 'other';
+            var pickedCatalog = String(questionAnswers[qId] || '').trim();
+            hasValue = pickedCatalog !== '' && pickedCatalog.toLowerCase() !== 'other';
           }
         }
       } else if (qType === 'select') {
@@ -1832,8 +1855,17 @@
       currentStep = step;
       $('.step-panel').removeClass('active');
 
-      if (step === 1) $('#stepQuestions').addClass('active');
+      if (step === 1) {
+        $('#stepQuestions').addClass('active');
+        if (typeof restoreQuestionAnswersToDom === 'function') {
+          restoreQuestionAnswersToDom();
+        }
+        if (typeof showQuestion === 'function' && $('div.question-div[data-q]').length) {
+          showQuestion(0);
+        }
+      }
       if (step === 2) {
+        focusSchedulingCalendarOnFirstAvailableMonth();
         if (consultationRequired) {
           $('#step2CalendarConsult').addClass('active');
           if (consultationTiming === 'combined') {
@@ -2073,7 +2105,7 @@
         var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
         if (!$panel.length) return;
 
-        if (q.type === 'radio' || q.type === 'style') {
+        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement') {
           $panel.find('.single-choice-radio-button').each(function() {
             $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
           });
@@ -2431,6 +2463,39 @@
     function getConsultSelectionRequiredMinutes() {
       if (consultationTiming === 'combined') return tattooDurationMinutes + consultDurationMinutes;
       return consultDurationMinutes;
+    }
+
+    function findFirstMonthWithAvailableSlots(requiredMinutes, minDateObj) {
+      var cursor = minDateObj instanceof Date
+        ? new Date(minDateObj.getFullYear(), minDateObj.getMonth(), minDateObj.getDate(), 0, 0, 0, 0)
+        : new Date(todayStart.getTime());
+      var maxDays = 366;
+
+      for (var i = 0; i < maxDays; i++) {
+        var ymd = formatYmdFromParts(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+        if (getSlotsForDate(cursor, requiredMinutes, ymd).length > 0) {
+          return { year: cursor.getFullYear(), month: cursor.getMonth() };
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      return { year: todayStart.getFullYear(), month: todayStart.getMonth() };
+    }
+
+    function focusSchedulingCalendarOnFirstAvailableMonth() {
+      if (!consultationRequired) {
+        if (selectedDate) return;
+        var mainMonth = findFirstMonthWithAvailableSlots(getMainRequiredMinutes());
+        calYear = mainMonth.year;
+        calMonth = mainMonth.month;
+        return;
+      }
+
+      if (!ccConsultDate) {
+        var consultMonth = findFirstMonthWithAvailableSlots(getConsultSelectionRequiredMinutes());
+        ccCalYear = consultMonth.year;
+        ccCalMonth = consultMonth.month;
+      }
     }
 
     function renderMainCal() {
@@ -3061,13 +3126,13 @@
       var qId = main_div.data('question-id');
       var value = String($btn.data('value') || '');
       var isOther = value.trim().toLowerCase() === 'other';
-      var styleQ = isStyleQuestion(qId);
+      var catalogQ = isCatalogChoiceQuestion(qId);
 
       main_div.find('.single-choice-radio-button').removeClass('selected');
       $btn.addClass('selected');
       main_div.find('.js-question-error').addClass('hidden');
 
-      if (styleQ && isOther) {
+      if (catalogQ && isOther) {
         delete questionAnswers[qId];
         openStyleOtherModal(main_div);
         return;

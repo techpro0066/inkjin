@@ -55,6 +55,7 @@ class PersonalPageController extends Controller
             'display_policies' => ['sometimes', 'boolean'],
             'display_tagline' => ['sometimes', 'boolean'],
             'display_bio' => ['sometimes', 'boolean'],
+            'display_guest_spots' => ['sometimes', 'boolean'],
         ]);
 
         $backgroundPath = $userDetail->personal_page_background_image;
@@ -82,6 +83,7 @@ class PersonalPageController extends Controller
             'display_policies' => $request->boolean('display_policies'),
             'display_tagline' => $request->boolean('display_tagline'),
             'display_bio' => $request->boolean('display_bio'),
+            'display_guest_spots' => $request->boolean('display_guest_spots'),
         ]);
 
         return response()->json([
@@ -111,6 +113,52 @@ class PersonalPageController extends Controller
             'message' => $displayPolicies
                 ? 'Policies will be shown on your public page.'
                 : 'Policies are hidden from your public page.',
+        ]);
+    }
+
+    public function updateDisplayGuestSpots(Request $request)
+    {
+        $user = Auth::user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+        $request->validate([
+            'display_guest_spots' => ['required', 'boolean'],
+        ]);
+
+        $displayGuestSpots = $request->boolean('display_guest_spots');
+        $userDetail->update([
+            'display_guest_spots' => $displayGuestSpots,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'display_guest_spots' => $displayGuestSpots,
+            'message' => $displayGuestSpots
+                ? 'Guest spots will be shown on your public page.'
+                : 'Guest spots are hidden from your public page.',
+        ]);
+    }
+
+    public function updateDisplayFaq(Request $request)
+    {
+        $user = Auth::user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+        $request->validate([
+            'display_faq' => ['required', 'boolean'],
+        ]);
+
+        $displayFaq = $request->boolean('display_faq');
+        $userDetail->update([
+            'display_faq' => $displayFaq,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'display_faq' => $displayFaq,
+            'message' => $displayFaq
+                ? 'FAQ will be shown on your public page.'
+                : 'FAQ is hidden from your public page.',
         ]);
     }
 

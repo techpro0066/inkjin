@@ -4,8 +4,8 @@
   @include('layouts.partials.google-analytics')
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }} - Tattoo Artist | Inkjin</title>
-  <meta name="description" content="Book tattoo designs or request custom work from {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }} at {{ $userDetail->studio_name }}, {{ $userDetail->city }}, {{ $userDetail->country }}.">
+  <title>{{ $userDetail->publicDisplayName() }} - Tattoo Artist | Inkjin</title>
+  <meta name="description" content="Book tattoo designs or request custom work from {{ $userDetail->publicDisplayName() }} at {{ $userDetail->studio_name }}, {{ $userDetail->city }}, {{ $userDetail->country }}.">
   <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -27,10 +27,17 @@
     $hasVisibleDesigns = $showAvailableDesigns && $artistDesigns->count() > 0;
     $hasPortfolio = $artistPortfolios->count() > 0;
     $displayPolicies = (bool) ($userDetail->display_policies ?? true);
+    $displayGuestSpots = (bool) ($userDetail->display_guest_spots ?? false);
+    $displayFaq = (bool) ($userDetail->display_faq ?? false);
+    $guestSpots = $guestSpots ?? collect();
+    $faqs = $faqs ?? collect();
+    $hasFaqs = $displayFaq && $faqs->count() > 0;
     $designsTabActive = $hasVisibleDesigns;
     $portfolioTabActive = ! $hasVisibleDesigns && $hasPortfolio;
-    $policiesTabActive = $displayPolicies && ! $hasVisibleDesigns && ! $hasPortfolio;
-    $showTabsNav = $hasVisibleDesigns || $hasPortfolio || $displayPolicies;
+    $guestSpotsTabActive = $displayGuestSpots && ! $hasVisibleDesigns && ! $hasPortfolio;
+    $policiesTabActive = $displayPolicies && ! $hasVisibleDesigns && ! $hasPortfolio && ! $displayGuestSpots;
+    $faqTabActive = $hasFaqs && ! $hasVisibleDesigns && ! $hasPortfolio && ! $displayGuestSpots && ! $displayPolicies;
+    $showTabsNav = $hasVisibleDesigns || $hasPortfolio || $displayGuestSpots || $displayPolicies || $hasFaqs;
 
     $policyCopy = \App\Support\ArtistPolicyCopy::for($userDetail);
     $depositPolicyText = $policyCopy['deposit'];
@@ -140,9 +147,53 @@
 
     #tab-designs,
     #tab-portfolio,
-    #tab-policies {
+    #tab-guest-spots,
+    #tab-policies,
+    #tab-faq {
       color: {{ $selectedTheme['primary'] }};
     }
+
+    .faq-item {
+      border-bottom: 1px solid rgba(202, 196, 211, 0.35);
+    }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      text-align: left;
+      padding: 1rem 0;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+    .faq-trigger:hover .faq-question-text { color: {{ $selectedTheme['primary'] }}; }
+    .faq-question-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #1c1b21;
+      line-height: 1.4;
+      transition: color 0.15s;
+    }
+    .faq-icon {
+      flex-shrink: 0;
+      font-size: 1.35rem;
+      color: {{ $selectedTheme['primary'] }};
+      font-weight: 500;
+      line-height: 1;
+      width: 1.5rem;
+      text-align: center;
+    }
+    .faq-answer {
+      display: none;
+      padding: 0 0 1rem 0;
+      font-size: 0.875rem;
+      color: #494552;
+      line-height: 1.6;
+    }
+    .faq-item.open .faq-answer { display: block; }
 
     .border-primary {
       border-color: {{ $selectedTheme['primary'] }};
@@ -200,7 +251,7 @@
               <img src="{{ asset($userDetail->avatar) }}" alt="Avatar" class="w-full h-full object-cover rounded-full">
             @else
               <span class="text-white text-3xl font-bold">
-                {{ $userDetail->user->first_name[0] }} {{ $userDetail->user->last_name[0] }}
+                {{ $userDetail->publicDisplayInitials() }}
               </span>
             @endif
           </span>
@@ -267,20 +318,12 @@
               $rateParts[] = $formatRate($userDetail->full_day_rate).' full-day';
           }
           $ratesLine = implode(' • ', $rateParts);
-          $nameAlias = $userDetail->personal_page_name_alias ?: 'full';
+          $artistPublicName = $userDetail->publicDisplayName();
         @endphp
 
         <!-- Name -->
         <div class="flex flex-wrap items-baseline gap-2 mb-1">
-          @if($nameAlias === 'username')
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user_name }}</h1>
-          @elseif($nameAlias === 'display_name')
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">
-              {{ trim((string) $userDetail->display_name) !== '' ? $userDetail->display_name : trim($userDetail->user->first_name.' '.$userDetail->user->last_name) }}
-            </h1>
-          @else
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</h1>
-          @endif
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $artistPublicName }}</h1>
         </div>
 
         @if(($userDetail->display_tagline ?? true) && $tagline !== '')
@@ -386,10 +429,22 @@
                     </a>
                 @endif
             @endif
+            @if($displayGuestSpots)
+            <button type="button" id="btnGuestSpots" onclick="openGuestSpots()" class="px-6 py-2.5 border-2 border-outline-variant text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container transition-colors inline-flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[18px]">luggage</span>
+                Guest Spots
+            </button>
+            @endif
             @if($displayPolicies)
             <button type="button" id="btnPolicies" onclick="openPolicies()" class="px-6 py-2.5 border-2 border-outline-variant text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container transition-colors inline-flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[18px]">gavel</span>
                 Policies
+            </button>
+            @endif
+            @if($hasFaqs)
+            <button type="button" id="btnFaq" onclick="openFaq()" class="px-6 py-2.5 border-2 border-outline-variant text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container transition-colors inline-flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[18px]">help</span>
+                FAQ
             </button>
             @endif
         </div>
@@ -411,12 +466,12 @@
     </div>
   </header>
 
-  @if($userDetail->display_bio ?? true)
+  @if($userDetail->shouldDisplayBio())
     <!-- About Section -->
     <div class="max-w-4xl mx-auto px-4 sm:px-6">
       <div class="mb-6">
         <h3 class="text-lg font-bold text-on-surface mb-3">About</h3>
-        <p class="text-on-surface-variant text-sm leading-relaxed">{{ $userDetail->personal_page_description ?? '' }}</p>
+        <p class="text-on-surface-variant text-sm leading-relaxed">{{ $userDetail->personal_page_description }}</p>
       </div>
     </div>
   @endif
@@ -437,9 +492,20 @@
           Portfolio
         </button>
       @endif
+      @if($displayGuestSpots)
+      <button id="tab-guest-spots" onclick="switchTab('guest-spots')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $guestSpotsTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap inline-flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[18px]">luggage</span>
+        Guest spots
+      </button>
+      @endif
       @if($displayPolicies)
       <button id="tab-policies" onclick="switchTab('policies')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $policiesTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap">
         Policies
+      </button>
+      @endif
+      @if($hasFaqs)
+      <button id="tab-faq" onclick="switchTab('faq')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $faqTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap">
+        FAQ
       </button>
       @endif
     </div>
@@ -525,6 +591,45 @@
     @endif
 
     <!-- ═══════════════════════════════════════════════ -->
+    <!-- GUEST SPOTS TAB                                 -->
+    <!-- ═══════════════════════════════════════════════ -->
+    @if($displayGuestSpots)
+    <div id="content-guest-spots" class="tab-content {{ $guestSpotsTabActive ? 'active' : '' }}">
+      <div class="bg-white rounded-2xl border border-outline-variant/40 shadow-sm p-5 sm:p-6">
+        <div class="mb-5">
+          <h3 class="text-lg font-bold text-on-surface mb-1">Guest spots</h3>
+          <p class="text-sm text-on-surface-variant">Upcoming locations where this artist will be guesting.</p>
+        </div>
+
+        @forelse($guestSpots as $spot)
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 py-4 {{ ! $loop->last ? 'border-b border-outline-variant/20' : '' }}">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+              <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-primary text-xl">luggage</span>
+              </div>
+              <div class="min-w-0">
+                <p class="font-bold text-on-surface truncate">{{ $spot->city }}, {{ $spot->country }}</p>
+                <p class="text-sm text-on-surface-variant">
+                  {{ $spot->from_date->format('M j, Y') }} — {{ $spot->to_date->format('M j, Y') }}
+                </p>
+              </div>
+            </div>
+            <span class="inline-flex self-start sm:self-center text-xs font-semibold px-2.5 py-1 rounded-full {{ $spot->status === 'available' ? 'bg-secondary-container text-secondary' : 'bg-surface-container-high text-on-surface-variant' }}">
+              {{ ucfirst($spot->status) }}
+            </span>
+          </div>
+        @empty
+          <div class="py-8 text-center">
+            <span class="material-symbols-outlined text-4xl text-outline/40 mb-2 block">luggage</span>
+            <p class="text-sm font-semibold text-on-surface">No guest locations listed yet</p>
+            <p class="text-xs text-on-surface-variant mt-1">Check back soon for upcoming guest spots.</p>
+          </div>
+        @endforelse
+      </div>
+    </div>
+    @endif
+
+    <!-- ═══════════════════════════════════════════════ -->
     <!-- POLICIES TAB                                    -->
     <!-- ═══════════════════════════════════════════════ -->
     @if($displayPolicies)
@@ -539,6 +644,28 @@
           <p><span class="font-semibold text-on-surface">Rescheduling:</span> {{ $reschedulePolicyText }}</p>
           <p><span class="font-semibold text-on-surface">Cancellation:</span> {{ $cancellationPolicyText }}</p>
           <p><span class="font-semibold text-on-surface">No-show or late cancellation:</span> {{ $noShowPolicyText }}</p>
+        </div>
+      </div>
+    </div>
+    @endif
+
+    @if($hasFaqs)
+    <div id="content-faq" class="tab-content {{ $faqTabActive ? 'active' : '' }}">
+      <div class="bg-white rounded-2xl border border-outline-variant/40 shadow-sm p-5 sm:p-6">
+        <div class="mb-2">
+          <h3 class="text-lg font-bold text-on-surface mb-1">FAQ</h3>
+          <p class="text-sm text-on-surface-variant">Answers to questions clients ask most often.</p>
+        </div>
+        <div id="faqAccordion" class="divide-y divide-outline-variant/20">
+          @foreach($faqs as $faq)
+            <div class="faq-item">
+              <button type="button" class="faq-trigger" aria-expanded="false" onclick="toggleFaqItem(this)">
+                <span class="faq-question-text">{{ $faq->question }}</span>
+                <span class="faq-icon" aria-hidden="true">+</span>
+              </button>
+              <div class="faq-answer">{{ $faq->answer }}</div>
+            </div>
+          @endforeach
         </div>
       </div>
     </div>
@@ -610,7 +737,7 @@
       
       <div id="waitlistFormView">
         <h2 class="text-xl font-bold text-on-surface mb-2">Join the Waitlist</h2>
-        <p class="text-sm text-on-surface-variant mb-6">Enter your name and email to be the first to know when {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }} opens their books.</p>
+        <p class="text-sm text-on-surface-variant mb-6">Enter your name and email to be the first to know when {{ $userDetail->publicDisplayName() }} opens their books.</p>
         
         <form id="waitlistForm" onsubmit="event.preventDefault(); submitWaitlist();" class="flex flex-col gap-4" novalidate>
           <div>
@@ -633,7 +760,7 @@
       <div id="waitlistSuccessView" class="hidden flex-col items-center text-center py-4">
         <span class="material-symbols-outlined text-6xl text-green-500 mb-4">check_circle</span>
         <h2 class="text-xl font-bold text-on-surface mb-2">You're on the list!</h2>
-        <p class="text-sm text-on-surface-variant mb-6">We'll email you the moment {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}'s books open.</p>
+        <p class="text-sm text-on-surface-variant mb-6">We'll email you the moment {{ $userDetail->publicDisplayName() }}'s books open.</p>
         <button onclick="closeModal('waitlistModal')" class="w-full py-3 bg-surface-container text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container-high transition-colors">
           Close
         </button>
@@ -682,6 +809,32 @@
       if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+    }
+
+    function openGuestSpots() {
+      switchTab('guest-spots');
+      const target = document.getElementById('artistDesignsSection') || document.getElementById('content-guest-spots');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function openFaq() {
+      switchTab('faq');
+      const target = document.getElementById('artistDesignsSection') || document.getElementById('content-faq');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function toggleFaqItem(btn) {
+      const item = btn.closest('.faq-item');
+      if (!item) return;
+      const isOpen = item.classList.contains('open');
+      item.classList.toggle('open', !isOpen);
+      btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      const icon = btn.querySelector('.faq-icon');
+      if (icon) icon.textContent = isOpen ? '+' : '−';
     }
 
     // ── Modal Helpers ─────────────────────────────────

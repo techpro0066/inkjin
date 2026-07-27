@@ -890,11 +890,12 @@ class OnboardingController extends Controller
                 'postal_code' => ['required', 'string', 'max:50'],
                 'country' => ['required', 'string', 'max:255'],
                 'google_maps_link' => ['nullable', 'url', 'max:500'],
-                'workspace_type' => ['required', 'string', 'max:32'],
+                'workspace_type' => ['required', 'string', Rule::in(['private', 'shop', 'home'])],
                 'latitude' => ['nullable', 'numeric', 'between:-90,90'],
                 'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             ], [
                 'workspace_type.required' => 'Please select a workspace type.',
+                'workspace_type.in' => 'Please select a valid workspace type.',
             ]);
 
             $user = $request->user();
@@ -988,7 +989,7 @@ class OnboardingController extends Controller
                 'postal_code' => ['required', 'string', 'max:50'],
                 'country' => ['required', 'string', 'max:255'],
                 'google_maps_link' => ['nullable', 'url', 'max:500'],
-                'workspace_type' => ['required', 'string', Rule::in(['private', 'shop', 'home', 'mobile'])],
+                'workspace_type' => ['required', 'string', Rule::in(['private', 'shop', 'home'])],
                 'latitude' => ['nullable', 'numeric', 'between:-90,90'],
                 'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             ], [

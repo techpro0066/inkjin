@@ -61,7 +61,8 @@ class ClientsController extends Controller
             ], 422);
         }
 
-        $artistName = trim($artist->first_name.' '.$artist->last_name);
+        $artistName = $artist->userDetail?->publicDisplayName()
+            ?: trim($artist->first_name.' '.$artist->last_name);
         if ($artistName === '') {
             $artistName = 'Your artist';
         }

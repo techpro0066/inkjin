@@ -5,12 +5,16 @@
 @section('styles')
 
 <style>
-    /* Drag and Drop */
-    [draggable] {
+    /* Drag handle only — rest of row stays scrollable */
+    .q-drag-handle {
       cursor: grab;
+      touch-action: none;
+      flex-shrink: 0;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
-    [draggable]:active {
+    .q-drag-handle:active {
       cursor: grabbing;
     }
 
@@ -22,7 +26,7 @@
       box-shadow: 0 2px 0 0 #310f7a inset;
     }
 
-    [draggable].dragging {
+    .q-row.sortable-chosen {
       opacity: 0.4;
     }
 
@@ -63,6 +67,7 @@
     .q-row {
       transition: all 0.15s ease;
       border-bottom: 1px solid rgba(202, 196, 211, 0.15);
+      align-items: flex-start;
     }
 
     .q-row:hover {
@@ -75,6 +80,97 @@
 
     .q-row.disabled {
       opacity: 0.45;
+    }
+
+    .q-row > .material-symbols-outlined:not(.q-drag-handle) {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .q-text {
+      flex: 0 1 auto;
+      min-width: 0;
+      /* ~15 words per line (avg ~6ch per word including space) */
+      max-width: 90ch;
+    }
+
+    .q-text p {
+      white-space: pre-line;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+
+    .q-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-shrink: 0;
+      white-space: nowrap;
+      margin-top: 2px;
+      margin-left: 0;
+    }
+
+    .q-row .badge,
+    .q-row .toggle-switch,
+    .q-row .js-edit-question,
+    .q-row .js-remove-question {
+      flex-shrink: 0;
+    }
+
+    .questions-list-scroll {
+      overflow-x: auto;
+      overflow-y: visible;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      touch-action: pan-x pan-y;
+    }
+
+    .questions-list {
+      min-width: 0;
+    }
+
+    .q-row .q-drag-handle {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #ffffff;
+      padding-right: 2px;
+      margin-top: 2px;
+    }
+
+    .q-row:hover .q-drag-handle {
+      background: #f8f1fb;
+    }
+
+    @media (max-width: 639px) {
+      .q-text {
+        /* Keep question readable; wrap instead of stretching a wide empty gap */
+        max-width: min(90ch, calc(100vw - 11rem));
+        flex: 1 1 auto;
+      }
+
+      .q-meta {
+        /* Meta stays one line; horizontal scroll reveals it if needed */
+        flex: 0 0 auto;
+      }
+
+      .questions-list,
+      .q-row {
+        min-width: max-content;
+      }
+    }
+
+    @media (min-width: 640px) {
+      .q-row {
+        align-items: center;
+      }
+
+      .q-row > .material-symbols-outlined:not(.q-drag-handle),
+      .q-row .q-drag-handle,
+      .q-meta {
+        margin-top: 0;
+      }
     }
 
     .sortable-ghost {
@@ -208,13 +304,7 @@
         </div>
       </div>
 
-      <!-- Content Tabs -->
-      <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
-        <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary">Forms</a>
-        <a href="{{route('artist-designs.index')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Available Designs</a>
-        <a href="{{route('portfolio.index')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Portfolio</a>
-        <a href="{{route('personal-page.index')}}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Content & Style</a>
-      </div>
+      @include('artist.partials.booking-page-tabs', ['activeTab' => 'forms'])
 
       <!-- Section intro -->
       <div class="mb-8">
@@ -241,11 +331,12 @@
                 </div>
                 <div>
                   <h3 class="font-bold text-on-surface text-sm">Form Questions</h3>
-                  <p class="text-[11px] text-on-surface-variant">Drag to reorder — system &amp; custom questions in one
+                  <p class="text-[11px] text-on-surface-variant">Drag the handle icon to reorder — system &amp; custom questions in one
                     list</p>
                 </div>
               </div>
             </div>
+            <div class="questions-list-scroll">
             <div id="bookingQuestionsList" class="questions-list">
                 @forelse ($default_questions as $question)
                     @php
@@ -260,10 +351,12 @@
                             'toggle' => 'Toggle',
                             'radio' => 'Radio',
                             'images' => 'Images',
+                            'style' => 'Style',
+                            'placement' => 'Placement',
                             default => ucfirst((string) $type),
                         };
                         $icon = match ($type) {
-                            'select', 'radio' => 'list',
+                            'select', 'radio', 'style', 'placement' => 'list',
                             'textarea' => 'notes',
                             'toggle' => 'toggle_on',
                             'images' => 'upload_file',
@@ -274,12 +367,17 @@
                             'textarea' => 'badge-textarea',
                             'toggle' => 'badge-toggle',
                             'images' => 'badge-file',
+                            'style', 'placement' => 'badge-select',
                             default => 'badge-text',
                         };
+                        $questionWords = preg_split('/\s+/u', trim((string) $question->question), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                        $questionWrapped = implode("\n", array_map(
+                            static fn (array $chunk): string => implode(' ', $chunk),
+                            array_chunk($questionWords, 15)
+                        ));
                     @endphp
                     <div
-                        class="q-row flex items-center gap-3 px-5 py-3.5 {{ $isEnabled ? '' : 'disabled' }}"
-                        draggable="true"
+                        class="q-row flex gap-3 px-5 py-3.5 {{ $isEnabled ? '' : 'disabled' }}"
                         data-id="{{ $question->id }}"
                         data-type="{{ $typeLabel }}"
                         data-type-value="{{ $type }}"
@@ -292,11 +390,12 @@
                         data-available="{{ $isEnabled ? 'true' : 'false' }}"
                         data-options='@json($options)'
                     >
-                        <span class="material-symbols-outlined text-outline" style="font-size:18px;">drag_indicator</span>
+                        <span class="q-drag-handle material-symbols-outlined text-outline" style="font-size:18px;" title="Drag to reorder">drag_indicator</span>
                         <span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px;">{{ $icon }}</span>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-on-surface truncate">{{ $question->question }}</p>
+                        <div class="q-text">
+                            <p class="text-sm font-medium text-on-surface">{{ $questionWrapped }}</p>
                         </div>
+                        <div class="q-meta">
                         <span class="badge {{ $badgeClass }}">{{ $typeLabel }}</span>
                         <span class="badge {{ $isSystem ? 'badge-system' : 'badge-custom' }}">{{ $isSystem ? 'SYSTEM' : 'CUSTOM' }}</span>
                         @if($isSystem)
@@ -313,6 +412,7 @@
                                 </button>
                             </div>
                         @endif
+                        </div>
                     </div>
                 @empty
                     <p class="px-5 py-6 text-sm text-on-surface-variant">No default questions found.</p>
@@ -332,10 +432,12 @@
                             'toggle' => 'Toggle',
                             'radio' => 'Radio',
                             'images' => 'Images',
+                            'style' => 'Style',
+                            'placement' => 'Placement',
                             default => ucfirst((string) $type),
                         };
                         $icon = match ($type) {
-                            'select', 'radio' => 'list',
+                            'select', 'radio', 'style', 'placement' => 'list',
                             'textarea' => 'notes',
                             'toggle' => 'toggle_on',
                             'images' => 'upload_file',
@@ -346,12 +448,17 @@
                             'textarea' => 'badge-textarea',
                             'toggle' => 'badge-toggle',
                             'images' => 'badge-file',
+                            'style', 'placement' => 'badge-select',
                             default => 'badge-text',
                         };
+                        $questionWords = preg_split('/\s+/u', trim((string) $question->question), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                        $questionWrapped = implode("\n", array_map(
+                            static fn (array $chunk): string => implode(' ', $chunk),
+                            array_chunk($questionWords, 15)
+                        ));
                     @endphp
                     <div
-                        class="q-row flex items-center gap-3 px-5 py-3.5 {{ $isEnabled ? '' : 'disabled' }}"
-                        draggable="true"
+                        class="q-row flex gap-3 px-5 py-3.5 {{ $isEnabled ? '' : 'disabled' }}"
                         data-id="{{ $question->id }}"
                         data-type="{{ $typeLabel }}"
                         data-type-value="{{ $type }}"
@@ -364,11 +471,12 @@
                         data-available="{{ $isEnabled ? 'true' : 'false' }}"
                         data-options='@json($options)'
                     >
-                        <span class="material-symbols-outlined text-outline" style="font-size:18px;">drag_indicator</span>
+                        <span class="q-drag-handle material-symbols-outlined text-outline" style="font-size:18px;" title="Drag to reorder">drag_indicator</span>
                         <span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px;">{{ $icon }}</span>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-on-surface truncate">{{ $question->question }}</p>
+                        <div class="q-text">
+                            <p class="text-sm font-medium text-on-surface">{{ $questionWrapped }}</p>
                         </div>
+                        <div class="q-meta">
                         <span class="badge {{ $badgeClass }}">{{ $typeLabel }}</span>
                         <span class="badge {{ $isSystem ? 'badge-system' : 'badge-custom' }}">{{ $isSystem ? 'SYSTEM' : 'CUSTOM' }}</span>
                         @if($isSystem)
@@ -385,10 +493,12 @@
                                 </button>
                             </div>
                         @endif
+                        </div>
                     </div>
                 @empty
                     <p class="px-5 py-6 text-sm text-on-surface-variant">No custom questions found.</p>
                 @endforelse
+            </div>
             </div>
           </div>
 
@@ -764,7 +874,7 @@
     resetAddQuestionForm();
 
     const questionId = $row.data("id");
-    const questionText = $.trim($row.find("p").first().text() || "");
+    const questionText = $.trim($row.find(".q-text p").first().text() || "").replace(/\s+/g, " ");
     const questionDescription = String($row.data("description") || "");
     const questionPlaceholder = String($row.data("placeholder") || "");
     const typeValue = String($row.data("type-value") || "input");
@@ -883,7 +993,7 @@
       `;
     } else {
       html += visibleRows.map(function (row, index) {
-        const questionText = escapeHtml($.trim($(row).find("p").first().text()) || "Question");
+        const questionText = escapeHtml($.trim($(row).find(".q-text p").first().text() || "").replace(/\s+/g, " ") || "Question");
         const questionDescription = escapeHtml(row.dataset.description || "");
         const questionPlaceholder = escapeHtml(row.dataset.placeholder || "");
         const type = String(row.dataset.typeValue || "input");
@@ -907,7 +1017,7 @@
             .map(function (option) { return `<option>${escapeHtml(option)}</option>`; })
             .join("");
           inputHtml = `<select class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white mt-2" disabled><option>Select an option</option>${optionHtml}</select>`;
-        } else if (type === "radio") {
+        } else if (type === "radio" || type === "style" || type === "placement") {
           const radioHtml = (options.length ? options : ["Option 1", "Option 2"])
             .map(function (option) {
               return `<label class="inline-flex items-center gap-2 mr-4 mt-2"><input type="radio" disabled><span class="text-sm text-on-surface">${escapeHtml(option)}</span></label>`;
@@ -964,6 +1074,7 @@
 
     Sortable.create(listEl, {
       draggable: ".q-row",
+      handle: ".q-drag-handle",
       animation: 150,
       ghostClass: "sortable-ghost",
       chosenClass: "sortable-chosen",

@@ -23,7 +23,7 @@
       <a href="{{ route('artist.payments.index') }}" class="nav-item {{ request()->routeIs('artist.payments.*') ? 'active' : '' }}">
         <span class="material-symbols-outlined">payments</span> Earnings
       </a>
-      <a href="{{ route('artist.forms.index') }}" class="nav-item {{ request()->routeIs('personal-page.index') || request()->routeIs('artist.forms.index') || request()->routeIs('portfolio.index')  || request()->routeIs('artist-designs.index') ? 'active' : '' }}">
+      <a href="{{ route('artist.forms.index') }}" class="nav-item {{ request()->routeIs('personal-page.index') || request()->routeIs('artist.forms.index') || request()->routeIs('portfolio.index') || request()->routeIs('artist-designs.index') || request()->routeIs('guest-spots.index') || request()->routeIs('artist.faq.*') ? 'active' : '' }}">
         <span class="material-symbols-outlined">folder_open</span> Booking Page
       </a>
       <a href="{{ route('artist.chat.index') }}" class="nav-item {{ request()->routeIs('artist.chat.*') ? 'active' : '' }}">

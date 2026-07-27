@@ -148,7 +148,7 @@ class BookingsController extends Controller
             'reference' => '#INK-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
             'tattooTitle' => $booking->displayTitle(),
             'tattooImage' => $image,
-            'artistName' => trim(($artist?->first_name ?? '').' '.($artist?->last_name ?? '')),
+            'artistName' => $ud ? $ud->publicDisplayName() : trim(($artist?->first_name ?? '').' '.($artist?->last_name ?? '')),
             'artistAvatar' => ($ud && $ud->avatar) ? asset($ud->avatar) : asset('design/images/icons/avatar.jpg'),
             'bookingDate' => $dateFormatted,
             'timeStart' => $start->format('g:i A'),

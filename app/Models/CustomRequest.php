@@ -467,9 +467,15 @@ class CustomRequest extends Model
     public function artistDisplayName(): string
     {
         $artist = $this->artist;
-        if (!$artist) {
+        if (! $artist) {
             return 'Artist';
         }
+
+        $detail = $artist->relationLoaded('userDetail') ? $artist->userDetail : $artist->userDetail()->first();
+        if ($detail) {
+            return $detail->publicDisplayName();
+        }
+
         $name = trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''));
 
         return $name !== '' ? $name : (string) ($artist->email ?? 'Artist');

@@ -111,7 +111,9 @@
   $selectedTheme = $userDetail->personal_page_color ?? 'default';
   $displayPolicies = (bool) ($userDetail->display_policies ?? true);
   $displayTagline = (bool) ($userDetail->display_tagline ?? true);
-  $displayBio = (bool) ($userDetail->display_bio ?? true);
+  $displayBio = (bool) ($userDetail->display_bio ?? false);
+  $displayGuestSpots = (bool) ($userDetail->display_guest_spots ?? false);
+  $displayFaq = (bool) ($userDetail->display_faq ?? false);
   $policyCopy = \App\Support\ArtistPolicyCopy::for($userDetail);
   $tagline = $userDetail->personal_page_tagline ?? '';
   $description = $userDetail->personal_page_description ?? '';
@@ -145,13 +147,7 @@
         </div>
       </div>
 
-      <!-- Content Tabs -->
-      <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
-        <a href="{{ route('artist.forms.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Forms</a>
-        <a href="{{ route('artist-designs.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Available Designs</a>
-        <a href="{{ route('portfolio.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">Portfolio</a>
-        <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary hover:text-on-surface hover:border-outline-variant transition-all">Content & Style</a>
-      </div>
+      @include('artist.partials.booking-page-tabs', ['activeTab' => 'style'])
 
 
       <!-- Section intro -->
@@ -330,9 +326,21 @@
           <p id="displayBioStatus" class="text-xs text-on-surface-variant -mt-2 hidden"></p>
         </div>
 
-        <p class="text-xs text-on-surface-variant mt-4">
-          Edit your tagline and bio in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.
-        </p>
+        <div id="profileContentPreviewWrap" class="{{ ($displayTagline || $displayBio) ? '' : 'hidden' }}">
+          <div class="rounded-xl border border-outline-variant/30 bg-surface-container-low p-4 sm:p-5 space-y-3 text-sm text-on-surface-variant leading-relaxed">
+            <p id="taglinePreviewLine" class="{{ $displayTagline ? '' : 'hidden' }}">
+              <span class="font-semibold text-on-surface">Tagline:</span>
+              <span id="taglinePreviewText">{{ trim($tagline) !== '' ? $tagline : 'Tagline not set.' }}</span>
+            </p>
+            <p id="bioPreviewLine" class="{{ $displayBio ? '' : 'hidden' }}">
+              <span class="font-semibold text-on-surface">Bio:</span>
+              <span id="bioPreviewText">{{ trim($description) !== '' ? $description : 'Bio not set.' }}</span>
+            </p>
+          </div>
+          <p class="text-xs text-on-surface-variant mt-3">
+            Edit your tagline and bio in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.
+          </p>
+        </div>
       </div>
 
       <!-- 4. Policies Section -->
@@ -375,6 +383,72 @@
           </p>
         </div>
         <p id="displayPoliciesStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>
+      </div>
+
+      <!-- Guest Spots Section -->
+      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
+        <div class="flex items-start sm:items-center justify-between gap-4 mb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary text-lg">travel_explore</span>
+            </div>
+            <div>
+              <h3 class="font-bold text-on-surface">Guest Spots</h3>
+              <p class="text-xs text-on-surface-variant">Control whether clients see your upcoming guest locations on your public page.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <span class="text-sm font-semibold text-on-surface whitespace-nowrap">Show Guest Spots</span>
+            <div
+              id="displayGuestSpotsToggle"
+              class="toggle-switch {{ $displayGuestSpots ? 'active' : '' }}"
+              role="switch"
+              aria-checked="{{ $displayGuestSpots ? 'true' : 'false' }}"
+              tabindex="0"
+              title="Show or hide Guest Spots on your public page"
+              onclick="toggleDisplayGuestSpots()"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDisplayGuestSpots();}"
+            ></div>
+            <input type="hidden" id="display_guest_spots" name="display_guest_spots" value="{{ $displayGuestSpots ? '1' : '0' }}">
+          </div>
+        </div>
+        <p class="text-xs text-on-surface-variant ml-0 sm:ml-12">
+          Edit your guest locations in <a href="{{ route('guest-spots.index') }}" class="text-primary hover:underline">Guest spots</a>.
+        </p>
+        <p id="displayGuestSpotsStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>
+      </div>
+
+      <!-- FAQ Section -->
+      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
+        <div class="flex items-start sm:items-center justify-between gap-4 mb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary text-lg">quiz</span>
+            </div>
+            <div>
+              <h3 class="font-bold text-on-surface">FAQ</h3>
+              <p class="text-xs text-on-surface-variant">Control whether clients see your FAQ on your public page.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <span class="text-sm font-semibold text-on-surface whitespace-nowrap">Show FAQ</span>
+            <div
+              id="displayFaqToggle"
+              class="toggle-switch {{ $displayFaq ? 'active' : '' }}"
+              role="switch"
+              aria-checked="{{ $displayFaq ? 'true' : 'false' }}"
+              tabindex="0"
+              title="Show or hide FAQ on your public page"
+              onclick="toggleDisplayFaq()"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDisplayFaq();}"
+            ></div>
+            <input type="hidden" id="display_faq" name="display_faq" value="{{ $displayFaq ? '1' : '0' }}">
+          </div>
+        </div>
+        <p class="text-xs text-on-surface-variant ml-0 sm:ml-12">
+          Edit your questions in <a href="{{ route('artist.faq.index') }}" class="text-primary hover:underline">FAQ</a>.
+        </p>
+        <p id="displayFaqStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>
       </div>
 
       <!-- 5. Color Scheme Section -->
@@ -476,7 +550,7 @@
             </div>
             <h4 class="text-2xl font-extrabold text-on-surface mt-4" id="modalPreviewName">{{ $fullName ?? 'Artist Name' }}</h4>
             <p class="text-sm text-on-surface-variant mt-1 text-center font-medium {{ $displayTagline ? '' : 'hidden' }}" id="modalPreviewTagline">{{ $tagline ?: 'Add your artist tagline' }}</p>
-            <p class="text-sm text-on-surface mt-4 text-center max-w-lg {{ $displayBio ? '' : 'hidden' }}" id="modalPreviewBio">{{ $description ?: 'Add your bio so clients can learn more about your style and journey.' }}</p>
+            <p class="text-sm text-on-surface mt-4 text-center max-w-lg {{ ($displayBio && trim($description) !== '') ? '' : 'hidden' }}" id="modalPreviewBio">{{ $description ?: 'Add your bio so clients can learn more about your style and journey.' }}</p>
             <button class="mt-8 px-8 py-3 rounded-2xl text-white font-bold text-sm transition-colors shadow-sm w-full max-w-xs" id="modalPreviewBookBtn" style="background: {{ $userDetail->personal_page_color ?? '#310F7A' }};">
               Book Now
             </button>
@@ -603,7 +677,12 @@
 
       if (modalPreviewName) modalPreviewName.textContent = getDisplayName();
       if (modalPreviewTagline) modalPreviewTagline.textContent = PROFILE_TAGLINE.trim() || 'Add your artist tagline';
-      if (modalPreviewBio) modalPreviewBio.textContent = PROFILE_BIO.trim() || 'Add your bio so clients can learn more about your style and journey.';
+      if (modalPreviewBio) {
+        const bioText = PROFILE_BIO.trim();
+        modalPreviewBio.textContent = bioText || 'Add your bio so clients can learn more about your style and journey.';
+        const bioToggleOn = document.getElementById('displayBioToggle')?.classList.contains('active');
+        modalPreviewBio.classList.toggle('hidden', !bioToggleOn || !bioText);
+      }
       if (modalPreviewBookBtn) modalPreviewBookBtn.style.background = selectedTheme.primary;
       if (modalPreviewCard) modalPreviewCard.style.background = selectedTheme.bg;
     }
@@ -643,8 +722,28 @@
         toggle: document.getElementById(isTagline ? 'displayTaglineToggle' : 'displayBioToggle'),
         input: document.getElementById(field),
         status: document.getElementById(isTagline ? 'displayTaglineStatus' : 'displayBioStatus'),
-        preview: document.getElementById(isTagline ? 'modalPreviewTagline' : 'modalPreviewBio')
+        preview: document.getElementById(isTagline ? 'modalPreviewTagline' : 'modalPreviewBio'),
+        previewLine: document.getElementById(isTagline ? 'taglinePreviewLine' : 'bioPreviewLine'),
+        previewText: document.getElementById(isTagline ? 'taglinePreviewText' : 'bioPreviewText'),
       };
+    }
+
+    function refreshProfileContentPreview() {
+      const taglineText = (PROFILE_TAGLINE || '').trim();
+      const bioText = (PROFILE_BIO || '').trim();
+      const taglineOn = document.getElementById('displayTaglineToggle')?.classList.contains('active');
+      const bioOn = document.getElementById('displayBioToggle')?.classList.contains('active');
+      const taglinePreviewText = document.getElementById('taglinePreviewText');
+      const bioPreviewText = document.getElementById('bioPreviewText');
+      const taglinePreviewLine = document.getElementById('taglinePreviewLine');
+      const bioPreviewLine = document.getElementById('bioPreviewLine');
+      const profileContentPreviewWrap = document.getElementById('profileContentPreviewWrap');
+
+      if (taglinePreviewText) taglinePreviewText.textContent = taglineText || 'Tagline not set.';
+      if (bioPreviewText) bioPreviewText.textContent = bioText || 'Bio not set.';
+      if (taglinePreviewLine) taglinePreviewLine.classList.toggle('hidden', !taglineOn);
+      if (bioPreviewLine) bioPreviewLine.classList.toggle('hidden', !bioOn);
+      if (profileContentPreviewWrap) profileContentPreviewWrap.classList.toggle('hidden', !taglineOn && !bioOn);
     }
 
     function setProfileContentVisibilityUi(field, enabled) {
@@ -654,7 +753,13 @@
         elements.toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
       }
       if (elements.input) elements.input.value = enabled ? '1' : '0';
-      if (elements.preview) elements.preview.classList.toggle('hidden', !enabled);
+      if (elements.preview) {
+        const showBio = field === 'display_bio'
+          ? enabled && !!(PROFILE_BIO || '').trim()
+          : enabled;
+        elements.preview.classList.toggle('hidden', !showBio);
+      }
+      refreshProfileContentPreview();
     }
 
     function setProfileContentVisibilityStatus(field, message, isError) {
@@ -790,6 +895,154 @@
         })
         .finally(function () {
           displayPoliciesSaving = false;
+          toggle.style.pointerEvents = '';
+          toggle.style.opacity = '';
+        });
+    }
+
+    let displayGuestSpotsSaving = false;
+
+    function setDisplayGuestSpotsUi(enabled) {
+      const toggle = document.getElementById('displayGuestSpotsToggle');
+      const input = document.getElementById('display_guest_spots');
+      if (toggle) {
+        toggle.classList.toggle('active', enabled);
+        toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
+      }
+      if (input) input.value = enabled ? '1' : '0';
+    }
+
+    function setDisplayGuestSpotsStatus(message, isError) {
+      const status = document.getElementById('displayGuestSpotsStatus');
+      if (!status) return;
+      if (!message) {
+        status.textContent = '';
+        status.classList.add('hidden');
+        status.classList.remove('text-error', 'text-emerald-700');
+        return;
+      }
+      status.textContent = message;
+      status.classList.remove('hidden', 'text-error', 'text-emerald-700');
+      status.classList.add(isError ? 'text-error' : 'text-emerald-700');
+    }
+
+    function toggleDisplayGuestSpots() {
+      const toggle = document.getElementById('displayGuestSpotsToggle');
+      if (!toggle || displayGuestSpotsSaving) return;
+
+      const previous = toggle.classList.contains('active');
+      const next = !previous;
+      setDisplayGuestSpotsUi(next);
+      setDisplayGuestSpotsStatus('');
+      displayGuestSpotsSaving = true;
+      toggle.style.pointerEvents = 'none';
+      toggle.style.opacity = '0.7';
+
+      const body = new FormData();
+      body.append('display_guest_spots', next ? '1' : '0');
+      body.append('_token', @json(csrf_token()));
+
+      fetch(@json(route('personal-page.display-guest-spots')), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: body,
+      })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.data || !result.data.success) {
+            throw new Error((result.data && result.data.message) || 'Could not update guest spots visibility.');
+          }
+          const enabled = !!result.data.display_guest_spots;
+          setDisplayGuestSpotsUi(enabled);
+          setDisplayGuestSpotsStatus(result.data.message || (enabled ? 'Guest spots will be shown on your public page.' : 'Guest spots are hidden from your public page.'), false);
+        })
+        .catch(function (err) {
+          setDisplayGuestSpotsUi(previous);
+          setDisplayGuestSpotsStatus(err.message || 'Could not update guest spots visibility.', true);
+        })
+        .finally(function () {
+          displayGuestSpotsSaving = false;
+          toggle.style.pointerEvents = '';
+          toggle.style.opacity = '';
+        });
+    }
+
+    let displayFaqSaving = false;
+
+    function setDisplayFaqUi(enabled) {
+      const toggle = document.getElementById('displayFaqToggle');
+      const input = document.getElementById('display_faq');
+      if (toggle) {
+        toggle.classList.toggle('active', enabled);
+        toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
+      }
+      if (input) input.value = enabled ? '1' : '0';
+    }
+
+    function setDisplayFaqStatus(message, isError) {
+      const status = document.getElementById('displayFaqStatus');
+      if (!status) return;
+      if (!message) {
+        status.textContent = '';
+        status.classList.add('hidden');
+        status.classList.remove('text-error', 'text-emerald-700');
+        return;
+      }
+      status.textContent = message;
+      status.classList.remove('hidden', 'text-error', 'text-emerald-700');
+      status.classList.add(isError ? 'text-error' : 'text-emerald-700');
+    }
+
+    function toggleDisplayFaq() {
+      const toggle = document.getElementById('displayFaqToggle');
+      if (!toggle || displayFaqSaving) return;
+
+      const previous = toggle.classList.contains('active');
+      const next = !previous;
+      setDisplayFaqUi(next);
+      setDisplayFaqStatus('');
+      displayFaqSaving = true;
+      toggle.style.pointerEvents = 'none';
+      toggle.style.opacity = '0.7';
+
+      const body = new FormData();
+      body.append('display_faq', next ? '1' : '0');
+      body.append('_token', @json(csrf_token()));
+
+      fetch(@json(route('personal-page.display-faq')), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: body,
+      })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.data || !result.data.success) {
+            throw new Error((result.data && result.data.message) || 'Could not update FAQ visibility.');
+          }
+          const enabled = !!result.data.display_faq;
+          setDisplayFaqUi(enabled);
+          setDisplayFaqStatus(result.data.message || (enabled ? 'FAQ will be shown on your public page.' : 'FAQ is hidden from your public page.'), false);
+        })
+        .catch(function (err) {
+          setDisplayFaqUi(previous);
+          setDisplayFaqStatus(err.message || 'Could not update FAQ visibility.', true);
+        })
+        .finally(function () {
+          displayFaqSaving = false;
           toggle.style.pointerEvents = '';
           toggle.style.opacity = '';
         });

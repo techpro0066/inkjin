@@ -60,7 +60,7 @@
       <div class="flex items-center gap-3">
         <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-container transition-colors">
           <span class="material-symbols-outlined text-[20px]">arrow_back</span>
-          <span class="hidden sm:inline">Back to {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</span>
+          <span class="hidden sm:inline">Back to {{ $userDetail->publicDisplayName() }}</span>
           <span class="sm:hidden">Back</span>
         </a>
       </div>
@@ -69,7 +69,7 @@
           <span class="material-symbols-outlined text-[20px] text-on-surface-variant">share</span>
         </button>
         <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="w-7 h-7 rounded bg-primary flex items-center justify-center" title="Inkjin">
-          <span class="text-white text-[9px] font-extrabold">{{ strtoupper($userDetail->user->first_name[0]) }}{{ strtoupper($userDetail->user->last_name[0]) }}</span>
+          <span class="text-white text-[9px] font-extrabold">{{ $userDetail->publicDisplayInitials() }}</span>
         </a>
       </div>
     </div>
@@ -98,9 +98,9 @@
         <!-- Artist -->
         <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-2.5 mb-4 group">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
-            <span class="text-white text-xs font-bold">{{ strtoupper($userDetail->user->first_name[0]) }}{{ strtoupper($userDetail->user->last_name[0]) }}</span>
+            <span class="text-white text-xs font-bold">{{ $userDetail->publicDisplayInitials() }}</span>
           </div>
-          <span class="text-sm text-on-surface-variant group-hover:text-primary transition-colors">by <strong class="text-on-surface group-hover:text-primary">{{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}</strong></span>
+          <span class="text-sm text-on-surface-variant group-hover:text-primary transition-colors">by <strong class="text-on-surface group-hover:text-primary">{{ $userDetail->publicDisplayName() }}</strong></span>
         </a>
 
         <!-- Price -->
@@ -375,7 +375,7 @@
     function shareDesign() {
       const url = window.location.href;
       if (navigator.share) {
-        navigator.share({ title: '{{ $tattoo->title }} — {{ $userDetail->user->first_name }} {{ $userDetail->user->last_name }}', url: url }).catch(() => {});
+        navigator.share({ title: '{{ $tattoo->title }} — {{ $userDetail->publicDisplayName() }}', url: url }).catch(() => {});
       } else if (navigator.clipboard) {
         navigator.clipboard.writeText(url).then(() => showToast());
       }

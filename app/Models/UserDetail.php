@@ -66,6 +66,8 @@ class UserDetail extends Model
         'display_policies',
         'display_tagline',
         'display_bio',
+        'display_guest_spots',
+        'display_faq',
         'customize_page_notice_dismissed',
         'design_whats_included',
         'design_whats_included_is_active',
@@ -82,6 +84,8 @@ class UserDetail extends Model
         'display_policies' => 'boolean',
         'display_tagline' => 'boolean',
         'display_bio' => 'boolean',
+        'display_guest_spots' => 'boolean',
+        'display_faq' => 'boolean',
         'require_consultation' => 'boolean',
         'require_gap_between_consultation_tattoo' => 'boolean',
         'payout_waiting_list_at' => 'datetime',
@@ -127,6 +131,63 @@ class UserDetail extends Model
             $cityZip,
             $country,
         ], fn (string $line) => $line !== ''));
+    }
+
+    /**
+     * Artist name for public / client-facing surfaces (respects Content & Style name choice).
+     */
+    public function publicDisplayName(): string
+    {
+        $user = $this->relationLoaded('user') ? $this->user : $this->user()->first();
+        $fullName = trim(($user?->first_name ?? '').' '.($user?->last_name ?? ''));
+        $username = trim((string) ($this->user_name ?? ''));
+        $displayName = trim((string) ($this->display_name ?? ''));
+        $alias = in_array($this->personal_page_name_alias, ['full', 'username', 'display_name'], true)
+            ? $this->personal_page_name_alias
+            : 'full';
+
+        return match ($alias) {
+            'username' => $username !== '' ? $username : ($fullName !== '' ? $fullName : 'Artist'),
+            'display_name' => $displayName !== ''
+                ? $displayName
+                : ($fullName !== '' ? $fullName : ($username !== '' ? $username : 'Artist')),
+            default => $fullName !== '' ? $fullName : ($username !== '' ? $username : 'Artist'),
+        };
+    }
+
+    /**
+     * Initials derived from {@see publicDisplayName()} for avatars on public pages.
+     */
+    public function publicDisplayInitials(): string
+    {
+        $name = $this->publicDisplayName();
+        $parts = preg_split('/[\s._\-]+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        if (count($parts) >= 2) {
+            $initials = mb_strtoupper(mb_substr($parts[0], 0, 1).mb_substr($parts[1], 0, 1));
+
+            return $initials !== '' ? $initials : 'AR';
+        }
+
+        if (count($parts) === 1) {
+            $initials = mb_strtoupper(mb_substr($parts[0], 0, min(2, mb_strlen($parts[0]))));
+
+            return $initials !== '' ? $initials : 'AR';
+        }
+
+        return 'AR';
+    }
+
+    /**
+     * Whether the public About / bio block should render (toggle on and bio text set).
+     */
+    public function shouldDisplayBio(): bool
+    {
+        if (! ($this->display_bio ?? false)) {
+            return false;
+        }
+
+        return trim((string) ($this->personal_page_description ?? '')) !== '';
     }
 
     /**

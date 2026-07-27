@@ -236,10 +236,16 @@ class BookingRequest extends Model
     public function artistDisplayName(): string
     {
         $artist = $this->artist;
-        if (!$artist) {
+        if (! $artist) {
             return 'Artist';
         }
-        $name = trim(($artist->first_name ?? '') . ' ' . ($artist->last_name ?? ''));
+
+        $detail = $artist->relationLoaded('userDetail') ? $artist->userDetail : $artist->userDetail()->first();
+        if ($detail) {
+            return $detail->publicDisplayName();
+        }
+
+        $name = trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''));
 
         return $name !== '' ? $name : (string) ($artist->email ?? 'Artist');
     }
@@ -247,12 +253,18 @@ class BookingRequest extends Model
     public function artistInitials(): string
     {
         $artist = $this->artist;
-        if (!$artist) {
+        if (! $artist) {
             return 'AR';
         }
+
+        $detail = $artist->relationLoaded('userDetail') ? $artist->userDetail : $artist->userDetail()->first();
+        if ($detail) {
+            return $detail->publicDisplayInitials();
+        }
+
         $first = Str::substr((string) ($artist->first_name ?? ''), 0, 1);
         $last = Str::substr((string) ($artist->last_name ?? ''), 0, 1);
-        $initials = strtoupper($first . $last);
+        $initials = strtoupper($first.$last);
 
         return $initials !== '' ? $initials : 'AR';
     }

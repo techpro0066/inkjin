@@ -34,6 +34,7 @@ use App\Models\UserDetail;
 use App\Models\Waitlist;
 use App\Models\Question;
 use App\Models\QuestionSorting;
+use App\Models\Placement;
 use App\Models\Style;
 use App\Models\UserQuestion;
 use App\Support\PaymentMethods;
@@ -519,10 +520,20 @@ class InkJinController extends Controller
 
         $artistPortfolios = $userDetail->user->portfolios()->where('is_active', true)->get();
 
+        $guestSpots = $userDetail->display_guest_spots
+            ? $userDetail->user->guestSpots()->orderBy('sort_order')->orderBy('id')->get()
+            : collect();
+
+        $faqs = $userDetail->display_faq
+            ? $userDetail->user->artistFaqs()->active()->ordered()->get()
+            : collect();
+
         return view('public.artist', [
             'userDetail' => $userDetail,
             'artistDesigns' => $artistDesigns,
             'artistPortfolios' => $artistPortfolios,
+            'guestSpots' => $guestSpots,
+            'faqs' => $faqs,
         ]);
     }
 
@@ -558,10 +569,7 @@ class InkJinController extends Controller
             ->orderByDesc('id')
             ->get()
             ->map(function (UserDetail $detail) {
-                $first = trim((string) ($detail->user?->first_name ?? ''));
-                $last = trim((string) ($detail->user?->last_name ?? ''));
-                $fullName = trim($first . ' ' . $last);
-                $displayName = $fullName !== '' ? $fullName : (string) ($detail->user_name ?? 'Artist');
+                $displayName = $detail->publicDisplayName();
                 $styles = is_array($detail->tattoo_styles ?? null) ? $detail->tattoo_styles : [];
                 $primaryStyle = (string) ($styles['primary_style'] ?? $styles['style'] ?? '');
                 $tattooCount = (int) ($detail->user?->artistDesigns?->count() ?? 0);
@@ -665,6 +673,14 @@ class InkJinController extends Controller
             ->values()
             ->all();
 
+        $hiddenPlacementOptions = Placement::query()
+            ->active()
+            ->where('appear_on_question', false)
+            ->ordered()
+            ->pluck('name')
+            ->values()
+            ->all();
+
         if($userDetail->scheduling_type == 'auto'){
 
             $artistTimezone = $userDetail->timezone ?: 'UTC';
@@ -741,6 +757,7 @@ class InkJinController extends Controller
                 'requiredBookingQuestions' => $questions,
                 'hasArtistQuestions' => !empty($questions),
                 'hiddenStyleOptions' => $hiddenStyleOptions,
+                'hiddenPlacementOptions' => $hiddenPlacementOptions,
                 'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
                 'artistTimezone' => $artistTimezone,
                 'artistBlockedPeriods' => $artistBlockedPeriods,
@@ -773,6 +790,7 @@ class InkJinController extends Controller
                 'requiredBookingQuestions' => $questions,
                 'hasArtistQuestions' => !empty($questions),
                 'hiddenStyleOptions' => $hiddenStyleOptions,
+                'hiddenPlacementOptions' => $hiddenPlacementOptions,
                 'artistConsultationSettings' => [
                     'required' => (bool) ($userDetail->require_consultation ?? false),
                     'timing' => $userDetail->consultation_timing ?: 'combined',
@@ -1249,10 +1267,7 @@ class InkJinController extends Controller
         $isNewUser = !empty($verifiedEntry['is_new_user']);
         $accessUrl = $this->makePostManagedRequestAccessUrl($bookingUser, $bookingRequest);
         $clientEmail = (string) ($bookingUser->email ?? '');
-        $artistName = trim(implode(' ', array_filter([
-            (string) ($userDetail->user->first_name ?? ''),
-            (string) ($userDetail->user->last_name ?? ''),
-        ]))) ?: 'Your artist';
+        $artistName = $userDetail->publicDisplayName() ?: 'Your artist';
         $recipientName = trim(implode(' ', array_filter([
             (string) ($bookingUser->first_name ?? ''),
             (string) ($bookingUser->last_name ?? ''),

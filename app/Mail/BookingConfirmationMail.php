@@ -131,7 +131,8 @@ class BookingConfirmationMail extends Mailable
         // Customer email — full amount paid (includes fee + tax)
         return array_merge($baseData, [
             'userName' => ucfirst($customer->first_name).' '.ucfirst($customer->last_name),
-            'artistName' => ucfirst($artist->first_name).' '.ucfirst($artist->last_name),
+            'artistName' => $artist?->userDetail?->publicDisplayName()
+                ?: trim(ucfirst((string) $artist->first_name).' '.ucfirst((string) $artist->last_name)),
             'totalAmount' => $booking->total_amount_paid,
             'seeBookingUrl' => $seeBookingUrl,
         ]);

@@ -110,12 +110,12 @@ class UserDashboardService
     {
         $artist = $booking->artist;
         $ud = $artist?->userDetail;
-        $name = $artist
+        $name = $ud ? $ud->publicDisplayName() : ($artist
             ? trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''))
-            : 'Artist';
-        $initials = $artist
+            : 'Artist');
+        $initials = $ud ? $ud->publicDisplayInitials() : ($artist
             ? strtoupper(substr((string) $artist->first_name, 0, 1).substr((string) $artist->last_name, 0, 1))
-            : 'AR';
+            : 'AR');
 
         $studioParts = array_filter([
             $name !== '' ? $name : null,
@@ -192,12 +192,13 @@ class UserDashboardService
                 /** @var ChatChannel $latest */
                 $latest = $group->sortByDesc('updated_at')->first();
                 $artist = $latest->artist;
-                $name = $artist
+                $ud = $artist?->userDetail;
+                $name = $ud ? $ud->publicDisplayName() : ($artist
                     ? trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''))
-                    : 'Artist';
-                $initials = $artist
+                    : 'Artist');
+                $initials = $ud ? $ud->publicDisplayInitials() : ($artist
                     ? strtoupper(substr((string) $artist->first_name, 0, 1).substr((string) $artist->last_name, 0, 1))
-                    : 'AR';
+                    : 'AR');
 
                 $unread = 0;
                 $preview = null;

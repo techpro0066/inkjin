@@ -38,22 +38,8 @@ class QuestionSorting extends Model
      */
     public static function activeQuestionsPayloadForArtist(int $userId, string $formContext): array
     {
-        $activeStylesQuery = Style::query()->active();
-
-        $styleOptions = (clone $activeStylesQuery)
-            ->where('appear_on_question', true)
-            ->ordered()
-            ->pluck('name')
-            ->values()
-            ->all();
-
-        $hasHiddenActiveStyles = (clone $activeStylesQuery)
-            ->where('appear_on_question', false)
-            ->exists();
-
-        if ($hasHiddenActiveStyles && ! in_array('Other', $styleOptions, true)) {
-            $styleOptions[] = 'Other';
-        }
+        $styleOptions = self::catalogOptionsForQuestionType(Style::class);
+        $placementOptions = self::catalogOptionsForQuestionType(Placement::class);
 
         return self::query()
             ->where('user_id', $userId)
@@ -62,13 +48,17 @@ class QuestionSorting extends Model
             ->with('question')
             ->orderBy('order')
             ->get()
-            ->map(function (self $sorting) use ($styleOptions) {
+            ->map(function (self $sorting) use ($styleOptions, $placementOptions) {
                 $question = $sorting->question;
                 if (! $question) {
                     return null;
                 }
 
-                $isStyleQuestion = $question->type === 'style';
+                $options = match ($question->type) {
+                    'style' => ! empty($styleOptions) ? $styleOptions : $question->options,
+                    'placement' => ! empty($placementOptions) ? $placementOptions : $question->options,
+                    default => $question->options,
+                };
 
                 return [
                     'id' => $sorting->question_id,
@@ -78,14 +68,41 @@ class QuestionSorting extends Model
                     'type' => $question->type,
                     'is_required' => $question->is_required,
                     'is_active' => $sorting->is_active,
-                    'options' => ($isStyleQuestion && ! empty($styleOptions))
-                        ? $styleOptions
-                        : $question->options,
+                    'options' => $options,
                 ];
             })
             ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * Visible catalog options for style/placement questions, with trailing "Other"
+     * when active hidden (appear_on_question = false) entries exist.
+     *
+     * @param  class-string<Style|Placement>  $modelClass
+     * @return list<string>
+     */
+    private static function catalogOptionsForQuestionType(string $modelClass): array
+    {
+        $activeQuery = $modelClass::query()->active();
+
+        $options = (clone $activeQuery)
+            ->where('appear_on_question', true)
+            ->ordered()
+            ->pluck('name')
+            ->values()
+            ->all();
+
+        $hasHiddenActive = (clone $activeQuery)
+            ->where('appear_on_question', false)
+            ->exists();
+
+        if ($hasHiddenActive && ! in_array('Other', $options, true)) {
+            $options[] = 'Other';
+        }
+
+        return $options;
     }
 }
 

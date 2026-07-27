@@ -147,9 +147,9 @@
                             <div class="flex items-center gap-3 mb-3">
                                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
                                     {{-- <span class="text-white text-[/10px] font-bold">{{ $booking->artist->first_name[0] }}{{ $booking->artist->last_name[0] }}</span> --}}
-                                    <img src="{{ ($booking->artist->userDetail && $booking->artist->userDetail->avatar != "") ? asset($booking->artist->userDetail->avatar) : asset('design/images/icons/avatar.jpg') }}" alt="{{ $booking->artist->first_name }}" class="w-full h-full object-cover rounded-full">
+                                    <img src="{{ ($booking->artist->userDetail && $booking->artist->userDetail->avatar != "") ? asset($booking->artist->userDetail->avatar) : asset('design/images/icons/avatar.jpg') }}" alt="{{ $booking->artist->userDetail?->publicDisplayName() ?? $booking->artist->first_name }}" class="w-full h-full object-cover rounded-full">
                                 </div>
-                                <span class="text-sm text-on-surface-variant">{{ $booking->artist->first_name }} {{ $booking->artist->last_name }}</span>
+                                <span class="text-sm text-on-surface-variant">{{ $booking->artist->userDetail?->publicDisplayName() ?? trim(($booking->artist->first_name ?? '').' '.($booking->artist->last_name ?? '')) }}</span>
                             </div>
                             <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-on-surface-variant mb-3">
                                 <span class="flex items-center gap-1.5">
@@ -267,9 +267,9 @@
                             <h3 class="font-bold text-on-surface text-lg mb-2">{{ $booking->displayTitle() }}</h3>
                             <div class="flex items-center gap-3 mb-3">
                                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                    <img src="{{ ($artistUd && $artistUd->avatar != '') ? asset($artistUd->avatar) : asset('design/images/icons/avatar.jpg') }}" alt="{{ $booking->artist?->first_name ?? '' }}" class="w-full h-full object-cover rounded-full">
+                                    <img src="{{ ($artistUd && $artistUd->avatar != '') ? asset($artistUd->avatar) : asset('design/images/icons/avatar.jpg') }}" alt="{{ $artistUd?->publicDisplayName() ?? ($booking->artist?->first_name ?? '') }}" class="w-full h-full object-cover rounded-full">
                                 </div>
-                                <span class="text-sm text-on-surface-variant">{{ $booking->artist?->first_name }} {{ $booking->artist?->last_name }}</span>
+                                <span class="text-sm text-on-surface-variant">{{ $artistUd?->publicDisplayName() ?? trim(($booking->artist?->first_name ?? '').' '.($booking->artist?->last_name ?? '')) }}</span>
                             </div>
                             <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-on-surface-variant mb-3">
                                 <span class="flex items-center gap-1.5">

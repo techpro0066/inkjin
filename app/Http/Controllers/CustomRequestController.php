@@ -6,6 +6,7 @@ use App\Mail\CustomRequestSubmittedArtistMail;
 use App\Mail\CustomRequestSubmittedUserMail;
 use App\Models\CustomRequest;
 use App\Models\QuestionSorting;
+use App\Models\Placement;
 use App\Models\Style;
 use App\Models\User;
 use App\Models\UserDetail;
@@ -45,7 +46,7 @@ class CustomRequestController extends Controller
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
-        $artistName = trim(($userDetail->user->first_name ?? '').' '.($userDetail->user->last_name ?? ''));
+        $artistName = $userDetail->publicDisplayName();
 
         $fallbackTattooSlug = (string) ($userDetail->user->artistDesigns()
             ->where('is_active', true)
@@ -55,6 +56,14 @@ class CustomRequestController extends Controller
         $isManagedScheduling = ($userDetail->scheduling_type ?? '') === 'managed';
 
         $hiddenStyleOptions = Style::query()
+            ->active()
+            ->where('appear_on_question', false)
+            ->ordered()
+            ->pluck('name')
+            ->values()
+            ->all();
+
+        $hiddenPlacementOptions = Placement::query()
             ->active()
             ->where('appear_on_question', false)
             ->ordered()
@@ -73,6 +82,7 @@ class CustomRequestController extends Controller
             'artistProfileUrl' => route('public.artist', ['username' => $userDetail->user_name]),
             'isManagedScheduling' => $isManagedScheduling,
             'hiddenStyleOptions' => $hiddenStyleOptions,
+            'hiddenPlacementOptions' => $hiddenPlacementOptions,
         ]);
     }
 
@@ -171,10 +181,7 @@ class CustomRequestController extends Controller
 
         $isNewUser = !empty($verifiedEntry['is_new_user']);
         $accessUrl = $this->makePostCustomRequestAccessUrl($requestUser, $customRequest);
-        $artistName = trim(implode(' ', array_filter([
-            (string) ($userDetail->user->first_name ?? ''),
-            (string) ($userDetail->user->last_name ?? ''),
-        ]))) ?: 'Your artist';
+        $artistName = $userDetail->publicDisplayName() ?: 'Your artist';
         $recipientName = trim(implode(' ', array_filter([
             (string) ($requestUser->first_name ?? ''),
             (string) ($requestUser->last_name ?? ''),

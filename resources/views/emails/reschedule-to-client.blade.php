@@ -20,7 +20,8 @@
     $oldTimeRaw = $lastReschedule['old_time'] ?? null;
     $newDateRaw = $booking->booking_date ?? null;
     $newTimeRaw = $booking->start_time_utc ?? null;
-    $artistName = trim((string) (($booking->artist->first_name ?? '').' '.($booking->artist->last_name ?? '')));
+    $artistName = $booking->artist?->userDetail?->publicDisplayName()
+        ?: trim((string) (($booking->artist->first_name ?? '').' '.($booking->artist->last_name ?? '')));
     if ($artistName === '') {
       $artistName = $booking->artist->artist_handle ?? 'your artist';
     }

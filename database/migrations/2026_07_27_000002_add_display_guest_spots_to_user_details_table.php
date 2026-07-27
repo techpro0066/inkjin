@@ -13,11 +13,8 @@ return new class extends Migration
         }
 
         Schema::table('user_details', function (Blueprint $table) {
-            if (! Schema::hasColumn('user_details', 'display_tagline')) {
-                $table->boolean('display_tagline')->default(true)->after('display_policies');
-            }
-            if (! Schema::hasColumn('user_details', 'display_bio')) {
-                $table->boolean('display_bio')->default(false)->after('display_tagline');
+            if (! Schema::hasColumn('user_details', 'display_guest_spots')) {
+                $table->boolean('display_guest_spots')->default(false)->after('display_bio');
             }
         });
     }
@@ -29,10 +26,8 @@ return new class extends Migration
         }
 
         Schema::table('user_details', function (Blueprint $table) {
-            foreach (['display_bio', 'display_tagline'] as $column) {
-                if (Schema::hasColumn('user_details', $column)) {
-                    $table->dropColumn($column);
-                }
+            if (Schema::hasColumn('user_details', 'display_guest_spots')) {
+                $table->dropColumn('display_guest_spots');
             }
         });
     }

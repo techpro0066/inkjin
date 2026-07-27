@@ -10,6 +10,7 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\FinancialController as AdminFinancialController;
 use App\Http\Controllers\Admin\FormController;
+use App\Http\Controllers\Admin\PlacementController;
 use App\Http\Controllers\Admin\StyleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\QuestionsController;
@@ -174,6 +175,12 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     Route::delete('/styles/{style}', [StyleController::class, 'destroy'])->name('admin.styles.destroy');
     Route::post('/styles/reorder', [StyleController::class, 'reorder'])->name('admin.styles.reorder');
 
+    Route::get('/placements', [PlacementController::class, 'index'])->name('admin.placements.index');
+    Route::post('/placements', [PlacementController::class, 'store'])->name('admin.placements.store');
+    Route::put('/placements/{placement}', [PlacementController::class, 'update'])->name('admin.placements.update');
+    Route::delete('/placements/{placement}', [PlacementController::class, 'destroy'])->name('admin.placements.destroy');
+    Route::post('/placements/reorder', [PlacementController::class, 'reorder'])->name('admin.placements.reorder');
+
     // Route::get('/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'index'])->name('admin.questions.index');
     // Route::post('/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'store'])->name('admin.questions.store');
     // Route::put('/questions/{id}', [\App\Http\Controllers\Admin\QuestionController::class, 'update'])->name('admin.questions.update');
@@ -262,12 +269,26 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/personal-page', [\App\Http\Controllers\PersonalPageController::class, 'index'])->name('personal-page.index');
     Route::post('/personal-page', [\App\Http\Controllers\PersonalPageController::class, 'update'])->name('personal-page.update');
     Route::post('/personal-page/display-policies', [\App\Http\Controllers\PersonalPageController::class, 'updateDisplayPolicies'])->name('personal-page.display-policies');
+    Route::post('/personal-page/display-guest-spots', [\App\Http\Controllers\PersonalPageController::class, 'updateDisplayGuestSpots'])->name('personal-page.display-guest-spots');
+    Route::post('/personal-page/display-faq', [\App\Http\Controllers\PersonalPageController::class, 'updateDisplayFaq'])->name('personal-page.display-faq');
     Route::post('/personal-page/profile-content-visibility', [\App\Http\Controllers\PersonalPageController::class, 'updateProfileContentVisibility'])->name('personal-page.profile-content-visibility');
 
     Route::get('/portfolio', [\App\Http\Controllers\PortfolioController::class, 'index'])->name('portfolio.index');
     Route::post('/portfolio', [\App\Http\Controllers\PortfolioController::class, 'store'])->name('portfolio.store');
     Route::put('/portfolio/{portfolio}', [\App\Http\Controllers\PortfolioController::class, 'update'])->name('portfolio.update');
     Route::delete('/portfolio/{portfolio}', [\App\Http\Controllers\PortfolioController::class, 'destroy'])->name('portfolio.destroy');
+
+    Route::get('/guest-spots', [\App\Http\Controllers\GuestSpotsController::class, 'index'])->name('guest-spots.index');
+    Route::post('/guest-spots', [\App\Http\Controllers\GuestSpotsController::class, 'store'])->name('guest-spots.store');
+    Route::post('/guest-spots/reorder', [\App\Http\Controllers\GuestSpotsController::class, 'reorder'])->name('guest-spots.reorder');
+    Route::put('/guest-spots/{guestSpot}', [\App\Http\Controllers\GuestSpotsController::class, 'update'])->name('guest-spots.update');
+    Route::delete('/guest-spots/{guestSpot}', [\App\Http\Controllers\GuestSpotsController::class, 'destroy'])->name('guest-spots.destroy');
+
+    Route::get('/faq', [\App\Http\Controllers\ArtistFaqController::class, 'index'])->name('artist.faq.index');
+    Route::post('/faq', [\App\Http\Controllers\ArtistFaqController::class, 'store'])->name('artist.faq.store');
+    Route::post('/faq/reorder', [\App\Http\Controllers\ArtistFaqController::class, 'reorder'])->name('artist.faq.reorder');
+    Route::put('/faq/{faq}', [\App\Http\Controllers\ArtistFaqController::class, 'update'])->name('artist.faq.update');
+    Route::delete('/faq/{faq}', [\App\Http\Controllers\ArtistFaqController::class, 'destroy'])->name('artist.faq.destroy');
 
     Route::get('/artist-designs', [\App\Http\Controllers\ArtistDesignsController::class, 'index'])->name('artist-designs.index');
     Route::post('/artist-designs', [\App\Http\Controllers\ArtistDesignsController::class, 'store'])->name('artist-designs.store');

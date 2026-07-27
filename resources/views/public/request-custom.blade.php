@@ -233,7 +233,7 @@
   </header>
 
   @php
-    $rcArtistInitials = strtoupper(substr($userDetail->user->first_name ?? 'A', 0, 1) . substr($userDetail->user->last_name ?? 'A', 0, 1));
+    $rcArtistInitials = $userDetail->publicDisplayInitials();
   @endphp
 
   <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8" id="rcMainContent">
@@ -291,7 +291,7 @@
           @if($userDetail->avatar && $userDetail->avatar != '')
             <img src="{{ asset($userDetail->avatar) }}" alt="Avatar" class="w-full h-full object-cover rounded-full">
           @else
-            <span class="text-white text-lg font-bold">{{strtoupper($userDetail->user->first_name[0])}}{{strtoupper($userDetail->user->last_name[0])}}</span>
+            <span class="text-white text-lg font-bold">{{ $userDetail->publicDisplayInitials() }}</span>
           @endif
         </div>
         <div class="text-left">
@@ -560,7 +560,7 @@
       <button type="button" onclick="submitRequest()" id="btnSubmit" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">
         Submit Request
       </button>
-      <button type="button" onclick="prevScreen()" class="w-full mt-2 py-3 rounded-xl font-semibold text-sm text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container transition-colors">
+      <button type="button" onclick="editRcAnswers()" class="w-full mt-2 py-3 rounded-xl font-semibold text-sm text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container transition-colors">
         Back to edit your answers
       </button>
     </div>
@@ -619,6 +619,7 @@
     var fallbackTattooSlug = @json($fallbackTattooSlug ?? '');
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
     var hiddenStyleOptions = @json($hiddenStyleOptions ?? []);
+    var hiddenPlacementOptions = @json($hiddenPlacementOptions ?? []);
     var styleOtherModalContext = null;
     var questionAnswers = {};
     var currentQuestionIndex = 0;
@@ -681,9 +682,27 @@
       questionAnswers[questionId] = Array.isArray(urls) ? urls.slice() : [];
     });
 
-    function isStyleQuestion(qId) {
+    function getQuestionType(qId) {
       var def = questionDefinitions.find(function(q) { return String(q.id) === String(qId); });
-      return !!(def && def.type === 'style');
+      return def ? String(def.type || '') : '';
+    }
+
+    function isStyleQuestion(qId) {
+      return getQuestionType(qId) === 'style';
+    }
+
+    function isPlacementQuestion(qId) {
+      return getQuestionType(qId) === 'placement';
+    }
+
+    function isCatalogChoiceQuestion(qId) {
+      var type = getQuestionType(qId);
+      return type === 'style' || type === 'placement';
+    }
+
+    function getHiddenCatalogOptions(qId) {
+      if (isPlacementQuestion(qId)) return Array.isArray(hiddenPlacementOptions) ? hiddenPlacementOptions : [];
+      return Array.isArray(hiddenStyleOptions) ? hiddenStyleOptions : [];
     }
 
     function getStyleOtherModal() {
@@ -691,11 +710,14 @@
     }
 
     function renderStyleOtherResults() {
-      var filtered = Array.isArray(hiddenStyleOptions) ? hiddenStyleOptions : [];
       var qId = styleOtherModalContext ? styleOtherModalContext.qId : null;
-      var $results = getStyleOtherModal().find('.js-style-other-results');
+      var filtered = getHiddenCatalogOptions(qId);
+      var $modal = getStyleOtherModal();
+      var $results = $modal.find('.js-style-other-results');
+      var emptyLabel = isPlacementQuestion(qId) ? 'No placements available.' : 'No styles available.';
+      $modal.find('.style-other-modal-title').text(isPlacementQuestion(qId) ? 'Choose a placement' : 'Choose a style');
       if (!filtered.length) {
-        $results.html('<p class="style-other-empty text-sm text-on-surface-variant py-3 px-2 text-center">No styles available.</p>');
+        $results.html('<p class="style-other-empty text-sm text-on-surface-variant py-3 px-2 text-center">' + emptyLabel + '</p>');
         return;
       }
       var currentAnswer = qId != null ? String(questionAnswers[qId] || '').trim() : '';
@@ -715,8 +737,9 @@
 
       var qId = ctx.qId;
       var answer = qId != null ? String(questionAnswers[qId] || '').trim() : '';
-      var isHiddenStyle = answer !== '' && (hiddenStyleOptions || []).indexOf(answer) !== -1;
-      if (isHiddenStyle) return;
+      var hiddenOptions = getHiddenCatalogOptions(qId);
+      var isHiddenCatalog = answer !== '' && hiddenOptions.indexOf(answer) !== -1;
+      if (isHiddenCatalog) return;
 
       ctx.$questionDiv.find('.single-choice-radio-button').removeClass('selected');
       if (qId != null) delete questionAnswers[qId];
@@ -734,7 +757,7 @@
     }
 
     function restoreStyleQuestionUi($div) {
-      if (!$div.length || !isStyleQuestion($div.data('question-id'))) return;
+      if (!$div.length || !isCatalogChoiceQuestion($div.data('question-id'))) return;
       closeStyleOtherModal(false);
       var qId = $div.data('question-id');
       var answer = String(questionAnswers[qId] || '').trim();
@@ -743,8 +766,8 @@
         $buttons.removeClass('selected');
         return;
       }
-      var isHiddenStyle = (hiddenStyleOptions || []).indexOf(answer) !== -1;
-      if (isHiddenStyle) {
+      var isHiddenCatalog = getHiddenCatalogOptions(qId).indexOf(answer) !== -1;
+      if (isHiddenCatalog) {
         $buttons.removeClass('selected');
         $buttons.filter(function() {
           return String($(this).data('value') || '').trim().toLowerCase() === 'other';
@@ -763,10 +786,10 @@
         var isFirst = idx === 0;
         var isLast = idx === questionDefinitions.length - 1;
         var body = '';
-        if (q.type === 'radio' || q.type === 'style') {
+        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement') {
           body = '<div class="flex flex-wrap gap-2 single-choice-group">' + q.options.map(function(opt) {
             var isOther = String(opt || '').trim().toLowerCase() === 'other';
-            var optionClass = (isStyleQuestion(q.id) && isOther) ? ' option-other' : '';
+            var optionClass = (isCatalogChoiceQuestion(q.id) && isOther) ? ' option-other' : '';
             return '<button type="button" class="single-choice-radio-button' + optionClass + '" data-value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>';
           }).join('') + '</div>';
         } else if (q.type === 'select') {
@@ -805,14 +828,14 @@
       var qType = String($active.data('question-type') || '');
       var qId = $active.data('question-id');
       var hasValue = false;
-      if (qType === 'radio' || qType === 'style') {
+      if (qType === 'radio' || qType === 'style' || qType === 'placement') {
         var $selected = $active.find('.single-choice-radio-button.selected');
         hasValue = $selected.length > 0;
-        if (hasValue && isStyleQuestion(qId)) {
+        if (hasValue && isCatalogChoiceQuestion(qId)) {
           var selectedVal = String($selected.data('value') || '').trim().toLowerCase();
           if (selectedVal === 'other') {
-            var pickedStyle = String(questionAnswers[qId] || '').trim();
-            hasValue = pickedStyle !== '' && pickedStyle.toLowerCase() !== 'other';
+            var pickedCatalog = String(questionAnswers[qId] || '').trim();
+            hasValue = pickedCatalog !== '' && pickedCatalog.toLowerCase() !== 'other';
           }
         }
       }
@@ -860,7 +883,7 @@
         if (answer === undefined || answer === null || answer === '') return;
         var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
         if (!$panel.length) return;
-        if (q.type === 'radio' || q.type === 'style') {
+        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement') {
           $panel.find('.single-choice-radio-button').each(function() {
             $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
           });
@@ -899,6 +922,8 @@
     window.rcBuildStructuredQuestionAnswers = buildStructuredQuestionAnswers;
     window.rcGetTotalQuestions = function() { return questionDefinitions.length; };
     window.rcPrevQuestion = function() { moveQuestion(-1); };
+    window.rcShowQuestion = showQuestion;
+    window.rcRestoreQuestionAnswers = restoreQuestionAnswersToDom;
 
     $(document).on('click', '.single-choice-radio-button', function() {
       var $btn = $(this);
@@ -907,13 +932,13 @@
       var qId = main_div.data('question-id');
       var value = String($btn.data('value') || '');
       var isOther = value.trim().toLowerCase() === 'other';
-      var styleQ = isStyleQuestion(qId);
+      var catalogQ = isCatalogChoiceQuestion(qId);
 
       main_div.find('.single-choice-radio-button').removeClass('selected');
       $btn.addClass('selected');
       main_div.find('.js-question-error').addClass('hidden');
 
-      if (styleQ && isOther) {
+      if (catalogQ && isOther) {
         delete questionAnswers[qId];
         openStyleOtherModal(main_div);
         return;
@@ -1188,7 +1213,8 @@
       window.scrollTo({ top: 0 });
     }
 
-    function showQuestionsPhase(reverse) {
+    function showQuestionsPhase(reverse, opts) {
+      opts = opts || {};
       document.querySelectorAll('.tf-screen').forEach(function(s) {
         s.classList.remove('active', 'reverse');
       });
@@ -1200,16 +1226,33 @@
         if (reverse) step.classList.add('reverse');
       }
       if (typeof window.rcGetTotalQuestions === 'function' && window.rcGetTotalQuestions() > 0) {
-        var lastIdx = window.rcGetTotalQuestions() - 1;
-        if (reverse && typeof jQuery !== 'undefined') {
+        var total = window.rcGetTotalQuestions();
+        var targetIdx = (opts.startAt != null) ? opts.startAt : (reverse ? total - 1 : 0);
+        targetIdx = Math.max(0, Math.min(parseInt(targetIdx, 10) || 0, total - 1));
+        if (typeof window.rcRestoreQuestionAnswers === 'function') {
+          window.rcRestoreQuestionAnswers();
+        }
+        if (typeof window.rcShowQuestion === 'function') {
+          window.rcShowQuestion(targetIdx);
+        } else if (typeof jQuery !== 'undefined') {
           jQuery('div.question-div[data-q]').removeClass('active reverse');
-          jQuery('div.question-div[data-q="' + lastIdx + '"]').addClass('active reverse');
+          jQuery('div.question-div[data-q="' + targetIdx + '"]').addClass('active' + (reverse ? ' reverse' : ''));
         }
       }
       updateBookingChrome();
       scheduleRcDraftSave();
       window.scrollTo({ top: 0 });
     }
+
+    window.editRcAnswers = function() {
+      collectData();
+      if (questionCount > 0) {
+        showQuestionsPhase(true, { startAt: 0 });
+        return;
+      }
+      showScreen(0, true);
+      current = 0;
+    };
 
     window.rcLeaveQuestionsToIntro = function() {
       showScreen(0, true);
