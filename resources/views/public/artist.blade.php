@@ -493,8 +493,7 @@
         </button>
       @endif
       @if($displayGuestSpots)
-      <button id="tab-guest-spots" onclick="switchTab('guest-spots')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $guestSpotsTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap inline-flex items-center gap-1.5">
-        <span class="material-symbols-outlined text-[18px]">luggage</span>
+      <button id="tab-guest-spots" onclick="switchTab('guest-spots')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $guestSpotsTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap">
         Guest spots
       </button>
       @endif
