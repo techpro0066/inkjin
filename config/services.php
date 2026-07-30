@@ -98,4 +98,13 @@ return [
         'checkout_color' => env('VIVA_CHECKOUT_COLOR', '310f7a'),
     ],
 
+    'claude' => [
+        // Prefer Claude_API_KEY (as used in .env); CLAUDE_API_KEY also accepted.
+        'api_key' => env('Claude_API_KEY', env('CLAUDE_API_KEY')),
+        'model' => env('Claude_MODEL', env('CLAUDE_MODEL', 'claude-sonnet-5')),
+        'version' => env('Claude_API_VERSION', '2023-06-01'),
+        'base_url' => env('Claude_API_BASE', 'https://api.anthropic.com/v1/messages'),
+        'timeout' => (int) env('Claude_TIMEOUT', 60),
+    ],
+
 ];

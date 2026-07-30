@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\SuggestsTattooImageFieldsWithAi;
 use App\Models\Portfolio;
 use App\Models\Style;
 use Illuminate\Http\Request;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 
 class PortfolioController extends Controller
 {
+    use SuggestsTattooImageFieldsWithAi;
+
     private function styles(): array
     {
         return Style::active()->ordered()->pluck('name')->values()->all();

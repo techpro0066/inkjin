@@ -79,6 +79,8 @@
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-4xl">
 
+    @include('artist.partials.settings-tabs', ['activeTab' => 'availability'])
+
     <!-- Page Header -->
     <div class="mb-8">
       <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Availability</h2>

@@ -14,9 +14,6 @@
       <a href="{{ route('artist.bookings.index') }}" class="nav-item {{ request()->routeIs('artist.bookings.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">calendar_month</span> Bookings
       </a>
-      <a href="{{ route('availability.index') }}" class="nav-item {{ request()->routeIs('availability.index') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">event_available</span> Availability
-      </a>
       <a href="{{ route('artist.requests.index') }}" class="nav-item {{ request()->routeIs('artist.requests.index') || request()->routeIs('artist.custom-requests.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">edit_note</span> Requests
       </a>
@@ -33,7 +30,7 @@
       <a href="{{ route('artist.clients.index') }}" class="nav-item {{ request()->routeIs('artist.clients.*') ? 'active' : '' }}">
         <span class="material-symbols-outlined">group</span> Clients
       </a>
-      <a href="{{ route('profile.edit') }}" class="nav-item {{ request()->routeIs('profile.edit') || request()->routeIs('settings.*') ? 'active' : '' }}">
+      <a href="{{ route('profile.edit') }}" class="nav-item {{ request()->routeIs('profile.edit') || request()->routeIs('settings.*') || request()->routeIs('availability.index') ? 'active' : '' }}">
         <span class="material-symbols-outlined">settings</span> Settings
       </a>
     </nav>

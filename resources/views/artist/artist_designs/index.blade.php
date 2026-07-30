@@ -139,10 +139,36 @@
       aspect-ratio: 4 / 5;
       max-height: 20rem;
       width: 100%;
+      position: relative;
     }
     .design-image-upload-slot.has-preview {
       aspect-ratio: var(--design-preview-ar, 4 / 5);
       max-height: min(20rem, min(70vw, 85vh));
+    }
+    .design-ai-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.5rem;
+      background: rgba(28, 27, 33, 0.55);
+      color: #fff;
+      text-align: center;
+      padding: 1rem;
+      pointer-events: none;
+      border-radius: 1rem;
+    }
+    .design-image-upload-slot.ai-busy .design-ai-overlay { display: flex; }
+    .design-ai-overlay .material-symbols-outlined {
+      font-size: 28px;
+      animation: design-ai-pulse 1.1s ease-in-out infinite;
+    }
+    @keyframes design-ai-pulse {
+      0%, 100% { opacity: 0.55; transform: scale(0.96); }
+      50% { opacity: 1; transform: scale(1); }
     }
 
     /* What's included editor */
@@ -457,9 +483,14 @@
                   <p class="text-[11px] text-white/90 text-center font-medium">Tap to replace image</p>
                 </div>
               </div>
+              <div class="design-ai-overlay" aria-live="polite">
+                <span class="material-symbols-outlined">auto_awesome</span>
+                <p class="text-xs font-semibold leading-snug">Filling empty fields with AI…</p>
+              </div>
             </div>
             <input type="file" id="designImage" name="designImage" accept="image/*" class="hidden">
             <input type="hidden" id="designImageData" name="designImageData" value="">
+            <p class="text-[11px] text-on-surface-variant italic leading-relaxed mt-2.5">We'll use AI to analyze your uploaded image and automatically fill in some fields. You can always edit these. You'll still need to enter values for the remaining fields manually (pricing, minimum size, sessions etc).</p>
             <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
           </div>
           <!-- Right: Form Fields -->
@@ -537,6 +568,29 @@
                 @endforeach
               </select>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="other_styles"></p>
+            </div>
+            <!-- Suggested placement (max 3) -->
+            <div class="design-field-section scroll-mt-6" data-design-field="suggested_placements">
+              <div class="flex items-center justify-between gap-2 mb-1.5">
+                <span class="text-xs font-semibold text-on-surface-variant">Suggested placement</span>
+                <span class="shrink-0 inline-flex items-center gap-1 rounded-lg bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Max 3</span>
+              </div>
+              <p class="text-[11px] text-on-surface-variant leading-relaxed mb-3">Choose up to three body areas. If you leave this empty, clients will see “Anywhere”.</p>
+              <div class="flex items-center justify-between mb-2.5 rounded-xl bg-surface-container-low/80 px-3 py-2 border border-outline-variant/15">
+                <span class="text-xs text-on-surface-variant">Selected</span>
+                <span class="text-sm font-bold tabular-nums text-on-surface"><span id="designPlacementsCount">0</span><span class="text-on-surface-variant font-semibold"> / 3</span></span>
+              </div>
+              <div id="designPlacementsChips" class="flex flex-wrap gap-2" role="group" aria-label="Suggested placements">
+                @foreach (($placements ?? []) as $placement)
+                <button type="button" class="style-chip" data-value="{{ $placement }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $placement }}</button>
+                @endforeach
+              </div>
+              <select id="designSuggestedPlacements" name="designSuggestedPlacements" multiple class="hidden" tabindex="-1" aria-hidden="true">
+                @foreach (($placements ?? []) as $placement)
+                <option value="{{ $placement }}">{{ $placement }}</option>
+                @endforeach
+              </select>
+              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="suggested_placements"></p>
             </div>
             <!-- Colors -->
             <div class="design-field-section scroll-mt-6" data-design-field="color">
@@ -691,6 +745,7 @@
             'is_sensitive' => (bool) $d->is_sensitive,
             'primary_style' => $d->primary_style,
             'other_styles' => array_values($d->other_styles ?? []),
+            'suggested_placements' => array_values($d->suggested_placements ?? []),
             'color' => $d->color,
             'tags' => array_values($d->tags ?? []),
             'min_price' => (int) $d->min_price,
@@ -710,10 +765,12 @@
   <script>
     var ARTIST_DESIGNS_STORE_URL = @json(route('artist-designs.store'));
     var ARTIST_DESIGNS_INDEX_URL = @json(route('artist-designs.index'));
+    var ARTIST_DESIGNS_AI_SUGGEST_URL = @json(route('artist-designs.ai-suggest'));
     var WHATS_INCLUDED_UPDATE_URL = @json(route('artist-designs.whats-included.update'));
     var WHATS_INCLUDED_INITIAL = @json(['is_active' => $whatsIncludedIsActive, 'items' => $whatsIncludedItems]);
     var ARTIST_DESIGNS_BY_ID = @json($designsForEdit);
     var ARTIST_DESIGN_STYLE_OPTIONS = @json($styles);
+    var ARTIST_DESIGN_PLACEMENT_OPTIONS = @json($placements ?? []);
     $(function () {
       var MODAL_MS = 350;
       var $newDesignModal = $('#newDesignModal');
@@ -811,10 +868,146 @@
         $('#designImageUploadPreview').removeClass('hidden');
         closeDesignCropModal();
         $('#designImage').val('');
+        requestDesignAiSuggestions(dataUrl);
+      }
+
+      var designAiSuggestXhr = null;
+
+      function parseDesignTagsInput() {
+        return ($('#designTags').val() || '').split(',').map(function (t) {
+          return $.trim(t);
+        }).filter(Boolean);
+      }
+
+      function collectEmptyAiFieldsSnapshot() {
+        var empty = {
+          title: !$.trim($('#designTitle').val() || ''),
+          description: !$.trim($('#designDescription').val() || ''),
+          primary_style: !($('#designPrimaryStyle').val() || ''),
+          other_styles: $('#designOtherStyles option:selected').length === 0,
+          suggested_placements: $('#designSuggestedPlacements option:selected').length === 0,
+          color: !($('#designColors').val() || ''),
+          tags: parseDesignTagsInput().length === 0
+        };
+        return empty;
+      }
+
+      function setDesignAiBusy(busy) {
+        $('#designImageUpload').toggleClass('ai-busy', !!busy);
+      }
+
+      function applyDesignAiSuggestions(suggestions, emptyAtRequest) {
+        if (!suggestions || typeof suggestions !== 'object') return;
+        var emptyNow = collectEmptyAiFieldsSnapshot();
+
+        if (emptyAtRequest.title && emptyNow.title && suggestions.title) {
+          $('#designTitle').val(suggestions.title);
+        }
+        if (emptyAtRequest.description && emptyNow.description && suggestions.description) {
+          $('#designDescription').val(suggestions.description);
+        }
+        if (emptyAtRequest.primary_style && emptyNow.primary_style && suggestions.primary_style) {
+          ensureDesignStyleSelectValue($('#designPrimaryStyle'), suggestions.primary_style);
+          $('#designPrimaryStyle').trigger('change');
+        }
+        if (emptyAtRequest.other_styles && emptyNow.other_styles && Array.isArray(suggestions.other_styles)) {
+          var primary = $('#designPrimaryStyle').val() || '';
+          var picked = [];
+          suggestions.other_styles.forEach(function (styleValue) {
+            if (!styleValue || styleValue === primary) return;
+            if (picked.indexOf(styleValue) !== -1) return;
+            if (!designOtherStyleOptionByValue(styleValue).length) return;
+            picked.push(styleValue);
+          });
+          picked = picked.slice(0, 2);
+          $('#designOtherStyles option').prop('selected', false);
+          picked.forEach(function (styleValue) {
+            designOtherStyleOptionByValue(styleValue).prop('selected', true);
+          });
+          syncDesignOtherStylesChipsFromSelect();
+        }
+        if (emptyAtRequest.suggested_placements && emptyNow.suggested_placements && Array.isArray(suggestions.suggested_placements)) {
+          var pickedPlacements = [];
+          suggestions.suggested_placements.forEach(function (placementValue) {
+            if (!placementValue) return;
+            if (pickedPlacements.indexOf(placementValue) !== -1) return;
+            if (!designPlacementOptionByValue(placementValue).length) return;
+            pickedPlacements.push(placementValue);
+          });
+          pickedPlacements = pickedPlacements.slice(0, 3);
+          $('#designSuggestedPlacements option').prop('selected', false);
+          pickedPlacements.forEach(function (placementValue) {
+            designPlacementOptionByValue(placementValue).prop('selected', true);
+          });
+          syncDesignPlacementsChipsFromSelect();
+        }
+        if (emptyAtRequest.color && emptyNow.color && suggestions.color) {
+          $('#designColors').val(suggestions.color).trigger('change');
+        }
+        if (emptyAtRequest.tags && emptyNow.tags && Array.isArray(suggestions.tags) && suggestions.tags.length) {
+          $('#designTags').val(suggestions.tags.join(', '));
+        }
+      }
+
+      function requestDesignAiSuggestions(dataUrl) {
+        if (!ARTIST_DESIGNS_AI_SUGGEST_URL || !dataUrl) return;
+
+        var emptyAtRequest = collectEmptyAiFieldsSnapshot();
+        var anyEmpty = Object.keys(emptyAtRequest).some(function (k) { return emptyAtRequest[k]; });
+        if (!anyEmpty) return;
+
+        if (designAiSuggestXhr && designAiSuggestXhr.readyState !== 4) {
+          try { designAiSuggestXhr.abort(); } catch (e) { /* ignore */ }
+        }
+
+        var fd = new FormData();
+        fd.append('image_data', dataUrl);
+        fd.append('title', $('#designTitle').val() || '');
+        fd.append('description', $('#designDescription').val() || '');
+        fd.append('primary_style', $('#designPrimaryStyle').val() || '');
+        fd.append('color', $('#designColors').val() || '');
+        $('#designOtherStyles option:selected').each(function () {
+          fd.append('other_styles[]', $(this).val());
+        });
+        $('#designSuggestedPlacements option:selected').each(function () {
+          fd.append('suggested_placements[]', $(this).val());
+        });
+        parseDesignTagsInput().forEach(function (tag) {
+          fd.append('tags[]', tag);
+        });
+
+        setDesignAiBusy(true);
+        designAiSuggestXhr = $.ajax({
+          url: ARTIST_DESIGNS_AI_SUGGEST_URL,
+          method: 'POST',
+          data: fd,
+          processData: false,
+          contentType: false,
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+            'Accept': 'application/json'
+          },
+          success: function (res) {
+            if (!res || !res.success) return;
+            applyDesignAiSuggestions(res.suggestions || {}, emptyAtRequest);
+          },
+          error: function (xhr) {
+            if (xhr && xhr.statusText === 'abort') return;
+            // Silent fail — artist can still fill fields manually.
+          },
+          complete: function () {
+            setDesignAiBusy(false);
+            designAiSuggestXhr = null;
+          }
+        });
       }
 
       function resetDesignImageState() {
         closeDesignCropModal();
+        if (designAiSuggestXhr && designAiSuggestXhr.readyState !== 4) {
+          try { designAiSuggestXhr.abort(); } catch (e) { /* ignore */ }
+        }
+        setDesignAiBusy(false);
         $('#designImageData').val('');
         $('#designImagePreviewImg').attr('src', '');
         var slot = document.getElementById('designImageUpload');
@@ -827,7 +1020,7 @@
         $('#designImage').val('');
       }
 
-      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'repeat_limit', 'primary_style', 'other_styles', 'color', 'tags', 'min_price', 'max_price', 'min_size', 'max_size', 'max_sessions', 'session_duration'];
+      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'repeat_limit', 'primary_style', 'other_styles', 'suggested_placements', 'color', 'tags', 'min_price', 'max_price', 'min_size', 'max_size', 'max_sessions', 'session_duration'];
 
       function setDesignFormBanner(msg) {
         var el = document.getElementById('designFormBanner');
@@ -960,6 +1153,18 @@
         });
       }
 
+      function designPlacementOptionByValue(val) {
+        return $('#designSuggestedPlacements option').filter(function () {
+          return $(this).val() === val;
+        });
+      }
+
+      function designPlacementChipByValue(val) {
+        return $('#designPlacementsChips .style-chip').filter(function () {
+          return $(this).attr('data-value') === val;
+        });
+      }
+
       function ensureDesignStyleSelectValue($select, value) {
         if (!value) {
           return;
@@ -1001,6 +1206,11 @@
           designOtherStyleOptionByValue(styleValue).prop('selected', true);
         });
         syncDesignOtherStylesChipsFromSelect();
+        $('#designSuggestedPlacements option').prop('selected', false);
+        (d.suggested_placements || []).forEach(function (placementValue) {
+          designPlacementOptionByValue(placementValue).prop('selected', true);
+        });
+        syncDesignPlacementsChipsFromSelect();
       }
 
       function applyExistingDesignImagePreview(url) {
@@ -1089,6 +1299,19 @@
         otherSelected.forEach(function (v) {
           if (allowedStyles.indexOf(v) === -1) {
             errors.other_styles = 'One or more other styles are not valid.';
+          }
+        });
+        var placementSelected = [];
+        $('#designSuggestedPlacements option:selected').each(function () {
+          placementSelected.push($(this).val());
+        });
+        var allowedPlacements = Array.isArray(ARTIST_DESIGN_PLACEMENT_OPTIONS) ? ARTIST_DESIGN_PLACEMENT_OPTIONS : [];
+        if (placementSelected.length > 3) {
+          errors.suggested_placements = 'You can select at most 3 suggested placements.';
+        }
+        placementSelected.forEach(function (v) {
+          if (allowedPlacements.indexOf(v) === -1) {
+            errors.suggested_placements = 'One or more placements are not valid.';
           }
         });
         var color = $('#designColors').val();
@@ -1218,6 +1441,8 @@
         syncRepeatLimitFieldVisibility();
         $('#designOtherStyles option').prop('selected', false);
         syncDesignOtherStylesChipsFromSelect();
+        $('#designSuggestedPlacements option').prop('selected', false);
+        syncDesignPlacementsChipsFromSelect();
       }
 
       function updateDesignOtherStylesChipsUI() {
@@ -1239,6 +1464,27 @@
           }
         });
         updateDesignOtherStylesChipsUI();
+      }
+
+      function updateDesignPlacementsChipsUI() {
+        var $chips = $('#designPlacementsChips .style-chip');
+        var n = $chips.filter('.is-selected').length;
+        $('#designPlacementsCount').text(n);
+        var atMax = n >= 3;
+        $chips.each(function () {
+          var on = $(this).hasClass('is-selected');
+          $(this).prop('disabled', atMax && !on).attr('aria-pressed', on ? 'true' : 'false');
+        });
+      }
+
+      function syncDesignPlacementsChipsFromSelect() {
+        $('#designPlacementsChips .style-chip').removeClass('is-selected').prop('disabled', false);
+        $('#designSuggestedPlacements option').each(function () {
+          if (this.selected) {
+            designPlacementChipByValue(this.value).addClass('is-selected');
+          }
+        });
+        updateDesignPlacementsChipsUI();
       }
 
       function initDesignModalSelect2() {
@@ -1280,6 +1526,7 @@
         $newDesignModal.addClass('modal-visible').attr('aria-hidden', 'false');
         $('body').css('overflow', 'hidden');
         syncDesignOtherStylesChipsFromSelect();
+        syncDesignPlacementsChipsFromSelect();
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
             $newDesignModal.addClass('modal-open');
@@ -1334,6 +1581,9 @@
         fd.append('primary_style', $('#designPrimaryStyle').val());
         $('#designOtherStyles option:selected').each(function () {
           fd.append('other_styles[]', $(this).val());
+        });
+        $('#designSuggestedPlacements option:selected').each(function () {
+          fd.append('suggested_placements[]', $(this).val());
         });
         fd.append('color', $('#designColors').val());
         var rawTags = $('#designTags').val();
@@ -1660,6 +1910,22 @@
         updateDesignOtherStylesChipsUI();
       });
 
+      $('#designPlacementsChips').on('click', '.style-chip', function () {
+        var $btn = $(this);
+        if ($btn.prop('disabled')) return;
+        var val = $btn.attr('data-value');
+        var $opt = designPlacementOptionByValue(val);
+        if ($btn.hasClass('is-selected')) {
+          $btn.removeClass('is-selected');
+          $opt.prop('selected', false);
+        } else {
+          if ($('#designPlacementsChips .style-chip.is-selected').length >= 3) return;
+          $btn.addClass('is-selected');
+          $opt.prop('selected', true);
+        }
+        updateDesignPlacementsChipsUI();
+      });
+
       $(document).on('keydown', function (e) {
         if (e.key !== 'Escape') return;
         if ($designCropModal.hasClass('is-open')) {
@@ -1757,6 +2023,7 @@
       applyDesignFilters();
 
       syncDesignOtherStylesChipsFromSelect();
+      syncDesignPlacementsChipsFromSelect();
 
       (function initWhatsIncludedUi() {
         var MAX_ITEMS = 8;

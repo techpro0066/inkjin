@@ -4,19 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Models\ArtistDesign;
 use App\Models\UserDetail;
+use App\Http\Controllers\Concerns\SuggestsTattooImageFieldsWithAi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Models\Style;
+use App\Models\Placement;
 use Illuminate\Support\Str;
 
 class ArtistDesignsController extends Controller
 {
+    use SuggestsTattooImageFieldsWithAi;
     private function styles(): array
     {
         return Style::active()->ordered()->pluck('name')->values()->all();
+    }
+
+    private function placements(): array
+    {
+        return Placement::active()->ordered()->pluck('name')->values()->all();
     }
 
     private function sessionDurations(): array
@@ -54,6 +62,8 @@ class ArtistDesignsController extends Controller
             'primary_style' => ['required', 'string', Rule::in($this->styles())],
             'other_styles' => ['nullable', 'array', 'max:2'],
             'other_styles.*' => ['string', Rule::in($this->styles())],
+            'suggested_placements' => ['nullable', 'array', 'max:3'],
+            'suggested_placements.*' => ['string', Rule::in($this->placements())],
             'color' => ['required', 'string', Rule::in(['color', 'black-grey', 'both'])],
             'tags' => ['nullable', 'array', 'max:30'],
             'tags.*' => ['string', 'max:64'],
@@ -115,8 +125,10 @@ class ArtistDesignsController extends Controller
         $other = array_values(array_diff($other, [$primary]));
         $other = array_slice($other, 0, 2);
         $tags = array_values(array_unique(array_filter(array_map('trim', $validated['tags'] ?? []))));
+        $placements = array_values(array_unique(array_filter(array_map('trim', $validated['suggested_placements'] ?? []))));
+        $placements = array_slice($placements, 0, 3);
 
-        return [$other, $tags];
+        return [$other, $tags, $placements];
     }
 
     private function assertOwns(ArtistDesign $artistDesign): void
@@ -182,12 +194,14 @@ class ArtistDesignsController extends Controller
             : [];
         
         $styles = $this->styles();
+        $placements = $this->placements();
 
         return view('artist.artist_designs.index', [
             'artistDesigns' => $artistDesigns,
             'whatsIncludedIsActive' => (bool) ($userDetail?->design_whats_included_is_active ?? false),
             'whatsIncludedItems' => $whatsIncludedItems,
             'styles' => $styles,
+            'placements' => $placements,
         ]);
     }
 
@@ -195,7 +209,7 @@ class ArtistDesignsController extends Controller
     {
         $this->normalizeSizeInputs($request);
         $validated = $request->validate($this->designRules($request, true), $this->designValidationMessages());
-        [$other, $tags] = $this->normalizeArrays($validated);
+        [$other, $tags, $placements] = $this->normalizeArrays($validated);
         [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
         [$width, $height] = $this->normalizedSizeDimensions($validated);
         $imagePath = $this->storeUploadedImage($request);
@@ -213,6 +227,7 @@ class ArtistDesignsController extends Controller
             'is_sensitive' => $request->boolean('is_sensitive'),
             'primary_style' => $validated['primary_style'],
             'other_styles' => $other,
+            'suggested_placements' => $placements,
             'color' => $validated['color'],
             'tags' => $tags,
             'min_price' => $validated['min_price'],
@@ -236,7 +251,7 @@ class ArtistDesignsController extends Controller
         $this->assertOwns($artistDesign);
         $this->normalizeSizeInputs($request);
         $validated = $request->validate($this->designRules($request, false), $this->designValidationMessages());
-        [$other, $tags] = $this->normalizeArrays($validated);
+        [$other, $tags, $placements] = $this->normalizeArrays($validated);
         [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
         [$width, $height] = $this->normalizedSizeDimensions($validated);
         $repeatLimit = $this->normalizedRepeatLimit($request, $artistDesign);
@@ -258,6 +273,7 @@ class ArtistDesignsController extends Controller
             'is_sensitive' => $request->boolean('is_sensitive'),
             'primary_style' => $validated['primary_style'],
             'other_styles' => $other,
+            'suggested_placements' => $placements,
             'color' => $validated['color'],
             'tags' => $tags,
             'min_price' => $validated['min_price'],

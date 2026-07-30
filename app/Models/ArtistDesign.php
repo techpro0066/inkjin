@@ -20,6 +20,7 @@ class ArtistDesign extends Model
         'is_sensitive',
         'primary_style',
         'other_styles',
+        'suggested_placements',
         'color',
         'tags',
         'min_price',
@@ -41,8 +42,28 @@ class ArtistDesign extends Model
             'repeat_limit' => 'integer',
             'is_sensitive' => 'boolean',
             'other_styles' => 'array',
+            'suggested_placements' => 'array',
             'tags' => 'array',
         ];
+    }
+
+    /**
+     * Display label for the public design page.
+     * Empty selection shows "Anywhere".
+     */
+    public function getSuggestedPlacementAttribute(): string
+    {
+        $items = $this->suggested_placements;
+        if (! is_array($items)) {
+            return 'Anywhere';
+        }
+
+        $items = array_values(array_filter(array_map(
+            fn ($v) => trim((string) $v),
+            $items
+        )));
+
+        return $items === [] ? 'Anywhere' : implode(', ', $items);
     }
 
     public function user(): BelongsTo

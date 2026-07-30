@@ -7,15 +7,7 @@
   <form id="otherSettingsForm" class="contents">
     @csrf
     <div class="flex-1 p-6 md:p-10 lg:p-12 max-w-4xl">
-      <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 overflow-x-auto">
-        <a href="{{ route('profile.edit') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface">Profile</a>
-        <a href="{{ route('settings.styles') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface">Styles &amp; Social</a>
-        <a href="{{ route('settings.studio') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface">Studio</a>
-        <a href="{{ route('settings.preferences') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface">Payments</a>
-        <a href="{{ route('settings.calendar') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface">Calendar</a>
-        <a href="{{ route('settings.payment') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface">Payouts</a>
-        <a href="javascript:void(0)" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary">Other</a>
-      </div>
+      @include('artist.partials.settings-tabs', ['activeTab' => 'other'])
 
       <div class="mb-8">
         <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Other Settings</h2>

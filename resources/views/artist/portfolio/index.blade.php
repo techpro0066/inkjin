@@ -186,6 +186,31 @@
       max-width: min(100%, 22rem);
       max-height: min(65vh, 420px);
     }
+    .work-ai-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.5rem;
+      background: rgba(28, 27, 33, 0.55);
+      color: #fff;
+      text-align: center;
+      padding: 1rem;
+      pointer-events: none;
+      border-radius: 1rem;
+    }
+    .work-image-upload.ai-busy .work-ai-overlay { display: flex; }
+    .work-ai-overlay .material-symbols-outlined {
+      font-size: 28px;
+      animation: work-ai-pulse 1.1s ease-in-out infinite;
+    }
+    @keyframes work-ai-pulse {
+      0%, 100% { opacity: 0.55; transform: scale(0.96); }
+      50% { opacity: 1; transform: scale(1); }
+    }
 </style>
 @endsection
 
@@ -304,9 +329,14 @@
                 <p class="text-[11px] text-white/90 text-center font-medium">Tap to replace image</p>
               </div>
             </div>
+            <div class="work-ai-overlay" aria-live="polite">
+              <span class="material-symbols-outlined">auto_awesome</span>
+              <p class="text-xs font-semibold leading-snug">Filling empty fields with AI…</p>
+            </div>
           </div>
           <input type="file" id="workImage" name="workImage" accept="image/*" class="hidden">
           <input type="hidden" id="workImageData" name="workImageData" value="">
+          <p class="text-[11px] text-on-surface-variant italic leading-relaxed mt-2.5">We'll use AI to analyze your uploaded image and automatically fill in some fields. You can always edit these.</p>
           <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
         </div>
         <!-- Title -->
@@ -469,6 +499,7 @@
     window.PORTFOLIO_EDITOR_DATA = @json($portfolioEditorData);
     var PORTFOLIO_STYLE_OPTIONS = @json($styles);
     var PORTFOLIO_STORE_URL = @json(route('portfolio.store'));
+    var PORTFOLIO_AI_SUGGEST_URL = @json(route('portfolio.ai-suggest'));
     $(function () {
       var MODAL_MS = 350;
       var $deletePortfolioModal = $('#deletePortfolioModal');
@@ -570,6 +601,117 @@
         setWorkImageUploadHasPreview(true);
         closeWorkCropModal();
         $('#workImage').val('');
+        requestPortfolioAiSuggestions(dataUrl);
+      }
+
+      var portfolioAiSuggestXhr = null;
+
+      function parseWorkTagsInput() {
+        return ($('#workTags').val() || '').split(',').map(function (t) {
+          return $.trim(t);
+        }).filter(Boolean);
+      }
+
+      function collectEmptyPortfolioAiFieldsSnapshot() {
+        return {
+          title: !$.trim($('#workTitle').val() || ''),
+          description: !$.trim($('#workDescription').val() || ''),
+          primary_style: !($('#workPrimaryStyle').val() || ''),
+          other_styles: $('#workOtherStyles option:selected').length === 0,
+          color: !($('#workColors').val() || ''),
+          tags: parseWorkTagsInput().length === 0
+        };
+      }
+
+      function setPortfolioAiBusy(busy) {
+        $('#workImageUpload').toggleClass('ai-busy', !!busy);
+      }
+
+      function applyPortfolioAiSuggestions(suggestions, emptyAtRequest) {
+        if (!suggestions || typeof suggestions !== 'object') return;
+        var emptyNow = collectEmptyPortfolioAiFieldsSnapshot();
+
+        if (emptyAtRequest.title && emptyNow.title && suggestions.title) {
+          $('#workTitle').val(suggestions.title);
+        }
+        if (emptyAtRequest.description && emptyNow.description && suggestions.description) {
+          $('#workDescription').val(suggestions.description);
+        }
+        if (emptyAtRequest.primary_style && emptyNow.primary_style && suggestions.primary_style) {
+          ensureWorkStyleSelectValue($('#workPrimaryStyle'), suggestions.primary_style);
+          $('#workPrimaryStyle').trigger('change');
+        }
+        if (emptyAtRequest.other_styles && emptyNow.other_styles && Array.isArray(suggestions.other_styles)) {
+          var primary = $('#workPrimaryStyle').val() || '';
+          var picked = [];
+          suggestions.other_styles.forEach(function (styleValue) {
+            if (!styleValue || styleValue === primary) return;
+            if (picked.indexOf(styleValue) !== -1) return;
+            if (!workOtherStyleOptionByValue(styleValue).length) return;
+            picked.push(styleValue);
+          });
+          picked = picked.slice(0, 2);
+          $('#workOtherStyles option').prop('selected', false);
+          picked.forEach(function (styleValue) {
+            workOtherStyleOptionByValue(styleValue).prop('selected', true);
+          });
+          syncOtherStylesChipsFromSelect();
+        }
+        if (emptyAtRequest.color && emptyNow.color && suggestions.color) {
+          $('#workColors').val(suggestions.color).trigger('change');
+        }
+        if (emptyAtRequest.tags && emptyNow.tags && Array.isArray(suggestions.tags) && suggestions.tags.length) {
+          $('#workTags').val(suggestions.tags.join(', '));
+        }
+      }
+
+      function requestPortfolioAiSuggestions(dataUrl) {
+        if (!PORTFOLIO_AI_SUGGEST_URL || !dataUrl) return;
+
+        var emptyAtRequest = collectEmptyPortfolioAiFieldsSnapshot();
+        var anyEmpty = Object.keys(emptyAtRequest).some(function (k) { return emptyAtRequest[k]; });
+        if (!anyEmpty) return;
+
+        if (portfolioAiSuggestXhr && portfolioAiSuggestXhr.readyState !== 4) {
+          try { portfolioAiSuggestXhr.abort(); } catch (e) { /* ignore */ }
+        }
+
+        var fd = new FormData();
+        fd.append('image_data', dataUrl);
+        fd.append('title', $('#workTitle').val() || '');
+        fd.append('description', $('#workDescription').val() || '');
+        fd.append('primary_style', $('#workPrimaryStyle').val() || '');
+        fd.append('color', $('#workColors').val() || '');
+        $('#workOtherStyles option:selected').each(function () {
+          fd.append('other_styles[]', $(this).val());
+        });
+        parseWorkTagsInput().forEach(function (tag) {
+          fd.append('tags[]', tag);
+        });
+
+        setPortfolioAiBusy(true);
+        portfolioAiSuggestXhr = $.ajax({
+          url: PORTFOLIO_AI_SUGGEST_URL,
+          method: 'POST',
+          data: fd,
+          processData: false,
+          contentType: false,
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+            'Accept': 'application/json'
+          },
+          success: function (res) {
+            if (!res || !res.success) return;
+            applyPortfolioAiSuggestions(res.suggestions || {}, emptyAtRequest);
+          },
+          error: function (xhr) {
+            if (xhr && xhr.statusText === 'abort') return;
+          },
+          complete: function () {
+            setPortfolioAiBusy(false);
+            portfolioAiSuggestXhr = null;
+          }
+        });
       }
 
       function updateOtherStylesChipsUI() {
@@ -676,6 +818,10 @@
 
       function resetWorkImageState() {
         closeWorkCropModal();
+        if (portfolioAiSuggestXhr && portfolioAiSuggestXhr.readyState !== 4) {
+          try { portfolioAiSuggestXhr.abort(); } catch (e) { /* ignore */ }
+        }
+        setPortfolioAiBusy(false);
         $('#workImageData').val('');
         $('#workImagePreviewImg').attr('src', '').off('load.portfoliofit');
         $('#workImageUploadEmpty').removeClass('hidden');

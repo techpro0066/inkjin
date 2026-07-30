@@ -192,6 +192,13 @@
     </div>
 
     <!-- INFO GRID -->
+    @php
+      $otherStyles = collect(is_array($tattoo->other_styles ?? null) ? $tattoo->other_styles : [])
+        ->map(fn ($s) => trim((string) $s))
+        ->filter()
+        ->values()
+        ->all();
+    @endphp
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-10">
       <div class="bg-surface-container-low rounded-xl p-4">
         <div class="flex items-center gap-2 mb-1.5">
@@ -200,6 +207,15 @@
         </div>
         <p id="infoStyle" class="text-sm font-semibold text-on-surface">{{ ucfirst($tattoo->primary_style) }}</p>
       </div>
+      @if(count($otherStyles) > 0)
+      <div class="bg-surface-container-low rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="material-symbols-outlined text-[18px] text-primary">category</span>
+          <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Other styles</span>
+        </div>
+        <p id="infoOtherStyles" class="text-sm font-semibold text-on-surface">{{ collect($otherStyles)->map(fn ($s) => ucfirst($s))->implode(', ') }}</p>
+      </div>
+      @endif
       <div class="bg-surface-container-low rounded-xl p-4">
         <div class="flex items-center gap-2 mb-1.5">
           <span class="material-symbols-outlined text-[18px] text-primary">palette</span>
@@ -231,9 +247,9 @@
       <div class="bg-surface-container-low rounded-xl p-4">
         <div class="flex items-center gap-2 mb-1.5">
           <span class="material-symbols-outlined text-[18px] text-primary">body_system</span>
-          <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Placement</span>
+          <span class="text-xs text-on-surface-variant uppercase tracking-wide font-medium">Suggested placement</span>
         </div>
-        <p id="infoPlacement" class="text-sm font-semibold text-on-surface">{{ $tattoo->suggested_placement }}</p>
+        <p id="infoPlacement" class="text-sm font-semibold text-on-surface">{{ $tattoo->suggested_placement ?: 'Anywhere' }}</p>
       </div>
     </div>
 
