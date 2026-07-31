@@ -412,7 +412,7 @@
             @endif
             <div class="text-xs text-on-surface-variant space-y-0.5 mb-3">
               <p><span class="font-semibold text-on-surface">Price:</span> €{{ $design->min_price }} — €{{ $design->max_price }}</p>
-              <p><span class="font-semibold text-on-surface">Size:</span> {{ $design->sizeLabel() }}</p>
+              <p><span class="font-semibold text-on-surface">Size (min):</span> {{ $design->sizeLabel($sizeUnit ?? null) }}</p>
               <p><span class="font-semibold text-on-surface">Sessions:</span> {{ $sessionsLabel }}, {{ $sessionLabel }} each</p>
             </div>
             <div class="flex items-center gap-1 pt-2 mt-1 border-t border-outline-variant/10">
@@ -463,6 +463,7 @@
       </div>
       <div class="p-6">
         <div id="designFormBanner" class="hidden mb-5 rounded-xl border border-error/30 bg-error-container/40 px-3 py-2 text-xs text-on-error-container font-medium whitespace-pre-line"></div>
+        <p class="text-on-surface-variant mb-6 leading-relaxed">Upload the image first. We'll use AI to analyze your uploaded image and automatically fill in some fields. You can always edit these. You'll still need to enter values for the remaining fields manually (pricing, minimum size, sessions etc).</p>
         <div class="flex flex-col lg:flex-row gap-6">
           <!-- Left: Image Upload -->
           <div class="lg:w-2/5 design-field-section scroll-mt-6" data-design-field="image">
@@ -490,7 +491,6 @@
             </div>
             <input type="file" id="designImage" name="designImage" accept="image/*" class="hidden">
             <input type="hidden" id="designImageData" name="designImageData" value="">
-            <p class="text-[11px] text-on-surface-variant italic leading-relaxed mt-2.5">We'll use AI to analyze your uploaded image and automatically fill in some fields. You can always edit these. You'll still need to enter values for the remaining fields manually (pricing, minimum size, sessions etc).</p>
             <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
           </div>
           <!-- Right: Form Fields -->
@@ -626,24 +626,14 @@
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_price"></p>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="max_price"></p>
             </div>
-            <!-- Size (width / height) -->
+            <!-- Size (min) -->
             <div class="design-field-section scroll-mt-6" data-design-field="min_size">
-              <label class="block text-sm font-semibold text-on-surface mb-2">Size</label>
-              <div class="flex items-center gap-3 flex-wrap">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs text-on-surface-variant">Width</span>
-                  <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" class="w-24 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
-                </div>
-                <span class="text-on-surface-variant">×</span>
-                <div class="flex items-center gap-2">
-                  <span class="text-xs text-on-surface-variant">Height</span>
-                  <input type="number" id="size_max" name="size_max" placeholder="e.g. 20" min="1" class="w-24 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
-                </div>
-                <span class="text-sm font-medium text-on-surface-variant" id="sizeUnitLabel">cm</span>
+              <label for="size_min" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Size (min)</label>
+              <div class="flex items-center gap-3">
+                <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" class="w-28 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
+                <span class="text-sm font-semibold text-on-surface" id="sizeUnitLabel">{{ $sizeUnit ?? 'cm' }}</span>
               </div>
-              <p class="text-xs text-on-surface-variant mt-1.5">Enter width, height, or both.</p>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_size"></p>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="max_size"></p>
             </div>
             <!-- Max sessions -->
             <div class="design-field-section scroll-mt-6" data-design-field="max_sessions">
@@ -751,7 +741,6 @@
             'min_price' => (int) $d->min_price,
             'max_price' => (int) $d->max_price,
             'min_size' => $d->min_size !== null ? (int) $d->min_size : null,
-            'max_size' => $d->max_size !== null ? (int) $d->max_size : null,
             'min_sessions' => (int) $d->min_sessions,
             'max_sessions' => (int) $d->max_sessions,
             'session_duration' => $d->session_duration,
@@ -771,6 +760,7 @@
     var ARTIST_DESIGNS_BY_ID = @json($designsForEdit);
     var ARTIST_DESIGN_STYLE_OPTIONS = @json($styles);
     var ARTIST_DESIGN_PLACEMENT_OPTIONS = @json($placements ?? []);
+    var ARTIST_DESIGN_SIZE_UNIT = @json($sizeUnit ?? 'cm');
     $(function () {
       var MODAL_MS = 350;
       var $newDesignModal = $('#newDesignModal');
@@ -1020,7 +1010,7 @@
         $('#designImage').val('');
       }
 
-      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'repeat_limit', 'primary_style', 'other_styles', 'suggested_placements', 'color', 'tags', 'min_price', 'max_price', 'min_size', 'max_size', 'max_sessions', 'session_duration'];
+      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'repeat_limit', 'primary_style', 'other_styles', 'suggested_placements', 'color', 'tags', 'min_price', 'max_price', 'min_size', 'max_sessions', 'session_duration'];
 
       function setDesignFormBanner(msg) {
         var el = document.getElementById('designFormBanner');
@@ -1192,7 +1182,6 @@
         $('#designPriceMin').val(d.min_price != null ? d.min_price : '');
         $('#designPriceMax').val(d.max_price != null ? d.max_price : '');
         $('#size_min').val(d.min_size != null ? d.min_size : '');
-        $('#size_max').val(d.max_size != null ? d.max_size : '');
         $('#designSessionsMax').val((d.max_sessions != null && parseInt(d.max_sessions, 10) > 1) ? d.max_sessions : '');
         $('#designSessionTime').val(d.session_duration || '');
         $('#toggleVisibility').toggleClass('active', !!d.is_visible);
@@ -1350,21 +1339,10 @@
         if (!errors.min_price && !errors.max_price && minP > maxP) {
           errors.max_price = 'Maximum price must be greater than or equal to minimum price.';
         }
-        var widthV = $('#size_min').val();
-        var heightV = $('#size_max').val();
-        var width = parseInt(widthV, 10);
-        var height = parseInt(heightV, 10);
-        var hasWidth = widthV !== '' && !isNaN(width) && width >= 1;
-        var hasHeight = heightV !== '' && !isNaN(height) && height >= 1;
-        if (!hasWidth && !hasHeight) {
-          errors.min_size = 'Enter the width or height. At least one is required. You can enter both if you\'d like.';
-        } else {
-          if (widthV !== '' && (isNaN(width) || width < 1)) {
-            errors.min_size = 'Width must be at least 1 cm.';
-          }
-          if (heightV !== '' && (isNaN(height) || height < 1)) {
-            errors.max_size = 'Height must be at least 1 cm.';
-          }
+        var sizeMinRaw = String($('#size_min').val() || '').trim();
+        var sizeMin = parseInt(sizeMinRaw, 10);
+        if (sizeMinRaw === '' || isNaN(sizeMin) || sizeMin < 1) {
+          errors.min_size = 'You need to enter the minimum size';
         }
         var maxSev = String($('#designSessionsMax').val() || '').trim();
         if (maxSev !== '') {
@@ -1432,7 +1410,6 @@
         $('#designPriceMin').val('');
         $('#designPriceMax').val('');
         $('#size_min').val('');
-        $('#size_max').val('');
         $('#designSessionsMax').val('');
         $('#designSessionTime').val('');
         $('#toggleVisibility, #toggleAvailable').addClass('active');
@@ -1596,7 +1573,6 @@
         fd.append('min_price', $('#designPriceMin').val());
         fd.append('max_price', $('#designPriceMax').val());
         fd.append('min_size', $('#size_min').val());
-        fd.append('max_size', $('#size_max').val());
         fd.append('min_sessions', '1');
         var maxSessionsVal = String($('#designSessionsMax').val() || '').trim();
         fd.append('max_sessions', maxSessionsVal === '' ? '1' : maxSessionsVal);

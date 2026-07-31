@@ -164,12 +164,33 @@
     @media (min-width: 640px) {
       .q-row {
         align-items: center;
+        width: 100%;
+      }
+
+      .q-text {
+        /* Fill remaining space so type / toggle / actions sit on the right */
+        flex: 1 1 auto;
+        max-width: none;
+        min-width: 0;
+      }
+
+      .q-meta {
+        margin-left: auto;
       }
 
       .q-row > .material-symbols-outlined:not(.q-drag-handle),
       .q-row .q-drag-handle,
       .q-meta {
         margin-top: 0;
+      }
+
+      .questions-list-scroll {
+        overflow-x: visible;
+      }
+
+      .questions-list,
+      .q-row {
+        min-width: 0;
       }
     }
 

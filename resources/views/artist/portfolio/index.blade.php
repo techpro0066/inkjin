@@ -310,6 +310,7 @@
         <input type="hidden" id="workPortfolioId" value="">
         <input type="hidden" id="workPortfolioUpdateUrl" value="">
         <div id="workFormBanner" class="hidden rounded-xl border border-error/30 bg-error-container/40 px-3 py-2 text-xs text-on-error-container space-y-1"></div>
+        <p class="text-on-surface-variant leading-relaxed">Upload the image first. We'll use AI to analyze your uploaded image and automatically fill in some fields. You can always edit these.</p>
         <!-- Image Upload -->
         <div class="work-field-section scroll-mt-6" data-work-field="image">
           <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Image</label>
@@ -336,7 +337,6 @@
           </div>
           <input type="file" id="workImage" name="workImage" accept="image/*" class="hidden">
           <input type="hidden" id="workImageData" name="workImageData" value="">
-          <p class="text-[11px] text-on-surface-variant italic leading-relaxed mt-2.5">We'll use AI to analyze your uploaded image and automatically fill in some fields. You can always edit these.</p>
           <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
         </div>
         <!-- Title -->

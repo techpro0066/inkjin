@@ -119,24 +119,27 @@ class ArtistDesign extends Model
     }
 
     /**
-     * Width (min_size) and/or height (max_size) display label.
+     * Minimum size display label using the artist's size unit (cm/in).
      */
-    public function sizeLabel(): string
+    public function sizeLabel(?string $unit = null): string
     {
-        $width = (int) ($this->min_size ?? 0);
-        $height = (int) ($this->max_size ?? 0);
-
-        if ($width > 0 && $height > 0) {
-            return $width.' × '.$height.' cm';
+        $size = (int) ($this->min_size ?? 0);
+        if ($size <= 0) {
+            // Legacy designs may only have had height stored in max_size.
+            $size = (int) ($this->max_size ?? 0);
         }
-        if ($width > 0) {
-            return 'Width '.$width.' cm';
-        }
-        if ($height > 0) {
-            return 'Height '.$height.' cm';
+        if ($size <= 0) {
+            return '—';
         }
 
-        return '—';
+        if ($unit === null) {
+            $this->loadMissing('user.userDetail');
+            $unit = $this->user?->userDetail?->size_unit;
+        }
+
+        $unit = in_array($unit, ['cm', 'in'], true) ? $unit : 'cm';
+
+        return $size.' '.$unit;
     }
 
     public function canBeDeleted(): bool
