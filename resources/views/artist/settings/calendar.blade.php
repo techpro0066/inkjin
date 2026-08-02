@@ -319,7 +319,7 @@
   <div id="disconnectCalendarModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
       <h5 class="text-lg font-bold text-on-surface mb-2">Disconnect calendar?</h5>
-      <p class="text-on-surface-variant text-sm mb-6">You can reconnect later.</p>
+      <p class="text-on-surface-variant text-sm mb-6">This will switch you to Managed Scheduling automatically. You can reconnect Google Calendar later to use Auto Scheduling again.</p>
       <div class="flex justify-end gap-3">
         <button type="button" id="cancelDisconnectCal" class="rounded-xl px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low">Cancel</button>
         <button type="button" id="confirmDisconnectBtn" class="rounded-xl px-5 py-2.5 text-sm font-semibold bg-error text-white hover:opacity-90">Disconnect</button>
@@ -454,6 +454,16 @@
       bindConnectButton();
     }
 
+    function switchToManagedSchedulingUi() {
+      var managedCard = document.getElementById('card-managed');
+      if (managedCard) {
+        selectSchedule('managed', managedCard);
+      } else {
+        $('#scheduling_type').val('managed');
+        $('#google-calendar-status').hide();
+      }
+    }
+
     bindConnectButton();
     bindDisconnectButton();
     $('#cancelDisconnectCal').on('click', closeCalModal);
@@ -462,6 +472,8 @@
     });
     $('#confirmDisconnectBtn').on('click', function () {
       closeCalModal();
+      var $btn = $('#confirmDisconnectBtn');
+      $btn.prop('disabled', true);
       $.ajax({
         url: @json(route('google.calendar.disconnect')),
         type: 'POST',
@@ -473,8 +485,18 @@
       }).done(function (data) {
         if (data.success) {
           markCalendarDisconnectedUi();
-          $('#calAlert').attr('class', 'rounded-xl px-4 py-3 text-sm mb-6 bg-green-50 text-green-800 border border-green-200').text('Google Calendar disconnected successfully.').removeClass('hidden');
+          switchToManagedSchedulingUi();
+          $('#calAlert').attr('class', 'rounded-xl px-4 py-3 text-sm mb-6 bg-green-50 text-green-800 border border-green-200').text(data.message || 'Google Calendar disconnected. Managed scheduling is now active.').removeClass('hidden');
+          if (typeof showSaveToast === 'function') {
+            showSaveToast();
+          }
+        } else {
+          showCalAlert(data.message || 'Failed to disconnect Google Calendar');
         }
+      }).fail(function (xhr) {
+        showCalAlert((xhr.responseJSON && xhr.responseJSON.message) || 'Failed to disconnect Google Calendar');
+      }).always(function () {
+        $btn.prop('disabled', false);
       });
     });
 

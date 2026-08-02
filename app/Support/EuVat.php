@@ -5,42 +5,46 @@ namespace App\Support;
 /**
  * EU VAT on Inkjin booking fee only (deposit is untaxed).
  * Country is inferred from the client's phone country calling code.
+ * All EU member states use a flat 24% rate; outside the EU the rate is 0%.
  */
 class EuVat
 {
+    /** Flat VAT rate (%) applied to the booking fee for every EU country. */
+    public const EU_RATE = 24.0;
+
     /**
-     * Standard VAT rates (%) for EU member states.
+     * EU member states (ISO 3166-1 alpha-2 → display name).
      *
-     * @var array<string, array{name: string, rate: float}>
+     * @var array<string, string>
      */
     private const COUNTRIES = [
-        'AT' => ['name' => 'Austria', 'rate' => 20.0],
-        'BE' => ['name' => 'Belgium', 'rate' => 21.0],
-        'BG' => ['name' => 'Bulgaria', 'rate' => 20.0],
-        'HR' => ['name' => 'Croatia', 'rate' => 25.0],
-        'CY' => ['name' => 'Cyprus', 'rate' => 19.0],
-        'CZ' => ['name' => 'Czechia', 'rate' => 21.0],
-        'DK' => ['name' => 'Denmark', 'rate' => 25.0],
-        'EE' => ['name' => 'Estonia', 'rate' => 22.0],
-        'FI' => ['name' => 'Finland', 'rate' => 25.5],
-        'FR' => ['name' => 'France', 'rate' => 20.0],
-        'DE' => ['name' => 'Germany', 'rate' => 19.0],
-        'GR' => ['name' => 'Greece', 'rate' => 24.0],
-        'HU' => ['name' => 'Hungary', 'rate' => 27.0],
-        'IE' => ['name' => 'Ireland', 'rate' => 23.0],
-        'IT' => ['name' => 'Italy', 'rate' => 22.0],
-        'LV' => ['name' => 'Latvia', 'rate' => 21.0],
-        'LT' => ['name' => 'Lithuania', 'rate' => 21.0],
-        'LU' => ['name' => 'Luxembourg', 'rate' => 17.0],
-        'MT' => ['name' => 'Malta', 'rate' => 18.0],
-        'NL' => ['name' => 'Netherlands', 'rate' => 21.0],
-        'PL' => ['name' => 'Poland', 'rate' => 23.0],
-        'PT' => ['name' => 'Portugal', 'rate' => 23.0],
-        'RO' => ['name' => 'Romania', 'rate' => 19.0],
-        'SK' => ['name' => 'Slovakia', 'rate' => 23.0],
-        'SI' => ['name' => 'Slovenia', 'rate' => 22.0],
-        'ES' => ['name' => 'Spain', 'rate' => 21.0],
-        'SE' => ['name' => 'Sweden', 'rate' => 25.0],
+        'AT' => 'Austria',
+        'BE' => 'Belgium',
+        'BG' => 'Bulgaria',
+        'HR' => 'Croatia',
+        'CY' => 'Cyprus',
+        'CZ' => 'Czechia',
+        'DK' => 'Denmark',
+        'EE' => 'Estonia',
+        'FI' => 'Finland',
+        'FR' => 'France',
+        'DE' => 'Germany',
+        'GR' => 'Greece',
+        'HU' => 'Hungary',
+        'IE' => 'Ireland',
+        'IT' => 'Italy',
+        'LV' => 'Latvia',
+        'LT' => 'Lithuania',
+        'LU' => 'Luxembourg',
+        'MT' => 'Malta',
+        'NL' => 'Netherlands',
+        'PL' => 'Poland',
+        'PT' => 'Portugal',
+        'RO' => 'Romania',
+        'SK' => 'Slovakia',
+        'SI' => 'Slovenia',
+        'ES' => 'Spain',
+        'SE' => 'Sweden',
     ];
 
     /**
@@ -101,18 +105,15 @@ class EuVat
             ];
         }
 
-        $meta = self::COUNTRIES[$countryCode];
-        $rate = (float) $meta['rate'];
-        $rateLabel = fmod($rate, 1.0) === 0.0
-            ? (string) (int) $rate
-            : rtrim(rtrim(number_format($rate, 2, '.', ''), '0'), '.');
+        $countryName = self::COUNTRIES[$countryCode];
+        $rate = self::EU_RATE;
 
         return [
             'is_eu' => true,
             'country_code' => $countryCode,
-            'country_name' => $meta['name'],
+            'country_name' => $countryName,
             'rate' => $rate,
-            'label' => $meta['name'].' VAT ('.$rateLabel.'%)',
+            'label' => 'VAT on booking fee ('.(int) $rate.'%)',
         ];
     }
 

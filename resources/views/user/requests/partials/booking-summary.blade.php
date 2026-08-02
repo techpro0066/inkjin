@@ -51,6 +51,15 @@
       <span class="font-semibold text-on-surface text-right">{{ $priceEstimateLabel }}</span>
     </div>
   </div>
+  @php
+    $vatApplies = !empty($totals['tax_amount']) && $totals['tax_amount'] > 0;
+    $vatRateLabel = (int) \App\Support\EuVat::EU_RATE;
+    $feeVatNote = "Your deposit is paid to the artist for the tattoo service — no Inkjin fee applies to it. Inkjin's booking fee, shown below, is a separate charge"
+      .($vatApplies ? ' and includes VAT ('.$vatRateLabel.'%).' : '.');
+  @endphp
+  <div class="rounded-xl px-3 py-2.5 mb-3 text-xs leading-relaxed text-on-surface bg-primary/5 border border-primary/10">
+    {{ $feeVatNote }}
+  </div>
   <div class="bg-surface-container-low rounded-xl p-3 mb-3">
     <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due Now</p>
     <div class="space-y-1.5 text-sm">
@@ -61,7 +70,7 @@
         </div>
       @endif
       <div class="flex justify-between">
-        <span class="text-on-surface-variant">{{ $depositLabel }}</span>
+        <span class="text-on-surface-variant">{{ $depositLabel ?: 'Artist Deposit' }}</span>
         <span class="font-semibold">€{{ number_format($totals['deposit'], 2) }}</span>
       </div>
       <div class="flex justify-between items-center gap-2">
@@ -69,18 +78,14 @@
           Inkjin Booking Fee
           <span class="info-tooltip">
             <span class="material-symbols-outlined text-[14px] text-outline">info</span>
-            <span class="tooltip-text">This fee helps us maintain the platform, provide secure payments, and offer customer support.</span>
+            <span class="tooltip-text" style="width:260px;text-align:left;">Inkjin's fee for booking, payment processing, and platform support — separate from the artist's price for the tattoo.@if($vatApplies) VAT ({{ $vatRateLabel }}%) applies to this fee.@endif</span>
           </span>
         </span>
         <span class="font-semibold">€{{ number_format($totals['platform_fee'], 2) }}</span>
       </div>
-      <div class="flex justify-between">
-        <span class="text-on-surface-variant">Subtotal</span>
-        <span class="font-semibold">€{{ number_format($totals['subtotal'] ?? ($totals['deposit'] + $totals['platform_fee']), 2) }}</span>
-      </div>
-      @if(!empty($totals['tax_amount']) && $totals['tax_amount'] > 0)
+      @if($vatApplies)
         <div class="flex justify-between">
-          <span class="text-on-surface-variant">{{ $totals['tax_label'] ?? 'VAT' }}</span>
+          <span class="text-on-surface-variant">{{ $totals['tax_label'] ?? 'VAT on booking fee ('.$vatRateLabel.'%)' }}</span>
           <span class="font-semibold">€{{ number_format($totals['tax_amount'], 2) }}</span>
         </div>
       @endif

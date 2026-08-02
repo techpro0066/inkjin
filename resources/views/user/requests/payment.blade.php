@@ -75,21 +75,20 @@
 
         <div id="panelPayCardExtras">
         @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
-
-        <label class="flex items-start gap-2 mb-4 cursor-pointer">
-          <input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary">
-          <span class="text-xs text-on-surface-variant">
-            I agree to the
-            <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">cancellation policy</a>
-            and <a href="#" class="text-primary underline">terms of service</a>.
-          </span>
-        </label>
+        @include('partials.checkout-policy-agree')
 
         <p id="paymentError" class="text-sm text-error hidden mb-3"></p>
 
         <button type="button" id="btnConfirmPay" disabled class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-container transition-all text-base shadow-lg shadow-primary/20">
           Confirm &amp; Pay <span id="btnPayTotalAmount">€{{ number_format($totals['total_due'], 2) }}</span>
         </button>
+        @include('partials.checkout-receipt-note', [
+          'checkoutReceiptTotals' => [
+            'deposit' => $totals['deposit'] ?? 0,
+            'platform_fee' => $totals['platform_fee'] ?? 0,
+            'tax_amount' => $totals['tax_amount'] ?? 0,
+          ],
+        ])
         </div>
       </div>
 

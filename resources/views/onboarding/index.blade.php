@@ -768,7 +768,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p class="mb-0">Are you sure you want to disconnect your Google Calendar? You can reconnect it later if needed.</p>
+        <p class="mb-0">Disconnecting will switch you to Managed Scheduling automatically. You can reconnect Google Calendar later to use Auto Scheduling again.</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">
@@ -1989,7 +1989,7 @@
         const data = await response.json();
         
         if (data.success) {
-          showAlert('success', 'Google Calendar disconnected successfully');
+          showAlert('success', data.message || 'Google Calendar disconnected. Managed scheduling is now active.');
           // Reload page to update UI
           setTimeout(() => {
             window.location.reload();

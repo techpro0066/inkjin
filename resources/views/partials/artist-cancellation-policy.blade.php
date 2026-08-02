@@ -30,6 +30,7 @@
   </button>
   <div class="hidden px-4 pb-4" id="cancellationPolicyContent">
     <div class="text-sm text-on-surface-variant space-y-1.5">
+      <p class="italic text-primary/80 mb-3">This policy is set by the artist. Inkjin is not a party to your tattoo appointment.</p>
       <p class="font-semibold text-on-surface mb-2">Artist's Cancellation Policy:</p>
       <p>• Full refund if canceled at least {{ $cancelWindowHuman }} before your appointment</p>
       <p>• No refund if canceled less than {{ $cancelWindowHuman }} before your appointment</p>

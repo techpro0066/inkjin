@@ -277,15 +277,18 @@ class GoogleCalendarController extends Controller
 
             $userDetail = $user->userDetail;
             if ($userDetail) {
+                // Auto scheduling requires Google Calendar — switch to managed immediately (no separate Save).
                 $userDetail->update([
                     'google_calendar_token' => null,
                     'google_calendar_id' => null,
+                    'scheduling_type' => 'managed',
                 ]);
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Google Calendar disconnected successfully',
+                'message' => 'Google Calendar disconnected. Managed scheduling is now active.',
+                'scheduling_type' => 'managed',
             ]);
         } catch (\Exception $e) {
             Log::error('Google Calendar disconnect error: ' . $e->getMessage());

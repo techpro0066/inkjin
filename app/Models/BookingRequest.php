@@ -540,11 +540,7 @@ class BookingRequest extends Model
 
     public function checkoutDepositLabel(array $depositMeta): string
     {
-        if (($depositMeta['type'] ?? '') === 'amount') {
-            return 'Deposit (Fixed)';
-        }
-
-        return 'Deposit ('.((string) ($depositMeta['label'] ?? '')).')';
+        return 'Artist Deposit';
     }
 
     public function clientSlotSummary(string $kind): ?string

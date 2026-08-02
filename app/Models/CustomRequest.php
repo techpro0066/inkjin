@@ -405,12 +405,7 @@ class CustomRequest extends Model
      */
     public function checkoutDepositLabel(array $depositMeta): string
     {
-        $type = (string) ($depositMeta['type'] ?? 'percentage');
-        if ($type === 'amount') {
-            return '€'.number_format((float) ($depositMeta['deposit'] ?? 0), 2);
-        }
-
-        return (string) ($depositMeta['label'] ?? '').' of quote';
+        return 'Artist Deposit';
     }
 
     public function statusBadgeClass(): string

@@ -90,7 +90,7 @@
 <div id="disconnectCalendarModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
     <h5 class="text-lg font-bold text-on-surface mb-2">Disconnect calendar?</h5>
-    <p class="text-on-surface-variant text-sm mb-6">You can reconnect later.</p>
+    <p class="text-on-surface-variant text-sm mb-6">This will switch you to Managed Scheduling automatically. You can reconnect Google Calendar later to use Auto Scheduling again.</p>
     <div class="flex justify-end gap-3">
       <button type="button" id="cancelDisconnectCal" class="rounded-xl px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low">Cancel</button>
       <button type="button" id="confirmDisconnectBtn" class="rounded-xl px-5 py-2.5 text-sm font-semibold bg-error text-white hover:opacity-90">Disconnect</button>

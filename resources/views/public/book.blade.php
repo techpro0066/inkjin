@@ -167,7 +167,7 @@
     .progress-line { height: 2px; background: #cac4d3; flex: 1; margin: 0 4px; margin-top: -12px; transition: background 0.3s; min-width: 12px; }
     .progress-line.completed { background: #310f7a; }
     .info-tooltip { position: relative; display: inline-flex; cursor: help; }
-    .info-tooltip .tooltip-text { visibility: hidden; opacity: 0; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #322f36; color: white; padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; width: 220px; text-align: center; transition: opacity 0.2s; z-index: 10; line-height: 1.4; }
+    .info-tooltip .tooltip-text { visibility: hidden; opacity: 0; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #322f36; color: white; padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; width: 260px; text-align: left; transition: opacity 0.2s; z-index: 10; line-height: 1.4; }
     .info-tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
     .card-type-icon { width: 32px; height: 20px; border-radius: 3px; background: #f2ecf5; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; color: #494552; }
     .card-type-icon.active { background: #310f7a; color: white; }
@@ -815,14 +815,17 @@
               </div>
               <hr class="border-outline-variant/20 my-4">
               <div class="space-y-2 text-sm mb-3"><div class="flex justify-between"><span class="font-semibold text-on-surface">Price Estimate</span><span class="font-semibold text-on-surface" id="payPriceEstimate">—</span></div></div>
+              <div id="payFeeVatNote" class="rounded-xl px-3 py-2.5 mb-3 text-xs leading-relaxed text-on-surface bg-primary/5 border border-primary/10">
+                Your deposit is paid to the artist for the tattoo service — no Inkjin fee applies to it. Inkjin's booking fee, shown below, is a separate charge.
+              </div>
               <div class="bg-surface-container-low rounded-xl p-3 mb-3">
                 <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due Now</p>
                 <div class="space-y-1.5 text-sm">
                   <div class="flex justify-between hidden" id="payConsultFeeRow"><span class="text-on-surface-variant">Consultation</span><span class="font-semibold text-green-600">Free</span></div>
-                  <div class="flex justify-between"><span class="text-on-surface-variant" id="payDepositLabel">Deposit</span><span class="font-semibold" id="payDeposit">—</span></div>
-                  <div class="flex justify-between items-center"><span class="text-on-surface-variant flex items-center gap-1">Inkjin Booking Fee <span class="info-tooltip"><span class="material-symbols-outlined text-[14px] text-outline">info</span><span class="tooltip-text">This fee helps us maintain the platform, provide secure payments, and offer customer support.</span></span></span><span class="font-semibold" id="payBookingFee">—</span></div>
-                  <div class="flex justify-between" id="paySubtotalRow"><span class="text-on-surface-variant">Subtotal</span><span class="font-semibold" id="paySubtotal">—</span></div>
-                  <div class="flex justify-between hidden" id="payTaxRow"><span class="text-on-surface-variant" id="payTaxLabel">VAT</span><span class="font-semibold" id="payTax">—</span></div>
+                  <div class="flex justify-between"><span class="text-on-surface-variant" id="payDepositLabel">Artist Deposit</span><span class="font-semibold" id="payDeposit">—</span></div>
+                  <div class="flex justify-between items-center"><span class="text-on-surface-variant flex items-center gap-1">Inkjin Booking Fee <span class="info-tooltip"><span class="material-symbols-outlined text-[14px] text-outline">info</span><span class="tooltip-text" id="payBookingFeeTooltip">Inkjin's fee for booking, payment processing, and platform support — separate from the artist's price for the tattoo.</span></span></span><span class="font-semibold" id="payBookingFee">—</span></div>
+                  <div class="flex justify-between hidden" id="paySubtotalRow"><span class="text-on-surface-variant">Subtotal</span><span class="font-semibold" id="paySubtotal">—</span></div>
+                  <div class="flex justify-between hidden" id="payTaxRow"><span class="text-on-surface-variant" id="payTaxLabel">VAT on booking fee (24%)</span><span class="font-semibold" id="payTax">—</span></div>
                   <hr class="border-outline-variant/20">
                   <div class="flex justify-between"><span class="font-bold text-on-surface">Total Due Now</span><span class="font-bold text-primary text-lg" id="payTotal">—</span></div>
                 </div>
@@ -880,9 +883,10 @@
             </div> --}}
             <div id="panelPayCardExtras">
             @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
-            <label class="flex items-start gap-2 mb-4 cursor-pointer"><input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary" onchange="checkPayReady()"><span class="text-xs text-on-surface-variant">I agree to the <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">artist's cancellation policy</a> and <a href="https://inkjin.com/en/terms" target="_blank" rel="noopener noreferrer" class="text-primary underline">InkJin terms of service</a>.</span></label>
+            @include('partials.checkout-policy-agree', ['agreeOnChange' => 'checkPayReady()'])
             <p class="text-sm text-error hidden mb-3" id="formError"></p>
             <button id="btnConfirmPay" disabled onclick="confirmBooking()" class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all text-base shadow-lg shadow-primary/20">Confirm & Pay <span id="btnPayTotalAmount">€250</span></button>
+            @include('partials.checkout-receipt-note')
             </div>
           </div>
         </div>
@@ -925,10 +929,10 @@
             <hr class="border-outline-variant/20">
             <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Price Estimate</span><span class="book-meta-value font-semibold" id="confPriceEstimate">—</span></div>
             <div class="book-meta-row hidden" id="confConsultFeeRow"><span class="book-meta-label text-on-surface-variant">Consultation</span><span class="book-meta-value font-semibold text-green-600">Free</span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant" id="confDepositLabel">Deposit</span><span class="book-meta-value font-semibold" id="confDeposit">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant" id="confDepositLabel">Artist Deposit</span><span class="book-meta-value font-semibold" id="confDeposit">—</span></div>
             <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Inkjin Booking Fee</span><span class="book-meta-value font-semibold" id="confBookingFee">—</span></div>
-            <div class="book-meta-row" id="confSubtotalRow"><span class="book-meta-label text-on-surface-variant">Subtotal</span><span class="book-meta-value font-semibold" id="confSubtotal">—</span></div>
-            <div class="book-meta-row hidden" id="confTaxRow"><span class="book-meta-label text-on-surface-variant" id="confTaxLabel">VAT</span><span class="book-meta-value font-semibold" id="confTax">—</span></div>
+            <div class="book-meta-row hidden" id="confSubtotalRow"><span class="book-meta-label text-on-surface-variant">Subtotal</span><span class="book-meta-value font-semibold" id="confSubtotal">—</span></div>
+            <div class="book-meta-row hidden" id="confTaxRow"><span class="book-meta-label text-on-surface-variant" id="confTaxLabel">VAT on booking fee (24%)</span><span class="book-meta-value font-semibold" id="confTax">—</span></div>
             <div class="book-meta-row"><span class="book-meta-label font-bold text-on-surface">Total Paid</span><span class="book-meta-value font-bold text-primary" id="confTotalPaid">—</span></div>
             <hr class="border-outline-variant/10">
             <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Remaining Balance (est.)</span><span class="book-meta-value font-semibold" id="confBalance">—</span></div>
@@ -1164,11 +1168,7 @@
     }
 
     function getDepositLabel() {
-      if (minimumDepositType === 'amount') {
-        return 'Deposit (Fixed)';
-      }
-      var pct = Number(minimumDepositAmount || 0);
-      return 'Deposit (' + (Number.isInteger(pct) ? String(pct) : pct.toFixed(2).replace(/\.00$/, '')) + '%)';
+      return 'Artist Deposit';
     }
 
     function getBookingFee() {
@@ -1178,17 +1178,14 @@
       return baseFee;
     }
 
-    // EU VAT on booking fee only — mirrors App\Support\EuVat
+    // EU VAT on booking fee only — mirrors App\Support\EuVat (flat 24% for all EU countries)
+    var euVatRate = 24;
     var euVatCountries = {
-      AT: { name: 'Austria', rate: 20 }, BE: { name: 'Belgium', rate: 21 }, BG: { name: 'Bulgaria', rate: 20 },
-      HR: { name: 'Croatia', rate: 25 }, CY: { name: 'Cyprus', rate: 19 }, CZ: { name: 'Czechia', rate: 21 },
-      DK: { name: 'Denmark', rate: 25 }, EE: { name: 'Estonia', rate: 22 }, FI: { name: 'Finland', rate: 25.5 },
-      FR: { name: 'France', rate: 20 }, DE: { name: 'Germany', rate: 19 }, GR: { name: 'Greece', rate: 24 },
-      HU: { name: 'Hungary', rate: 27 }, IE: { name: 'Ireland', rate: 23 }, IT: { name: 'Italy', rate: 22 },
-      LV: { name: 'Latvia', rate: 21 }, LT: { name: 'Lithuania', rate: 21 }, LU: { name: 'Luxembourg', rate: 17 },
-      MT: { name: 'Malta', rate: 18 }, NL: { name: 'Netherlands', rate: 21 }, PL: { name: 'Poland', rate: 23 },
-      PT: { name: 'Portugal', rate: 23 }, RO: { name: 'Romania', rate: 19 }, SK: { name: 'Slovakia', rate: 23 },
-      SI: { name: 'Slovenia', rate: 22 }, ES: { name: 'Spain', rate: 21 }, SE: { name: 'Sweden', rate: 25 }
+      AT: 'Austria', BE: 'Belgium', BG: 'Bulgaria', HR: 'Croatia', CY: 'Cyprus', CZ: 'Czechia',
+      DK: 'Denmark', EE: 'Estonia', FI: 'Finland', FR: 'France', DE: 'Germany', GR: 'Greece',
+      HU: 'Hungary', IE: 'Ireland', IT: 'Italy', LV: 'Latvia', LT: 'Lithuania', LU: 'Luxembourg',
+      MT: 'Malta', NL: 'Netherlands', PL: 'Poland', PT: 'Portugal', RO: 'Romania', SK: 'Slovakia',
+      SI: 'Slovenia', ES: 'Spain', SE: 'Sweden'
     };
     var euDialCodes = {
       '359': 'BG', '358': 'FI', '357': 'CY', '356': 'MT', '353': 'IE', '352': 'LU',
@@ -1232,18 +1229,51 @@
       var fee = getBookingFee();
       var country = euCountryFromPhone(bookingPhone());
       if (!country || !euVatCountries[country] || fee <= 0) {
-        return { amount: 0, label: null, rate: 0, country: null };
+        return { amount: 0, label: null, rate: 0, country: null, isEu: false };
       }
-      var meta = euVatCountries[country];
-      var rate = Number(meta.rate) || 0;
+      var rate = euVatRate;
       var amount = Math.round((fee * (rate / 100)) * 100) / 100;
-      var rateLabel = Number.isInteger(rate) ? String(rate) : String(rate);
       return {
         amount: amount,
-        label: meta.name + ' VAT (' + rateLabel + '%)',
+        label: 'VAT on booking fee (' + rate + '%)',
         rate: rate,
-        country: country
+        country: country,
+        isEu: true
       };
+    }
+
+    function bookingFeeTooltipText(vatApplies) {
+      var base = "Inkjin's fee for booking, payment processing, and platform support — separate from the artist's price for the tattoo.";
+      if (vatApplies) {
+        return base + ' VAT (' + euVatRate + '%) applies to this fee.';
+      }
+      return base;
+    }
+
+    function bookingFeeVatNoteText(vatApplies) {
+      var base = "Your deposit is paid to the artist for the tattoo service — no Inkjin fee applies to it. Inkjin's booking fee, shown below, is a separate charge";
+      if (vatApplies) {
+        return base + ' and includes VAT (' + euVatRate + '%).';
+      }
+      return base + '.';
+    }
+
+    function updateCheckoutReceiptNote(deposit, fee, tax) {
+      var $note = $('#checkoutReceiptNote');
+      if (!$note.length) return;
+      var depositText = formatEUR(deposit || 0);
+      var feeAmt = Number(fee || 0);
+      var taxAmt = Number(tax || 0);
+      var html = "You'll receive a receipt from Inkjin on behalf of the artist for your <strong>" + depositText + '</strong> deposit';
+      if (feeAmt > 0) {
+        html += ', and a separate Inkjin invoice for the <strong>' + formatEUR(feeAmt) + '</strong>';
+        if (taxAmt > 0) {
+          html += ' + <strong>' + formatEUR(taxAmt) + '</strong> VAT';
+        }
+        html += ' booking fee';
+      }
+      html += '.';
+      $note.html(html).removeClass('hidden');
     }
 
     function getSubtotalDueNow() {
@@ -1381,7 +1411,11 @@
       $('#payDeposit').text(formatEUR(deposit));
       $('#payBookingFee').text(formatEUR(fee));
       $('#paySubtotal').text(formatEUR(subtotal));
-      if (vat.amount > 0 && vat.label) {
+      $('#paySubtotalRow').addClass('hidden');
+      var vatApplies = vat.amount > 0;
+      $('#payFeeVatNote').text(bookingFeeVatNoteText(vatApplies));
+      $('#payBookingFeeTooltip').text(bookingFeeTooltipText(vatApplies));
+      if (vatApplies && vat.label) {
         $('#payTaxLabel').text(vat.label);
         $('#payTax').text(formatEUR(vat.amount));
         $('#payTaxRow').removeClass('hidden');
@@ -1391,6 +1425,7 @@
       $('#payTotal').text(formatEUR(total));
       $('#payBalance').text(balanceLabel);
       $('#btnPayTotalAmount').text(formatEUR(total));
+      updateCheckoutReceiptNote(deposit, fee, vat.amount || 0);
       if (typeof window.checkoutUpdateWalletAmounts === 'function') {
         window.checkoutUpdateWalletAmounts();
       }
@@ -1399,7 +1434,8 @@
       $('#confDeposit').text(formatEUR(deposit));
       $('#confBookingFee').text(formatEUR(fee));
       $('#confSubtotal').text(formatEUR(subtotal));
-      if (vat.amount > 0 && vat.label) {
+      $('#confSubtotalRow').addClass('hidden');
+      if (vatApplies && vat.label) {
         $('#confTaxLabel').text(vat.label);
         $('#confTax').text(formatEUR(vat.amount));
         $('#confTaxRow').removeClass('hidden');

@@ -73,22 +73,20 @@
 
         <div id="panelPayCardExtras">
         @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
-
-        <label class="flex items-start gap-2 mb-4 cursor-pointer">
-          <input type="checkbox" id="agreePolicy" class="mt-0.5 accent-primary">
-          <span class="text-xs text-on-surface-variant">
-            I agree to the
-            <a href="javascript:void(0)" onclick="event.preventDefault(); expandCancellationPolicy();" class="text-primary underline">artist's cancellation policy</a>
-            and
-            <a href="https://inkjin.com/en/terms" target="_blank" rel="noopener noreferrer" class="text-primary underline">InkJin terms of service</a>.
-          </span>
-        </label>
+        @include('partials.checkout-policy-agree')
 
         <p id="paymentError" class="text-sm text-error hidden mb-3"></p>
 
         <button type="button" id="btnConfirmPay" disabled class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-container transition-all text-base shadow-lg shadow-primary/20">
           Confirm &amp; Pay <span id="btnPayTotalAmount">€{{ number_format($totals['total_due'], 2) }}</span>
         </button>
+        @include('partials.checkout-receipt-note', [
+          'checkoutReceiptTotals' => [
+            'deposit' => $totals['deposit'] ?? 0,
+            'platform_fee' => $totals['platform_fee'] ?? 0,
+            'tax_amount' => $totals['tax_amount'] ?? 0,
+          ],
+        ])
         </div>
       </div>
 
@@ -167,13 +165,22 @@
     el.textContent = msg || '';
     el.classList.toggle('hidden', !msg);
   }
+  function toggleCancellationPolicy() {
+    var content = document.getElementById('cancellationPolicyContent');
+    var arrow = document.getElementById('cancPolicyArrow');
+    if (!content || !arrow) return;
+    var isOpen = !content.classList.contains('hidden');
+    content.classList.toggle('hidden', isOpen);
+    arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  }
   function expandCancellationPolicy() {
     var content = document.getElementById('cancellationPolicyContent');
     if (content && content.classList.contains('hidden')) {
-      if (typeof toggleCancellationPolicy === 'function') toggleCancellationPolicy();
+      toggleCancellationPolicy();
     }
     document.getElementById('cancellationPolicySection')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
+  window.toggleCancellationPolicy = toggleCancellationPolicy;
   window.expandCancellationPolicy = expandCancellationPolicy;
 
   document.getElementById('btnConfirmPay').addEventListener('click', async function() {
