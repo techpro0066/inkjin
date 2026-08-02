@@ -110,6 +110,7 @@
                   </td>
                 </tr>
                 <tr><td style="font-size:13px;color:#7a7583;text-align:center;">Sign in to review the full details and next steps.</td></tr>
+                @endif
               </table>
             </td>
           </tr>
