@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\FinancialController as AdminFinancialController;
 use App\Http\Controllers\Admin\FormController;
 use App\Http\Controllers\Admin\PlacementController;
+use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\StyleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\QuestionsController;
@@ -180,6 +181,12 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     Route::put('/placements/{placement}', [PlacementController::class, 'update'])->name('admin.placements.update');
     Route::delete('/placements/{placement}', [PlacementController::class, 'destroy'])->name('admin.placements.destroy');
     Route::post('/placements/reorder', [PlacementController::class, 'reorder'])->name('admin.placements.reorder');
+
+    Route::get('/sizes', [SizeController::class, 'index'])->name('admin.sizes.index');
+    Route::post('/sizes', [SizeController::class, 'store'])->name('admin.sizes.store');
+    Route::put('/sizes/{size}', [SizeController::class, 'update'])->name('admin.sizes.update');
+    Route::delete('/sizes/{size}', [SizeController::class, 'destroy'])->name('admin.sizes.destroy');
+    Route::post('/sizes/reorder', [SizeController::class, 'reorder'])->name('admin.sizes.reorder');
 
     // Route::get('/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'index'])->name('admin.questions.index');
     // Route::post('/questions', [\App\Http\Controllers\Admin\QuestionController::class, 'store'])->name('admin.questions.store');

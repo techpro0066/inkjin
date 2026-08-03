@@ -40,6 +40,7 @@ class QuestionSorting extends Model
     {
         $styleOptions = self::catalogOptionsForQuestionType(Style::class);
         $placementOptions = self::catalogOptionsForQuestionType(Placement::class);
+        $sizeOptions = self::sizeOptionsForArtist($userId);
 
         return self::query()
             ->where('user_id', $userId)
@@ -48,7 +49,7 @@ class QuestionSorting extends Model
             ->with('question')
             ->orderBy('order')
             ->get()
-            ->map(function (self $sorting) use ($styleOptions, $placementOptions) {
+            ->map(function (self $sorting) use ($styleOptions, $placementOptions, $sizeOptions) {
                 $question = $sorting->question;
                 if (! $question) {
                     return null;
@@ -57,6 +58,7 @@ class QuestionSorting extends Model
                 $options = match ($question->type) {
                     'style' => ! empty($styleOptions) ? $styleOptions : $question->options,
                     'placement' => ! empty($placementOptions) ? $placementOptions : $question->options,
+                    'sizes' => ! empty($sizeOptions) ? $sizeOptions : $question->options,
                     default => $question->options,
                 };
 
@@ -104,5 +106,26 @@ class QuestionSorting extends Model
 
         return $options;
     }
-}
 
+    /**
+     * Size pills for the artist's preferred unit (cm or in).
+     *
+     * @return list<string>
+     */
+    public static function sizeOptionsForArtist(int $userId): array
+    {
+        $unit = UserDetail::query()
+            ->where('user_id', $userId)
+            ->value('size_unit');
+
+        $unit = $unit === 'in' ? 'in' : 'cm';
+
+        return Size::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(fn (Size $size) => $size->pillLabel($unit))
+            ->values()
+            ->all();
+    }
+}

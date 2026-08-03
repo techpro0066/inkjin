@@ -25,6 +25,7 @@
       <a href="{{ route('admin.forms.index') }}" class="nav-item {{ request()->routeIs('admin.forms.index') ? 'active' : '' }}"><span class="material-symbols-outlined">description</span> Forms</a>
       <a href="{{ route('admin.styles.index') }}" class="nav-item {{ request()->routeIs('admin.styles.*') ? 'active' : '' }}"><span class="material-symbols-outlined">brush</span> Styles</a>
       <a href="{{ route('admin.placements.index') }}" class="nav-item {{ request()->routeIs('admin.placements.*') ? 'active' : '' }}"><span class="material-symbols-outlined">accessibility_new</span> Placements</a>
+      <a href="{{ route('admin.sizes.index') }}" class="nav-item {{ request()->routeIs('admin.sizes.*') ? 'active' : '' }}"><span class="material-symbols-outlined">straighten</span> Sizes</a>
       <a href="{{ route('admin.users.index') }}" class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}"><span class="material-symbols-outlined">group</span> Users</a>
       <div class="text-white/35 text-[10px] uppercase tracking-[2px] font-bold px-4 pt-5 pb-1">Financials</div>
       <a href="{{ route('admin.revenue.index') }}" class="nav-item {{ request()->routeIs('admin.revenue.*') ? 'active' : '' }}"><span class="material-symbols-outlined">trending_up</span> Revenue</a>

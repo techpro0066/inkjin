@@ -111,6 +111,7 @@
               'images' => ['bg-amber-50 text-amber-900', 'Images'],
               'style' => ['bg-rose-50 text-rose-800', 'Style'],
               'placement' => ['bg-amber-50 text-amber-800', 'Placement'],
+              'sizes' => ['bg-cyan-50 text-cyan-800', 'Sizes'],
             ];
             $badge = $badgeMap[$type] ?? ['bg-gray-100 text-gray-700', ucfirst($type)];
             $options = is_array($question->options) ? $question->options : [];
@@ -133,6 +134,8 @@
               <p class="text-sm font-semibold text-on-surface">{{ $question->question }}</p>
               @if(in_array($type, ['select', 'radio'], true) && count($options))
                 <p class="text-xs text-outline mt-0.5 js-question-sub">{{ implode(' · ', $options) }}</p>
+              @elseif($type === 'sizes')
+                <p class="text-xs text-outline mt-0.5 js-question-sub">Uses Admin → Sizes (cm/in from artist preference)</p>
               @endif
             </div>
             <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 {{ $badge[0] }}">{{ $badge[1] }}</span>
@@ -188,6 +191,7 @@
               'images' => ['bg-amber-50 text-amber-900', 'Images'],
               'style' => ['bg-rose-50 text-rose-800', 'Style'],
               'placement' => ['bg-amber-50 text-amber-800', 'Placement'],
+              'sizes' => ['bg-cyan-50 text-cyan-800', 'Sizes'],
             ];
             $badge = $badgeMap[$type] ?? ['bg-gray-100 text-gray-700', ucfirst($type)];
             $options = is_array($question->options) ? $question->options : [];
@@ -210,6 +214,8 @@
               <p class="text-sm font-semibold text-on-surface">{{ $question->question }}</p>
               @if(in_array($type, ['select', 'radio'], true) && count($options))
                 <p class="text-xs text-outline mt-0.5 js-question-sub">{{ implode(' · ', $options) }}</p>
+              @elseif($type === 'sizes')
+                <p class="text-xs text-outline mt-0.5 js-question-sub">Uses Admin → Sizes (cm/in from artist preference)</p>
               @endif
             </div>
             <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 {{ $badge[0] }}">{{ $badge[1] }}</span>
@@ -287,6 +293,7 @@
             <option value="radio">Radio (a list of options where the user picks only one)</option>
             <option value="style">Style (tattoo style selection)</option>
             <option value="placement">Placement (body placement selection)</option>
+            <option value="sizes">Sizes (catalog size ranges; cm/in by artist unit)</option>
           </select>
           <p id="newQuestionTypeError" class="hidden text-sm text-error mt-1"></p>
         </div>

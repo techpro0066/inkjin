@@ -374,10 +374,11 @@
                             'images' => 'Images',
                             'style' => 'Style',
                             'placement' => 'Placement',
+                            'sizes' => 'Sizes',
                             default => ucfirst((string) $type),
                         };
                         $icon = match ($type) {
-                            'select', 'radio', 'style', 'placement' => 'list',
+                            'select', 'radio', 'style', 'placement', 'sizes' => 'list',
                             'textarea' => 'notes',
                             'toggle' => 'toggle_on',
                             'images' => 'upload_file',
@@ -388,7 +389,7 @@
                             'textarea' => 'badge-textarea',
                             'toggle' => 'badge-toggle',
                             'images' => 'badge-file',
-                            'style', 'placement' => 'badge-select',
+                            'style', 'placement', 'sizes' => 'badge-select',
                             default => 'badge-text',
                         };
                         $questionWords = preg_split('/\s+/u', trim((string) $question->question), -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -455,10 +456,11 @@
                             'images' => 'Images',
                             'style' => 'Style',
                             'placement' => 'Placement',
+                            'sizes' => 'Sizes',
                             default => ucfirst((string) $type),
                         };
                         $icon = match ($type) {
-                            'select', 'radio', 'style', 'placement' => 'list',
+                            'select', 'radio', 'style', 'placement', 'sizes' => 'list',
                             'textarea' => 'notes',
                             'toggle' => 'toggle_on',
                             'images' => 'upload_file',
@@ -469,7 +471,7 @@
                             'textarea' => 'badge-textarea',
                             'toggle' => 'badge-toggle',
                             'images' => 'badge-file',
-                            'style', 'placement' => 'badge-select',
+                            'style', 'placement', 'sizes' => 'badge-select',
                             default => 'badge-text',
                         };
                         $questionWords = preg_split('/\s+/u', trim((string) $question->question), -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -1038,7 +1040,7 @@
             .map(function (option) { return `<option>${escapeHtml(option)}</option>`; })
             .join("");
           inputHtml = `<select class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white mt-2" disabled><option>Select an option</option>${optionHtml}</select>`;
-        } else if (type === "radio" || type === "style" || type === "placement") {
+        } else if (type === "radio" || type === "style" || type === "placement" || type === "sizes") {
           const radioHtml = (options.length ? options : ["Option 1", "Option 2"])
             .map(function (option) {
               return `<label class="inline-flex items-center gap-2 mr-4 mt-2"><input type="radio" disabled><span class="text-sm text-on-surface">${escapeHtml(option)}</span></label>`;

@@ -81,7 +81,7 @@ class QuestionsController extends Controller
             ->keyBy('id');
 
         $orderedQuestions = $userSortingRows
-            ->map(function ($sortingRow) use ($questionMap, $system_questions_ids, $active_system_question_ids) {
+            ->map(function ($sortingRow) use ($questionMap, $system_questions_ids, $active_system_question_ids, $userId) {
                 $question = $questionMap->get((int) $sortingRow->question_id);
                 if (! $question) {
                     return null;
@@ -95,6 +95,10 @@ class QuestionsController extends Controller
 
                 $question->setAttribute('order', (int) $sortingRow->order);
                 $question->setAttribute('is_active', (bool) $sortingRow->is_active);
+
+                if ($question->type === 'sizes') {
+                    $question->setAttribute('options', QuestionSorting::sizeOptionsForArtist((int) $userId));
+                }
 
                 return $question;
             })
@@ -159,7 +163,7 @@ class QuestionsController extends Controller
             'question' => ['required', 'string', 'max:10000'],
             'description' => ['nullable', 'string', 'max:10000'],
             'placeholder' => ['nullable', 'string', 'max:10000'],
-            'type' => ['required', Rule::in(['input', 'textarea', 'toggle', 'select', 'image', 'radio', 'style', 'placement'])],
+            'type' => ['required', Rule::in(['input', 'textarea', 'toggle', 'select', 'image', 'radio', 'style', 'placement', 'sizes'])],
             'form_context' => ['required', 'string', 'max:255'],
             'is_active' => ['required', 'boolean'],
             'is_required' => ['required', 'boolean'],
@@ -278,7 +282,7 @@ class QuestionsController extends Controller
             'question' => ['required', 'string', 'max:10000'],
             'description' => ['nullable', 'string', 'max:10000'],
             'placeholder' => ['nullable', 'string', 'max:10000'],
-            'type' => ['required', Rule::in(['input', 'textarea', 'toggle', 'select', 'image', 'radio', 'style', 'placement'])],
+            'type' => ['required', Rule::in(['input', 'textarea', 'toggle', 'select', 'image', 'radio', 'style', 'placement', 'sizes'])],
             'form_context' => ['required', 'string', 'max:255'],
             'is_active' => ['required', 'boolean'],
             'is_required' => ['required', 'boolean'],

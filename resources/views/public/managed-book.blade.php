@@ -728,7 +728,7 @@
         var isFirst = idx === 0;
         var isLast = idx === questionDefinitions.length - 1;
         var body = '';
-        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement') {
+        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
           body = '<div class="flex flex-wrap gap-2 single-choice-group">' + q.options.map(function(opt) {
             var isOther = String(opt || '').trim().toLowerCase() === 'other';
             var optionClass = (isCatalogChoiceQuestion(q.id) && isOther) ? ' option-other' : '';
@@ -770,7 +770,7 @@
       var qType = String($active.data('question-type') || '');
       var qId = $active.data('question-id');
       var hasValue = false;
-      if (qType === 'radio' || qType === 'style' || qType === 'placement') {
+      if (qType === 'radio' || qType === 'style' || qType === 'placement' || qType === 'sizes') {
         var $selected = $active.find('.single-choice-radio-button.selected');
         hasValue = $selected.length > 0;
         if (hasValue && isCatalogChoiceQuestion(qId)) {
@@ -840,7 +840,7 @@
         if (answer === undefined || answer === null || answer === '') return;
         var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
         if (!$panel.length) return;
-        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement') {
+        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
           $panel.find('.single-choice-radio-button').each(function() {
             $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
           });
