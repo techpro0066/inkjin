@@ -315,6 +315,13 @@
 
           window.location.href = xhr.responseURL || '{{ route('verification.notice') }}';
         }).fail(function (xhr) {
+          if (xhr.status === 429) {
+            $('#register-alert')
+              .removeClass('hidden')
+              .text('Too many signup attempts. Please wait a bit and try again.');
+            return;
+          }
+
           if (xhr.status === 422 && xhr.responseJSON) {
             var errors = xhr.responseJSON.errors || {};
 

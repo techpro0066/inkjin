@@ -7,6 +7,7 @@ use App\Mail\CountryNotAvailableMail;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserNotRegistered;
+use App\Rules\NotBotGmailPattern;
 use App\Support\StripeConnectCountries;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
@@ -47,7 +48,15 @@ class RegisteredUserController extends Controller
         $isUnlisted = $request->input('payout_bank_country') === '__not_listed__';
 
         $rules = [
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                'unique:'.User::class,
+                new NotBotGmailPattern,
+            ],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'payout_bank_country' => ['required', 'string', Rule::in(array_merge($registrationCodes, ['__not_listed__']))],
             'referral_source' => ['nullable', 'string', 'max:255'],
