@@ -256,6 +256,16 @@
       --tw-ring-shadow: 0 0 #0000 !important;
       --tw-ring-offset-shadow: 0 0 #0000 !important;
     }
+    .smart-pricing-input::placeholder {
+      color: #9a94a3;
+      opacity: 1;
+    }
+    .smart-pricing-input:focus::placeholder,
+    .smart-pricing-input:focus-visible::placeholder,
+    .smart-pricing-input:active::placeholder {
+      color: transparent !important;
+      opacity: 0 !important;
+    }
     .smart-pricing-input:hover,
     .smart-pricing-input:focus,
     .smart-pricing-input:focus-visible,
@@ -603,7 +613,7 @@
         $smartColorPercentLabel = rtrim(rtrim(number_format((float) ($smartPricingColorPercent ?? 20), 2, '.', ''), '0'), '.');
         $pricingClosedSummary = $currentPricingType === 'smart'
           ? ($smartRangesCount.' size range'.($smartRangesCount === 1 ? '' : 's').' · +'.$smartColorPercentLabel.'% for color designs')
-          : 'Manual Pricing · set price per design';
+          : 'Manual Pricing · set the price for each design manually';
       @endphp
       <div
         class="mb-8 pricing-accordion"
@@ -675,6 +685,14 @@
             <div class="mb-5">
               <h4 class="text-base font-bold text-on-surface">Size ranges</h4>
               <p class="text-sm text-on-surface-variant mt-1">Longest dimension, in {{ $pricingUnit }} · edit the boundaries or the values</p>
+              <div class="mt-3 text-sm text-on-surface-variant leading-relaxed">
+                <p class="font-semibold text-on-surface">Example:</p>
+                <ul class="mt-1.5 list-disc pl-5 space-y-1">
+                  <li>A 5 {{ $pricingUnit }} design belongs to &ldquo;5–10,&rdquo; not &ldquo;0–5&rdquo;</li>
+                  <li>A 10 {{ $pricingUnit }} design belongs to &ldquo;10–15,&rdquo; not &ldquo;5–10&rdquo;</li>
+                  <li>A 15 {{ $pricingUnit }} design belongs to &ldquo;15–20,&rdquo; not &ldquo;10–15&rdquo;</li>
+                </ul>
+              </div>
             </div>
 
             <div class="smart-pricing-table-wrap">
@@ -696,13 +714,10 @@
 
             <div class="mt-4 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
               <button type="button" id="btnAddSmartSizeRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
-                <span class="material-symbols-outlined text-[18px]">add</span> Add size range
-              </button>
-              <button type="button" id="btnAddSmartLessThanRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
-                <span class="material-symbols-outlined text-[18px]">add</span> Add less than size range
+                <span class="material-symbols-outlined text-[18px]">add</span> Size range
               </button>
               <button type="button" id="btnAddSmartMoreThanRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
-                <span class="material-symbols-outlined text-[18px]">add</span> Add more than size range
+                <span class="material-symbols-outlined text-[18px]">add</span> Size larger than
               </button>
             </div>
 
@@ -738,7 +753,7 @@
       <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 md:p-6 mb-8" id="whatsIncludedPanel">
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
           <div class="min-w-0 flex-1">
-            <h3 class="text-lg font-bold text-on-surface">What's Included</h3>
+            <h3 class="text-lg font-bold text-on-surface">What's included in the session</h3>
             <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Let clients know what's part of your service — sizing, placement, touch-ups, aftercare.</p>
           </div>
           <div class="flex items-center gap-3 shrink-0">
@@ -924,32 +939,43 @@
         <p class="text-on-surface-variant mb-6 leading-relaxed">Upload the image first. We'll use AI to analyze your uploaded image and automatically fill in some fields. You can always edit these. You'll still need to enter values for the remaining fields manually (pricing, minimum size, sessions etc).</p>
         <div class="flex flex-col lg:flex-row gap-6">
           <!-- Left: Image Upload -->
-          <div class="lg:w-2/5 design-field-section scroll-mt-6" data-design-field="image">
-            <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Image</label>
-            <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1350 px</strong> · aspect <strong class="text-on-surface">4:5</strong></p>
-            <div id="designImageUpload" class="design-image-upload-slot relative border-2 border-dashed border-outline-variant/40 rounded-2xl mx-auto cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-[aspect-ratio,max-height] duration-200 overflow-hidden">
-              <div id="designImageUploadEmpty" class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 py-6">
-                <span class="material-symbols-outlined text-outline/40 text-5xl">cloud_upload</span>
-                <div class="text-center">
-                  <p class="text-sm font-semibold text-on-surface">Drop image here</p>
-                  <p class="text-xs text-on-surface-variant mt-1">or click to browse</p>
-                  <p class="text-xs text-outline mt-2">PNG, JPG up to 10MB</p>
+          <div class="lg:w-2/5 space-y-5">
+            <div class="design-field-section scroll-mt-6" data-design-field="image">
+              <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Image</label>
+              <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1350 px</strong> · aspect <strong class="text-on-surface">4:5</strong></p>
+              <div id="designImageUpload" class="design-image-upload-slot relative border-2 border-dashed border-outline-variant/40 rounded-2xl mx-auto cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-[aspect-ratio,max-height] duration-200 overflow-hidden">
+                <div id="designImageUploadEmpty" class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 py-6">
+                  <span class="material-symbols-outlined text-outline/40 text-5xl">cloud_upload</span>
+                  <div class="text-center">
+                    <p class="text-sm font-semibold text-on-surface">Drop image here</p>
+                    <p class="text-xs text-on-surface-variant mt-1">or click to browse</p>
+                    <p class="text-xs text-outline mt-2">PNG, JPG up to 10MB</p>
+                  </div>
+                </div>
+                <div id="designImageUploadPreview" class="hidden absolute inset-0 bg-transparent">
+                  <img id="designImagePreviewImg" src="" alt="Design preview" class="w-full h-full object-contain">
+                  <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-2 px-3">
+                    <p class="text-[11px] text-white/90 text-center font-medium">Tap to replace image</p>
+                  </div>
+                </div>
+                <div class="design-ai-overlay" aria-live="polite">
+                  <span class="material-symbols-outlined">auto_awesome</span>
+                  <p class="text-xs font-semibold leading-snug">Filling empty fields with AI…</p>
                 </div>
               </div>
-              <div id="designImageUploadPreview" class="hidden absolute inset-0 bg-transparent">
-                <img id="designImagePreviewImg" src="" alt="Design preview" class="w-full h-full object-contain">
-                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-2 px-3">
-                  <p class="text-[11px] text-white/90 text-center font-medium">Tap to replace image</p>
-                </div>
-              </div>
-              <div class="design-ai-overlay" aria-live="polite">
-                <span class="material-symbols-outlined">auto_awesome</span>
-                <p class="text-xs font-semibold leading-snug">Filling empty fields with AI…</p>
-              </div>
+              <input type="file" id="designImage" name="designImage" accept="image/*" class="hidden">
+              <input type="hidden" id="designImageData" name="designImageData" value="">
+              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
             </div>
-            <input type="file" id="designImage" name="designImage" accept="image/*" class="hidden">
-            <input type="hidden" id="designImageData" name="designImageData" value="">
-            <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
+            <!-- Size (min) -->
+            <div class="design-field-section scroll-mt-6" data-design-field="min_size">
+              <label for="size_min" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Size (min)</label>
+              <div class="flex items-center gap-3">
+                <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" class="w-full min-w-0 flex-1 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
+                <span class="text-sm font-semibold text-on-surface shrink-0" id="sizeUnitLabel">{{ $sizeUnit ?? 'cm' }}</span>
+              </div>
+              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_size"></p>
+            </div>
           </div>
           <!-- Right: Form Fields -->
           <div class="lg:w-3/5 space-y-5">
@@ -1066,15 +1092,6 @@
               <label for="designTags" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Tags <span class="text-outline font-normal">(comma separated)</span></label>
               <input type="text" id="designTags" name="designTags" placeholder="e.g., dragon, sleeve, oriental" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="tags"></p>
-            </div>
-            <!-- Size (min) -->
-            <div class="design-field-section scroll-mt-6" data-design-field="min_size">
-              <label for="size_min" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Size (min)</label>
-              <div class="flex items-center gap-3">
-                <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" class="w-28 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
-                <span class="text-sm font-semibold text-on-surface" id="sizeUnitLabel">{{ $sizeUnit ?? 'cm' }}</span>
-              </div>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_size"></p>
             </div>
             <!-- Price Range -->
             <div class="design-field-section scroll-mt-6" data-design-field="min_price">
@@ -1265,7 +1282,7 @@
         }
 
         if (!isSmart) {
-          $subtitle.text('Manual Pricing · set price per design');
+          $subtitle.text('Manual Pricing · set the price for each design manually');
           return;
         }
 
@@ -1388,8 +1405,7 @@
           return `
             <div class="smart-pricing-size-cell">
               <input type="text" inputmode="decimal" class="smart-pricing-input smart-pricing-input--sm js-smart-size-min" value="${sizeMin}" aria-label="Size min" placeholder="20">
-              <span class="smart-pricing-affix">–</span>
-              <span class="smart-pricing-open-max" aria-label="Open ended max">+</span>
+              <span class="smart-pricing-open-max" aria-label="Open ended min">+</span>
               <span class="smart-pricing-affix">${SMART_PRICING_UNIT}</span>
             </div>`;
         }
@@ -1481,10 +1497,6 @@
         addSmartPricingRow('between');
       });
 
-      $('#btnAddSmartLessThanRange').on('click', function () {
-        addSmartPricingRow('less_than');
-      });
-
       $('#btnAddSmartMoreThanRange').on('click', function () {
         addSmartPricingRow('more_than');
       });
@@ -1492,6 +1504,22 @@
       $('#smartPricingRows').on('click', '.js-remove-smart-row', function () {
         $(this).closest('.smart-pricing-row').remove();
         syncSmartPricingEmptyState();
+      });
+
+      $('#smartPricingPanel').on('focusin', '.smart-pricing-input', function () {
+        var $input = $(this);
+        if ($input.data('placeholder-backup') == null) {
+          $input.data('placeholder-backup', $input.attr('placeholder') || '');
+        }
+        $input.attr('placeholder', '');
+      });
+
+      $('#smartPricingPanel').on('focusout', '.smart-pricing-input', function () {
+        var $input = $(this);
+        var backup = $input.data('placeholder-backup');
+        if (backup != null) {
+          $input.attr('placeholder', backup);
+        }
       });
 
       function clearSmartPricingValidation() {
@@ -1631,6 +1659,9 @@
             SMART_PRICING_COLOR_PERCENT = Number(res.color_percent);
           }
           syncPricingAccordionHeader();
+          if (typeof showSaveToast === 'function') {
+            showSaveToast();
+          }
         }).fail(function (xhr) {
           var data = xhr.responseJSON || {};
           if (xhr.status === 422 && data.errors) {
@@ -1695,7 +1726,8 @@
           if (!interval) {
             continue;
           }
-          if (sizeNum >= interval.low && sizeNum <= interval.high) {
+          // Ranges are lower-inclusive / upper-exclusive (e.g. 5 belongs to 5–10, not 0–5).
+          if (sizeNum >= interval.low && sizeNum < interval.high) {
             return ranges[i];
           }
         }
@@ -1740,29 +1772,63 @@
         return firstNum ? String(Math.max(1, parseInt(firstNum[1], 10))) : '';
       }
 
+      function clearSmartPricingDesignFields() {
+        $('#designPriceMin').val('');
+        $('#designPriceMax').val('');
+        $('#designSessionsMax').val('');
+        $('#designSessionTime').val('');
+      }
+
+      var SMART_PRICING_NO_RANGE_ERROR = 'We cannot set the price for this design because there is no size range for this size. Please add a range that covers this size, then come back to finish this upload';
+
+      function setSmartPricingNoRangeError(show) {
+        var $err = $('.design-field-error[data-error-for="min_size"]');
+        if (show) {
+          $err.removeClass('hidden').text(SMART_PRICING_NO_RANGE_ERROR);
+        } else if ($err.text() === SMART_PRICING_NO_RANGE_ERROR) {
+          $err.addClass('hidden').empty();
+        }
+      }
+
       function applySmartPricingToDesignForm() {
         if (suppressSmartPricingAutofill) {
           return;
         }
         if (String(currentPricingType || '') !== 'smart') {
+          setSmartPricingNoRangeError(false);
           return;
         }
 
         var sizeRaw = $.trim(String($('#size_min').val() || ''));
         if (sizeRaw === '') {
+          clearSmartPricingDesignFields();
+          setSmartPricingNoRangeError(false);
+          return;
+        }
+
+        var sizeNum = Number(sizeRaw);
+        if (!Number.isFinite(sizeNum) || sizeNum < 1) {
+          clearSmartPricingDesignFields();
+          setSmartPricingNoRangeError(false);
           return;
         }
 
         var match = findSmartPricingRangeForSize(sizeRaw);
         if (!match) {
+          clearSmartPricingDesignFields();
+          setSmartPricingNoRangeError(true);
           return;
         }
 
         var minPrice = Number(match.min_price);
         var maxPrice = Number(match.max_price);
         if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice)) {
+          clearSmartPricingDesignFields();
+          setSmartPricingNoRangeError(true);
           return;
         }
+
+        setSmartPricingNoRangeError(false);
 
         var colorValue = String($('#designColors').val() || '');
         if (colorValue === 'color') {
@@ -1780,14 +1846,12 @@
         var maxSessions = parseSmartSessionsToMaxSessions(match.sessions);
         if (maxSessions !== '' && parseInt(maxSessions, 10) > 1) {
           $('#designSessionsMax').val(maxSessions);
-        } else if (maxSessions === '1') {
+        } else {
           $('#designSessionsMax').val('');
         }
 
         var durationValue = mapSmartDurationHoursToSelect(match.duration);
-        if (durationValue) {
-          $('#designSessionTime').val(durationValue);
-        }
+        $('#designSessionTime').val(durationValue || '');
       }
 
       $('#size_min').on('input change blur', function () {
@@ -2041,7 +2105,7 @@
         $('#designImage').val('');
       }
 
-      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'repeat_limit', 'primary_style', 'other_styles', 'suggested_placements', 'color', 'tags', 'min_size', 'min_price', 'max_price', 'max_sessions', 'session_duration'];
+      var DESIGN_FORM_FIELD_ORDER = ['image', 'min_size', 'title', 'description', 'repeat_limit', 'primary_style', 'other_styles', 'suggested_placements', 'color', 'tags', 'min_price', 'max_price', 'max_sessions', 'session_duration'];
 
       function setDesignFormBanner(msg) {
         var el = document.getElementById('designFormBanner');
@@ -2376,6 +2440,8 @@
         var sizeMin = parseInt(sizeMinRaw, 10);
         if (sizeMinRaw === '' || isNaN(sizeMin) || sizeMin < 1) {
           errors.min_size = 'You need to enter the minimum size';
+        } else if (String(currentPricingType || '') === 'smart' && !findSmartPricingRangeForSize(sizeMinRaw)) {
+          errors.min_size = SMART_PRICING_NO_RANGE_ERROR;
         }
         var maxSev = String($('#designSessionsMax').val() || '').trim();
         if (maxSev !== '') {

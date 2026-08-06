@@ -421,7 +421,7 @@ class ArtistDesignsController extends Controller
                     }
                 } elseif ($kind === 'more_than') {
                     if ($sizeMin === null) {
-                        $validator->errors()->add("ranges.$index.size_min", 'Min size is required for a more-than range.');
+                        $validator->errors()->add("ranges.$index.size_min", 'This field is required.');
                     }
                 }
 
