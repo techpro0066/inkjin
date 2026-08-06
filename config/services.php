@@ -43,6 +43,18 @@ return [
         'timezone_api_key' => env('GOOGLE_TIMEZONE_API_KEY'),
     ],
 
+    'instagram' => [
+        // From Meta App → Instagram → API setup with Instagram login
+        'client_id' => env('INSTAGRAM_CLIENT_ID'),
+        'client_secret' => env('INSTAGRAM_CLIENT_SECRET'),
+        // Must match an OAuth redirect URI exactly in Meta dashboard
+        'redirect' => env('INSTAGRAM_REDIRECT_URI'),
+        'scopes' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('INSTAGRAM_SCOPES', 'instagram_business_basic'))
+        ))),
+    ],
+
     'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),

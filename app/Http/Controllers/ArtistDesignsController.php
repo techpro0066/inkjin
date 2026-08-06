@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\ArtistDesign;
+use App\Models\SmartPricingSize;
 use App\Models\UserDetail;
 use App\Http\Controllers\Concerns\SuggestsTattooImageFieldsWithAi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Models\Style;
@@ -182,6 +185,20 @@ class ArtistDesignsController extends Controller
         $styles = $this->styles();
         $placements = $this->placements();
 
+        $smartPricingRanges = Auth::user()->smartPricingSizes()
+            ->get(['kind', 'size_min', 'size_max', 'min_price', 'max_price', 'sessions', 'duration', 'sort_order'])
+            ->map(fn (SmartPricingSize $row) => [
+                'kind' => $row->kind,
+                'size_min' => $row->size_min,
+                'size_max' => $row->size_max,
+                'min_price' => $row->min_price,
+                'max_price' => $row->max_price,
+                'sessions' => $row->sessions,
+                'duration' => $row->duration,
+            ])
+            ->values()
+            ->all();
+
         return view('artist.artist_designs.index', [
             'artistDesigns' => $artistDesigns,
             'whatsIncludedIsActive' => (bool) ($userDetail?->design_whats_included_is_active ?? false),
@@ -191,6 +208,14 @@ class ArtistDesignsController extends Controller
             'sizeUnit' => in_array(($userDetail?->size_unit ?? 'cm'), ['cm', 'in'], true)
                 ? ($userDetail->size_unit ?? 'cm')
                 : 'cm',
+            'currencyCode' => strtoupper((string) ($userDetail?->currency ?? 'EUR')),
+            'pricingType' => in_array(($userDetail?->pricing_type ?? 'manual'), ['manual', 'smart'], true)
+                ? ($userDetail->pricing_type ?? 'manual')
+                : 'manual',
+            'smartPricingColorPercent' => $userDetail?->color_percent !== null
+                ? (float) $userDetail->color_percent
+                : 20.0,
+            'smartPricingRanges' => $smartPricingRanges,
         ]);
     }
 
@@ -312,6 +337,222 @@ class ArtistDesignsController extends Controller
                 ? array_values($userDetail->design_whats_included)
                 : [],
         ]);
+    }
+
+    public function updatePricingType(Request $request)
+    {
+        $userDetail = Auth::user()->userDetail ?? UserDetail::create(['user_id' => Auth::id()]);
+
+        $validated = $request->validate([
+            'pricing_type' => ['required', Rule::in(['manual', 'smart'])],
+        ]);
+
+        $userDetail->update([
+            'pricing_type' => $validated['pricing_type'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pricing type updated.',
+            'pricing_type' => $userDetail->pricing_type,
+        ]);
+    }
+
+    public function validateSmartPricing(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'color_percent' => ['required', 'numeric', 'min:0', 'max:999'],
+            'ranges' => ['nullable', 'array'],
+            'ranges.*.kind' => ['required', Rule::in(['between', 'less_than', 'more_than'])],
+            'ranges.*.size_min' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+            'ranges.*.size_max' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+            'ranges.*.min_price' => ['required', 'numeric', 'min:0', 'max:999999'],
+            'ranges.*.max_price' => ['required', 'numeric', 'min:0', 'max:999999'],
+            'ranges.*.sessions' => ['required', 'string', 'max:50'],
+            'ranges.*.duration' => ['required', 'numeric', 'min:0', 'max:999'],
+        ], [
+            'color_percent.required' => 'Color percentage is required.',
+            'color_percent.numeric' => 'Color percentage must be a number.',
+            'ranges.*.size_min.numeric' => 'Min size must be a number.',
+            'ranges.*.size_max.numeric' => 'Max size must be a number.',
+            'ranges.*.min_price.required' => 'Min price is required.',
+            'ranges.*.max_price.required' => 'Max price is required.',
+            'ranges.*.sessions.required' => 'Sessions is required.',
+            'ranges.*.duration.required' => 'Duration is required.',
+        ]);
+
+        $validator->after(function ($validator) {
+            $ranges = $validator->getData()['ranges'] ?? [];
+            if (! is_array($ranges)) {
+                return;
+            }
+
+            $intervals = [];
+
+            foreach ($ranges as $index => $range) {
+                if (! is_array($range)) {
+                    continue;
+                }
+
+                $kind = $range['kind'] ?? null;
+                $sizeMin = array_key_exists('size_min', $range) && $range['size_min'] !== null && $range['size_min'] !== ''
+                    ? $range['size_min']
+                    : null;
+                $sizeMax = array_key_exists('size_max', $range) && $range['size_max'] !== null && $range['size_max'] !== ''
+                    ? $range['size_max']
+                    : null;
+
+                $sizeMinNumber = is_numeric($sizeMin) ? (float) $sizeMin : null;
+                $sizeMaxNumber = is_numeric($sizeMax) ? (float) $sizeMax : null;
+
+                if ($kind === 'between') {
+                    if ($sizeMin === null) {
+                        $validator->errors()->add("ranges.$index.size_min", 'Min size is required.');
+                    }
+                    if ($sizeMax === null) {
+                        $validator->errors()->add("ranges.$index.size_max", 'Max size is required.');
+                    }
+                    if ($sizeMinNumber !== null && $sizeMaxNumber !== null && $sizeMaxNumber < $sizeMinNumber) {
+                        $validator->errors()->add("ranges.$index.size_max", 'Max size must be greater than or equal to min size.');
+                    }
+                } elseif ($kind === 'less_than') {
+                    if ($sizeMax === null) {
+                        $validator->errors()->add("ranges.$index.size_max", 'Max size is required for a less-than range.');
+                    }
+                } elseif ($kind === 'more_than') {
+                    if ($sizeMin === null) {
+                        $validator->errors()->add("ranges.$index.size_min", 'Min size is required for a more-than range.');
+                    }
+                }
+
+                $minPrice = $range['min_price'] ?? null;
+                $maxPrice = $range['max_price'] ?? null;
+                if (is_numeric($minPrice) && is_numeric($maxPrice) && (float) $maxPrice < (float) $minPrice) {
+                    $validator->errors()->add("ranges.$index.max_price", 'Max price must be greater than or equal to min price.');
+                }
+
+                $interval = $this->smartPricingSizeInterval($kind, $sizeMinNumber, $sizeMaxNumber);
+                if ($interval !== null) {
+                    $intervals[] = [
+                        'index' => (int) $index,
+                        'kind' => $kind,
+                        'low' => $interval[0],
+                        'high' => $interval[1],
+                    ];
+                }
+            }
+
+            $overlapMessage = 'This size range overlaps another range.';
+            $count = count($intervals);
+            for ($i = 0; $i < $count; $i++) {
+                for ($j = $i + 1; $j < $count; $j++) {
+                    $a = $intervals[$i];
+                    $b = $intervals[$j];
+
+                    // Inclusive ranges; shared edge (e.g. 0–5 and 5–10) is allowed.
+                    if (! ($a['low'] < $b['high'] && $b['low'] < $a['high'])) {
+                        continue;
+                    }
+
+                    $this->addSmartPricingSizeOverlapError($validator, $a['index'], $a['kind'], $overlapMessage);
+                    $this->addSmartPricingSizeOverlapError($validator, $b['index'], $b['kind'], $overlapMessage);
+                }
+            }
+        });
+
+        $validated = $validator->validate();
+
+        $user = Auth::user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+        $ranges = array_values($validated['ranges'] ?? []);
+
+        DB::transaction(function () use ($user, $userDetail, $validated, $ranges) {
+            $userDetail->update([
+                'color_percent' => $validated['color_percent'],
+            ]);
+
+            SmartPricingSize::query()
+                ->where('user_id', $user->id)
+                ->delete();
+
+            foreach ($ranges as $index => $range) {
+                $kind = $range['kind'];
+                $sizeMin = array_key_exists('size_min', $range) && $range['size_min'] !== null && $range['size_min'] !== ''
+                    ? $range['size_min']
+                    : null;
+                $sizeMax = array_key_exists('size_max', $range) && $range['size_max'] !== null && $range['size_max'] !== ''
+                    ? $range['size_max']
+                    : null;
+
+                if ($kind === 'less_than') {
+                    $sizeMin = null;
+                } elseif ($kind === 'more_than') {
+                    $sizeMax = null;
+                }
+
+                SmartPricingSize::create([
+                    'user_id' => $user->id,
+                    'kind' => $kind,
+                    'size_min' => $sizeMin,
+                    'size_max' => $sizeMax,
+                    'min_price' => $range['min_price'],
+                    'max_price' => $range['max_price'],
+                    'sessions' => trim((string) $range['sessions']),
+                    'duration' => $range['duration'],
+                    'sort_order' => $index,
+                ]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Smart pricing saved.',
+            'color_percent' => (float) $userDetail->fresh()->color_percent,
+            'ranges' => $user->smartPricingSizes()
+                ->get(['kind', 'size_min', 'size_max', 'min_price', 'max_price', 'sessions', 'duration'])
+                ->map(fn (SmartPricingSize $row) => [
+                    'kind' => $row->kind,
+                    'size_min' => $row->size_min,
+                    'size_max' => $row->size_max,
+                    'min_price' => $row->min_price,
+                    'max_price' => $row->max_price,
+                    'sessions' => $row->sessions,
+                    'duration' => $row->duration,
+                ])
+                ->values()
+                ->all(),
+        ]);
+    }
+
+    /**
+     * @return array{0: float, 1: float}|null
+     */
+    private function smartPricingSizeInterval(?string $kind, ?float $sizeMin, ?float $sizeMax): ?array
+    {
+        return match ($kind) {
+            'between' => ($sizeMin !== null && $sizeMax !== null && $sizeMax >= $sizeMin)
+                ? [$sizeMin, $sizeMax]
+                : null,
+            'less_than' => $sizeMax !== null
+                ? [0.0, $sizeMax]
+                : null,
+            'more_than' => $sizeMin !== null
+                ? [$sizeMin, INF]
+                : null,
+            default => null,
+        };
+    }
+
+    private function addSmartPricingSizeOverlapError($validator, int $index, ?string $kind, string $message): void
+    {
+        $field = $kind === 'less_than' ? 'size_max' : 'size_min';
+        $key = "ranges.$index.$field";
+
+        if ($validator->errors()->has($key)) {
+            return;
+        }
+
+        $validator->errors()->add($key, $message);
     }
 
     public function toggleAvailability(Request $request, ArtistDesign $artistDesign)

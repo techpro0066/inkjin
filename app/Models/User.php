@@ -162,4 +162,9 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(ArtistDesign::class);
     }
+
+    public function smartPricingSizes()
+    {
+        return $this->hasMany(SmartPricingSize::class)->ordered();
+    }
 }

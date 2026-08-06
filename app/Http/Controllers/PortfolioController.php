@@ -73,10 +73,17 @@ class PortfolioController extends Controller
     public function index()
     {
         $portfolios = Auth::user()->portfolios()->latest()->get();
-
         $styles = $this->styles();
+        $userDetail = Auth::user()->userDetail;
+        $instagramConnected = filled($userDetail?->instagram_access_token);
+        $instagramUsername = $userDetail?->instagram_username;
 
-        return view('artist.portfolio.index', compact('portfolios', 'styles'));
+        return view('artist.portfolio.index', compact(
+            'portfolios',
+            'styles',
+            'instagramConnected',
+            'instagramUsername'
+        ));
     }
 
     public function store(Request $request)

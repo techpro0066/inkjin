@@ -73,6 +73,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/auth/google-calendar/status', [\App\Http\Controllers\GoogleCalendarController::class, 'checkStatus'])->name('google.calendar.status');
     Route::post('/auth/google-calendar/disconnect', [\App\Http\Controllers\GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect');
 
+    Route::get('/auth/instagram/connect', [\App\Http\Controllers\InstagramController::class, 'connect'])->name('instagram.connect');
+    Route::get('/auth/instagram/callback', [\App\Http\Controllers\InstagramController::class, 'callback'])->name('instagram.callback');
+    Route::post('/auth/instagram/disconnect', [\App\Http\Controllers\InstagramController::class, 'disconnect'])->name('instagram.disconnect');
+
 });
 
 Route::get('/stripe/delete-account', [StripeConnectDevController::class, 'showDeleteForm'])
@@ -303,6 +307,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/artist-designs/ai-suggest', [\App\Http\Controllers\ArtistDesignsController::class, 'suggestWithAi'])->name('artist-designs.ai-suggest');
     Route::put('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'update'])->name('artist-designs.update');
     Route::put('/artist-designs/settings/whats-included', [\App\Http\Controllers\ArtistDesignsController::class, 'updateWhatsIncluded'])->name('artist-designs.whats-included.update');
+    Route::put('/artist-designs/settings/pricing-type', [\App\Http\Controllers\ArtistDesignsController::class, 'updatePricingType'])->name('artist-designs.pricing-type.update');
+    Route::post('/artist-designs/settings/smart-pricing/validate', [\App\Http\Controllers\ArtistDesignsController::class, 'validateSmartPricing'])->name('artist-designs.smart-pricing.validate');
+    Route::post('/artist-designs/settings/smart-pricing', [\App\Http\Controllers\ArtistDesignsController::class, 'validateSmartPricing'])->name('artist-designs.smart-pricing.update');
     Route::patch('/artist-designs/{artistDesign}/availability', [\App\Http\Controllers\ArtistDesignsController::class, 'toggleAvailability'])->name('artist-designs.toggle-availability');
     Route::patch('/artist-designs/{artistDesign}/visibility', [\App\Http\Controllers\ArtistDesignsController::class, 'toggleVisibility'])->name('artist-designs.toggle-visibility');
     Route::delete('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'destroy'])->name('artist-designs.destroy');

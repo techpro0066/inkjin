@@ -75,6 +75,316 @@
     }
     .style-chip.is-selected .style-chip-check { display: inline-flex; }
 
+    /* Pricing settings accordion + choice cards */
+    .pricing-accordion {
+      background: #fff;
+      border: 1px solid rgba(122, 117, 131, 0.2);
+      border-radius: 1rem;
+      box-shadow: 0 1px 2px rgba(26, 26, 26, 0.04);
+      overflow: hidden;
+    }
+    .pricing-accordion-trigger {
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      padding: 1rem 1.1rem;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      text-align: left;
+    }
+    .pricing-accordion-trigger:hover {
+      background: #fbf8ff;
+    }
+    .pricing-accordion-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: #eee8f8;
+      color: #310f7a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .pricing-accordion-copy {
+      min-width: 0;
+      flex: 1;
+      padding-top: 0.1rem;
+    }
+    .pricing-accordion-title-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .pricing-accordion-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      line-height: 1.2;
+    }
+    .pricing-accordion-badge {
+      display: none;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #e8ddff;
+      color: #310f7a;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+    .pricing-accordion:not(.is-open)[data-pricing-type="smart"] .pricing-accordion-badge {
+      display: inline-flex;
+    }
+    .pricing-accordion-subtitle {
+      margin-top: 0.35rem;
+      font-size: 0.875rem;
+      color: #7a7583;
+      line-height: 1.4;
+    }
+    .pricing-accordion-chevron {
+      color: #9a94a3;
+      flex-shrink: 0;
+      margin-top: 0.35rem;
+      transition: transform 0.2s ease;
+    }
+    .pricing-accordion.is-open .pricing-accordion-chevron {
+      transform: rotate(180deg);
+    }
+    .pricing-accordion-body {
+      display: none;
+      padding: 0 1.1rem 1.15rem;
+      border-top: 1px solid rgba(122, 117, 131, 0.12);
+    }
+    .pricing-accordion.is-open .pricing-accordion-body {
+      display: block;
+    }
+    .pricing-choice-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      padding: 1.1rem 1.15rem;
+      border-radius: 1rem;
+      border: 1.5px solid rgba(122, 117, 131, 0.22);
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+      box-shadow: 0 1px 2px rgba(26, 26, 26, 0.04);
+      width: 100%;
+    }
+    .pricing-choice-card:hover {
+      border-color: rgba(49, 15, 122, 0.35);
+      background: #fbf8ff;
+    }
+    .pricing-choice-card.is-selected {
+      border-color: #310f7a;
+      box-shadow: 0 0 0 1px #310f7a, 0 1px 2px rgba(49, 15, 122, 0.08);
+      background: #fff;
+    }
+    .pricing-choice-radio {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #cac4d3;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .pricing-choice-card.is-selected .pricing-choice-radio {
+      border-color: #310f7a;
+      background: #310f7a;
+    }
+    .pricing-choice-radio::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      opacity: 0;
+      transform: scale(0.6);
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .pricing-choice-card.is-selected .pricing-choice-radio::after {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .pricing-choice-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #eee8f8;
+      color: #310f7a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .pricing-choice-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #7a7583;
+      margin-top: auto;
+    }
+    .pricing-choice-card.is-selected .pricing-choice-tag {
+      color: #310f7a;
+    }
+
+    /* Smart pricing table (design only) */
+    .smart-pricing-input {
+      min-width: 0;
+      border: 1px solid #e2dee8 !important;
+      border-radius: 12px !important;
+      background: #fff !important;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #1a1a1a;
+      text-align: center;
+      transition: none;
+      box-shadow: none !important;
+      outline: none !important;
+      --tw-ring-shadow: 0 0 #0000 !important;
+      --tw-ring-offset-shadow: 0 0 #0000 !important;
+    }
+    .smart-pricing-input:hover,
+    .smart-pricing-input:focus,
+    .smart-pricing-input:focus-visible,
+    .smart-pricing-input:active {
+      border-color: #e2dee8 !important;
+      outline: none !important;
+      box-shadow: none !important;
+      --tw-ring-color: transparent !important;
+      --tw-ring-shadow: 0 0 #0000 !important;
+      --tw-ring-offset-shadow: 0 0 #0000 !important;
+    }
+    .smart-pricing-input--sm { width: 4rem; max-width: 4rem; }
+    .smart-pricing-input--md { width: 5.25rem; max-width: 5.25rem; }
+    .smart-pricing-input--duration { width: 5.75rem; max-width: 5.75rem; text-align: left; padding-left: 0.95rem; }
+    .smart-pricing-table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .smart-pricing-table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+    }
+    .smart-pricing-table thead th {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #9a94a3;
+      text-align: left;
+      padding: 0 0.35rem 0.85rem;
+      white-space: nowrap;
+      border: 0;
+      background: transparent;
+    }
+    .smart-pricing-table tbody tr {
+      background: transparent;
+    }
+    .smart-pricing-table td {
+      padding: 0.85rem 0.35rem;
+      vertical-align: top;
+      border: 0;
+      border-top: 1px solid #ebe6f0;
+      background: transparent;
+    }
+    .smart-pricing-field-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.3rem;
+    }
+    .smart-pricing-size-cell,
+    .smart-pricing-currency-cell,
+    .smart-pricing-sessions-cell,
+    .smart-pricing-duration-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      white-space: nowrap;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      min-height: 0;
+      box-shadow: none;
+    }
+    .smart-pricing-affix {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #7a7583;
+      flex-shrink: 0;
+    }
+    .smart-pricing-open-max {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.25rem;
+      color: #1a1a1a;
+      font-size: 0.875rem;
+      font-weight: 600;
+      background: transparent;
+      border-radius: 0;
+      height: auto;
+    }
+    .smart-pricing-color-input-wrap {
+      display: inline-flex;
+      align-items: center;
+    }
+    .smart-pricing-color-input-wrap .smart-pricing-input {
+      width: 4.75rem;
+      max-width: 4.75rem;
+    }
+    .smart-pricing-remove-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #9a94a3;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+    }
+    .smart-pricing-remove-btn:hover {
+      color: #b3261e;
+      background: #fceeed;
+    }
+    .smart-pricing-empty {
+      padding: 1.5rem 0.75rem;
+      text-align: center;
+      color: #7a7583;
+      font-size: 0.875rem;
+    }
+    .smart-pricing-input.is-invalid,
+    .smart-pricing-input.is-invalid:hover,
+    .smart-pricing-input.is-invalid:focus,
+    .smart-pricing-input.is-invalid:focus-visible {
+      border-color: #b3261e !important;
+    }
+    .smart-pricing-field-error {
+      display: block;
+      margin-top: 0.35rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #b3261e;
+    }
+
     /* Image crop modal */
     .crop-modal-backdrop {
       display: none;
@@ -273,6 +583,154 @@
           <button type="button" id="btnOpenNewDesign" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2 flex-shrink-0">
             <span class="material-symbols-outlined text-lg">add</span> New Design
           </button>
+        </div>
+      </div>
+
+      <!-- Pricing Settings -->
+      @php
+        $currentPricingType = in_array(($pricingType ?? 'manual'), ['manual', 'smart'], true)
+          ? ($pricingType ?? 'manual')
+          : 'manual';
+        $pricingUnit = in_array(($sizeUnit ?? 'cm'), ['cm', 'in'], true) ? ($sizeUnit ?? 'cm') : 'cm';
+        $pricingCurrencyCode = strtoupper((string) ($currencyCode ?? 'EUR'));
+        $pricingCurrencySymbol = match ($pricingCurrencyCode) {
+            'EUR' => '€',
+            'USD' => '$',
+            'GBP' => '£',
+            default => $pricingCurrencyCode.' ',
+        };
+        $smartRangesCount = is_array($smartPricingRanges ?? null) ? count($smartPricingRanges) : 0;
+        $smartColorPercentLabel = rtrim(rtrim(number_format((float) ($smartPricingColorPercent ?? 20), 2, '.', ''), '0'), '.');
+        $pricingClosedSummary = $currentPricingType === 'smart'
+          ? ($smartRangesCount.' size range'.($smartRangesCount === 1 ? '' : 's').' · +'.$smartColorPercentLabel.'% for color designs')
+          : 'Manual Pricing · set price per design';
+      @endphp
+      <div
+        class="mb-8 pricing-accordion"
+        id="pricingSettingsPanel"
+        data-pricing-type="{{ $currentPricingType }}"
+        data-open="false"
+      >
+        <button
+          type="button"
+          id="pricingAccordionTrigger"
+          class="pricing-accordion-trigger"
+          aria-expanded="false"
+          aria-controls="pricingAccordionBody"
+        >
+          <span class="pricing-accordion-icon" aria-hidden="true">
+            <span class="material-symbols-outlined text-[22px]">bolt</span>
+          </span>
+          <span class="pricing-accordion-copy">
+            <span class="pricing-accordion-title-row">
+              <span class="pricing-accordion-title">Pricing</span>
+              <span id="pricingAccordionBadge" class="pricing-accordion-badge">Smart Pricing</span>
+            </span>
+            <span id="pricingAccordionSubtitle" class="pricing-accordion-subtitle">{{ $pricingClosedSummary }}</span>
+          </span>
+          <span class="material-symbols-outlined pricing-accordion-chevron text-[22px]" aria-hidden="true">expand_more</span>
+        </button>
+
+        <div id="pricingAccordionBody" class="pricing-accordion-body" hidden>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4" role="radiogroup" aria-label="Pricing mode">
+            <button
+              type="button"
+              class="pricing-choice-card {{ $currentPricingType === 'smart' ? 'is-selected' : '' }}"
+              data-pricing-mode="smart"
+              role="radio"
+              aria-checked="{{ $currentPricingType === 'smart' ? 'true' : 'false' }}"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-base font-bold text-on-surface">Smart Pricing</p>
+                  <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">Set rates by size once, pricing fills in automatically.</p>
+                </div>
+                <span class="pricing-choice-radio" aria-hidden="true"></span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              class="pricing-choice-card {{ $currentPricingType === 'manual' ? 'is-selected' : '' }}"
+              data-pricing-mode="manual"
+              role="radio"
+              aria-checked="{{ $currentPricingType === 'manual' ? 'true' : 'false' }}"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-base font-bold text-on-surface">Manual Pricing</p>
+                  <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">Set price, sessions, and duration yourself per design.</p>
+                </div>
+                <span class="pricing-choice-radio" aria-hidden="true"></span>
+              </div>
+            </button>
+          </div>
+
+          <p class="mt-3 text-xs text-on-surface-variant flex items-start gap-1.5">
+            <span class="material-symbols-outlined text-[16px] mt-px text-on-surface-variant/80">info</span>
+            <span>Switch anytime. Designs you've already uploaded keep their existing price, sessions, and duration.</span>
+          </p>
+
+          <div id="smartPricingPanel" class="mt-5 bg-[#fbf8ff] rounded-2xl border border-outline-variant/20 p-5 md:p-6 {{ $currentPricingType === 'smart' ? '' : 'hidden' }}">
+            <div class="mb-5">
+              <h4 class="text-base font-bold text-on-surface">Size ranges</h4>
+              <p class="text-sm text-on-surface-variant mt-1">Longest dimension, in {{ $pricingUnit }} · edit the boundaries or the values</p>
+            </div>
+
+            <div class="smart-pricing-table-wrap">
+              <table class="smart-pricing-table">
+                <thead>
+                  <tr>
+                    <th style="width:26%;">Size</th>
+                    <th style="width:17%;">Min price</th>
+                    <th style="width:17%;">Max price</th>
+                    <th style="width:14%;">Sessions</th>
+                    <th style="width:16%;">Duration</th>
+                    <th style="width:10%;" class="!text-right"><span class="sr-only">Remove</span></th>
+                  </tr>
+                </thead>
+                <tbody id="smartPricingRows"></tbody>
+              </table>
+              <p id="smartPricingEmpty" class="smart-pricing-empty">No size ranges yet. Add a size range to get started.</p>
+            </div>
+
+            <div class="mt-4 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
+              <button type="button" id="btnAddSmartSizeRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
+                <span class="material-symbols-outlined text-[18px]">add</span> Add size range
+              </button>
+              <button type="button" id="btnAddSmartLessThanRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
+                <span class="material-symbols-outlined text-[18px]">add</span> Add less than size range
+              </button>
+              <button type="button" id="btnAddSmartMoreThanRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
+                <span class="material-symbols-outlined text-[18px]">add</span> Add more than size range
+              </button>
+            </div>
+
+            <div class="mt-6 pt-5 border-t border-outline-variant/20">
+              <h4 class="text-base font-bold text-on-surface">Color adjustment</h4>
+              <p class="text-sm text-on-surface-variant mt-1">Added on top of the table price for color designs</p>
+              <div id="smartColorPercentField" class="mt-4">
+                <div class="flex flex-wrap items-center gap-2 text-sm text-on-surface">
+                  <span>Color designs</span>
+                  <div class="smart-pricing-color-input-wrap">
+                    <input type="text" inputmode="decimal" id="smartColorPercent" class="smart-pricing-input smart-pricing-input--sm" value="{{ $smartColorPercentLabel }}" aria-label="Color percent more" placeholder="20">
+                  </div>
+                  <span class="smart-pricing-affix">%</span>
+                  <span class="text-on-surface-variant">more</span>
+                </div>
+              </div>
+              <p class="mt-3 text-xs text-on-surface-variant leading-relaxed">
+                Example: a 20+ {{ $pricingUnit }} color design would range {{ $pricingCurrencySymbol }}540–{{ $pricingCurrencySymbol }}900 instead of {{ $pricingCurrencySymbol }}450–{{ $pricingCurrencySymbol }}750.
+              </p>
+            </div>
+
+            <div class="mt-6 pt-5 border-t border-outline-variant/20 flex flex-col sm:flex-row sm:items-center gap-3">
+              <button type="button" id="btnSaveSmartPricing" class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
+                <span class="material-symbols-outlined text-lg">save</span> Save
+              </button>
+              <p id="smartPricingSaveStatus" class="hidden text-sm font-medium"></p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -609,6 +1067,15 @@
               <input type="text" id="designTags" name="designTags" placeholder="e.g., dragon, sleeve, oriental" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="tags"></p>
             </div>
+            <!-- Size (min) -->
+            <div class="design-field-section scroll-mt-6" data-design-field="min_size">
+              <label for="size_min" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Size (min)</label>
+              <div class="flex items-center gap-3">
+                <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" class="w-28 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
+                <span class="text-sm font-semibold text-on-surface" id="sizeUnitLabel">{{ $sizeUnit ?? 'cm' }}</span>
+              </div>
+              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_size"></p>
+            </div>
             <!-- Price Range -->
             <div class="design-field-section scroll-mt-6" data-design-field="min_price">
               <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Price Range</label>
@@ -625,15 +1092,6 @@
               </div>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_price"></p>
               <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="max_price"></p>
-            </div>
-            <!-- Size (min) -->
-            <div class="design-field-section scroll-mt-6" data-design-field="min_size">
-              <label for="size_min" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Size (min)</label>
-              <div class="flex items-center gap-3">
-                <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" class="w-28 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
-                <span class="text-sm font-semibold text-on-surface" id="sizeUnitLabel">{{ $sizeUnit ?? 'cm' }}</span>
-              </div>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_size"></p>
             </div>
             <!-- Max sessions -->
             <div class="design-field-section scroll-mt-6" data-design-field="max_sessions">
@@ -756,6 +1214,10 @@
     var ARTIST_DESIGNS_INDEX_URL = @json(route('artist-designs.index'));
     var ARTIST_DESIGNS_AI_SUGGEST_URL = @json(route('artist-designs.ai-suggest'));
     var WHATS_INCLUDED_UPDATE_URL = @json(route('artist-designs.whats-included.update'));
+    var PRICING_TYPE_UPDATE_URL = @json(route('artist-designs.pricing-type.update'));
+    var SMART_PRICING_VALIDATE_URL = @json(route('artist-designs.smart-pricing.update'));
+    var SMART_PRICING_INITIAL_RANGES = @json($smartPricingRanges ?? []);
+    var SMART_PRICING_COLOR_PERCENT = @json((float) ($smartPricingColorPercent ?? 20));
     var WHATS_INCLUDED_INITIAL = @json(['is_active' => $whatsIncludedIsActive, 'items' => $whatsIncludedItems]);
     var ARTIST_DESIGNS_BY_ID = @json($designsForEdit);
     var ARTIST_DESIGN_STYLE_OPTIONS = @json($styles);
@@ -774,6 +1236,575 @@
       var CROP_OUT_H = 1350;
       var CROP_RATIO = 4 / 5;
       var MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+      // Pricing type cards + dynamic size-range rows
+      var SMART_PRICING_UNIT = @json($pricingUnit ?? 'cm');
+      var SMART_PRICING_CURRENCY = @json($pricingCurrencySymbol ?? '€');
+      var pricingTypeSaving = false;
+      var currentPricingType = String($('#pricingSettingsPanel').data('pricing-type') || 'manual');
+
+      function formatSmartSummaryPercent(value) {
+        var num = Number(value);
+        if (!Number.isFinite(num)) {
+          return '0';
+        }
+        return String(num.toFixed(2)).replace(/\.?0+$/, '');
+      }
+
+      function syncPricingAccordionHeader() {
+        var $panel = $('#pricingSettingsPanel');
+        var isOpen = $panel.hasClass('is-open');
+        var isSmart = String(currentPricingType || '') === 'smart';
+        var $subtitle = $('#pricingAccordionSubtitle');
+
+        $panel.attr('data-pricing-type', isSmart ? 'smart' : 'manual');
+
+        if (isOpen) {
+          $subtitle.text('Choose how price, sessions, and duration are set for new designs.');
+          return;
+        }
+
+        if (!isSmart) {
+          $subtitle.text('Manual Pricing · set price per design');
+          return;
+        }
+
+        var rangeCount = $('#smartPricingRows .smart-pricing-row').length;
+        if (!rangeCount && Array.isArray(SMART_PRICING_INITIAL_RANGES)) {
+          rangeCount = SMART_PRICING_INITIAL_RANGES.length;
+        }
+        var percent = formatSmartSummaryPercent(
+          $.trim($('#smartColorPercent').val() || '') !== ''
+            ? $('#smartColorPercent').val()
+            : SMART_PRICING_COLOR_PERCENT
+        );
+        var rangeLabel = rangeCount + ' size range' + (rangeCount === 1 ? '' : 's');
+        $subtitle.text(rangeLabel + ' · +' + percent + '% for color designs');
+      }
+
+      function setPricingAccordionOpen(open) {
+        var $panel = $('#pricingSettingsPanel');
+        var isOpen = !!open;
+        $panel.toggleClass('is-open', isOpen).attr('data-open', isOpen ? 'true' : 'false');
+        $('#pricingAccordionTrigger').attr('aria-expanded', isOpen ? 'true' : 'false');
+        $('#pricingAccordionBody').prop('hidden', !isOpen);
+        syncPricingAccordionHeader();
+      }
+
+      function setPricingMode(mode, options) {
+        options = options || {};
+        var isSmart = mode === 'smart';
+        $('#pricingSettingsPanel .pricing-choice-card').each(function () {
+          var selected = $(this).data('pricing-mode') === mode;
+          $(this).toggleClass('is-selected', selected).attr('aria-checked', selected ? 'true' : 'false');
+        });
+        $('#smartPricingPanel').toggleClass('hidden', !isSmart);
+        $('#pricingSettingsPanel').data('pricing-type', mode);
+        currentPricingType = mode;
+        syncPricingAccordionHeader();
+
+        if (options.persist === false) {
+          return;
+        }
+
+        if (pricingTypeSaving) {
+          return;
+        }
+
+        pricingTypeSaving = true;
+        $('#pricingSettingsPanel .pricing-choice-card').prop('disabled', true);
+
+        $.ajax({
+          url: PRICING_TYPE_UPDATE_URL,
+          method: 'PUT',
+          contentType: 'application/json',
+          data: JSON.stringify({ pricing_type: mode }),
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        }).done(function (res) {
+          if (res && res.pricing_type) {
+            currentPricingType = res.pricing_type;
+            $('#pricingSettingsPanel').data('pricing-type', res.pricing_type);
+          }
+          syncPricingAccordionHeader();
+        }).fail(function () {
+          var previous = String($('#pricingSettingsPanel').attr('data-previous-pricing-type') || 'manual');
+          setPricingMode(previous, { persist: false });
+        }).always(function () {
+          pricingTypeSaving = false;
+          $('#pricingSettingsPanel .pricing-choice-card').prop('disabled', false);
+        });
+      }
+
+      $('#pricingAccordionTrigger').on('click', function () {
+        setPricingAccordionOpen(!$('#pricingSettingsPanel').hasClass('is-open'));
+      });
+
+      function syncSmartPricingEmptyState() {
+        var hasRows = $('#smartPricingRows .smart-pricing-row').length > 0;
+        $('#smartPricingEmpty').toggleClass('hidden', hasRows);
+        $('.smart-pricing-table thead').toggleClass('hidden', !hasRows);
+        syncPricingAccordionHeader();
+      }
+
+      function formatSmartPricingValue(value) {
+        if (value === null || value === undefined || value === '') {
+          return '';
+        }
+        var num = Number(value);
+        if (!Number.isFinite(num)) {
+          return String(value);
+        }
+        var fixed = num.toFixed(2);
+        return fixed.replace(/\.?0+$/, '');
+      }
+
+      function escapeSmartPricingAttr(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      function buildSmartPricingSizeCellHtml(kind, row) {
+        row = row || {};
+        var sizeMin = escapeSmartPricingAttr(formatSmartPricingValue(row.size_min));
+        var sizeMax = escapeSmartPricingAttr(formatSmartPricingValue(row.size_max));
+
+        if (kind === 'less_than') {
+          return `
+            <div class="smart-pricing-size-cell">
+              <span class="smart-pricing-open-max" aria-hidden="true">&lt;</span>
+              <input type="text" inputmode="decimal" class="smart-pricing-input smart-pricing-input--sm js-smart-size-max" value="${sizeMax}" aria-label="Size max" placeholder="5">
+              <span class="smart-pricing-affix">${SMART_PRICING_UNIT}</span>
+            </div>`;
+        }
+
+        if (kind === 'more_than') {
+          return `
+            <div class="smart-pricing-size-cell">
+              <input type="text" inputmode="decimal" class="smart-pricing-input smart-pricing-input--sm js-smart-size-min" value="${sizeMin}" aria-label="Size min" placeholder="20">
+              <span class="smart-pricing-affix">–</span>
+              <span class="smart-pricing-open-max" aria-label="Open ended max">+</span>
+              <span class="smart-pricing-affix">${SMART_PRICING_UNIT}</span>
+            </div>`;
+        }
+
+        return `
+          <div class="smart-pricing-size-cell">
+            <input type="text" inputmode="decimal" class="smart-pricing-input smart-pricing-input--sm js-smart-size-min" value="${sizeMin}" aria-label="Size min" placeholder="0">
+            <span class="smart-pricing-affix">–</span>
+            <input type="text" inputmode="decimal" class="smart-pricing-input smart-pricing-input--sm js-smart-size-max" value="${sizeMax}" aria-label="Size max" placeholder="5">
+            <span class="smart-pricing-affix">${SMART_PRICING_UNIT}</span>
+          </div>`;
+      }
+
+      function buildSmartPricingRowHtml(kind, row) {
+        kind = kind || 'between';
+        row = row || {};
+        return `
+          <tr class="smart-pricing-row" data-range-kind="${kind}">
+            <td>
+              <div class="smart-pricing-field-stack">
+                ${buildSmartPricingSizeCellHtml(kind, row)}
+              </div>
+            </td>
+            <td>
+              <div class="smart-pricing-field-stack">
+                <div class="smart-pricing-currency-cell">
+                  <span class="smart-pricing-affix">${SMART_PRICING_CURRENCY}</span>
+                  <input type="text" inputmode="decimal" class="smart-pricing-input smart-pricing-input--md js-smart-min-price" value="${escapeSmartPricingAttr(formatSmartPricingValue(row.min_price))}" aria-label="Min price" placeholder="0">
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="smart-pricing-field-stack">
+                <div class="smart-pricing-currency-cell">
+                  <span class="smart-pricing-affix">${SMART_PRICING_CURRENCY}</span>
+                  <input type="text" inputmode="decimal" class="smart-pricing-input smart-pricing-input--md js-smart-max-price" value="${escapeSmartPricingAttr(formatSmartPricingValue(row.max_price))}" aria-label="Max price" placeholder="0">
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="smart-pricing-field-stack">
+                <div class="smart-pricing-sessions-cell">
+                  <input type="text" class="smart-pricing-input smart-pricing-input--md js-smart-sessions" value="${escapeSmartPricingAttr(row.sessions)}" aria-label="Sessions" placeholder="1">
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="smart-pricing-field-stack">
+                <div class="smart-pricing-duration-cell">
+                  <input type="text" inputmode="decimal" class="smart-pricing-input smart-pricing-input--sm js-smart-duration" value="${escapeSmartPricingAttr(formatSmartPricingValue(row.duration))}" aria-label="Duration hours" placeholder="1">
+                  <span class="smart-pricing-affix">hr</span>
+                </div>
+              </div>
+            </td>
+            <td class="text-right">
+              <button type="button" class="smart-pricing-remove-btn js-remove-smart-row" title="Remove size range" aria-label="Remove size range">
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+              </button>
+            </td>
+          </tr>`;
+      }
+
+      function addSmartPricingRow(kind, row) {
+        $('#smartPricingRows').append(buildSmartPricingRowHtml(kind || (row && row.kind) || 'between', row || {}));
+        syncSmartPricingEmptyState();
+      }
+
+      function loadSmartPricingInitialRows() {
+        var ranges = Array.isArray(SMART_PRICING_INITIAL_RANGES) ? SMART_PRICING_INITIAL_RANGES : [];
+        ranges.forEach(function (row) {
+          addSmartPricingRow((row && row.kind) || 'between', row || {});
+        });
+        syncSmartPricingEmptyState();
+      }
+
+      $('#pricingSettingsPanel').on('click', '.pricing-choice-card', function () {
+        if (pricingTypeSaving || $(this).prop('disabled')) {
+          return;
+        }
+        var mode = String($(this).data('pricing-mode') || 'manual');
+        if (mode === currentPricingType) {
+          return;
+        }
+        $('#pricingSettingsPanel').attr('data-previous-pricing-type', currentPricingType);
+        setPricingMode(mode);
+      });
+
+      $('#btnAddSmartSizeRange').on('click', function () {
+        addSmartPricingRow('between');
+      });
+
+      $('#btnAddSmartLessThanRange').on('click', function () {
+        addSmartPricingRow('less_than');
+      });
+
+      $('#btnAddSmartMoreThanRange').on('click', function () {
+        addSmartPricingRow('more_than');
+      });
+
+      $('#smartPricingRows').on('click', '.js-remove-smart-row', function () {
+        $(this).closest('.smart-pricing-row').remove();
+        syncSmartPricingEmptyState();
+      });
+
+      function clearSmartPricingValidation() {
+        $('#smartPricingPanel .smart-pricing-input').removeClass('is-invalid');
+        $('#smartPricingPanel .smart-pricing-field-error').remove();
+        $('#smartPricingSaveStatus').addClass('hidden').removeClass('text-red-700').text('');
+      }
+
+      function parseOptionalNumber(value) {
+        var trimmed = $.trim(String(value == null ? '' : value));
+        if (trimmed === '') {
+          return null;
+        }
+        var num = Number(trimmed);
+        return Number.isFinite(num) ? num : trimmed;
+      }
+
+      function collectSmartPricingPayload() {
+        var colorRaw = $.trim($('#smartColorPercent').val() || '');
+        var colorPercent = colorRaw === '' ? null : Number(colorRaw);
+        var ranges = [];
+
+        $('#smartPricingRows .smart-pricing-row').each(function () {
+          var $row = $(this);
+          var kind = String($row.data('range-kind') || 'between');
+          ranges.push({
+            kind: kind,
+            size_min: parseOptionalNumber($row.find('.js-smart-size-min').val()),
+            size_max: parseOptionalNumber($row.find('.js-smart-size-max').val()),
+            min_price: parseOptionalNumber($row.find('.js-smart-min-price').val()),
+            max_price: parseOptionalNumber($row.find('.js-smart-max-price').val()),
+            sessions: $.trim($row.find('.js-smart-sessions').val() || ''),
+            duration: parseOptionalNumber($row.find('.js-smart-duration').val()),
+          });
+        });
+
+        return {
+          color_percent: Number.isFinite(colorPercent) ? colorPercent : colorRaw,
+          ranges: ranges,
+        };
+      }
+
+      function mapSmartPricingField(key) {
+        var map = {
+          size_min: '.js-smart-size-min',
+          size_max: '.js-smart-size-max',
+          min_price: '.js-smart-min-price',
+          max_price: '.js-smart-max-price',
+          sessions: '.js-smart-sessions',
+          duration: '.js-smart-duration',
+        };
+        return map[key] || null;
+      }
+
+      function showSmartPricingFieldError($input, message, fieldKey) {
+        if (!$input.length) {
+          return;
+        }
+        $input.addClass('is-invalid');
+        var $stack = $input.closest('.smart-pricing-field-stack');
+        if (!$stack.length) {
+          $stack = $input.closest('td');
+        }
+        if (!$stack.length) {
+          return;
+        }
+        var key = fieldKey || 'field';
+        var $existing = $stack.find('.smart-pricing-field-error[data-field="' + key + '"]');
+        if ($existing.length) {
+          $existing.text(message);
+          return;
+        }
+        $stack.append(
+          '<span class="smart-pricing-field-error" data-field="' + key + '">' +
+          $('<div>').text(message).html() +
+          '</span>'
+        );
+      }
+
+      function showSmartColorPercentError(message) {
+        var $input = $('#smartColorPercent');
+        var $wrap = $('#smartColorPercentField');
+        $input.addClass('is-invalid');
+        if ($wrap.find('.smart-pricing-field-error').length) {
+          $wrap.find('.smart-pricing-field-error').text(message);
+          return;
+        }
+        $wrap.append('<span class="smart-pricing-field-error">' + $('<div>').text(message).html() + '</span>');
+      }
+
+      function applySmartPricingErrors(errors) {
+        Object.keys(errors || {}).forEach(function (key) {
+          var messages = errors[key];
+          var message = Array.isArray(messages) ? messages[0] : String(messages || 'Invalid value.');
+
+          if (key === 'color_percent') {
+            showSmartColorPercentError(message);
+            return;
+          }
+
+          var match = key.match(/^ranges\.(\d+)\.([a-z_]+)$/);
+          if (!match) {
+            return;
+          }
+          var index = Number(match[1]);
+          var field = match[2];
+          var selector = mapSmartPricingField(field);
+          if (!selector) {
+            return;
+          }
+          var $row = $('#smartPricingRows .smart-pricing-row').eq(index);
+          showSmartPricingFieldError($row.find(selector).first(), message, field);
+        });
+      }
+
+      $('#btnSaveSmartPricing').on('click', function () {
+        clearSmartPricingValidation();
+        var $btn = $(this);
+        var original = $btn.html();
+        $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Saving…');
+
+        $.ajax({
+          url: SMART_PRICING_VALIDATE_URL,
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify(collectSmartPricingPayload()),
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        }).done(function (res) {
+          if (res && Array.isArray(res.ranges)) {
+            SMART_PRICING_INITIAL_RANGES = res.ranges;
+          }
+          if (res && res.color_percent != null && Number.isFinite(Number(res.color_percent))) {
+            SMART_PRICING_COLOR_PERCENT = Number(res.color_percent);
+          }
+          syncPricingAccordionHeader();
+        }).fail(function (xhr) {
+          var data = xhr.responseJSON || {};
+          if (xhr.status === 422 && data.errors) {
+            applySmartPricingErrors(data.errors);
+          } else {
+            $('#smartPricingSaveStatus')
+              .removeClass('hidden text-green-700')
+              .addClass('text-red-700')
+              .text((data && data.message) || 'Unable to save smart pricing.');
+          }
+        }).always(function () {
+          $btn.prop('disabled', false).html(original);
+        });
+      });
+
+      var suppressSmartPricingAutofill = false;
+
+      function getActiveSmartPricingColorPercent() {
+        var live = Number($.trim($('#smartColorPercent').val() || ''));
+        if (Number.isFinite(live)) {
+          return live;
+        }
+        var stored = Number(SMART_PRICING_COLOR_PERCENT);
+        return Number.isFinite(stored) ? stored : 0;
+      }
+
+      function smartPricingRangeInterval(row) {
+        if (!row || !row.kind) {
+          return null;
+        }
+        var min = row.size_min != null && row.size_min !== '' ? Number(row.size_min) : null;
+        var max = row.size_max != null && row.size_max !== '' ? Number(row.size_max) : null;
+        if (row.kind === 'between') {
+          if (!Number.isFinite(min) || !Number.isFinite(max) || max < min) {
+            return null;
+          }
+          return { low: min, high: max };
+        }
+        if (row.kind === 'less_than') {
+          if (!Number.isFinite(max)) {
+            return null;
+          }
+          return { low: 0, high: max };
+        }
+        if (row.kind === 'more_than') {
+          if (!Number.isFinite(min)) {
+            return null;
+          }
+          return { low: min, high: Number.POSITIVE_INFINITY };
+        }
+        return null;
+      }
+
+      function findSmartPricingRangeForSize(size) {
+        var sizeNum = Number(size);
+        if (!Number.isFinite(sizeNum)) {
+          return null;
+        }
+        var ranges = Array.isArray(SMART_PRICING_INITIAL_RANGES) ? SMART_PRICING_INITIAL_RANGES : [];
+        for (var i = 0; i < ranges.length; i++) {
+          var interval = smartPricingRangeInterval(ranges[i]);
+          if (!interval) {
+            continue;
+          }
+          if (sizeNum >= interval.low && sizeNum <= interval.high) {
+            return ranges[i];
+          }
+        }
+        return null;
+      }
+
+      function mapSmartDurationHoursToSelect(hours) {
+        var h = Number(hours);
+        if (!Number.isFinite(h)) {
+          return '';
+        }
+        var map = [
+          { value: '30min', hours: 0.5 },
+          { value: '1h', hours: 1 },
+          { value: '2h', hours: 2 },
+          { value: '3h', hours: 3 },
+          { value: '4h', hours: 4 },
+          { value: '6h', hours: 6 },
+          { value: '8h', hours: 8 }
+        ];
+        for (var i = 0; i < map.length; i++) {
+          if (Math.abs(map[i].hours - h) < 0.001) {
+            return map[i].value;
+          }
+        }
+        return '';
+      }
+
+      function parseSmartSessionsToMaxSessions(sessions) {
+        var raw = $.trim(String(sessions == null ? '' : sessions));
+        if (raw === '') {
+          return '';
+        }
+        if (/^\d+(\.\d+)?$/.test(raw)) {
+          return String(Math.max(1, Math.round(Number(raw))));
+        }
+        var rangeMatch = raw.match(/(\d+)\s*[-–to]+\s*(\d+)/i);
+        if (rangeMatch) {
+          return String(Math.max(1, parseInt(rangeMatch[2], 10)));
+        }
+        var firstNum = raw.match(/(\d+)/);
+        return firstNum ? String(Math.max(1, parseInt(firstNum[1], 10))) : '';
+      }
+
+      function applySmartPricingToDesignForm() {
+        if (suppressSmartPricingAutofill) {
+          return;
+        }
+        if (String(currentPricingType || '') !== 'smart') {
+          return;
+        }
+
+        var sizeRaw = $.trim(String($('#size_min').val() || ''));
+        if (sizeRaw === '') {
+          return;
+        }
+
+        var match = findSmartPricingRangeForSize(sizeRaw);
+        if (!match) {
+          return;
+        }
+
+        var minPrice = Number(match.min_price);
+        var maxPrice = Number(match.max_price);
+        if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice)) {
+          return;
+        }
+
+        var colorValue = String($('#designColors').val() || '');
+        if (colorValue === 'color') {
+          var percent = getActiveSmartPricingColorPercent();
+          if (Number.isFinite(percent) && percent !== 0) {
+            var multiplier = 1 + (percent / 100);
+            minPrice = Math.round(minPrice * multiplier);
+            maxPrice = Math.round(maxPrice * multiplier);
+          }
+        }
+
+        $('#designPriceMin').val(minPrice);
+        $('#designPriceMax').val(maxPrice);
+
+        var maxSessions = parseSmartSessionsToMaxSessions(match.sessions);
+        if (maxSessions !== '' && parseInt(maxSessions, 10) > 1) {
+          $('#designSessionsMax').val(maxSessions);
+        } else if (maxSessions === '1') {
+          $('#designSessionsMax').val('');
+        }
+
+        var durationValue = mapSmartDurationHoursToSelect(match.duration);
+        if (durationValue) {
+          $('#designSessionTime').val(durationValue);
+        }
+      }
+
+      $('#size_min').on('input change blur', function () {
+        applySmartPricingToDesignForm();
+      });
+
+      $('#designColors').on('change', function () {
+        applySmartPricingToDesignForm();
+      });
+
+      setPricingMode(currentPricingType, { persist: false });
+      loadSmartPricingInitialRows();
+      syncSmartPricingEmptyState();
+      setPricingAccordionOpen(false);
+      $('#smartColorPercent').on('input change', function () {
+        syncPricingAccordionHeader();
+      });
 
       function destroyDesignCropper() {
         if (designCropper) {
@@ -1010,7 +2041,7 @@
         $('#designImage').val('');
       }
 
-      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'repeat_limit', 'primary_style', 'other_styles', 'suggested_placements', 'color', 'tags', 'min_price', 'max_price', 'min_size', 'max_sessions', 'session_duration'];
+      var DESIGN_FORM_FIELD_ORDER = ['image', 'title', 'description', 'repeat_limit', 'primary_style', 'other_styles', 'suggested_placements', 'color', 'tags', 'min_size', 'min_price', 'max_price', 'max_sessions', 'session_duration'];
 
       function setDesignFormBanner(msg) {
         var el = document.getElementById('designFormBanner');
@@ -1173,6 +2204,7 @@
       }
 
       function populateDesignFormFromPayload(d) {
+        suppressSmartPricingAutofill = true;
         $('#designTitle').val(d.title || '');
         $('#designDescription').val(d.description || '');
         ensureDesignStyleSelectValue($('#designPrimaryStyle'), d.primary_style || '');
@@ -1200,6 +2232,7 @@
           designPlacementOptionByValue(placementValue).prop('selected', true);
         });
         syncDesignPlacementsChipsFromSelect();
+        suppressSmartPricingAutofill = false;
       }
 
       function applyExistingDesignImagePreview(url) {
@@ -1402,6 +2435,7 @@
         $('#designModalTitle').text('New Design');
         $('#btnSaveDesign').html('<span class="material-symbols-outlined text-lg">save</span> Save Design');
         resetDesignImageState();
+        suppressSmartPricingAutofill = true;
         $('#designTitle').val('');
         $('#designDescription').val('');
         $('#designPrimaryStyle').val('').trigger('change');
@@ -1420,6 +2454,7 @@
         syncDesignOtherStylesChipsFromSelect();
         $('#designSuggestedPlacements option').prop('selected', false);
         syncDesignPlacementsChipsFromSelect();
+        suppressSmartPricingAutofill = false;
       }
 
       function updateDesignOtherStylesChipsUI() {
