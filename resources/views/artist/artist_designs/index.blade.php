@@ -138,7 +138,7 @@
       text-transform: uppercase;
       line-height: 1.2;
     }
-    .pricing-accordion:not(.is-open)[data-pricing-type="smart"] .pricing-accordion-badge {
+    .pricing-accordion:not(.is-open) .pricing-accordion-badge {
       display: inline-flex;
     }
     .pricing-accordion-subtitle {
@@ -613,7 +613,8 @@
         $smartColorPercentLabel = rtrim(rtrim(number_format((float) ($smartPricingColorPercent ?? 20), 2, '.', ''), '0'), '.');
         $pricingClosedSummary = $currentPricingType === 'smart'
           ? ($smartRangesCount.' size range'.($smartRangesCount === 1 ? '' : 's').' · +'.$smartColorPercentLabel.'% for color designs')
-          : 'Manual Pricing · set the price for each design manually';
+          : 'Set the price for each design manually';
+        $pricingClosedBadge = $currentPricingType === 'smart' ? 'Smart Pricing' : 'Manual Pricing';
       @endphp
       <div
         class="mb-8 pricing-accordion"
@@ -634,7 +635,7 @@
           <span class="pricing-accordion-copy">
             <span class="pricing-accordion-title-row">
               <span class="pricing-accordion-title">Pricing</span>
-              <span id="pricingAccordionBadge" class="pricing-accordion-badge">Smart Pricing</span>
+              <span id="pricingAccordionBadge" class="pricing-accordion-badge">{{ $pricingClosedBadge }}</span>
             </span>
             <span id="pricingAccordionSubtitle" class="pricing-accordion-subtitle">{{ $pricingClosedSummary }}</span>
           </span>
@@ -685,14 +686,6 @@
             <div class="mb-5">
               <h4 class="text-base font-bold text-on-surface">Size ranges</h4>
               <p class="text-sm text-on-surface-variant mt-1">Longest dimension, in {{ $pricingUnit }} · edit the boundaries or the values</p>
-              <div class="mt-3 text-sm text-on-surface-variant leading-relaxed">
-                <p class="font-semibold text-on-surface">Example:</p>
-                <ul class="mt-1.5 list-disc pl-5 space-y-1">
-                  <li>A 5 {{ $pricingUnit }} design belongs to &ldquo;5–10,&rdquo; not &ldquo;0–5&rdquo;</li>
-                  <li>A 10 {{ $pricingUnit }} design belongs to &ldquo;10–15,&rdquo; not &ldquo;5–10&rdquo;</li>
-                  <li>A 15 {{ $pricingUnit }} design belongs to &ldquo;15–20,&rdquo; not &ldquo;10–15&rdquo;</li>
-                </ul>
-              </div>
             </div>
 
             <div class="smart-pricing-table-wrap">
@@ -710,6 +703,7 @@
                 <tbody id="smartPricingRows"></tbody>
               </table>
               <p id="smartPricingEmpty" class="smart-pricing-empty">No size ranges yet. Add a size range to get started.</p>
+              <p id="smartPricingRangesError" class="hidden mt-2 text-xs font-semibold text-[#b3261e]"></p>
             </div>
 
             <div class="mt-4 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
@@ -720,6 +714,9 @@
                 <span class="material-symbols-outlined text-[18px]">add</span> Size larger than
               </button>
             </div>
+            <p class="mt-3 text-xs text-on-surface-variant leading-relaxed">
+              Example: a 5 {{ $pricingUnit }} design belongs to &ldquo;5–10,&rdquo; not &ldquo;0–5&rdquo;; a 10 {{ $pricingUnit }} design belongs to &ldquo;10–15,&rdquo; not &ldquo;5–10&rdquo;; a 15 {{ $pricingUnit }} design belongs to &ldquo;15–20,&rdquo; not &ldquo;10–15&rdquo;.
+            </p>
 
             <div class="mt-6 pt-5 border-t border-outline-variant/20">
               <h4 class="text-base font-bold text-on-surface">Color adjustment</h4>
@@ -735,7 +732,7 @@
                 </div>
               </div>
               <p class="mt-3 text-xs text-on-surface-variant leading-relaxed">
-                Example: a 20+ {{ $pricingUnit }} color design would range {{ $pricingCurrencySymbol }}540–{{ $pricingCurrencySymbol }}900 instead of {{ $pricingCurrencySymbol }}450–{{ $pricingCurrencySymbol }}750.
+                Example: If the price for a 20+ {{ $pricingUnit }} black &amp; grey design is {{ $pricingCurrencySymbol }}450–{{ $pricingCurrencySymbol }}750, a color design at the same size would be {{ $pricingCurrencySymbol }}540–{{ $pricingCurrencySymbol }}900 (20% more).
               </p>
             </div>
 
@@ -1258,7 +1255,8 @@
       var SMART_PRICING_UNIT = @json($pricingUnit ?? 'cm');
       var SMART_PRICING_CURRENCY = @json($pricingCurrencySymbol ?? '€');
       var pricingTypeSaving = false;
-      var currentPricingType = String($('#pricingSettingsPanel').data('pricing-type') || 'manual');
+      var storedPricingType = String($('#pricingSettingsPanel').data('pricing-type') || 'manual');
+      var currentPricingType = storedPricingType;
 
       function formatSmartSummaryPercent(value) {
         var num = Number(value);
@@ -1271,18 +1269,20 @@
       function syncPricingAccordionHeader() {
         var $panel = $('#pricingSettingsPanel');
         var isOpen = $panel.hasClass('is-open');
-        var isSmart = String(currentPricingType || '') === 'smart';
+        var isSmartStored = String(storedPricingType || '') === 'smart';
         var $subtitle = $('#pricingAccordionSubtitle');
+        var $badge = $('#pricingAccordionBadge');
 
-        $panel.attr('data-pricing-type', isSmart ? 'smart' : 'manual');
+        $panel.attr('data-pricing-type', isSmartStored ? 'smart' : 'manual');
+        $badge.text(isSmartStored ? 'Smart Pricing' : 'Manual Pricing');
 
         if (isOpen) {
           $subtitle.text('Choose how price, sessions, and duration are set for new designs.');
           return;
         }
 
-        if (!isSmart) {
-          $subtitle.text('Manual Pricing · set the price for each design manually');
+        if (!isSmartStored) {
+          $subtitle.text('Set the price for each design manually');
           return;
         }
 
@@ -1316,11 +1316,11 @@
           $(this).toggleClass('is-selected', selected).attr('aria-checked', selected ? 'true' : 'false');
         });
         $('#smartPricingPanel').toggleClass('hidden', !isSmart);
-        $('#pricingSettingsPanel').data('pricing-type', mode);
         currentPricingType = mode;
         syncPricingAccordionHeader();
 
-        if (options.persist === false) {
+        // Smart is only persisted after a successful size-chart Save with ≥1 range.
+        if (options.persist === false || isSmart) {
           return;
         }
 
@@ -1343,12 +1343,13 @@
           }
         }).done(function (res) {
           if (res && res.pricing_type) {
+            storedPricingType = res.pricing_type;
             currentPricingType = res.pricing_type;
             $('#pricingSettingsPanel').data('pricing-type', res.pricing_type);
           }
           syncPricingAccordionHeader();
         }).fail(function () {
-          var previous = String($('#pricingSettingsPanel').attr('data-previous-pricing-type') || 'manual');
+          var previous = String($('#pricingSettingsPanel').attr('data-previous-pricing-type') || storedPricingType || 'manual');
           setPricingMode(previous, { persist: false });
         }).always(function () {
           pricingTypeSaving = false;
@@ -1470,6 +1471,7 @@
 
       function addSmartPricingRow(kind, row) {
         $('#smartPricingRows').append(buildSmartPricingRowHtml(kind || (row && row.kind) || 'between', row || {}));
+        $('#smartPricingRangesError').addClass('hidden').text('');
         syncSmartPricingEmptyState();
       }
 
@@ -1525,7 +1527,45 @@
       function clearSmartPricingValidation() {
         $('#smartPricingPanel .smart-pricing-input').removeClass('is-invalid');
         $('#smartPricingPanel .smart-pricing-field-error').remove();
+        $('#smartPricingRangesError').addClass('hidden').text('');
         $('#smartPricingSaveStatus').addClass('hidden').removeClass('text-red-700').text('');
+      }
+
+      function showSmartPricingRangesError(message) {
+        $('#smartPricingRangesError').removeClass('hidden').text(message);
+      }
+
+      function scrollToFirstSmartPricingError() {
+        if (!$('#pricingSettingsPanel').hasClass('is-open')) {
+          setPricingAccordionOpen(true);
+        }
+        if ($('#smartPricingPanel').hasClass('hidden')) {
+          setPricingMode('smart', { persist: false });
+        }
+
+        var $target = $('#smartPricingPanel .smart-pricing-input.is-invalid').first();
+        if (!$target.length) {
+          $target = $('#smartPricingPanel .smart-pricing-field-error').filter(function () {
+            return $.trim($(this).text()) !== '';
+          }).first();
+        }
+        if (!$target.length && !$('#smartPricingRangesError').hasClass('hidden') && $.trim($('#smartPricingRangesError').text())) {
+          $target = $('#smartPricingRangesError');
+        }
+        if (!$target.length && !$('#smartPricingSaveStatus').hasClass('hidden') && $.trim($('#smartPricingSaveStatus').text())) {
+          $target = $('#smartPricingSaveStatus');
+        }
+        if (!$target.length) {
+          $target = $('#smartPricingPanel');
+        }
+
+        requestAnimationFrame(function () {
+          var el = $target[0];
+          if (!el || !el.scrollIntoView) {
+            return;
+          }
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
       }
 
       function parseOptionalNumber(value) {
@@ -1620,6 +1660,11 @@
             return;
           }
 
+          if (key === 'ranges') {
+            showSmartPricingRangesError(message);
+            return;
+          }
+
           var match = key.match(/^ranges\.(\d+)\.([a-z_]+)$/);
           if (!match) {
             return;
@@ -1637,6 +1682,13 @@
 
       $('#btnSaveSmartPricing').on('click', function () {
         clearSmartPricingValidation();
+        var payload = collectSmartPricingPayload();
+        if (!payload.ranges || !payload.ranges.length) {
+          showSmartPricingRangesError('Add at least one size range before saving.');
+          scrollToFirstSmartPricingError();
+          return;
+        }
+
         var $btn = $(this);
         var original = $btn.html();
         $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Saving…');
@@ -1645,7 +1697,7 @@
           url: SMART_PRICING_VALIDATE_URL,
           method: 'POST',
           contentType: 'application/json',
-          data: JSON.stringify(collectSmartPricingPayload()),
+          data: JSON.stringify(payload),
           headers: {
             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
             'Accept': 'application/json',
@@ -1658,6 +1710,16 @@
           if (res && res.color_percent != null && Number.isFinite(Number(res.color_percent))) {
             SMART_PRICING_COLOR_PERCENT = Number(res.color_percent);
           }
+          if (res && res.pricing_type) {
+            storedPricingType = res.pricing_type;
+            currentPricingType = res.pricing_type;
+            $('#pricingSettingsPanel').data('pricing-type', res.pricing_type);
+          } else {
+            storedPricingType = 'smart';
+            currentPricingType = 'smart';
+            $('#pricingSettingsPanel').data('pricing-type', 'smart');
+          }
+          setPricingMode('smart', { persist: false });
           syncPricingAccordionHeader();
           if (typeof showSaveToast === 'function') {
             showSaveToast();
@@ -1666,11 +1728,13 @@
           var data = xhr.responseJSON || {};
           if (xhr.status === 422 && data.errors) {
             applySmartPricingErrors(data.errors);
+            scrollToFirstSmartPricingError();
           } else {
             $('#smartPricingSaveStatus')
               .removeClass('hidden text-green-700')
               .addClass('text-red-700')
               .text((data && data.message) || 'Unable to save smart pricing.');
+            scrollToFirstSmartPricingError();
           }
         }).always(function () {
           $btn.prop('disabled', false).html(original);
@@ -1794,7 +1858,7 @@
         if (suppressSmartPricingAutofill) {
           return;
         }
-        if (String(currentPricingType || '') !== 'smart') {
+        if (String(storedPricingType || '') !== 'smart') {
           setSmartPricingNoRangeError(false);
           return;
         }
@@ -2440,7 +2504,7 @@
         var sizeMin = parseInt(sizeMinRaw, 10);
         if (sizeMinRaw === '' || isNaN(sizeMin) || sizeMin < 1) {
           errors.min_size = 'You need to enter the minimum size';
-        } else if (String(currentPricingType || '') === 'smart' && !findSmartPricingRangeForSize(sizeMinRaw)) {
+        } else if (String(storedPricingType || '') === 'smart' && !findSmartPricingRangeForSize(sizeMinRaw)) {
           errors.min_size = SMART_PRICING_NO_RANGE_ERROR;
         }
         var maxSev = String($('#designSessionsMax').val() || '').trim();

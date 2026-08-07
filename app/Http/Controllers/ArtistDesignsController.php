@@ -341,11 +341,18 @@ class ArtistDesignsController extends Controller
 
     public function updatePricingType(Request $request)
     {
-        $userDetail = Auth::user()->userDetail ?? UserDetail::create(['user_id' => Auth::id()]);
+        $user = Auth::user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
         $validated = $request->validate([
             'pricing_type' => ['required', Rule::in(['manual', 'smart'])],
         ]);
+
+        if ($validated['pricing_type'] === 'smart' && ! $user->smartPricingSizes()->exists()) {
+            throw ValidationException::withMessages([
+                'pricing_type' => ['Add at least one size range before enabling smart pricing.'],
+            ]);
+        }
 
         $userDetail->update([
             'pricing_type' => $validated['pricing_type'],
@@ -362,7 +369,7 @@ class ArtistDesignsController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'color_percent' => ['required', 'numeric', 'min:0', 'max:999'],
-            'ranges' => ['nullable', 'array'],
+            'ranges' => ['required', 'array', 'min:1'],
             'ranges.*.kind' => ['required', Rule::in(['between', 'less_than', 'more_than'])],
             'ranges.*.size_min' => ['nullable', 'numeric', 'min:0', 'max:9999'],
             'ranges.*.size_max' => ['nullable', 'numeric', 'min:0', 'max:9999'],
@@ -373,6 +380,8 @@ class ArtistDesignsController extends Controller
         ], [
             'color_percent.required' => 'Color percentage is required.',
             'color_percent.numeric' => 'Color percentage must be a number.',
+            'ranges.required' => 'Add at least one size range before saving.',
+            'ranges.min' => 'Add at least one size range before saving.',
             'ranges.*.size_min.numeric' => 'Min size must be a number.',
             'ranges.*.size_max.numeric' => 'Max size must be a number.',
             'ranges.*.min_price.required' => 'Min price is required.',
@@ -469,6 +478,7 @@ class ArtistDesignsController extends Controller
         DB::transaction(function () use ($user, $userDetail, $validated, $ranges) {
             $userDetail->update([
                 'color_percent' => $validated['color_percent'],
+                'pricing_type' => 'smart',
             ]);
 
             SmartPricingSize::query()
@@ -504,10 +514,13 @@ class ArtistDesignsController extends Controller
             }
         });
 
+        $userDetail = $userDetail->fresh();
+
         return response()->json([
             'success' => true,
             'message' => 'Smart pricing saved.',
-            'color_percent' => (float) $userDetail->fresh()->color_percent,
+            'pricing_type' => $userDetail->pricing_type,
+            'color_percent' => (float) $userDetail->color_percent,
             'ranges' => $user->smartPricingSizes()
                 ->get(['kind', 'size_min', 'size_max', 'min_price', 'max_price', 'sessions', 'duration'])
                 ->map(fn (SmartPricingSize $row) => [
