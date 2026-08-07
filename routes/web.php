@@ -76,6 +76,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/auth/instagram/connect', [\App\Http\Controllers\InstagramController::class, 'connect'])->name('instagram.connect');
     Route::get('/auth/instagram/callback', [\App\Http\Controllers\InstagramController::class, 'callback'])->name('instagram.callback');
     Route::post('/auth/instagram/disconnect', [\App\Http\Controllers\InstagramController::class, 'disconnect'])->name('instagram.disconnect');
+    Route::post('/auth/instagram/import-portfolio', [\App\Http\Controllers\InstagramController::class, 'import'])->name('instagram.import-portfolio');
+    Route::post('/auth/instagram/import-portfolio/start', [\App\Http\Controllers\InstagramController::class, 'importStart'])->name('instagram.import-portfolio.start');
+    Route::post('/auth/instagram/import-portfolio/next', [\App\Http\Controllers\InstagramController::class, 'importNext'])->name('instagram.import-portfolio.next');
 
 });
 
@@ -288,6 +291,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/portfolio', [\App\Http\Controllers\PortfolioController::class, 'store'])->name('portfolio.store');
     Route::post('/portfolio/ai-suggest', [\App\Http\Controllers\PortfolioController::class, 'suggestWithAi'])->name('portfolio.ai-suggest');
     Route::put('/portfolio/{portfolio}', [\App\Http\Controllers\PortfolioController::class, 'update'])->name('portfolio.update');
+    Route::patch('/portfolio/{portfolio}/visibility', [\App\Http\Controllers\PortfolioController::class, 'toggleVisibility'])->name('portfolio.toggle-visibility');
     Route::delete('/portfolio/{portfolio}', [\App\Http\Controllers\PortfolioController::class, 'destroy'])->name('portfolio.destroy');
 
     Route::get('/guest-spots', [\App\Http\Controllers\GuestSpotsController::class, 'index'])->name('guest-spots.index');

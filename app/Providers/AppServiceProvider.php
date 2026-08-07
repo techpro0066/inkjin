@@ -28,9 +28,21 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (! $this->app->runningInConsole()) {
-            $request = request();
-            if ($request->hasHeader('Host')) {
-                URL::forceRootUrl($request->getSchemeAndHttpHost().rtrim($request->getBaseUrl(), '/'));
+            $appUrl = rtrim((string) config('app.url'), '/');
+
+            // Prefer configured APP_URL so ngrok HTTPS is not rewritten to http
+            // when the proxy forwards to local PHP as plain HTTP.
+            if ($appUrl !== '' && filter_var($appUrl, FILTER_VALIDATE_URL)) {
+                URL::forceRootUrl($appUrl);
+
+                if (str_starts_with($appUrl, 'https://')) {
+                    URL::forceScheme('https');
+                }
+            } else {
+                $request = request();
+                if ($request->hasHeader('Host')) {
+                    URL::forceRootUrl($request->getSchemeAndHttpHost().rtrim($request->getBaseUrl(), '/'));
+                }
             }
         }
 

@@ -39,6 +39,139 @@
     .toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: white; border-radius: 50%; transition: transform 0.2s; }
     .toggle-switch.active::after { transform: translateX(20px); }
 
+    .btn-connect-instagram {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #fff;
+      border: 0;
+      box-shadow: 0 1px 2px rgba(193, 53, 132, 0.25);
+      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+      text-decoration: none;
+    }
+    .btn-connect-instagram:hover {
+      filter: brightness(1.05);
+      box-shadow: 0 4px 14px rgba(188, 24, 136, 0.35);
+      color: #fff;
+    }
+    .btn-connect-instagram:active {
+      transform: scale(0.98);
+    }
+    .btn-connect-instagram svg {
+      width: 1.125rem;
+      height: 1.125rem;
+      flex-shrink: 0;
+    }
+
+    .instagram-status-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: #fff;
+      border: 1px solid rgba(121, 116, 126, 0.2);
+      border-radius: 1rem;
+    }
+    .instagram-status-icon {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      flex-shrink: 0;
+    }
+    .instagram-status-icon svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+    .instagram-status-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-left: auto;
+    }
+    .btn-ig-refresh {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #1c1b1f;
+      background: #fff;
+      border: 1px solid rgba(121, 116, 126, 0.3);
+      transition: background 0.15s ease;
+    }
+    .btn-ig-refresh:hover { background: #f7f2fa; }
+    .btn-ig-disconnect {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem 1rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #b3261e;
+      background: #fff;
+      border: 1px solid rgba(121, 116, 126, 0.3);
+      transition: background 0.15s ease;
+    }
+    .btn-ig-disconnect:hover { background: #fceeee; }
+
+    body.ig-import-lock #mobileSidebar,
+    body.ig-import-lock #mobileMenuBtn,
+    body.ig-import-lock .booking-page-tabs,
+    body.ig-import-lock .booking-page-tabs a,
+    body.ig-import-lock #btnAddWork,
+    body.ig-import-lock #btnConnectInstagram,
+    body.ig-import-lock #btnInstagramRefresh,
+    body.ig-import-lock #btnInstagramDisconnect,
+    body.ig-import-lock .btn-toggle-portfolio-visibility {
+      pointer-events: none !important;
+      opacity: 0.55;
+    }
+    body.ig-import-lock #mobileSidebar a,
+    body.ig-import-lock #mobileSidebar button {
+      pointer-events: none !important;
+    }
+    body.ig-import-lock #instagramImportModal {
+      pointer-events: auto;
+      opacity: 1;
+    }
+
+    #instagramImportModal .ig-progress-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #efe7f4;
+      overflow: hidden;
+    }
+    #instagramImportModal .ig-progress-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      transition: width 0.25s ease;
+    }
+    #igImportSpinner.animate-spin {
+      animation: ig-spin 1s linear infinite;
+    }
+    @keyframes ig-spin {
+      to { transform: rotate(360deg); }
+    }
+
     /* Toggle badge pills */
     .toggle-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 600; transition: all 0.2s; cursor: pointer; user-select: none; }
     .toggle-badge.on { background: #e8ddff; color: #310f7a; }
@@ -51,6 +184,25 @@
     /* Portfolio card */
     .portfolio-card { transition: all 0.15s ease; }
     .portfolio-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .portfolio-ig-badge {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.625rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      z-index: 2;
+    }
+    .portfolio-ig-badge svg {
+      width: 1rem;
+      height: 1rem;
+    }
 
     /* Tag pill */
     .tag-pill { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; background: #f2ecf5; color: #494552; }
@@ -248,26 +400,24 @@
       @endif
 
       <!-- Section intro -->
+      @php
+        $igIconPath = 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z';
+        $instagramImportedCount = $instagramImportedCount ?? 0;
+      @endphp
       <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <p class="text-on-surface-variant">Showcase your best work to attract new clients.</p>
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 {{ !empty($instagramConnected) ? 'mb-4' : '' }}">
+          <div class="min-w-0">
+            <p class="text-on-surface-variant">Showcase your best work to attract new clients.</p>
             @if (!empty($instagramConnected))
-              <div class="inline-flex items-center gap-2">
-                <span class="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200 px-4 py-2.5 rounded-xl font-semibold text-sm">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                  Connected{{ !empty($instagramUsername) ? ' @'.$instagramUsername : '' }}
-                </span>
-                <form method="POST" action="{{ route('instagram.disconnect') }}" onsubmit="return confirm('Disconnect Instagram?');">
-                  @csrf
-                  <button type="submit" class="bg-white text-on-surface-variant px-4 py-2.5 rounded-xl font-semibold text-sm border border-outline-variant/30 hover:bg-surface-container-low transition-colors">
-                    Disconnect
-                  </button>
-                </form>
-              </div>
+              <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload images yourself · Refresh to pull in the latest work from IG</p>
             @else
-              <a href="{{ route('instagram.connect') }}" id="btnConnectInstagram" class="bg-white text-on-surface px-5 py-2.5 rounded-xl font-semibold text-sm border border-outline-variant/30 hover:bg-surface-container-low transition-colors shadow-sm flex items-center justify-center gap-2">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+              <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload an image yourself. Connect Instagram to import posts.</p>
+            @endif
+          </div>
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
+            @if (empty($instagramConnected))
+              <a href="{{ route('instagram.connect') }}" id="btnConnectInstagram" class="btn-connect-instagram">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="{{ $igIconPath }}"/></svg>
                 Connect Instagram
               </a>
             @endif
@@ -276,45 +426,49 @@
             </button>
           </div>
         </div>
+
+        @if (!empty($instagramConnected))
+        <div class="instagram-status-card">
+          <div class="instagram-status-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="{{ $igIconPath }}"/></svg>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-semibold text-on-surface text-sm">Instagram</span>
+              <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
+                Connected
+              </span>
+            </div>
+            <p class="text-xs text-on-surface-variant mt-0.5" id="instagramImportedMeta">
+              <span id="instagramImportedCountLabel">{{ $instagramImportedCount }} {{ $instagramImportedCount === 1 ? 'post' : 'posts' }} imported</span>
+              @if (!empty($instagramUsername))
+                · Connected account: {{ '@'.ltrim((string) $instagramUsername, '@') }}
+              @endif
+            </p>
+          </div>
+          <div class="instagram-status-actions">
+            <button type="button" id="btnInstagramRefresh" class="btn-ig-refresh"
+              data-start-url="{{ route('instagram.import-portfolio.start') }}"
+              data-next-url="{{ route('instagram.import-portfolio.next') }}">
+              <span class="material-symbols-outlined text-base">refresh</span>
+              Refresh
+            </button>
+            <form method="POST" action="{{ route('instagram.disconnect') }}" id="formInstagramDisconnect" onsubmit="return confirm('Disconnect Instagram?');">
+              @csrf
+              <button type="submit" id="btnInstagramDisconnect" class="btn-ig-disconnect">Disconnect</button>
+            </form>
+          </div>
+        </div>
+        @endif
       </div>
 
       <!-- Portfolio Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div id="portfolioGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         @forelse ($portfolios as $portfolio)
-        <div class="portfolio-card bg-white rounded-2xl border border-outline-variant/20 overflow-hidden shadow-sm">
-          <div class="aspect-square bg-surface-container-high rounded-t-2xl ">
-            <img src="{{ asset($portfolio->image) }}" alt="" class="w-full object-cover">
-          </div>
-          <div class="p-4">
-            <div class="flex flex-wrap gap-1.5 mb-3">
-              @if ($portfolio->is_active)
-              <span class="toggle-badge on"><span class="material-symbols-outlined">visibility</span> Visible</span>
-              @else
-              <span class="toggle-badge off"><span class="material-symbols-outlined">visibility_off</span> Hidden</span>
-              @endif
-            </div>
-            <h4 class="font-bold text-on-surface text-sm mb-1.5">{{ $portfolio->title }}</h4>
-            <div class="flex flex-wrap items-center gap-2 mb-2">
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary">{{ $portfolio->primary_style }}</span>
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-container-high text-on-surface-variant">
-                @if ($portfolio->color === 'color') Color @elseif ($portfolio->color === 'black-grey') Black & Grey @elseif ($portfolio->color === 'both') Both @else {{ $portfolio->color }} @endif
-              </span>
-            </div>
-            @if (!empty($portfolio->tags))
-            <div class="flex flex-wrap gap-1 mb-3">
-              @foreach ($portfolio->tags as $tag)
-              <span class="tag-pill">{{ $tag }}</span>
-              @endforeach
-            </div>
-            @endif
-            <div class="flex items-center gap-1">
-              <button type="button" class="btn-edit-portfolio w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors" title="Edit" data-portfolio-id="{{ $portfolio->id }}" data-update-url="{{ route('portfolio.update', $portfolio) }}"><span class="material-symbols-outlined text-on-surface-variant text-lg">edit</span></button>
-              <button type="button" class="btn-delete-portfolio w-8 h-8 rounded-lg flex items-center justify-center hover:bg-error-container transition-colors" title="Delete" data-delete-url="{{ route('portfolio.destroy', $portfolio) }}" data-portfolio-id="{{ $portfolio->id }}"><span class="material-symbols-outlined text-error text-lg">delete</span></button>
-            </div>
-          </div>
-        </div>
+        @include('artist.portfolio._card', ['portfolio' => $portfolio])
         @empty
-        <div class="col-span-full rounded-2xl border border-dashed border-outline-variant/40 bg-white/60 px-6 py-14 text-center">
+        <div class="col-span-full rounded-2xl border border-dashed border-outline-variant/40 bg-white/60 px-6 py-14 text-center" id="portfolioEmptyState">
           <span class="material-symbols-outlined text-outline/40 text-4xl mb-2 inline-block">photo_library</span>
           <p class="text-sm font-semibold text-on-surface">No portfolio pieces yet</p>
           <p class="text-xs text-on-surface-variant mt-1 max-w-sm mx-auto">Add your first work with the button above. It will appear here after you save.</p>
@@ -323,6 +477,28 @@
       </div>
     </div>
   </main>
+
+  <!-- Instagram Import Progress Modal -->
+  <div class="modal-backdrop" id="instagramImportModal" aria-hidden="true">
+    <div class="add-work-modal-inner bg-white rounded-2xl w-full max-w-sm mx-4 shadow-2xl overflow-hidden">
+      <div class="px-6 py-5 border-b border-outline-variant/15">
+        <h3 class="text-lg font-bold text-on-surface">Importing from Instagram</h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary animate-spin text-2xl" id="igImportSpinner">progress_activity</span>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-on-surface" id="igImportStatus">Preparing…</p>
+            <p class="text-xs text-on-surface-variant mt-0.5" id="igImportDetail">Please wait while we pull your latest images.</p>
+          </div>
+        </div>
+        <div class="ig-progress-track" aria-hidden="true">
+          <div class="ig-progress-bar" id="igImportProgressBar"></div>
+        </div>
+        <p class="text-center text-sm font-bold text-on-surface tabular-nums" id="igImportCount">0 / 0</p>
+      </div>
+    </div>
+  </div>
 
   <!-- Add Work Modal -->
   <div class="modal-backdrop" id="addWorkModal" aria-hidden="true">
@@ -879,6 +1055,180 @@
         }, 3000));
       }
 
+      function showToastMessage(message) {
+        var $toast = $('#saveToast');
+        if (!$toast.length) {
+          return;
+        }
+        $toast.find('span').last().text(message || 'Saved successfully');
+        showSaveToast();
+      }
+
+      var $igImportModal = $('#instagramImportModal');
+      var igImportBusy = false;
+
+      function setIgImportLock(locked) {
+        $('body').toggleClass('ig-import-lock', !!locked);
+        $('#btnInstagramRefresh, #btnInstagramDisconnect, #btnAddWork, #btnConnectInstagram').prop('disabled', !!locked);
+      }
+
+      function openIgImportModal() {
+        clearTimeout($igImportModal.data('closeTimer'));
+        $igImportModal.addClass('modal-visible').attr('aria-hidden', 'false');
+        requestAnimationFrame(function () {
+          $igImportModal.addClass('modal-open');
+        });
+        $('body').css('overflow', 'hidden');
+      }
+
+      function closeIgImportModal() {
+        $igImportModal.removeClass('modal-open');
+        clearTimeout($igImportModal.data('closeTimer'));
+        var t = setTimeout(function () {
+          $igImportModal.removeClass('modal-visible').attr('aria-hidden', 'true');
+          if (!$addWorkModal.hasClass('modal-open') && !$deletePortfolioModal.hasClass('modal-open')) {
+            $('body').css('overflow', '');
+          }
+        }, MODAL_MS);
+        $igImportModal.data('closeTimer', t);
+      }
+
+      function updateIgImportProgress(current, total, status, detail) {
+        var safeTotal = Math.max(0, parseInt(total, 10) || 0);
+        var safeCurrent = Math.max(0, Math.min(safeTotal, parseInt(current, 10) || 0));
+        var pct = safeTotal > 0 ? Math.round((safeCurrent / safeTotal) * 100) : 0;
+        $('#igImportCount').text(safeCurrent + ' / ' + safeTotal);
+        $('#igImportProgressBar').css('width', pct + '%');
+        if (status) $('#igImportStatus').text(status);
+        if (detail) $('#igImportDetail').text(detail);
+      }
+
+      function updateInstagramImportedCount(count) {
+        var n = parseInt(count, 10);
+        if (isNaN(n)) return;
+        var label = n + ' ' + (n === 1 ? 'post' : 'posts') + ' imported';
+        $('#instagramImportedCountLabel').text(label);
+      }
+
+      function prependImportedCard(html, editor) {
+        if (!html) return;
+        var $grid = $('#portfolioGrid');
+        $('#portfolioEmptyState').remove();
+        $grid.prepend(html);
+        if (editor && editor.id) {
+          window.PORTFOLIO_EDITOR_DATA = window.PORTFOLIO_EDITOR_DATA || {};
+          window.PORTFOLIO_EDITOR_DATA[String(editor.id)] = {
+            title: editor.title,
+            description: editor.description,
+            is_active: !!editor.is_active,
+            primary_style: editor.primary_style,
+            other_styles: editor.other_styles || [],
+            color: editor.color,
+            tags: editor.tags || [],
+            image_url: editor.image_url
+          };
+        }
+      }
+
+      function igAjaxPost(url) {
+        return $.ajax({
+          url: url,
+          method: 'POST',
+          dataType: 'json',
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
+            'Accept': 'application/json'
+          }
+        });
+      }
+
+      function finishIgImport(message, isError) {
+        igImportBusy = false;
+        setIgImportLock(false);
+        closeIgImportModal();
+        if (message) {
+          showToastMessage(message);
+        }
+      }
+
+      function runIgImportNext(nextUrl, expectingCurrent, total) {
+        updateIgImportProgress(
+          expectingCurrent,
+          total,
+          'Importing images…',
+          'Importing image ' + expectingCurrent + ' of ' + total
+        );
+
+        igAjaxPost(nextUrl)
+          .done(function (data) {
+            var current = data && data.current ? data.current : expectingCurrent;
+            var totalNow = data && data.total ? data.total : total;
+            updateIgImportProgress(
+              current,
+              totalNow,
+              'Importing images…',
+              'Imported ' + current + ' of ' + totalNow
+            );
+
+            if (data && data.card_html) {
+              prependImportedCard(data.card_html, data.editor);
+            }
+            if (data && typeof data.imported_count !== 'undefined') {
+              updateInstagramImportedCount(data.imported_count);
+            }
+
+            if (data && data.done) {
+              finishIgImport((data && data.message) || 'Import complete.');
+              return;
+            }
+
+            runIgImportNext(nextUrl, current + 1, totalNow);
+          })
+          .fail(function (xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.message)
+              ? xhr.responseJSON.message
+              : 'Failed to import Instagram images. Please try again.';
+            finishIgImport(msg, true);
+          });
+      }
+
+      $(document).on('click', '#btnInstagramRefresh', function (e) {
+        e.preventDefault();
+        if (igImportBusy) return;
+
+        var $btn = $(this);
+        var startUrl = $btn.data('start-url');
+        var nextUrl = $btn.data('next-url');
+        if (!startUrl || !nextUrl) return;
+
+        igImportBusy = true;
+        setIgImportLock(true);
+        updateIgImportProgress(0, 0, 'Preparing…', 'Checking your latest Instagram posts.');
+        openIgImportModal();
+
+        igAjaxPost(startUrl)
+          .done(function (data) {
+            var total = data && data.total ? parseInt(data.total, 10) : 0;
+            if (!data || !data.ok) {
+              finishIgImport((data && data.message) || 'Could not start Instagram import.');
+              return;
+            }
+
+            if (!total) {
+              finishIgImport((data && data.message) || 'No new Instagram images to import.');
+              return;
+            }
+
+            runIgImportNext(nextUrl, 1, total);
+          })
+          .fail(function (xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.message)
+              ? xhr.responseJSON.message
+              : 'Failed to start Instagram import. Please try again.';
+            finishIgImport(msg, true);
+          });
+      });
+
       var WORK_FORM_FIELD_ORDER = ['image', 'title', 'description', 'is_active', 'primary_style', 'other_styles', 'color', 'tags'];
 
       function clearWorkFormErrors() {
@@ -1214,6 +1564,61 @@
           $btn.prop('disabled', false).html(btnHtml);
         });
       }
+
+      function updatePortfolioCardVisibility($card, isActive) {
+        if (!$card || !$card.length) return;
+        $card.attr('data-is-active', isActive ? '1' : '0');
+        $card.find('.btn-toggle-portfolio-visibility')
+          .toggleClass('active', !!isActive)
+          .attr('aria-checked', isActive ? 'true' : 'false');
+        $card.find('.portfolio-visibility-label')
+          .text(isActive ? 'Visible' : 'Hidden')
+          .toggleClass('text-primary', !!isActive)
+          .toggleClass('text-on-surface-variant', !isActive);
+      }
+
+      $(document).on('click', '.btn-toggle-portfolio-visibility', function () {
+        var $toggle = $(this);
+        if ($toggle.data('loading')) {
+          return;
+        }
+        var toggleUrl = $toggle.data('toggle-url');
+        if (!toggleUrl) {
+          return;
+        }
+        var willBeActive = !$toggle.hasClass('active');
+        $toggle.data('loading', true);
+        fetch(toggleUrl, {
+          method: 'PATCH',
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ is_active: willBeActive })
+        }).then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          });
+        }).then(function (result) {
+          if (!result.ok || !result.data || !result.data.success) {
+            throw new Error((result.data && result.data.message) || 'Could not update visibility.');
+          }
+          var isActive = !!result.data.is_active;
+          var portfolioId = String($toggle.data('portfolio-id') || '');
+          var $card = $toggle.closest('.portfolio-card');
+          updatePortfolioCardVisibility($card, isActive);
+          if (portfolioId && window.PORTFOLIO_EDITOR_DATA && window.PORTFOLIO_EDITOR_DATA[portfolioId]) {
+            window.PORTFOLIO_EDITOR_DATA[portfolioId].is_active = isActive;
+          }
+        }).catch(function (e) {
+          window.alert(e.message || 'Could not update visibility.');
+        }).finally(function () {
+          $toggle.data('loading', false);
+        });
+      });
 
       $('#btnAddWork').on('click', function () {
         resetAddWorkFormFields();

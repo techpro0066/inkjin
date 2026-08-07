@@ -77,12 +77,16 @@ class PortfolioController extends Controller
         $userDetail = Auth::user()->userDetail;
         $instagramConnected = filled($userDetail?->instagram_access_token);
         $instagramUsername = $userDetail?->instagram_username;
+        $instagramImportedCount = Auth::user()->portfolios()
+            ->whereNotNull('instagram_media_id')
+            ->count();
 
         return view('artist.portfolio.index', compact(
             'portfolios',
             'styles',
             'instagramConnected',
-            'instagramUsername'
+            'instagramUsername',
+            'instagramImportedCount'
         ));
     }
 
@@ -178,6 +182,25 @@ class PortfolioController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Portfolio piece removed.',
+        ]);
+    }
+
+    public function toggleVisibility(Request $request, Portfolio $portfolio)
+    {
+        $this->assertOwnsPortfolio($portfolio);
+
+        $isActive = $request->has('is_active')
+            ? $request->boolean('is_active')
+            : ! $portfolio->is_active;
+
+        $portfolio->update(['is_active' => $isActive]);
+
+        return response()->json([
+            'success' => true,
+            'is_active' => $portfolio->is_active,
+            'message' => $portfolio->is_active
+                ? 'Work is now visible on your page.'
+                : 'Work is now hidden from your page.',
         ]);
     }
 }

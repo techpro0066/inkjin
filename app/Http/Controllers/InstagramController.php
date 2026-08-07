@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserDetail;
+use App\Services\InstagramPortfolioImportService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -106,8 +108,31 @@ class InstagramController extends Controller
             ]);
 
             $label = $username ? '@'.$username : 'Instagram';
+            $user = Auth::user();
 
-            return redirect($portfolioUrl)->with('success', $label.' connected successfully.');
+            if ($user) {
+                $userIdForImport = (int) $user->id;
+                dispatch(function () use ($userIdForImport) {
+                    $user = \App\Models\User::query()->find($userIdForImport);
+                    if (! $user) {
+                        return;
+                    }
+
+                    try {
+                        app(InstagramPortfolioImportService::class)->importLatestForUser($user);
+                    } catch (\Throwable $e) {
+                        Log::error('Instagram auto-import after connect failed', [
+                            'user_id' => $userIdForImport,
+                            'message' => $e->getMessage(),
+                        ]);
+                    }
+                })->afterResponse();
+            }
+
+            return redirect($portfolioUrl)->with(
+                'success',
+                $label.' connected successfully. Importing your latest Instagram images into portfolio…'
+            );
         } catch (\Throwable $e) {
             Log::error('Instagram OAuth callback failed', [
                 'message' => $e->getMessage(),
@@ -115,6 +140,167 @@ class InstagramController extends Controller
             ]);
 
             return redirect($portfolioUrl)->with('error', 'Failed to connect Instagram. Please try again.');
+        }
+    }
+
+    public function import(Request $request): RedirectResponse|JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => 'Unauthenticated.'], 401);
+            }
+
+            return redirect()->route('login');
+        }
+
+        if (blank($user->userDetail?->instagram_access_token)) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Connect Instagram first, then import images.',
+                ], 422);
+            }
+
+            return redirect()
+                ->route('portfolio.index')
+                ->with('error', 'Connect Instagram first, then import images.');
+        }
+
+        try {
+            $result = app(InstagramPortfolioImportService::class)->importLatestForUser($user);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => $result['imported'] > 0,
+                    'imported' => $result['imported'],
+                    'skipped' => $result['skipped'],
+                    'message' => $result['message'],
+                ]);
+            }
+
+            return redirect()
+                ->route('portfolio.index')
+                ->with(
+                    $result['imported'] > 0 ? 'success' : 'error',
+                    $result['message']
+                );
+        } catch (\Throwable $e) {
+            Log::error('Instagram portfolio import failed', [
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Failed to import Instagram images. Please try again.',
+                ], 500);
+            }
+
+            return redirect()
+                ->route('portfolio.index')
+                ->with('error', 'Failed to import Instagram images. Please try again.');
+        }
+    }
+
+    public function importStart(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['ok' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        if (blank($user->userDetail?->instagram_access_token)) {
+            return response()->json([
+                'ok' => false,
+                'total' => 0,
+                'skipped' => 0,
+                'message' => 'Connect Instagram first, then import images.',
+            ], 422);
+        }
+
+        try {
+            $result = app(InstagramPortfolioImportService::class)->beginAjaxImport($user);
+
+            return response()->json($result, ($result['ok'] ?? false) ? 200 : 422);
+        } catch (\Throwable $e) {
+            Log::error('Instagram import start failed', [
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'total' => 0,
+                'skipped' => 0,
+                'message' => 'Failed to start Instagram import. Please try again.',
+            ], 500);
+        }
+    }
+
+    public function importNext(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['ok' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        if (blank($user->userDetail?->instagram_access_token)) {
+            return response()->json([
+                'ok' => false,
+                'done' => true,
+                'message' => 'Connect Instagram first, then import images.',
+            ], 422);
+        }
+
+        try {
+            $result = app(InstagramPortfolioImportService::class)->importNextAjax($user);
+            $payload = [
+                'ok' => (bool) ($result['ok'] ?? false),
+                'done' => (bool) ($result['done'] ?? false),
+                'current' => (int) ($result['current'] ?? 0),
+                'total' => (int) ($result['total'] ?? 0),
+                'imported' => (int) ($result['imported'] ?? 0),
+                'failed' => (int) ($result['failed'] ?? 0),
+                'message' => (string) ($result['message'] ?? ''),
+            ];
+
+            if (! empty($result['error'])) {
+                $payload['error'] = (string) $result['error'];
+            }
+
+            if (! empty($result['portfolio'])) {
+                $portfolio = $result['portfolio'];
+                $payload['card_html'] = view('artist.portfolio._card', ['portfolio' => $portfolio])->render();
+                $payload['editor'] = [
+                    'id' => (string) $portfolio->id,
+                    'title' => $portfolio->title,
+                    'description' => $portfolio->description,
+                    'is_active' => (bool) $portfolio->is_active,
+                    'primary_style' => $portfolio->primary_style,
+                    'other_styles' => $portfolio->other_styles ?? [],
+                    'color' => $portfolio->color,
+                    'tags' => $portfolio->tags ?? [],
+                    'image_url' => asset($portfolio->image),
+                ];
+                $payload['imported_count'] = $user->portfolios()
+                    ->whereNotNull('instagram_media_id')
+                    ->count();
+            }
+
+            return response()->json($payload);
+        } catch (\Throwable $e) {
+            Log::error('Instagram import next failed', [
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'done' => true,
+                'message' => 'Failed to import Instagram images. Please try again.',
+            ], 500);
         }
     }
 

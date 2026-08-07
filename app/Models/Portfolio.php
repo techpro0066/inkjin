@@ -17,6 +17,8 @@ class Portfolio extends Model
         'other_styles',
         'color',
         'tags',
+        'instagram_media_id',
+        'instagram_media_type',
     ];
 
     protected function casts(): array
