@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 class InstagramPortfolioImportService
 {
-    public const MAX_ITEMS = 5;
+    public const MAX_ITEMS = 30;
 
     public const SESSION_QUEUE_KEY = 'instagram_portfolio_import_queue';
 
@@ -22,8 +22,8 @@ class InstagramPortfolioImportService
     ) {}
 
     /**
-     * Always fetches the latest 5 Instagram picture posts for the user.
-     * Existing media ids are skipped; only new ones among those latest 5 are imported.
+     * Always fetches the latest 30 Instagram picture posts for the user.
+     * Existing media ids are skipped; only new ones among those latest 30 are imported.
      *
      * @return array{imported: int, skipped: int, message: string}
      */
@@ -356,12 +356,12 @@ class InstagramPortfolioImportService
         $url = 'https://graph.instagram.com/v21.0/me/media';
         $params = [
             'fields' => 'id,caption,media_type,media_url,timestamp,children{id,media_type,media_url}',
-            'limit' => 25,
+            'limit' => 50,
             'access_token' => $accessToken,
         ];
         $pages = 0;
 
-        while ($url !== null && count($out) < $limit && $pages < 3) {
+        while ($url !== null && count($out) < $limit && $pages < 5) {
             $pages++;
             $response = $pages === 1
                 ? Http::timeout(30)->get($url, $params)
