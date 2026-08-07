@@ -411,7 +411,7 @@
             @if (!empty($instagramConnected))
               <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload images yourself · Refresh to pull in the latest work from IG</p>
             @else
-              <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload an image yourself. Connect Instagram to import posts.</p>
+              <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload an image yourself. Connect Instagram to import posts (requires an Instagram Business or Creator account).</p>
             @endif
           </div>
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
