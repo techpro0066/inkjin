@@ -23,6 +23,7 @@
     .modal-backdrop.modal-visible:not(.modal-open) { pointer-events: none; }
     .modal-backdrop.modal-open { opacity: 1; pointer-events: auto; }
     #deletePortfolioModal.modal-backdrop { z-index: 400; }
+    #disconnectInstagramModal.modal-backdrop { z-index: 400; }
     .add-work-modal-inner {
       transform: scale(0.96) translateY(10px);
       opacity: 0;
@@ -454,9 +455,9 @@
               <span class="material-symbols-outlined text-base">refresh</span>
               Refresh
             </button>
-            <form method="POST" action="{{ route('instagram.disconnect') }}" id="formInstagramDisconnect" onsubmit="return confirm('Disconnect Instagram?');">
+            <form method="POST" action="{{ route('instagram.disconnect') }}" id="formInstagramDisconnect">
               @csrf
-              <button type="submit" id="btnInstagramDisconnect" class="btn-ig-disconnect">Disconnect</button>
+              <button type="button" id="btnInstagramDisconnect" class="btn-ig-disconnect">Disconnect</button>
             </form>
           </div>
         </div>
@@ -678,6 +679,29 @@
     </div>
   </div>
 
+  <!-- Disconnect Instagram confirmation -->
+  <div class="modal-backdrop" id="disconnectInstagramModal" aria-hidden="true">
+    <div class="add-work-modal-inner bg-white rounded-2xl w-full max-w-md mx-4 shadow-2xl overflow-hidden">
+      <div class="p-6">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-error-container flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-error text-2xl">link_off</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-lg font-bold text-on-surface tracking-tight">Disconnect Instagram?</h3>
+            <p class="text-sm text-on-surface-variant mt-2 leading-relaxed">Your account will be disconnected. Already imported portfolio items will stay in your portfolio.</p>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-end gap-3 bg-surface-container-low/30">
+        <button type="button" id="btnDisconnectInstagramCancel" class="text-sm font-semibold text-on-surface-variant hover:text-on-surface px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+        <button type="button" id="btnDisconnectInstagramConfirm" class="bg-error text-on-error px-5 py-2.5 rounded-xl font-semibold text-sm hover:opacity-95 transition-opacity shadow-sm flex items-center gap-2">
+          <span class="material-symbols-outlined text-lg">link_off</span> Disconnect
+        </button>
+      </div>
+    </div>
+  </div>
+
 @endsection
 
 @section('scripts')
@@ -706,6 +730,7 @@
     $(function () {
       var MODAL_MS = 350;
       var $deletePortfolioModal = $('#deletePortfolioModal');
+      var $disconnectInstagramModal = $('#disconnectInstagramModal');
       var $addWorkModal = $('#addWorkModal');
       var $mobileSidebar = $('#mobileSidebar');
       var $sidebarBackdrop = $('#sidebarBackdrop');
@@ -1086,7 +1111,7 @@
         clearTimeout($igImportModal.data('closeTimer'));
         var t = setTimeout(function () {
           $igImportModal.removeClass('modal-visible').attr('aria-hidden', 'true');
-          if (!$addWorkModal.hasClass('modal-open') && !$deletePortfolioModal.hasClass('modal-open')) {
+          if (!$addWorkModal.hasClass('modal-open') && !$deletePortfolioModal.hasClass('modal-open') && !$disconnectInstagramModal.hasClass('modal-open')) {
             $('body').css('overflow', '');
           }
         }, MODAL_MS);
@@ -1659,7 +1684,7 @@
         clearTimeout($deletePortfolioModal.data('closeTimer'));
         var t = setTimeout(function () {
           $deletePortfolioModal.removeClass('modal-visible').attr('aria-hidden', 'true');
-          if (!$addWorkModal.hasClass('modal-open') && !$addWorkModal.hasClass('modal-visible')) {
+          if (!$addWorkModal.hasClass('modal-open') && !$addWorkModal.hasClass('modal-visible') && !$disconnectInstagramModal.hasClass('modal-open')) {
             $('body').css('overflow', '');
           }
           $deletePortfolioModal.removeData('delete-url');
@@ -1703,6 +1728,50 @@
       });
       $deletePortfolioModal.find('.add-work-modal-inner').on('click', function (e) {
         e.stopPropagation();
+      });
+
+      function openDisconnectInstagramModal() {
+        if (igImportBusy) return;
+        clearTimeout($disconnectInstagramModal.data('closeTimer'));
+        $disconnectInstagramModal.addClass('modal-visible').attr('aria-hidden', 'false');
+        $('body').css('overflow', 'hidden');
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            $disconnectInstagramModal.addClass('modal-open');
+          });
+        });
+      }
+
+      function closeDisconnectInstagramModal() {
+        $disconnectInstagramModal.removeClass('modal-open');
+        clearTimeout($disconnectInstagramModal.data('closeTimer'));
+        var t = setTimeout(function () {
+          $disconnectInstagramModal.removeClass('modal-visible').attr('aria-hidden', 'true');
+          if (!$addWorkModal.hasClass('modal-open') && !$deletePortfolioModal.hasClass('modal-open') && !$igImportModal.hasClass('modal-open')) {
+            $('body').css('overflow', '');
+          }
+        }, MODAL_MS);
+        $disconnectInstagramModal.data('closeTimer', t);
+      }
+
+      $('#btnInstagramDisconnect').on('click', function (e) {
+        e.preventDefault();
+        openDisconnectInstagramModal();
+      });
+      $('#btnDisconnectInstagramCancel').on('click', closeDisconnectInstagramModal);
+      $disconnectInstagramModal.on('click', function (e) {
+        if (e.target === this) {
+          closeDisconnectInstagramModal();
+        }
+      });
+      $disconnectInstagramModal.find('.add-work-modal-inner').on('click', function (e) {
+        e.stopPropagation();
+      });
+      $('#btnDisconnectInstagramConfirm').on('click', function () {
+        var $form = $('#formInstagramDisconnect');
+        if (!$form.length) return;
+        $(this).prop('disabled', true);
+        $form.trigger('submit');
       });
 
       $('#btnDeletePortfolioConfirm').on('click', function () {
@@ -1823,6 +1892,10 @@
         }
         if ($deletePortfolioModal.hasClass('modal-open')) {
           closeDeletePortfolioModal();
+          return;
+        }
+        if ($disconnectInstagramModal.hasClass('modal-open')) {
+          closeDisconnectInstagramModal();
           return;
         }
         if ($addWorkModal.hasClass('modal-open')) {
