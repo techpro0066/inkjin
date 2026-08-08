@@ -518,7 +518,11 @@ class InkJinController extends Controller
             ->withSoldOutState()
             ->get();
 
-        $artistPortfolios = $userDetail->user->portfolios()->where('is_active', true)->get();
+        $artistPortfolios = $userDetail->user->portfolios()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
 
         $guestSpots = $userDetail->display_guest_spots
             ? $userDetail->user->guestSpots()->orderBy('sort_order')->orderBy('id')->get()

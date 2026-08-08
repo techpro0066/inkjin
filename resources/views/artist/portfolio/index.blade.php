@@ -140,7 +140,8 @@
     body.ig-import-lock #btnConnectInstagram,
     body.ig-import-lock #btnInstagramRefresh,
     body.ig-import-lock #btnInstagramDisconnect,
-    body.ig-import-lock .btn-toggle-portfolio-visibility {
+    body.ig-import-lock .btn-toggle-portfolio-visibility,
+    body.ig-import-lock .portfolio-drag-handle {
       pointer-events: none !important;
       opacity: 0.55;
     }
@@ -204,6 +205,27 @@
       width: 1rem;
       height: 1rem;
     }
+    .portfolio-drag-handle {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      z-index: 3;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.625rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #1c1b1f;
+      background: rgba(255, 255, 255, 0.92);
+      border: 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+      cursor: grab;
+    }
+    .portfolio-drag-handle:active { cursor: grabbing; }
+    .portfolio-drag-handle .material-symbols-outlined { font-size: 1.125rem; }
+    .portfolio-card.sortable-ghost { opacity: 0.45; }
+    .portfolio-card.sortable-chosen { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
 
     /* Tag pill */
     .tag-pill { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; background: #f2ecf5; color: #494552; }
@@ -465,6 +487,12 @@
       </div>
 
       <!-- Portfolio Grid -->
+      @if ($portfolios->isNotEmpty())
+        <p class="text-xs text-on-surface-variant mb-3 flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-base text-outline">drag_indicator</span>
+          Drag pieces to change the order they appear on your booking page.
+        </p>
+      @endif
       <div id="portfolioGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         @forelse ($portfolios as $portfolio)
         @include('artist.portfolio._card', ['portfolio' => $portfolio])
@@ -722,11 +750,13 @@
 @endphp
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
   <script>
     window.PORTFOLIO_EDITOR_DATA = @json($portfolioEditorData);
     var PORTFOLIO_STYLE_OPTIONS = @json($styles);
     var PORTFOLIO_STORE_URL = @json(route('portfolio.store'));
     var PORTFOLIO_AI_SUGGEST_URL = @json(route('portfolio.ai-suggest'));
+    var PORTFOLIO_REORDER_URL = @json(route('portfolio.reorder'));
     var INSTAGRAM_AUTO_IMPORT = @json(!empty($instagramAutoImport));
     $(function () {
       var MODAL_MS = 350;
@@ -1140,7 +1170,8 @@
         if (!html) return;
         var $grid = $('#portfolioGrid');
         $('#portfolioEmptyState').remove();
-        $grid.prepend(html);
+        // Append so oldest→newest import lands with oldest higher / newest lower when sort_order increases.
+        $grid.append(html);
         if (editor && editor.id) {
           window.PORTFOLIO_EDITOR_DATA = window.PORTFOLIO_EDITOR_DATA || {};
           window.PORTFOLIO_EDITOR_DATA[String(editor.id)] = {
@@ -1613,6 +1644,56 @@
           .text(isActive ? 'Visible' : 'Hidden')
           .toggleClass('text-primary', !!isActive)
           .toggleClass('text-on-surface-variant', !isActive);
+      }
+
+      function persistPortfolioOrder() {
+        var ids = [];
+        $('#portfolioGrid .portfolio-card').each(function (index) {
+          var id = parseInt($(this).attr('data-portfolio-id'), 10);
+          if (!id) return;
+          ids.push(id);
+          $(this).attr('data-sort-order', index + 1);
+        });
+        if (!ids.length || !PORTFOLIO_REORDER_URL) return;
+
+        $.ajax({
+          url: PORTFOLIO_REORDER_URL,
+          method: 'POST',
+          contentType: 'application/json; charset=UTF-8',
+          data: JSON.stringify({ ids: ids }),
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        }).done(function (data) {
+          if (data && data.message) {
+            showToastMessage(data.message);
+          }
+        }).fail(function (xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.message)
+            ? xhr.responseJSON.message
+            : 'Could not save portfolio order.';
+          showToastMessage(msg);
+        });
+      }
+
+      if (typeof Sortable !== 'undefined') {
+        var portfolioGridEl = document.getElementById('portfolioGrid');
+        if (portfolioGridEl) {
+          Sortable.create(portfolioGridEl, {
+            draggable: '.portfolio-card',
+            handle: '.portfolio-drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            filter: '#portfolioEmptyState',
+            onEnd: function () {
+              if (igImportBusy) return;
+              persistPortfolioOrder();
+            }
+          });
+        }
       }
 
       $(document).on('click', '.btn-toggle-portfolio-visibility', function () {

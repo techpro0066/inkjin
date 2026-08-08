@@ -577,6 +577,7 @@ class InstagramPortfolioImportService
             'other_styles' => $other,
             'color' => $color,
             'tags' => $tags,
+            'sort_order' => (int) Portfolio::query()->where('user_id', $user->id)->max('sort_order') + 1,
             'instagram_media_id' => $mediaId,
             'instagram_media_type' => $mediaType,
         ]);

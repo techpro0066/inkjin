@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\SuggestsTattooImageFieldsWithAi;
 use App\Models\Portfolio;
 use App\Models\Style;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 
@@ -70,9 +72,20 @@ class PortfolioController extends Controller
         }
     }
 
+    private function nextSortOrder(int $userId): int
+    {
+        return (int) Portfolio::query()
+            ->where('user_id', $userId)
+            ->max('sort_order') + 1;
+    }
+
     public function index()
     {
-        $portfolios = Auth::user()->portfolios()->latest()->get();
+        $portfolios = Auth::user()
+            ->portfolios()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
         $styles = $this->styles();
         $userDetail = Auth::user()->userDetail;
         $instagramConnected = filled($userDetail?->instagram_access_token);
@@ -106,9 +119,10 @@ class PortfolioController extends Controller
         }
         $file->move($destination, $filename);
         $imagePath = 'uploads/portfolios/'.$filename;
+        $userId = (int) Auth::id();
 
         $portfolio = Portfolio::create([
-            'user_id' => Auth::id(),
+            'user_id' => $userId,
             'title' => $validated['title'],
             'description' => trim((string) ($validated['description'] ?? '')),
             'is_active' => $request->boolean('is_active'),
@@ -117,6 +131,7 @@ class PortfolioController extends Controller
             'other_styles' => $other,
             'color' => $validated['color'],
             'tags' => $tags,
+            'sort_order' => $this->nextSortOrder($userId),
         ]);
 
         return response()->json([
@@ -203,6 +218,43 @@ class PortfolioController extends Controller
             'message' => $portfolio->is_active
                 ? 'Work is now visible on your page.'
                 : 'Work is now hidden from your page.',
+        ]);
+    }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        $userId = Auth::id();
+        $ids = array_values($validated['ids']);
+
+        $ownedCount = Portfolio::query()
+            ->where('user_id', $userId)
+            ->whereIn('id', $ids)
+            ->count();
+
+        if ($ownedCount !== count($ids)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Some portfolio pieces were not found.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($ids, $userId) {
+            foreach ($ids as $index => $id) {
+                Portfolio::query()
+                    ->where('user_id', $userId)
+                    ->whereKey($id)
+                    ->update(['sort_order' => $index + 1]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order updated.',
         ]);
     }
 }

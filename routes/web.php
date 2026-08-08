@@ -292,6 +292,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/portfolio/ai-suggest', [\App\Http\Controllers\PortfolioController::class, 'suggestWithAi'])->name('portfolio.ai-suggest');
     Route::put('/portfolio/{portfolio}', [\App\Http\Controllers\PortfolioController::class, 'update'])->name('portfolio.update');
     Route::patch('/portfolio/{portfolio}/visibility', [\App\Http\Controllers\PortfolioController::class, 'toggleVisibility'])->name('portfolio.toggle-visibility');
+    Route::post('/portfolio/reorder', [\App\Http\Controllers\PortfolioController::class, 'reorder'])->name('portfolio.reorder');
     Route::delete('/portfolio/{portfolio}', [\App\Http\Controllers\PortfolioController::class, 'destroy'])->name('portfolio.destroy');
 
     Route::get('/guest-spots', [\App\Http\Controllers\GuestSpotsController::class, 'index'])->name('guest-spots.index');

@@ -17,6 +17,7 @@ class Portfolio extends Model
         'other_styles',
         'color',
         'tags',
+        'sort_order',
         'instagram_media_id',
         'instagram_media_type',
     ];
