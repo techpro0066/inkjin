@@ -108,31 +108,10 @@ class InstagramController extends Controller
             ]);
 
             $label = $username ? '@'.$username : 'Instagram';
-            $user = Auth::user();
 
-            if ($user) {
-                $userIdForImport = (int) $user->id;
-                dispatch(function () use ($userIdForImport) {
-                    $user = \App\Models\User::query()->find($userIdForImport);
-                    if (! $user) {
-                        return;
-                    }
-
-                    try {
-                        app(InstagramPortfolioImportService::class)->importLatestForUser($user);
-                    } catch (\Throwable $e) {
-                        Log::error('Instagram auto-import after connect failed', [
-                            'user_id' => $userIdForImport,
-                            'message' => $e->getMessage(),
-                        ]);
-                    }
-                })->afterResponse();
-            }
-
-            return redirect($portfolioUrl)->with(
-                'success',
-                $label.' connected successfully. Importing your latest Instagram images into portfolio…'
-            );
+            return redirect($portfolioUrl)
+                ->with('success', $label.' connected successfully.')
+                ->with('instagram_auto_import', true);
         } catch (\Throwable $e) {
             Log::error('Instagram OAuth callback failed', [
                 'message' => $e->getMessage(),

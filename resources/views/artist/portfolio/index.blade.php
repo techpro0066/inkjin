@@ -727,6 +727,7 @@
     var PORTFOLIO_STYLE_OPTIONS = @json($styles);
     var PORTFOLIO_STORE_URL = @json(route('portfolio.store'));
     var PORTFOLIO_AI_SUGGEST_URL = @json(route('portfolio.ai-suggest'));
+    var INSTAGRAM_AUTO_IMPORT = @json(!empty($instagramAutoImport));
     $(function () {
       var MODAL_MS = 350;
       var $deletePortfolioModal = $('#deletePortfolioModal');
@@ -1217,11 +1218,12 @@
           });
       }
 
-      $(document).on('click', '#btnInstagramRefresh', function (e) {
-        e.preventDefault();
+      function startInstagramImport() {
         if (igImportBusy) return;
 
-        var $btn = $(this);
+        var $btn = $('#btnInstagramRefresh');
+        if (!$btn.length) return;
+
         var startUrl = $btn.data('start-url');
         var nextUrl = $btn.data('next-url');
         if (!startUrl || !nextUrl) return;
@@ -1252,7 +1254,18 @@
               : 'Failed to start Instagram import. Please try again.';
             finishIgImport(msg, true);
           });
+      }
+
+      $(document).on('click', '#btnInstagramRefresh', function (e) {
+        e.preventDefault();
+        startInstagramImport();
       });
+
+      if (INSTAGRAM_AUTO_IMPORT) {
+        setTimeout(function () {
+          startInstagramImport();
+        }, 300);
+      }
 
       var WORK_FORM_FIELD_ORDER = ['image', 'title', 'description', 'is_active', 'primary_style', 'other_styles', 'color', 'tags'];
 

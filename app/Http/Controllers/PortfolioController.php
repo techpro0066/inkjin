@@ -80,13 +80,15 @@ class PortfolioController extends Controller
         $instagramImportedCount = Auth::user()->portfolios()
             ->whereNotNull('instagram_media_id')
             ->count();
+        $instagramAutoImport = (bool) session()->pull('instagram_auto_import', false);
 
         return view('artist.portfolio.index', compact(
             'portfolios',
             'styles',
             'instagramConnected',
             'instagramUsername',
-            'instagramImportedCount'
+            'instagramImportedCount',
+            'instagramAutoImport'
         ));
     }
 

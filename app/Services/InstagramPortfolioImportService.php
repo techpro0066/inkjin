@@ -337,6 +337,9 @@ class InstagramPortfolioImportService
             $toImport[] = $candidate;
         }
 
+        // Fetch is newest-first; import oldest → newest among this batch.
+        $toImport = array_values(array_reverse($toImport));
+
         return [
             'to_import' => $toImport,
             'skipped' => $skipped,
