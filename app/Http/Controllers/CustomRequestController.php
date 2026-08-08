@@ -179,6 +179,9 @@ class CustomRequestController extends Controller
             'urgency' => $isManagedScheduling ? trim((string) ($payload['urgency'] ?? '')) : null,
         ]);
 
+        app(\App\Services\MailcoachSubscriberService::class)
+            ->queueSubscribeUser($requestUser, \App\Services\MailcoachSubscriberService::TAG_USER);
+
         $isNewUser = !empty($verifiedEntry['is_new_user']);
         $accessUrl = $this->makePostCustomRequestAccessUrl($requestUser, $customRequest);
         $artistName = $userDetail->publicDisplayName() ?: 'Your artist';

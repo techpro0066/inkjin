@@ -591,6 +591,8 @@ class StripeConnectService
         }
 
         $userDetail->save();
+
+        app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
     }
 
     /**

@@ -1656,6 +1656,8 @@ class OnboardingController extends Controller
 
             if ($completingOnboarding) {
                 $this->sendArtistWelcomeEmail($user);
+                app(\App\Services\MailcoachSubscriberService::class)
+                    ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_ARTIST);
             }
 
             $questions = QuestionSorting::where('user_id', '1')->where('is_active', true)->orderBy('order')->get();
@@ -1726,6 +1728,8 @@ class OnboardingController extends Controller
 
             $user->update(['on_boarding' => 'yes']);
             $this->sendArtistWelcomeEmail($user);
+            app(\App\Services\MailcoachSubscriberService::class)
+                ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_ARTIST);
 
             $questions = QuestionSorting::where('user_id', '1')->where('is_active', true)->orderBy('order')->get();
 

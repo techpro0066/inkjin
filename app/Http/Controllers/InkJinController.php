@@ -1270,6 +1270,9 @@ class InkJinController extends Controller
             'urgency' => $consultationRequired ? null : (string) ($payload['urgency'] ?? ''),
         ]);
 
+        app(\App\Services\MailcoachSubscriberService::class)
+            ->queueSubscribeUser($bookingUser, \App\Services\MailcoachSubscriberService::TAG_USER);
+
         $isNewUser = !empty($verifiedEntry['is_new_user']);
         $accessUrl = $this->makePostManagedRequestAccessUrl($bookingUser, $bookingRequest);
         $clientEmail = (string) ($bookingUser->email ?? '');
