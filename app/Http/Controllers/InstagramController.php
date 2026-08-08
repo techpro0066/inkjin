@@ -288,18 +288,112 @@ class InstagramController extends Controller
         /** @var UserDetail|null $detail */
         $detail = Auth::user()?->userDetail;
         if ($detail) {
-            $detail->update([
-                'instagram_user_id' => null,
-                'instagram_username' => null,
-                'instagram_access_token' => null,
-                'instagram_token_expires_at' => null,
-                'instagram_connected_at' => null,
-            ]);
+            $this->clearInstagramConnection($detail);
         }
 
         return redirect()
             ->route('portfolio.index')
             ->with('success', 'Instagram disconnected.');
+    }
+
+    /**
+     * Meta/Instagram deauthorize callback.
+     * Called when a user removes the app from their Instagram/Facebook settings.
+     */
+    public function deauthorize(Request $request): \Illuminate\Http\Response
+    {
+        $signedRequest = (string) $request->input('signed_request', '');
+        if ($signedRequest === '') {
+            Log::warning('Instagram deauthorize missing signed_request');
+
+            return response('Missing signed_request', 400);
+        }
+
+        $payload = $this->parseSignedRequest($signedRequest);
+        if ($payload === null) {
+            Log::warning('Instagram deauthorize invalid signed_request');
+
+            return response('Invalid signed_request', 400);
+        }
+
+        $instagramUserId = isset($payload['user_id']) ? (string) $payload['user_id'] : '';
+        if ($instagramUserId === '') {
+            Log::warning('Instagram deauthorize missing user_id', ['payload_keys' => array_keys($payload)]);
+
+            return response('Missing user_id', 400);
+        }
+
+        $updated = UserDetail::query()
+            ->where('instagram_user_id', $instagramUserId)
+            ->get();
+
+        foreach ($updated as $detail) {
+            $this->clearInstagramConnection($detail);
+        }
+
+        Log::info('Instagram deauthorize processed', [
+            'instagram_user_id' => $instagramUserId,
+            'cleared_count' => $updated->count(),
+        ]);
+
+        return response('OK', 200);
+    }
+
+    private function clearInstagramConnection(UserDetail $detail): void
+    {
+        $detail->update([
+            'instagram_user_id' => null,
+            'instagram_username' => null,
+            'instagram_access_token' => null,
+            'instagram_token_expires_at' => null,
+            'instagram_connected_at' => null,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function parseSignedRequest(string $signedRequest): ?array
+    {
+        $parts = explode('.', $signedRequest, 2);
+        if (count($parts) !== 2) {
+            return null;
+        }
+
+        [$encodedSig, $payload] = $parts;
+        $secret = trim((string) config('services.instagram.client_secret'));
+        if ($secret === '') {
+            Log::error('Instagram deauthorize failed: INSTAGRAM_CLIENT_SECRET is not configured');
+
+            return null;
+        }
+
+        $sig = $this->base64UrlDecode($encodedSig);
+        $expected = hash_hmac('sha256', $payload, $secret, true);
+        if ($sig === null || $expected === false || ! hash_equals($expected, $sig)) {
+            return null;
+        }
+
+        $json = $this->base64UrlDecode($payload);
+        if ($json === null) {
+            return null;
+        }
+
+        $data = json_decode($json, true);
+
+        return is_array($data) ? $data : null;
+    }
+
+    private function base64UrlDecode(string $input): ?string
+    {
+        $remainder = strlen($input) % 4;
+        if ($remainder > 0) {
+            $input .= str_repeat('=', 4 - $remainder);
+        }
+
+        $decoded = base64_decode(strtr($input, '-_', '+/'), true);
+
+        return $decoded === false ? null : $decoded;
     }
 
     /**

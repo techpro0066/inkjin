@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'webhooks/viva',
+            'auth/instagram/deauthorize',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

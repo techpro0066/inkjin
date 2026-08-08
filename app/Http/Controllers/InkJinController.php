@@ -516,6 +516,8 @@ class InkJinController extends Controller
         $artistDesigns = $userDetail->user->artistDesigns()
             ->where('is_active', true)
             ->withSoldOutState()
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get();
 
         $artistPortfolios = $userDetail->user->portfolios()

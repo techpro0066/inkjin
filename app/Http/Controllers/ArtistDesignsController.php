@@ -175,7 +175,8 @@ class ArtistDesignsController extends Controller
         $artistDesigns = Auth::user()->artistDesigns()
             ->withCount(['bookingRequests', 'bookings'])
             ->withSoldOutState()
-            ->latest()
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get();
 
         $whatsIncludedItems = is_array($userDetail?->design_whats_included)
@@ -228,9 +229,10 @@ class ArtistDesignsController extends Controller
         $minSize = $this->normalizedMinSize($validated);
         $imagePath = $this->storeUploadedImage($request);
         $repeatLimit = $this->normalizedRepeatLimit($request);
+        $userId = (int) Auth::id();
 
         ArtistDesign::create([
-            'user_id' => Auth::id(),
+            'user_id' => $userId,
             'title' => $validated['title'],
             'description' => trim((string) ($validated['description'] ?? '')),
             'image' => $imagePath,
@@ -244,6 +246,7 @@ class ArtistDesignsController extends Controller
             'suggested_placements' => $placements,
             'color' => $validated['color'],
             'tags' => $tags,
+            'sort_order' => (int) ArtistDesign::query()->where('user_id', $userId)->max('sort_order') + 1,
             'min_price' => $validated['min_price'],
             'max_price' => $validated['max_price'],
             'min_size' => $minSize,
@@ -623,6 +626,43 @@ class ArtistDesignsController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Design removed.',
+        ]);
+    }
+
+    public function reorder(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        $userId = Auth::id();
+        $ids = array_values($validated['ids']);
+
+        $ownedCount = ArtistDesign::query()
+            ->where('user_id', $userId)
+            ->whereIn('id', $ids)
+            ->count();
+
+        if ($ownedCount !== count($ids)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Some designs were not found.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($ids, $userId) {
+            foreach ($ids as $index => $id) {
+                ArtistDesign::query()
+                    ->where('user_id', $userId)
+                    ->whereKey($id)
+                    ->update(['sort_order' => $index + 1]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order updated.',
         ]);
     }
 }

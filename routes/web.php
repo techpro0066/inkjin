@@ -82,6 +82,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 });
 
+Route::post('/auth/instagram/deauthorize', [\App\Http\Controllers\InstagramController::class, 'deauthorize'])
+    ->name('instagram.deauthorize');
+
 Route::get('/stripe/delete-account', [StripeConnectDevController::class, 'showDeleteForm'])
     ->name('stripe.delete-account.show');
 Route::post('/stripe/delete-account', [StripeConnectDevController::class, 'deleteAccount'])
@@ -310,6 +313,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/artist-designs', [\App\Http\Controllers\ArtistDesignsController::class, 'index'])->name('artist-designs.index');
     Route::post('/artist-designs', [\App\Http\Controllers\ArtistDesignsController::class, 'store'])->name('artist-designs.store');
     Route::post('/artist-designs/ai-suggest', [\App\Http\Controllers\ArtistDesignsController::class, 'suggestWithAi'])->name('artist-designs.ai-suggest');
+    Route::post('/artist-designs/reorder', [\App\Http\Controllers\ArtistDesignsController::class, 'reorder'])->name('artist-designs.reorder');
     Route::put('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'update'])->name('artist-designs.update');
     Route::put('/artist-designs/settings/whats-included', [\App\Http\Controllers\ArtistDesignsController::class, 'updateWhatsIncluded'])->name('artist-designs.whats-included.update');
     Route::put('/artist-designs/settings/pricing-type', [\App\Http\Controllers\ArtistDesignsController::class, 'updatePricingType'])->name('artist-designs.pricing-type.update');

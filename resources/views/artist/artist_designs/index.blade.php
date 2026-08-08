@@ -445,6 +445,32 @@
     /* Design card */
     .design-card { transition: all 0.15s ease; }
     .design-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .design-card-wrap .design-image-wrap { position: relative; overflow: hidden; }
+    .design-drag-handle {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      z-index: 3;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.625rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #1c1b1f;
+      background: rgba(255, 255, 255, 0.92);
+      border: 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+      cursor: grab;
+    }
+    .design-drag-handle:active { cursor: grabbing; }
+    .design-drag-handle .material-symbols-outlined { font-size: 1.125rem; }
+    .design-card-wrap.sortable-ghost { opacity: 0.45; }
+    .design-card-wrap.sortable-chosen .design-card { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+    body.design-sort-locked .design-drag-handle {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
 
     /* Mobile overflow fixes */
     @media (max-width: 1023px) {
@@ -791,6 +817,7 @@
         </div>
         <div class="flex items-center gap-3 sm:ml-auto">
           <select id="sortDesigns" name="sortDesigns" class="text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="custom" selected>Your order</option>
             <option value="newest">Newest</option>
             <option value="price-high">Price High–Low</option>
           </select>
@@ -802,6 +829,12 @@
       </div>
 
       <!-- Designs Grid -->
+      @if ($artistDesigns->isNotEmpty())
+        <p class="text-xs text-on-surface-variant mb-3 flex items-center gap-1.5" id="designsDragHint">
+          <span class="material-symbols-outlined text-base text-outline">drag_indicator</span>
+          Drag designs to change the order they appear on your booking page (when “Your order” is selected).
+        </p>
+      @endif
       <div id="designsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         @forelse ($artistDesigns as $design)
         @php
@@ -841,12 +874,16 @@
           data-is-active="{{ $design->is_active ? '1' : '0' }}"
           data-is-sold-out="{{ $isSoldOut ? '1' : '0' }}"
           data-created="{{ $design->created_at->getTimestamp() }}"
+          data-sort-order="{{ (int) ($design->sort_order ?? 0) }}"
           data-max-price="{{ (int) $design->max_price }}"
           data-search="{{ e($searchBlob) }}"
         >
           <div class="design-card bg-white rounded-2xl border border-outline-variant/20 overflow-hidden shadow-sm">
-          <div class="aspect-[4/5] bg-surface-container-high rounded-t-2xl">
-            <img src="{{ asset($design->image) }}" alt="" class="w-full h-full object-cover">
+          <div class="design-image-wrap aspect-[4/5] bg-surface-container-high rounded-t-2xl">
+            <button type="button" class="design-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
+              <span class="material-symbols-outlined">drag_indicator</span>
+            </button>
+            <img src="{{ asset($design->image) }}" alt="" class="w-full h-full object-cover pointer-events-none">
           </div>
           <div class="p-4">
             <div class="flex flex-wrap gap-1.5 mb-3">
@@ -1222,10 +1259,12 @@
     });
 @endphp
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
     var ARTIST_DESIGNS_STORE_URL = @json(route('artist-designs.store'));
     var ARTIST_DESIGNS_INDEX_URL = @json(route('artist-designs.index'));
+    var ARTIST_DESIGNS_REORDER_URL = @json(route('artist-designs.reorder'));
     var ARTIST_DESIGNS_AI_SUGGEST_URL = @json(route('artist-designs.ai-suggest'));
     var WHATS_INCLUDED_UPDATE_URL = @json(route('artist-designs.whats-included.update'));
     var PRICING_TYPE_UPDATE_URL = @json(route('artist-designs.pricing-type.update'));
@@ -3094,11 +3133,12 @@
         var $noDesigns = $('#designsNoDesigns');
         if (!$wraps.length) {
           $filterEmpty.addClass('hidden');
+          syncDesignDragLock();
           return;
         }
         var filter = $('#designFilterPills .filter-pill.active').data('filter') || 'all';
         var q = ($('#searchDesigns').val() || '').trim().toLowerCase();
-        var sort = $('#sortDesigns').val() || 'newest';
+        var sort = $('#sortDesigns').val() || 'custom';
         var matched = [];
         $wraps.each(function () {
           var $w = $(this);
@@ -3122,7 +3162,10 @@
           if (sort === 'price-high') {
             return (parseInt($b.attr('data-max-price'), 10) || 0) - (parseInt($a.attr('data-max-price'), 10) || 0);
           }
-          return (parseInt($b.attr('data-created'), 10) || 0) - (parseInt($a.attr('data-created'), 10) || 0);
+          if (sort === 'newest') {
+            return (parseInt($b.attr('data-created'), 10) || 0) - (parseInt($a.attr('data-created'), 10) || 0);
+          }
+          return (parseInt($a.attr('data-sort-order'), 10) || 0) - (parseInt($b.attr('data-sort-order'), 10) || 0);
         });
         $wraps.addClass('hidden');
         matched.forEach(function (el) {
@@ -3137,6 +3180,71 @@
           $filterEmpty.removeClass('hidden');
         } else {
           $filterEmpty.addClass('hidden');
+        }
+        syncDesignDragLock();
+      }
+
+      function syncDesignDragLock() {
+        var sort = $('#sortDesigns').val() || 'custom';
+        var filter = $('#designFilterPills .filter-pill.active').data('filter') || 'all';
+        var q = ($('#searchDesigns').val() || '').trim();
+        var canDrag = sort === 'custom' && filter === 'all' && !q;
+        $('body').toggleClass('design-sort-locked', !canDrag);
+        if (window.designsSortable) {
+          window.designsSortable.option('disabled', !canDrag);
+        }
+      }
+
+      function persistDesignOrder() {
+        var ids = [];
+        $('#designsGrid .design-card-wrap:not(.hidden)').each(function (index) {
+          var id = parseInt($(this).attr('data-design-id'), 10);
+          if (!id) return;
+          ids.push(id);
+          $(this).attr('data-sort-order', index + 1);
+          if (ARTIST_DESIGNS_BY_ID && ARTIST_DESIGNS_BY_ID[id]) {
+            ARTIST_DESIGNS_BY_ID[id].sort_order = index + 1;
+          }
+        });
+        if (!ids.length || !ARTIST_DESIGNS_REORDER_URL) return;
+
+        $.ajax({
+          url: ARTIST_DESIGNS_REORDER_URL,
+          method: 'POST',
+          contentType: 'application/json; charset=UTF-8',
+          data: JSON.stringify({ ids: ids }),
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        }).done(function () {
+          if (typeof showSaveToast === 'function') {
+            showSaveToast();
+          }
+        }).fail(function (xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.message)
+            ? xhr.responseJSON.message
+            : 'Could not save design order.';
+          window.alert(msg);
+        });
+      }
+
+      if (typeof Sortable !== 'undefined') {
+        var designsGridEl = document.getElementById('designsGrid');
+        if (designsGridEl) {
+          window.designsSortable = Sortable.create(designsGridEl, {
+            draggable: '.design-card-wrap',
+            handle: '.design-drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            filter: '#designsNoDesigns, #designsFilterEmpty',
+            onEnd: function () {
+              if (($('#sortDesigns').val() || 'custom') !== 'custom') return;
+              persistDesignOrder();
+            }
+          });
         }
       }
 

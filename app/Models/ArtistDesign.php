@@ -23,6 +23,7 @@ class ArtistDesign extends Model
         'suggested_placements',
         'color',
         'tags',
+        'sort_order',
         'min_price',
         'max_price',
         'min_size',
