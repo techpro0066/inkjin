@@ -3,6 +3,12 @@
 @section('title', 'Portfolio')
 
 @section('styles')
+@php
+  $showInstagramUi = in_array(strtolower((string) (Auth::user()->email ?? '')), [
+    'ilias@inkjin.com',
+    'touseef132ahmad@gmail.com',
+  ], true);
+@endphp
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
@@ -428,17 +434,19 @@
         $instagramImportedCount = $instagramImportedCount ?? 0;
       @endphp
       <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 {{ !empty($instagramConnected) ? 'mb-4' : '' }}">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 {{ ($showInstagramUi && !empty($instagramConnected)) ? 'mb-4' : '' }}">
           <div class="min-w-0">
             <p class="text-on-surface-variant">Showcase your best work to attract new clients.</p>
-            @if (!empty($instagramConnected))
+            @if ($showInstagramUi && !empty($instagramConnected))
               <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload images yourself · Refresh to pull in the latest work from IG</p>
-            @else
+            @elseif ($showInstagramUi)
               <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload an image yourself. Connect Instagram to import posts (requires an Instagram Business or Creator account).</p>
+            @else
+              <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload an image yourself.</p>
             @endif
           </div>
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
-            @if (empty($instagramConnected))
+            @if ($showInstagramUi && empty($instagramConnected))
               <a href="{{ route('instagram.connect') }}" id="btnConnectInstagram" class="btn-connect-instagram">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="{{ $igIconPath }}"/></svg>
                 Connect Instagram
@@ -450,7 +458,7 @@
           </div>
         </div>
 
-        @if (!empty($instagramConnected))
+        @if ($showInstagramUi && !empty($instagramConnected))
         <div class="instagram-status-card">
           <div class="instagram-status-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="{{ $igIconPath }}"/></svg>
@@ -757,7 +765,7 @@
     var PORTFOLIO_STORE_URL = @json(route('portfolio.store'));
     var PORTFOLIO_AI_SUGGEST_URL = @json(route('portfolio.ai-suggest'));
     var PORTFOLIO_REORDER_URL = @json(route('portfolio.reorder'));
-    var INSTAGRAM_AUTO_IMPORT = @json(!empty($instagramAutoImport));
+    var INSTAGRAM_AUTO_IMPORT = @json(!empty($instagramAutoImport) && !empty($showInstagramUi));
     $(function () {
       var MODAL_MS = 350;
       var $deletePortfolioModal = $('#deletePortfolioModal');

@@ -88,3 +88,20 @@ function slugify($string)
     
     return $string;
 }
+/**
+ * Temporary Instagram import allowlist (emails).
+ */
+function instagram_feature_enabled_for(?User $user = null): bool
+{
+    $user ??= Auth::user();
+    if (! $user instanceof User || blank($user->email)) {
+        return false;
+    }
+
+    $allowed = config('services.instagram.allowed_emails', []);
+    if (! is_array($allowed) || $allowed === []) {
+        return false;
+    }
+
+    return in_array(strtolower(trim((string) $user->email)), $allowed, true);
+}
