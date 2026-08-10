@@ -26,6 +26,16 @@ class ProfileController extends Controller
     }
 
     /**
+     * Display the password change form (artist profile settings).
+     */
+    public function password(Request $request): View
+    {
+        return view('profile.password', [
+            'user' => $request->user(),
+        ]);
+    }
+
+    /**
      * Update the user's profile information.
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse|JsonResponse

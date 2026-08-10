@@ -22,10 +22,12 @@
     @include('artist.partials.settings-tabs', ['activeTab' => 'profile'])
 
     <!-- Page Header -->
-    <div class="mb-8">
+    <div class="mb-6">
       <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Profile Settings</h2>
       <p class="text-on-surface-variant mt-1">Update your personal information and profile photo.</p>
     </div>
+
+    @include('artist.partials.profile-settings-tabs', ['activeProfileTab' => 'profile'])
 
     <div id="profile-success-alert" class="hidden mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
 

@@ -29,7 +29,7 @@ return new class extends Migration
             $table->string('status', 32)->default('pending');
             $table->json('metadata')->nullable();
             $table->timestamp('paid_at')->nullable();
-            $table->timestamp('expires_at');
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
 
             $table->index('status');

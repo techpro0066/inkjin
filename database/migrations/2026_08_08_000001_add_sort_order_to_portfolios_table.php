@@ -34,11 +34,21 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasColumn('portfolios', 'sort_order')) {
+            return;
+        }
+
         Schema::table('portfolios', function (Blueprint $table) {
-            if (Schema::hasColumn('portfolios', 'sort_order')) {
+            $table->dropForeign(['user_id']);
+        });
+
+        Schema::table('portfolios', function (Blueprint $table) {
+            $indexes = collect(Schema::getConnection()->getSchemaBuilder()->getIndexes('portfolios'))->pluck('name');
+            if ($indexes->contains('portfolios_user_sort_order_index')) {
                 $table->dropIndex('portfolios_user_sort_order_index');
-                $table->dropColumn('sort_order');
             }
+            $table->dropColumn('sort_order');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 };

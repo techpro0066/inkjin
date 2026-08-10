@@ -87,8 +87,26 @@
     .mobile-header { display: none; }
     @media (max-width: 1023px) { .mobile-header { display: flex; } }
 
-    .sidebar { width: 260px; min-height: 100vh; overflow-y: auto; }
-    @media (max-width: 1023px) { .sidebar { width: 100vw; height: 100vh; min-height: 100vh; } }
+    .sidebar {
+      width: 260px;
+      height: 100vh;
+      height: 100dvh;
+      max-height: 100vh;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
+    .sidebar-nav {
+      -webkit-overflow-scrolling: touch;
+    }
+    @media (max-width: 1023px) {
+      .sidebar {
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+    }
     .main-content { min-width: 0; width: 100%; max-width: 100%; overflow-x: hidden; }
     @media (min-width: 1024px) {
       .sidebar { display: flex !important; }

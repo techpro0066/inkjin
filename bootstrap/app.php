@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectUsersTo(fn (Request $request) => authenticated_home_url($request->user()));
+        $middleware->authenticateSessions();
 
         $middleware->alias([
             'onboarding' => \App\Http\Middleware\CheckOnboarding::class,

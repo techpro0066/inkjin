@@ -82,7 +82,17 @@
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     .mobile-header { display: none; }
     @media (max-width: 1023px) { .mobile-header { display: flex; } }
-    .sidebar { width: 260px; min-height: 100vh; }
+    .sidebar {
+      width: 260px;
+      height: 100vh;
+      height: 100dvh;
+      max-height: 100vh;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
+    .sidebar-nav {
+      -webkit-overflow-scrolling: touch;
+    }
     @media (min-width: 1024px) { .sidebar { display: flex !important; } .main-content { margin-left: 260px; } }
     @media (max-width: 1023px) { .main-content { padding-top: 70px; } }
     .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); transition: all 0.2s; cursor: pointer; text-decoration: none; }
@@ -110,10 +120,12 @@
         right: 0;
         top: 0;
         bottom: 0;
-        min-height: 100vh;
-        min-height: 100dvh;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        overflow: hidden;
         z-index: 100;
-        justify-content: space-between;
       }
     }
   </style>

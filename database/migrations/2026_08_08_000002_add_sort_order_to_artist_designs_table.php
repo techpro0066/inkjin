@@ -34,11 +34,24 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasColumn('artist_designs', 'sort_order')) {
+            return;
+        }
+
+        // MySQL may be using the composite (user_id, sort_order) index for the FK,
+        // so drop the FK first, then the index/column, then restore the FK.
         Schema::table('artist_designs', function (Blueprint $table) {
-            if (Schema::hasColumn('artist_designs', 'sort_order')) {
+            $table->dropForeign(['user_id']);
+        });
+
+        Schema::table('artist_designs', function (Blueprint $table) {
+            $sm = Schema::getConnection()->getSchemaBuilder();
+            $indexes = collect($sm->getIndexes('artist_designs'))->pluck('name');
+            if ($indexes->contains('artist_designs_user_sort_order_index')) {
                 $table->dropIndex('artist_designs_user_sort_order_index');
-                $table->dropColumn('sort_order');
             }
+            $table->dropColumn('sort_order');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 };

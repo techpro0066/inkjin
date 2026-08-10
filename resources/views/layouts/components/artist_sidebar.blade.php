@@ -1,52 +1,45 @@
 <aside class="sidebar hidden lg:flex fixed top-0 left-0 bg-primary flex-col p-6 z-40" id="mobileSidebar">
-  <!-- Top: Logo (fixed height) -->
-  <div class="mb-6 flex flex-col gap-1">
+  <div class="mb-6 flex flex-col gap-1 shrink-0">
     <span class="text-white text-2xl font-bold tracking-tighter leading-none" style="font-family: 'Space Grotesk', sans-serif;">bookpay</span>
     <span class="text-white/40 text-[8px] uppercase tracking-widest font-medium leading-tight">Tattoo artist platform<br>by Inkjin</span>
   </div>
 
-  <!-- Middle: Nav (scrollable) -->
-  <div class="flex-1 overflow-y-auto">
-    <nav class="flex flex-col gap-1">
-      <a href="{{ route('artist.dashboard') }}" class="nav-item {{ request()->routeIs('artist.dashboard') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">dashboard</span> Dashboard
-      </a>
-      <a href="{{ route('artist.bookings.index') }}" class="nav-item {{ request()->routeIs('artist.bookings.index') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">calendar_month</span> Bookings
-      </a>
-      <a href="{{ route('artist.requests.index') }}" class="nav-item {{ request()->routeIs('artist.requests.index') || request()->routeIs('artist.custom-requests.index') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">edit_note</span> Requests
-      </a>
-      <a href="{{ route('artist.payments.index') }}" class="nav-item {{ request()->routeIs('artist.payments.*') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">payments</span> Earnings
-      </a>
-      <a href="{{ route('artist.forms.index') }}" class="nav-item {{ request()->routeIs('personal-page.index') || request()->routeIs('artist.forms.index') || request()->routeIs('portfolio.index') || request()->routeIs('artist-designs.index') || request()->routeIs('guest-spots.index') || request()->routeIs('artist.faq.*') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">folder_open</span> Booking Page
-      </a>
-      <a href="{{ route('artist.chat.index') }}" class="nav-item {{ request()->routeIs('artist.chat.*') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">mail</span> Inbox
-        <span id="inboxUnreadDot" class="nav-inbox-unread-dot hidden ml-auto flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none" aria-hidden="true"></span>
-      </a>
-      <a href="{{ route('artist.clients.index') }}" class="nav-item {{ request()->routeIs('artist.clients.*') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">group</span> Clients
-      </a>
-      <a href="{{ route('profile.edit') }}" class="nav-item {{ request()->routeIs('profile.edit') || request()->routeIs('settings.*') || request()->routeIs('availability.index') ? 'active' : '' }}">
-        <span class="material-symbols-outlined">settings</span> Settings
-      </a>
-    </nav>
-  </div>
+  <nav class="sidebar-nav flex-1 min-h-0 overflow-y-auto flex flex-col gap-1 pr-1">
+    <a href="{{ route('artist.dashboard') }}" class="nav-item {{ request()->routeIs('artist.dashboard') ? 'active' : '' }}">
+      <span class="material-symbols-outlined">dashboard</span> Dashboard
+    </a>
+    <a href="{{ route('artist.bookings.index') }}" class="nav-item {{ request()->routeIs('artist.bookings.index') ? 'active' : '' }}">
+      <span class="material-symbols-outlined">calendar_month</span> Bookings
+    </a>
+    <a href="{{ route('artist.requests.index') }}" class="nav-item {{ request()->routeIs('artist.requests.index') || request()->routeIs('artist.custom-requests.index') ? 'active' : '' }}">
+      <span class="material-symbols-outlined">edit_note</span> Requests
+    </a>
+    <a href="{{ route('artist.payments.index') }}" class="nav-item {{ request()->routeIs('artist.payments.*') ? 'active' : '' }}">
+      <span class="material-symbols-outlined">payments</span> Earnings
+    </a>
+    <a href="{{ route('artist.forms.index') }}" class="nav-item {{ request()->routeIs('personal-page.index') || request()->routeIs('artist.forms.index') || request()->routeIs('portfolio.index') || request()->routeIs('artist-designs.index') || request()->routeIs('guest-spots.index') || request()->routeIs('artist.faq.*') ? 'active' : '' }}">
+      <span class="material-symbols-outlined">folder_open</span> Booking Page
+    </a>
+    <a href="{{ route('artist.chat.index') }}" class="nav-item {{ request()->routeIs('artist.chat.*') ? 'active' : '' }}">
+      <span class="material-symbols-outlined">mail</span> Inbox
+      <span id="inboxUnreadDot" class="nav-inbox-unread-dot hidden ml-auto flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none" aria-hidden="true"></span>
+    </a>
+    <a href="{{ route('artist.clients.index') }}" class="nav-item {{ request()->routeIs('artist.clients.*') ? 'active' : '' }}">
+      <span class="material-symbols-outlined">group</span> Clients
+    </a>
+    <a href="{{ route('profile.edit') }}" class="nav-item {{ request()->routeIs('profile.edit') || request()->routeIs('profile.password') || request()->routeIs('settings.*') || request()->routeIs('availability.index') ? 'active' : '' }}">
+      <span class="material-symbols-outlined">settings</span> Settings
+    </a>
+  </nav>
 
-  <!-- Bottom: Log Out + Avatar (sticky, always visible) -->
-  <div class="flex-shrink-0">
-    <div class="border-t border-white/10 pt-4 mt-4">
-      <form method="POST" action="{{ route('logout') }}" class="m-0">
-        @csrf
-        <input type="hidden" name="_token" value="{{ csrf_token() }}">
-        <button type="submit" class="nav-item text-white/60 hover:text-white w-full text-left border-0 bg-transparent cursor-pointer font-[inherit]">
-          <span class="material-symbols-outlined">logout</span> Log Out
-        </button>
-      </form>
-    </div>
+  <div class="sidebar-footer shrink-0 pt-4 mt-4 border-t border-white/10">
+    <form method="POST" action="{{ route('logout') }}" class="m-0">
+      @csrf
+      <input type="hidden" name="_token" value="{{ csrf_token() }}">
+      <button type="submit" class="nav-item text-white/60 hover:text-white w-full text-left border-0 bg-transparent cursor-pointer font-[inherit]">
+        <span class="material-symbols-outlined">logout</span> Log Out
+      </button>
+    </form>
     <div class="flex min-w-0 items-center gap-3 mt-4 pt-4 border-t border-white/10">
       <div class="shrink-0 w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-primary font-bold text-sm overflow-hidden">
         <img src="{{ asset(Auth::user()->userDetail->avatar) }}" alt="Avatar" class="w-full h-full object-cover rounded-full">

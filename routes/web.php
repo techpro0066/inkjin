@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\FormController;
 use App\Http\Controllers\Admin\PlacementController;
 use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\StyleController;
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\QuestionsController;
 
@@ -162,6 +163,7 @@ Route::middleware(['auth', 'verified', 'onboarding'])->prefix('api/chat')->group
 // Profile routes (accessible even if email not verified, so user can update email)
 Route::middleware(['auth', 'onboarding', 'client_password'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
@@ -170,6 +172,8 @@ Route::middleware(['auth', 'onboarding', 'client_password'])->group(function () 
 // Admin routes
 Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/settings', [AdminSettingsController::class, 'password'])->name('admin.settings');
+    Route::get('/settings/password', [AdminSettingsController::class, 'password'])->name('admin.settings.password');
     Route::get('/revenue', [AdminFinancialController::class, 'revenue'])->name('admin.revenue.index');
     Route::get('/fees', [AdminFinancialController::class, 'fees'])->name('admin.fees.index');
     Route::get('/payouts', [AdminFinancialController::class, 'payouts'])->name('admin.payouts.index');

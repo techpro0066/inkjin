@@ -11,43 +11,43 @@
 </div>
 
 <!-- Sidebar -->
-<aside class="sidebar hidden lg:flex fixed top-0 left-0 bg-inverse-surface flex-col justify-between p-6 z-40 overflow-y-auto" id="mobileSidebar">
-  <div>
-    <div class="mb-10 hidden lg:block">
-      <div class="flex items-center gap-2">
-        <h1 class="text-white text-xl font-bold">inkjin</h1>
-        <span class="text-[9px] font-bold uppercase tracking-wider bg-amber-400 text-inverse-surface px-1.5 py-0.5 rounded">Admin</span>
-      </div>
-      <p class="text-white/40 text-[10px] uppercase tracking-[2px] mt-1">Platform Management</p>
+<aside class="sidebar hidden lg:flex fixed top-0 left-0 bg-inverse-surface flex-col p-6 z-40" id="mobileSidebar">
+  <div class="mb-6 hidden lg:block shrink-0">
+    <div class="flex items-center gap-2">
+      <h1 class="text-white text-xl font-bold">inkjin</h1>
+      <span class="text-[9px] font-bold uppercase tracking-wider bg-amber-400 text-inverse-surface px-1.5 py-0.5 rounded">Admin</span>
     </div>
-    <nav class="flex flex-col gap-1">
-      <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><span class="material-symbols-outlined">dashboard</span> Dashboard</a>
-      <a href="{{ route('admin.forms.index') }}" class="nav-item {{ request()->routeIs('admin.forms.index') ? 'active' : '' }}"><span class="material-symbols-outlined">description</span> Forms</a>
-      <a href="{{ route('admin.styles.index') }}" class="nav-item {{ request()->routeIs('admin.styles.*') ? 'active' : '' }}"><span class="material-symbols-outlined">brush</span> Styles</a>
-      <a href="{{ route('admin.placements.index') }}" class="nav-item {{ request()->routeIs('admin.placements.*') ? 'active' : '' }}"><span class="material-symbols-outlined">accessibility_new</span> Placements</a>
-      <a href="{{ route('admin.sizes.index') }}" class="nav-item {{ request()->routeIs('admin.sizes.*') ? 'active' : '' }}"><span class="material-symbols-outlined">straighten</span> Sizes</a>
-      <a href="{{ route('admin.users.index') }}" class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}"><span class="material-symbols-outlined">group</span> Users</a>
-      <div class="text-white/35 text-[10px] uppercase tracking-[2px] font-bold px-4 pt-5 pb-1">Financials</div>
-      <a href="{{ route('admin.revenue.index') }}" class="nav-item {{ request()->routeIs('admin.revenue.*') ? 'active' : '' }}"><span class="material-symbols-outlined">trending_up</span> Revenue</a>
-      <a href="{{ route('admin.fees.index') }}" class="nav-item {{ request()->routeIs('admin.fees.*') ? 'active' : '' }}"><span class="material-symbols-outlined">receipt_long</span> Fees</a>
-      <a href="{{ route('admin.payouts.index') }}" class="nav-item {{ request()->routeIs('admin.payouts.*') ? 'active' : '' }}"><span class="material-symbols-outlined">payments</span> Payouts</a>
-    </nav>
+    <p class="text-white/40 text-[10px] uppercase tracking-[2px] mt-1">Platform Management</p>
   </div>
-  <div>
-    <div class="border-t border-white/10 pt-4 mt-4">
-      <form method="POST" action="{{ route('logout') }}" class="m-0">
-        @csrf
-        <input type="hidden" name="_token" value="{{ csrf_token() }}">
-        <button type="submit" class="nav-item text-white/60 hover:text-white w-full text-left border-0 bg-transparent cursor-pointer font-[inherit] w-100">
-          <span class="material-symbols-outlined">logout</span> Log Out
-        </button>
-      </form>
-    </div>
-    <div class="flex items-center gap-3 mt-4 pt-4 border-t border-white/10">
-      <div class="w-10 h-10 rounded-full bg-amber-400 flex items-center justify-center text-inverse-surface font-bold text-sm">A</div>
-      <div>
-        <div class="text-white text-sm font-semibold">Admin</div>
-        <div class="text-white/50 text-xs">{{ Auth::user()->email }}</div>
+
+  <nav class="sidebar-nav flex-1 min-h-0 overflow-y-auto flex flex-col gap-1 pr-1">
+    <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><span class="material-symbols-outlined">dashboard</span> Dashboard</a>
+    <a href="{{ route('admin.forms.index') }}" class="nav-item {{ request()->routeIs('admin.forms.index') ? 'active' : '' }}"><span class="material-symbols-outlined">description</span> Forms</a>
+    <a href="{{ route('admin.styles.index') }}" class="nav-item {{ request()->routeIs('admin.styles.*') ? 'active' : '' }}"><span class="material-symbols-outlined">brush</span> Styles</a>
+    <a href="{{ route('admin.placements.index') }}" class="nav-item {{ request()->routeIs('admin.placements.*') ? 'active' : '' }}"><span class="material-symbols-outlined">accessibility_new</span> Placements</a>
+    <a href="{{ route('admin.sizes.index') }}" class="nav-item {{ request()->routeIs('admin.sizes.*') ? 'active' : '' }}"><span class="material-symbols-outlined">straighten</span> Sizes</a>
+    <a href="{{ route('admin.users.index') }}" class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}"><span class="material-symbols-outlined">group</span> Users</a>
+    <div class="text-white/35 text-[10px] uppercase tracking-[2px] font-bold px-4 pt-5 pb-1">Financials</div>
+    <a href="{{ route('admin.revenue.index') }}" class="nav-item {{ request()->routeIs('admin.revenue.*') ? 'active' : '' }}"><span class="material-symbols-outlined">trending_up</span> Revenue</a>
+    <a href="{{ route('admin.fees.index') }}" class="nav-item {{ request()->routeIs('admin.fees.*') ? 'active' : '' }}"><span class="material-symbols-outlined">receipt_long</span> Fees</a>
+    <a href="{{ route('admin.payouts.index') }}" class="nav-item {{ request()->routeIs('admin.payouts.*') ? 'active' : '' }}"><span class="material-symbols-outlined">payments</span> Payouts</a>
+    <div class="text-white/35 text-[10px] uppercase tracking-[2px] font-bold px-4 pt-5 pb-1">Account</div>
+    <a href="{{ route('admin.settings.password') }}" class="nav-item {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}"><span class="material-symbols-outlined">settings</span> Settings</a>
+  </nav>
+
+  <div class="sidebar-footer shrink-0 pt-4 mt-4 border-t border-white/10">
+    <form method="POST" action="{{ route('logout') }}" class="m-0">
+      @csrf
+      <input type="hidden" name="_token" value="{{ csrf_token() }}">
+      <button type="submit" class="nav-item text-white/60 hover:text-white w-full text-left border-0 bg-transparent cursor-pointer font-[inherit]">
+        <span class="material-symbols-outlined">logout</span> Log Out
+      </button>
+    </form>
+    <div class="flex min-w-0 items-center gap-3 mt-4 pt-4 border-t border-white/10">
+      <div class="shrink-0 w-10 h-10 rounded-full bg-amber-400 flex items-center justify-center text-inverse-surface font-bold text-sm">A</div>
+      <div class="min-w-0 flex-1">
+        <div class="text-white text-sm font-semibold truncate">Admin</div>
+        <div class="text-white/50 text-xs truncate" title="{{ Auth::user()->email }}">{{ Auth::user()->email }}</div>
       </div>
     </div>
   </div>

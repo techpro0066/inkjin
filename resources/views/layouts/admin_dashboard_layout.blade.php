@@ -31,7 +31,17 @@
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     .mobile-header { display: none; }
     @media (max-width: 1023px) { .mobile-header { display: flex; } }
-    .sidebar { width: 260px; min-height: 100vh; }
+    .sidebar {
+      width: 260px;
+      height: 100vh;
+      height: 100dvh;
+      max-height: 100vh;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
+    .sidebar-nav {
+      -webkit-overflow-scrolling: touch;
+    }
     .main-content {
       min-width: 0;
       width: 100%;
@@ -65,14 +75,18 @@
       /* Full-screen mobile nav (below fixed header z-50) */
       #mobileSidebar.mobile-menu-open {
         display: flex !important;
+        flex-direction: column;
         width: 100% !important;
         max-width: 100vw;
         left: 0;
         right: 0;
         top: 0;
         bottom: 0;
-        min-height: 100vh;
-        min-height: 100dvh;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        overflow: hidden;
         z-index: 45;
         padding-top: 4.5rem;
         padding-bottom: env(safe-area-inset-bottom, 0);
