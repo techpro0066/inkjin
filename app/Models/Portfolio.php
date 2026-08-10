@@ -15,6 +15,7 @@ class Portfolio extends Model
         'image',
         'primary_style',
         'other_styles',
+        'placement',
         'color',
         'tags',
         'sort_order',
@@ -29,6 +30,16 @@ class Portfolio extends Model
             'other_styles' => 'array',
             'tags' => 'array',
         ];
+    }
+
+    /**
+     * Display label for placement on public pages.
+     */
+    public function getPlacementLabelAttribute(): string
+    {
+        $value = trim((string) ($this->placement ?? ''));
+
+        return $value !== '' ? $value : 'Anywhere';
     }
 
     public function user(): BelongsTo

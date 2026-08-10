@@ -56,6 +56,7 @@
             'title' => $portfolio->title,
             'desc' => trim((string) ($portfolio->description ?? '')),
             'style' => ucwords(str_replace('-', ' ', $portfolio->primary_style)),
+            'placement' => $portfolio->placement_label,
             'colors' => $colorLabel,
             'image' => asset($portfolio->image),
             'tags' => collect($portfolio->tags ?? [])->map(function ($tag) {
@@ -575,6 +576,9 @@
                 <h3 class="font-bold text-on-surface mb-1.5">{{ $artistPortfolio->title }}</h3>
                 <div class="flex flex-wrap gap-1.5 mb-2">
                 <span class="text-xs px-2 py-0.5 rounded-full bg-secondary-container text-secondary font-medium">{{ ucwords(str_replace('-', ' ', $artistPortfolio->primary_style)) }}</span>
+                @if(filled($artistPortfolio->placement))
+                <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">{{ $artistPortfolio->placement }}</span>
+                @endif
                 <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">{{ $artistPortfolio->color == 'color' ? 'Full Color' : ($artistPortfolio->color == 'black-grey' ? 'Black & Grey' : ($artistPortfolio->color == 'both' ? 'Black & Color' : $artistPortfolio->color)) }}</span>
                 </div>
                 <div class="flex flex-wrap gap-1">
@@ -710,6 +714,10 @@
             <div>
               <p class="text-[11px] text-on-surface-variant uppercase tracking-wide mb-0.5">Style</p>
               <p id="portfolioModalStyle" class="text-sm font-semibold text-on-surface">Japanese</p>
+            </div>
+            <div>
+              <p class="text-[11px] text-on-surface-variant uppercase tracking-wide mb-0.5">Placement</p>
+              <p id="portfolioModalPlacement" class="text-sm font-semibold text-on-surface">Anywhere</p>
             </div>
             <div>
               <p class="text-[11px] text-on-surface-variant uppercase tracking-wide mb-0.5">Colors</p>
@@ -933,6 +941,7 @@
       }
 
       document.getElementById('portfolioModalStyle').textContent = p.style || '';
+      document.getElementById('portfolioModalPlacement').textContent = p.placement || 'Anywhere';
       document.getElementById('portfolioModalColors').textContent = p.colors || '';
 
       const tagsEl = document.getElementById('portfolioModalTags');

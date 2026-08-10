@@ -640,6 +640,30 @@
           </select>
           <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="other_styles"></p>
         </div>
+        <!-- Placement (max 1) -->
+        <div class="work-field-section scroll-mt-6" data-work-field="placement">
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <span class="text-xs font-semibold text-on-surface-variant">Placement</span>
+            <span class="shrink-0 inline-flex items-center gap-1 rounded-lg bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Max 1</span>
+          </div>
+          <p class="text-[11px] text-on-surface-variant leading-relaxed mb-3">Where on the body is this piece placed.</p>
+          <div class="flex items-center justify-between mb-2.5 rounded-xl bg-surface-container-low/80 px-3 py-2 border border-outline-variant/15">
+            <span class="text-xs text-on-surface-variant">Selected</span>
+            <span class="text-sm font-bold tabular-nums text-on-surface"><span id="workPlacementsCount">0</span><span class="text-on-surface-variant font-semibold"> / 1</span></span>
+          </div>
+          <div id="workPlacementsChips" class="flex flex-wrap gap-2" role="group" aria-label="Placement">
+            @foreach (($placements ?? []) as $placement)
+            <button type="button" class="style-chip" data-value="{{ $placement }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $placement }}</button>
+            @endforeach
+          </div>
+          <select id="workPlacement" name="workPlacement" class="hidden" tabindex="-1" aria-hidden="true">
+            <option value=""></option>
+            @foreach (($placements ?? []) as $placement)
+            <option value="{{ $placement }}">{{ $placement }}</option>
+            @endforeach
+          </select>
+          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="placement"></p>
+        </div>
         <!-- Colors -->
         <div class="work-field-section scroll-mt-6" data-work-field="color">
           <label for="workColors" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Colors</label>
@@ -750,6 +774,7 @@
             'is_active' => (bool) $p->is_active,
             'primary_style' => $p->primary_style,
             'other_styles' => $p->other_styles ?? [],
+            'placement' => $p->placement,
             'color' => $p->color,
             'tags' => $p->tags ?? [],
             'image_url' => asset($p->image),
@@ -762,6 +787,7 @@
   <script>
     window.PORTFOLIO_EDITOR_DATA = @json($portfolioEditorData);
     var PORTFOLIO_STYLE_OPTIONS = @json($styles);
+    var PORTFOLIO_PLACEMENT_OPTIONS = @json($placements ?? []);
     var PORTFOLIO_STORE_URL = @json(route('portfolio.store'));
     var PORTFOLIO_AI_SUGGEST_URL = @json(route('portfolio.ai-suggest'));
     var PORTFOLIO_REORDER_URL = @json(route('portfolio.reorder'));
@@ -885,6 +911,7 @@
           description: !$.trim($('#workDescription').val() || ''),
           primary_style: !($('#workPrimaryStyle').val() || ''),
           other_styles: $('#workOtherStyles option:selected').length === 0,
+          placement: !($('#workPlacement').val() || ''),
           color: !($('#workColors').val() || ''),
           tags: parseWorkTagsInput().length === 0
         };
@@ -924,6 +951,19 @@
           });
           syncOtherStylesChipsFromSelect();
         }
+        if (emptyAtRequest.placement && emptyNow.placement) {
+          var aiPlacements = Array.isArray(suggestions.suggested_placements) ? suggestions.suggested_placements : [];
+          var firstPlacement = '';
+          aiPlacements.forEach(function (placementValue) {
+            if (firstPlacement || !placementValue) return;
+            if (!workPlacementOptionByValue(placementValue).length) return;
+            firstPlacement = placementValue;
+          });
+          if (firstPlacement) {
+            $('#workPlacement').val(firstPlacement);
+            syncWorkPlacementsChipsFromSelect();
+          }
+        }
         if (emptyAtRequest.color && emptyNow.color && suggestions.color) {
           $('#workColors').val(suggestions.color).trigger('change');
         }
@@ -952,6 +992,9 @@
         $('#workOtherStyles option:selected').each(function () {
           fd.append('other_styles[]', $(this).val());
         });
+        if ($('#workPlacement').val()) {
+          fd.append('suggested_placements[]', $('#workPlacement').val());
+        }
         parseWorkTagsInput().forEach(function (tag) {
           fd.append('tags[]', tag);
         });
@@ -1031,6 +1074,38 @@
         updateOtherStylesChipsUI();
       }
 
+      function updateWorkPlacementsChipsUI() {
+        var $chips = $('#workPlacementsChips .style-chip');
+        var n = $chips.filter('.is-selected').length;
+        $('#workPlacementsCount').text(n);
+        var atMax = n >= 1;
+        $chips.each(function () {
+          var on = $(this).hasClass('is-selected');
+          $(this).prop('disabled', atMax && !on).attr('aria-pressed', on ? 'true' : 'false');
+        });
+      }
+
+      function workPlacementOptionByValue(val) {
+        return $('#workPlacement option').filter(function () {
+          return $(this).val() === val;
+        });
+      }
+
+      function workPlacementChipByValue(val) {
+        return $('#workPlacementsChips .style-chip').filter(function () {
+          return $(this).attr('data-value') === val;
+        });
+      }
+
+      function syncWorkPlacementsChipsFromSelect() {
+        $('#workPlacementsChips .style-chip').removeClass('is-selected').prop('disabled', false);
+        var val = $('#workPlacement').val() || '';
+        if (val) {
+          workPlacementChipByValue(val).addClass('is-selected');
+        }
+        updateWorkPlacementsChipsUI();
+      }
+
       function initPortfolioModalSelect2() {
         if (!window.jQuery || !$.fn.select2) return;
         var $primary = $('#workPrimaryStyle');
@@ -1070,6 +1145,7 @@
         $addWorkModal.addClass('modal-visible').attr('aria-hidden', 'false');
         $('body').css('overflow', 'hidden');
         syncOtherStylesChipsFromSelect();
+        syncWorkPlacementsChipsFromSelect();
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
             $addWorkModal.addClass('modal-open');
@@ -1188,6 +1264,7 @@
             is_active: !!editor.is_active,
             primary_style: editor.primary_style,
             other_styles: editor.other_styles || [],
+            placement: editor.placement || null,
             color: editor.color,
             tags: editor.tags || [],
             image_url: editor.image_url
@@ -1306,7 +1383,7 @@
         }, 300);
       }
 
-      var WORK_FORM_FIELD_ORDER = ['image', 'title', 'description', 'is_active', 'primary_style', 'other_styles', 'color', 'tags'];
+      var WORK_FORM_FIELD_ORDER = ['image', 'title', 'description', 'is_active', 'primary_style', 'other_styles', 'placement', 'color', 'tags'];
 
       function clearWorkFormErrors() {
         $('#workFormBanner').addClass('hidden').empty();
@@ -1431,6 +1508,11 @@
         if (primary && otherSelected.indexOf(primary) !== -1) {
           errors.other_styles = 'Other styles cannot include the same value as primary style.';
         }
+        var placement = $('#workPlacement').val() || '';
+        var allowedPlacements = Array.isArray(PORTFOLIO_PLACEMENT_OPTIONS) ? PORTFOLIO_PLACEMENT_OPTIONS : [];
+        if (placement && allowedPlacements.indexOf(placement) === -1) {
+          errors.placement = 'Please select a valid placement.';
+        }
         var color = $('#workColors').val();
         if (!color) {
           errors.color = 'Please select a color option.';
@@ -1514,6 +1596,9 @@
         $('#workOtherStyles option').prop('selected', false);
         $('#workOtherStylesChips .style-chip').removeClass('is-selected').prop('disabled', false);
         updateOtherStylesChipsUI();
+        $('#workPlacement').val('');
+        $('#workPlacementsChips .style-chip').removeClass('is-selected').prop('disabled', false);
+        updateWorkPlacementsChipsUI();
         $('#workToggleVisibility').addClass('active');
         resetWorkImageState();
       }
@@ -1532,6 +1617,8 @@
           workOtherStyleOptionByValue(v).prop('selected', true);
         });
         syncOtherStylesChipsFromSelect();
+        $('#workPlacement').val(p.placement || '');
+        syncWorkPlacementsChipsFromSelect();
         $('#workToggleVisibility').toggleClass('active', !!p.is_active);
         $('#workImageData').val('');
         var $prevImg = $('#workImagePreviewImg');
@@ -1573,6 +1660,7 @@
         $('#workOtherStyles option:selected').each(function () {
           fd.append('other_styles[]', $(this).val());
         });
+        fd.append('placement', $('#workPlacement').val() || '');
         fd.append('color', $('#workColors').val());
         var rawTags = $('#workTags').val();
         if (rawTags) {
@@ -1981,6 +2069,18 @@
         updateOtherStylesChipsUI();
       });
 
+      $('#workPlacementsChips').on('click', '.style-chip', function () {
+        var $btn = $(this);
+        if ($btn.prop('disabled')) return;
+        var val = $btn.attr('data-value');
+        if ($btn.hasClass('is-selected')) {
+          $('#workPlacement').val('');
+        } else {
+          $('#workPlacement').val(val);
+        }
+        syncWorkPlacementsChipsFromSelect();
+      });
+
       $('#workToggleVisibility, #workToggleSensitive').on('click', function () {
         $(this).toggleClass('active');
       });
@@ -2008,6 +2108,7 @@
       $('#btnSaveWork').on('click', saveWork);
 
       syncOtherStylesChipsFromSelect();
+      syncWorkPlacementsChipsFromSelect();
     });
   </script>
 

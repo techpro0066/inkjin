@@ -259,6 +259,7 @@ class InstagramController extends Controller
                     'is_active' => (bool) $portfolio->is_active,
                     'primary_style' => $portfolio->primary_style,
                     'other_styles' => $portfolio->other_styles ?? [],
+                    'placement' => $portfolio->placement,
                     'color' => $portfolio->color,
                     'tags' => $portfolio->tags ?? [],
                     'image_url' => asset($portfolio->image),

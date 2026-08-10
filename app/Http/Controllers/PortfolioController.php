@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\SuggestsTattooImageFieldsWithAi;
+use App\Models\Placement;
 use App\Models\Portfolio;
 use App\Models\Style;
 use Illuminate\Http\JsonResponse;
@@ -21,9 +22,15 @@ class PortfolioController extends Controller
         return Style::active()->ordered()->pluck('name')->values()->all();
     }
 
+    private function placements(): array
+    {
+        return Placement::active()->ordered()->pluck('name')->values()->all();
+    }
+
     private function basePortfolioRules(bool $requireImage): array
     {
         $styleValues = $this->styles();
+        $placementValues = $this->placements();
 
         $rules = [
             'title' => ['required', 'string', 'max:255'],
@@ -32,6 +39,7 @@ class PortfolioController extends Controller
             'primary_style' => ['required', 'string', Rule::in($styleValues)],
             'other_styles' => ['nullable', 'array', 'max:2'],
             'other_styles.*' => ['string', Rule::in($styleValues)],
+            'placement' => ['nullable', 'string', Rule::in($placementValues)],
             'color' => ['required', 'string', Rule::in(['color', 'black-grey', 'both'])],
             'tags' => ['nullable', 'array', 'max:30'],
             'tags.*' => ['string', 'max:64'],
@@ -87,6 +95,7 @@ class PortfolioController extends Controller
             ->orderBy('id')
             ->get();
         $styles = $this->styles();
+        $placements = $this->placements();
         $userDetail = Auth::user()->userDetail;
         $instagramConnected = filled($userDetail?->instagram_access_token);
         $instagramUsername = $userDetail?->instagram_username;
@@ -98,6 +107,7 @@ class PortfolioController extends Controller
         return view('artist.portfolio.index', compact(
             'portfolios',
             'styles',
+            'placements',
             'instagramConnected',
             'instagramUsername',
             'instagramImportedCount',
@@ -129,6 +139,7 @@ class PortfolioController extends Controller
             'image' => $imagePath,
             'primary_style' => $validated['primary_style'],
             'other_styles' => $other,
+            'placement' => $validated['placement'] ?? null,
             'color' => $validated['color'],
             'tags' => $tags,
             'sort_order' => $this->nextSortOrder($userId),
@@ -174,6 +185,7 @@ class PortfolioController extends Controller
             'image' => $imagePath,
             'primary_style' => $validated['primary_style'],
             'other_styles' => $other,
+            'placement' => $validated['placement'] ?? null,
             'color' => $validated['color'],
             'tags' => $tags,
         ]);
