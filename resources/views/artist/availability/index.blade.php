@@ -103,18 +103,16 @@
       </div>
     </div>
 
-    <div class="border-b border-outline-variant/30 mb-8">
-      <nav class="flex gap-1 -mb-px overflow-x-auto" aria-label="Availability sections">
-        <button type="button" id="availability-tab-status" data-availability-tab="status" class="availability-tab-btn shrink-0 px-5 py-3.5 text-sm font-semibold border-b-2 border-primary text-primary transition-colors whitespace-nowrap">
-          Status
-        </button>
-        <button type="button" id="availability-tab-blocked" data-availability-tab="blocked" class="availability-tab-btn shrink-0 px-5 py-3.5 text-sm font-semibold border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">
-          Blocked dates
-        </button>
-        <button type="button" id="availability-tab-hours" data-availability-tab="hours" class="availability-tab-btn shrink-0 px-5 py-3.5 text-sm font-semibold border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">
-          Working hours
-        </button>
-      </nav>
+    <div class="flex items-center gap-2 mb-8 overflow-x-auto" role="tablist" aria-label="Availability sections">
+      <button type="button" id="availability-tab-status" data-availability-tab="status" class="availability-tab-btn shrink-0 px-4 py-2 text-sm font-semibold rounded-xl bg-primary text-on-primary transition-all whitespace-nowrap">
+        Status
+      </button>
+      <button type="button" id="availability-tab-blocked" data-availability-tab="blocked" class="availability-tab-btn shrink-0 px-4 py-2 text-sm font-semibold rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all whitespace-nowrap">
+        Blocked dates
+      </button>
+      <button type="button" id="availability-tab-hours" data-availability-tab="hours" class="availability-tab-btn shrink-0 px-4 py-2 text-sm font-semibold rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all whitespace-nowrap">
+        Working hours
+      </button>
     </div>
 
     <div class="space-y-10">
@@ -415,16 +413,16 @@
       el.classList.remove('active');
     });
     document.querySelectorAll('.availability-tab-btn').forEach(function(btn) {
-      btn.classList.remove('border-primary', 'text-primary');
-      btn.classList.add('border-transparent', 'text-on-surface-variant');
+      btn.classList.remove('bg-primary', 'text-on-primary');
+      btn.classList.add('text-on-surface-variant', 'hover:bg-surface-container-low', 'hover:text-on-surface');
     });
 
     var panel = document.getElementById('availability-panel-' + tab);
     var tabBtn = document.getElementById('availability-tab-' + tab);
     if (panel) panel.classList.add('active');
     if (tabBtn) {
-      tabBtn.classList.add('border-primary', 'text-primary');
-      tabBtn.classList.remove('border-transparent', 'text-on-surface-variant');
+      tabBtn.classList.add('bg-primary', 'text-on-primary');
+      tabBtn.classList.remove('text-on-surface-variant', 'hover:bg-surface-container-low', 'hover:text-on-surface');
     }
 
     if (tab === 'blocked' && typeof renderCalendar === 'function') {

@@ -114,7 +114,7 @@
     <span class="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
   </a>
   </div>
-  <h1 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2" style="" style="font-family: 'Space Grotesk', sans-serif;">Join bookpay for Artists</h1>
+  <h1 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2" style="" style="font-family: 'Space Grotesk', sans-serif;">Join Bookpay for Artists</h1>
   <p class="text-on-surface-variant" style="">Sign up and simplify your bookings.</p>
   
   
@@ -190,7 +190,7 @@
   </p>
   <div class="pt-2">
   <button class="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]" style="" type="submit" id="signup-submit">
-                                  Sign Up
+                                  Sign Up for Free
                                   <span class="material-symbols-outlined" style="">arrow_forward</span>
   </button>
   </div>
