@@ -73,13 +73,19 @@
   
   <p class="text-lg text-primary-fixed-dim/80 leading-relaxed mb-6">Share one booking link, collect the right details, approve requests, and lock in sessions with deposits — without the endless DM back-and-forth.</p>
   
-  <div class="flex flex-wrap gap-3 mb-10">
+  <div class="flex flex-wrap gap-3 mb-6">
     <span class="text-xs bg-white/10 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5">✓ 100% free for artists</span>
     <span class="text-xs bg-white/10 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5">✓ Keep 100% of what you earn</span>
     <span class="text-xs bg-white/10 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5">✓ No monthly subscriptions</span>
     <span class="text-xs bg-white/10 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5">✓ Clients pay a €10 booking fee</span>
   </div>
-  
+
+  <a href="https://inkjin.com/bookpay" target="_blank" rel="noopener noreferrer"
+     class="group inline-flex items-center gap-2 bg-white text-primary hover:bg-white/90 rounded-xl px-5 py-3 mb-10 transition-all w-fit shadow-lg shadow-black/10">
+    <span class="text-sm font-bold">Learn more about Bookpay</span>
+    <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+  </a>
+
   </div>
   <div class="relative z-10">
   <div class="flex items-center gap-4 mb-8">
@@ -101,7 +107,12 @@
   <div class="max-w-md mx-auto w-full">
   <div class="mb-10">
   <div class="lg:hidden mb-8">
-  <div class="flex flex-col gap-1"><span class="text-on-surface text-3xl font-bold tracking-tighter leading-none" style="font-family: 'Space Grotesk', sans-serif;">bookpay</span><span class="text-on-surface-variant text-[9px] uppercase tracking-widest font-medium leading-tight">Tattoo artist platform<br>by Inkjin</span></div>
+  <div class="flex flex-col gap-1 mb-4"><span class="text-on-surface text-3xl font-bold tracking-tighter leading-none" style="font-family: 'Space Grotesk', sans-serif;">bookpay</span><span class="text-on-surface-variant text-[9px] uppercase tracking-widest font-medium leading-tight">Tattoo artist platform<br>by Inkjin</span></div>
+  <a href="https://inkjin.com/bookpay" target="_blank" rel="noopener noreferrer"
+     class="group inline-flex items-center gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl px-4 py-2.5 transition-all w-fit shadow-md">
+    <span class="text-xs font-bold">Learn more about Bookpay</span>
+    <span class="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
+  </a>
   </div>
   <h1 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2" style="" style="font-family: 'Space Grotesk', sans-serif;">Join bookpay for Artists</h1>
   <p class="text-on-surface-variant" style="">Sign up and simplify your bookings.</p>
