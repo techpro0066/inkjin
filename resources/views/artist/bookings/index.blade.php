@@ -1294,6 +1294,15 @@
     });
   });
 
+  var openBookingId = new URLSearchParams(window.location.search).get('booking');
+  if (openBookingId) {
+    var openRow = document.querySelector('[data-booking-row][data-booking-id="' + openBookingId + '"]');
+    var openBtn = openRow ? openRow.querySelector('.js-artist-booking-view') : null;
+    if (openBtn) {
+      openModal(openBtn);
+    }
+  }
+
   modal.querySelectorAll('[data-close-artist-bdm]').forEach(function (el) {
     el.addEventListener('click', closeModal);
   });

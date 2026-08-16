@@ -140,6 +140,42 @@ class Booking extends Model
         return $this->hasOne(ArtistPayout::class);
     }
 
+    public function paymentLink(): HasOne
+    {
+        return $this->hasOne(PaymentLink::class, 'booking_id');
+    }
+
+    public function sessionStartUtc(): ?\Carbon\Carbon
+    {
+        if (! $this->booking_date || ! $this->start_time_utc) {
+            return null;
+        }
+
+        $date = $this->booking_date instanceof \Carbon\Carbon
+            ? $this->booking_date->format('Y-m-d')
+            : (string) $this->booking_date;
+        $time = (string) $this->start_time_utc;
+        if (preg_match('/^\d{1,2}:\d{2}$/', $time)) {
+            $time .= ':00';
+        }
+
+        try {
+            return \Carbon\Carbon::parse($date.' '.$time, 'UTC');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function sessionStartLocal(): ?\Carbon\Carbon
+    {
+        $start = $this->sessionStartUtc();
+        if (! $start) {
+            return null;
+        }
+
+        return $start->copy()->timezone($this->timezone ?: 'UTC');
+    }
+
 
     // Scopes
     public function scopeConfirmed($query)
@@ -215,6 +251,10 @@ class Booking extends Model
             return true;
         }
 
+        if (($details['payment_link_id'] ?? null) !== null) {
+            return false;
+        }
+
         return $this->booking_type === 'custom' && $this->tattoo_id === null;
     }
 
@@ -237,6 +277,12 @@ class Booking extends Model
         }
 
         $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        if (($details['payment_link_id'] ?? null) !== null) {
+            $title = trim((string) ($details['title'] ?? $details['reference'] ?? ''));
+
+            return $title !== '' ? $title : 'Payment link booking';
+        }
+
         $reference = trim((string) ($details['reference'] ?? ''));
 
         return $reference !== '' ? 'Custom · '.$reference : 'Custom tattoo';

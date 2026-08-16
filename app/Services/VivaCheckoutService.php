@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Models\CustomRequest;
+use App\Models\PaymentLink;
 use App\Models\PendingVivaPayment;
 use App\Models\User;
 use App\Models\UserDetail;
@@ -328,6 +329,13 @@ class VivaCheckoutService
             return route('user.bookings.index');
         }
 
+        if ($pending->flow === PendingVivaPayment::FLOW_PAYMENT_LINK) {
+            $link = PaymentLink::query()->find($pending->reference_id);
+            if ($link) {
+                return route('public.payment-link', ['code' => $link->code]);
+            }
+        }
+
         return route('login');
     }
 
@@ -358,6 +366,14 @@ class VivaCheckoutService
             $request = CustomRequest::query()->find($pending->reference_id);
             if ($request) {
                 return route('user.custom-requests.payment', $request)
+                    .'?viva=fail&s='.urlencode((string) $pending->viva_order_code);
+            }
+        }
+
+        if ($pending->flow === PendingVivaPayment::FLOW_PAYMENT_LINK) {
+            $link = PaymentLink::query()->find($pending->reference_id);
+            if ($link) {
+                return route('public.payment-link', ['code' => $link->code])
                     .'?viva=fail&s='.urlencode((string) $pending->viva_order_code);
             }
         }

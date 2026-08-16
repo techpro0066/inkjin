@@ -16,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('artist-payouts:process')->daily();
         $schedule->command('signups:purge-unverified-bots')->hourly();
+        $schedule->command('payment-links:send-session-reminders')->hourly();
+        $schedule->command('payment-links:send-expiry-reminders')->hourly();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectUsersTo(fn (Request $request) => authenticated_home_url($request->user()));

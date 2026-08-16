@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Models\CustomRequest;
+use App\Models\PaymentLink;
 use App\Models\PendingVivaPayment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,7 @@ class VivaBookingConfirmationService
         private readonly ManagedRequestBookingService $managedBooking,
         private readonly CustomRequestBookingService $customBooking,
         private readonly PublicVivaBookingService $publicBooking,
+        private readonly PaymentLinkCheckoutService $paymentLinkCheckout,
     ) {}
 
     public function confirmFromWebhookPayload(array $payload): ?Booking
@@ -93,6 +95,7 @@ class VivaBookingConfirmationService
                 PendingVivaPayment::FLOW_MANAGED_REQUEST => $this->confirmManagedRequest($locked, $transactionId),
                 PendingVivaPayment::FLOW_CUSTOM_REQUEST => $this->confirmCustomRequest($locked, $transactionId),
                 PendingVivaPayment::FLOW_PUBLIC_BOOKING => $this->publicBooking->createFromPending($locked, $transactionId),
+                PendingVivaPayment::FLOW_PAYMENT_LINK => $this->paymentLinkCheckout->createFromVivaPending($locked, $transactionId),
                 default => throw new RuntimeException('Unsupported Viva payment flow.'),
             };
         });
@@ -116,6 +119,13 @@ class VivaBookingConfirmationService
             $request = CustomRequest::query()->find($pending->reference_id);
             if ($request?->booking_id) {
                 return Booking::query()->find($request->booking_id);
+            }
+        }
+
+        if ($pending->flow === PendingVivaPayment::FLOW_PAYMENT_LINK && $pending->reference_id) {
+            $link = PaymentLink::query()->find($pending->reference_id);
+            if ($link?->booking_id) {
+                return Booking::query()->find($link->booking_id);
             }
         }
 

@@ -215,6 +215,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
 Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist')->group(function () {
     
     Route::get('/dashboard', [ArtistDashboardController::class, 'index'])->name('artist.dashboard');
+    Route::get('/payment-link', [ArtistDashboardController::class, 'paymentLink'])->name('artist.payment-link');
+    Route::post('/payment-link/validate', [ArtistDashboardController::class, 'validatePaymentLink'])->name('artist.payment-link.validate');
+    Route::post('/payment-link', [ArtistDashboardController::class, 'storePaymentLink'])->name('artist.payment-link.store');
 
     // Settings routes
 
@@ -418,6 +421,20 @@ Route::get('/chat', function () {
 
     return redirect()->route('login');
 })->name('public.chat');
+Route::get('/p/{code}', [ArtistDashboardController::class, 'publicPaymentLink'])->name('public.payment-link');
+Route::post('/p/{code}/otp/send', [ArtistDashboardController::class, 'sendPaymentLinkOtp'])->name('public.payment-link.otp.send');
+Route::post('/p/{code}/otp/verify', [ArtistDashboardController::class, 'verifyPaymentLinkOtp'])->name('public.payment-link.otp.verify');
+Route::post('/p/{code}/payment-intent', [ArtistDashboardController::class, 'createPaymentLinkPaymentIntent'])->name('public.payment-link.payment-intent');
+Route::post('/p/{code}/payment/confirm', [ArtistDashboardController::class, 'confirmPaymentLinkPayment'])->name('public.payment-link.payment.confirm');
+Route::post('/p/{code}/payment/viva/order', [ArtistDashboardController::class, 'createPaymentLinkVivaOrder'])->name('public.payment-link.viva.order');
+Route::get('/p/{code}/payment/viva/status', [ArtistDashboardController::class, 'paymentLinkVivaStatus'])->name('public.payment-link.viva.status');
+Route::get('/p/{code}/session-details/{booking}', [ArtistDashboardController::class, 'paymentLinkSessionDetails'])
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('public.payment-link.session-details');
+Route::post('/p/{code}/session-details/{booking}', [ArtistDashboardController::class, 'storePaymentLinkSessionDetails'])
+    ->name('public.payment-link.session-details.store');
+Route::post('/p/{code}/session-details/{booking}/image', [ArtistDashboardController::class, 'uploadPaymentLinkSessionDetailsImage'])
+    ->name('public.payment-link.session-details.image');
 Route::get('/@{username}', [InkJinController::class, 'publicArtistProfile'])->name('public.artist');
 
 Route::get('/@{user_name}/{tattoo_slug}', [InkJinController::class, 'publicTattooPage'])->name('public.tattoo');

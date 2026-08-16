@@ -167,4 +167,9 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(SmartPricingSize::class)->ordered();
     }
+
+    public function paymentLinks()
+    {
+        return $this->hasMany(PaymentLink::class, 'artist_id');
+    }
 }

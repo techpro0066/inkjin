@@ -13,6 +13,8 @@ class PendingVivaPayment extends Model
 
     public const FLOW_CUSTOM_REQUEST = 'custom_request';
 
+    public const FLOW_PAYMENT_LINK = 'payment_link';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_PAID = 'paid';
