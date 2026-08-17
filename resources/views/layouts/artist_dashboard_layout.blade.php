@@ -159,7 +159,12 @@
   <!-- Main Content -->
   @yield('content')
 
-  
+  <a href="{{ route('artist.payment-link') }}"
+     class="fixed right-5 z-[120] inline-flex items-center gap-1.5 rounded-full bg-[#1c1b21] px-5 py-3.5 text-sm font-bold text-white shadow-lg hover:opacity-95 transition-opacity whitespace-nowrap"
+     style="bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));">
+    <span class="material-symbols-outlined text-[20px] leading-none" style="font-variation-settings: 'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24;">add</span>
+    New payment link
+  </a>
 
   <div id="saveToast" class="fixed top-6 right-6 z-50 transform translate-x-full opacity-0 transition-all duration-300">
     <div class="flex items-center gap-3 bg-on-surface text-white px-5 py-3 rounded-xl shadow-lg">
