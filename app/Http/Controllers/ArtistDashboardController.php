@@ -6,6 +6,7 @@ use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Availability;
 use App\Models\AvailabilityOverride;
+use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\CustomRequest;
 use App\Models\PaymentLink;
@@ -15,7 +16,9 @@ use App\Models\Style;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Services\ArtistDashboardService;
+use App\Services\BalanceCollectionCheckoutService;
 use App\Services\PaymentLinkCheckoutService;
+use App\Services\StripeConnectService;
 use App\Support\ArtistPolicyCopy;
 use App\Support\PaymentMethods;
 use Carbon\Carbon;
@@ -29,7 +32,10 @@ use Illuminate\View\View;
 
 class ArtistDashboardController extends Controller
 {
-    public function __construct(private ArtistDashboardService $dashboardService) {}
+    public function __construct(
+        private ArtistDashboardService $dashboardService,
+        private StripeConnectService $stripeConnect,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -51,15 +57,60 @@ class ArtistDashboardController extends Controller
         $dashboard = $this->dashboardService->buildForArtist((int) Auth::id());
         $userDetail = $user?->userDetail;
         $showCustomizePageNotice = $userDetail && ! $userDetail->customize_page_notice_dismissed;
+        $paymentNotApproved = $this->shouldShowPayoutSetupNotice($userDetail);
 
         return view('artist.dashboard', [
             'needsWeeklyAvailabilitySetup' => $needsWeeklyAvailabilitySetup,
             'showCustomizePageNotice' => $showCustomizePageNotice,
+            'paymentNotApproved' => $paymentNotApproved,
             'recentCustomRequests' => $recentCustomRequests,
             'pendingCustomRequestsCount' => $pendingCustomRequestsCount,
             'dashboardStats' => $dashboard['stats'],
             'recentBookings' => $dashboard['recent_bookings'],
         ]);
+    }
+
+    private function shouldShowPayoutSetupNotice(?UserDetail $userDetail): bool
+    {
+        if (! $userDetail) {
+            return false;
+        }
+
+        $paymentType = (string) ($userDetail->payment_type ?? '');
+
+        if ($paymentType === 'studio_account') {
+            return ! empty($userDetail->studio_id) && ($userDetail->payment_status ?? '') === 'pending';
+        }
+
+        if ($paymentType !== 'artist_account') {
+            return false;
+        }
+
+        if (($userDetail->payment_status ?? '') === 'approved') {
+            return false;
+        }
+
+        $accountId = trim((string) ($userDetail->stripe_account_id ?? ''));
+        if ($accountId === '' || ! $this->stripeConnect->isConfigured()) {
+            return true;
+        }
+
+        try {
+            $status = $this->stripeConnect->getOnboardingStatus($accountId);
+        } catch (\Throwable) {
+            return true;
+        }
+
+        $stripeEnabled = ! empty($status['complete'])
+            || ! empty($status['payout_ready'])
+            || (! empty($status['charges_enabled']) && ! empty($status['payouts_enabled']));
+
+        if ($stripeEnabled && ($userDetail->payment_status ?? '') !== 'approved') {
+            $userDetail->payment_status = 'approved';
+            $userDetail->save();
+        }
+
+        return ! $stripeEnabled;
     }
 
     public function paymentLink(Request $request): View
@@ -150,12 +201,16 @@ class ArtistDashboardController extends Controller
         ]);
     }
 
-    public function publicPaymentLink(Request $request, string $code): View
+    public function publicPaymentLink(Request $request, string $code, PaymentLinkCheckoutService $checkout): View
     {
         $paymentLink = PaymentLink::query()
             ->with(['artist.userDetail.user', 'booking.user'])
             ->where('code', $code)
-            ->firstOrFail();
+            ->first();
+
+        if (! $paymentLink) {
+            return $this->publicBalanceCollection($request, $code);
+        }
 
         if ($paymentLink->isExpired() && $paymentLink->status === PaymentLink::STATUS_ACTIVE) {
             $paymentLink->update(['status' => PaymentLink::STATUS_EXPIRED]);
@@ -221,6 +276,9 @@ class ArtistDashboardController extends Controller
 
         $artistHeader = $this->paymentLinkArtistHeader($userDetail);
         $policyCopy = ArtistPolicyCopy::for($userDetail);
+        $policyCopy['deposit'] = $isDeposit
+            ? 'A '.$amountFormatted.' deposit is required to secure and confirm your appointment. The deposit goes toward the final cost of your tattoo.'
+            : 'A '.$amountFormatted.' payment is required to secure and confirm your appointment.';
         $artistFirst = trim((string) ($artist?->first_name ?? ''));
         $policyName = $artistFirst !== '' ? $artistFirst : ($artistHeader['name'] ?? 'Artist');
         $policyPossessive = str_ends_with(mb_strtolower($policyName), 's')
@@ -232,6 +290,11 @@ class ArtistDashboardController extends Controller
             : $paymentLink->payer_phone;
         $showIrisTab = PaymentMethods::showIrisTab($userDetail, $checkoutPhone);
         $artistSupportsIris = PaymentMethods::isGreekArtist($userDetail);
+
+        $checkoutTotals = $userDetail
+            ? $checkout->checkoutTotals($paymentLink, $paymentLink->booking?->user, $checkoutPhone)
+            : null;
+        $checkoutDisplay = $this->paymentLinkCheckoutDisplay($checkoutTotals);
 
         $checkoutStep = 'booking';
         if ($isPaid) {
@@ -256,6 +319,8 @@ class ArtistDashboardController extends Controller
             'showIrisTab' => $showIrisTab,
             'artistSupportsIris' => $artistSupportsIris,
             'stripePublishableKey' => env('STRIPE_KEY', ''),
+            'checkoutTotals' => $checkoutTotals,
+            'checkoutDisplay' => $checkoutDisplay,
             'summary' => [
                 'title' => $paymentLink->title,
                 'amount' => $amountFormatted,
@@ -378,11 +443,34 @@ class ArtistDashboardController extends Controller
         ]);
         $request->session()->forget($this->paymentLinkOtpSessionKey($code));
 
-        return $otpResponse;
+        $otpData = json_decode($otpResponse->getContent(), true);
+        if (! is_array($otpData)) {
+            $otpData = ['verified' => true];
+        }
+
+        $paymentLink->refresh();
+        $otpData['checkout'] = $this->paymentLinkCheckoutPayload($paymentLink, $phone);
+
+        return response()->json($otpData);
     }
 
     public function createPaymentLinkPaymentIntent(Request $request, string $code, PaymentLinkCheckoutService $checkout): JsonResponse
     {
+        $collection = $this->balanceCollectionByCode($code);
+        if ($collection) {
+            try {
+                $client = $collection->client ?: $collection->booking?->user;
+                $cardholderName = trim((string) $request->input('cardholder_name', trim(($client?->first_name ?? '').' '.($client?->last_name ?? ''))));
+                if ($cardholderName === '') {
+                    $cardholderName = 'Cardholder';
+                }
+
+                return response()->json(app(BalanceCollectionCheckoutService::class)->createStripeIntent($collection, $cardholderName));
+            } catch (\Throwable $e) {
+                return response()->json(['message' => $e->getMessage() ?: 'Unable to initialize payment.'], 422);
+            }
+        }
+
         try {
             [$link, $client] = $this->paymentLinkCheckoutContext($request, $code);
             $cardholderName = trim((string) $request->input('cardholder_name', $link->payer_name ?: $client->first_name));
@@ -405,6 +493,22 @@ class ArtistDashboardController extends Controller
             'payment_method' => ['nullable', 'string', 'max:32'],
         ]);
 
+        $collection = $this->balanceCollectionByCode($code);
+        if ($collection) {
+            try {
+                $method = trim((string) ($validated['payment_method'] ?? 'card')) ?: 'card';
+                $booking = app(BalanceCollectionCheckoutService::class)->confirmStripePayment(
+                    $collection,
+                    $validated['payment_intent_id'],
+                    $method
+                );
+
+                return response()->json(app(BalanceCollectionCheckoutService::class)->paymentResponse($booking));
+            } catch (\Throwable $e) {
+                return response()->json(['message' => $e->getMessage() ?: 'Unable to confirm payment.'], 422);
+            }
+        }
+
         try {
             [$link, $client] = $this->paymentLinkCheckoutContext($request, $code);
             $method = trim((string) ($validated['payment_method'] ?? 'card')) ?: 'card';
@@ -420,6 +524,15 @@ class ArtistDashboardController extends Controller
 
     public function createPaymentLinkVivaOrder(Request $request, string $code, PaymentLinkCheckoutService $checkout): JsonResponse
     {
+        $collection = $this->balanceCollectionByCode($code);
+        if ($collection) {
+            try {
+                return response()->json(app(BalanceCollectionCheckoutService::class)->createVivaOrder($collection));
+            } catch (\Throwable $e) {
+                return response()->json(['message' => $e->getMessage() ?: 'Unable to start IRIS payment.'], 422);
+            }
+        }
+
         try {
             [$link, $client] = $this->paymentLinkCheckoutContext($request, $code);
 
@@ -436,6 +549,18 @@ class ArtistDashboardController extends Controller
         $validated = $request->validate([
             'order_code' => ['required'],
         ]);
+
+        $collection = $this->balanceCollectionByCode($code);
+        if ($collection) {
+            try {
+                $status = app(BalanceCollectionCheckoutService::class)->vivaStatus($collection, (string) $validated['order_code']);
+                $http = ($status['status'] ?? '') === 'not_found' ? 404 : 200;
+
+                return response()->json($status, $http);
+            } catch (\Throwable $e) {
+                return response()->json(['status' => 'not_found', 'message' => $e->getMessage()], 404);
+            }
+        }
 
         try {
             [$link, $client] = $this->paymentLinkCheckoutContext($request, $code);
@@ -673,6 +798,112 @@ class ArtistDashboardController extends Controller
         return 'payment_link_otp.'.$code;
     }
 
+    private function balanceCollectionByCode(string $code): ?BalanceCollection
+    {
+        return BalanceCollection::query()
+            ->with(['booking.user', 'booking.tattoo', 'artist.userDetail.user', 'client'])
+            ->where('payment_link_code', $code)
+            ->first();
+    }
+
+    private function publicBalanceCollection(Request $request, string $code): View
+    {
+        $collection = $this->balanceCollectionByCode($code);
+        if (! $collection) {
+            abort(404);
+        }
+
+        $booking = $collection->booking;
+        $artist = $collection->artist;
+        $client = $collection->client ?: $booking?->user;
+        $userDetail = $artist?->userDetail;
+        $isPaid = $collection->isPaid();
+        $amountFormatted = $this->formatEuro((float) $collection->amount);
+        $title = trim((string) ($booking?->displayTitle() ?? ''));
+        if ($title === '') {
+            $title = 'Remaining balance';
+        }
+
+        $dateLine = null;
+        $sessionLine = null;
+        if ($booking?->booking_date && $booking->start_time_utc) {
+            $tz = $booking->timezone ?: ($userDetail?->timezone ?: 'UTC');
+            $startUtc = Carbon::parse(
+                ($booking->booking_date instanceof Carbon ? $booking->booking_date->format('Y-m-d') : (string) $booking->booking_date)
+                .' '.$booking->start_time_utc,
+                'UTC'
+            );
+            $startLocal = $startUtc->timezone($tz);
+            $endLabel = $booking->end_time_utc
+                ? Carbon::parse(
+                    ($booking->booking_date instanceof Carbon ? $booking->booking_date->format('Y-m-d') : (string) $booking->booking_date)
+                    .' '.$booking->end_time_utc,
+                    'UTC'
+                )->timezone($tz)->format('H:i')
+                : null;
+            $dateLine = $startLocal->format('D j M').' · '.$startLocal->format('H:i').($endLabel ? ' – '.$endLabel : '');
+            $sessionLine = $startLocal->format('D j M').' · '.$startLocal->format('H:i');
+        }
+
+        $clientFirstName = trim((string) strtok((string) ($client?->first_name ?? ''), ' '));
+        $clientFullName = trim(trim((string) ($client?->first_name ?? '')).' '.trim((string) ($client?->last_name ?? '')));
+        $artistHeader = $this->paymentLinkArtistHeader($userDetail);
+        $policyCopy = ArtistPolicyCopy::for($userDetail);
+        $policyCopy['deposit'] = 'A '.$amountFormatted.' remaining balance is due for this session.';
+        $artistFirst = trim((string) ($artist?->first_name ?? ''));
+        $policyName = $artistFirst !== '' ? $artistFirst : ($artistHeader['name'] ?? 'Artist');
+        $policyPossessive = str_ends_with(mb_strtolower($policyName), 's')
+            ? $policyName."'"
+            : $policyName."'s";
+
+        $checkoutPhone = $client?->phone_number;
+        $showIrisTab = PaymentMethods::showIrisTab($userDetail, $checkoutPhone);
+        $artistSupportsIris = PaymentMethods::isGreekArtist($userDetail);
+
+        $paymentLink = (object) [
+            'code' => $collection->payment_link_code,
+            'title' => $title,
+            'amount' => $collection->amount,
+        ];
+
+        return view('public.payment-link', [
+            'paymentLink' => $paymentLink,
+            'isExpired' => false,
+            'isPaid' => $isPaid,
+            'isAutoScheduling' => false,
+            'isBalanceCollection' => true,
+            'checkoutStep' => $isPaid ? 'booked' : 'payment',
+            'verifiedCheckout' => [
+                'name' => $clientFullName,
+                'email' => (string) ($client?->email ?? ''),
+                'phone' => (string) ($checkoutPhone ?? ''),
+            ],
+            'artistHeader' => $artistHeader,
+            'userDetail' => $userDetail,
+            'policyCopy' => $policyCopy,
+            'policyPossessive' => $policyPossessive,
+            'showIrisTab' => $showIrisTab,
+            'artistSupportsIris' => $artistSupportsIris,
+            'stripePublishableKey' => env('STRIPE_KEY', ''),
+            'checkoutTotals' => null,
+            'checkoutDisplay' => null,
+            'summary' => [
+                'title' => $title,
+                'amount' => $amountFormatted,
+                'due' => null,
+                'total' => null,
+                'duration_label' => null,
+                'date_line' => $dateLine,
+                'session_line' => $sessionLine,
+                'is_deposit' => false,
+            ],
+            'clientFirstName' => $clientFirstName,
+            'autoDates' => [],
+            'pendingOtp' => null,
+            'bookingReference' => $booking ? $booking->referenceLabel() : null,
+        ]);
+    }
+
     private function paymentLinkCheckoutSessionKey(string $code): string
     {
         return 'payment_link_checkout.'.$code;
@@ -823,6 +1054,7 @@ class ArtistDashboardController extends Controller
             '3h' => 180,
             '4h' => 240,
             'half-day' => 240,
+            'full-day' => 480,
             default => 180,
         };
     }
@@ -831,6 +1063,7 @@ class ArtistDashboardController extends Controller
     {
         return match ($duration) {
             'half-day' => 'Half day',
+            'full-day' => 'Full day',
             default => $duration,
         };
     }
@@ -1023,8 +1256,8 @@ class ArtistDashboardController extends Controller
             'amount' => ['required', 'string'],
             'payment_type' => ['required', 'in:deposit,full'],
             'title' => ['required', 'string', 'max:255'],
-            'session_duration' => ['required', 'in:2h,3h,4h,half-day'],
-            'expires' => ['required', 'string', 'max:50'],
+            'session_duration' => ['required', 'in:2h,3h,4h,half-day,full-day'],
+            'expires' => ['required', 'in:2 days,3 days,7 days'],
             'total_price' => [Rule::requiredIf($isDeposit), 'nullable', 'string'],
         ];
 
@@ -1043,7 +1276,8 @@ class ArtistDashboardController extends Controller
             'session_duration.required' => 'Please select a session duration.',
             'session_duration.in' => 'Please select a valid session duration.',
             'total_price.required' => 'Please enter a total price.',
-            'expires.required' => 'Please enter when this link expires.',
+            'expires.required' => 'Please select when this link expires.',
+            'expires.in' => 'Please select a valid expiration.',
         ]);
 
         $validator->after(function ($validator) use ($request, $isDeposit) {
@@ -1110,7 +1344,7 @@ class ArtistDashboardController extends Controller
             'date_time' => $dateTime,
             'date_time_formatted' => $dateTimeFormatted,
             'session_duration' => $sessionDuration,
-            'session_duration_label' => $sessionDuration === 'half-day' ? 'Half day' : $sessionDuration,
+            'session_duration_label' => $this->paymentLinkDurationLabel($sessionDuration),
             'total_price' => $isDeposit ? $total : null,
             'due_amount' => $due,
             'expires' => $expires,
@@ -1188,6 +1422,106 @@ class ArtistDashboardController extends Controller
         }
 
         return '€'.number_format($rounded, 2, '.', '');
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $totals
+     * @return array{
+     *     base: string,
+     *     fee: string,
+     *     tax: string,
+     *     total: string,
+     *     show_fee: bool,
+     *     show_tax: bool,
+     *     tax_label: string,
+     *     fee_type: string,
+     *     amount_cents: int
+     * }|null
+     */
+    private function paymentLinkCheckoutDisplay(?array $totals): ?array
+    {
+        if (! is_array($totals)) {
+            return null;
+        }
+
+        $fee = (float) ($totals['platform_fee'] ?? 0);
+        $tax = (float) ($totals['tax_amount'] ?? 0);
+        $total = (float) ($totals['total_due'] ?? 0);
+        $bookingFee = is_array($totals['booking_fee'] ?? null) ? $totals['booking_fee'] : [];
+
+        $feeType = (string) ($bookingFee['fee_type'] ?? 'client');
+        if (! in_array($feeType, ['client', 'artist', 'split'], true)) {
+            $feeType = 'client';
+        }
+
+        return [
+            'base' => $this->formatEuro((float) ($totals['base_amount'] ?? 0)),
+            'fee' => $this->formatEuro($fee),
+            'tax' => $this->formatEuro($tax),
+            'total' => $this->formatEuro($total),
+            'show_fee' => $fee > 0,
+            'show_tax' => $tax > 0,
+            'tax_label' => (string) ($totals['tax_label'] ?: 'VAT on booking fee (24%)'),
+            'fee_name' => $feeType === 'split' ? 'Booking fee (your share)' : 'Booking fee',
+            'fee_type' => $feeType,
+            'amount_cents' => (int) round($total * 100),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function paymentLinkCheckoutPayload(PaymentLink $link, ?string $phone): array
+    {
+        $link->loadMissing(['artist.userDetail.user']);
+        $userDetail = $link->artist?->userDetail;
+        if (! $userDetail) {
+            return [];
+        }
+
+        $totals = app(PaymentLinkCheckoutService::class)->checkoutTotals($link, null, $phone);
+        $display = $this->paymentLinkCheckoutDisplay($totals);
+        if (! $display) {
+            return [];
+        }
+
+        $vatApplies = ! empty($display['show_tax']);
+        $feeAmt = (float) ($totals['platform_fee'] ?? 0);
+        $taxAmt = (float) ($totals['tax_amount'] ?? 0);
+        $depositAmt = (float) ($totals['deposit'] ?? $totals['base_amount'] ?? 0);
+        $feeType = (string) ($display['fee_type'] ?? 'client');
+
+        $receiptHtml = "You'll receive a receipt from Inkjin on behalf of the artist for your "
+            .'<strong>€'.number_format($depositAmt, 2).'</strong> deposit';
+        if ($feeAmt > 0) {
+            $receiptHtml .= ', and a separate Inkjin invoice for the '
+                .'<strong>€'.number_format($feeAmt, 2).'</strong>';
+            if ($taxAmt > 0) {
+                $receiptHtml .= ' + <strong>€'.number_format($taxAmt, 2).'</strong> VAT';
+            }
+            $receiptHtml .= ' booking fee';
+        }
+        $receiptHtml .= '.';
+
+        return [
+            'base_label' => $display['base'],
+            'fee_label' => $display['fee'],
+            'fee_name' => $display['fee_name'],
+            'fee_type' => $feeType,
+            'tax_label' => $display['tax'],
+            'tax_name' => $display['tax_label'],
+            'total_label' => $display['total'],
+            'show_fee' => $display['show_fee'],
+            'show_tax' => $display['show_tax'],
+            'show_iris' => PaymentMethods::showIrisTab($userDetail, $phone),
+            'amount_cents' => $display['amount_cents'],
+            'receipt_html' => $receiptHtml,
+            'artist_covers' => $feeType === 'artist',
+            'fee_note' => $feeType === 'artist'
+                ? 'No booking fee — your artist covers it.'
+                : ("Your payment is paid to the artist for the tattoo service — no Inkjin fee applies to it. Inkjin's booking fee, shown below, is a separate charge"
+                    .($vatApplies ? ' and includes VAT.' : '.')),
+        ];
     }
 
     private function parseMoney(?string $value): ?float

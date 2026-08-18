@@ -206,6 +206,7 @@ class OnboardingController extends Controller
         }
 
         $userDetail = $request->user()->userDetail;
+        $this->ensureDefaultArtistPaymentType($userDetail);
         $stripeStatus = null;
         if ($userDetail?->stripe_account_id && $stripeConnect->isConfigured()) {
             try {
@@ -225,6 +226,7 @@ class OnboardingController extends Controller
     public function paymentSettings(Request $request, StripeConnectService $stripeConnect)
     {
         $userDetail = $request->user()->userDetail;
+        $this->ensureDefaultArtistPaymentType($userDetail);
         $stripeStatus = null;
 
         if ($userDetail?->stripe_account_id && $stripeConnect->isConfigured()) {
@@ -333,6 +335,21 @@ class OnboardingController extends Controller
         $userDetail->studio_id = null;
         $userDetail->stripe_account_id = null;
         $userDetail->payment_status = null;
+        $userDetail->save();
+    }
+
+    protected function ensureDefaultArtistPaymentType(?UserDetail $userDetail): void
+    {
+        if (! $userDetail) {
+            return;
+        }
+
+        $current = (string) ($userDetail->payment_type ?? '');
+        if (in_array($current, ['artist_account', 'studio_account'], true)) {
+            return;
+        }
+
+        $userDetail->payment_type = 'artist_account';
         $userDetail->save();
     }
 

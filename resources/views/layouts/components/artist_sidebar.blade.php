@@ -8,7 +8,7 @@
     <a href="{{ route('artist.dashboard') }}" class="nav-item {{ request()->routeIs('artist.dashboard') ? 'active' : '' }}">
       <span class="material-symbols-outlined">dashboard</span> Dashboard
     </a>
-    <a href="{{ route('artist.bookings.index') }}" class="nav-item {{ request()->routeIs('artist.bookings.index') ? 'active' : '' }}">
+    <a href="{{ route('artist.bookings.index') }}" class="nav-item {{ request()->routeIs('artist.bookings.*') ? 'active' : '' }}">
       <span class="material-symbols-outlined">calendar_month</span> Bookings
     </a>
     <a href="{{ route('artist.requests.index') }}" class="nav-item {{ request()->routeIs('artist.requests.index') || request()->routeIs('artist.custom-requests.index') ? 'active' : '' }}">

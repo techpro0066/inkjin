@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Models\CustomRequest;
@@ -19,6 +20,7 @@ class VivaBookingConfirmationService
         private readonly CustomRequestBookingService $customBooking,
         private readonly PublicVivaBookingService $publicBooking,
         private readonly PaymentLinkCheckoutService $paymentLinkCheckout,
+        private readonly BalanceCollectionCheckoutService $balanceCollectionCheckout,
     ) {}
 
     public function confirmFromWebhookPayload(array $payload): ?Booking
@@ -96,6 +98,7 @@ class VivaBookingConfirmationService
                 PendingVivaPayment::FLOW_CUSTOM_REQUEST => $this->confirmCustomRequest($locked, $transactionId),
                 PendingVivaPayment::FLOW_PUBLIC_BOOKING => $this->publicBooking->createFromPending($locked, $transactionId),
                 PendingVivaPayment::FLOW_PAYMENT_LINK => $this->paymentLinkCheckout->createFromVivaPending($locked, $transactionId),
+                PendingVivaPayment::FLOW_BALANCE_COLLECTION => $this->balanceCollectionCheckout->createFromVivaPending($locked, $transactionId),
                 default => throw new RuntimeException('Unsupported Viva payment flow.'),
             };
         });
@@ -126,6 +129,13 @@ class VivaBookingConfirmationService
             $link = PaymentLink::query()->find($pending->reference_id);
             if ($link?->booking_id) {
                 return Booking::query()->find($link->booking_id);
+            }
+        }
+
+        if ($pending->flow === PendingVivaPayment::FLOW_BALANCE_COLLECTION && $pending->reference_id) {
+            $collection = BalanceCollection::query()->find($pending->reference_id);
+            if ($collection?->booking_id) {
+                return Booking::query()->find($collection->booking_id);
             }
         }
 

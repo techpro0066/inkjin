@@ -29,11 +29,38 @@ class PaymentLinkCheckoutService
     public function __construct(
         private readonly GoogleCalendarBookingSyncService $calendarSync,
         private readonly VivaPaymentsService $viva,
+        private readonly BookingCheckoutPricingService $pricing,
     ) {}
 
-    public function amountCents(PaymentLink $link): int
+    /**
+     * @return array{
+     *     base_amount: float,
+     *     deposit: float,
+     *     platform_fee: float,
+     *     subtotal: float,
+     *     tax_amount: float,
+     *     tax_rate: float|null,
+     *     tax_country: string|null,
+     *     tax_label: string|null,
+     *     total_due: float,
+     *     booking_fee: array
+     * }
+     */
+    public function checkoutTotals(PaymentLink $link, ?User $client = null, ?string $phone = null): array
     {
-        return (int) round(((float) $link->amount) * 100);
+        $userDetail = $this->artistDetail($link);
+        $resolvedPhone = trim((string) ($phone ?: $link->payer_phone ?: $client?->phone_number ?: ''));
+
+        return $this->pricing->totalsForAmount(
+            $userDetail,
+            (float) $link->amount,
+            $resolvedPhone !== '' ? $resolvedPhone : null
+        );
+    }
+
+    public function amountCents(PaymentLink $link, ?User $client = null, ?string $phone = null): int
+    {
+        return (int) round(((float) $this->checkoutTotals($link, $client, $phone)['total_due']) * 100);
     }
 
     /**
@@ -45,7 +72,7 @@ class PaymentLinkCheckoutService
         $userDetail = $this->artistDetail($link);
         $this->calendarSync->assertReadyForPayment($userDetail);
 
-        $amountCents = $this->amountCents($link);
+        $amountCents = $this->amountCents($link, $client);
         if ($amountCents < 30) {
             throw new RuntimeException('Payment amount is too small.');
         }
@@ -56,6 +83,7 @@ class PaymentLinkCheckoutService
         }
 
         Stripe::setApiKey($stripeSecret);
+        $totals = $this->checkoutTotals($link, $client);
 
         try {
             $intent = PaymentIntent::create([
@@ -70,6 +98,10 @@ class PaymentLinkCheckoutService
                     'client_user_id' => (string) $client->id,
                     'cardholder_name' => $cardholderName,
                     'stripe_settlement' => 'platform',
+                    'base_amount' => (string) $totals['base_amount'],
+                    'platform_fee' => (string) $totals['platform_fee'],
+                    'tax_amount' => (string) $totals['tax_amount'],
+                    'total_due' => (string) $totals['total_due'],
                 ],
             ]);
         } catch (ApiErrorException $e) {
@@ -108,7 +140,7 @@ class PaymentLinkCheckoutService
 
         $this->assertPayable($link);
 
-        $expectedCents = $this->amountCents($link);
+        $expectedCents = $this->amountCents($link, $client);
         if ((int) $intent->amount !== $expectedCents) {
             throw new RuntimeException('Payment amount does not match this link.');
         }
@@ -138,7 +170,7 @@ class PaymentLinkCheckoutService
             throw new RuntimeException('IRIS payment is not available for this checkout.');
         }
 
-        $amountCents = $this->amountCents($link);
+        $amountCents = $this->amountCents($link, $client);
         if ($amountCents < 30) {
             throw new RuntimeException('Payment amount is too small.');
         }
@@ -338,7 +370,8 @@ class PaymentLinkCheckoutService
             }
 
             $slot = $this->resolveSlot($locked, $userDetail);
-            $amount = round((float) $locked->amount, 2);
+            $totals = $this->checkoutTotals($locked, $client);
+            $amount = (float) $totals['base_amount'];
             $isFullPayment = $locked->payment_type === 'full';
 
             $booking = Booking::create([
@@ -370,9 +403,12 @@ class PaymentLinkCheckoutService
                 'payment_status' => 'paid',
                 'deposit_amount' => $amount,
                 'full_amount_paid' => $isFullPayment,
-                'platform_fee' => 0,
-                'tax_amount' => 0,
-                'total_amount_paid' => $amount,
+                'platform_fee' => $totals['platform_fee'],
+                'tax_amount' => $totals['tax_amount'],
+                'tax_rate' => $totals['tax_rate'],
+                'tax_country' => $totals['tax_country'],
+                'tax_label' => $totals['tax_label'],
+                'total_amount_paid' => $totals['total_due'],
                 'currency' => strtoupper($currency),
                 'notes' => 'Payment link: '.$locked->title,
             ]);
@@ -507,6 +543,7 @@ class PaymentLinkCheckoutService
             '3h' => 180,
             '4h' => 240,
             'half-day' => 240,
+            'full-day' => 480,
             default => 180,
         };
     }

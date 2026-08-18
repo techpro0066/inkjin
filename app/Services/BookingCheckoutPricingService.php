@@ -78,17 +78,43 @@ class BookingCheckoutPricingService
     public function checkoutTotals(UserDetail $userDetail, float $tattooMinPrice, ?string $clientPhone = null): array
     {
         $depositMeta = $this->resolveDepositForTattoo($userDetail, $tattooMinPrice);
+        $priced = $this->totalsForAmount($userDetail, (float) $depositMeta['deposit'], $clientPhone);
+        $priced['deposit'] = $priced['base_amount'];
+        $priced['deposit_meta'] = $depositMeta;
+
+        return $priced;
+    }
+
+    /**
+     * Booking fee + VAT on a fixed amount (deposit, payment-link charge, etc.).
+     *
+     * @return array{
+     *     base_amount: float,
+     *     deposit: float,
+     *     platform_fee: float,
+     *     subtotal: float,
+     *     tax_amount: float,
+     *     tax_rate: float|null,
+     *     tax_country: string|null,
+     *     tax_label: string|null,
+     *     total_due: float,
+     *     booking_fee: array
+     * }
+     */
+    public function totalsForAmount(UserDetail $userDetail, float $baseAmount, ?string $clientPhone = null): array
+    {
+        $baseAmount = round(max(0, $baseAmount), 2);
         $bookingFee = $this->resolveBookingFee($userDetail);
-        $deposit = (float) $depositMeta['deposit'];
         $platformFee = (float) $bookingFee['client_fee'];
-        $subtotal = round($deposit + $platformFee, 2);
+        $subtotal = round($baseAmount + $platformFee, 2);
 
         $vat = EuVat::taxOnBookingFee($platformFee, $clientPhone);
         $taxAmount = (float) $vat['tax_amount'];
         $totalDue = round($subtotal + $taxAmount, 2);
 
         return [
-            'deposit' => $deposit,
+            'base_amount' => $baseAmount,
+            'deposit' => $baseAmount,
             'platform_fee' => $platformFee,
             'subtotal' => $subtotal,
             'tax_amount' => $taxAmount,
@@ -96,7 +122,6 @@ class BookingCheckoutPricingService
             'tax_country' => $vat['country_code'],
             'tax_label' => $vat['label'],
             'total_due' => $totalDue,
-            'deposit_meta' => $depositMeta,
             'booking_fee' => $bookingFee,
         ];
     }

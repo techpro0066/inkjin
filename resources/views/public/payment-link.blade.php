@@ -80,6 +80,7 @@
       </div>
       </div>
 
+      @if(empty($isBalanceCollection))
       <div id="paymentLinkBookingView" class="{{ ($checkoutStep ?? 'booking') === 'booking' ? '' : 'hidden' }}">
       @if($isAutoScheduling)
         <div class="rounded-xl bg-surface-container-low px-4 py-3.5 mb-5">
@@ -187,18 +188,52 @@
           Resend code
         </button>
       </div>
+      @endif
 
       <div id="paymentLinkPayView" class="{{ ($checkoutStep ?? '') === 'payment' ? '' : 'hidden' }}">
         <div class="flex items-start justify-between gap-4 mb-5">
           <div class="min-w-0">
             <p class="text-base font-medium text-on-surface-variant leading-snug">{{ $summary['title'] }}</p>
+            @if(!empty($isBalanceCollection))
+              <p class="text-sm font-semibold text-on-surface mt-1">Remaining balance</p>
+            @endif
             @if(!empty($summary['date_line']))
               <p class="text-sm text-on-surface-variant mt-1">{{ $summary['date_line'] }}</p>
             @endif
           </div>
-          <p class="text-3xl font-extrabold text-on-surface tracking-tight flex-shrink-0">{{ $summary['amount'] }}</p>
+          <p id="plPayHeaderTotal" class="text-3xl font-extrabold text-on-surface tracking-tight flex-shrink-0">{{ $checkoutDisplay['total'] ?? $summary['amount'] }}</p>
         </div>
 
+        @if(empty($isBalanceCollection) && !empty($checkoutDisplay))
+          @php
+            $feeType = (string) ($checkoutDisplay['fee_type'] ?? 'client');
+            $showFeeRow = !empty($checkoutDisplay['show_fee']);
+            $feeName = $feeType === 'split' ? 'Booking fee (your share)' : 'Booking fee';
+          @endphp
+          <div id="plPaySummaryWrap" class="bg-surface-container-low rounded-xl px-4 py-3 {{ $feeType === 'artist' ? 'mb-2' : 'mb-5' }}">
+            <div class="space-y-1.5 text-sm">
+              <div class="flex justify-between">
+                <span class="text-on-surface-variant">{{ !empty($summary['is_deposit']) ? 'Deposit' : 'Payment' }}</span>
+                <span id="plPayBase" class="font-semibold tabular-nums">{{ $checkoutDisplay['base'] }}</span>
+              </div>
+              <div id="plPayFeeRow" class="flex justify-between items-center gap-2 {{ $showFeeRow ? '' : 'hidden' }}">
+                <span id="plPayFeeName" class="text-on-surface-variant">{{ $feeName }}</span>
+                <span id="plPayFee" class="font-semibold tabular-nums">{{ $checkoutDisplay['fee'] }}</span>
+              </div>
+              <div id="plPayTaxRow" class="flex justify-between {{ !empty($checkoutDisplay['show_tax']) ? '' : 'hidden' }}">
+                <span id="plPayTaxName" class="text-on-surface-variant">{{ $checkoutDisplay['tax_label'] }}</span>
+                <span id="plPayTax" class="font-semibold tabular-nums">{{ $checkoutDisplay['tax'] }}</span>
+              </div>
+              <div class="flex justify-between pt-1">
+                <span class="font-bold text-on-surface">Total today</span>
+                <span id="plPayTotal" class="font-bold text-on-surface tabular-nums">{{ $checkoutDisplay['total'] }}</span>
+              </div>
+            </div>
+          </div>
+          <p id="plPayArtistCovers" class="text-sm text-on-surface-variant italic mb-5 {{ $feeType === 'artist' ? '' : 'hidden' }}">No booking fee — your artist covers it.</p>
+        @endif
+
+        @if(empty($isBalanceCollection))
         <div class="rounded-2xl bg-[#f4eee4] px-4 py-3.5 mb-5">
           <p class="font-bold text-on-surface mb-1">{{ $policyPossessive }} booking policy</p>
           <p class="text-sm text-on-surface-variant leading-relaxed">
@@ -208,6 +243,7 @@
             18+ only.
           </p>
         </div>
+        @endif
 
         @include('partials.checkout-payment-tabs', [
           'showIrisTab' => $showIrisTab ?? false,
@@ -252,13 +288,15 @@
         ])
 
         <div id="panelPayCardExtras">
-          @if($userDetail)
-            @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
+          @if(empty($isBalanceCollection))
+            @if($userDetail)
+              @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
+            @endif
+            @include('partials.checkout-policy-agree', ['agreeOnChange' => 'checkPayReady()'])
           @endif
-          @include('partials.checkout-policy-agree', ['agreeOnChange' => 'checkPayReady()'])
           <p class="text-sm text-error hidden mb-3" id="formError"></p>
           <button id="btnConfirmPay" type="button" disabled class="w-full py-4 rounded-xl font-bold text-white bg-[#1c1b21] disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all text-base">
-            Pay {{ $summary['amount'] }}
+            Pay {{ $checkoutDisplay['total'] ?? $summary['amount'] }}
           </button>
         </div>
         <p class="text-center text-xs text-on-surface-variant/80 mt-5">Secured by Bookpay</p>
@@ -270,7 +308,13 @@
             <span class="material-symbols-outlined text-[18px] text-[#1b7f3a]" style="font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;">check</span>
           </div>
           <h1 class="text-xl sm:text-[22px] font-bold text-on-surface tracking-tight">
-            @if(!empty($clientFirstName))
+            @if(!empty($isBalanceCollection))
+              @if(!empty($clientFirstName))
+                Payment received, {{ $clientFirstName }}
+              @else
+                Payment received
+              @endif
+            @elseif(!empty($clientFirstName))
               You're booked, {{ $clientFirstName }}
             @else
               You're booked
@@ -281,7 +325,7 @@
         <div class="rounded-2xl bg-[#f4efe8] px-5 py-4 mb-6">
           <div class="flex items-center justify-between gap-4 py-1.5">
             <span class="text-sm text-on-surface-variant">Paid</span>
-            <span class="text-sm font-bold text-on-surface">{{ $summary['amount'] }}</span>
+            <span class="text-sm font-bold text-on-surface">{{ $checkoutDisplay['total'] ?? $summary['amount'] }}</span>
           </div>
           @if(!empty($summary['session_line']) || !empty($summary['date_line']))
             <div class="flex items-center justify-between gap-4 py-1.5">
@@ -301,9 +345,15 @@
           @endif
         </div>
 
+        @if(empty($isBalanceCollection))
         <p class="text-sm text-on-surface-variant leading-relaxed">
           A few quick questions about your session are on their way to your email.
         </p>
+        @else
+        <p class="text-sm text-on-surface-variant leading-relaxed">
+          Thanks — your remaining balance is paid and this booking is marked completed.
+        </p>
+        @endif
       </div>
     </div>
   @endif
@@ -811,6 +861,9 @@
           if (nameField && contact.name && !String(nameField.value || '').trim()) {
             nameField.value = contact.name;
           }
+          if (result.data.checkout && typeof window.applyPaymentLinkCheckout === 'function') {
+            window.applyPaymentLinkCheckout(result.data.checkout);
+          }
           showView('payment');
         }).catch(function () {
           setOtpError('Could not verify the code. Please try again.');
@@ -871,8 +924,8 @@
   (function () {
     var csrfToken = @json(csrf_token());
     var stripePublishableKey = @json($stripePublishableKey ?? '');
-    var payAmountLabel = @json($summary['amount'] ?? '');
-    var amountCents = {{ (int) round(((float) $paymentLink->amount) * 100) }};
+    var payAmountLabel = @json($checkoutDisplay['total'] ?? $summary['amount'] ?? '');
+    var amountCents = {{ (int) ($checkoutDisplay['amount_cents'] ?? round(((float) $paymentLink->amount) * 100)) }};
     var intentUrl = @json(route('public.payment-link.payment-intent', ['code' => $paymentLink->code]));
     var confirmUrl = @json(route('public.payment-link.payment.confirm', ['code' => $paymentLink->code]));
     var stripe = null;
@@ -883,6 +936,48 @@
     var isStripeMounted = false;
     var stripeCardComplete = { number: false, expiry: false, cvc: false };
     var checkoutReady = false;
+
+    window.applyPaymentLinkCheckout = function (payload) {
+      if (!payload) return;
+      function setText(id, value) {
+        var el = document.getElementById(id);
+        if (el && value != null && value !== '') el.textContent = value;
+      }
+      if (typeof payload.amount_cents === 'number') {
+        amountCents = payload.amount_cents;
+      }
+      if (payload.total_label) {
+        payAmountLabel = payload.total_label;
+        var payBtn = document.getElementById('btnConfirmPay');
+        if (payBtn) payBtn.textContent = 'Pay ' + payload.total_label;
+        setText('plPayHeaderTotal', payload.total_label);
+        setText('plPayTotal', payload.total_label);
+      }
+      setText('plPayBase', payload.base_label);
+      setText('plPayFee', payload.fee_label);
+      setText('plPayFeeName', payload.fee_name);
+      setText('plPayTax', payload.tax_label);
+      setText('plPayTaxName', payload.tax_name);
+      var feeRow = document.getElementById('plPayFeeRow');
+      if (feeRow) feeRow.classList.toggle('hidden', !payload.show_fee);
+      var taxRow = document.getElementById('plPayTaxRow');
+      if (taxRow) taxRow.classList.toggle('hidden', !payload.show_tax);
+      var covers = document.getElementById('plPayArtistCovers');
+      var artistCovers = payload.fee_type === 'artist' || !!payload.artist_covers;
+      if (covers) covers.classList.toggle('hidden', !artistCovers);
+      var summaryWrap = document.getElementById('plPaySummaryWrap');
+      if (summaryWrap) {
+        summaryWrap.classList.toggle('mb-2', artistCovers);
+        summaryWrap.classList.toggle('mb-5', !artistCovers);
+      }
+      var tabIris = document.getElementById('tabPayIris');
+      if (tabIris) {
+        tabIris.classList.toggle('hidden', !payload.show_iris);
+        if (!payload.show_iris && tabIris.getAttribute('aria-selected') === 'true' && window.checkoutSetActivePayTab) {
+          window.checkoutSetActivePayTab('card');
+        }
+      }
+    };
 
     window.vivaCsrfToken = csrfToken;
     window.vivaOrderUrl = @json(route('public.payment-link.viva.order', ['code' => $paymentLink->code]));
@@ -915,7 +1010,8 @@
     }
 
     window.checkPayReady = function () {
-      var agreed = !!document.getElementById('agreePolicy')?.checked;
+      var agreeEl = document.getElementById('agreePolicy');
+      var agreed = !agreeEl || !!agreeEl.checked;
       var hasCardName = String(document.getElementById('inputCardName')?.value || '').trim().length > 1;
       var ready = agreed && hasCardName && isPaymentCardReady();
       var btn = document.getElementById('btnConfirmPay');
@@ -1019,7 +1115,8 @@
 
     async function payWithCard() {
       setFormError('');
-      if (!document.getElementById('agreePolicy')?.checked) {
+      var agreeEl = document.getElementById('agreePolicy');
+      if (agreeEl && !agreeEl.checked) {
         setFormError('Please accept the cancellation policy and terms.');
         return;
       }
@@ -1069,7 +1166,8 @@
       label: @json($summary['title'] ?? 'Bookpay'),
       getAmountCents: function () { return amountCents; },
       isPolicyAccepted: function () {
-        return !!document.getElementById('agreePolicy')?.checked;
+        var agreeEl = document.getElementById('agreePolicy');
+        return !agreeEl || !!agreeEl.checked;
       },
       getClientSecret: async function (ev) {
         var cardholderName = (ev && ev.payerName)

@@ -72,6 +72,40 @@ class PaymentLink extends Model
         return $this->status === self::STATUS_PAID || $this->paid_at !== null;
     }
 
+    public function listStatus(): string
+    {
+        if ($this->isPaid()) {
+            return 'paid';
+        }
+
+        if ($this->isExpired()) {
+            return 'expired';
+        }
+
+        return 'pending';
+    }
+
+    public function publicUrl(): string
+    {
+        $url = trim((string) ($this->url ?? ''));
+
+        return $url !== '' ? $url : route('public.payment-link', ['code' => $this->code]);
+    }
+
+    public function depositAmount(): float
+    {
+        return round((float) $this->amount, 2);
+    }
+
+    public function totalAmount(): float
+    {
+        if ($this->payment_type === 'deposit' && $this->total_price !== null) {
+            return round((float) $this->total_price, 2);
+        }
+
+        return $this->depositAmount();
+    }
+
     public function isExpired(): bool
     {
         if ($this->isPaid()) {

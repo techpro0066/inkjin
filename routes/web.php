@@ -139,7 +139,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'client_password'])->group(
     Route::post('/api/bookings/{id}/cancel', [\App\Http\Controllers\BookingCancellationController::class, 'cancel'])->name('api.bookings.cancel');
     Route::post('/api/bookings/{id}/mark-no-show', [\App\Http\Controllers\BookingCancellationController::class, 'markNoShow'])->name('api.bookings.mark-no-show');
     Route::post('/api/bookings/{id}/send-completion-code', [\App\Http\Controllers\BookingsController::class, 'sendCompletionCode'])->name('api.bookings.send-completion-code');
+    Route::get('/api/bookings/live-status', [\App\Http\Controllers\BookingsController::class, 'liveStatus'])->name('api.bookings.live-status');
     Route::post('/api/bookings/{id}/mark-completed', [\App\Http\Controllers\BookingsController::class, 'markCompleted'])->name('api.bookings.mark-completed');
+    Route::post('/api/bookings/{id}/balance-collections', [\App\Http\Controllers\BookingsController::class, 'storeBalanceCollection'])->name('api.bookings.balance-collections.store');
     
     // Booking rescheduling routes
     Route::get('/api/bookings/{id}/can-reschedule', [\App\Http\Controllers\ReschedulingController::class, 'checkCanReschedule'])->name('api.bookings.can-reschedule');
@@ -339,6 +341,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
 
     // Booking routes
     Route::get('/bookings', [ArtistBookingsController::class, 'index'])->name('artist.bookings.index');
+    Route::get('/bookings/payment-links', [ArtistBookingsController::class, 'paymentLinks'])->name('artist.bookings.payment-links');
 
     // Requests
     Route::get('/requests', [RequestsController::class, 'index'])->name('artist.requests.index');

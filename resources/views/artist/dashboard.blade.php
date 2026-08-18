@@ -117,10 +117,6 @@
     @endphp
 
     @php
-      $paymentNotApproved = $ud && (
-        (($ud->payment_type ?? '') === 'studio_account' && !empty($ud->studio_id) && ($ud->payment_status ?? '') === 'pending')
-        || (($ud->payment_type ?? '') === 'artist_account' && ($ud->payment_status ?? '') !== 'approved')
-      );
       $paymentNoticeDescription = ($ud && ($ud->payment_type ?? '') === 'studio_account')
         ? 'Your studio still needs to approve payout details before you can receive earnings.'
         : 'Complete and approve your payout method to receive earnings.';

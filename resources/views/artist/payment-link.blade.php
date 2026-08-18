@@ -66,6 +66,7 @@
         @csrf
         <input type="hidden" name="payment_type" id="paymentLinkPaymentType" value="">
         <input type="hidden" name="session_duration" id="paymentLinkSessionDuration" value="">
+        <input type="hidden" name="expires" id="paymentLinkExpires" value="">
 
         <div>
           <label for="paymentLinkAmount" class="block text-sm text-on-surface-variant mb-2">Amount</label>
@@ -132,34 +133,31 @@
             <button type="button" data-choice-group="session-duration" data-choice-value="3h" class="payment-choice-btn rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm sm:text-base font-semibold text-on-surface">3h</button>
             <button type="button" data-choice-group="session-duration" data-choice-value="4h" class="payment-choice-btn rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm sm:text-base font-semibold text-on-surface">4h</button>
             <button type="button" data-choice-group="session-duration" data-choice-value="half-day" class="payment-choice-btn rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm sm:text-base font-semibold text-on-surface">Half day</button>
+            <button type="button" data-choice-group="session-duration" data-choice-value="full-day" class="payment-choice-btn rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm sm:text-base font-semibold text-on-surface">Full day</button>
           </div>
           <p id="session_duration_error" class="hidden text-sm text-error mt-1.5"></p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div id="paymentLinkTotalPriceWrap" class="hidden">
-            <label for="paymentLinkTotalPrice" class="block text-sm text-on-surface-variant mb-2">Total price</label>
-            <input
-              id="paymentLinkTotalPrice"
-              name="total_price"
-              type="text"
-              placeholder="€ 0"
-              class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3.5 text-base text-on-surface placeholder:text-outline/50 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-            >
-            <p id="total_price_error" class="hidden text-sm text-error mt-1.5"></p>
+        <div id="paymentLinkTotalPriceWrap" class="hidden">
+          <label for="paymentLinkTotalPrice" class="block text-sm text-on-surface-variant mb-2">Total price</label>
+          <input
+            id="paymentLinkTotalPrice"
+            name="total_price"
+            type="text"
+            placeholder="€ 0"
+            class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3.5 text-base text-on-surface placeholder:text-outline/50 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+          >
+          <p id="total_price_error" class="hidden text-sm text-error mt-1.5"></p>
+        </div>
+
+        <div>
+          <p class="block text-sm text-on-surface-variant mb-2">Expires</p>
+          <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Expires">
+            <button type="button" data-choice-group="expires" data-choice-value="2 days" class="payment-choice-btn rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm sm:text-base font-semibold text-on-surface">2 days</button>
+            <button type="button" data-choice-group="expires" data-choice-value="3 days" class="payment-choice-btn rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm sm:text-base font-semibold text-on-surface">3 days</button>
+            <button type="button" data-choice-group="expires" data-choice-value="7 days" class="payment-choice-btn rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm sm:text-base font-semibold text-on-surface">7 days</button>
           </div>
-          <div>
-            <label for="paymentLinkExpires" class="block text-sm text-on-surface-variant mb-2">Expires</label>
-            <input
-              id="paymentLinkExpires"
-              name="expires"
-              type="text"
-              value="7 days"
-              placeholder="e.g. 7 days"
-              class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3.5 text-base text-on-surface placeholder:text-outline/50 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-            >
-            <p id="expires_error" class="hidden text-sm text-error mt-1.5"></p>
-          </div>
+          <p id="expires_error" class="hidden text-sm text-error mt-1.5"></p>
         </div>
 
         <button type="submit" id="paymentLinkGenerateBtn" class="w-full rounded-xl bg-[#1c1b21] px-4 py-4 text-base font-bold text-white">
@@ -257,13 +255,14 @@
   var balanceNote = document.getElementById('paymentLinkBalanceNote');
   var paymentTypeInput = document.getElementById('paymentLinkPaymentType');
   var sessionDurationInput = document.getElementById('paymentLinkSessionDuration');
+  var expiresInput = document.getElementById('paymentLinkExpires');
   var dateTimeInput = document.getElementById('paymentLinkDateTime');
   var fieldInputs = {
     amount: amountInput,
     title: document.getElementById('paymentLinkTitle'),
     date_time: dateTimeInput,
     total_price: totalPriceInput,
-    expires: document.getElementById('paymentLinkExpires')
+    expires: expiresInput
   };
 
   if (window.flatpickr && dateTimeInput) {
@@ -452,6 +451,10 @@
         if (sessionDurationInput) sessionDurationInput.value = value;
         clearFieldError('session_duration');
       }
+      if (group === 'expires') {
+        if (expiresInput) expiresInput.value = value;
+        clearFieldError('expires');
+      }
     });
   });
 
@@ -462,6 +465,7 @@
 
   selectDefaultChoice('payment-type', 'deposit');
   selectDefaultChoice('session-duration', '3h');
+  selectDefaultChoice('expires', '7 days');
 
   if (totalPriceInput) {
     totalPriceInput.addEventListener('input', validateTotalPrice);

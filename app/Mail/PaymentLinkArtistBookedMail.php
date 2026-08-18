@@ -92,7 +92,11 @@ class PaymentLinkArtistBookedMail extends Mailable
     {
         $duration = (string) $this->paymentLink->session_duration;
 
-        return $duration === 'half-day' ? 'Half day' : ($duration !== '' ? $duration : '3h');
+        return match ($duration) {
+            'half-day' => 'Half day',
+            'full-day' => 'Full day',
+            default => $duration !== '' ? $duration : '3h',
+        };
     }
 
     private function sessionStartLocal(): ?Carbon

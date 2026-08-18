@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\ArtistDesign;
 
@@ -143,6 +144,16 @@ class Booking extends Model
     public function paymentLink(): HasOne
     {
         return $this->hasOne(PaymentLink::class, 'booking_id');
+    }
+
+    public function balanceCollections(): HasMany
+    {
+        return $this->hasMany(BalanceCollection::class);
+    }
+
+    public function latestBalanceCollection(): HasOne
+    {
+        return $this->hasOne(BalanceCollection::class)->latestOfMany();
     }
 
     public function sessionStartUtc(): ?\Carbon\Carbon

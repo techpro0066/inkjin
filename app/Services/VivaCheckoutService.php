@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Models\CustomRequest;
@@ -336,6 +337,13 @@ class VivaCheckoutService
             }
         }
 
+        if ($pending->flow === PendingVivaPayment::FLOW_BALANCE_COLLECTION) {
+            $collection = BalanceCollection::query()->find($pending->reference_id);
+            if ($collection?->payment_link_code) {
+                return route('public.payment-link', ['code' => $collection->payment_link_code]);
+            }
+        }
+
         return route('login');
     }
 
@@ -374,6 +382,14 @@ class VivaCheckoutService
             $link = PaymentLink::query()->find($pending->reference_id);
             if ($link) {
                 return route('public.payment-link', ['code' => $link->code])
+                    .'?viva=fail&s='.urlencode((string) $pending->viva_order_code);
+            }
+        }
+
+        if ($pending->flow === PendingVivaPayment::FLOW_BALANCE_COLLECTION) {
+            $collection = BalanceCollection::query()->find($pending->reference_id);
+            if ($collection?->payment_link_code) {
+                return route('public.payment-link', ['code' => $collection->payment_link_code])
                     .'?viva=fail&s='.urlencode((string) $pending->viva_order_code);
             }
         }

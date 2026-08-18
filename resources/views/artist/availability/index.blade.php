@@ -607,7 +607,7 @@
   var BLOCK_CSRF = '{{ csrf_token() }}';
   var BLOCK_STORE_URL = '{{ route('availability.override.store') }}';
   function blockDestroyUrl(id) {
-    return '{{ url('/availability/override') }}/' + encodeURIComponent(id);
+    return '{{ route('availability.override.destroy', ['id' => '__BLOCK_ID__']) }}'.replace('__BLOCK_ID__', encodeURIComponent(String(id)));
   }
 
   var editingBlockId = null;
