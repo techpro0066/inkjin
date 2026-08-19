@@ -797,8 +797,6 @@
       var $deletePortfolioModal = $('#deletePortfolioModal');
       var $disconnectInstagramModal = $('#disconnectInstagramModal');
       var $addWorkModal = $('#addWorkModal');
-      var $mobileSidebar = $('#mobileSidebar');
-      var $sidebarBackdrop = $('#sidebarBackdrop');
       var $workCropModal = $('#workCropModal');
       var $workCropperImg = $('#workCropperImg');
       var workCropper = null;
@@ -1998,15 +1996,6 @@
       });
       $addWorkModal.find('.add-work-modal-inner').on('click', function (e) {
         e.stopPropagation();
-      });
-
-      $('#mobileMenuBtn').on('click', function () {
-        $mobileSidebar.toggleClass('hidden flex');
-        $sidebarBackdrop.toggleClass('hidden');
-      });
-      $sidebarBackdrop.on('click', function () {
-        $mobileSidebar.addClass('hidden').removeClass('flex');
-        $sidebarBackdrop.addClass('hidden');
       });
 
       $('#workImageUpload').on('click', function (e) {

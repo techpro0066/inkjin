@@ -125,18 +125,27 @@
     .nav-item.active .nav-inbox-unread-dot { background: #310f7a; color: #ffffff; }
     /* Progress bar */
     .progress-fill { transition: width 0.4s ease; }
-    /* Mobile sidebar — handled by Tailwind responsive classes (hidden lg:flex) */
-      .sidebar.open { display: flex !important; }
-      
-      .main-content {  padding-top: 60px !important; }
-      .sidebar-backdrop {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 99;
-      }
+    .sidebar.open { display: flex !important; }
+    .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 90; }
     .sidebar-backdrop.open { display: block; }
+    @media (max-width: 1023px) {
+      .main-content { overflow-x: hidden; padding-top: 70px; }
+      body { overflow-x: hidden; }
+      #mobileSidebar.flex {
+        width: 100% !important;
+        min-width: 100%;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        overflow: hidden;
+        z-index: 100;
+      }
+    }
   </style>
   <!-- end of common css -->
 
@@ -145,10 +154,13 @@
 <body class="bg-surface text-on-surface min-h-screen flex">
 
   <!-- Mobile Header -->
-  <div class="mobile-header fixed top-0 left-0 right-0 z-50 bg-primary text-white px-3 py-3 items-center justify-between">
+  <div class="mobile-header fixed top-0 left-0 right-0 z-[110] bg-primary text-white px-4 py-3 items-center justify-between">
     <span class="text-lg font-bold flex-shrink-0">Inkjin</span>
-    <button id="mobileMenuBtn" onclick="var s=document.getElementById('mobileSidebar');var b=document.getElementById('sidebarBackdrop');var isOpen=!s.classList.contains('hidden');if(isOpen){s.classList.add('hidden');s.classList.remove('flex');if(b){b.classList.add('hidden');b.classList.remove('open');}this.textContent='menu';}else{s.classList.remove('hidden');s.classList.add('flex');if(b){b.classList.remove('hidden');b.classList.add('open');}this.textContent='close';}" class="material-symbols-outlined text-white flex-shrink-0">menu</button>
+    <button type="button" id="mobileMenuBtn" onclick="toggleMobileNav()" class="material-symbols-outlined text-white p-1 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0" aria-expanded="false" aria-label="Open menu">menu</button>
   </div>
+
+  <!-- Sidebar Backdrop -->
+  <div id="sidebarBackdrop" class="sidebar-backdrop hidden" onclick="closeMobileNav()"></div>
 
   <!-- Sidebar -->
   @include('layouts.components.artist_sidebar')
@@ -204,6 +216,50 @@
         showSaveToast(msg);
       } catch (e) {}
     })();
+
+    function closeMobileNav() {
+      var sidebar = document.getElementById('mobileSidebar');
+      var backdrop = document.getElementById('sidebarBackdrop');
+      var btn = document.getElementById('mobileMenuBtn');
+      if (sidebar) {
+        sidebar.classList.add('hidden');
+        sidebar.classList.remove('flex');
+      }
+      if (backdrop) {
+        backdrop.classList.add('hidden');
+        backdrop.classList.remove('open');
+      }
+      if (btn) {
+        btn.textContent = 'menu';
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Open menu');
+      }
+      document.body.style.overflow = '';
+    }
+
+    function toggleMobileNav() {
+      var sidebar = document.getElementById('mobileSidebar');
+      var backdrop = document.getElementById('sidebarBackdrop');
+      var btn = document.getElementById('mobileMenuBtn');
+      if (!sidebar || window.matchMedia('(min-width: 1024px)').matches) return;
+      var open = sidebar.classList.contains('hidden');
+      if (open) {
+        sidebar.classList.remove('hidden');
+        sidebar.classList.add('flex');
+        if (backdrop) {
+          backdrop.classList.remove('hidden');
+          backdrop.classList.add('open');
+        }
+        if (btn) {
+          btn.textContent = 'close';
+          btn.setAttribute('aria-expanded', 'true');
+          btn.setAttribute('aria-label', 'Close menu');
+        }
+        document.body.style.overflow = 'hidden';
+      } else {
+        closeMobileNav();
+      }
+    }
   </script>
 
   @yield('scripts')

@@ -1282,8 +1282,6 @@
       var $designCropModal = $('#designCropModal');
       var $deleteDesignModal = $('#deleteDesignModal');
       var $designCropperImg = $('#designCropperImg');
-      var $mobileSidebar = $('#mobileSidebar');
-      var $sidebarBackdrop = $('#sidebarBackdrop');
       var designCropper = null;
       var CROP_OUT_W = 1080;
       var CROP_OUT_H = 1350;
@@ -3012,15 +3010,6 @@
       });
       $newDesignModal.find('.new-design-modal-inner').on('click', function (e) {
         e.stopPropagation();
-      });
-
-      $('#mobileMenuBtn').on('click', function () {
-        $mobileSidebar.toggleClass('hidden flex');
-        $sidebarBackdrop.toggleClass('hidden');
-      });
-      $sidebarBackdrop.on('click', function () {
-        $mobileSidebar.addClass('hidden').removeClass('flex');
-        $sidebarBackdrop.addClass('hidden');
       });
 
       $('#newDesignModal .toggle-switch').on('click', function () {

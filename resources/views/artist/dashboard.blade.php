@@ -178,14 +178,16 @@
 
     <!-- Welcome Header -->
     <div class="mb-8">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
-        <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Welcome back, {{ Auth::user()->first_name }} {{ Auth::user()->last_name }}</h2>
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0">
+          <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Welcome back, {{ Auth::user()->first_name }} {{ Auth::user()->last_name }}</h2>
+          <p class="text-on-surface-variant mt-1 max-w-lg">Here's what's happening with your bookings today.</p>
+        </div>
         <a href="{{ route('artist.payment-link') }}"
-          class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
+          class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm shrink-0 w-full sm:w-auto">
           <span class="material-symbols-outlined text-lg">add</span> New payment link
         </a>
       </div>
-      <p class="text-on-surface-variant mt-1 max-w-lg">Here's what's happening with your bookings today.</p>
     </div>
 
     <!-- Stats Cards -->
