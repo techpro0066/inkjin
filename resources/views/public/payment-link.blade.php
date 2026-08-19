@@ -147,12 +147,12 @@
         <form id="paymentLinkContactForm" novalidate class="space-y-5">
           <div>
             <label for="plName" class="block text-sm text-on-surface-variant mb-2">Name</label>
-            <input id="plName" name="name" type="text" autocomplete="name" placeholder="Maria Katsarou" class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3.5 text-base text-on-surface placeholder:text-outline/50 outline-none focus:ring-2 focus:ring-[#1a4d9e]/20 focus:border-[#1a4d9e]">
+            <input id="plName" name="name" type="text" autocomplete="name" placeholder="Your full name" class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3.5 text-base text-on-surface placeholder:text-outline/50 outline-none focus:ring-2 focus:ring-[#1a4d9e]/20 focus:border-[#1a4d9e]">
             <p id="plNameError" class="hidden text-sm text-error mt-1.5"></p>
           </div>
           <div>
             <label for="plEmail" class="block text-sm text-on-surface-variant mb-2">Email</label>
-            <input id="plEmail" name="email" type="email" autocomplete="email" placeholder="maria.k@email.com" class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3.5 text-base text-on-surface placeholder:text-outline/50 outline-none focus:ring-2 focus:ring-[#1a4d9e]/20 focus:border-[#1a4d9e]">
+            <input id="plEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3.5 text-base text-on-surface placeholder:text-outline/50 outline-none focus:ring-2 focus:ring-[#1a4d9e]/20 focus:border-[#1a4d9e]">
             <p id="plEmailError" class="hidden text-sm text-error mt-1.5"></p>
           </div>
           <div>

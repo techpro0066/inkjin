@@ -36,6 +36,46 @@
     display: block;
     pointer-events: none;
   }
+  .q-image-thumb-uploading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: #f2ecf5;
+  }
+  .q-image-thumb-uploading .material-symbols-outlined {
+    font-size: 1.75rem;
+    color: #7a7583;
+    margin-bottom: 0.25rem;
+    animation: q-pulse 1.5s ease-in-out infinite;
+  }
+  .q-image-thumb-progress {
+    width: 70%;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(122, 117, 131, 0.2);
+    overflow: hidden;
+    margin-top: 0.35rem;
+  }
+  .q-image-thumb-progress-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: #310f7a;
+    width: 0%;
+    transition: width 0.2s ease;
+  }
+  .q-image-thumb-pct {
+    font-size: 0.65rem;
+    color: #7a7583;
+    margin-top: 0.2rem;
+    font-weight: 600;
+  }
+  @keyframes q-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
   .q-image-thumb-remove {
     position: absolute;
     top: 0.35rem;
@@ -249,6 +289,26 @@
       $zone.closest('.question-div').find('.js-question-error').addClass('hidden');
     },
 
+    _buildPlaceholder: function(id) {
+      return '<div class="q-image-thumb" data-upload-id="' + id + '">' +
+        '<div class="q-image-thumb-uploading">' +
+          '<span class="material-symbols-outlined" aria-hidden="true">image</span>' +
+          '<div class="q-image-thumb-progress"><div class="q-image-thumb-progress-bar"></div></div>' +
+          '<span class="q-image-thumb-pct">0%</span>' +
+        '</div></div>';
+    },
+
+    _updatePlaceholder: function($zone, id, pct) {
+      var $ph = $zone.find('[data-upload-id="' + id + '"]');
+      if (!$ph.length) return;
+      $ph.find('.q-image-thumb-progress-bar').css('width', pct + '%');
+      $ph.find('.q-image-thumb-pct').text(Math.round(pct) + '%');
+    },
+
+    _removePlaceholder: function($zone, id) {
+      $zone.find('[data-upload-id="' + id + '"]').remove();
+    },
+
     processFiles: async function($zone, files) {
       if (!$zone || !$zone.length) return;
 
@@ -271,6 +331,7 @@
 
       var qId = $zone.data('question-id');
       var hadError = false;
+      var $list = $zone.find('.q-image-upload-list');
 
       for (var i = 0; i < fileList.length; i++) {
         var file = fileList[i];
@@ -281,14 +342,22 @@
           continue;
         }
 
+        var uploadId = 'upl_' + Date.now() + '_' + i;
+        $list.append(self._buildPlaceholder(uploadId));
+        $zone.addClass('has-images');
+        $zone.find('.q-image-upload-count').text(String(urls.length + 1));
+
         try {
-          var imageUrl = await this._uploadHandler(file, qId);
+          var progressCb = function(pct) { self._updatePlaceholder($zone, uploadId, pct); };
+          var imageUrl = await this._uploadHandler(file, qId, progressCb);
+          self._removePlaceholder($zone, uploadId);
           if (imageUrl) {
             urls.push(imageUrl);
             this.setUrls($zone, urls);
             this.clearError($zone);
           }
         } catch (error) {
+          self._removePlaceholder($zone, uploadId);
           hadError = true;
           this.showError($zone, (error && error.message) ? error.message : 'Image upload failed. Please try again.');
         }

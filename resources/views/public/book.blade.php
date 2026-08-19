@@ -1690,26 +1690,36 @@
       return data;
     }
 
-    async function uploadQuestionImage(file, questionId) {
+    async function uploadQuestionImage(file, questionId, progressCb) {
       var formData = new FormData();
       formData.append('image', file);
       formData.append('question_id', String(questionId || ''));
       formData.append('artist_username', bookingArtistUsername);
       formData.append('tattoo_slug', bookingTattooSlug);
 
-      var response = await fetch('/api/public/upload-booking-question-image', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'X-CSRF-TOKEN': csrfToken
-        },
-        body: formData
+      return await new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/public/upload-booking-question-image');
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+        if (xhr.upload && typeof progressCb === 'function') {
+          xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) progressCb(Math.round((e.loaded / e.total) * 100));
+          });
+        }
+        xhr.onload = function() {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300 && data && data.success && data.file_url) {
+              resolve(data.file_url);
+            } else {
+              reject(new Error((data && data.message) || 'Unable to upload image.'));
+            }
+          } catch(e) { reject(new Error('Unable to upload image.')); }
+        };
+        xhr.onerror = function() { reject(new Error('Network error during upload.')); };
+        xhr.send(formData);
       });
-      var data = await response.json();
-      if (!response.ok || !data || !data.success || !data.file_url) {
-        throw new Error((data && data.message) || 'Unable to upload image.');
-      }
-      return data.file_url;
     }
 
     if (window.QuestionImageField) {

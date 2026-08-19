@@ -2,6 +2,7 @@
 
 @section('title', 'Payment links')
 
+
 @section('content')
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">

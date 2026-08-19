@@ -235,7 +235,7 @@ class Booking extends Model
 
     public function isOpenForChat(): bool
     {
-        return in_array($this->status, ['pending', 'confirmed'], true);
+        return in_array($this->status, ['pending', 'confirmed', 'completed', 'cancelled', 'no_show', 'rescheduled'], true);
     }
 
     // Helper methods
@@ -271,14 +271,19 @@ class Booking extends Model
 
     public function referenceLabel(): string
     {
-        if ($this->isCustomRequestBooking()) {
-            $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
-            $id = (int) ($details['custom_request_id'] ?? $this->id);
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
 
-            return 'INK-CR-'.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+        if (($details['payment_link_id'] ?? null) !== null) {
+            return 'INK-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT).'-PL';
         }
 
-        return 'INK-FL-'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
+        if ($this->isCustomRequestBooking()) {
+            $id = (int) ($details['custom_request_id'] ?? $this->id);
+
+            return 'INK-'.str_pad((string) $id, 6, '0', STR_PAD_LEFT).'-CR';
+        }
+
+        return 'INK-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT).'-FL';
     }
 
     public function displayTitle(): string

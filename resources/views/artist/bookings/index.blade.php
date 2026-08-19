@@ -97,9 +97,9 @@
               {{ $bookings->total() }} {{ Str::plural('booking', $bookings->total()) }} total
             </p>
           </div>
-          <a href="{{ route('availability.index') }}"
+          <a href="{{ route('artist.payment-link') }}"
             class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
-            <span class="material-symbols-outlined text-lg">calendar_month</span> Availability
+            <span class="material-symbols-outlined text-lg">add</span> New payment link
           </a>
         </div>
       </div>
@@ -113,6 +113,8 @@
             <label for="sortBy" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Sort by</label>
             <select id="sortBy" name="sortBy"
               class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <option value="booking-desc">Booking # · newest</option>
+              <option value="booking-asc">Booking # · oldest</option>
               <option value="recent">Appointment date · newest</option>
               <option value="oldest">Appointment date · oldest</option>
               <option value="name">Client name A–Z</option>
@@ -173,6 +175,44 @@
           ];
       @endphp
 
+      <!-- View Toggle -->
+      <div class="flex items-center gap-2 mb-5">
+        <button type="button" id="viewListBtn"
+          class="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border border-primary bg-primary text-white transition-colors">
+          <span class="material-symbols-outlined text-lg">view_list</span> List
+        </button>
+        <button type="button" id="viewCalendarBtn"
+          class="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border border-outline-variant/30 bg-white text-on-surface-variant hover:bg-surface-container-low transition-colors">
+          <span class="material-symbols-outlined text-lg">calendar_month</span> Calendar
+        </button>
+      </div>
+
+      <!-- Calendar View -->
+      <div id="calendarView" class="hidden mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
+            <div class="flex items-center gap-2">
+              <button type="button" id="calPrev" class="inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant">
+                <span class="material-symbols-outlined text-xl">chevron_left</span>
+              </button>
+              <h3 id="calTitle" class="text-base font-bold text-on-surface min-w-[10rem] text-center"></h3>
+              <button type="button" id="calNext" class="inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant">
+                <span class="material-symbols-outlined text-xl">chevron_right</span>
+              </button>
+              <button type="button" id="calToday" class="ml-2 text-xs font-semibold px-3 py-1.5 rounded-lg border border-outline-variant/30 hover:bg-surface-container-low text-on-surface-variant">Today</button>
+            </div>
+            <div class="flex items-center gap-1 bg-surface-container-low rounded-lg p-0.5">
+              <button type="button" data-cal-mode="day" class="cal-mode-btn text-xs font-semibold px-3 py-1.5 rounded-md transition-colors">Day</button>
+              <button type="button" data-cal-mode="week" class="cal-mode-btn text-xs font-semibold px-3 py-1.5 rounded-md transition-colors">Week</button>
+              <button type="button" data-cal-mode="month" class="cal-mode-btn active text-xs font-semibold px-3 py-1.5 rounded-md bg-white shadow-sm text-on-surface transition-colors">Month</button>
+            </div>
+          </div>
+          <div id="calBody" class="p-4 min-h-[28rem]"></div>
+        </div>
+      </div>
+
+      <!-- List View -->
+      <div id="listView">
       <!-- Bookings Table -->
       @if ($bookings->isEmpty())
         <div class="bg-white rounded-2xl border border-outline-variant/20 p-10 text-center text-on-surface-variant">
@@ -274,7 +314,8 @@
                       data-client="{{ e($clientLower) }}"
                       data-date="{{ $sessionDate }}"
                       data-sort-ts="{{ $sortStamp }}"
-                      data-sort-name="{{ e($clientLower) }}">
+                      data-sort-name="{{ e($clientLower) }}"
+                      data-sort-id="{{ $booking->id }}">
                     <td class="px-6 py-4 font-medium text-on-surface">{{ $clientName }}</td>
                     <td class="px-6 py-4 font-medium text-on-surface tabular-nums">{{ $bookingRef }}</td>
                     <td class="px-6 py-4 text-on-surface">{{ $booking->booking_date?->format('M j, Y') ?? '—' }}</td>
@@ -462,7 +503,8 @@
                    data-client="{{ e($clientLower) }}"
                    data-date="{{ $sessionDate }}"
                    data-sort-ts="{{ $sortStamp }}"
-                   data-sort-name="{{ e($clientLower) }}">
+                   data-sort-name="{{ e($clientLower) }}"
+                   data-sort-id="{{ $booking->id }}">
                 <div class="flex justify-between gap-3">
                   <p class="font-semibold text-on-surface">{{ $clientName }}</p>
                   <span class="js-artist-status-badge inline-flex shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset {{ $badgeCls }}">{{ $label }}</span>
@@ -579,6 +621,7 @@
           No bookings match your filters on this page. Try resetting filters or check another page.
         </p>
       @endif
+      </div><!-- /#listView -->
 
     </div>
 </main>
@@ -1087,7 +1130,7 @@
 
   function applySort() {
     if (!sortBy) return applyFiltersOnly();
-    var mode = sortBy.value || 'recent';
+    var mode = sortBy.value || 'booking-desc';
     var tbody = tableBody;
     var mobile = mobileWrap;
     var deskRows = tbody ? Array.prototype.slice.call(tbody.querySelectorAll('tr.booking-group')) : [];
@@ -1098,6 +1141,11 @@
         var an = (a.getAttribute('data-sort-name') || '').toLowerCase();
         var bn = (b.getAttribute('data-sort-name') || '').toLowerCase();
         return mode === 'name' ? an.localeCompare(bn) : bn.localeCompare(an);
+      }
+      if (mode === 'booking-desc' || mode === 'booking-asc') {
+        var ai = parseInt(a.getAttribute('data-sort-id') || '0', 10);
+        var bi = parseInt(b.getAttribute('data-sort-id') || '0', 10);
+        return mode === 'booking-asc' ? ai - bi : bi - ai;
       }
       var at = parseInt(a.getAttribute('data-sort-ts') || '0', 10);
       var bt = parseInt(b.getAttribute('data-sort-ts') || '0', 10);
@@ -1121,7 +1169,223 @@
   if (dateTo) dateTo.addEventListener('change', applyFiltersAndSort);
   if (searchClient) searchClient.addEventListener('input', applyFiltersAndSort);
 
-  applyFiltersOnly();
+  applySort();
+})();
+</script>
+<script>
+(function() {
+  var listView = document.getElementById('listView');
+  var calendarView = document.getElementById('calendarView');
+  var listBtn = document.getElementById('viewListBtn');
+  var calBtn = document.getElementById('viewCalendarBtn');
+  var calBody = document.getElementById('calBody');
+  var calTitle = document.getElementById('calTitle');
+  var calPrev = document.getElementById('calPrev');
+  var calNext = document.getElementById('calNext');
+  var calToday = document.getElementById('calToday');
+  var modeBtns = document.querySelectorAll('.cal-mode-btn');
+
+  if (!listView || !calendarView) return;
+
+  var activeBtn = 'bg-primary text-white border-primary';
+  var inactiveBtn = 'bg-white text-on-surface-variant border-outline-variant/30 hover:bg-surface-container-low';
+
+  function setView(view) {
+    if (view === 'calendar') {
+      listView.classList.add('hidden');
+      calendarView.classList.remove('hidden');
+      listBtn.className = 'inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border ' + inactiveBtn + ' transition-colors';
+      calBtn.className = 'inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border ' + activeBtn + ' transition-colors';
+      renderCalendar();
+    } else {
+      listView.classList.remove('hidden');
+      calendarView.classList.add('hidden');
+      listBtn.className = 'inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border ' + activeBtn + ' transition-colors';
+      calBtn.className = 'inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border ' + inactiveBtn + ' transition-colors';
+    }
+  }
+
+  listBtn.addEventListener('click', function() { setView('list'); });
+  calBtn.addEventListener('click', function() { setView('calendar'); });
+
+  var calMode = 'month';
+  var calDate = new Date();
+  calDate.setHours(0,0,0,0);
+
+  var bookings = [];
+  var rows = document.querySelectorAll('[data-booking-row]');
+  rows.forEach(function(r) {
+    var d = r.getAttribute('data-date');
+    if (!d) return;
+    var status = r.getAttribute('data-status') || '';
+    var client = r.getAttribute('data-client') || '';
+    var time = '';
+    var deskRow = r.tagName === 'TR' ? r : null;
+    if (deskRow) {
+      var cells = deskRow.querySelectorAll('td');
+      if (cells.length >= 4) time = cells[3].textContent.trim();
+    }
+    var ref = '';
+    if (deskRow) {
+      var cells2 = deskRow.querySelectorAll('td');
+      if (cells2.length >= 2) ref = cells2[1].textContent.trim();
+    }
+    if (r.closest('.sm\\:hidden') || r.closest('[class*="sm:hidden"]')) return;
+    var bid = r.getAttribute('data-booking-id') || '';
+    bookings.push({ date: d, status: status, client: client, time: time, ref: ref, id: bid });
+  });
+
+  var statusColors = {
+    confirmed: '#16a34a',
+    pending: '#d97706',
+    cancelled: '#dc2626',
+    completed: '#64748b',
+    no_show: '#ea580c',
+    rescheduled: '#2563eb'
+  };
+
+  function setMode(m) {
+    calMode = m;
+    modeBtns.forEach(function(b) {
+      if (b.getAttribute('data-cal-mode') === m) {
+        b.classList.add('bg-white', 'shadow-sm', 'text-on-surface');
+        b.classList.remove('text-on-surface-variant');
+      } else {
+        b.classList.remove('bg-white', 'shadow-sm', 'text-on-surface');
+        b.classList.add('text-on-surface-variant');
+      }
+    });
+    renderCalendar();
+  }
+
+  modeBtns.forEach(function(b) {
+    b.addEventListener('click', function() { setMode(b.getAttribute('data-cal-mode')); });
+  });
+
+  calPrev.addEventListener('click', function() { navigate(-1); });
+  calNext.addEventListener('click', function() { navigate(1); });
+  calToday.addEventListener('click', function() { calDate = new Date(); calDate.setHours(0,0,0,0); renderCalendar(); });
+
+  function navigate(dir) {
+    if (calMode === 'month') calDate.setMonth(calDate.getMonth() + dir);
+    else if (calMode === 'week') calDate.setDate(calDate.getDate() + 7 * dir);
+    else calDate.setDate(calDate.getDate() + dir);
+    renderCalendar();
+  }
+
+  function fmt(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+  function bookingsFor(dateStr) {
+    return bookings.filter(function(b) { return b.date === dateStr; });
+  }
+
+  function eventDot(b) {
+    var color = statusColors[b.status] || '#94a3b8';
+    var label = b.time !== '—' ? b.time : '';
+    var clientCap = b.client.charAt(0).toUpperCase() + b.client.slice(1);
+    var shortClient = clientCap.length > 14 ? clientCap.slice(0,13) + '…' : clientCap;
+    return '<div class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-tight truncate hover:bg-surface-container-low cursor-pointer js-cal-event" data-cal-bid="' + b.id + '" title="' + clientCap + ' · ' + b.ref + '">' +
+      '<span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background:' + color + '"></span>' +
+      '<span class="truncate">' + (label ? label + ' ' : '') + shortClient + '</span></div>';
+  }
+
+  function renderMonth() {
+    var y = calDate.getFullYear(), m = calDate.getMonth();
+    calTitle.textContent = calDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    var first = new Date(y, m, 1);
+    var startDay = (first.getDay() + 6) % 7;
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var today = fmt(new Date());
+    var html = '<div class="grid grid-cols-7 text-center text-xs font-semibold text-on-surface-variant mb-1">';
+    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d) { html += '<div class="py-2">' + d + '</div>'; });
+    html += '</div><div class="grid grid-cols-7 border-t border-outline-variant/10">';
+    for (var i = 0; i < startDay; i++) html += '<div class="min-h-[5.5rem] border-b border-r border-outline-variant/10 p-1"></div>';
+    for (var d = 1; d <= daysInMonth; d++) {
+      var ds = fmt(new Date(y, m, d));
+      var isToday = ds === today;
+      var evts = bookingsFor(ds);
+      html += '<div class="min-h-[5.5rem] border-b border-r border-outline-variant/10 p-1' + (isToday ? ' bg-primary/5' : '') + '">';
+      html += '<div class="text-xs font-medium mb-0.5 ' + (isToday ? 'text-primary font-bold' : 'text-on-surface-variant') + '">' + d + '</div>';
+      var max = 3;
+      evts.slice(0, max).forEach(function(b) { html += eventDot(b); });
+      if (evts.length > max) html += '<div class="text-[10px] text-on-surface-variant px-1.5">+' + (evts.length - max) + ' more</div>';
+      html += '</div>';
+    }
+    var totalCells = startDay + daysInMonth;
+    var remaining = (7 - totalCells % 7) % 7;
+    for (var i = 0; i < remaining; i++) html += '<div class="min-h-[5.5rem] border-b border-r border-outline-variant/10 p-1"></div>';
+    html += '</div>';
+    calBody.innerHTML = html;
+  }
+
+  function renderWeek() {
+    var start = new Date(calDate);
+    var dow = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - dow);
+    var end = new Date(start); end.setDate(end.getDate() + 6);
+    calTitle.textContent = start.toLocaleDateString('default', { month: 'short', day: 'numeric' }) + ' – ' + end.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' });
+    var today = fmt(new Date());
+    var html = '<div class="grid grid-cols-7 gap-px bg-outline-variant/10 rounded-xl overflow-hidden">';
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(start); d.setDate(d.getDate() + i);
+      var ds = fmt(d);
+      var isToday = ds === today;
+      var evts = bookingsFor(ds);
+      html += '<div class="bg-white min-h-[14rem] p-2' + (isToday ? ' ring-2 ring-inset ring-primary/20' : '') + '">';
+      html += '<div class="text-xs font-semibold mb-2 ' + (isToday ? 'text-primary' : 'text-on-surface-variant') + '">' + d.toLocaleDateString('default', { weekday: 'short', day: 'numeric' }) + '</div>';
+      html += '<div class="space-y-0.5">';
+      evts.forEach(function(b) { html += eventDot(b); });
+      if (!evts.length) html += '<div class="text-[11px] text-on-surface-variant/50 italic">No bookings</div>';
+      html += '</div></div>';
+    }
+    html += '</div>';
+    calBody.innerHTML = html;
+  }
+
+  function renderDay() {
+    calTitle.textContent = calDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    var ds = fmt(calDate);
+    var evts = bookingsFor(ds);
+    var today = fmt(new Date());
+    var isToday = ds === today;
+    var html = '<div class="max-w-2xl mx-auto">';
+    if (isToday) html += '<div class="text-xs font-bold text-primary mb-3">Today</div>';
+    if (!evts.length) {
+      html += '<div class="text-center py-12 text-on-surface-variant"><span class="material-symbols-outlined text-4xl mb-2 block">event_available</span><p class="text-sm">No bookings on this day</p></div>';
+    } else {
+      html += '<div class="space-y-2">';
+      evts.forEach(function(b) {
+        var color = statusColors[b.status] || '#94a3b8';
+        var clientCap = b.client.charAt(0).toUpperCase() + b.client.slice(1);
+        html += '<div class="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/15 hover:bg-surface-container-low/40 cursor-pointer js-cal-event" data-cal-bid="' + b.id + '">';
+        html += '<span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background:' + color + '"></span>';
+        html += '<div class="flex-1 min-w-0"><p class="text-sm font-semibold text-on-surface truncate">' + clientCap + '</p><p class="text-xs text-on-surface-variant">' + b.ref + (b.time !== '—' ? ' · ' + b.time : '') + '</p></div>';
+        html += '<span class="text-xs font-medium capitalize px-2 py-0.5 rounded-full" style="background:' + color + '15;color:' + color + '">' + b.status.replace('_',' ') + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    calBody.innerHTML = html;
+  }
+
+  function renderCalendar() {
+    if (calMode === 'month') renderMonth();
+    else if (calMode === 'week') renderWeek();
+    else renderDay();
+  }
+
+  calBody.addEventListener('click', function(e) {
+    var el = e.target.closest('.js-cal-event');
+    if (!el) return;
+    var bid = el.getAttribute('data-cal-bid');
+    if (!bid) return;
+    var viewBtn = document.querySelector('.js-artist-booking-view[data-booking-id="' + bid + '"]') ||
+                  document.querySelector('tr[data-booking-id="' + bid + '"] .js-artist-booking-view');
+    if (viewBtn) viewBtn.click();
+  });
+
+  renderCalendar();
 })();
 </script>
 <script>
