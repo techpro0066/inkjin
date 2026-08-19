@@ -103,6 +103,7 @@
 @endsection
 
 @push('scripts')
+@include('partials.reddit-pixel', ['event' => 'Step_4'])
 <script>
 $(function () {
   var hasSavedTimezone = @json(!empty($ud->timezone));

@@ -370,7 +370,10 @@
                           data-deposit="{{ e('€' . number_format((float) ($booking->deposit_amount ?? 0), 2)) }}"
                           data-balance="{{ e($balanceLabel) }}"
                           data-questions='@json($questionsAnswersData)'
-                          data-design-image="{{ e($designImage) }}">
+                          data-design-image="{{ e($designImage) }}"
+                          data-booking-status="{{ e($stKey) }}"
+                          data-full-amount-paid="{{ $booking->full_amount_paid ? '1' : '0' }}"
+                          data-balance-due-label="{{ e($balanceDueLabel) }}">
                           <span class="material-symbols-outlined text-[22px]">visibility</span>
                         </button>
                         @if($booking->isOpenForChat())
@@ -686,9 +689,13 @@
           <dt class="text-on-surface-variant font-medium">Deposit</dt>
           <dd id="abdmDeposit" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
         </div>
-        <div class="flex justify-between gap-4 py-2">
+        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
           <dt class="text-on-surface-variant font-medium">Balance (est.)</dt>
           <dd id="abdmBalance" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
+        </div>
+        <div id="abdmPaidRow" class="hidden flex justify-between gap-4 py-2">
+          <dt class="text-on-surface-variant font-medium">Paid</dt>
+          <dd id="abdmPaid" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
         </div>
       </dl>
       <div id="abdmQaSection" class="hidden rounded-xl border border-outline-variant/20 bg-surface-container-low/40 p-4">
@@ -1005,10 +1012,16 @@
       });
       row.querySelectorAll('.js-artist-row-actions').forEach(function (actions) {
         Array.prototype.forEach.call(actions.children, function (child) {
-          if (!child.classList.contains('js-artist-booking-view')) {
+          var href = child.getAttribute('href') || '';
+          if (!child.classList.contains('js-artist-booking-view') && href.indexOf('chat') === -1) {
             child.classList.add('hidden');
           }
         });
+      });
+      row.querySelectorAll('.js-artist-booking-view').forEach(function (btn) {
+        btn.setAttribute('data-booking-status', 'completed');
+        btn.setAttribute('data-status-label', 'Completed');
+        btn.setAttribute('data-status-badge-class', 'bg-slate-100 text-slate-700 ring-slate-500/15');
       });
       row.querySelectorAll('.js-artist-status-badge').forEach(function (badge) {
         badge.className = completedBadgeClass + (badge.classList.contains('shrink-0') ? ' shrink-0' : '');
@@ -1891,6 +1904,19 @@
     if (tzEl) tzEl.textContent = ds.timezone || 'UTC';
     if (depEl) depEl.textContent = ds.deposit || '—';
     if (balEl) balEl.textContent = ds.balance || '—';
+    var paidRow = document.getElementById('abdmPaidRow');
+    var paidEl = document.getElementById('abdmPaid');
+    if (paidRow && paidEl) {
+      if (ds.bookingStatus === 'completed') {
+        var dep = ds.deposit || '€0';
+        var bal = ds.balanceDueLabel || '€0';
+        var fullPaid = ds.fullAmountPaid === '1';
+        paidRow.classList.remove('hidden');
+        paidEl.textContent = dep + ' deposit, ' + bal + ' balance' + (fullPaid ? '' : ' (cash)');
+      } else {
+        paidRow.classList.add('hidden');
+      }
+    }
     if (qaSectionEl && qaListEl) {
       qaListEl.innerHTML = '';
       var rawQuestions = ds.questions || '';

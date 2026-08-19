@@ -100,6 +100,7 @@
 @endsection
 
 @push('scripts')
+@include('partials.reddit-pixel', ['event' => 'Step_5'])
 <script>
 function selectSchedule(type, el) {
   $('.schedule-card').removeClass('selected');

@@ -109,6 +109,7 @@
 @endsection
 
 @push('scripts')
+  @include('partials.reddit-pixel', ['event' => 'SignUp'])
   <script>
     (function() {
       const COOLDOWN_DURATION = 60; // 60 seconds

@@ -90,6 +90,7 @@
 @endsection
 
 @push('scripts')
+@include('partials.reddit-pixel', ['event' => 'Step_1'])
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script>
 $(function () {

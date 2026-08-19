@@ -136,6 +136,7 @@
 @endsection
 
 @push('scripts')
+@include('partials.reddit-pixel', ['event' => 'Step_3'])
 <script>
 function selectStudioType(card) {
   $('#studioTypeCards .radio-card').removeClass('selected');

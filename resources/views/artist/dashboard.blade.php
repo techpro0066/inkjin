@@ -411,6 +411,7 @@
 @endsection
 
 @section('scripts')
+@include('partials.reddit-pixel', ['event' => 'Active'])
 @if($showWaitlistNotifyButton ?? false)
 <script src="{{ asset('js/waitlist-notify.js') }}?v=2"></script>
 <script>

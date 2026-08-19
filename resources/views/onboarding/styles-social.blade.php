@@ -129,6 +129,7 @@
 @endsection
 
 @push('scripts')
+@include('partials.reddit-pixel', ['event' => 'Step_2'])
 @include('partials.social-links-validation')
 <script>
 var selectedStyles = new Set(@json($otherList));

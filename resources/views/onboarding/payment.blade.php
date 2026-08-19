@@ -237,6 +237,7 @@
 @endsection
 
 @push('scripts')
+@include('partials.reddit-pixel', ['event' => 'Step_6'])
 <script type="module">
 import { loadConnectAndInitialize } from 'https://esm.sh/@stripe/connect-js@3.3.34/pure';
 
