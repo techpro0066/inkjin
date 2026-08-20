@@ -286,6 +286,36 @@ class Booking extends Model
         return 'INK-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT).'-FL';
     }
 
+    public function adminTypeLabel(): string
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+
+        if (($details['payment_link_id'] ?? null) !== null) {
+            return 'Payment link';
+        }
+
+        if ($this->isCustomRequestBooking()) {
+            return 'Custom';
+        }
+
+        return 'Flash';
+    }
+
+    public function adminTypeKey(): string
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+
+        if (($details['payment_link_id'] ?? null) !== null) {
+            return 'payment_link';
+        }
+
+        if ($this->isCustomRequestBooking()) {
+            return 'custom';
+        }
+
+        return 'flash';
+    }
+
     public function displayTitle(): string
     {
         if ($this->tattoo) {

@@ -22,6 +22,8 @@
 
   <nav class="sidebar-nav flex-1 min-h-0 overflow-y-auto flex flex-col gap-1 pr-1">
     <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><span class="material-symbols-outlined">dashboard</span> Dashboard</a>
+    <a href="{{ route('admin.bookings.index') }}" class="nav-item {{ request()->routeIs('admin.bookings.*') ? 'active' : '' }}"><span class="material-symbols-outlined">calendar_month</span> Bookings</a>
+    <a href="{{ route('admin.requests.index') }}" class="nav-item {{ request()->routeIs('admin.requests.*') ? 'active' : '' }}"><span class="material-symbols-outlined">inbox</span> Requests</a>
     <a href="{{ route('admin.forms.index') }}" class="nav-item {{ request()->routeIs('admin.forms.index') ? 'active' : '' }}"><span class="material-symbols-outlined">description</span> Forms</a>
     <a href="{{ route('admin.styles.index') }}" class="nav-item {{ request()->routeIs('admin.styles.*') ? 'active' : '' }}"><span class="material-symbols-outlined">brush</span> Styles</a>
     <a href="{{ route('admin.placements.index') }}" class="nav-item {{ request()->routeIs('admin.placements.*') ? 'active' : '' }}"><span class="material-symbols-outlined">accessibility_new</span> Placements</a>
