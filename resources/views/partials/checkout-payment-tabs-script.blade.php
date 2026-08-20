@@ -1,10 +1,14 @@
 <script>
 (function () {
   var tabCard = document.getElementById('tabPayCard');
+  var tabKlarna = document.getElementById('tabPayKlarna');
   var tabIris = document.getElementById('tabPayIris');
   var panelCard = document.getElementById('panelPayCard');
+  var panelKlarna = document.getElementById('panelPayKlarna');
   var panelIris = document.getElementById('panelPayIris');
   var btnConfirmPay = document.getElementById('btnConfirmPay');
+  var btnConfirmKlarna = document.getElementById('btnConfirmKlarna');
+  var klarnaRedirectHint = document.getElementById('klarnaRedirectHint');
   var cardExtras = document.getElementById('panelPayCardExtras');
   var activePayTab = 'card';
   var irisOrderLoaded = false;
@@ -65,15 +69,24 @@
 
     activePayTab = tab;
     var isCard = tab === 'card';
+    var isKlarna = tab === 'klarna';
     var isIris = tab === 'iris';
 
     styleTab(tabCard, isCard);
+    styleTab(tabKlarna, isKlarna);
     styleTab(tabIris, isIris);
 
     if (panelCard) panelCard.classList.toggle('hidden', !isCard);
+    if (panelKlarna) panelKlarna.classList.toggle('hidden', !isKlarna);
     if (panelIris) panelIris.classList.toggle('hidden', !isIris);
     if (cardExtras) cardExtras.classList.toggle('hidden', isIris);
     if (btnConfirmPay) btnConfirmPay.classList.toggle('hidden', !isCard);
+    if (btnConfirmKlarna) btnConfirmKlarna.classList.toggle('hidden', !isKlarna);
+    if (klarnaRedirectHint) klarnaRedirectHint.classList.toggle('hidden', !isKlarna);
+
+    if (isKlarna && typeof window.checkoutUpdateKlarnaAmount === 'function') {
+      window.checkoutUpdateKlarnaAmount();
+    }
 
     if (isIris && !irisOrderLoaded && typeof window.startIrisQrPayment === 'function' && !window.vivaRestoreToPaymentStep) {
       window.startIrisQrPayment();
@@ -84,6 +97,7 @@
   window.checkoutGetActivePayTab = function () { return activePayTab; };
 
   tabCard?.addEventListener('click', function () { setActiveTab('card'); });
+  tabKlarna?.addEventListener('click', function () { setActiveTab('klarna'); });
   tabIris?.addEventListener('click', function () { setActiveTab('iris'); });
 
   function showIrisStatus(message, isError) {
@@ -333,12 +347,16 @@
   });
 
   var vivaReturnError = @json(session('viva_error'));
-  if (vivaReturnError || window.vivaRestoreToPaymentStep || new URLSearchParams(window.location.search).get('viva') === 'fail') {
+  var urlParams = new URLSearchParams(window.location.search);
+  var isKlarnaReturn = urlParams.get('klarna') === 'return' || !!urlParams.get('payment_intent_client_secret');
+  if (vivaReturnError || window.vivaRestoreToPaymentStep || urlParams.get('viva') === 'fail') {
     irisOrderLoaded = false;
     setActiveTab('iris');
     if (vivaReturnError) {
       showIrisStatus(vivaReturnError, true);
     }
+  } else if (isKlarnaReturn) {
+    setActiveTab('klarna');
   } else {
     setActiveTab('card');
   }

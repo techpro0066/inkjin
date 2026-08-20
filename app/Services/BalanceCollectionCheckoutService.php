@@ -64,7 +64,10 @@ class BalanceCollectionCheckoutService
             $intent = PaymentIntent::create([
                 'amount' => $amountCents,
                 'currency' => strtolower((string) ($collection->currency ?: 'eur')) ?: 'eur',
-                'automatic_payment_methods' => ['enabled' => true],
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                    'allow_redirects' => 'always',
+                ],
                 'metadata' => [
                     'flow' => 'balance_collection',
                     'balance_collection_id' => (string) $collection->id,

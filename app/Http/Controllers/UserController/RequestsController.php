@@ -205,7 +205,10 @@ class RequestsController extends Controller
             $intent = PaymentIntent::create([
                 'amount' => $amountCents,
                 'currency' => 'eur',
-                'automatic_payment_methods' => ['enabled' => true],
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                    'allow_redirects' => 'always',
+                ],
                 'metadata' => [
                     'booking_request_id' => (string) $bookingRequest->id,
                     'user_id' => (string) $bookingRequest->user_id,

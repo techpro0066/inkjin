@@ -867,7 +867,10 @@ class InkJinController extends Controller
             $payload = [
                 'amount' => $amountCents,
                 'currency' => 'eur',
-                'automatic_payment_methods' => ['enabled' => true],
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                    'allow_redirects' => 'always',
+                ],
                 'metadata' => [
                     'artist_user_id' => (string) $userDetail->user_id,
                     'tattoo_slug' => (string) $tattoo->slug,

@@ -287,6 +287,12 @@
           'artistSupportsIris' => $artistSupportsIris ?? false,
         ])
 
+        @include('partials.checkout-klarna-panel', [
+          'klarnaDefaultName' => $verifiedCheckout['name'] ?? '',
+          'klarnaDefaultEmail' => $verifiedCheckout['email'] ?? '',
+          'klarnaDefaultCountry' => strtoupper((string) ($userDetail->payout_bank_country ?? 'GR')),
+        ])
+
         <div id="panelPayCardExtras">
           @if(empty($isBalanceCollection))
             @if($userDetail)
@@ -295,9 +301,14 @@
             @include('partials.checkout-policy-agree', ['agreeOnChange' => 'checkPayReady()'])
           @endif
           <p class="text-sm text-error hidden mb-3" id="formError"></p>
+          <p class="text-sm text-error hidden mb-3" id="klarnaFormError"></p>
           <button id="btnConfirmPay" type="button" disabled class="w-full py-4 rounded-xl font-bold text-white bg-[#1c1b21] disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all text-base">
             Pay {{ $checkoutDisplay['total'] ?? $summary['amount'] }}
           </button>
+          <button type="button" id="btnConfirmKlarna" class="hidden w-full py-4 rounded-xl font-bold text-[#17120F] bg-[#FFB3C7] hover:bg-[#FF9CB8] transition-colors text-base shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+            Pay with Klarna
+          </button>
+          <p id="klarnaRedirectHint" class="hidden text-[10px] text-on-surface-variant text-center mt-2">You'll be redirected to Klarna to complete your payment</p>
         </div>
         <p class="text-center text-xs text-on-surface-variant/80 mt-5">Secured by Bookpay</p>
       </div>
@@ -953,6 +964,9 @@
         setText('plPayHeaderTotal', payload.total_label);
         setText('plPayTotal', payload.total_label);
       }
+      if (typeof window.checkoutUpdateKlarnaAmount === 'function') {
+        window.checkoutUpdateKlarnaAmount();
+      }
       setText('plPayBase', payload.base_label);
       setText('plPayFee', payload.fee_label);
       setText('plPayFeeName', payload.fee_name);
@@ -1205,6 +1219,33 @@
       document.getElementById('inputCardName')?.addEventListener('input', window.checkPayReady);
       document.getElementById('btnConfirmPay')?.addEventListener('click', payWithCard);
       window.checkPayReady();
+      if (typeof window.checkoutUpdateKlarnaAmount === 'function') {
+        window.checkoutUpdateKlarnaAmount();
+      }
+    };
+
+    window.checkoutKlarnaConfig = {
+      currency: 'eur',
+      getStripe: function () {
+        if (!stripe) mountStripeElements();
+        return stripe;
+      },
+      getAmountCents: function () { return amountCents; },
+      isPolicyAccepted: function () {
+        var agreeEl = document.getElementById('agreePolicy');
+        return !agreeEl || !!agreeEl.checked;
+      },
+      getClientSecret: async function (billing) {
+        var data = await createPaymentIntent(String((billing && billing.name) || '').trim() || 'Klarna');
+        return data.client_secret;
+      },
+      onSuccess: async function (paymentIntentId) {
+        await persistBooking(paymentIntentId, 'klarna');
+        window.location.reload();
+      },
+      onError: function (error) {
+        setFormError(error.message || 'Klarna payment failed.');
+      }
     };
 
     if (@json(($checkoutStep ?? '') === 'payment')) {
@@ -1213,6 +1254,7 @@
   })();
   </script>
   @include('partials.checkout-payment-tabs-script')
+  @include('partials.checkout-klarna-script')
   @endif
   @endif
 </body>

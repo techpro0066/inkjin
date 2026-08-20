@@ -89,7 +89,10 @@ class PaymentLinkCheckoutService
             $intent = PaymentIntent::create([
                 'amount' => $amountCents,
                 'currency' => 'eur',
-                'automatic_payment_methods' => ['enabled' => true],
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                    'allow_redirects' => 'always',
+                ],
                 'metadata' => [
                     'flow' => 'payment_link',
                     'payment_link_id' => (string) $link->id,

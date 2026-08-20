@@ -71,15 +71,26 @@
           'showIrisTab' => $showIrisTab ?? false,
         ])
 
+        @include('partials.checkout-klarna-panel', [
+          'klarnaDefaultName' => trim((Auth::user()->first_name ?? '').' '.(Auth::user()->last_name ?? '')),
+          'klarnaDefaultEmail' => Auth::user()->email ?? '',
+          'klarnaDefaultCountry' => strtoupper((string) ($userDetail->payout_bank_country ?? 'GR')),
+        ])
+
         <div id="panelPayCardExtras">
         @include('partials.artist-cancellation-policy', ['userDetail' => $userDetail])
         @include('partials.checkout-policy-agree')
 
         <p id="paymentError" class="text-sm text-error hidden mb-3"></p>
+        <p class="text-sm text-error hidden mb-3" id="klarnaFormError"></p>
 
         <button type="button" id="btnConfirmPay" disabled class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-container transition-all text-base shadow-lg shadow-primary/20">
           Confirm &amp; Pay <span id="btnPayTotalAmount">€{{ number_format($totals['total_due'], 2) }}</span>
         </button>
+        <button type="button" id="btnConfirmKlarna" class="hidden w-full py-4 rounded-xl font-bold text-[#17120F] bg-[#FFB3C7] hover:bg-[#FF9CB8] transition-colors text-base shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+          Pay with Klarna
+        </button>
+        <p id="klarnaRedirectHint" class="hidden text-[10px] text-on-surface-variant text-center mt-2">You'll be redirected to Klarna to complete your payment</p>
         @include('partials.checkout-receipt-note', [
           'checkoutReceiptTotals' => [
             'deposit' => $totals['deposit'] ?? 0,
@@ -256,8 +267,46 @@
     }
   };
 
+  window.checkoutKlarnaConfig = {
+    currency: 'eur',
+    getStripe: function () {
+      mountStripe();
+      return stripe;
+    },
+    getAmountCents: function () {
+      return Math.round(@json($totals['total_due']) * 100);
+    },
+    isPolicyAccepted: function () {
+      return document.getElementById('agreePolicy').checked;
+    },
+    getClientSecret: async function (billing) {
+      var res = await fetch(intentUrl, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ cardholder_name: String((billing && billing.name) || '').trim() || 'Klarna' })
+      });
+      var data = await res.json();
+      if (!res.ok || !data.client_secret) throw new Error(data.message || 'Unable to start Klarna payment.');
+      return data.client_secret;
+    },
+    onSuccess: async function (paymentIntentId) {
+      var savedRes = await fetch(confirmUrl, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ payment_intent_id: paymentIntentId, payment_method: 'klarna' })
+      });
+      var saved = await savedRes.json();
+      if (!savedRes.ok || !saved.saved) throw new Error(saved.message || 'Unable to save booking.');
+      window.location.href = saved.redirect_url || @json(route('user.bookings.index'));
+    },
+    onError: function (error) {
+      showError(error.message || 'Klarna payment failed.');
+    }
+  };
+
   mountStripe();
 })();
 </script>
 @include('partials.checkout-payment-tabs-script')
+@include('partials.checkout-klarna-script')
 @endsection

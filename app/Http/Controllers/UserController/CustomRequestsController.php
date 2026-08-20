@@ -203,7 +203,10 @@ class CustomRequestsController extends Controller
             $intent = PaymentIntent::create([
                 'amount' => $amountCents,
                 'currency' => 'eur',
-                'automatic_payment_methods' => ['enabled' => true],
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                    'allow_redirects' => 'always',
+                ],
                 'metadata' => [
                     'custom_request_id' => (string) $customRequest->id,
                     'user_id' => (string) $customRequest->user_id,

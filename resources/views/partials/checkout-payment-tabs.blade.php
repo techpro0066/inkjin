@@ -41,7 +41,7 @@
   </div>
 </div>
 
-{{-- Card / IRIS --}}
+{{-- Card / Klarna / IRIS --}}
 <div
   id="checkoutPayTablist"
   class="flex flex-wrap gap-2 mb-4"
@@ -57,6 +57,15 @@
   >
     <span class="material-symbols-outlined text-[16px] align-middle">credit_card</span>
     Card
+  </button>
+  <button
+    type="button"
+    id="tabPayKlarna"
+    role="tab"
+    aria-selected="false"
+    class="checkout-pay-tab flex-1 min-w-[7rem] rounded-xl border border-outline-variant/60 px-4 py-2.5 text-sm font-semibold text-on-surface-variant hover:border-primary/40 transition"
+  >
+    Klarna
   </button>
   @if ($showIrisTabButton)
     <button
