@@ -135,7 +135,7 @@
       </div>
       @if($requests->hasPages())
         <div class="px-5 py-4 border-t border-outline-variant/15">
-          {{ $requests->links() }}
+          {{ $requests->onEachSide(1)->links('admin.partials.pagination') }}
         </div>
       @endif
     </div>

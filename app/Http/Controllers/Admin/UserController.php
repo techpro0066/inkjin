@@ -10,6 +10,7 @@ use App\Support\OnboardingProgress;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class UserController extends Controller
@@ -65,6 +66,19 @@ class UserController extends Controller
             ->values();
 
         $users = $this->sortUsers($users, $sort);
+
+        $perPage = 20;
+        $page = max(1, (int) $request->get('page', 1));
+        $users = new LengthAwarePaginator(
+            $users->forPage($page, $perPage)->values(),
+            $users->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
 
         $stats = [
             'total' => User::query()->where('role', '!=', 'admin')->count(),

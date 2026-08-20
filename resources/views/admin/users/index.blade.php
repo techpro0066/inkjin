@@ -175,6 +175,12 @@
           <div class="p-8 text-center text-sm text-on-surface-variant">No users found for this filter.</div>
         @endforelse
       </div>
+
+      @if($users->hasPages())
+        <div class="px-5 py-4 border-t border-outline-variant/15">
+          {{ $users->onEachSide(1)->links('admin.partials.pagination') }}
+        </div>
+      @endif
     </div>
   </div>
 </main>

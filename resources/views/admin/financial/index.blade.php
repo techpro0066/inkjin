@@ -190,7 +190,9 @@
     </div>
 
     @if($records->hasPages())
-      <div class="mt-6">{{ $records->links() }}</div>
+      <div class="mt-6 bg-white rounded-2xl border border-outline-variant/20 px-5 py-4">
+        {{ $records->onEachSide(1)->links('admin.partials.pagination') }}
+      </div>
     @endif
   </div>
 </main>
