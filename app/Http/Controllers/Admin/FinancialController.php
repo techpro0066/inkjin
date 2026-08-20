@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ArtistPayout;
 use App\Models\Booking;
+use App\Support\AdminListPagination;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -24,7 +25,7 @@ class FinancialController extends Controller
         $gross = (float) (clone $query)->sum('total_amount_paid');
         $refunds = (float) (clone $query)->sum('refund_amount');
 
-        return $this->financialView('revenue', $query->latest()->paginate(20)->withQueryString(), [
+        return $this->financialView('revenue', $query->latest()->paginate($filters['per_page'])->withQueryString(), [
             ['label' => 'Gross Revenue', 'value' => $gross, 'icon' => 'payments', 'color' => 'purple'],
             ['label' => 'Refunds', 'value' => $refunds, 'icon' => 'undo', 'color' => 'red'],
             ['label' => 'Net Revenue', 'value' => max(0, $gross - $refunds), 'icon' => 'trending_up', 'color' => 'green'],
@@ -45,7 +46,7 @@ class FinancialController extends Controller
             ->where('platform_fee_refunded', true)
             ->sum('platform_fee');
 
-        return $this->financialView('fees', $query->latest()->paginate(20)->withQueryString(), [
+        return $this->financialView('fees', $query->latest()->paginate($filters['per_page'])->withQueryString(), [
             ['label' => 'Total Fees', 'value' => $gross, 'icon' => 'receipt_long', 'color' => 'purple'],
             ['label' => 'Refunded Fees', 'value' => $refunded, 'icon' => 'undo', 'color' => 'red'],
             ['label' => 'Net Fees', 'value' => max(0, $gross - $refunded), 'icon' => 'account_balance', 'color' => 'green'],
@@ -67,7 +68,7 @@ class FinancialController extends Controller
         $completed = (float) (clone $query)->where('status', ArtistPayout::STATUS_COMPLETED)->sum('amount');
         $failed = (float) (clone $query)->where('status', ArtistPayout::STATUS_FAILED)->sum('amount');
 
-        return $this->financialView('payouts', $query->latest()->paginate(20)->withQueryString(), [
+        return $this->financialView('payouts', $query->latest()->paginate($filters['per_page'])->withQueryString(), [
             ['label' => 'Pending Payouts', 'value' => $pending, 'icon' => 'schedule_send', 'color' => 'amber'],
             ['label' => 'Completed Payouts', 'value' => $completed, 'icon' => 'check_circle', 'color' => 'green'],
             ['label' => 'Failed Payouts', 'value' => $failed, 'icon' => 'error', 'color' => 'red'],
@@ -80,7 +81,7 @@ class FinancialController extends Controller
 
     /**
      * @param  array<int, string>  $statuses
-     * @return array{q:string,status:string,from:?string,to:?string}
+     * @return array{q:string,status:string,from:?string,to:?string,per_page:int}
      */
     private function validatedFilters(Request $request, array $statuses): array
     {
@@ -89,6 +90,7 @@ class FinancialController extends Controller
             'status' => ['nullable', Rule::in(array_merge(['all'], $statuses))],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'per_page' => ['nullable', 'integer', Rule::in(AdminListPagination::OPTIONS)],
         ]);
 
         return [
@@ -96,12 +98,13 @@ class FinancialController extends Controller
             'status' => (string) ($validated['status'] ?? 'all'),
             'from' => $validated['from'] ?? null,
             'to' => $validated['to'] ?? null,
+            'per_page' => AdminListPagination::perPage($request),
         ];
     }
 
     /**
      * @param  Builder<Booking>  $query
-     * @param  array{q:string,status:string,from:?string,to:?string}  $filters
+     * @param  array{q:string,status:string,from:?string,to:?string,per_page:int}  $filters
      */
     private function applyBookingFilters(Builder $query, array $filters): void
     {
@@ -129,7 +132,7 @@ class FinancialController extends Controller
 
     /**
      * @param  Builder<ArtistPayout>  $query
-     * @param  array{q:string,status:string,from:?string,to:?string}  $filters
+     * @param  array{q:string,status:string,from:?string,to:?string,per_page:int}  $filters
      */
     private function applyPayoutFilters(Builder $query, array $filters): void
     {
@@ -166,7 +169,7 @@ class FinancialController extends Controller
 
     /**
      * @param  array<int, array{label:string,value:float,icon:string,color:string}>  $summaryCards
-     * @param  array{q:string,status:string,from:?string,to:?string}  $filters
+     * @param  array{q:string,status:string,from:?string,to:?string,per_page:int}  $filters
      * @param  array<int, string>  $statuses
      */
     private function financialView(
@@ -176,12 +179,15 @@ class FinancialController extends Controller
         array $filters,
         array $statuses,
     ): View {
+        $perPage = $filters['per_page'];
+
         return view('admin.financial.index', compact(
             'section',
             'records',
             'summaryCards',
             'filters',
             'statuses',
+            'perPage',
         ));
     }
 }

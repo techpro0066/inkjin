@@ -31,7 +31,7 @@
     </div>
 
     <form method="GET" class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4">
         <div class="xl:col-span-2">
           <label for="requestSearch" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
           <div class="relative">
@@ -65,6 +65,7 @@
           <label for="requestTo" class="block text-xs font-semibold text-on-surface-variant mb-1.5">To</label>
           <input type="date" id="requestTo" name="to" value="{{ $filters['to'] }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
         </div>
+        @include('admin.partials.per-page', ['perPage' => $perPage ?? ($filters['per_page'] ?? 10), 'selectId' => 'requestsPerPage'])
       </div>
       <div class="mt-4 flex flex-wrap justify-end gap-2">
         <a href="{{ route('admin.requests.index') }}" class="px-4 py-2 rounded-xl text-sm font-semibold border border-outline-variant/30 bg-white text-on-surface-variant hover:text-on-surface">Clear</a>

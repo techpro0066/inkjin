@@ -25,8 +25,8 @@
     </div>
 
     <form method="GET" action="{{ route('admin.users.index') }}" class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div class="lg:col-span-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div class="lg:col-span-2 xl:col-span-2">
           <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
@@ -64,6 +64,7 @@
             <option value="name" {{ $sort === 'name' ? 'selected' : '' }}>Name A-Z</option>
           </select>
         </div>
+        @include('admin.partials.per-page', ['perPage' => $perPage ?? 10, 'selectId' => 'usersPerPage'])
       </div>
       <div class="mt-4 flex justify-end">
         <button type="submit" class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors">

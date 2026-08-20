@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Support\AdminListPagination;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -14,6 +15,7 @@ class BookingsController extends Controller
     public function index(Request $request): View
     {
         $filters = $this->validatedFilters($request);
+        $perPage = $filters['per_page'];
 
         $query = Booking::query()
             ->with(['user', 'artist', 'tattoo'])
@@ -24,9 +26,10 @@ class BookingsController extends Controller
         $total = (clone $query)->count();
 
         return view('admin.bookings.index', [
-            'bookings' => $query->paginate(30)->withQueryString(),
+            'bookings' => $query->paginate($perPage)->withQueryString(),
             'filters' => $filters,
             'total' => $total,
+            'perPage' => $perPage,
             'statuses' => [
                 'pending',
                 'confirmed',
@@ -53,7 +56,7 @@ class BookingsController extends Controller
     }
 
     /**
-     * @return array{q: string, status: string, type: string, from: ?string, to: ?string}
+     * @return array{q: string, status: string, type: string, from: ?string, to: ?string, per_page: int}
      */
     private function validatedFilters(Request $request): array
     {
@@ -63,6 +66,7 @@ class BookingsController extends Controller
             'type' => ['nullable', Rule::in(['all', 'flash', 'custom', 'payment_link'])],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'per_page' => ['nullable', 'integer', Rule::in(AdminListPagination::OPTIONS)],
         ]);
 
         return [
@@ -71,12 +75,13 @@ class BookingsController extends Controller
             'type' => (string) ($validated['type'] ?? 'all'),
             'from' => $validated['from'] ?? null,
             'to' => $validated['to'] ?? null,
+            'per_page' => AdminListPagination::perPage($request),
         ];
     }
 
     /**
      * @param  Builder<Booking>  $query
-     * @param  array{q: string, status: string, type: string, from: ?string, to: ?string}  $filters
+     * @param  array{q: string, status: string, type: string, from: ?string, to: ?string, per_page: int}  $filters
      */
     private function applyFilters(Builder $query, array $filters): void
     {

@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Style;
 use App\Models\User;
+use App\Support\AdminListPagination;
 use App\Support\OnboardingProgress;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class UserController extends Controller
@@ -25,6 +26,7 @@ class UserController extends Controller
         $statusFilter = $request->get('status', 'all');
         $sort = $request->get('sort', 'newest');
         $expandedId = (int) $request->get('expanded', 0);
+        $perPage = AdminListPagination::perPage($request);
 
         $query = User::query()
             ->with('userDetail')
@@ -50,34 +52,39 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->get();
+        if ($statusFilter === 'active') {
+            $query->where(function ($q) {
+                $q->where(function ($artist) {
+                    $artist->where('role', 'artist')->where('on_boarding', 'yes');
+                })->orWhere(function ($client) {
+                    $client->where('role', 'user')->whereNotNull('email_verified_at');
+                });
+            });
+        } elseif ($statusFilter === 'pending_onboarding') {
+            $query->where(function ($q) {
+                $q->where(function ($artist) {
+                    $artist->where('role', 'artist')->where(function ($onboarding) {
+                        $onboarding->whereNull('on_boarding')->orWhere('on_boarding', '!=', 'yes');
+                    });
+                })->orWhere(function ($client) {
+                    $client->where('role', 'user')->whereNull('email_verified_at');
+                });
+            });
+        }
+
+        $this->applyUserSort($query, $sort, $roleFilter);
+
+        $paginator = $query->paginate($perPage)->withQueryString();
         $styleLabels = Style::query()->pluck('name', 'name')->all();
-        $bookingStats = $this->bookingStatsForUsers($users->pluck('id')->all(), $roleFilter);
+        $bookingStats = $this->bookingStatsForUsers(
+            $paginator->getCollection()->pluck('id')->all(),
+            $roleFilter
+        );
 
-        $users = $users
-            ->map(fn (User $user) => $this->mapUserForAdminList($user, $styleLabels, $bookingStats))
-            ->filter(function (array $user) use ($statusFilter) {
-                if ($statusFilter === 'all') {
-                    return true;
-                }
-
-                return $user['status_key'] === $statusFilter;
-            })
-            ->values();
-
-        $users = $this->sortUsers($users, $sort);
-
-        $perPage = 20;
-        $page = max(1, (int) $request->get('page', 1));
-        $users = new LengthAwarePaginator(
-            $users->forPage($page, $perPage)->values(),
-            $users->count(),
-            $perPage,
-            $page,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]
+        $paginator->setCollection(
+            $paginator->getCollection()
+                ->map(fn (User $user) => $this->mapUserForAdminList($user, $styleLabels, $bookingStats))
+                ->values()
         );
 
         $stats = [
@@ -98,17 +105,18 @@ class UserController extends Controller
             default => number_format($stats['total']).' users on the platform',
         };
 
-        return view('admin.users.index', compact(
-            'users',
-            'roleFilter',
-            'search',
-            'statusFilter',
-            'sort',
-            'expandedId',
-            'stats',
-            'pageTitle',
-            'pageSubtitle',
-        ));
+        return view('admin.users.index', [
+            'users' => $paginator,
+            'roleFilter' => $roleFilter,
+            'search' => $search,
+            'statusFilter' => $statusFilter,
+            'sort' => $sort,
+            'expandedId' => $expandedId,
+            'stats' => $stats,
+            'pageTitle' => $pageTitle,
+            'pageSubtitle' => $pageSubtitle,
+            'perPage' => $perPage,
+        ]);
     }
 
     /**
@@ -336,17 +344,63 @@ class UserController extends Controller
     }
 
     /**
-     * @param  Collection<int, array<string, mixed>>  $users
-     * @return Collection<int, array<string, mixed>>
+     * @param  Builder<User>  $query
      */
-    private function sortUsers(Collection $users, string $sort): Collection
+    private function applyUserSort(Builder $query, string $sort, string $roleFilter): void
     {
-        return match ($sort) {
-            'bookings' => $users->sortByDesc('bookings')->values(),
-            'revenue' => $users->sortByDesc('revenue')->values(),
-            'name' => $users->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values(),
-            default => $users->sortByDesc(fn (array $user) => $user['join_date'])->values(),
-        };
+        $usersTable = $query->getModel()->getTable();
+        $bookingsTable = (new Booking)->getTable();
+
+        if ($sort === 'name') {
+            $query->orderBy($usersTable.'.first_name')->orderBy($usersTable.'.last_name');
+
+            return;
+        }
+
+        if ($sort === 'bookings' || $sort === 'revenue') {
+            $metric = $sort === 'bookings'
+                ? 'COUNT(*)'
+                : 'COALESCE(SUM(total_amount_paid), 0)';
+
+            if ($roleFilter === 'artist') {
+                $expression = "(
+                    SELECT {$metric}
+                    FROM {$bookingsTable}
+                    WHERE {$bookingsTable}.artist_user_id = {$usersTable}.id
+                      AND {$bookingsTable}.status IN ('confirmed', 'completed')
+                )";
+            } elseif ($roleFilter === 'user') {
+                $expression = "(
+                    SELECT {$metric}
+                    FROM {$bookingsTable}
+                    WHERE {$bookingsTable}.user_id = {$usersTable}.id
+                      AND {$bookingsTable}.status IN ('confirmed', 'completed', 'cancelled', 'no_show')
+                )";
+            } else {
+                $expression = "(
+                    COALESCE((
+                        SELECT {$metric}
+                        FROM {$bookingsTable}
+                        WHERE {$bookingsTable}.artist_user_id = {$usersTable}.id
+                          AND {$bookingsTable}.status IN ('confirmed', 'completed')
+                    ), 0)
+                    +
+                    COALESCE((
+                        SELECT {$metric}
+                        FROM {$bookingsTable}
+                        WHERE {$bookingsTable}.user_id = {$usersTable}.id
+                          AND {$bookingsTable}.status IN ('confirmed', 'completed', 'cancelled', 'no_show')
+                    ), 0)
+                )";
+            }
+
+            $query->orderByRaw("{$expression} DESC")
+                ->orderByDesc($usersTable.'.created_at');
+
+            return;
+        }
+
+        $query->orderByDesc($usersTable.'.created_at');
     }
 
     /**
