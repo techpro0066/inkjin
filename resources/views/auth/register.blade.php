@@ -115,7 +115,7 @@
   </a>
   </div>
   <h1 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2" style="" style="font-family: 'Space Grotesk', sans-serif;">Join Bookpay for Artists</h1>
-  <p class="text-on-surface-variant" style="">Sign up and simplify your bookings.</p>
+  <p class="text-on-surface-variant" style="">Sign up and simplify your tattoo bookings, deposits and payouts.</p>
   
   
   </div>
