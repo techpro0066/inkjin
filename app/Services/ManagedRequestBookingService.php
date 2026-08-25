@@ -7,6 +7,7 @@ use App\Mail\BookingConfirmationMail;
 use App\Models\AvailabilityOverride;
 use App\Models\Booking;
 use App\Models\BookingRequest;
+use App\Models\GuestSpot;
 use App\Models\User;
 use App\Services\CancellationService;
 use Carbon\Carbon;
@@ -21,19 +22,75 @@ class ManagedRequestBookingService
         private readonly BookingCheckoutPricingService $pricing = new BookingCheckoutPricingService,
     ) {}
 
-    public function artistLocalDateIsBlocked(int $artistUserId, string $ymd): bool
+    public function artistLocalDateIsBlocked(int $artistUserId, string $ymd, ?int $exceptGuestSpotId = null): bool
     {
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $ymd)) {
             return false;
         }
 
-        return AvailabilityOverride::query()
+        $overrideBlocked = AvailabilityOverride::query()
             ->where('user_id', $artistUserId)
             ->whereNotNull('start_date')
             ->whereNotNull('end_date')
             ->whereDate('start_date', '<=', $ymd)
             ->whereDate('end_date', '>=', $ymd)
             ->exists();
+
+        if ($overrideBlocked) {
+            return true;
+        }
+
+        return GuestSpot::query()
+            ->where('user_id', $artistUserId)
+            ->where('status', 'available')
+            ->whereNotNull('from_date')
+            ->whereNotNull('to_date')
+            ->get()
+            ->contains(function (GuestSpot $spot) use ($ymd, $exceptGuestSpotId) {
+                if ($exceptGuestSpotId !== null && (int) $spot->id === (int) $exceptGuestSpotId) {
+                    // Allow booking inside this guest spot window; still block its travel buffers.
+                    if ($spot->containsBookableDate($ymd)) {
+                        return false;
+                    }
+                }
+
+                $period = $spot->awayBlockedPeriod();
+                if (! $period) {
+                    return false;
+                }
+
+                return $ymd >= $period['start_date'] && $ymd <= $period['end_date'];
+            });
+    }
+
+    /**
+     * @return list<array{start_date: string, end_date: string}>
+     */
+    public function artistBlockedPeriods(int $artistUserId, ?int $exceptGuestSpotId = null): array
+    {
+        $overridePeriods = AvailabilityOverride::query()
+            ->where('user_id', $artistUserId)
+            ->orderBy('start_date')
+            ->get()
+            ->map(static function (AvailabilityOverride $o) {
+                return [
+                    'start_date' => $o->start_date->format('Y-m-d'),
+                    'end_date' => $o->end_date->format('Y-m-d'),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $guestPeriods = GuestSpot::awayBlockedPeriodsForArtist($artistUserId, $exceptGuestSpotId);
+
+        if ($exceptGuestSpotId) {
+            $current = GuestSpot::query()->find($exceptGuestSpotId);
+            if ($current) {
+                $guestPeriods = array_merge($guestPeriods, $current->bufferOnlyBlockedPeriods());
+            }
+        }
+
+        return array_values(array_merge($overridePeriods, $guestPeriods));
     }
 
     /**

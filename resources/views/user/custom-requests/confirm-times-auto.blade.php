@@ -7,6 +7,11 @@
 @endsection
 
 @section('content')
+@php
+  $isGuestRequest = !empty($isGuestRequest) || $customRequest->isGuestRequest();
+  $requestsTab = $isGuestRequest ? 'guest' : 'custom';
+  $requestsTabLabel = $isGuestRequest ? 'Guest requests' : 'Custom requests';
+@endphp
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-4xl mx-auto">
     <div class="flex flex-wrap items-center gap-4 mb-6">
@@ -15,19 +20,25 @@
           <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to payment
         </a>
       @endif
-      <a href="{{ route('user.requests.index', ['tab' => 'custom']) }}" class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
-        <span class="material-symbols-outlined text-[18px]">arrow_back</span> Custom requests
+      <a href="{{ route('user.requests.index', ['tab' => $requestsTab]) }}" class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-[18px]">arrow_back</span> {{ $requestsTabLabel }}
       </a>
     </div>
 
     <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 mb-6 flex gap-4">
       <div class="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/15">
-        <span class="material-symbols-outlined text-primary text-3xl">brush</span>
+        <span class="material-symbols-outlined text-primary text-3xl">{{ $isGuestRequest ? 'luggage' : 'brush' }}</span>
       </div>
       <div class="flex-1">
         <h1 class="text-xl font-extrabold text-on-surface">Pick your appointment times</h1>
-        <p class="text-sm text-on-surface-variant mt-1">{{ $artistName }} · {{ $customRequest->referenceLabel() }} · Auto scheduling</p>
+        <p class="text-sm text-on-surface-variant mt-1">{{ $artistName }} · {{ $customRequest->referenceLabel() }} · {{ $isGuestRequest ? 'Guest spot' : 'Auto scheduling' }}</p>
         <p class="text-xs text-on-surface-variant mt-2">Session length: ~{{ $durationMinutes }} minutes (from artist quote)</p>
+        @if (!empty($guestWindowLabel))
+          <p class="text-xs text-primary font-semibold mt-2 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">event</span>
+            Available {{ $guestWindowLabel }}
+          </p>
+        @endif
       </div>
     </div>
 

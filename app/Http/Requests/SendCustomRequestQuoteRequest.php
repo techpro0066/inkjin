@@ -30,7 +30,7 @@ class SendCustomRequestQuoteRequest extends FormRequest
             'message_for_client' => ['required', 'string', 'min:5', 'max:2000'],
         ];
 
-        if ($customRequest->isManagedRequest()) {
+        if ($customRequest->isManagedRequest() && ! $customRequest->isGuestRequest()) {
             $rules['artist_session_slots'] = ['required', 'array', 'min:1'];
             $rules['artist_session_slots.*.date'] = ['required', 'date', 'after_or_equal:today'];
             $rules['artist_session_slots.*.ranges'] = ['required', 'array', 'min:1'];
@@ -61,7 +61,7 @@ class SendCustomRequestQuoteRequest extends FormRequest
 
             /** @var CustomRequest $customRequest */
             $customRequest = $this->route('customRequest');
-            if (!$customRequest->isManagedRequest()) {
+            if (!$customRequest->isManagedRequest() || $customRequest->isGuestRequest()) {
                 return;
             }
 
@@ -96,7 +96,7 @@ class SendCustomRequestQuoteRequest extends FormRequest
             'artist_session_slots' => null,
         ];
 
-        if ($customRequest->isManagedRequest()) {
+        if ($customRequest->isManagedRequest() && ! $customRequest->isGuestRequest()) {
             $payload['artist_session_slots'] = ArtistSessionSlots::normalize(
                 $this->input('artist_session_slots', [])
             );

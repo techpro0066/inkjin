@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\CustomRequestSubmittedArtistMail;
 use App\Mail\CustomRequestSubmittedUserMail;
 use App\Models\CustomRequest;
+use App\Models\GuestSpot;
 use App\Models\QuestionSorting;
 use App\Models\Placement;
 use App\Models\Style;
@@ -20,7 +21,7 @@ use Illuminate\View\View;
 
 class CustomRequestController extends Controller
 {
-    public function requestCustom(string $userName): View|RedirectResponse
+    public function requestCustom(Request $request, string $userName): View|RedirectResponse
     {
         $userDetail = UserDetail::query()
             ->with('user')
@@ -38,6 +39,33 @@ class CustomRequestController extends Controller
 
         if (in_array($userDetail->availability_status, ['closed', 'design_only'], true)) {
             return redirect()->route('public.artist', ['username' => $userName]);
+        }
+
+        $guestSpotId = null;
+        if ($request->has('guest_spot')) {
+            $guestSpot = $this->resolveGuestSpotForArtist(
+                $request->query('guest_spot'),
+                (int) $userDetail->user_id
+            );
+
+            if (! $guestSpot) {
+                return redirect()->route('public.artist', ['username' => $userName]);
+            }
+
+            $guestSpotId = $guestSpot->id;
+        }
+
+        // Entry pills on the regular custom flow only (not when already scoped to a guest spot).
+        $activeGuestSpots = collect();
+        if ($guestSpotId === null && ($userDetail->display_guest_spots ?? false)) {
+            $activeGuestSpots = GuestSpot::query()
+                ->where('user_id', $userDetail->user_id)
+                ->where('status', 'available')
+                ->orderBy('from_date')
+                ->orderBy('id')
+                ->get()
+                ->filter(fn (GuestSpot $spot) => ! $spot->isFull())
+                ->values();
         }
 
         $questions = QuestionSorting::activeQuestionsPayloadForArtist($userDetail->user_id, 'custom');
@@ -83,6 +111,8 @@ class CustomRequestController extends Controller
             'isManagedScheduling' => $isManagedScheduling,
             'hiddenStyleOptions' => $hiddenStyleOptions,
             'hiddenPlacementOptions' => $hiddenPlacementOptions,
+            'guestSpotId' => $guestSpotId,
+            'activeGuestSpots' => $activeGuestSpots,
         ]);
     }
 
@@ -109,6 +139,7 @@ class CustomRequestController extends Controller
             'request_payload.notes' => ['nullable', 'string', 'max:10000'],
             'request_payload.referral_source' => ['nullable', 'string', 'max:255'],
             'request_payload.questions_answers' => ['nullable', 'array'],
+            'request_payload.guest_id' => ['nullable', 'integer'],
         ];
 
         if ($isManagedScheduling) {
@@ -132,6 +163,16 @@ class CustomRequestController extends Controller
             || now()->timestamp > (int) ($verifiedEntry['verified_until'] ?? 0)
         ) {
             return response()->json(['message' => 'Please verify your email before submitting your request.'], 422);
+        }
+
+        $guestSpot = $this->resolveGuestSpotForArtist(
+            $payload['guest_id'] ?? null,
+            (int) $userDetail->user_id
+        );
+        $isGuestRequest = $guestSpot !== null;
+
+        if (! empty($payload['guest_id']) && ! $isGuestRequest) {
+            return response()->json(['message' => 'This guest spot is no longer available.'], 422);
         }
 
         if (in_array($userDetail->availability_status, ['closed', 'design_only'], true)) {
@@ -168,6 +209,8 @@ class CustomRequestController extends Controller
         $customRequest = CustomRequest::create([
             'user_id' => $requestUser->id,
             'artist_id' => $userDetail->user_id,
+            'is_guest' => $isGuestRequest,
+            'guest_id' => $guestSpot?->id,
             'type' => $schedulingType,
             'questions_answers' => $questionsAnswers,
             'anything_else_notes' => trim((string) ($payload['notes'] ?? '')) ?: null,
@@ -243,5 +286,24 @@ class CustomRequestController extends Controller
             now()->addDays(14),
             ['user' => $user->id, 'customRequest' => $customRequest->id]
         );
+    }
+
+    private function resolveGuestSpotForArtist(mixed $guestSpotId, int $artistUserId): ?GuestSpot
+    {
+        if ($guestSpotId === null || $guestSpotId === '') {
+            return null;
+        }
+
+        $id = (int) $guestSpotId;
+        if ($id <= 0) {
+            return null;
+        }
+
+        return GuestSpot::query()
+            ->whereKey($id)
+            ->where('user_id', $artistUserId)
+            ->where('status', 'available')
+            ->get()
+            ->first(fn (GuestSpot $spot) => $spot->hasAvailableSpots());
     }
 }

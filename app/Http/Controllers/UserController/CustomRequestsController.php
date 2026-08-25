@@ -38,14 +38,23 @@ class CustomRequestsController extends Controller
     {
         $this->authorizeCustomRequest($customRequest);
 
+        if ($customRequest->isGuestRequest()) {
+            app(\App\Services\GuestSpotHoldService::class)->releaseExpiredHold($customRequest);
+            $customRequest->refresh();
+        }
+
         if ($customRequest->isBooked()) {
             return redirect()->route('user.bookings.index')
                 ->with('success', 'This custom request is already booked.');
         }
 
         if (!$customRequest->canAccessConfirmTimesPage()) {
-            return redirect()->route('user.requests.index', ['tab' => 'custom'])
-                ->with('error', 'This request is not ready for scheduling yet.');
+            $blockMessage = $customRequest->guestActionBlockMessage()
+                ?: 'This request is not ready for scheduling yet.';
+
+            return redirect()->route('user.requests.index', [
+                'tab' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
+            ])->with('error', $blockMessage);
         }
 
         if ($request->boolean('fresh') && $customRequest->clientHasSelectedTimes()) {
@@ -69,9 +78,18 @@ class CustomRequestsController extends Controller
     {
         $this->authorizeCustomRequest($customRequest);
 
+        if ($customRequest->isGuestRequest()) {
+            app(\App\Services\GuestSpotHoldService::class)->releaseExpiredHold($customRequest);
+            $customRequest->refresh();
+        }
+
         if (!$customRequest->canAccessConfirmTimesPage()) {
-            return redirect()->route('user.requests.index', ['tab' => 'custom'])
-                ->with('error', 'This request is not ready for scheduling yet.');
+            $blockMessage = $customRequest->guestActionBlockMessage()
+                ?: 'This request is not ready for scheduling yet.';
+
+            return redirect()->route('user.requests.index', [
+                'tab' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
+            ])->with('error', $blockMessage);
         }
 
         $payload = $customRequest->usesArtistOfferedSlotsPicker()
@@ -89,12 +107,19 @@ class CustomRequestsController extends Controller
     {
         $this->authorizeCustomRequest($customRequest);
 
+        if ($customRequest->isGuestRequest()) {
+            app(\App\Services\GuestSpotHoldService::class)->releaseExpiredHold($customRequest);
+            $customRequest->refresh();
+        }
+
         if ($customRequest->usesArtistOfferedSlotsPicker()) {
             return response()->json(['message' => 'Calendar is not used when the artist offered session times.'], 422);
         }
 
         if (!$customRequest->canAccessConfirmTimesPage()) {
-            return response()->json(['message' => 'This request is not ready for scheduling.'], 422);
+            return response()->json([
+                'message' => $customRequest->guestActionBlockMessage() ?: 'This request is not ready for scheduling.',
+            ], 422);
         }
 
         return response()->json($this->calendar->calendarPayloadForCustomRequest($customRequest));
@@ -104,12 +129,24 @@ class CustomRequestsController extends Controller
     {
         $this->authorizeCustomRequest($customRequest);
 
+        if ($customRequest->isGuestRequest()) {
+            app(\App\Services\GuestSpotHoldService::class)->releaseExpiredHold($customRequest);
+            $customRequest->refresh();
+        }
+
         if ($customRequest->isBooked()) {
             return redirect()->route('user.bookings.index')
                 ->with('success', 'Your booking is already confirmed.');
         }
 
         if (!$customRequest->canPay()) {
+            $blockMessage = $customRequest->guestActionBlockMessage();
+            if ($blockMessage) {
+                return redirect()->route('user.requests.index', [
+                    'tab' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
+                ])->with('error', $blockMessage);
+            }
+
             if ($customRequest->clientHasSelectedTimes()) {
                 return redirect()->route('user.custom-requests.confirm-times', [
                     'customRequest' => $customRequest,
@@ -124,8 +161,9 @@ class CustomRequestsController extends Controller
                 ]);
             }
 
-            return redirect()->route('user.requests.index', ['tab' => 'custom'])
-                ->with('error', 'Please choose your appointment time before paying.');
+            return redirect()->route('user.requests.index', [
+                'tab' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
+            ])->with('error', 'Please choose your appointment time before paying.');
         }
 
         $customRequest->load(['artist.userDetail']);
@@ -165,8 +203,15 @@ class CustomRequestsController extends Controller
     {
         $this->authorizeCustomRequest($customRequest);
 
+        if ($customRequest->isGuestRequest()) {
+            app(\App\Services\GuestSpotHoldService::class)->releaseExpiredHold($customRequest);
+            $customRequest->refresh();
+        }
+
         if (!$customRequest->canPay()) {
-            return response()->json(['message' => 'This request is not ready for payment.'], 422);
+            return response()->json([
+                'message' => $customRequest->guestActionBlockMessage() ?: 'This request is not ready for payment.',
+            ], 422);
         }
 
         $request->validate([
@@ -235,6 +280,16 @@ class CustomRequestsController extends Controller
     {
         $this->authorizeCustomRequest($customRequest);
 
+        if ($customRequest->isGuestRequest()) {
+            app(\App\Services\GuestSpotHoldService::class)->releaseExpiredHold($customRequest);
+            $customRequest->refresh();
+            if (! $customRequest->canPay() && ! $customRequest->isBooked()) {
+                return response()->json([
+                    'message' => $customRequest->guestActionBlockMessage() ?: 'This request is not ready for payment.',
+                ], 422);
+            }
+        }
+
         $validated = $request->validate([
             'payment_intent_id' => ['required', 'string'],
         ]);
@@ -295,8 +350,15 @@ class CustomRequestsController extends Controller
     {
         $this->authorizeCustomRequest($customRequest);
 
+        if ($customRequest->isGuestRequest()) {
+            app(\App\Services\GuestSpotHoldService::class)->releaseExpiredHold($customRequest);
+            $customRequest->refresh();
+        }
+
         if (! $customRequest->canPay()) {
-            return response()->json(['message' => 'This request is not ready for payment.'], 422);
+            return response()->json([
+                'message' => $customRequest->guestActionBlockMessage() ?: 'This request is not ready for payment.',
+            ], 422);
         }
 
         try {
@@ -377,6 +439,23 @@ class CustomRequestsController extends Controller
         $calendarPayload = $this->calendar->calendarPayloadForCustomRequest($customRequest);
 
         $userDetail = $customRequest->artist?->userDetail;
+        $guestSpot = $customRequest->isGuestRequest()
+            ? $customRequest->loadMissing('guestSpot')->guestSpot
+            : null;
+
+        $studioName = $guestSpot?->listStudioLabel()
+            ?: trim((string) ($userDetail?->studio_name ?? ''));
+        $studioAddress = $guestSpot?->listLocationLabel()
+            ?: trim((string) ($userDetail?->studio_address ?? ''));
+
+        $guestWindowLabel = null;
+        if ($guestSpot?->from_date && $guestSpot?->to_date) {
+            $guestWindowLabel = $guestSpot->from_date->format('M j, Y').' – '.$guestSpot->to_date->format('M j, Y');
+            $hours = $guestSpot->listAvailabilityTimeLabel();
+            if ($hours) {
+                $guestWindowLabel .= ' · '.$hours;
+            }
+        }
 
         return [
             'customRequest' => $customRequest,
@@ -392,8 +471,10 @@ class CustomRequestsController extends Controller
             'artistTimezone' => $calendarPayload['artistTimezone'] ?? null,
             'durationMinutes' => $customRequest->sessionDurationMinutes(),
             'consultationRequired' => $customRequest->autoRequiresConsultation(),
-            'studioName' => trim((string) ($userDetail?->studio_name ?? '')),
-            'studioAddress' => trim((string) ($userDetail?->studio_address ?? '')),
+            'isGuestRequest' => $customRequest->isGuestRequest(),
+            'guestWindowLabel' => $guestWindowLabel,
+            'studioName' => $studioName,
+            'studioAddress' => $studioAddress,
             'consultDurationMinutes' => (int) ($calendarPayload['artistConsultationSettings']['session_duration_minutes'] ?? 30),
         ];
     }

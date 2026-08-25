@@ -19,11 +19,14 @@ use Illuminate\View\View;
 
 class ArtistCustomRequestsController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $isGuestScope = $request->routeIs('artist.guest-requests.index');
+
         $requests = CustomRequest::query()
-            ->with(['user'])
+            ->with(['user', 'guestSpot'])
             ->where('artist_id', Auth::id())
+            ->where('is_guest', $isGuestScope)
             ->orderByDesc('created_at')
             ->get();
 
@@ -33,6 +36,8 @@ class ArtistCustomRequestsController extends Controller
             ->all();
 
         return view('artist.custom-requests.index', [
+            'scope' => $isGuestScope ? 'guest' : 'custom',
+            'activeTab' => $isGuestScope ? 'guest' : 'custom',
             'requests' => $requests,
             'requestsPayload' => $requestsPayload,
             'pendingCount' => $requests->where('status', 'pending')->count(),
@@ -75,6 +80,15 @@ class ArtistCustomRequestsController extends Controller
 
     public function sendQuote(SendCustomRequestQuoteRequest $request, CustomRequest $customRequest): JsonResponse
     {
+        if ((int) $customRequest->artist_id !== (int) Auth::id()) {
+            abort(403);
+        }
+
+        if ($customRequest->isGuestRequest()) {
+            app(\App\Services\GuestSpotHoldService::class)->releaseExpiredHold($customRequest);
+            $customRequest->refresh();
+        }
+
         if ($customRequest->status !== 'pending') {
             return response()->json([
                 'success' => false,
@@ -82,7 +96,36 @@ class ArtistCustomRequestsController extends Controller
             ], 422);
         }
 
+        if ($customRequest->isGuestRequest()) {
+            $customRequest->loadMissing('guestSpot');
+            $guestSpot = $customRequest->guestSpot;
+            if (! $guestSpot) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This guest spot is no longer available.',
+                ], 422);
+            }
+            if ($guestSpot->tracksSpotCapacity() && ! $guestSpot->hasAvailableSpots()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'All slots are full. You cannot send a quote for this guest spot.',
+                ], 422);
+            }
+        }
+
         $payload = $request->normalizedPayload();
+
+        try {
+            if ($customRequest->isGuestRequest()) {
+                app(\App\Services\GuestSpotHoldService::class)->holdForQuote($customRequest);
+                $customRequest->refresh();
+            }
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         $update = [
             'status' => 'confirmed',
@@ -92,7 +135,12 @@ class ArtistCustomRequestsController extends Controller
             'message_for_client' => $payload['message_for_client'],
         ];
 
-        if ($customRequest->isManagedRequest()) {
+        if ($customRequest->isGuestRequest()) {
+            $update['guest_spot_held'] = (bool) $customRequest->guest_spot_held;
+            $update['guest_hold_expires_at'] = $customRequest->guest_hold_expires_at;
+        }
+
+        if ($customRequest->isManagedRequest() && ! $customRequest->isGuestRequest()) {
             $update['artist_session_slots'] = $payload['artist_session_slots'];
         }
 
@@ -133,7 +181,7 @@ class ArtistCustomRequestsController extends Controller
             try {
                 Mail::to($artistEmail)->send(new CustomRequestDeclinedArtistMail(
                     $customRequest,
-                    route('artist.custom-requests.index'),
+                    route($customRequest->isGuestRequest() ? 'artist.guest-requests.index' : 'artist.custom-requests.index'),
                 ));
             } catch (\Throwable $e) {
                 Log::error('Failed to send custom request declined email to artist', [
@@ -173,7 +221,7 @@ class ArtistCustomRequestsController extends Controller
             try {
                 Mail::to($artistEmail)->send(new CustomRequestQuoteArtistMail(
                     $customRequest,
-                    route('artist.custom-requests.index'),
+                    route($customRequest->isGuestRequest() ? 'artist.guest-requests.index' : 'artist.custom-requests.index'),
                 ));
             } catch (\Throwable $e) {
                 Log::error('Failed to send custom request quote email to artist', [

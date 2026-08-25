@@ -144,6 +144,8 @@ class BookingCancellationController extends Controller
                 'action_history' => $actionHistory,
             ]);
 
+            $this->cancellationService->releaseGuestSpotCapacity($booking->fresh());
+
             // Process refund if needed
             if ($refundData['refund_amount'] > 0) {
                 try {
@@ -328,6 +330,8 @@ class BookingCancellationController extends Controller
                 'platform_fee_refunded' => $refundData['platform_fee_refunded'],
                 'action_history' => $actionHistory,
             ]);
+
+            $this->cancellationService->releaseGuestSpotCapacity($booking->fresh());
 
             // Remove Google Calendar event(s) for no-show bookings.
             try {

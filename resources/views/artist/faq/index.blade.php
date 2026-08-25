@@ -93,7 +93,7 @@
 
     @php
       $bookingPageUsername = Auth::user()->userDetail->user_name ?? null;
-      $bookingPageUrl = $bookingPageUsername ? 'https://inkjin.com/@'.$bookingPageUsername : null;
+      $bookingPageUrl = $bookingPageUsername ? 'https://inkjin.com/@'.$bookingPageUsername.'#faq' : null;
     @endphp
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">

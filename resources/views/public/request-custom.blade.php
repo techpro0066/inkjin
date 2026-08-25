@@ -197,6 +197,47 @@
     .tf-screen[data-screen="0"].active { display: flex; min-height: calc(100vh - 64px); align-items: center; justify-content: center; padding: 2rem 1rem; animation: tfSlideIn 0.4s ease-out; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes fadeDown { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Guest spot entry from regular custom flow */
+    .guest-entry-wrap { width: 100%; max-width: 28rem; margin: 0 auto 1.75rem; text-align: left; }
+    .guest-entry-pill {
+      display: inline-flex; align-items: center; gap: 0.55rem; width: 100%;
+      padding: 0.7rem 1rem; border-radius: 9999px; border: 2px solid #310f7a;
+      background: #ffffff; color: #310f7a; font-size: 0.875rem; font-weight: 600;
+      line-height: 1.35; text-decoration: none; cursor: pointer; transition: background 0.15s, box-shadow 0.15s;
+      box-sizing: border-box; text-align: left;
+    }
+    .guest-entry-pill:hover { background: #f8f1fb; }
+    .guest-entry-pill .guest-entry-dot {
+      width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: #310f7a; flex-shrink: 0;
+    }
+    .guest-entry-pill .guest-entry-text { flex: 1; min-width: 0; }
+    .guest-entry-pill .guest-entry-chevron {
+      font-size: 1.125rem; line-height: 1; flex-shrink: 0; transition: transform 0.2s ease;
+    }
+    .guest-entry-pill[aria-expanded="true"] .guest-entry-chevron { transform: rotate(180deg); }
+    .guest-entry-picker {
+      margin-top: 0.65rem; background: #ffffff; border: 1px solid #e6e0ea; border-radius: 1rem;
+      box-shadow: 0 8px 24px rgba(49, 15, 122, 0.08); overflow: hidden;
+    }
+    .guest-entry-picker.hidden { display: none !important; }
+    .guest-entry-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      padding: 0.9rem 1rem; border-bottom: 1px solid #ece6ef; text-decoration: none; color: inherit;
+      transition: background 0.15s;
+    }
+    .guest-entry-row:last-child { border-bottom: none; }
+    .guest-entry-row:hover { background: #f8f1fb; }
+    .guest-entry-row-main { display: flex; align-items: flex-start; gap: 0.55rem; min-width: 0; }
+    .guest-entry-row-dot {
+      width: 0.45rem; height: 0.45rem; border-radius: 9999px; background: #310f7a;
+      margin-top: 0.4rem; flex-shrink: 0;
+    }
+    .guest-entry-row-city { font-size: 0.9rem; font-weight: 700; color: #1c1b21; }
+    .guest-entry-row-dates { font-size: 0.8rem; color: #494552; margin-top: 0.15rem; }
+    .guest-entry-row-cta {
+      flex-shrink: 0; font-size: 0.8rem; font-weight: 700; color: #310f7a; white-space: nowrap;
+    }
   </style>
 </head>
 <body class="bg-surface text-on-surface min-h-screen">
@@ -285,8 +326,13 @@
 
   <!-- Screen 0: Intro / Artist Card -->
   <div class="tf-screen active" data-screen="0">
+    @php
+      $activeGuestSpots = $activeGuestSpots ?? collect();
+      $activeGuestSpotCount = $activeGuestSpots->count();
+      $showGuestEntry = empty($guestSpotId) && $activeGuestSpotCount > 0;
+    @endphp
     <div class="w-full max-w-xl text-center">
-      <div class="inline-flex items-center gap-3 bg-white rounded-2xl border border-outline-variant/30 px-5 py-4 mb-8 shadow-sm">
+      <div class="inline-flex items-center gap-3 bg-white rounded-2xl border border-outline-variant/30 px-5 py-4 shadow-sm {{ $showGuestEntry ? 'mb-4' : 'mb-8' }}">
         <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
           @if($userDetail->avatar && $userDetail->avatar != '')
             <img src="{{ asset($userDetail->avatar) }}" alt="Avatar" class="w-full h-full object-cover rounded-full">
@@ -299,6 +345,63 @@
           <p class="font-bold text-on-surface text-lg" id="artistNameDisplay">{{$artistName}}</p>
         </div>
       </div>
+
+      @if($showGuestEntry)
+        <div class="guest-entry-wrap" id="guestEntryWrap">
+          @if($activeGuestSpotCount === 1)
+            @php
+              $spot = $activeGuestSpots->first();
+              $pillDates = $spot->from_date->isSameMonth($spot->to_date)
+                ? $spot->from_date->format('M j').'–'.$spot->to_date->format('j')
+                : $spot->from_date->format('M j').' – '.$spot->to_date->format('M j');
+            @endphp
+            <a
+              href="{{ route('public.request-custom', ['user_name' => $artistUsername, 'guest_spot' => $spot->id]) }}"
+              class="guest-entry-pill"
+            >
+              <span class="guest-entry-dot" aria-hidden="true"></span>
+              <span class="guest-entry-text">{{ $artistName }} has a guest spot in {{ $spot->city }} · {{ $pillDates }}</span>
+              <span class="guest-entry-chevron material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+            </a>
+          @else
+            <button
+              type="button"
+              class="guest-entry-pill"
+              id="guestEntryToggle"
+              aria-expanded="false"
+              aria-controls="guestEntryPicker"
+            >
+              <span class="guest-entry-dot" aria-hidden="true"></span>
+              <span class="guest-entry-text">{{ $artistName }} has {{ $activeGuestSpotCount }} upcoming guest spots</span>
+              <span class="guest-entry-chevron material-symbols-outlined" aria-hidden="true">expand_more</span>
+            </button>
+            <div class="guest-entry-picker hidden" id="guestEntryPicker" role="list">
+              @foreach($activeGuestSpots as $spot)
+                @php
+                  $rowDates = $spot->from_date->isSameMonth($spot->to_date) && $spot->from_date->isSameYear($spot->to_date)
+                    ? $spot->from_date->format('M j').' – '.$spot->to_date->format('j, Y')
+                    : $spot->from_date->format('M j, Y').' – '.$spot->to_date->format('M j, Y');
+                @endphp
+                <a
+                  href="{{ route('public.request-custom', ['user_name' => $artistUsername, 'guest_spot' => $spot->id]) }}"
+                  class="guest-entry-row"
+                  role="listitem"
+                >
+                  <div class="guest-entry-row-main">
+                    <span class="guest-entry-row-dot" aria-hidden="true"></span>
+                    <div>
+                      <p class="guest-entry-row-city">{{ $spot->city }}@if($spot->country), {{ $spot->country }}@endif</p>
+                      <p class="guest-entry-row-dates">{{ $rowDates }}</p>
+                    </div>
+                  </div>
+                  <span class="guest-entry-row-cta">Reserve →</span>
+                </a>
+              @endforeach
+            </div>
+          @endif
+        </div>
+      @endif
+
       <h1 class="text-3xl sm:text-4xl font-extrabold text-on-surface mb-4">Let's bring your<br>vision to life ✨</h1>
       <p class="text-on-surface-variant text-lg mb-8">We'll ask a few questions to help the artist understand exactly what you want.@if(!empty($isManagedScheduling)) You'll also share your preferred dates so {{ $artistName }} can confirm a time that works for both of you.@endif</p>
       <button onclick="nextScreen()" class="inline-flex items-center gap-2 px-8 py-4 bg-primary text-on-primary rounded-full font-bold text-base hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">
@@ -1021,11 +1124,23 @@
 
     var artistName = @json($artistName ?? 'Artist');
     var rcArtistUsername = @json($artistUsername ?? '');
+    var guestSpotId = @json($guestSpotId ?? null);
     var isManagedScheduling = @json(!empty($isManagedScheduling));
     var questionCount = (typeof window.rcGetTotalQuestions === 'function') ? window.rcGetTotalQuestions() : 0;
     var postScreens = isManagedScheduling ? [9, 10, 11, 12, 13, 14, 15, 16] : [10, 11, 12, 13, 14, 15, 16];
     var rcMaxStep = isManagedScheduling ? 5 : 4;
     var rcCurrentQuestion = 0;
+
+    (function initGuestEntryPicker() {
+      var toggle = document.getElementById('guestEntryToggle');
+      var picker = document.getElementById('guestEntryPicker');
+      if (!toggle || !picker) return;
+      toggle.addEventListener('click', function () {
+        var open = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+        picker.classList.toggle('hidden', open);
+      });
+    })();
     var rcPrefCount = 1;
     var RC_PREF_TIME_PILLS = '<div class="flex flex-wrap gap-1.5"><button type="button" class="time-pref-pill" data-value="Morning" onclick="rcToggleTimePref(this)">Morning</button><button type="button" class="time-pref-pill" data-value="Afternoon" onclick="rcToggleTimePref(this)">Afternoon</button><button type="button" class="time-pref-pill" data-value="Evening" onclick="rcToggleTimePref(this)">Evening</button></div>';
 
@@ -1049,7 +1164,7 @@
     var rcDraftSaveTimer = null;
 
     function rcDraftStorageKey() {
-      return 'inkjin_custom_request_draft:' + rcArtistUsername;
+      return 'inkjin_custom_request_draft:' + rcArtistUsername + (guestSpotId ? ':guest:' + guestSpotId : '');
     }
 
     function clearRcDraftSession() {
@@ -1903,6 +2018,9 @@
           requestPayload.how_much_flexible = managedAvailability.how_much_flexible;
           requestPayload.avoid_dates = managedAvailability.avoid_dates;
           requestPayload.urgency = managedAvailability.urgency;
+        }
+        if (guestSpotId) {
+          requestPayload.guest_id = guestSpotId;
         }
         var payload = {
           artist_username: @json($artistUsername ?? ''),

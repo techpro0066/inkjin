@@ -7,7 +7,6 @@ use App\Models\InkJinTattoo;
 use App\Models\ArtistDesign;
 use App\Models\User;
 use App\Models\Availability;
-use App\Models\AvailabilityOverride;
 use App\Services\InkJinApiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -127,21 +126,12 @@ class InkJinController extends Controller
     }
 
     /**
-     * Full-day unavailability from availability_overrides (inclusive start_date..end_date).
+     * Full-day unavailability from availability_overrides + guest spot away/buffer windows.
      */
     private function artistLocalDateIsBlocked(int $artistUserId, string $ymd): bool
     {
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $ymd)) {
-            return false;
-        }
-
-        return AvailabilityOverride::query()
-            ->where('user_id', $artistUserId)
-            ->whereNotNull('start_date')
-            ->whereNotNull('end_date')
-            ->whereDate('start_date', '<=', $ymd)
-            ->whereDate('end_date', '>=', $ymd)
-            ->exists();
+        return app(\App\Services\ManagedRequestBookingService::class)
+            ->artistLocalDateIsBlocked($artistUserId, $ymd);
     }
 
     /**
@@ -718,18 +708,8 @@ class InkJinController extends Controller
                 })
                 ->toArray();
 
-            $artistBlockedPeriods = AvailabilityOverride::query()
-                ->where('user_id', $userDetail->user_id)
-                ->orderBy('start_date')
-                ->get()
-                ->map(static function (AvailabilityOverride $o) {
-                    return [
-                        'start_date' => $o->start_date->format('Y-m-d'),
-                        'end_date' => $o->end_date->format('Y-m-d'),
-                    ];
-                })
-                ->values()
-                ->all();
+            $artistBlockedPeriods = app(\App\Services\ManagedRequestBookingService::class)
+                ->artistBlockedPeriods((int) $userDetail->user_id);
 
             $artistBusyIntervalsByDate = [];
             $existingBookings = Booking::query()

@@ -54,7 +54,7 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
 
             /** @var CustomRequest $customRequest */
             $customRequest = $this->route('customRequest');
-            $customRequest->loadMissing(['artist.userDetail']);
+            $customRequest->loadMissing(['artist.userDetail', 'guestSpot']);
 
             $calendar = app(BookingCalendarAvailabilityService::class);
             $payload = $calendar->calendarPayloadForCustomRequest($customRequest);
@@ -62,12 +62,20 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
             $sessionDuration = (int) ($payload['tattooDurationMinutes'] ?? 120);
             $consultDuration = (int) ($payload['artistConsultationSettings']['session_duration_minutes'] ?? 30);
             $managed = app(ManagedRequestBookingService::class);
+            $allowedDateRange = is_array($payload['allowedDateRange'] ?? null) ? $payload['allowedDateRange'] : null;
 
             $this->assertDateNotInPast(
                 $validator,
                 'client_session_slots',
                 (string) $this->input('client_session_slots.0.date'),
                 $timezone
+            );
+
+            $this->assertDateWithinAllowedRange(
+                $validator,
+                'client_session_slots',
+                (string) $this->input('client_session_slots.0.date'),
+                $allowedDateRange
             );
 
             $this->validateSlotGroup(
@@ -77,7 +85,8 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
                 $payload,
                 $timezone,
                 $managed,
-                (int) $customRequest->artist_id
+                (int) $customRequest->artist_id,
+                $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
             );
 
             if (!$customRequest->autoRequiresConsultation()) {
@@ -91,6 +100,13 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
                 $timezone
             );
 
+            $this->assertDateWithinAllowedRange(
+                $validator,
+                'client_consultation_slots',
+                (string) $this->input('client_consultation_slots.0.date'),
+                $allowedDateRange
+            );
+
             $this->validateSlotGroup(
                 $validator,
                 'client_consultation_slots',
@@ -98,7 +114,8 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
                 $payload,
                 $timezone,
                 $managed,
-                (int) $customRequest->artist_id
+                (int) $customRequest->artist_id,
+                $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
             );
 
             if ($customRequest->autoConsultationTiming() !== 'separate') {
@@ -123,6 +140,27 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
                 $validator->errors()->add('client_session_slots', 'Tattoo session must be scheduled after the required gap following consultation.');
             }
         });
+    }
+
+    /**
+     * @param  array{start?: string, end?: string}|null  $allowedDateRange
+     */
+    private function assertDateWithinAllowedRange(
+        Validator $validator,
+        string $key,
+        string $date,
+        ?array $allowedDateRange
+    ): void {
+        if ($date === '' || ! is_array($allowedDateRange)) {
+            return;
+        }
+
+        $start = trim((string) ($allowedDateRange['start'] ?? ''));
+        $end = trim((string) ($allowedDateRange['end'] ?? ''));
+
+        if (($start !== '' && $date < $start) || ($end !== '' && $date > $end)) {
+            $validator->errors()->add($key, 'Selected date must be within the guest spot availability window.');
+        }
     }
 
     private function assertDateNotInPast(Validator $validator, string $key, string $date, string $timezone): void
@@ -156,6 +194,7 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
         string $timezone,
         ManagedRequestBookingService $managed,
         int $artistId,
+        ?int $exceptGuestSpotId = null,
     ): void {
         $date = (string) $this->input($key.'.0.date');
         $from = substr((string) $this->input($key.'.0.ranges.0.from'), 0, 5);
@@ -167,7 +206,7 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
             return;
         }
 
-        if ($managed->artistLocalDateIsBlocked($artistId, $date)) {
+        if ($managed->artistLocalDateIsBlocked($artistId, $date, $exceptGuestSpotId)) {
             $validator->errors()->add($key, 'This date is not available.');
 
             return;

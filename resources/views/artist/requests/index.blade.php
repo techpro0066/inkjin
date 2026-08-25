@@ -173,8 +173,7 @@
       margin-bottom: 0.75rem;
     }
     .artist-slot-block:last-child { margin-bottom: 0; }
-    .artist-slot-date,
-    .artist-slot-time-from {
+    .artist-slot-date {
       width: 100%;
       border: 1px solid rgba(202, 196, 211, 0.45);
       border-radius: 0.75rem;
@@ -183,20 +182,9 @@
       color: #1c1b21;
     }
     .artist-slot-time-from {
-      min-width: 7rem;
-      color-scheme: light;
-      appearance: textfield;
-      -moz-appearance: textfield;
+      width: 100%;
     }
-    .artist-slot-time-from::-webkit-calendar-picker-indicator {
-      display: none;
-      -webkit-appearance: none;
-    }
-    .artist-slot-time-from::-webkit-inner-spin-button {
-      display: none;
-    }
-    .artist-slot-date.is-invalid,
-    .artist-slot-time-from.is-invalid {
+    .artist-slot-date.is-invalid {
       border-color: #ba1a1a;
       box-shadow: 0 0 0 2px rgba(186, 26, 26, 0.12);
     }
@@ -820,7 +808,7 @@
         endHint = end ? ('→ ' + formatOfferTime(end)) : (duration ? '→ past midnight' : '');
       }
       return '<div class="artist-slot-time-row">' +
-        '<div class="artist-slot-time-field"><label>Start</label><input type="time" class="artist-slot-time-from" value="' + escapeHtml(from) + '" step="300" onchange="onArtistSlotFieldChange(this)"></div>' +
+        '<div class="artist-slot-time-field"><label>Start</label><div class="inkjin-time-wrap"><input type="time" class="inkjin-time-input artist-slot-time-from px-3 py-2" value="' + escapeHtml(from) + '" step="300" onchange="onArtistSlotFieldChange(this)"></div></div>' +
         '<span class="artist-slot-time-end-hint">' + escapeHtml(endHint) + '</span>' +
         '<button type="button" onclick="removeSlotTimeRow(this)" class="w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-outline hover:bg-surface-container-low mb-0.5" title="Remove slot"><span class="material-symbols-outlined text-lg">close</span></button>' +
         '</div>';

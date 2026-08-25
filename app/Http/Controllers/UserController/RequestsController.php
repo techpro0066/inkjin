@@ -46,23 +46,41 @@ class RequestsController extends Controller
             ->values()
             ->all();
 
-        $customRequests = CustomRequest::query()
-            ->with(['artist.userDetail'])
+        $allCustomRequests = CustomRequest::query()
+            ->with(['artist.userDetail', 'guestSpot'])
             ->where('user_id', Auth::id())
             ->orderByDesc('created_at')
             ->get();
+
+        $customRequests = $allCustomRequests
+            ->filter(fn (CustomRequest $request) => ! $request->is_guest)
+            ->values();
+
+        $guestRequests = $allCustomRequests
+            ->filter(fn (CustomRequest $request) => (bool) $request->is_guest)
+            ->values();
 
         $customRequestsPayload = $customRequests
             ->map(fn (CustomRequest $request) => $request->toUserPanelArray())
             ->values()
             ->all();
 
+        $guestRequestsPayload = $guestRequests
+            ->map(fn (CustomRequest $request) => $request->toUserPanelArray())
+            ->values()
+            ->all();
+
+        $tab = request()->query('tab');
+        $activeTab = in_array($tab, ['custom', 'guest'], true) ? $tab : 'design';
+
         return view('user.requests.index', [
             'requests' => $requests,
             'requestsPayload' => $requestsPayload,
             'customRequests' => $customRequests,
             'customRequestsPayload' => $customRequestsPayload,
-            'activeTab' => request()->query('tab') === 'custom' ? 'custom' : 'design',
+            'guestRequests' => $guestRequests,
+            'guestRequestsPayload' => $guestRequestsPayload,
+            'activeTab' => $activeTab,
         ]);
     }
 

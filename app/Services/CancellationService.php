@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\CustomRequest;
+use App\Models\GuestSpot;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +14,37 @@ use Stripe\Exception\ApiErrorException;
 
 class CancellationService
 {
+    /**
+     * Return a guest spot capacity unit when a paid guest booking is cancelled / no-showed.
+     */
+    public function releaseGuestSpotCapacity(Booking $booking): void
+    {
+        $details = is_array($booking->custom_tattoo_details) ? $booking->custom_tattoo_details : [];
+        if (empty($details['guest_spot_consumed']) || ! empty($details['guest_spot_released'])) {
+            return;
+        }
+
+        $guestId = (int) ($details['guest_id'] ?? 0);
+        if ($guestId <= 0) {
+            $customRequestId = (int) ($details['custom_request_id'] ?? 0);
+            if ($customRequestId > 0) {
+                $guestId = (int) (CustomRequest::query()->whereKey($customRequestId)->value('guest_id') ?? 0);
+            }
+        }
+
+        if ($guestId <= 0) {
+            return;
+        }
+
+        $guestSpot = GuestSpot::query()->find($guestId);
+        if ($guestSpot) {
+            $guestSpot->releaseRemainingSpot();
+        }
+
+        $details['guest_spot_released'] = true;
+        $booking->forceFill(['custom_tattoo_details' => $details])->save();
+    }
+
     /**
      * Parse artist cancellation_window string (e.g. 48h, 1w, 2 days) into hours.
      */

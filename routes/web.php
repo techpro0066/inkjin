@@ -353,6 +353,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     // Requests
     Route::get('/requests', [RequestsController::class, 'index'])->name('artist.requests.index');
     Route::get('/custom-requests', [ArtistCustomRequestsController::class, 'index'])->name('artist.custom-requests.index');
+    Route::get('/guest-requests', [ArtistCustomRequestsController::class, 'index'])->name('artist.guest-requests.index');
     Route::post('/custom-requests/{customRequest}/decline', [ArtistCustomRequestsController::class, 'decline'])->name('artist.custom-requests.decline');
     Route::post('/custom-requests/{customRequest}/send-quote', [ArtistCustomRequestsController::class, 'sendQuote'])->name('artist.custom-requests.send-quote');
     Route::post('/requests/{bookingRequest}/decline', [RequestsController::class, 'decline'])->name('artist.requests.decline');

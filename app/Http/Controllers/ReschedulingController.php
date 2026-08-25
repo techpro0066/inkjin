@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Availability;
-use App\Models\AvailabilityOverride;
 use App\Models\User;
 use App\Services\BookingCalendarAvailabilityService;
 use App\Services\ReschedulingService;
@@ -530,19 +529,10 @@ class ReschedulingController extends Controller
                 ->orderBy('day_of_week')
                 ->orderBy('start_time')
                 ->get();
-            
-            $blocks = AvailabilityOverride::where('user_id', $artistUser->id)
-                ->where('end_date', '>=', Carbon::today())
-                ->orderBy('start_date')
-                ->get();
 
             $availabilityData['availabilities'] = $availabilities;
-            $availabilityData['overrides'] = $blocks->map(function ($block) {
-                return [
-                    'start_date' => $block->start_date->format('Y-m-d'),
-                    'end_date' => $block->end_date->format('Y-m-d'),
-                ];
-            });
+            $availabilityData['overrides'] = app(\App\Services\ManagedRequestBookingService::class)
+                ->artistBlockedPeriods((int) $artistUser->id);
             
             // Calculate available/unavailable dates
             $availableDates = [];
@@ -574,6 +564,7 @@ class ReschedulingController extends Controller
             ];
             
             $currentDate = $startDate->copy();
+            $managedBooking = app(\App\Services\ManagedRequestBookingService::class);
             while ($currentDate->lte($endDate)) {
                 $dateKey = $currentDate->format('Y-m-d');
                 
@@ -586,10 +577,7 @@ class ReschedulingController extends Controller
                 $carbonDayOfWeek = $dateInArtistTimezone->dayOfWeek;
                 $dayName = $dayNameMap[$carbonDayOfWeek];
                 
-                $isBlocked = $blocks->contains(function ($block) use ($dateKey) {
-                    return $dateKey >= $block->start_date->format('Y-m-d')
-                        && $dateKey <= $block->end_date->format('Y-m-d');
-                });
+                $isBlocked = $managedBooking->artistLocalDateIsBlocked((int) $artistUser->id, $dateKey);
 
                 if ($isBlocked) {
                     $unavailableDates[] = $dateKey;

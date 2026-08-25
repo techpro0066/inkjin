@@ -51,8 +51,8 @@
 @endsection
 
 @section('content')
-<main class="main-content flex-1 min-h-screen flex items-center justify-center p-4 sm:p-6 md:p-10">
-  <div class="w-full max-w-2xl">
+<main class="main-content flex-1 min-h-screen flex items-start justify-center">
+  <div class="w-full max-w-2xl p-4 sm:p-6 md:p-10">
     <div class="bg-white rounded-2xl border border-outline-variant/30 p-6 sm:p-8 md:p-10 shadow-sm">
       <div id="paymentLinkFormView">
       <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight mb-2">New payment link</h1>

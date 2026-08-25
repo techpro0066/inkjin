@@ -163,8 +163,7 @@
     margin-bottom: 0.75rem;
   }
   .artist-slot-block:last-child { margin-bottom: 0; }
-  .artist-slot-date,
-  .artist-slot-time-from {
+  .artist-slot-date {
     width: 100%;
     border: 1px solid rgba(202, 196, 211, 0.45);
     border-radius: 0.75rem;
@@ -173,20 +172,9 @@
     color: #1c1b21;
   }
   .artist-slot-time-from {
-    min-width: 7rem;
-    color-scheme: light;
-    appearance: textfield;
-    -moz-appearance: textfield;
+    width: 100%;
   }
-  .artist-slot-time-from::-webkit-calendar-picker-indicator {
-    display: none;
-    -webkit-appearance: none;
-  }
-  .artist-slot-time-from::-webkit-inner-spin-button {
-    display: none;
-  }
-  .artist-slot-date.is-invalid,
-  .artist-slot-time-from.is-invalid {
+  .artist-slot-date.is-invalid {
     border-color: #ba1a1a;
     box-shadow: 0 0 0 2px rgba(186, 26, 26, 0.12);
   }
@@ -295,7 +283,7 @@
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
 
     @include('artist.requests.partials.page-header-and-tabs', [
-      'activeTab' => 'custom',
+      'activeTab' => $activeTab ?? 'custom',
       'customPendingCount' => $pendingCount,
     ])
 
@@ -350,7 +338,10 @@
                 <p class="text-xs text-outline flex-shrink-0">{{ $customRequest->created_at?->format('M j, Y') }}</p>
               </div>
               <p class="text-sm text-on-surface-variant mb-3">
-                Custom tattoo request
+                {{ ($scope ?? 'custom') === 'guest' ? 'Guest spot request' : 'Custom tattoo request' }}
+                @if(($scope ?? 'custom') === 'guest' && $customRequest->guestSpot)
+                  · {{ $customRequest->guestSpot->city }}, {{ $customRequest->guestSpot->country }}
+                @endif
                 @if($answerCount > 0)
                   · {{ $answerCount }} {{ $answerCount === 1 ? 'answer' : 'answers' }}
                 @endif
@@ -358,24 +349,40 @@
                   · {{ $customRequest->contactPhone() }}
                 @endif
               </p>
-              <div class="flex flex-wrap items-center gap-2 justify-end">
-                @if($customRequest->status === 'pending')
-                <button type="button" data-decline-btn onclick="event.stopPropagation(); openDeclineModal({{ $customRequest->id }})" class="text-xs font-semibold text-error border border-error/30 hover:bg-error/5 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
-                  <span class="material-symbols-outlined text-sm">block</span> Decline
-                </button>
+              <div class="flex flex-col items-end gap-1.5" data-card-actions>
+                <div class="flex flex-wrap items-center gap-2 justify-end">
+                  @if($customRequest->status === 'pending')
+                  <button type="button" data-decline-btn onclick="event.stopPropagation(); openDeclineModal({{ $customRequest->id }})" class="text-xs font-semibold text-error border border-error/30 hover:bg-error/5 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">block</span> Decline
+                  </button>
+                  @endif
+                  <button type="button" onclick="event.stopPropagation(); openCustomRequestDetail({{ $customRequest->id }})" class="text-xs font-semibold text-primary hover:text-primary-container transition-colors flex items-center gap-1">
+                    View Details <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                  </button>
+                </div>
+                @if(
+                  $customRequest->status === 'pending'
+                  && $customRequest->isGuestRequest()
+                  && $customRequest->guestSpot
+                  && $customRequest->guestSpot->isFull()
+                )
+                  <p data-slots-full-msg class="text-xs font-semibold text-right" style="color:#FFBF00;">Unable to send. All slots are full.</p>
                 @endif
-                <button type="button" onclick="event.stopPropagation(); openCustomRequestDetail({{ $customRequest->id }})" class="text-xs font-semibold text-primary hover:text-primary-container transition-colors flex items-center gap-1">
-                  View Details <span class="material-symbols-outlined text-sm">arrow_forward</span>
-                </button>
               </div>
             </div>
           </div>
         </div>
       @empty
         <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 p-12 text-center">
-          <span class="material-symbols-outlined text-4xl text-outline mb-3 block">brush</span>
-          <p class="text-on-surface-variant font-medium">No custom requests yet</p>
-          <p class="text-outline text-sm mt-1">When clients submit a custom tattoo request, they will appear here.</p>
+          <span class="material-symbols-outlined text-4xl text-outline mb-3 block">{{ ($scope ?? 'custom') === 'guest' ? 'luggage' : 'brush' }}</span>
+          <p class="text-on-surface-variant font-medium">{{ ($scope ?? 'custom') === 'guest' ? 'No guest requests yet' : 'No custom requests yet' }}</p>
+          <p class="text-outline text-sm mt-1">
+            @if(($scope ?? 'custom') === 'guest')
+              When clients reserve a guest spot, their requests will appear here.
+            @else
+              When clients submit a custom tattoo request, they will appear here.
+            @endif
+          </p>
         </div>
       @endforelse
     </div>
@@ -392,7 +399,7 @@
   <div class="w-full h-full overflow-y-auto bg-white lg:bg-transparent lg:p-8 lg:flex lg:items-start lg:justify-center" onclick="closeModalOnBackdrop(event)">
     <div class="bg-white lg:rounded-2xl w-full lg:max-w-5xl lg:shadow-2xl min-h-screen lg:min-h-0 lg:max-h-[90vh] lg:overflow-y-auto" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15 sticky top-0 bg-white z-10 lg:rounded-t-2xl">
-        <h3 class="text-lg font-bold text-on-surface">Custom Request Details</h3>
+        <h3 class="text-lg font-bold text-on-surface">{{ ($scope ?? 'custom') === 'guest' ? 'Guest Request Details' : 'Custom Request Details' }}</h3>
         <button type="button" onclick="closeCustomRequestDetail()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors">
           <span class="material-symbols-outlined text-on-surface-variant">close</span>
         </button>
@@ -405,7 +412,7 @@
       </div>
       <div class="px-6 py-4 border-t border-outline-variant/15">
         <button type="button" onclick="closeCustomRequestDetail()" class="text-sm font-semibold text-primary hover:text-primary-container transition-colors flex items-center gap-1">
-          <span class="material-symbols-outlined text-lg">arrow_back</span> Back to Custom Requests
+          <span class="material-symbols-outlined text-lg">arrow_back</span> Back to {{ ($scope ?? 'custom') === 'guest' ? 'Guest Requests' : 'Custom Requests' }}
         </button>
       </div>
     </div>
@@ -452,6 +459,7 @@
 @section('scripts')
 <script src="{{ asset('js/question-answer-display.js') }}"></script>
 <script>
+  const requestScope = @json($scope ?? 'custom');
   const customRequestsById = @json(collect($requestsPayload)->keyBy('id'));
   const declineRequestUrlTemplate = @json(route('artist.custom-requests.decline', ['customRequest' => 0]));
   const sendQuoteUrlTemplate = @json(route('artist.custom-requests.send-quote', ['customRequest' => 0]));
@@ -592,7 +600,11 @@
         : '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + formatAnswer(item.answer, item.type) + '</p></div>';
     });
 
-    var availabilityHtml = (req.type === 'managed') ? buildAvailabilityHtml(req.availabilityDetails || {}) : '';
+    var availabilityHtml = (req.type === 'managed' && !req.isGuest) ? buildAvailabilityHtml(req.availabilityDetails || {}) : '';
+    var guestSpotHtml = req.isGuest ? buildGuestSpotHtml(req.guestSpot || null) : '';
+    var requestTitle = req.isGuest ? 'Guest Spot Request' : 'Custom Tattoo Request';
+    var requestSubtitle = req.isGuest ? 'Client reservation for your guest spot' : 'Client-submitted custom work inquiry';
+    var requestIcon = req.isGuest ? 'luggage' : 'brush';
 
     return '' +
       '<div class="flex items-center gap-4">' +
@@ -608,14 +620,15 @@
       '</div>' +
       '<div class="bg-surface-container-low rounded-2xl p-5 border border-outline-variant/20 flex gap-4">' +
         '<div class="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 border border-outline-variant/20">' +
-          '<span class="material-symbols-outlined text-primary text-3xl">brush</span>' +
+          '<span class="material-symbols-outlined text-primary text-3xl">' + requestIcon + '</span>' +
         '</div>' +
-        '<div><h4 class="font-bold text-on-surface text-lg">Custom Tattoo Request</h4>' +
-        '<p class="text-sm text-on-surface-variant mt-1">Client-submitted custom work inquiry</p>' +
+        '<div><h4 class="font-bold text-on-surface text-lg">' + requestTitle + '</h4>' +
+        '<p class="text-sm text-on-surface-variant mt-1">' + requestSubtitle + '</p>' +
         '<p class="text-xs text-on-surface-variant mt-2">' + escapeHtml(req.schedulingLabel || 'Auto scheduling') + '</p>' +
         (req.referralSource && req.referralSource !== '—' ? '<p class="text-xs text-on-surface-variant mt-2">Referral: ' + escapeHtml(req.referralSource) + '</p>' : '') +
         '</div></div>' +
       '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">' + (questionsHtml || '<p class="text-sm text-on-surface-variant italic sm:col-span-2">No question answers recorded.</p>') + '</div>' +
+      guestSpotHtml +
       availabilityHtml +
       '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Additional Notes</h4>' +
         '<p class="text-sm text-on-surface leading-relaxed whitespace-pre-line">' + escapeHtml(req.additionalNotes) + '</p></div>' +
@@ -624,6 +637,39 @@
 
   function isManagedCustomRequest(req) {
     return req && req.type === 'managed';
+  }
+
+  function needsQuoteSessionSlots(req) {
+    return isManagedCustomRequest(req) && !(req && req.isGuest);
+  }
+
+  function buildGuestSpotHtml(guestSpot) {
+    if (!guestSpot) return '';
+    var lines = [];
+    if (guestSpot.city || guestSpot.country) {
+      lines.push('<p class="font-semibold text-on-surface">' + escapeHtml([guestSpot.city, guestSpot.country].filter(Boolean).join(', ')) + '</p>');
+    }
+    if (guestSpot.fromDate && guestSpot.toDate) {
+      lines.push('<p class="text-sm text-on-surface-variant mt-1">' + escapeHtml(guestSpot.fromDate + ' – ' + guestSpot.toDate) + '</p>');
+    }
+    if (guestSpot.availabilityTime) {
+      lines.push('<p class="text-sm text-on-surface-variant mt-1">Daily hours: ' + escapeHtml(guestSpot.availabilityTime) + '</p>');
+    }
+    if (guestSpot.studio) {
+      lines.push('<p class="text-sm text-on-surface mt-2"><span class="font-semibold">Studio:</span> ' + escapeHtml(guestSpot.studio) + '</p>');
+    }
+    if (guestSpot.location) {
+      lines.push('<p class="text-sm text-on-surface-variant mt-1">' + escapeHtml(guestSpot.location) + '</p>');
+    }
+    if (guestSpot.tracksCapacity) {
+      if (guestSpot.isFull) {
+        lines.push('<p class="text-sm font-semibold mt-2" style="color:#FFBF00;">All slots are full</p>');
+      } else if (guestSpot.remainingSpotsLabel) {
+        lines.push('<p class="text-sm font-semibold text-green-700 mt-2">' + escapeHtml(guestSpot.remainingSpotsLabel) + '</p>');
+      }
+    }
+    if (!lines.length) return '';
+    return '<section class="avail-section"><div class="avail-section-title"><span class="material-symbols-outlined text-[20px]">luggage</span> Guest Spot Availability</div><div class="bg-white rounded-xl border border-outline-variant/20 p-4">' + lines.join('') + '</div></section>';
   }
 
   function todayYmd() {
@@ -761,7 +807,7 @@
       endHint = end ? ('→ ' + formatOfferTime(end)) : (duration ? '→ past midnight' : '');
     }
     return '<div class="artist-slot-time-row">' +
-      '<div class="artist-slot-time-field"><label>Start</label><input type="time" class="artist-slot-time-from" value="' + escapeHtml(from) + '" step="300" onchange="onArtistSlotFieldChange(this)"></div>' +
+      '<div class="artist-slot-time-field"><label>Start</label><div class="inkjin-time-wrap"><input type="time" class="inkjin-time-input artist-slot-time-from px-3 py-2" value="' + escapeHtml(from) + '" step="300" onchange="onArtistSlotFieldChange(this)"></div></div>' +
       '<span class="artist-slot-time-end-hint">' + escapeHtml(endHint) + '</span>' +
       '<button type="button" onclick="removeSlotTimeRow(this)" class="w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-outline hover:bg-surface-container-low mb-0.5" title="Remove slot"><span class="material-symbols-outlined text-lg">close</span></button>' +
       '</div>';
@@ -1133,23 +1179,30 @@
     var duration = req.estimatedTime ? escapeHtml(req.estimatedTime) : '';
     var sessions = req.numberOfSessions ? escapeHtml(req.numberOfSessions) : '';
     var message = req.messageForClient ? escapeHtml(req.messageForClient) : '';
+    var guestSpotFull = !!(req.isGuest && req.guestSpot && req.guestSpot.isFull);
+    var guestFullBanner = guestSpotFull
+      ? '<div class="rounded-xl border px-4 py-3 text-sm font-semibold" style="border-color: rgba(255,191,0,0.45); background: rgba(255,191,0,0.12); color: #B8860B;">All slots are full. You cannot send a quote for this guest spot.</div>'
+      : '';
 
     return '<form class="custom-quote-panel space-y-4" id="customQuoteForm" onsubmit="return false;" novalidate>' +
       '<div><h4 class="font-bold text-on-surface mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">send</span> Send Quote</h4>' +
-      '<p class="text-sm text-on-surface-variant">Fill in all fields below to send your quote to the client.</p></div>' +
+      '<p class="text-sm text-on-surface-variant">' + (req.isGuest
+        ? 'Send your price and message. The client will book within your guest spot availability.'
+        : 'Fill in all fields below to send your quote to the client.') + '</p></div>' +
+      guestFullBanner +
       quoteFieldBlock('estimated_price', 'Estimated Price (€)',
-        '<input type="number" id="quoteEstimatedPrice" name="estimated_price" min="0" step="0.01" placeholder="e.g. 350" value="' + escapeHtml(price) + '">') +
+        '<input type="number" id="quoteEstimatedPrice" name="estimated_price" min="0" step="0.01" placeholder="e.g. 350" value="' + escapeHtml(price) + '"' + (guestSpotFull ? ' disabled' : '') + '>') +
       quoteFieldBlock('estimated_time', 'Estimated Duration',
-        '<input type="text" id="quoteEstimatedDuration" name="estimated_time" placeholder="e.g. 3–4 hours" value="' + duration + '">') +
+        '<input type="text" id="quoteEstimatedDuration" name="estimated_time" placeholder="e.g. 3–4 hours" value="' + duration + '"' + (guestSpotFull ? ' disabled' : '') + '>') +
       quoteFieldBlock('number_of_sessions', 'Number of Sessions',
-        '<input type="text" id="quoteNumberOfSessions" name="number_of_sessions" placeholder="e.g. 2 sessions" value="' + sessions + '">') +
+        '<input type="text" id="quoteNumberOfSessions" name="number_of_sessions" placeholder="e.g. 2 sessions" value="' + sessions + '"' + (guestSpotFull ? ' disabled' : '') + '>') +
       quoteFieldBlock('message_for_client', 'Message to Client',
-        '<textarea id="quoteMessageForClient" name="message_for_client" rows="5" maxlength="2000" placeholder="Describe your quote, design approach, deposit requirements, or next steps…">' + message + '</textarea>',
+        '<textarea id="quoteMessageForClient" name="message_for_client" rows="5" maxlength="2000" placeholder="Describe your quote, design approach, deposit requirements, or next steps…"' + (guestSpotFull ? ' disabled' : '') + '>' + message + '</textarea>',
         '<p class="text-xs text-outline mt-1.5">Max 2,000 characters</p>') +
-      (isManagedCustomRequest(req) ? buildCustomQuoteSessionSlotsPanel() : '') +
+      (needsQuoteSessionSlots(req) ? buildCustomQuoteSessionSlotsPanel() : '') +
       '<p id="quoteFormGeneralError" class="hidden text-sm text-error font-medium" role="alert"></p>' +
-      '<button type="button" id="customQuoteSubmitBtn" onclick="submitCustomQuote()" class="w-full inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm disabled:opacity-60 disabled:pointer-events-none">' +
-      '<span class="material-symbols-outlined text-lg">send</span> Send Quote</button>' +
+      '<button type="button" id="customQuoteSubmitBtn" onclick="submitCustomQuote()" ' + (guestSpotFull ? 'disabled ' : '') + 'class="w-full inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm disabled:opacity-60 disabled:pointer-events-none">' +
+      '<span class="material-symbols-outlined text-lg">send</span> ' + (guestSpotFull ? 'All slots are full' : 'Send Quote') + '</button>' +
       '</form>';
   }
 
@@ -1168,7 +1221,7 @@
         '<div><p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Message to Client</p>' +
         '<p class="custom-quote-readonly whitespace-pre-line">' + escapeHtml(req.messageForClient || '—') + '</p></div>' +
       '</div>' +
-      (isManagedCustomRequest(req) && (req.artistSessionSlots || []).length
+      (needsQuoteSessionSlots(req) && (req.artistSessionSlots || []).length
         ? buildArtistSlotsReadOnlyPanel('Tattoo session times', 'brush', req.artistSessionSlots, 'artist-slots-panel--session')
         : '') +
       '</div>';
@@ -1291,7 +1344,7 @@
     left.innerHTML = buildCustomRequestLeftHtml(req);
     quote.innerHTML = buildQuotePanelHtml(req);
     bindQuoteFormValidationClear();
-    if (req.isPending && isManagedCustomRequest(req)) {
+    if (req.isPending && needsQuoteSessionSlots(req)) {
       hydrateSlotBlocks('session', req.artistSessionSlots || [], todayYmd());
     }
   }
@@ -1342,12 +1395,32 @@
     customRequestsById[req.id] = req;
     customRequestsById[String(req.id)] = req;
     updateRequestCardFromRequest(req);
+    syncGuestSpotFullAcrossCards(req);
     const detailModal = document.getElementById('customRequestModal');
     if (detailModal && detailModal.classList.contains('open')) {
       renderCustomRequestDetail(req);
     }
     applyFilters();
     updatePendingBadge();
+  }
+
+  function syncGuestSpotFullAcrossCards(req) {
+    if (!req || !req.isGuest || !req.guestSpot || !req.guestSpot.id) return;
+    var guestId = req.guestSpot.id;
+    var isFull = !!req.guestSpot.isFull;
+    var seen = {};
+    Object.values(customRequestsById).forEach(function (r) {
+      if (!r || !r.id || seen[r.id]) return;
+      if (!r.isGuest || !r.guestSpot || r.guestSpot.id !== guestId) return;
+      seen[r.id] = true;
+      r.guestSpot.isFull = isFull;
+      if (r.guestSpot.tracksCapacity) {
+        r.guestSpot.remainingSpotsLabel = isFull ? 'Available spots: Full' : r.guestSpot.remainingSpotsLabel;
+      }
+      customRequestsById[r.id] = r;
+      customRequestsById[String(r.id)] = r;
+      updateRequestCardFromRequest(r);
+    });
   }
 
   async function submitCustomQuote() {
@@ -1364,13 +1437,18 @@
       if (firstInvalid) firstInvalid.focus();
       return;
     }
-    if (isManagedCustomRequest(req)) {
+    if (needsQuoteSessionSlots(req)) {
       const slotsValidation = validateCustomQuoteSessionSlots({ scroll: true });
       if (!slotsValidation.ok) {
         showQuoteFormGeneralError(slotsValidation.message || 'Add session dates and start times.');
         return;
       }
       payload.artist_session_slots = collectSlotsFromPanel('session');
+    }
+    if (req && req.isGuest && req.guestSpot && req.guestSpot.isFull) {
+      showQuoteFormGeneralError('All slots are full. You cannot send a quote for this guest spot.');
+      showErrorToast('All slots are full. You cannot send a quote for this guest spot.');
+      return;
     }
     const btn = document.getElementById('customQuoteSubmitBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
@@ -1449,6 +1527,26 @@
     if (!req.canDecline) {
       const declineBtn = card.querySelector('[data-decline-btn]');
       if (declineBtn) declineBtn.remove();
+    }
+    syncSlotsFullMessageOnCard(card, req);
+  }
+
+  function syncSlotsFullMessageOnCard(card, req) {
+    var actions = card.querySelector('[data-card-actions]');
+    if (!actions) return;
+    var existing = actions.querySelector('[data-slots-full-msg]');
+    var show = req.status === 'pending' && req.isGuest && req.guestSpot && req.guestSpot.isFull;
+    if (show) {
+      if (!existing) {
+        existing = document.createElement('p');
+        existing.setAttribute('data-slots-full-msg', '');
+        existing.className = 'text-xs font-semibold text-right';
+        existing.style.color = '#FFBF00';
+        existing.textContent = 'Unable to send. All slots are full.';
+        actions.appendChild(existing);
+      }
+    } else if (existing) {
+      existing.remove();
     }
   }
 

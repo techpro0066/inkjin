@@ -3,6 +3,9 @@
 @section('title', 'Guest spots')
 
 @section('styles')
+@if(config('services.google.place_api_key'))
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.place_api_key') }}&libraries=places"></script>
+@endif
 <style>
     .radio-card {
       border: 2px solid #cac4d3;
@@ -91,6 +94,50 @@
       box-shadow: inset 3px 0 0 #310f7a;
     }
 
+    .guest-spot-details {
+      border-top: 1px dashed rgba(202, 196, 211, 0.35);
+      margin-top: 0.35rem;
+      padding-top: 0.5rem;
+    }
+    .guest-spot-detail-item {
+      display: inline-flex;
+      align-items: flex-start;
+      gap: 0.25rem;
+      max-width: 100%;
+    }
+    .guest-spot-detail-item .material-symbols-outlined {
+      font-size: 15px;
+      line-height: 1.25rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .info-tooltip { position: relative; display: inline-flex; cursor: help; vertical-align: middle; }
+    .info-tooltip .tooltip-text {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #322f36;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      width: 260px;
+      text-align: left;
+      transition: opacity 0.2s;
+      z-index: 20;
+      line-height: 1.4;
+      pointer-events: none;
+    }
+    .info-tooltip:hover .tooltip-text,
+    .info-tooltip:focus-within .tooltip-text { visibility: visible; opacity: 1; }
+
+    .pac-container { z-index: 10060 !important; }
+
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -128,7 +175,7 @@
 
     @php
       $bookingPageUsername = Auth::user()->userDetail->user_name ?? null;
-      $bookingPageUrl = $bookingPageUsername ? 'https://inkjin.com/@'.$bookingPageUsername : null;
+      $bookingPageUrl = $bookingPageUsername ? 'https://inkjin.com/@'.$bookingPageUsername.'#guest-spots' : null;
     @endphp
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
@@ -207,7 +254,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
           <div>
             <label for="guest_from" class="block text-sm font-semibold text-on-surface mb-2">From <span class="text-red-600">*</span></label>
             <input type="date" id="guest_from" name="from_date" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
@@ -217,6 +264,197 @@
             <label for="guest_to" class="block text-sm font-semibold text-on-surface mb-2">To <span class="text-red-600">*</span></label>
             <input type="date" id="guest_to" name="to_date" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
             <p id="to_date_error" class="text-error text-xs mt-1 hidden"></p>
+          </div>
+        </div>
+
+        {{-- Available-only fields --}}
+        <div id="guestAvailableFields" class="space-y-5 mb-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="guest_start_time" class="block text-sm font-semibold text-on-surface mb-2">Starting time <span class="text-red-600">*</span></label>
+              <div class="inkjin-time-wrap">
+                <input type="time" id="guest_start_time" name="start_time" class="inkjin-time-input w-full text-sm px-4 py-3 bg-white text-on-surface">
+              </div>
+              <p id="start_time_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+            <div>
+              <label for="guest_end_time" class="block text-sm font-semibold text-on-surface mb-2">Ending time <span class="text-red-600">*</span></label>
+              <div class="inkjin-time-wrap">
+                <input type="time" id="guest_end_time" name="end_time" class="inkjin-time-input w-full text-sm px-4 py-3 bg-white text-on-surface">
+              </div>
+              <p id="end_time_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+          </div>
+          <p class="text-xs text-on-surface-variant -mt-2 leading-relaxed">Daily hours you're available for bookings during this guest spot.</p>
+
+          <div class="rounded-2xl border border-outline-variant/20 bg-surface-container-low/60 p-4 sm:p-5 space-y-5">
+            <div>
+              <h4 class="text-sm font-bold text-on-surface">Studio Information</h4>
+              <p class="text-xs text-on-surface-variant mt-0.5">Where clients will find you for this guest spot.</p>
+            </div>
+
+            <div>
+              <label for="guest_studio_name" class="block text-sm font-semibold text-on-surface mb-2">Studio Name <span class="text-red-600">*</span></label>
+              <input type="text" id="guest_studio_name" name="guest_studio_name" maxlength="255" placeholder="e.g., Ink & Soul Tattoo Studio" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p id="guest_studio_name_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+
+            <div>
+              <label for="guest_address_search" class="block text-sm font-semibold text-on-surface mb-2">Find Your Address <span class="text-red-600">*</span></label>
+              <div class="relative" id="guestAddressSearchWrapper">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">location_on</span>
+                <input type="text" id="guest_address_search" autocomplete="off" placeholder="Start typing your studio address..." class="w-full text-sm border border-outline-variant/30 rounded-xl pl-10 pr-4 py-3 bg-white text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/30">
+              </div>
+              <p class="text-on-surface-variant text-xs mt-1.5">Start typing and select from Google suggestions to auto-fill address fields.</p>
+              <p id="guest_studio_address_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+            <input type="hidden" name="guest_studio_address" id="guest_studio_address" value="">
+            <input type="hidden" name="guest_latitude" id="guest_latitude" value="">
+            <input type="hidden" name="guest_longitude" id="guest_longitude" value="">
+
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
+              <div class="sm:col-span-4">
+                <label for="guest_street_number" class="block text-sm font-semibold text-on-surface mb-2">Street Number <span class="text-red-600">*</span></label>
+                <input type="text" id="guest_street_number" name="guest_street_number" placeholder="e.g. 42" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <p id="guest_street_number_error" class="text-error text-xs mt-1 hidden"></p>
+              </div>
+              <div class="sm:col-span-8">
+                <label for="guest_street_name" class="block text-sm font-semibold text-on-surface mb-2">Street Name <span class="text-red-600">*</span></label>
+                <input type="text" id="guest_street_name" name="guest_street_name" placeholder="e.g. Main Street" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <p id="guest_street_name_error" class="text-error text-xs mt-1 hidden"></p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="guest_studio_city" class="block text-sm font-semibold text-on-surface mb-2">City <span class="text-red-600">*</span></label>
+                <input type="text" id="guest_studio_city" name="guest_studio_city" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <p id="guest_studio_city_error" class="text-error text-xs mt-1 hidden"></p>
+              </div>
+              <div>
+                <label for="guest_studio_state" class="block text-sm font-semibold text-on-surface mb-2">State / Province <span class="text-red-600">*</span></label>
+                <input type="text" id="guest_studio_state" name="guest_studio_state" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <p id="guest_studio_state_error" class="text-error text-xs mt-1 hidden"></p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="guest_postal_code" class="block text-sm font-semibold text-on-surface mb-2">Postal / Zip Code <span class="text-red-600">*</span></label>
+                <input type="text" id="guest_postal_code" name="guest_postal_code" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <p id="guest_postal_code_error" class="text-error text-xs mt-1 hidden"></p>
+              </div>
+              <div>
+                <label for="guest_studio_country" class="block text-sm font-semibold text-on-surface mb-2">Country <span class="text-red-600">*</span></label>
+                <input type="text" id="guest_studio_country" name="guest_studio_country" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <p id="guest_studio_country_error" class="text-error text-xs mt-1 hidden"></p>
+              </div>
+            </div>
+
+            <div>
+              <label for="guest_google_maps_link" class="block text-sm font-semibold text-on-surface mb-2">Google Maps Link</label>
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">location_on</span>
+                <input type="url" id="guest_google_maps_link" name="guest_google_maps_link" placeholder="Paste your Google Maps link" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-10 pr-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              </div>
+              <p class="text-on-surface-variant text-xs mt-1.5">Paste the Google Maps link to your studio so clients can find you easily.</p>
+              <p id="guest_google_maps_link_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+            <div>
+              <label class="block text-sm font-semibold text-on-surface mb-2">
+                Buffer Days
+                <span class="info-tooltip ml-1" tabindex="0" aria-label="Buffer days help">
+                  <span class="material-symbols-outlined text-[16px] text-outline align-middle">info</span>
+                  <span class="tooltip-text">Block your home-studio calendar for this many days before and after the guest spot dates, to account for travel.</span>
+                </span>
+              </label>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="guest_buffer_days_before" class="block text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant mb-1.5">Before</label>
+                  <div class="relative">
+                    <input
+                      type="number"
+                      id="guest_buffer_days_before"
+                      name="buffer_days_before"
+                      min="0"
+                      step="1"
+                      value="0"
+                      class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-14 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-on-surface-variant">days</span>
+                  </div>
+                  <p id="buffer_days_before_error" class="text-error text-xs mt-1 hidden"></p>
+                </div>
+                <div>
+                  <label for="guest_buffer_days_after" class="block text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant mb-1.5">After</label>
+                  <div class="relative">
+                    <input
+                      type="number"
+                      id="guest_buffer_days_after"
+                      name="buffer_days_after"
+                      min="0"
+                      step="1"
+                      value="0"
+                      class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-14 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-on-surface-variant">days</span>
+                  </div>
+                  <p id="buffer_days_after_error" class="text-error text-xs mt-1 hidden"></p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label for="guest_number_of_spots" class="block text-sm font-semibold text-on-surface mb-2">
+                Number of Spots
+                <span class="info-tooltip ml-1" tabindex="0" aria-label="Number of spots help">
+                  <span class="material-symbols-outlined text-[16px] text-outline align-middle">info</span>
+                  <span class="tooltip-text">Leave at 0 for unlimited spots.</span>
+                </span>
+              </label>
+              <div class="relative sm:mt-[1.625rem]">
+                <input
+                  type="number"
+                  id="guest_number_of_spots"
+                  name="number_of_spots"
+                  min="0"
+                  step="1"
+                  value="0"
+                  class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-14 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-on-surface-variant">spots</span>
+              </div>
+              <p class="text-xs text-on-surface-variant mt-1.5 leading-relaxed">Once all spots are filled, new requests will be paused until you free one up.</p>
+              <p id="number_of_spots_error" class="text-error text-xs mt-1 hidden"></p>
+            </div>
+          </div>
+
+          <div>
+            <label for="guest_response_deadline" class="block text-sm font-semibold text-on-surface mb-1">Response Deadline <span class="text-red-600">*</span></label>
+            <p class="text-xs text-on-surface-variant mb-2 leading-relaxed">How long a client has to confirm a proposed time slot before it's released back to available spots.</p>
+            <div class="flex gap-2 max-w-md">
+              <input
+                type="number"
+                id="guest_response_deadline"
+                name="response_deadline"
+                min="1"
+                step="1"
+                placeholder="e.g. 48"
+                class="flex-1 min-w-0 text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+              <select
+                id="guest_response_deadline_unit"
+                name="response_deadline_unit"
+                class="w-[7.5rem] shrink-0 text-sm border border-outline-variant/30 rounded-xl px-3 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="hours" selected>Hours</option>
+                <option value="days">Days</option>
+              </select>
+            </div>
+            <p id="response_deadline_error" class="text-error text-xs mt-1 hidden"></p>
           </div>
         </div>
 
@@ -275,6 +513,7 @@
               data-country="{{ $spot->country }}"
               data-from="{{ $spot->from_date->format('Y-m-d') }}"
               data-to="{{ $spot->to_date->format('Y-m-d') }}"
+              data-spot='@json($spot->toFormArray())'
               data-update-url="{{ route('guest-spots.update', $spot) }}"
               data-delete-url="{{ route('guest-spots.destroy', $spot) }}"
             >
@@ -307,6 +546,42 @@
                   <span class="material-symbols-outlined text-[18px]">delete</span>
                 </button>
               </div>
+              @if ($spot->hasListDetails())
+              <div class="guest-spot-details sm:col-span-7 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-x-5 sm:gap-y-1.5 sm:pl-10 pt-2 sm:pt-2.5 mt-1 sm:mt-0">
+                @if ($spot->listAvailabilityTimeLabel())
+                <span class="guest-spot-detail-item text-xs text-on-surface-variant">
+                  <span class="material-symbols-outlined text-outline/70">schedule</span>
+                  <span class="guest-spot-hours">{{ $spot->listAvailabilityTimeLabel() }}</span>
+                </span>
+                @endif
+                @if ($spot->listStudioLabel())
+                <span class="guest-spot-detail-item text-xs text-on-surface">
+                  <span class="material-symbols-outlined text-outline/70">store</span>
+                  <span class="guest-spot-studio font-semibold">{{ $spot->listStudioLabel() }}</span>
+                </span>
+                @endif
+                @if ($spot->listLocationLabel())
+                <span class="guest-spot-detail-item text-xs text-on-surface-variant">
+                  <span class="material-symbols-outlined text-outline/70">location_on</span>
+                  <span class="guest-spot-location">{{ $spot->listLocationLabel() }}</span>
+                </span>
+                @endif
+                @if ($spot->listBufferLabel())
+                <span class="guest-spot-detail-item text-xs text-on-surface-variant">
+                  <span class="material-symbols-outlined text-outline/70">event_busy</span>
+                  <span class="guest-spot-buffer">{{ $spot->listBufferLabel() }}</span>
+                </span>
+                @endif
+                @if ($spot->listRemainingSpotsLabel())
+                <span class="guest-spot-detail-item text-xs text-on-surface-variant">
+                  <span class="material-symbols-outlined text-outline/70">group</span>
+                  <span class="guest-spot-remaining">{{ $spot->listRemainingSpotsLabel() }}</span>
+                </span>
+                @endif
+              </div>
+              @else
+              <div class="guest-spot-details hidden sm:col-span-7"></div>
+              @endif
             </div>
           @endforeach
         </div>
@@ -351,6 +626,9 @@ function selectGuestStatus(card) {
   $(card).addClass('selected');
   $('#guest_status').val($(card).data('status') || 'available');
   $('#status_error').addClass('hidden').text('');
+  if (typeof window.syncGuestAvailableFields === 'function') {
+    window.syncGuestAvailableFields();
+  }
 }
 
 (function () {
@@ -363,6 +641,7 @@ function selectGuestStatus(card) {
   var $count = $('#guestSpotCount');
   var $alert = $('#guestSpotAlert');
   var $formCard = $('#guestSpotFormCard');
+  var $availableFields = $('#guestAvailableFields');
   var dragSrc = null;
   var reorderTimer = null;
 
@@ -381,21 +660,137 @@ function selectGuestStatus(card) {
   }
 
   function clearFieldErrors() {
-    ['status', 'city', 'country', 'from_date', 'to_date'].forEach(function (field) {
+    [
+      'status', 'city', 'country', 'from_date', 'to_date', 'start_time', 'end_time', 'response_deadline', 'buffer_days_before', 'buffer_days_after', 'number_of_spots',
+      'guest_studio_name', 'guest_studio_address', 'guest_street_number', 'guest_street_name',
+      'guest_studio_city', 'guest_studio_state', 'guest_postal_code', 'guest_studio_country', 'guest_google_maps_link',
+    ].forEach(function (field) {
       $('#' + field + '_error').addClass('hidden').text('');
     });
+    $('#guestSpotForm input, #guestSpotForm select').removeClass('border-error');
+    $('#guestSpotForm .inkjin-time-wrap').removeClass('border-error');
   }
+
+  var fieldErrorMap = {
+    status: { error: '#status_error', input: '#guest_status' },
+    city: { error: '#city_error', input: '#guest_city' },
+    country: { error: '#country_error', input: '#guest_country' },
+    from_date: { error: '#from_date_error', input: '#guest_from' },
+    to_date: { error: '#to_date_error', input: '#guest_to' },
+    start_time: { error: '#start_time_error', input: '#guest_start_time' },
+    end_time: { error: '#end_time_error', input: '#guest_end_time' },
+    response_deadline: { error: '#response_deadline_error', input: '#guest_response_deadline' },
+    response_deadline_unit: { error: '#response_deadline_error', input: '#guest_response_deadline_unit' },
+    buffer_days_before: { error: '#buffer_days_before_error', input: '#guest_buffer_days_before' },
+    buffer_days_after: { error: '#buffer_days_after_error', input: '#guest_buffer_days_after' },
+    number_of_spots: { error: '#number_of_spots_error', input: '#guest_number_of_spots' },
+    guest_studio_name: { error: '#guest_studio_name_error', input: '#guest_studio_name' },
+    studio_name: { error: '#guest_studio_name_error', input: '#guest_studio_name' },
+    guest_studio_address: { error: '#guest_studio_address_error', input: '#guest_address_search' },
+    studio_address: { error: '#guest_studio_address_error', input: '#guest_address_search' },
+    guest_address_search: { error: '#guest_studio_address_error', input: '#guest_address_search' },
+    guest_street_number: { error: '#guest_street_number_error', input: '#guest_street_number' },
+    street_number: { error: '#guest_street_number_error', input: '#guest_street_number' },
+    guest_street_name: { error: '#guest_street_name_error', input: '#guest_street_name' },
+    street_name: { error: '#guest_street_name_error', input: '#guest_street_name' },
+    guest_studio_city: { error: '#guest_studio_city_error', input: '#guest_studio_city' },
+    guest_studio_state: { error: '#guest_studio_state_error', input: '#guest_studio_state' },
+    state: { error: '#guest_studio_state_error', input: '#guest_studio_state' },
+    guest_postal_code: { error: '#guest_postal_code_error', input: '#guest_postal_code' },
+    postal_code: { error: '#guest_postal_code_error', input: '#guest_postal_code' },
+    guest_studio_country: { error: '#guest_studio_country_error', input: '#guest_studio_country' },
+    guest_google_maps_link: { error: '#guest_google_maps_link_error', input: '#guest_google_maps_link' },
+    google_maps_link: { error: '#guest_google_maps_link_error', input: '#guest_google_maps_link' },
+  };
+
+  var fieldErrorOrder = [
+    'status', 'city', 'country', 'from_date', 'to_date', 'start_time', 'end_time',
+    'guest_studio_name', 'studio_name',
+    'guest_studio_address', 'studio_address', 'guest_address_search',
+    'guest_street_number', 'street_number', 'guest_street_name', 'street_name',
+    'guest_studio_city', 'guest_studio_state', 'state', 'guest_postal_code', 'postal_code', 'guest_studio_country',
+    'guest_google_maps_link', 'google_maps_link',
+    'buffer_days_before', 'buffer_days_after', 'number_of_spots',
+    'response_deadline', 'response_deadline_unit',
+  ];
 
   function setFieldErrors(errors) {
     clearFieldErrors();
-    Object.keys(errors || {}).forEach(function (field) {
+    var firstInput = null;
+
+    fieldErrorOrder.forEach(function (field) {
+      if (!errors || !errors[field]) return;
       var msg = (errors[field] && errors[field][0]) || '';
-      var $el = $('#' + field + '_error');
-      if ($el.length && msg) {
-        $el.removeClass('hidden').text(msg);
+      if (!msg) return;
+
+      var map = fieldErrorMap[field] || {
+        error: '#' + field + '_error',
+        input: '#' + field,
+      };
+      var $err = $(map.error);
+      var $input = $(map.input);
+
+      if ($err.length) {
+        $err.removeClass('hidden').text(msg);
+      }
+      if ($input.length) {
+        var $timeWrap = $input.closest('.inkjin-time-wrap');
+        if ($timeWrap.length) {
+          $timeWrap.addClass('border-error');
+        } else {
+          $input.addClass('border-error');
+        }
+        if (!firstInput) firstInput = $input;
+      }
+    });
+
+    // Any remaining unmapped keys
+    Object.keys(errors || {}).forEach(function (field) {
+      if (fieldErrorOrder.indexOf(field) !== -1) return;
+      var msg = (errors[field] && errors[field][0]) || '';
+      if (!msg) return;
+      var $err = $('#' + field + '_error');
+      var $input = $('#' + field).length ? $('#' + field) : $('#guest_' + field);
+      if ($err.length) $err.removeClass('hidden').text(msg);
+      if ($input.length) {
+        var $timeWrap = $input.closest('.inkjin-time-wrap');
+        if ($timeWrap.length) {
+          $timeWrap.addClass('border-error');
+        } else {
+          $input.addClass('border-error');
+        }
+        if (!firstInput) firstInput = $input;
+      }
+    });
+
+    scrollToFirstError(firstInput);
+  }
+
+  function scrollToFirstError($input) {
+    var $target = $input && $input.length
+      ? $input
+      : $('#guestSpotForm [id$="_error"]').filter(function () {
+          return !$(this).hasClass('hidden') && $.trim($(this).text()) !== '';
+        }).first();
+
+    if (!$target || !$target.length) return;
+
+    var top = $target.offset().top - 100;
+    $('html, body').stop(true).animate({ scrollTop: Math.max(0, top) }, 450, 'swing', function () {
+      if ($input && $input.length && $input.is('input, select, textarea')) {
+        try { $input.trigger('focus'); } catch (e) {}
       }
     });
   }
+
+  function syncGuestAvailableFields() {
+    var isAvailable = ($('#guest_status').val() || 'available') === 'available';
+    $availableFields.toggleClass('hidden', !isAvailable);
+    if (!isAvailable) {
+      $('#response_deadline_error, #start_time_error, #end_time_error, #buffer_days_before_error, #buffer_days_after_error, #number_of_spots_error, #guest_studio_name_error, #guest_studio_address_error, #guest_street_number_error, #guest_street_name_error, #guest_studio_city_error, #guest_studio_state_error, #guest_postal_code_error, #guest_studio_country_error, #guest_google_maps_link_error').addClass('hidden').text('');
+    }
+  }
+  window.syncGuestAvailableFields = syncGuestAvailableFields;
 
   function refreshListVisibility() {
     var n = $list.find('.guest-spot-row').length;
@@ -417,6 +812,7 @@ function selectGuestStatus(card) {
     $('#guestStatusCards .radio-card').removeClass('selected');
     $('#guestStatusCards .radio-card[data-status="' + status + '"]').addClass('selected');
     $('#guest_status').val(status || 'available');
+    syncGuestAvailableFields();
   }
 
   function setFormMode(mode) {
@@ -438,6 +834,7 @@ function selectGuestStatus(card) {
       'data-country': spot.country,
       'data-from': spot.from_date,
       'data-to': spot.to_date,
+      'data-spot': JSON.stringify(spot),
       'data-update-url': resourceUrl(spot.id),
       'data-delete-url': resourceUrl(spot.id),
     });
@@ -449,6 +846,51 @@ function selectGuestStatus(card) {
     $row.find('.guest-spot-country').text(spot.country);
     $row.find('.guest-spot-from').text(spot.from_label);
     $row.find('.guest-spot-to').text(spot.to_label);
+    fillRowDetails($row, spot);
+  }
+
+  function detailItemHtml(icon, text, extraClass) {
+    return (
+      '<span class="guest-spot-detail-item text-xs ' + (extraClass || 'text-on-surface-variant') + '">' +
+        '<span class="material-symbols-outlined text-outline/70">' + icon + '</span>' +
+        '<span>' + $('<div>').text(text).html() + '</span>' +
+      '</span>'
+    );
+  }
+
+  function fillRowDetails($row, spot) {
+    var $details = $row.find('.guest-spot-details');
+    if (!spot || spot.status !== 'available') {
+      $details.addClass('hidden').empty();
+      return;
+    }
+
+    var html = [];
+    if (spot.list_availability_time) {
+      html.push(detailItemHtml('schedule', spot.list_availability_time, 'guest-spot-hours'));
+    }
+    if (spot.list_studio) {
+      html.push(detailItemHtml('store', spot.list_studio, 'text-on-surface guest-spot-studio font-semibold'));
+    }
+    if (spot.list_location) {
+      html.push(detailItemHtml('location_on', spot.list_location, 'guest-spot-location'));
+    }
+    if (spot.list_buffer) {
+      html.push(detailItemHtml('event_busy', spot.list_buffer, 'guest-spot-buffer'));
+    }
+    if (spot.list_remaining_spots) {
+      html.push(detailItemHtml('group', spot.list_remaining_spots, 'guest-spot-remaining'));
+    }
+
+    if (!html.length) {
+      $details.addClass('hidden').empty();
+      return;
+    }
+
+    $details
+      .removeClass('hidden')
+      .addClass('flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-x-5 sm:gap-y-1.5 sm:pl-10 pt-2 sm:pt-2.5 mt-1 sm:mt-0 sm:col-span-7 guest-spot-details')
+      .html(html.join(''));
   }
 
   function buildRow(spot) {
@@ -483,10 +925,49 @@ function selectGuestStatus(card) {
             '<span class="material-symbols-outlined text-[18px]">delete</span>' +
           '</button>' +
         '</div>' +
+        '<div class="guest-spot-details hidden sm:col-span-7"></div>' +
       '</div>'
     );
     fillRow($row, spot);
     return $row;
+  }
+
+  function populateAvailableFields(spot) {
+    if (!spot) return;
+    $('#guest_response_deadline').val(spot.response_deadline != null ? spot.response_deadline : '');
+    $('#guest_response_deadline_unit').val(spot.response_deadline_unit || 'hours');
+    $('#guest_start_time').val(spot.start_time || '');
+    $('#guest_end_time').val(spot.end_time || '');
+    $('#guest_buffer_days_before').val(spot.buffer_days_before != null ? spot.buffer_days_before : 0);
+    $('#guest_buffer_days_after').val(spot.buffer_days_after != null ? spot.buffer_days_after : 0);
+    $('#guest_number_of_spots').val(spot.number_of_spots != null ? spot.number_of_spots : 0);
+    $('#guest_studio_name').val(spot.guest_studio_name || '');
+    $('#guest_address_search').val(spot.guest_studio_address || '');
+    $('#guest_studio_address').val(spot.guest_studio_address || '');
+    $('#guest_street_number').val(spot.guest_street_number || '');
+    $('#guest_street_name').val(spot.guest_street_name || '');
+    $('#guest_studio_city').val(spot.guest_studio_city || '');
+    $('#guest_studio_state').val(spot.guest_studio_state || '');
+    $('#guest_postal_code').val(spot.guest_postal_code || '');
+    $('#guest_studio_country').val(spot.guest_studio_country || '');
+    $('#guest_google_maps_link').val(spot.guest_google_maps_link || '');
+    $('#guest_latitude').val(spot.guest_latitude != null ? spot.guest_latitude : '');
+    $('#guest_longitude').val(spot.guest_longitude != null ? spot.guest_longitude : '');
+  }
+
+  function resetAvailableFields() {
+    $('#guest_response_deadline').val('');
+    $('#guest_response_deadline_unit').val('hours');
+    $('#guest_start_time, #guest_end_time').val('');
+    $('#guest_buffer_days_before').val('0');
+    $('#guest_buffer_days_after').val('0');
+    $('#guest_number_of_spots').val('0');
+    $('#guest_studio_name').val('');
+    $('#guest_address_search').val('').removeClass('border-error');
+    $('#guest_studio_address').val('');
+    $('#guest_latitude, #guest_longitude').val('');
+    $('#guest_street_number, #guest_street_name, #guest_studio_city, #guest_studio_state, #guest_postal_code, #guest_studio_country, #guest_google_maps_link').val('');
+    $('#response_deadline_error, #start_time_error, #end_time_error, #buffer_days_before_error, #buffer_days_after_error, #number_of_spots_error, #guest_studio_name_error, #guest_studio_address_error, #guest_street_number_error, #guest_street_name_error, #guest_studio_city_error, #guest_studio_state_error, #guest_postal_code_error, #guest_studio_country_error, #guest_google_maps_link_error').addClass('hidden').text('');
   }
 
   function resetForm() {
@@ -495,6 +976,7 @@ function selectGuestStatus(card) {
     $('#guest_country').val('');
     $('#guest_from').val('');
     $('#guest_to').val('');
+    resetAvailableFields();
     setStatusCards('available');
     clearFieldErrors();
     setFormMode('add');
@@ -504,12 +986,22 @@ function selectGuestStatus(card) {
   function enterEditMode($row) {
     var id = String($row.data('id') || '');
     var status = $row.attr('data-status') || 'available';
+    var spot = null;
+    try {
+      spot = JSON.parse($row.attr('data-spot') || 'null');
+    } catch (e) {
+      spot = null;
+    }
     $('#guest_editing_id').val(id);
     $('#guest_city').val($row.attr('data-city') || '');
     $('#guest_country').val($row.attr('data-country') || '');
     $('#guest_from').val($row.attr('data-from') || '');
     $('#guest_to').val($row.attr('data-to') || '');
+    resetAvailableFields();
     setStatusCards(status);
+    if (status === 'available' && spot) {
+      populateAvailableFields(spot);
+    }
     clearFieldErrors();
     setFormMode('edit');
     $list.find('.guest-spot-row').removeClass('is-editing');
@@ -701,6 +1193,32 @@ function selectGuestStatus(card) {
       to_date: $('#guest_to').val(),
     };
 
+    if (($('#guest_status').val() || '') === 'available') {
+      if (!$.trim($('#guest_studio_address').val())) {
+        $('#guest_studio_address').val($.trim($('#guest_address_search').val()));
+      }
+      Object.assign(payload, {
+        start_time: $('#guest_start_time').val(),
+        end_time: $('#guest_end_time').val(),
+        response_deadline: $.trim($('#guest_response_deadline').val()),
+        response_deadline_unit: $('#guest_response_deadline_unit').val(),
+        buffer_days_before: $.trim($('#guest_buffer_days_before').val()),
+        buffer_days_after: $.trim($('#guest_buffer_days_after').val()),
+        number_of_spots: $.trim($('#guest_number_of_spots').val()),
+        guest_studio_name: $.trim($('#guest_studio_name').val()),
+        guest_studio_address: $.trim($('#guest_studio_address').val()),
+        guest_street_number: $.trim($('#guest_street_number').val()),
+        guest_street_name: $.trim($('#guest_street_name').val()),
+        guest_studio_city: $.trim($('#guest_studio_city').val()),
+        guest_studio_state: $.trim($('#guest_studio_state').val()),
+        guest_postal_code: $.trim($('#guest_postal_code').val()),
+        guest_studio_country: $.trim($('#guest_studio_country').val()),
+        guest_google_maps_link: $.trim($('#guest_google_maps_link').val()),
+        guest_latitude: $.trim($('#guest_latitude').val()),
+        guest_longitude: $.trim($('#guest_longitude').val()),
+      });
+    }
+
     if (isEdit) {
       payload._method = 'PUT';
     }
@@ -730,8 +1248,6 @@ function selectGuestStatus(card) {
       error: function (xhr) {
         if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
           setFieldErrors(xhr.responseJSON.errors);
-          var first = Object.values(xhr.responseJSON.errors)[0];
-          if (first && first[0]) showAlert(first[0], 'error');
         } else {
           var msg = (xhr.responseJSON && xhr.responseJSON.message) || (isEdit ? 'Could not update location.' : 'Could not add location.');
           showAlert(msg, 'error');
@@ -741,6 +1257,80 @@ function selectGuestStatus(card) {
         $btn.prop('disabled', false);
         var stillEditing = !!$.trim($('#guest_editing_id').val());
         $btn.find('.btn-label').text(stillEditing ? 'Save changes' : 'Add location');
+      }
+    });
+  });
+
+  syncGuestAvailableFields();
+
+@if(config('services.google.place_api_key'))
+  (function initGuestStudioAddressAutocomplete() {
+    var input = document.getElementById('guest_address_search');
+    if (!input || typeof google === 'undefined' || !google.maps || !google.maps.places) return;
+    var ac = new google.maps.places.Autocomplete(input, {
+      types: ['address'],
+      fields: ['address_components', 'formatted_address', 'place_id', 'geometry'],
+    });
+    ac.addListener('place_changed', function () {
+      var place = ac.getPlace();
+      if (!place.address_components) return;
+      if (place.geometry && place.geometry.location) {
+        $('#guest_latitude').val(place.geometry.location.lat());
+        $('#guest_longitude').val(place.geometry.location.lng());
+      }
+      var sn = '', st = '', city = '', state = '', zip = '', country = '';
+      for (var i = 0; i < place.address_components.length; i++) {
+        var c = place.address_components[i];
+        var t = c.types;
+        if (t.indexOf('street_number') !== -1) sn = c.long_name;
+        if (t.indexOf('route') !== -1) st = c.long_name;
+        if (t.indexOf('locality') !== -1) city = c.long_name;
+        else if (t.indexOf('postal_town') !== -1 && !city) city = c.long_name;
+        if (t.indexOf('administrative_area_level_1') !== -1) state = c.short_name || c.long_name;
+        if (t.indexOf('postal_code') !== -1) zip = c.long_name;
+        if (t.indexOf('country') !== -1) country = c.long_name;
+      }
+      $('#guest_street_number').val(sn);
+      $('#guest_street_name').val(st);
+      $('#guest_studio_city').val(city);
+      $('#guest_studio_state').val(state);
+      $('#guest_postal_code').val(zip);
+      $('#guest_studio_country').val(country);
+      $('#guest_studio_address').val(place.formatted_address || '');
+      $('#guest_address_search').val(place.formatted_address || '').removeClass('border-error');
+      $('#guest_studio_address_error').addClass('hidden').text('');
+      if (place.place_id) {
+        $('#guest_google_maps_link').val('https://www.google.com/maps/place/?q=place_id:' + place.place_id);
+      }
+    });
+  })();
+@endif
+
+  $('#guest_address_search').on('input', function () {
+    $('#guest_studio_address').val($(this).val());
+    $('#guest_studio_address_error').text('').addClass('hidden');
+    $(this).removeClass('border-error');
+  });
+
+  $.each([
+    'guest_studio_name', 'guest_street_number', 'guest_street_name', 'guest_studio_city',
+    'guest_studio_state', 'guest_postal_code', 'guest_studio_country', 'guest_google_maps_link',
+    'guest_number_of_spots', 'guest_response_deadline', 'guest_buffer_days_before', 'guest_buffer_days_after',
+  ], function (_, id) {
+    $('#' + id).on('input', function () {
+      $(this).removeClass('border-error');
+      $('#' + id + '_error').text('').addClass('hidden');
+      if (id === 'guest_number_of_spots') {
+        $('#number_of_spots_error').text('').addClass('hidden');
+      }
+      if (id === 'guest_response_deadline') {
+        $('#response_deadline_error').text('').addClass('hidden');
+      }
+      if (id === 'guest_buffer_days_before') {
+        $('#buffer_days_before_error').text('').addClass('hidden');
+      }
+      if (id === 'guest_buffer_days_after') {
+        $('#buffer_days_after_error').text('').addClass('hidden');
       }
     });
   });

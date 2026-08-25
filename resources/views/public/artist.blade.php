@@ -605,6 +605,11 @@
         </div>
 
         @forelse($guestSpots as $spot)
+          @php
+            $spotStatus = $spot->publicStatusLabel();
+            $spotCountLabel = $spot->listRemainingSpotsLabel();
+            $canReserve = $spot->status === 'available' && ! $spot->isFull();
+          @endphp
           <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 py-4 {{ ! $loop->last ? 'border-b border-outline-variant/20' : '' }}">
             <div class="flex items-center gap-3 min-w-0 flex-1">
               <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -614,12 +619,40 @@
                 <p class="font-bold text-on-surface truncate">{{ $spot->city }}, {{ $spot->country }}</p>
                 <p class="text-sm text-on-surface-variant">
                   {{ $spot->from_date->format('M j, Y') }} — {{ $spot->to_date->format('M j, Y') }}
+                  @if($spot->status === 'available' && $spot->listAvailabilityTimeLabel())
+                    · {{ $spot->listAvailabilityTimeLabel() }}
+                  @endif
                 </p>
+                @if($spotCountLabel)
+                  <p class="text-xs font-semibold mt-1" style="color: {{ $spot->isFull() ? '#FFBF00' : '#16a34a' }};">
+                    {{ $spotCountLabel }}
+                  </p>
+                @endif
               </div>
             </div>
-            <span class="inline-flex self-start sm:self-center text-xs font-semibold px-2.5 py-1 rounded-full {{ $spot->status === 'available' ? 'bg-secondary-container text-secondary' : 'bg-surface-container-high text-on-surface-variant' }}">
-              {{ ucfirst($spot->status) }}
-            </span>
+            @if($canReserve)
+              <div class="flex flex-col sm:items-end gap-2 shrink-0 self-start sm:self-center">
+                <span class="inline-flex text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+                  Available
+                </span>
+                <a
+                  href="{{ route('public.request-custom', ['user_name' => $userDetail->user_name, 'guest_spot' => $spot->id]) }}"
+                  class="guest-spot-reserve inline-flex items-center gap-1 text-sm font-semibold hover:opacity-80 transition-opacity"
+                  style="color: {{ $selectedTheme['primary'] }};"
+                >
+                  Reserve
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_forward</span>
+                </a>
+              </div>
+            @elseif($spotStatus === 'Full')
+              <span class="inline-flex self-start sm:self-center text-xs font-semibold px-2.5 py-1 rounded-full" style="background: rgba(255, 191, 0, 0.18); color: #FFBF00;">
+                Full
+              </span>
+            @else
+              <span class="inline-flex self-start sm:self-center text-xs font-semibold px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant">
+                Planned
+              </span>
+            @endif
           </div>
         @empty
           <div class="py-8 text-center">
@@ -787,7 +820,29 @@
       const portfolio = @json($portfolioForJs);
 
     // ── Tab Switching ─────────────────────────────────
-    function switchTab(tab) {
+    // Hash deep-links use these exact ids: designs | portfolio | guest-spots | policies | faq
+    const ARTIST_TAB_IDS = ['designs', 'portfolio', 'guest-spots', 'policies', 'faq'];
+
+    function isValidArtistTab(tab) {
+      return ARTIST_TAB_IDS.includes(tab) && !!document.getElementById('tab-' + tab);
+    }
+
+    function tabFromHash() {
+      const raw = (location.hash || '').replace(/^#/, '').trim().toLowerCase();
+      return isValidArtistTab(raw) ? raw : null;
+    }
+
+    function setTabHash(tab) {
+      const next = '#' + tab;
+      if (location.hash === next) return;
+      history.replaceState(null, '', next);
+    }
+
+    function switchTab(tab, options) {
+      const opts = options || {};
+      const updateHash = opts.updateHash !== false;
+      if (!isValidArtistTab(tab)) return;
+
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => {
         el.classList.remove('border-tab-btn', 'text-primary');
@@ -799,6 +854,28 @@
       if (btn) {
         btn.classList.remove('border-transparent', 'text-on-surface-variant');
         btn.classList.add('border-tab-btn', 'text-primary');
+      }
+      if (updateHash) setTabHash(tab);
+    }
+
+    function applyTabFromHash(options) {
+      const tab = tabFromHash();
+      if (!tab) return false;
+      switchTab(tab, Object.assign({ updateHash: false }, options || {}));
+      return true;
+    }
+
+    window.addEventListener('hashchange', function () {
+      applyTabFromHash();
+    });
+
+    // Script is at end of body; apply hash tab immediately (and scroll once if linked).
+    if (applyTabFromHash()) {
+      const nav = document.getElementById('artistDesignsSection');
+      if (nav) {
+        requestAnimationFrame(function () {
+          nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
       }
     }
 

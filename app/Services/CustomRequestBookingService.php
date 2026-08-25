@@ -85,7 +85,11 @@ class CustomRequestBookingService
         [$sessionFrom, $sessionTo, $sessionDate] = $sessionRange;
         $sessionUtc = $this->managedBooking->slotRangeToUtc($sessionDate, $sessionFrom, $sessionTo, $artistTimezone);
 
-        if ($this->managedBooking->artistLocalDateIsBlocked((int) $customRequest->artist_id, $sessionUtc['date'])) {
+        if ($this->managedBooking->artistLocalDateIsBlocked(
+            (int) $customRequest->artist_id,
+            $sessionUtc['date'],
+            $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
+        )) {
             throw new \RuntimeException('The selected session date is no longer available.');
         }
 
@@ -104,7 +108,11 @@ class CustomRequestBookingService
             [$consultFrom, $consultTo, $consultDateYmd] = $consultRange;
             $consultUtc = $this->managedBooking->slotRangeToUtc($consultDateYmd, $consultFrom, $consultTo, $artistTimezone);
 
-            if ($this->managedBooking->artistLocalDateIsBlocked((int) $customRequest->artist_id, $consultUtc['date'])) {
+            if ($this->managedBooking->artistLocalDateIsBlocked(
+                (int) $customRequest->artist_id,
+                $consultUtc['date'],
+                $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
+            )) {
                 throw new \RuntimeException('The selected consultation date is no longer available.');
             }
 
@@ -117,19 +125,14 @@ class CustomRequestBookingService
         $quotePrice = $customRequest->checkoutPriceAmount();
         $clientPhone = $customRequest->user?->phone_number;
         $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice, $clientPhone);
+        $guestSpotConsumed = $this->consumeGuestSpotForPayment($customRequest);
 
         $booking = Booking::create([
             'user_id' => $customRequest->user_id,
             'artist_user_id' => $customRequest->artist_id,
             'tattoo_id' => null,
             'booking_type' => 'custom',
-            'custom_tattoo_details' => [
-                'custom_request_id' => $customRequest->id,
-                'reference' => $customRequest->referenceLabel(),
-                'estimated_price' => (float) $customRequest->estimated_price,
-                'estimated_time' => $customRequest->estimated_time,
-                'number_of_sessions' => $customRequest->number_of_sessions,
-            ],
+            'custom_tattoo_details' => $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed),
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $sessionUtc['date'],
             'start_time_utc' => $sessionUtc['start_time_utc'],
@@ -211,7 +214,11 @@ class CustomRequestBookingService
         [$sessionFrom, $sessionTo, $sessionDate] = $sessionRange;
         $sessionUtc = $this->managedBooking->slotRangeToUtc($sessionDate, $sessionFrom, $sessionTo, $artistTimezone);
 
-        if ($this->managedBooking->artistLocalDateIsBlocked((int) $customRequest->artist_id, $sessionUtc['date'])) {
+        if ($this->managedBooking->artistLocalDateIsBlocked(
+            (int) $customRequest->artist_id,
+            $sessionUtc['date'],
+            $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
+        )) {
             throw new \RuntimeException('The selected session date is no longer available.');
         }
 
@@ -230,7 +237,11 @@ class CustomRequestBookingService
             [$consultFrom, $consultTo, $consultDateYmd] = $consultRange;
             $consultUtc = $this->managedBooking->slotRangeToUtc($consultDateYmd, $consultFrom, $consultTo, $artistTimezone);
 
-            if ($this->managedBooking->artistLocalDateIsBlocked((int) $customRequest->artist_id, $consultUtc['date'])) {
+            if ($this->managedBooking->artistLocalDateIsBlocked(
+                (int) $customRequest->artist_id,
+                $consultUtc['date'],
+                $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
+            )) {
                 throw new \RuntimeException('The selected consultation date is no longer available.');
             }
 
@@ -243,19 +254,14 @@ class CustomRequestBookingService
         $quotePrice = $customRequest->checkoutPriceAmount();
         $clientPhone = $customRequest->user?->phone_number;
         $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice, $clientPhone);
+        $guestSpotConsumed = $this->consumeGuestSpotForPayment($customRequest);
 
         $booking = Booking::create([
             'user_id' => $customRequest->user_id,
             'artist_user_id' => $customRequest->artist_id,
             'tattoo_id' => null,
             'booking_type' => 'custom',
-            'custom_tattoo_details' => [
-                'custom_request_id' => $customRequest->id,
-                'reference' => $customRequest->referenceLabel(),
-                'estimated_price' => (float) $customRequest->estimated_price,
-                'estimated_time' => $customRequest->estimated_time,
-                'number_of_sessions' => $customRequest->number_of_sessions,
-            ],
+            'custom_tattoo_details' => $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed),
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $sessionUtc['date'],
             'start_time_utc' => $sessionUtc['start_time_utc'],
@@ -312,6 +318,33 @@ class CustomRequestBookingService
                 'booking_id' => $booking->id,
             ]);
         }
+    }
+
+    private function consumeGuestSpotForPayment(CustomRequest $customRequest): bool
+    {
+        return app(GuestSpotHoldService::class)->convertHoldOnPayment($customRequest);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customTattooDetailsPayload(CustomRequest $customRequest, bool $guestSpotConsumed): array
+    {
+        $details = [
+            'custom_request_id' => $customRequest->id,
+            'reference' => $customRequest->referenceLabel(),
+            'estimated_price' => (float) $customRequest->estimated_price,
+            'estimated_time' => $customRequest->estimated_time,
+            'number_of_sessions' => $customRequest->number_of_sessions,
+        ];
+
+        if ($customRequest->isGuestRequest()) {
+            $details['is_guest'] = true;
+            $details['guest_id'] = (int) $customRequest->guest_id;
+            $details['guest_spot_consumed'] = $guestSpotConsumed;
+        }
+
+        return $details;
     }
 
     private function sendConfirmationEmails(Booking $booking): void

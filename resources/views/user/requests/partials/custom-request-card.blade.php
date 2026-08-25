@@ -2,6 +2,18 @@
   $filterKey = $customRequest->userFilterKey();
   $filterStatus = $customRequest->userFilterStatusLabel();
   $badgeClass = $customRequest->statusBadgeClass();
+  $isGuestCard = $customRequest->isGuestRequest();
+  $guestSpot = $isGuestCard ? $customRequest->guestSpot : null;
+  $guestSubtitle = null;
+  if ($guestSpot) {
+    $guestParts = array_filter([
+      trim(implode(', ', array_filter([(string) ($guestSpot->city ?? ''), (string) ($guestSpot->country ?? '')]))),
+      ($guestSpot->from_date && $guestSpot->to_date)
+        ? $guestSpot->from_date->format('M j') . ' – ' . $guestSpot->to_date->format('M j, Y')
+        : null,
+    ]);
+    $guestSubtitle = $guestParts !== [] ? implode(' · ', $guestParts) : null;
+  }
 @endphp
 <div class="custom-request-card request-card bg-white rounded-2xl shadow-sm border border-outline-variant/20 p-5 cursor-pointer"
      data-request-id="{{ $customRequest->id }}"
@@ -11,7 +23,7 @@
      onclick="openUserCustomRequestDetail({{ $customRequest->id }})">
   <div class="flex flex-col sm:flex-row sm:items-start gap-4">
     <div class="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/15">
-      <span class="material-symbols-outlined text-primary text-2xl">brush</span>
+      <span class="material-symbols-outlined text-primary text-2xl">{{ $isGuestCard ? 'luggage' : 'brush' }}</span>
     </div>
     <div class="flex-1 min-w-0">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
@@ -25,8 +37,8 @@
         </div>
         <p class="text-xs text-outline flex-shrink-0">{{ $customRequest->created_at?->format('M j, Y') }}</p>
       </div>
-      <p class="font-bold text-on-surface mb-1">Custom tattoo request</p>
-      <p class="text-sm text-on-surface-variant mb-3">{{ $customRequest->schedulingLabel() }}</p>
+      <p class="font-bold text-on-surface mb-1">{{ $isGuestCard ? 'Guest spot request' : 'Custom tattoo request' }}</p>
+      <p class="text-sm text-on-surface-variant mb-3">{{ $guestSubtitle ?: $customRequest->schedulingLabel() }}</p>
       <div class="flex flex-wrap items-center gap-2">
         @if ($customRequest->hasQuote())
           <span class="info-tag text-xs font-medium px-2.5 py-1 rounded-lg flex items-center gap-1">
@@ -40,6 +52,10 @@
             <a href="{{ route('user.custom-requests.confirm-times', ['customRequest' => $customRequest, 'fresh' => 1]) }}" onclick="event.stopPropagation();" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container transition-colors">
               <span class="material-symbols-outlined text-sm">event</span> Set date &amp; time
             </a>
+          @elseif ($customRequest->isGuestRequest() && $customRequest->guestActionBlockMessage())
+            <span class="text-xs font-medium {{ $customRequest->guestActionBlockReason() === 'slots_full' ? 'text-amber-600' : 'text-error' }}">
+              {{ $customRequest->guestActionBlockMessage() }}
+            </span>
           @elseif ($customRequest->isBooked())
             <span class="info-tag text-xs font-medium px-2.5 py-1 rounded-lg flex items-center gap-1">
               <span class="material-symbols-outlined text-sm">check_circle</span> Booked

@@ -149,6 +149,7 @@
   </style>
   <!-- end of common css -->
 
+  @include('partials.time-input-styles')
   @yield('styles')
 </head>
 <body class="bg-surface text-on-surface min-h-screen flex">

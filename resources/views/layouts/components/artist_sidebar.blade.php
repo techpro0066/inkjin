@@ -11,7 +11,7 @@
     <a href="{{ route('artist.bookings.index') }}" class="nav-item {{ request()->routeIs('artist.bookings.*') ? 'active' : '' }}">
       <span class="material-symbols-outlined">calendar_month</span> Bookings
     </a>
-    <a href="{{ route('artist.requests.index') }}" class="nav-item {{ request()->routeIs('artist.requests.index') || request()->routeIs('artist.custom-requests.index') ? 'active' : '' }}">
+    <a href="{{ route('artist.requests.index') }}" class="nav-item {{ request()->routeIs('artist.requests.index') || request()->routeIs('artist.custom-requests.index') || request()->routeIs('artist.guest-requests.index') ? 'active' : '' }}">
       <span class="material-symbols-outlined">edit_note</span> Requests
     </a>
     <a href="{{ route('artist.payments.index') }}" class="nav-item {{ request()->routeIs('artist.payments.*') ? 'active' : '' }}">

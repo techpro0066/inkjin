@@ -129,15 +129,16 @@
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
     <div class="mb-6">
       <h2 class="text-2xl font-extrabold text-on-surface tracking-tight">My Requests</h2>
-      <p class="text-sm text-on-surface-variant mt-1">Track design booking requests and custom tattoo inquiries</p>
+      <p class="text-sm text-on-surface-variant mt-1">Track design, custom, and guest spot requests</p>
     </div>
 
     <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
       <button type="button" id="tabDesignRequests" class="request-tab {{ ($activeTab ?? 'design') === 'design' ? 'active' : '' }}" onclick="switchRequestsTab('design')">Design requests</button>
       <button type="button" id="tabCustomRequests" class="request-tab {{ ($activeTab ?? 'design') === 'custom' ? 'active' : '' }}" onclick="switchRequestsTab('custom')">Custom requests</button>
+      <button type="button" id="tabGuestRequests" class="request-tab {{ ($activeTab ?? 'design') === 'guest' ? 'active' : '' }}" onclick="switchRequestsTab('guest')">Guest requests</button>
     </div>
 
-    <div id="panelDesignRequests" class="{{ ($activeTab ?? 'design') === 'custom' ? 'hidden' : '' }}">
+    <div id="panelDesignRequests" class="{{ in_array(($activeTab ?? 'design'), ['custom', 'guest'], true) ? 'hidden' : '' }}">
     <div class="flex flex-wrap gap-2 mb-6 filter-pills" id="designFilterPills">
       <button type="button" class="filter-pill active text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30" data-status="all" onclick="filterByStatus('all', this)">All</button>
       <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="pending" onclick="filterByStatus('pending', this)">Pending</button>
@@ -216,13 +217,53 @@
         <p id="customRequestsEmptyHint" class="text-sm text-on-surface-variant max-w-md mx-auto">When you submit a custom tattoo request to an artist, it will appear here.</p>
       </div>
     </div>
+
+    <div id="panelGuestRequests" class="{{ ($activeTab ?? 'design') === 'guest' ? '' : 'hidden' }}">
+      <div class="flex flex-wrap gap-2 mb-6 filter-pills" id="guestFilterPills">
+        <button type="button" class="filter-pill active text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30" data-status="all" onclick="filterGuestByStatus('all', this)">All</button>
+        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="pending" onclick="filterGuestByStatus('pending', this)">Pending</button>
+        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterGuestByStatus('confirmed', this)">Quote sent</button>
+        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="declined" onclick="filterGuestByStatus('declined', this)">Declined</button>
+      </div>
+
+      <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="guestSortBy" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Sort by</label>
+            <select id="guestSortBy" onchange="applyGuestFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white">
+              <option value="recent">Most recent</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </div>
+          <div>
+            <label for="guestSearchArtist" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+              <input type="text" id="guestSearchArtist" placeholder="Search artist name…" oninput="applyGuestFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="guestRequestsList" class="space-y-4 mb-8">
+        @foreach ($guestRequests as $customRequest)
+          @include('user.requests.partials.custom-request-card', ['customRequest' => $customRequest])
+        @endforeach
+      </div>
+
+      <div id="guestRequestsEmpty" class="hidden bg-white rounded-2xl border border-outline-variant/20 p-12 text-center">
+        <span class="material-symbols-outlined text-outline text-5xl mb-4">luggage</span>
+        <p class="font-bold text-on-surface text-lg mb-2">No guest requests found</p>
+        <p id="guestRequestsEmptyHint" class="text-sm text-on-surface-variant max-w-md mx-auto">When you reserve a guest spot with an artist, it will appear here.</p>
+      </div>
+    </div>
   </div>
 </main>
 
 <div id="customRequestDetailModal" class="modal-backdrop" onclick="closeCustomModalOnBackdrop(event)">
   <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-5xl" onclick="event.stopPropagation()">
     <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15 shrink-0">
-      <h3 class="text-lg font-bold text-on-surface">Custom request details</h3>
+      <h3 id="customRequestDetailTitle" class="text-lg font-bold text-on-surface">Custom request details</h3>
       <button type="button" onclick="closeUserCustomRequestDetail()" class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-container-low text-outline">
         <span class="material-symbols-outlined">close</span>
       </button>
@@ -258,10 +299,11 @@
 <script src="{{ asset('js/question-answer-display.js') }}"></script>
 <script>
   const userRequestsById = @json(collect($requestsPayload)->keyBy('id'));
-  const userCustomRequestsById = @json(collect($customRequestsPayload)->keyBy('id'));
+  const userCustomRequestsById = @json(collect($customRequestsPayload)->merge($guestRequestsPayload)->keyBy('id'));
   let currentRequestsTab = @json($activeTab ?? 'design');
   let currentStatusFilter = 'all';
   let currentCustomStatusFilter = 'all';
+  let currentGuestStatusFilter = 'all';
 
   function escapeHtml(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -271,17 +313,22 @@
     currentRequestsTab = tab;
     var designPanel = document.getElementById('panelDesignRequests');
     var customPanel = document.getElementById('panelCustomRequests');
+    var guestPanel = document.getElementById('panelGuestRequests');
     var tabDesign = document.getElementById('tabDesignRequests');
     var tabCustom = document.getElementById('tabCustomRequests');
+    var tabGuest = document.getElementById('tabGuestRequests');
     if (designPanel) designPanel.classList.toggle('hidden', tab !== 'design');
     if (customPanel) customPanel.classList.toggle('hidden', tab !== 'custom');
+    if (guestPanel) guestPanel.classList.toggle('hidden', tab !== 'guest');
     if (tabDesign) tabDesign.classList.toggle('active', tab === 'design');
     if (tabCustom) tabCustom.classList.toggle('active', tab === 'custom');
+    if (tabGuest) tabGuest.classList.toggle('active', tab === 'guest');
     var url = new URL(window.location.href);
-    if (tab === 'custom') url.searchParams.set('tab', 'custom');
+    if (tab === 'custom' || tab === 'guest') url.searchParams.set('tab', tab);
     else url.searchParams.delete('tab');
     history.replaceState(null, '', url.pathname + (url.search || ''));
     if (tab === 'design') applyFilters();
+    else if (tab === 'guest') applyGuestFilters();
     else applyCustomFilters();
   }
 
@@ -303,10 +350,20 @@
     applyCustomFilters();
   }
 
-  function applyCustomFilters() {
-    const search = (document.getElementById('customSearchArtist')?.value || '').trim().toLowerCase();
-    const sortBy = document.getElementById('customSortBy')?.value || 'recent';
-    const cards = Array.from(document.querySelectorAll('#customRequestsList .custom-request-card'));
+  function filterGuestByStatus(status, btn) {
+    currentGuestStatusFilter = status;
+    document.querySelectorAll('#guestFilterPills .filter-pill').forEach(function(pill) {
+      pill.classList.toggle('active', pill === btn);
+      pill.classList.toggle('text-on-surface-variant', pill !== btn);
+    });
+    applyGuestFilters();
+  }
+
+  function applyListFilters(options) {
+    const search = (document.getElementById(options.searchId)?.value || '').trim().toLowerCase();
+    const sortBy = document.getElementById(options.sortId)?.value || 'recent';
+    const cards = Array.from(document.querySelectorAll(options.cardSelector));
+    const statusFilter = options.statusFilter;
     let visible = 0;
 
     cards.sort(function(a, b) {
@@ -315,21 +372,43 @@
       return sortBy === 'oldest' ? da.localeCompare(db) : db.localeCompare(da);
     });
 
-    const list = document.getElementById('customRequestsList');
+    const list = document.getElementById(options.listId);
     if (list) cards.forEach(function(card) { list.appendChild(card); });
 
     cards.forEach(function(card) {
-      const statusOk = currentCustomStatusFilter === 'all' || card.dataset.status === currentCustomStatusFilter;
+      const statusOk = statusFilter === 'all' || card.dataset.status === statusFilter;
       const searchOk = !search || (card.dataset.artist || '').includes(search);
       const show = statusOk && searchOk;
       card.classList.toggle('hidden', !show);
       if (show) visible++;
     });
 
-    const emptyEl = document.getElementById('customRequestsEmpty');
-    const listEl = document.getElementById('customRequestsList');
+    const emptyEl = document.getElementById(options.emptyId);
+    const listEl = document.getElementById(options.listId);
     if (emptyEl) emptyEl.classList.toggle('hidden', visible > 0 || cards.length === 0);
     if (listEl) listEl.classList.toggle('hidden', cards.length === 0);
+  }
+
+  function applyCustomFilters() {
+    applyListFilters({
+      searchId: 'customSearchArtist',
+      sortId: 'customSortBy',
+      cardSelector: '#customRequestsList .custom-request-card',
+      listId: 'customRequestsList',
+      emptyId: 'customRequestsEmpty',
+      statusFilter: currentCustomStatusFilter
+    });
+  }
+
+  function applyGuestFilters() {
+    applyListFilters({
+      searchId: 'guestSearchArtist',
+      sortId: 'guestSortBy',
+      cardSelector: '#guestRequestsList .custom-request-card',
+      listId: 'guestRequestsList',
+      emptyId: 'guestRequestsEmpty',
+      statusFilter: currentGuestStatusFilter
+    });
   }
 
   function applyFilters() {
@@ -557,8 +636,14 @@
         : '<p class="text-sm text-on-surface-variant mt-2">No reason was provided.</p>';
       return '<div class="bg-white rounded-2xl p-5 border border-error/20"><h4 class="font-bold text-error flex items-center gap-2"><span class="material-symbols-outlined">block</span> Request declined</h4>' + reason + '</div>';
     }
+    var waitingLabel = req.isGuest ? 'guest spot request' : 'custom request';
     if (req.isPending || !req.hasQuote) {
-      return '<div class="waiting-panel"><span class="material-symbols-outlined text-primary text-4xl mb-2">hourglass_top</span><p class="font-semibold text-on-surface">Waiting for artist</p><p class="text-sm text-on-surface-variant mt-2">' + escapeHtml(req.artistName) + ' is reviewing your custom request and will send a quote when ready.</p></div>';
+      return '<div class="waiting-panel"><span class="material-symbols-outlined text-primary text-4xl mb-2">hourglass_top</span><p class="font-semibold text-on-surface">Waiting for artist</p><p class="text-sm text-on-surface-variant mt-2">' + escapeHtml(req.artistName) + ' is reviewing your ' + waitingLabel + ' and will send a quote when ready.</p></div>';
+    }
+    if (req.guestActionBlockMessage) {
+      var blockColor = req.guestActionBlockReason === 'slots_full' ? '#FFBF00' : '#ba1a1a';
+      var blockTitle = req.guestActionBlockReason === 'slots_full' ? 'Guest spot is full' : 'Quote hold expired';
+      return '<div class="bg-white rounded-2xl p-5 border" style="border-color:' + blockColor + '33"><h4 class="font-bold flex items-center gap-2" style="color:' + blockColor + '"><span class="material-symbols-outlined">' + (req.guestActionBlockReason === 'slots_full' ? 'event_busy' : 'timer_off') + '</span> ' + escapeHtml(blockTitle) + '</h4><p class="text-sm text-on-surface-variant mt-2">' + escapeHtml(req.guestActionBlockMessage) + '</p></div>';
     }
     var html = '<div><h4 class="font-bold text-on-surface mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">request_quote</span> Quote from artist</h4><p class="text-sm text-on-surface-variant mb-4">Details shared by ' + escapeHtml(req.artistName) + '</p>';
     html += '<div class="space-y-3 mb-4">';
@@ -568,8 +653,11 @@
     if (req.messageForClient && String(req.messageForClient).trim()) {
       html += '<div><p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Message</p><p class="quote-readonly whitespace-pre-line">' + escapeHtml(req.messageForClient) + '</p></div>';
     }
+    if (req.guestHoldExpiresAt) {
+      html += '<div><p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Hold expires</p><p class="quote-readonly">' + escapeHtml(new Date(req.guestHoldExpiresAt).toLocaleString()) + '</p></div>';
+    }
     html += '</div>';
-    if ((req.artistSessionSlots || []).length) {
+    if (!req.isGuest && (req.artistSessionSlots || []).length) {
       html += buildSlotsReadOnlyPanel('Offered session times', 'brush', req.artistSessionSlots, 'artist-slots-panel--session');
     }
     html += '</div>';
@@ -587,9 +675,32 @@
       '<span class="material-symbols-outlined text-lg">event</span> Set date &amp; time</a></div>';
   }
 
+  function buildGuestSpotHtml(guestSpot) {
+    if (!guestSpot) return '';
+    var lines = [];
+    if (guestSpot.city || guestSpot.country) {
+      lines.push('<p class="font-semibold text-on-surface">' + escapeHtml([guestSpot.city, guestSpot.country].filter(Boolean).join(', ')) + '</p>');
+    }
+    if (guestSpot.fromDate && guestSpot.toDate) {
+      lines.push('<p class="text-sm text-on-surface-variant mt-1">' + escapeHtml(guestSpot.fromDate + ' – ' + guestSpot.toDate) + '</p>');
+    }
+    if (guestSpot.availabilityTime) {
+      lines.push('<p class="text-sm text-on-surface-variant mt-1">Daily hours: ' + escapeHtml(guestSpot.availabilityTime) + '</p>');
+    }
+    if (guestSpot.studio) {
+      lines.push('<p class="text-sm text-on-surface mt-2"><span class="font-semibold">Studio:</span> ' + escapeHtml(guestSpot.studio) + '</p>');
+    }
+    if (guestSpot.location) {
+      lines.push('<p class="text-sm text-on-surface-variant mt-1">' + escapeHtml(guestSpot.location) + '</p>');
+    }
+    if (!lines.length) return '';
+    return '<section class="avail-section"><div class="avail-section-title"><span class="material-symbols-outlined text-lg">luggage</span> Guest spot</div>' + lines.join('') + '</section>';
+  }
+
   function renderUserCustomRequestDetail(req) {
     var left = document.getElementById('customRequestDetailLeft');
     var right = document.getElementById('customRequestDetailRight');
+    var titleEl = document.getElementById('customRequestDetailTitle');
     var profileLink = req.artistProfileUrl
       ? '<a href="' + escapeHtml(req.artistProfileUrl) + '" target="_blank" rel="noopener" class="text-sm font-semibold text-primary hover:underline">View artist profile</a>'
       : '';
@@ -600,13 +711,18 @@
       questionsHtml += '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">' + escapeHtml(item.question) + '</h4><p class="text-sm font-medium text-on-surface">' + formatAnswerForDisplay(item.answer, item.type) + '</p></div>';
     });
 
-    var availabilityHtml = req.isManaged ? buildAvailabilityHtml(req.availabilityDetails) : '';
+    var availabilityHtml = (req.isManaged && !req.isGuest) ? buildAvailabilityHtml(req.availabilityDetails) : '';
+    var guestSpotHtml = req.isGuest ? buildGuestSpotHtml(req.guestSpot || null) : '';
+    var requestTitle = req.isGuest ? 'Guest spot request' : 'Custom tattoo request';
+    var requestIcon = req.isGuest ? 'luggage' : 'brush';
+    if (titleEl) titleEl.textContent = req.isGuest ? 'Guest request details' : 'Custom request details';
 
     left.innerHTML =
       '<div class="flex items-center gap-4"><div class="w-14 h-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0"><span class="text-white text-lg font-bold">' + escapeHtml(req.artistInitials) + '</span></div><div><p class="font-bold text-lg text-on-surface">' + escapeHtml(req.artistName) + '</p>' + (profileLink ? '<p class="mt-1">' + profileLink + '</p>' : '') + '</div></div>' +
       '<div class="flex items-center gap-3 flex-wrap"><span class="inline-flex items-center gap-1.5 ' + escapeHtml(req.statusBadgeClass) + ' text-xs font-semibold px-3 py-1 rounded-full"><span class="w-1.5 h-1.5 rounded-full status-dot"></span> ' + escapeHtml(req.filterStatus) + '</span><span class="text-xs text-outline">Submitted ' + escapeHtml(req.submittedAt) + '</span><span class="text-xs text-outline">' + escapeHtml(req.reference) + '</span></div>' +
-      '<div class="bg-surface-container-low rounded-2xl p-5 border border-outline-variant/20 flex gap-4"><div class="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/15"><span class="material-symbols-outlined text-primary text-3xl">brush</span></div><div><h4 class="font-bold text-on-surface text-lg">Custom tattoo request</h4><p class="text-sm text-on-surface-variant mt-1">' + escapeHtml(req.schedulingLabel) + '</p></div></div>' +
+      '<div class="bg-surface-container-low rounded-2xl p-5 border border-outline-variant/20 flex gap-4"><div class="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/15"><span class="material-symbols-outlined text-primary text-3xl">' + requestIcon + '</span></div><div><h4 class="font-bold text-on-surface text-lg">' + escapeHtml(requestTitle) + '</h4><p class="text-sm text-on-surface-variant mt-1">' + escapeHtml(req.schedulingLabel) + '</p></div></div>' +
       (questionsHtml ? '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">' + questionsHtml + '</div>' : '') +
+      guestSpotHtml +
       availabilityHtml +
       '<div><h4 class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Additional notes</h4><p class="text-sm text-on-surface leading-relaxed whitespace-pre-line">' + escapeHtml(req.additionalNotes) + '</p></div>';
 
@@ -650,6 +766,7 @@
   document.addEventListener('DOMContentLoaded', function() {
     applyFilters();
     applyCustomFilters();
+    applyGuestFilters();
     @if($requests->isEmpty())
     document.getElementById('requestsEmpty').classList.remove('hidden');
     document.getElementById('requestsList').classList.add('hidden');
@@ -660,9 +777,14 @@
     document.getElementById('customRequestsEmpty').classList.remove('hidden');
     document.getElementById('customRequestsList').classList.add('hidden');
     @endif
+    @if($guestRequests->isEmpty())
+    document.getElementById('guestRequestsEmpty').classList.remove('hidden');
+    document.getElementById('guestRequestsList').classList.add('hidden');
+    @endif
     var openCustomId = parseInt(new URLSearchParams(window.location.search).get('open') || '', 10);
     if (!isNaN(openCustomId) && userCustomRequestsById[openCustomId]) {
-      switchRequestsTab('custom');
+      var openReq = userCustomRequestsById[openCustomId];
+      switchRequestsTab(openReq.isGuest ? 'guest' : 'custom');
       openUserCustomRequestDetail(openCustomId);
       var url = new URL(window.location.href);
       url.searchParams.delete('open');

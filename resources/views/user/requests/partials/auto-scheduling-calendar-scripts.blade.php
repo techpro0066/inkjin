@@ -6,6 +6,7 @@
   var artistTimezone = CAL.artistTimezone || 'UTC';
   var artistBlockedPeriods = CAL.artistBlockedPeriods || [];
   var artistBusyIntervalsByDate = CAL.artistBusyIntervalsByDate || {};
+  var allowedDateRange = CAL.allowedDateRange || null;
   var tattooDurationMinutes = parseInt(CAL.tattooDurationMinutes || @json($durationMinutes), 10) || 120;
   var weekdayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -15,6 +16,39 @@
   var calMonth = today.getMonth();
   var selectedDate = null;
   var selectedTime = null;
+
+  function parseYmdLocal(ymd) {
+    if (!ymd) return null;
+    var parts = String(ymd).split('-');
+    if (parts.length !== 3) return null;
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10) - 1;
+    var d = parseInt(parts[2], 10);
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+    return new Date(y, m, d, 0, 0, 0, 0);
+  }
+
+  function isDateOutsideAllowedRange(ymd) {
+    if (!ymd || !allowedDateRange) return false;
+    var s = String(allowedDateRange.start || '');
+    var e = String(allowedDateRange.end || '');
+    if (s && ymd < s) return true;
+    if (e && ymd > e) return true;
+    return false;
+  }
+
+  (function initCalendarMonthFromAllowedRange() {
+    if (!allowedDateRange || !allowedDateRange.start) return;
+    var startDate = parseYmdLocal(allowedDateRange.start);
+    if (!startDate) return;
+    var anchor = startDate > todayStart ? startDate : todayStart;
+    if (allowedDateRange.end) {
+      var endDate = parseYmdLocal(allowedDateRange.end);
+      if (endDate && anchor > endDate) anchor = startDate;
+    }
+    calYear = anchor.getFullYear();
+    calMonth = anchor.getMonth();
+  })();
 
   function formatYmdArtistLocal(dateObj) {
     if (!(dateObj instanceof Date)) return '';
@@ -112,6 +146,7 @@
     var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
     if (dayStart < todayStart) return [];
     var ymdArtist = formatYmdArtistLocal(dateObj);
+    if (ymdArtist && isDateOutsideAllowedRange(ymdArtist)) return [];
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
     var weekdayKey = weekdayKeys[dateObj.getDay()];
     var dayRanges = artistAvailabilitySchedule[weekdayKey];
@@ -139,6 +174,7 @@
     var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
     if (dayStart < todayStart) return [];
     var ymdArtist = formatYmdArtistLocal(dateObj);
+    if (ymdArtist && isDateOutsideAllowedRange(ymdArtist)) return [];
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
     var weekdayKey = weekdayKeys[dateObj.getDay()];
     var dayRanges = artistAvailabilitySchedule[weekdayKey];
@@ -159,7 +195,7 @@
     var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
     if (dayStart < todayStart) return false;
     var ymd = formatYmdArtistLocal(dateObj);
-    if (ymd && isArtistDateBlocked(ymd)) return false;
+    if (ymd && (isDateOutsideAllowedRange(ymd) || isArtistDateBlocked(ymd))) return false;
     var hypo = getHypotheticalSlotsForDate(dateObj, requiredMinutes);
     if (!hypo.length) return false;
     return getSlotsForDate(dateObj, requiredMinutes).length === 0;
@@ -167,8 +203,23 @@
 
   function canNavigateToMonth(year, month) {
     var firstOfTarget = new Date(year, month, 1, 0, 0, 0, 0);
-    var firstOfCurrent = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1, 0, 0, 0, 0);
-    return firstOfTarget >= firstOfCurrent;
+    var minBound = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1, 0, 0, 0, 0);
+    if (allowedDateRange && allowedDateRange.start) {
+      var startDate = parseYmdLocal(allowedDateRange.start);
+      if (startDate) {
+        var startMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1, 0, 0, 0, 0);
+        if (startMonth > minBound) minBound = startMonth;
+      }
+    }
+    if (firstOfTarget < minBound) return false;
+    if (allowedDateRange && allowedDateRange.end) {
+      var endDate = parseYmdLocal(allowedDateRange.end);
+      if (endDate) {
+        var maxMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1, 0, 0, 0, 0);
+        if (firstOfTarget > maxMonth) return false;
+      }
+    }
+    return true;
   }
 
   function updateConfirmBar() {
@@ -244,6 +295,13 @@
       prevBtn.classList.toggle('opacity-40', !allowPrev);
       prevBtn.classList.toggle('cursor-not-allowed', !allowPrev);
     }
+    var nextBtn = document.getElementById('calNext');
+    if (nextBtn) {
+      var allowNext = canNavigateToMonth(calYear, calMonth + 1);
+      nextBtn.disabled = !allowNext;
+      nextBtn.classList.toggle('opacity-40', !allowNext);
+      nextBtn.classList.toggle('cursor-not-allowed', !allowNext);
+    }
     var firstDay = new Date(calYear, calMonth, 1).getDay();
     var startOffset = (firstDay + 6) % 7;
     var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -258,16 +316,20 @@
         var div = document.createElement('div');
         div.textContent = day;
         var ymdCell = formatYmdArtistLocal(dt);
+        var isOutsideAllowed = !!(ymdCell && isDateOutsideAllowedRange(ymdCell));
         var isBlockedDay = !!(ymdCell && isArtistDateBlocked(ymdCell));
-        var isAvail = getSlotsForDate(dt, tattooDurationMinutes).length > 0;
+        var isAvail = !isOutsideAllowed && getSlotsForDate(dt, tattooDurationMinutes).length > 0;
         var isToday = dt.toDateString() === today.toDateString();
         var isFuture = dt > today;
-        var isFullyBooked = !isAvail && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, tattooDurationMinutes);
+        var isFullyBooked = !isAvail && !isOutsideAllowed && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, tattooDurationMinutes);
         var isSel = selectedDate && dt.toDateString() === selectedDate.toDateString();
         var cls = 'cal-day';
         if (isSel) cls += ' selected';
         else if (isAvail) cls += ' available';
-        else if (isBlockedDay && (isFuture || isToday)) {
+        else if (isOutsideAllowed && (isFuture || isToday)) {
+          cls += ' unavailable-future';
+          div.title = 'Outside guest spot dates';
+        } else if (isBlockedDay && (isFuture || isToday)) {
           cls += ' blocked-by-artist';
           div.title = 'Artist unavailable';
         } else if (isFullyBooked) {
@@ -313,6 +375,7 @@
     renderMainCal();
   });
   document.getElementById('calNext').addEventListener('click', function() {
+    if (!canNavigateToMonth(calYear, calMonth + 1)) return;
     calMonth++;
     if (calMonth > 11) { calMonth = 0; calYear++; }
     renderMainCal();

@@ -12,6 +12,10 @@ class CustomRequest extends Model
     protected $fillable = [
         'user_id',
         'artist_id',
+        'is_guest',
+        'guest_id',
+        'guest_spot_held',
+        'guest_hold_expires_at',
         'type',
         'questions_answers',
         'anything_else_notes',
@@ -34,6 +38,9 @@ class CustomRequest extends Model
     ];
 
     protected $casts = [
+        'is_guest' => 'boolean',
+        'guest_spot_held' => 'boolean',
+        'guest_hold_expires_at' => 'datetime',
         'questions_answers' => 'array',
         'preferences' => 'array',
         'preferred_days' => 'array',
@@ -57,6 +64,16 @@ class CustomRequest extends Model
     public function artist(): BelongsTo
     {
         return $this->belongsTo(User::class, 'artist_id');
+    }
+
+    public function guestSpot(): BelongsTo
+    {
+        return $this->belongsTo(GuestSpot::class, 'guest_id');
+    }
+
+    public function isGuestRequest(): bool
+    {
+        return (bool) $this->is_guest && $this->guest_id !== null;
     }
 
     public function referenceLabel(): string
@@ -176,7 +193,7 @@ class CustomRequest extends Model
 
     public function autoRequiresConsultation(): bool
     {
-        if ($this->isManagedRequest() || $this->usesArtistOfferedSlotsPicker()) {
+        if ($this->isGuestRequest() || $this->isManagedRequest() || $this->usesArtistOfferedSlotsPicker()) {
             return false;
         }
 
@@ -221,6 +238,68 @@ class CustomRequest extends Model
         return $this->hasArtistOfferedSessionSlots();
     }
 
+    public function isGuestHoldActive(): bool
+    {
+        if (! $this->isGuestRequest() || ! $this->hasQuote() || $this->isBooked()) {
+            return false;
+        }
+
+        if (! $this->guest_hold_expires_at) {
+            return false;
+        }
+
+        return $this->guest_hold_expires_at->isFuture();
+    }
+
+    public function isGuestHoldExpired(): bool
+    {
+        if (! $this->isGuestRequest() || ! $this->hasQuote() || $this->isBooked()) {
+            return false;
+        }
+
+        if (! $this->guest_hold_expires_at) {
+            return false;
+        }
+
+        return $this->guest_hold_expires_at->isPast();
+    }
+
+    /**
+     * User-facing block reason for guest scheduling/payment.
+     * quote_expired → ask artist to send quote again
+     * slots_full → guest spot has no remaining capacity
+     */
+    public function guestActionBlockReason(): ?string
+    {
+        if (! $this->isGuestRequest() || $this->isBooked()) {
+            return null;
+        }
+
+        if ($this->isGuestHoldExpired() || ($this->hasQuote() && $this->status === 'confirmed' && ! $this->isGuestHoldActive())) {
+            return 'quote_expired';
+        }
+
+        if ($this->status === 'confirmed' && $this->hasQuote() && $this->isGuestHoldActive()) {
+            return null;
+        }
+
+        $this->loadMissing('guestSpot');
+        if ($this->guestSpot && $this->guestSpot->tracksSpotCapacity() && ! $this->guestSpot->hasAvailableSpots()) {
+            return 'slots_full';
+        }
+
+        return null;
+    }
+
+    public function guestActionBlockMessage(): ?string
+    {
+        return match ($this->guestActionBlockReason()) {
+            'quote_expired' => 'Your quote hold has expired. Please ask the artist to send a quote again.',
+            'slots_full' => 'All slots are full.',
+            default => null,
+        };
+    }
+
     public function canSelectTimes(): bool
     {
         if ($this->status !== 'confirmed' || !$this->hasQuote() || $this->isBooked()) {
@@ -231,15 +310,23 @@ class CustomRequest extends Model
             return false;
         }
 
+        if ($this->isGuestRequest()) {
+            return $this->isGuestHoldActive();
+        }
+
         if ($this->hasArtistOfferedSessionSlots()) {
             return true;
         }
 
-        return !$this->isManagedRequest();
+        return ! $this->isManagedRequest();
     }
 
     public function canPay(): bool
     {
+        if ($this->isGuestRequest() && ! $this->isGuestHoldActive()) {
+            return false;
+        }
+
         return $this->status === 'confirmed'
             && $this->hasQuote()
             && $this->clientHasSelectedTimes()
@@ -586,6 +673,8 @@ class CustomRequest extends Model
             'additionalNotes' => trim((string) ($this->anything_else_notes ?? '')) ?: '—',
             'referralSource' => $this->referralSource() ?? '—',
             'type' => $this->type ?? 'auto',
+            'isGuest' => $this->isGuestRequest(),
+            'guestSpot' => $this->artistGuestSpotSummary(),
             'schedulingLabel' => $this->schedulingLabel(),
             'availabilityDetails' => $this->availabilityStructured(),
             'questionsAnswers' => $this->formattedQuestionAnswers(),
@@ -603,6 +692,10 @@ class CustomRequest extends Model
             'isBooked' => $this->isBooked(),
             'canSelectTimes' => $this->canSelectTimes(),
             'canPay' => $this->canPay(),
+            'guestHoldExpiresAt' => $this->guest_hold_expires_at?->toIso8601String(),
+            'guestHoldActive' => $this->isGuestHoldActive(),
+            'guestActionBlockReason' => $this->guestActionBlockReason(),
+            'guestActionBlockMessage' => $this->guestActionBlockMessage(),
             'confirmTimesUrl' => $this->canAccessConfirmTimesPage()
                 ? route('user.custom-requests.confirm-times', ['customRequest' => $this->id, 'fresh' => 1])
                 : null,
@@ -630,6 +723,10 @@ class CustomRequest extends Model
             'additionalNotes' => trim((string) ($this->anything_else_notes ?? '')) ?: '—',
             'referralSource' => $this->referralSource() ?? '—',
             'type' => $this->type ?? 'auto',
+            'isGuest' => $this->isGuestRequest(),
+            'guestSpot' => $this->artistGuestSpotSummary(),
+            'guestHoldExpiresAt' => $this->guest_hold_expires_at?->toIso8601String(),
+            'guestHoldActive' => $this->isGuestHoldActive(),
             'schedulingLabel' => $this->schedulingLabel(),
             'availabilityDetails' => $this->availabilityStructured(),
             'artistSessionSlots' => $this->normalizedArtistSlots(),
@@ -641,6 +738,36 @@ class CustomRequest extends Model
             'messageForClient' => $this->message_for_client,
             'isPending' => $this->status === 'pending',
             'canDecline' => $this->status === 'pending',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function artistGuestSpotSummary(): ?array
+    {
+        if (! $this->isGuestRequest()) {
+            return null;
+        }
+
+        $this->loadMissing('guestSpot');
+        $spot = $this->guestSpot;
+        if (! $spot) {
+            return null;
+        }
+
+        return [
+            'city' => $spot->city,
+            'country' => $spot->country,
+            'fromDate' => $spot->from_date?->format('M j, Y'),
+            'toDate' => $spot->to_date?->format('M j, Y'),
+            'availabilityTime' => $spot->listAvailabilityTimeLabel(),
+            'studio' => $spot->listStudioLabel(),
+            'location' => $spot->listLocationLabel(),
+            'remainingSpotsLabel' => $spot->listRemainingSpotsLabel(),
+            'tracksCapacity' => $spot->tracksSpotCapacity(),
+            'remainingSpots' => (int) ($spot->remaining_spots ?? 0),
+            'isFull' => $spot->isFull(),
         ];
     }
 }

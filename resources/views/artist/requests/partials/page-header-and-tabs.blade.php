@@ -22,4 +22,5 @@
 <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
   <a href="{{ route('artist.requests.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 {{ $activeTab === 'design' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant' }} transition-all">Available Design Requests</a>
   <a href="{{ route('artist.custom-requests.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 {{ $activeTab === 'custom' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant' }} transition-all">Custom Requests</a>
+  <a href="{{ route('artist.guest-requests.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 {{ $activeTab === 'guest' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant' }} transition-all">Guest Requests</a>
 </div>

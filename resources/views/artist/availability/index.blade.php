@@ -28,7 +28,6 @@
 
       .wh-time-input {
         min-width: 7rem;
-        color-scheme: light;
       }
 
       #saveBookingStatusBtnIcon.is-loading,
@@ -43,23 +42,6 @@
       @media (max-width: 1023px) {
         .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
         body { overflow-x: hidden; }
-      }
-
-      /* Chrome, Safari, Edge */
-      input[type="time"]::-webkit-calendar-picker-indicator {
-        display: none;
-        -webkit-appearance: none;
-      }
-
-      /* Optional: remove inner spin buttons */
-      input[type="time"]::-webkit-inner-spin-button {
-        display: none;
-      }
-
-      /* Firefox */
-      input[type="time"] {
-        appearance: textfield;
-        -moz-appearance: textfield;
       }
 
       .availability-tab-content { display: none; animation: availabilityTabIn 0.2s ease; }
@@ -1265,7 +1247,7 @@
   var WH_CSRF_TOKEN = '{{ csrf_token() }}';
   var WH_STORE_URL = '{{ route('availability.store') }}';
 
-  var WH_INPUT_CLASS = 'wh-time-input text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30';
+  var WH_INPUT_CLASS = 'inkjin-time-input text-sm px-3 py-2 bg-white text-on-surface';
 
   function updateWhSlot(dayIdx, slotIdx, field, value) {
     if (!workingHoursData[dayIdx] || !workingHoursData[dayIdx].slots[slotIdx]) return;
@@ -1314,10 +1296,10 @@
           slotsParts.push(
             '<div class="flex items-center gap-2 flex-wrap w-full sm:w-auto sm:min-w-[260px] rounded-xl border border-outline-variant/20 bg-surface-container-low/60 px-3 py-2.5">' +
               '<label class="sr-only">From ' + item.day + ' slot ' + (s + 1) + '</label>' +
-              '<input type="time" value="' + slot.start + '" onchange="updateWhSlot(' + idx + ',' + s + ',\'start\',this.value)" class="' + WH_INPUT_CLASS + '" step="300" title="Start time">' +
+              '<div class="inkjin-time-wrap flex-1 min-w-[7rem]"><input type="time" value="' + slot.start + '" onchange="updateWhSlot(' + idx + ',' + s + ',\'start\',this.value)" class="' + WH_INPUT_CLASS + '" step="300" title="Start time"></div>' +
               '<span class="text-on-surface-variant text-sm shrink-0">–</span>' +
               '<label class="sr-only">To ' + item.day + ' slot ' + (s + 1) + '</label>' +
-              '<input type="time" value="' + slot.end + '" onchange="updateWhSlot(' + idx + ',' + s + ',\'end\',this.value)" class="' + WH_INPUT_CLASS + '" step="300" title="End time">' +
+              '<div class="inkjin-time-wrap flex-1 min-w-[7rem]"><input type="time" value="' + slot.end + '" onchange="updateWhSlot(' + idx + ',' + s + ',\'end\',this.value)" class="' + WH_INPUT_CLASS + '" step="300" title="End time"></div>' +
               '<button type="button" onclick="removeWhSlot(' + idx + ',' + s + ')" class="p-2 rounded-lg hover:bg-error-container/80 transition-colors text-on-surface-variant hover:text-error shrink-0" title="Remove this time">' +
                 '<span class="material-symbols-outlined text-lg">delete</span>' +
               '</button>' +

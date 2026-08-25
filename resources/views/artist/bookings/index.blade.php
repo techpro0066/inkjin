@@ -916,8 +916,8 @@
         <p class="font-bold text-[#1b5e4a]">Client pays → booking auto-marked Completed</p>
       </div>
     </div>
-  </div>
-</div>
+        </div>
+      </div>
 
 <div id="artistRescheduleRequestModal"
   class="artist-rsm fixed inset-0 z-[115] flex items-end sm:items-center justify-center p-4 sm:p-6"

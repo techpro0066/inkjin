@@ -6,7 +6,6 @@ use App\Http\Controllers\GoogleCalendarController;
 use App\Models\ArtistDesign;
 use App\Models\Availability;
 use App\Models\CustomRequest;
-use App\Models\AvailabilityOverride;
 use App\Models\Booking;
 use App\Models\UserDetail;
 use Carbon\Carbon;
@@ -58,18 +57,8 @@ class BookingCalendarAvailabilityService
             })
             ->toArray();
 
-        $artistBlockedPeriods = AvailabilityOverride::query()
-            ->where('user_id', $artistUserId)
-            ->orderBy('start_date')
-            ->get()
-            ->map(static function (AvailabilityOverride $o) {
-                return [
-                    'start_date' => $o->start_date->format('Y-m-d'),
-                    'end_date' => $o->end_date->format('Y-m-d'),
-                ];
-            })
-            ->values()
-            ->all();
+        $artistBlockedPeriods = app(ManagedRequestBookingService::class)
+            ->artistBlockedPeriods($artistUserId);
 
         $sessionBufferMinutes = max(0, (int) ($userDetail->session_buffer_period ?? 0));
 
@@ -126,7 +115,7 @@ class BookingCalendarAvailabilityService
      */
     public function calendarPayloadForCustomRequest(CustomRequest $customRequest): array
     {
-        $customRequest->loadMissing(['artist.userDetail']);
+        $customRequest->loadMissing(['artist.userDetail', 'guestSpot']);
         $artist = $customRequest->artist;
         $userDetail = $artist?->userDetail;
         if (!$artist || !$userDetail) {
@@ -160,18 +149,9 @@ class BookingCalendarAvailabilityService
             })
             ->toArray();
 
-        $artistBlockedPeriods = AvailabilityOverride::query()
-            ->where('user_id', $artistUserId)
-            ->orderBy('start_date')
-            ->get()
-            ->map(static function (AvailabilityOverride $o) {
-                return [
-                    'start_date' => $o->start_date->format('Y-m-d'),
-                    'end_date' => $o->end_date->format('Y-m-d'),
-                ];
-            })
-            ->values()
-            ->all();
+        $exceptGuestSpotId = $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null;
+        $artistBlockedPeriods = app(ManagedRequestBookingService::class)
+            ->artistBlockedPeriods($artistUserId, $exceptGuestSpotId ?: null);
 
         $sessionBufferMinutes = max(0, (int) ($userDetail->session_buffer_period ?? 0));
         $artistBusyIntervalsByDate = [];
@@ -185,14 +165,41 @@ class BookingCalendarAvailabilityService
         }
         $this->appendGoogleCalendarBusyToBusyMap($userDetail, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
 
+        $allowedDateRange = null;
+        $guestSpot = $customRequest->isGuestRequest() ? $customRequest->guestSpot : null;
+        if ($guestSpot && $guestSpot->from_date && $guestSpot->to_date) {
+            $allowedDateRange = [
+                'start' => $guestSpot->from_date->format('Y-m-d'),
+                'end' => $guestSpot->to_date->format('Y-m-d'),
+            ];
+
+            $startHi = $this->normalizeAvailabilityTime($guestSpot->start_time);
+            $endHi = $this->normalizeAvailabilityTime($guestSpot->end_time);
+            if ($startHi && $endHi && $startHi < $endHi) {
+                $guestDayRanges = [['start' => $startHi, 'end' => $endHi]];
+                $artistAvailabilitySchedule = [
+                    'sunday' => $guestDayRanges,
+                    'monday' => $guestDayRanges,
+                    'tuesday' => $guestDayRanges,
+                    'wednesday' => $guestDayRanges,
+                    'thursday' => $guestDayRanges,
+                    'friday' => $guestDayRanges,
+                    'saturday' => $guestDayRanges,
+                ];
+            }
+        }
+
         return [
             'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
             'artistTimezone' => $artistTimezone,
             'artistBlockedPeriods' => $artistBlockedPeriods,
             'artistBusyIntervalsByDate' => $artistBusyIntervalsByDate,
+            'allowedDateRange' => $allowedDateRange,
             'tattooDurationMinutes' => $tattooDurationMinutes,
             'artistConsultationSettings' => [
-                'required' => (bool) ($userDetail->require_consultation ?? false),
+                'required' => $customRequest->isGuestRequest()
+                    ? false
+                    : (bool) ($userDetail->require_consultation ?? false),
                 'timing' => $userDetail->consultation_timing ?: 'combined',
                 'session_type' => $userDetail->session_type ?: 'both',
                 'session_duration_minutes' => (int) ($userDetail->session_duration_minutes ?: 30),
@@ -203,8 +210,27 @@ class BookingCalendarAvailabilityService
             'customRequest' => [
                 'id' => $customRequest->id,
                 'reference' => $customRequest->referenceLabel(),
+                'isGuest' => $customRequest->isGuestRequest(),
             ],
         ];
+    }
+
+    private function normalizeAvailabilityTime(mixed $time): ?string
+    {
+        $raw = trim((string) ($time ?? ''));
+        if ($raw === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($raw)->format('H:i');
+        } catch (\Throwable) {
+            if (preg_match('/^(\d{1,2}):(\d{2})/', $raw, $match)) {
+                return str_pad($match[1], 2, '0', STR_PAD_LEFT).':'.$match[2];
+            }
+
+            return null;
+        }
     }
 
     public function resolveTattooDurationMinutes(?ArtistDesign $tattoo): int
