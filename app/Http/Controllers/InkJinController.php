@@ -520,6 +520,8 @@ class InkJinController extends Controller
             ? $userDetail->user->guestSpots()->orderBy('sort_order')->orderBy('id')->get()
             : collect();
 
+        $guestSpots->each(fn (\App\Models\GuestSpot $spot) => $spot->ensureCompletedStatus());
+
         $faqs = $userDetail->display_faq
             ? $userDetail->user->artistFaqs()->active()->ordered()->get()
             : collect();

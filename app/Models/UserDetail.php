@@ -122,26 +122,32 @@ class UserDetail extends Model
      */
     public function studioLocationLines(): array
     {
-        $studioName = trim((string) ($this->studio_name ?? ''));
+        $studioLine = $this->studioNameWithCityCountry();
 
         $streetLine = trim(trim((string) ($this->street_number ?? '')).' '.trim((string) ($this->street_name ?? '')));
         if ($streetLine === '') {
             $streetLine = trim((string) ($this->studio_address ?? ''));
         }
 
-        $cityZip = trim(implode(' ', array_filter([
-            trim((string) ($this->city ?? '')),
-            trim((string) ($this->postal_code ?? '')),
-        ], fn (string $part) => $part !== '')));
-
-        $country = trim((string) ($this->country ?? ''));
+        $postalCode = trim((string) ($this->postal_code ?? ''));
 
         return array_values(array_filter([
-            $studioName,
+            $studioLine,
             $streetLine,
-            $cityZip,
-            $country,
+            $postalCode,
         ], fn (string $line) => $line !== ''));
+    }
+
+    /**
+     * Compact studio label: "Studio Name, City, Country".
+     */
+    public function studioNameWithCityCountry(): string
+    {
+        return implode(', ', array_values(array_filter([
+            trim((string) ($this->studio_name ?? '')),
+            trim((string) ($this->city ?? '')),
+            trim((string) ($this->country ?? '')),
+        ], fn (string $part) => $part !== '')));
     }
 
     /**

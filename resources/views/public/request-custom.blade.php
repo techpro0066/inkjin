@@ -309,16 +309,40 @@
           @endif
         </div>
         <div class="flex-1 min-w-0">
-          <h2 class="text-base sm:text-lg font-bold text-on-surface mb-1">Custom Tattoo Request</h2>
+          @php
+            $isGuestRequestForm = ! empty($guestSpotId) && ! empty($guestSpot);
+            $requestFormStudioLabel = $studioLabel ?? '';
+            $guestSpotDateLabel = null;
+            if ($isGuestRequestForm && $guestSpot->from_date && $guestSpot->to_date) {
+              $guestSpotDateLabel = $guestSpot->from_date->isSameMonth($guestSpot->to_date)
+                ? $guestSpot->from_date->format('M j').'–'.$guestSpot->to_date->format('j, Y')
+                : $guestSpot->from_date->format('M j, Y').' – '.$guestSpot->to_date->format('M j, Y');
+            }
+          @endphp
+          <h2 class="text-base sm:text-lg font-bold text-on-surface mb-1">
+            {{ $isGuestRequestForm ? 'Guest Spot Request' : 'Custom Tattoo Request' }}
+          </h2>
           <div class="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-on-surface-variant">
-            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> Custom design</span>
-            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> Artist will review &amp; reply</span>
+            @if($isGuestRequestForm)
+              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">luggage</span> Guest spot</span>
+              @if($guestSpot->city || $guestSpot->country)
+                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">location_on</span> {{ collect([$guestSpot->city, $guestSpot->country])->filter()->implode(', ') }}</span>
+              @endif
+              @if($guestSpotDateLabel)
+                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_month</span> {{ $guestSpotDateLabel }}</span>
+              @endif
+            @else
+              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> Custom design</span>
+              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> Artist will review &amp; reply</span>
+            @endif
           </div>
           <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
             <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
               <span class="text-white text-[10px] font-bold">{{ $rcArtistInitials }}</span>
             </div>
-            <span class="leading-relaxed break-words">with <strong>{{ $artistName }}</strong>@if($userDetail->studio_name) at <strong>{{ $userDetail->studio_name }}</strong>@endif</span>
+            <span class="leading-relaxed break-words">
+              with <strong>{{ $artistName }}</strong>@if($requestFormStudioLabel) at <strong>{{ $requestFormStudioLabel }}</strong>@endif
+            </span>
           </div>
         </div>
       </div>
@@ -341,8 +365,17 @@
           @endif
         </div>
         <div class="text-left">
-          <p class="text-sm text-on-surface-variant">You're requesting a custom tattoo from</p>
+          <p class="text-sm text-on-surface-variant">
+            @if(!empty($guestSpotId) && !empty($guestSpot))
+              You're requesting a guest spot tattoo from
+            @else
+              You're requesting a custom tattoo from
+            @endif
+          </p>
           <p class="font-bold text-on-surface text-lg" id="artistNameDisplay">{{$artistName}}</p>
+          @if(!empty($studioLabel))
+            <p class="text-xs text-on-surface-variant mt-0.5">at {{ $studioLabel }}</p>
+          @endif
         </div>
       </div>
 

@@ -62,12 +62,20 @@
       white-space: nowrap;
     }
     .status-badge.available {
-      background: #e8ddff;
-      color: #310f7a;
+      background: rgba(34, 197, 94, 0.15);
+      color: #22C55E;
     }
     .status-badge.planned {
-      background: #f2ecf5;
-      color: #494552;
+      background: rgba(156, 163, 175, 0.18);
+      color: #9CA3AF;
+    }
+    .status-badge.full {
+      background: rgba(255, 191, 0, 0.18);
+      color: #FFBF00;
+    }
+    .status-badge.completed {
+      background: rgba(209, 213, 219, 0.45);
+      color: #D1D5DB;
     }
 
     .guest-spot-action {
@@ -381,8 +389,9 @@
                       name="buffer_days_before"
                       min="0"
                       step="1"
-                      value="0"
-                      class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-14 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      value=""
+                      placeholder="0"
+                      class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-14 bg-white text-on-surface placeholder:text-outline/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
                     >
                     <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-on-surface-variant">days</span>
                   </div>
@@ -397,8 +406,9 @@
                       name="buffer_days_after"
                       min="0"
                       step="1"
-                      value="0"
-                      class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-14 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      value=""
+                      placeholder="0"
+                      class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-14 bg-white text-on-surface placeholder:text-outline/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
                     >
                     <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-on-surface-variant">days</span>
                   </div>
@@ -422,8 +432,9 @@
                   name="number_of_spots"
                   min="0"
                   step="1"
-                  value="0"
-                  class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-14 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  value=""
+                  placeholder="0"
+                  class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 pr-14 bg-white text-on-surface placeholder:text-outline/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
                 <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-on-surface-variant">spots</span>
               </div>
@@ -520,7 +531,7 @@
               <span class="material-symbols-outlined text-outline/50 text-xl hidden sm:inline select-none" style="font-size:20px;">drag_indicator</span>
               <div class="flex items-center gap-2 sm:block">
                 <span class="sm:hidden text-[11px] font-semibold uppercase text-on-surface-variant w-16 shrink-0">Status</span>
-                <span class="status-badge {{ $spot->status }}">{{ ucfirst($spot->status) }}</span>
+              <span class="status-badge {{ $spot->effectiveStatusKey() }}">{{ $spot->publicStatusLabel() }}</span>
               </div>
               <div class="flex items-center gap-2 sm:block">
                 <span class="sm:hidden text-[11px] font-semibold uppercase text-on-surface-variant w-16 shrink-0">City</span>
@@ -538,13 +549,15 @@
                 <span class="sm:hidden text-[11px] font-semibold uppercase text-on-surface-variant w-16 shrink-0">To</span>
                 <span class="text-sm text-on-surface guest-spot-to">{{ $spot->to_date->format('M j, Y') }}</span>
               </div>
-              <div class="flex items-center justify-end gap-0.5">
+              <div class="flex items-center justify-end gap-0.5 guest-spot-actions">
+                @if ($spot->effectiveStatusKey() !== 'completed')
                 <button type="button" class="guest-spot-action guest-spot-edit" title="Edit" aria-label="Edit guest location">
                   <span class="material-symbols-outlined text-[18px]">edit</span>
                 </button>
                 <button type="button" class="guest-spot-action guest-spot-delete" title="Remove" aria-label="Remove guest location">
                   <span class="material-symbols-outlined text-[18px]">delete</span>
                 </button>
+                @endif
               </div>
               @if ($spot->hasListDetails())
               <div class="guest-spot-details sm:col-span-7 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-x-5 sm:gap-y-1.5 sm:pl-10 pt-2 sm:pt-2.5 mt-1 sm:mt-0">
@@ -826,7 +839,9 @@ function selectGuestStatus(card) {
   }
 
   function fillRow($row, spot) {
-    var statusLabel = spot.status ? spot.status.charAt(0).toUpperCase() + spot.status.slice(1) : '';
+    var displayKey = spot.display_status || spot.status || '';
+    var statusLabel = spot.display_status_label
+      || (spot.status ? spot.status.charAt(0).toUpperCase() + spot.status.slice(1) : '');
     $row.attr({
       'data-id': spot.id,
       'data-status': spot.status,
@@ -839,14 +854,33 @@ function selectGuestStatus(card) {
       'data-delete-url': resourceUrl(spot.id),
     });
     $row.find('.status-badge')
-      .removeClass('available planned')
-      .addClass(spot.status)
+      .removeClass('available planned full completed')
+      .addClass(displayKey)
       .text(statusLabel);
     $row.find('.guest-spot-city').text(spot.city);
     $row.find('.guest-spot-country').text(spot.country);
     $row.find('.guest-spot-from').text(spot.from_label);
     $row.find('.guest-spot-to').text(spot.to_label);
+    syncRowActions($row, displayKey);
     fillRowDetails($row, spot);
+  }
+
+  function syncRowActions($row, displayKey) {
+    var $actions = $row.find('.guest-spot-actions');
+    if (!$actions.length) return;
+    if (displayKey === 'completed') {
+      $actions.empty();
+      return;
+    }
+    if ($actions.find('.guest-spot-edit').length) return;
+    $actions.html(
+      '<button type="button" class="guest-spot-action guest-spot-edit" title="Edit" aria-label="Edit guest location">' +
+        '<span class="material-symbols-outlined text-[18px]">edit</span>' +
+      '</button>' +
+      '<button type="button" class="guest-spot-action guest-spot-delete" title="Remove" aria-label="Remove guest location">' +
+        '<span class="material-symbols-outlined text-[18px]">delete</span>' +
+      '</button>'
+    );
   }
 
   function detailItemHtml(icon, text, extraClass) {
@@ -860,7 +894,8 @@ function selectGuestStatus(card) {
 
   function fillRowDetails($row, spot) {
     var $details = $row.find('.guest-spot-details');
-    if (!spot || spot.status !== 'available') {
+    var canShowDetails = spot && (spot.status === 'available' || spot.status === 'completed' || spot.display_status === 'completed');
+    if (!canShowDetails) {
       $details.addClass('hidden').empty();
       return;
     }
@@ -878,7 +913,7 @@ function selectGuestStatus(card) {
     if (spot.list_buffer) {
       html.push(detailItemHtml('event_busy', spot.list_buffer, 'guest-spot-buffer'));
     }
-    if (spot.list_remaining_spots) {
+    if (spot.status === 'available' && spot.list_remaining_spots) {
       html.push(detailItemHtml('group', spot.list_remaining_spots, 'guest-spot-remaining'));
     }
 
@@ -894,6 +929,17 @@ function selectGuestStatus(card) {
   }
 
   function buildRow(spot) {
+    var displayKey = spot.display_status || spot.status || '';
+    var actionsHtml = displayKey === 'completed'
+      ? ''
+      : (
+        '<button type="button" class="guest-spot-action guest-spot-edit" title="Edit" aria-label="Edit guest location">' +
+          '<span class="material-symbols-outlined text-[18px]">edit</span>' +
+        '</button>' +
+        '<button type="button" class="guest-spot-action guest-spot-delete" title="Remove" aria-label="Remove guest location">' +
+          '<span class="material-symbols-outlined text-[18px]">delete</span>' +
+        '</button>'
+      );
     var $row = $(
       '<div class="guest-spot-row grid grid-cols-1 sm:grid-cols-[28px_100px_1fr_1fr_110px_110px_72px] gap-2 sm:gap-3 items-center px-6 py-3.5" draggable="true">' +
         '<span class="material-symbols-outlined text-outline/50 text-xl hidden sm:inline select-none" style="font-size:20px;">drag_indicator</span>' +
@@ -917,14 +963,7 @@ function selectGuestStatus(card) {
           '<span class="sm:hidden text-[11px] font-semibold uppercase text-on-surface-variant w-16 shrink-0">To</span>' +
           '<span class="text-sm text-on-surface guest-spot-to"></span>' +
         '</div>' +
-        '<div class="flex items-center justify-end gap-0.5">' +
-          '<button type="button" class="guest-spot-action guest-spot-edit" title="Edit" aria-label="Edit guest location">' +
-            '<span class="material-symbols-outlined text-[18px]">edit</span>' +
-          '</button>' +
-          '<button type="button" class="guest-spot-action guest-spot-delete" title="Remove" aria-label="Remove guest location">' +
-            '<span class="material-symbols-outlined text-[18px]">delete</span>' +
-          '</button>' +
-        '</div>' +
+        '<div class="flex items-center justify-end gap-0.5 guest-spot-actions">' + actionsHtml + '</div>' +
         '<div class="guest-spot-details hidden sm:col-span-7"></div>' +
       '</div>'
     );
@@ -938,9 +977,21 @@ function selectGuestStatus(card) {
     $('#guest_response_deadline_unit').val(spot.response_deadline_unit || 'hours');
     $('#guest_start_time').val(spot.start_time || '');
     $('#guest_end_time').val(spot.end_time || '');
-    $('#guest_buffer_days_before').val(spot.buffer_days_before != null ? spot.buffer_days_before : 0);
-    $('#guest_buffer_days_after').val(spot.buffer_days_after != null ? spot.buffer_days_after : 0);
-    $('#guest_number_of_spots').val(spot.number_of_spots != null ? spot.number_of_spots : 0);
+    $('#guest_buffer_days_before').val(
+      spot.buffer_days_before != null && Number(spot.buffer_days_before) > 0
+        ? spot.buffer_days_before
+        : ''
+    );
+    $('#guest_buffer_days_after').val(
+      spot.buffer_days_after != null && Number(spot.buffer_days_after) > 0
+        ? spot.buffer_days_after
+        : ''
+    );
+    $('#guest_number_of_spots').val(
+      spot.number_of_spots != null && Number(spot.number_of_spots) > 0
+        ? spot.number_of_spots
+        : ''
+    );
     $('#guest_studio_name').val(spot.guest_studio_name || '');
     $('#guest_address_search').val(spot.guest_studio_address || '');
     $('#guest_studio_address').val(spot.guest_studio_address || '');
@@ -959,9 +1010,9 @@ function selectGuestStatus(card) {
     $('#guest_response_deadline').val('');
     $('#guest_response_deadline_unit').val('hours');
     $('#guest_start_time, #guest_end_time').val('');
-    $('#guest_buffer_days_before').val('0');
-    $('#guest_buffer_days_after').val('0');
-    $('#guest_number_of_spots').val('0');
+    $('#guest_buffer_days_before').val('');
+    $('#guest_buffer_days_after').val('');
+    $('#guest_number_of_spots').val('');
     $('#guest_studio_name').val('');
     $('#guest_address_search').val('').removeClass('border-error');
     $('#guest_studio_address').val('');
@@ -1202,9 +1253,9 @@ function selectGuestStatus(card) {
         end_time: $('#guest_end_time').val(),
         response_deadline: $.trim($('#guest_response_deadline').val()),
         response_deadline_unit: $('#guest_response_deadline_unit').val(),
-        buffer_days_before: $.trim($('#guest_buffer_days_before').val()),
-        buffer_days_after: $.trim($('#guest_buffer_days_after').val()),
-        number_of_spots: $.trim($('#guest_number_of_spots').val()),
+        buffer_days_before: $.trim($('#guest_buffer_days_before').val()) || '0',
+        buffer_days_after: $.trim($('#guest_buffer_days_after').val()) || '0',
+        number_of_spots: $.trim($('#guest_number_of_spots').val()) || '0',
         guest_studio_name: $.trim($('#guest_studio_name').val()),
         guest_studio_address: $.trim($('#guest_studio_address').val()),
         guest_street_number: $.trim($('#guest_street_number').val()),
@@ -1333,6 +1384,21 @@ function selectGuestStatus(card) {
         $('#buffer_days_after_error').text('').addClass('hidden');
       }
     });
+  });
+
+  // Hide placeholder on focus; restore on blur if still empty.
+  $('#guest_buffer_days_before, #guest_buffer_days_after, #guest_number_of_spots').each(function () {
+    var $el = $(this);
+    if (!$el.attr('data-placeholder')) {
+      $el.attr('data-placeholder', $el.attr('placeholder') || '0');
+    }
+  }).on('focus', function () {
+    $(this).attr('placeholder', '');
+  }).on('blur', function () {
+    var $el = $(this);
+    if (!$.trim($el.val())) {
+      $el.attr('placeholder', $el.attr('data-placeholder') || '0');
+    }
   });
 })();
 </script>

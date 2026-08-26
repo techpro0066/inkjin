@@ -342,6 +342,13 @@ class CustomRequestBookingService
             $details['is_guest'] = true;
             $details['guest_id'] = (int) $customRequest->guest_id;
             $details['guest_spot_consumed'] = $guestSpotConsumed;
+            $details['studio_label'] = $customRequest->clientStudioLabel();
+            $details['studio_location_lines'] = $customRequest->clientStudioLocationLines();
+            $details['google_maps_link'] = $customRequest->clientGoogleMapsLink();
+        } else {
+            $details['studio_label'] = $customRequest->clientStudioLabel();
+            $details['studio_location_lines'] = $customRequest->clientStudioLocationLines();
+            $details['google_maps_link'] = $customRequest->clientGoogleMapsLink();
         }
 
         return $details;

@@ -334,6 +334,95 @@ class Booking extends Model
         return $reference !== '' ? 'Custom · '.$reference : 'Custom tattoo';
     }
 
+    public function isGuestCustomRequestBooking(): bool
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+
+        return ! empty($details['is_guest']) || ! empty($details['guest_id']);
+    }
+
+    public function guestSpotId(): ?int
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $id = (int) ($details['guest_id'] ?? 0);
+
+        return $id > 0 ? $id : null;
+    }
+
+    /**
+     * Studio label for client UIs: guest-spot studio when applicable, else artist studio.
+     * Prefer snapshot stored at booking time; fall back to live guest spot / artist profile.
+     */
+    public function studioNameForClient(): string
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $snap = trim((string) ($details['studio_label'] ?? ''));
+        if ($snap !== '') {
+            return $snap;
+        }
+
+        if ($this->isGuestCustomRequestBooking() && $this->guestSpotId()) {
+            $spot = GuestSpot::query()->find($this->guestSpotId());
+            $label = $spot?->studioNameWithCityCountry();
+            if ($label) {
+                return $label;
+            }
+        }
+
+        $this->loadMissing('artist.userDetail');
+
+        return $this->artist?->userDetail?->studioNameWithCityCountry()
+            ?: trim((string) ($this->artist?->userDetail?->studio_name ?? ''));
+    }
+
+    public function studioAddressForClient(): string
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $lines = $details['studio_location_lines'] ?? null;
+        if (is_array($lines) && $lines !== []) {
+            $withoutFirst = array_slice(array_values(array_filter($lines, fn ($l) => trim((string) $l) !== '')), 1);
+
+            return implode(', ', $withoutFirst);
+        }
+
+        if ($this->isGuestCustomRequestBooking() && $this->guestSpotId()) {
+            $spot = GuestSpot::query()->find($this->guestSpotId());
+            if ($spot) {
+                $lines = $spot->clientLocationLines();
+                if (count($lines) > 1) {
+                    return implode(', ', array_slice($lines, 1));
+                }
+
+                return trim((string) ($spot->studio_address ?? ''));
+            }
+        }
+
+        $this->loadMissing('artist.userDetail');
+
+        return trim((string) ($this->artist?->userDetail?->studio_address ?? ''));
+    }
+
+    public function googleMapsLinkForClient(): string
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $snap = trim((string) ($details['google_maps_link'] ?? ''));
+        if ($snap !== '') {
+            return $snap;
+        }
+
+        if ($this->isGuestCustomRequestBooking() && $this->guestSpotId()) {
+            $spot = GuestSpot::query()->find($this->guestSpotId());
+            $link = trim((string) ($spot?->google_maps_link ?? ''));
+            if ($link !== '') {
+                return $link;
+            }
+        }
+
+        $this->loadMissing('artist.userDetail');
+
+        return trim((string) ($this->artist?->userDetail?->google_maps_link ?? ''));
+    }
+
     public function quoteAmount(): float
     {
         if ($this->tattoo) {

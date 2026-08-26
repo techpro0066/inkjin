@@ -105,6 +105,7 @@
         @include('user.custom-requests.partials.booking-summary', [
           'customRequest' => $customRequest,
           'artistName' => $artistName,
+          'locationLines' => $locationLines ?? [],
           'showConsultRow' => $showConsultRow ?? false,
           'consultDateTime' => $consultDateTime ?? null,
           'sessionDateTimeLabel' => $sessionDateTimeLabel ?? 'Session',

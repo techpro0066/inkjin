@@ -27,6 +27,22 @@
       <span class="text-on-surface-variant shrink-0">Sessions quoted</span>
       <span class="font-semibold text-right">{{ $sessionsLabel }}</span>
     </div>
+    <div class="grid grid-cols-[minmax(5.5rem,34%)_minmax(0,1fr)] gap-x-3 items-start">
+      <span class="text-on-surface-variant pt-0.5">Location</span>
+      <div class="font-semibold text-xs sm:text-sm text-right leading-snug min-w-0 break-words">
+        @php
+          $locationLines = $locationLines
+            ?? (isset($customRequest) ? $customRequest->clientStudioLocationLines() : []);
+        @endphp
+        @if ($locationLines === [])
+          <span>—</span>
+        @else
+          @foreach ($locationLines as $line)
+            <div class="break-words">{{ $line }}</div>
+          @endforeach
+        @endif
+      </div>
+    </div>
   </div>
   <hr class="border-outline-variant/20 my-4">
   <div class="flex justify-between gap-3 text-sm mb-3">

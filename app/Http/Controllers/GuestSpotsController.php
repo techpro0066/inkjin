@@ -23,6 +23,8 @@ class GuestSpotsController extends Controller
             ->orderBy('id')
             ->get();
 
+        $guestSpots->each(fn (GuestSpot $spot) => $spot->ensureCompletedStatus());
+
         return view('artist.guest-spots.index', compact('guestSpots'));
     }
 
@@ -86,6 +88,14 @@ class GuestSpotsController extends Controller
         $status = (string) $request->input('status', 'available');
         $isAvailable = $status === 'available';
 
+        // Empty buffer / spots inputs mean 0.
+        foreach (['buffer_days_before', 'buffer_days_after', 'number_of_spots'] as $numericField) {
+            $raw = $request->input($numericField);
+            if ($raw === null || $raw === '') {
+                $request->merge([$numericField => 0]);
+            }
+        }
+
         $rules = [
             'status' => ['required', 'string', Rule::in(['available', 'planned'])],
             'city' => ['required', 'string', 'max:255'],
@@ -96,9 +106,9 @@ class GuestSpotsController extends Controller
             'end_time' => [Rule::requiredIf($isAvailable), 'nullable', 'date_format:H:i', 'after:start_time'],
             'response_deadline' => [Rule::requiredIf($isAvailable), 'nullable', 'integer', 'min:1'],
             'response_deadline_unit' => [Rule::requiredIf($isAvailable), 'nullable', 'string', Rule::in(['hours', 'days'])],
-            'buffer_days_before' => [Rule::requiredIf($isAvailable), 'nullable', 'integer', 'min:0'],
-            'buffer_days_after' => [Rule::requiredIf($isAvailable), 'nullable', 'integer', 'min:0'],
-            'number_of_spots' => [Rule::requiredIf($isAvailable), 'nullable', 'integer', 'min:0'],
+            'buffer_days_before' => ['nullable', 'integer', 'min:0'],
+            'buffer_days_after' => ['nullable', 'integer', 'min:0'],
+            'number_of_spots' => ['nullable', 'integer', 'min:0'],
             'guest_studio_name' => [Rule::requiredIf($isAvailable), 'nullable', 'string', 'max:255'],
             'guest_studio_address' => [Rule::requiredIf($isAvailable), 'nullable', 'string'],
             'guest_street_number' => [Rule::requiredIf($isAvailable), 'nullable', 'string', 'max:50'],
@@ -150,14 +160,14 @@ class GuestSpotsController extends Controller
         ];
 
         if ($validated['status'] === 'available') {
-            $numberOfSpots = (int) $validated['number_of_spots'];
+            $numberOfSpots = (int) ($validated['number_of_spots'] ?? 0);
             $attributes = array_merge($attributes, [
                 'start_time' => $this->normalizeTime((string) $validated['start_time']),
                 'end_time' => $this->normalizeTime((string) $validated['end_time']),
                 'response_deadline' => (int) $validated['response_deadline'],
                 'response_deadline_unit' => (string) $validated['response_deadline_unit'],
-                'buffer_days_before' => (int) $validated['buffer_days_before'],
-                'buffer_days_after' => (int) $validated['buffer_days_after'],
+                'buffer_days_before' => (int) ($validated['buffer_days_before'] ?? 0),
+                'buffer_days_after' => (int) ($validated['buffer_days_after'] ?? 0),
                 'number_of_spots' => $numberOfSpots,
                 'remaining_spots' => GuestSpot::remainingSpotsForCapacityChange(
                     $numberOfSpots,

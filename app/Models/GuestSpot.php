@@ -151,17 +151,98 @@ class GuestSpot extends Model
         return $this->tracksSpotCapacity() && (int) ($this->remaining_spots ?? 0) <= 0;
     }
 
-    public function publicStatusLabel(): string
+    /**
+     * True when the guest spot's end date is before today (event has ended).
+     */
+    public function hasEnded(): bool
     {
+        if (! $this->to_date) {
+            return false;
+        }
+
+        return $this->to_date->copy()->startOfDay()->lt(now()->startOfDay());
+    }
+
+    /**
+     * Clients may reserve only while available, not full, and not past end date.
+     */
+    public function isReservable(): bool
+    {
+        return $this->status === 'available'
+            && ! $this->hasEnded()
+            && $this->hasAvailableSpots();
+    }
+
+    /**
+     * Persist status=completed once the end date has passed.
+     */
+    public function ensureCompletedStatus(): void
+    {
+        if (! $this->hasEnded() || $this->status === 'completed') {
+            return;
+        }
+
+        static::query()
+            ->whereKey($this->id)
+            ->where('status', '!=', 'completed')
+            ->update(['status' => 'completed']);
+
+        $this->status = 'completed';
+    }
+
+    /**
+     * Public/display status key: available | planned | full | completed
+     */
+    public function effectiveStatusKey(): string
+    {
+        if ($this->hasEnded() || $this->status === 'completed') {
+            return 'completed';
+        }
+
         if ($this->status !== 'available') {
-            return 'Planned';
+            return 'planned';
         }
 
         if ($this->isFull()) {
-            return 'Full';
+            return 'full';
         }
 
-        return 'Available';
+        return 'available';
+    }
+
+    public function publicStatusLabel(): string
+    {
+        return match ($this->effectiveStatusKey()) {
+            'completed' => 'Completed',
+            'planned' => 'Planned',
+            'full' => 'Full',
+            default => 'Available',
+        };
+    }
+
+    public function publicStatusColor(): string
+    {
+        return match ($this->effectiveStatusKey()) {
+            'planned' => '#9CA3AF',
+            'available' => '#22C55E',
+            'full' => '#FFBF00',
+            'completed' => '#D1D5DB',
+            default => '#9CA3AF',
+        };
+    }
+
+    /**
+     * Soft badge background for public / dashboard pills.
+     */
+    public function publicStatusBackground(): string
+    {
+        return match ($this->effectiveStatusKey()) {
+            'planned' => 'rgba(156, 163, 175, 0.18)',
+            'available' => 'rgba(34, 197, 94, 0.15)',
+            'full' => 'rgba(255, 191, 0, 0.18)',
+            'completed' => 'rgba(209, 213, 219, 0.45)',
+            default => 'rgba(156, 163, 175, 0.18)',
+        };
     }
 
     /**
@@ -290,18 +371,69 @@ class GuestSpot extends Model
 
     public function listStudioLabel(): ?string
     {
-        if ($this->status !== 'available') {
+        if (! $this->showsBookingDetailFields()) {
             return null;
         }
 
+        return $this->studioDisplayName();
+    }
+
+    /**
+     * Whether studio/hours/location rows should render (available + completed).
+     */
+    public function showsBookingDetailFields(): bool
+    {
+        return in_array($this->status, ['available', 'completed'], true);
+    }
+
+    /**
+     * Studio name as saved on the guest spot (ignores status — for existing requests/bookings).
+     */
+    public function studioDisplayName(): ?string
+    {
         $name = trim((string) ($this->studio_name ?? ''));
 
         return $name !== '' ? $name : null;
     }
 
+    /**
+     * Compact client label: "Studio Name, City, Country" (guest destination city/country).
+     */
+    public function studioNameWithCityCountry(): ?string
+    {
+        $parts = array_values(array_filter([
+            $this->studioDisplayName(),
+            trim((string) ($this->city ?? '')),
+            trim((string) ($this->country ?? '')),
+        ], fn (string $part) => $part !== ''));
+
+        return $parts !== [] ? implode(', ', $parts) : null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function clientLocationLines(): array
+    {
+        $studioLine = $this->studioNameWithCityCountry();
+
+        $streetLine = trim(trim((string) ($this->street_number ?? '')).' '.trim((string) ($this->street_name ?? '')));
+        if ($streetLine === '') {
+            $streetLine = trim((string) ($this->studio_address ?? ''));
+        }
+
+        $postalCode = trim((string) ($this->postal_code ?? ''));
+
+        return array_values(array_filter([
+            $studioLine,
+            $streetLine,
+            $postalCode,
+        ], fn (string $line) => $line !== ''));
+    }
+
     public function listLocationLabel(): ?string
     {
-        if ($this->status !== 'available') {
+        if (! $this->showsBookingDetailFields()) {
             return null;
         }
 
@@ -325,12 +457,12 @@ class GuestSpot extends Model
 
     public function listBufferLabel(): ?string
     {
-        if ($this->status !== 'available') {
+        if (! $this->showsBookingDetailFields()) {
             return null;
         }
 
-        $before = $this->bufferDaysBefore();
-        $after = $this->bufferDaysAfter();
+        $before = (int) ($this->buffer_days_before ?? 0);
+        $after = (int) ($this->buffer_days_after ?? 0);
         $parts = [];
 
         if ($before > 0) {
@@ -346,7 +478,7 @@ class GuestSpot extends Model
 
     public function listAvailabilityTimeLabel(): ?string
     {
-        if ($this->status !== 'available' || ! $this->start_time || ! $this->end_time) {
+        if (! $this->showsBookingDetailFields() || ! $this->start_time || ! $this->end_time) {
             return null;
         }
 
@@ -358,12 +490,15 @@ class GuestSpot extends Model
 
     public function hasListDetails(): bool
     {
-        return $this->status === 'available'
-            && ($this->listStudioLabel()
-                || $this->listLocationLabel()
-                || $this->listBufferLabel()
-                || $this->listAvailabilityTimeLabel()
-                || $this->listRemainingSpotsLabel());
+        if (! $this->showsBookingDetailFields()) {
+            return false;
+        }
+
+        return (bool) ($this->listStudioLabel()
+            || $this->listLocationLabel()
+            || $this->listBufferLabel()
+            || $this->listAvailabilityTimeLabel()
+            || ($this->status === 'available' ? $this->listRemainingSpotsLabel() : null));
     }
 
     /**
@@ -374,6 +509,9 @@ class GuestSpot extends Model
         return [
             'id' => $this->id,
             'status' => $this->status,
+            'display_status' => $this->effectiveStatusKey(),
+            'display_status_label' => $this->publicStatusLabel(),
+            'has_ended' => $this->hasEnded(),
             'city' => $this->city,
             'country' => $this->country,
             'from_date' => $this->from_date?->format('Y-m-d'),

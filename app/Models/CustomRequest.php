@@ -762,12 +762,65 @@ class CustomRequest extends Model
             'fromDate' => $spot->from_date?->format('M j, Y'),
             'toDate' => $spot->to_date?->format('M j, Y'),
             'availabilityTime' => $spot->listAvailabilityTimeLabel(),
-            'studio' => $spot->listStudioLabel(),
+            'studio' => $spot->studioNameWithCityCountry(),
             'location' => $spot->listLocationLabel(),
             'remainingSpotsLabel' => $spot->listRemainingSpotsLabel(),
             'tracksCapacity' => $spot->tracksSpotCapacity(),
             'remainingSpots' => (int) ($spot->remaining_spots ?? 0),
             'isFull' => $spot->isFull(),
+            'id' => $spot->id,
         ];
+    }
+
+    /**
+     * Compact studio label for clients: "Studio Name, City, Country".
+     * Guest requests use the guest-spot studio; regular custom uses the artist's studio.
+     */
+    public function clientStudioLabel(): string
+    {
+        if ($this->isGuestRequest()) {
+            $this->loadMissing('guestSpot');
+            $label = $this->guestSpot?->studioNameWithCityCountry();
+            if ($label) {
+                return $label;
+            }
+        }
+
+        $this->loadMissing('artist.userDetail');
+
+        return $this->artist?->userDetail?->studioNameWithCityCountry() ?? '';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function clientStudioLocationLines(): array
+    {
+        if ($this->isGuestRequest()) {
+            $this->loadMissing('guestSpot');
+            $lines = $this->guestSpot?->clientLocationLines() ?? [];
+            if ($lines !== []) {
+                return $lines;
+            }
+        }
+
+        $this->loadMissing('artist.userDetail');
+
+        return $this->artist?->userDetail?->studioLocationLines() ?? [];
+    }
+
+    public function clientGoogleMapsLink(): string
+    {
+        if ($this->isGuestRequest()) {
+            $this->loadMissing('guestSpot');
+            $link = trim((string) ($this->guestSpot?->google_maps_link ?? ''));
+            if ($link !== '') {
+                return $link;
+            }
+        }
+
+        $this->loadMissing('artist.userDetail');
+
+        return trim((string) ($this->artist?->userDetail?->google_maps_link ?? ''));
     }
 }

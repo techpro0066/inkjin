@@ -25,7 +25,7 @@
     if ($artistName === '') {
       $artistName = $booking->artist->artist_handle ?? 'your artist';
     }
-    $studioName = $booking->artist->userDetail->studio_name ?? 'Inkjin Studio';
+    $studioName = $booking->studioNameForClient() ?: ($booking->artist->userDetail->studio_name ?? 'Inkjin Studio');
     $studioAddress = $booking->artist->userDetail->studio_address ?? '';
   @endphp
 

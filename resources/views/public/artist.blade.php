@@ -606,9 +606,14 @@
 
         @forelse($guestSpots as $spot)
           @php
+            $spot->ensureCompletedStatus();
             $spotStatus = $spot->publicStatusLabel();
-            $spotCountLabel = $spot->listRemainingSpotsLabel();
-            $canReserve = $spot->status === 'available' && ! $spot->isFull();
+            $spotStatusColor = $spot->publicStatusColor();
+            $spotStatusBg = $spot->publicStatusBackground();
+            $spotCountLabel = $spot->effectiveStatusKey() === 'available'
+                ? $spot->listRemainingSpotsLabel()
+                : null;
+            $canReserve = $spot->isReservable();
           @endphp
           <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 py-4 {{ ! $loop->last ? 'border-b border-outline-variant/20' : '' }}">
             <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -619,22 +624,22 @@
                 <p class="font-bold text-on-surface truncate">{{ $spot->city }}, {{ $spot->country }}</p>
                 <p class="text-sm text-on-surface-variant">
                   {{ $spot->from_date->format('M j, Y') }} — {{ $spot->to_date->format('M j, Y') }}
-                  @if($spot->status === 'available' && $spot->listAvailabilityTimeLabel())
+                  @if($spot->effectiveStatusKey() === 'available' && $spot->listAvailabilityTimeLabel())
                     · {{ $spot->listAvailabilityTimeLabel() }}
                   @endif
                 </p>
                 @if($spotCountLabel)
-                  <p class="text-xs font-semibold mt-1" style="color: {{ $spot->isFull() ? '#FFBF00' : '#16a34a' }};">
+                  <p class="text-xs font-semibold mt-1" style="color: {{ $spotStatusColor }};">
                     {{ $spotCountLabel }}
                   </p>
                 @endif
               </div>
             </div>
-            @if($canReserve)
-              <div class="flex flex-col sm:items-end gap-2 shrink-0 self-start sm:self-center">
-                <span class="inline-flex text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-                  Available
-                </span>
+            <div class="flex flex-col sm:items-end gap-2 shrink-0 self-start sm:self-center">
+              <span class="inline-flex text-xs font-semibold px-2.5 py-1 rounded-full" style="background: {{ $spotStatusBg }}; color: {{ $spotStatusColor }};">
+                {{ $spotStatus }}
+              </span>
+              @if($canReserve)
                 <a
                   href="{{ route('public.request-custom', ['user_name' => $userDetail->user_name, 'guest_spot' => $spot->id]) }}"
                   class="guest-spot-reserve inline-flex items-center gap-1 text-sm font-semibold hover:opacity-80 transition-opacity"
@@ -643,16 +648,8 @@
                   Reserve
                   <span class="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_forward</span>
                 </a>
-              </div>
-            @elseif($spotStatus === 'Full')
-              <span class="inline-flex self-start sm:self-center text-xs font-semibold px-2.5 py-1 rounded-full" style="background: rgba(255, 191, 0, 0.18); color: #FFBF00;">
-                Full
-              </span>
-            @else
-              <span class="inline-flex self-start sm:self-center text-xs font-semibold px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant">
-                Planned
-              </span>
-            @endif
+              @endif
+            </div>
           </div>
         @empty
           <div class="py-8 text-center">

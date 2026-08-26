@@ -166,7 +166,7 @@ class CustomRequestsController extends Controller
             ])->with('error', 'Please choose your appointment time before paying.');
         }
 
-        $customRequest->load(['artist.userDetail']);
+        $customRequest->load(['artist.userDetail', 'guestSpot']);
         $userDetail = $customRequest->artist?->userDetail;
         if (!$userDetail) {
             abort(404);
@@ -181,6 +181,7 @@ class CustomRequestsController extends Controller
             'customRequest' => $customRequest,
             'userDetail' => $userDetail,
             'artistName' => $customRequest->artistDisplayName(),
+            'locationLines' => $customRequest->clientStudioLocationLines(),
             'totals' => $totals,
             'stripePublishableKey' => env('STRIPE_KEY', ''),
             'showIrisTab' => PaymentMethods::showIrisTab($userDetail, Auth::user()?->phone_number),
@@ -443,10 +444,16 @@ class CustomRequestsController extends Controller
             ? $customRequest->loadMissing('guestSpot')->guestSpot
             : null;
 
-        $studioName = $guestSpot?->listStudioLabel()
-            ?: trim((string) ($userDetail?->studio_name ?? ''));
-        $studioAddress = $guestSpot?->listLocationLabel()
-            ?: trim((string) ($userDetail?->studio_address ?? ''));
+        $studioName = $customRequest->clientStudioLabel();
+        $studioAddress = '';
+        $locationLines = $customRequest->clientStudioLocationLines();
+        if (count($locationLines) > 1) {
+            $studioAddress = implode(', ', array_slice($locationLines, 1));
+        } elseif ($guestSpot) {
+            $studioAddress = trim((string) ($guestSpot->studio_address ?? ''));
+        } else {
+            $studioAddress = trim((string) ($userDetail?->studio_address ?? ''));
+        }
 
         $guestWindowLabel = null;
         if ($guestSpot?->from_date && $guestSpot?->to_date) {

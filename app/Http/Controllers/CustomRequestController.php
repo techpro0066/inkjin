@@ -42,6 +42,7 @@ class CustomRequestController extends Controller
         }
 
         $guestSpotId = null;
+        $guestSpot = null;
         if ($request->has('guest_spot')) {
             $guestSpot = $this->resolveGuestSpotForArtist(
                 $request->query('guest_spot'),
@@ -61,10 +62,11 @@ class CustomRequestController extends Controller
             $activeGuestSpots = GuestSpot::query()
                 ->where('user_id', $userDetail->user_id)
                 ->where('status', 'available')
+                ->whereDate('to_date', '>=', now()->toDateString())
                 ->orderBy('from_date')
                 ->orderBy('id')
                 ->get()
-                ->filter(fn (GuestSpot $spot) => ! $spot->isFull())
+                ->filter(fn (GuestSpot $spot) => $spot->isReservable())
                 ->values();
         }
 
@@ -75,6 +77,9 @@ class CustomRequestController extends Controller
         }
 
         $artistName = $userDetail->publicDisplayName();
+
+        $studioLabel = $guestSpot?->studioNameWithCityCountry()
+            ?: $userDetail->studioNameWithCityCountry();
 
         $fallbackTattooSlug = (string) ($userDetail->user->artistDesigns()
             ->where('is_active', true)
@@ -112,6 +117,8 @@ class CustomRequestController extends Controller
             'hiddenStyleOptions' => $hiddenStyleOptions,
             'hiddenPlacementOptions' => $hiddenPlacementOptions,
             'guestSpotId' => $guestSpotId,
+            'guestSpot' => $guestSpot,
+            'studioLabel' => $studioLabel,
             'activeGuestSpots' => $activeGuestSpots,
         ]);
     }
@@ -303,7 +310,8 @@ class CustomRequestController extends Controller
             ->whereKey($id)
             ->where('user_id', $artistUserId)
             ->where('status', 'available')
+            ->whereDate('to_date', '>=', now()->toDateString())
             ->get()
-            ->first(fn (GuestSpot $spot) => $spot->hasAvailableSpots());
+            ->first(fn (GuestSpot $spot) => $spot->isReservable());
     }
 }

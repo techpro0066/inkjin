@@ -162,9 +162,9 @@
                                         @endphp
                                     <span class="text-on-surface-variant"> at {{ $start_time->format('g:i A') }} - {{ $end_time->format('g:i A') }}</span>
                                 </span>
-                                <a href="{{ $booking->artist->userDetail->google_maps_link }}" target="_blank" class="flex items-center gap-1.5">
+                                <a href="{{ $booking->googleMapsLinkForClient() ?: '#' }}" @if($booking->googleMapsLinkForClient()) target="_blank" @endif class="flex items-center gap-1.5">
                                     <span class="material-symbols-outlined text-base text-primary">location_on</span>
-                                    {{ $booking->artist->userDetail->studio_name }}
+                                    {{ $booking->studioNameForClient() ?: ($booking->artist->userDetail->studio_name ?? 'Studio') }}
                                 </a>
                             </div>
                             <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-on-surface-variant mb-3">
