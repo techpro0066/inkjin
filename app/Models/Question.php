@@ -8,12 +8,25 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Question extends Model
 {
+    public const QUESTION_TYPES = [
+        'description',
+        'style',
+        'color',
+        'size',
+        'placement',
+        'reference_image',
+        'placement_photo',
+        'coverup_photo',
+        'other',
+    ];
+
     protected $fillable = [
         'user_id',
         'question',
         'description',
         'placeholder',
         'type',
+        'question_type',
         'form_context',
         'options',
         'max_images',

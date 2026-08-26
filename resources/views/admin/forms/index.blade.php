@@ -124,6 +124,7 @@
             data-question-description="{{ e($question->description ?? '') }}"
             data-question-placeholder="{{ e($question->placeholder ?? '') }}"
             data-question-type="{{ $type }}"
+            data-question-semantic-type="{{ $question->question_type ?? 'other' }}"
             data-form-context="default"
             data-is-required="{{ $question->is_required ? '1' : '0' }}"
             data-is-active="{{ $question->is_active ? '1' : '0' }}"
@@ -204,6 +205,7 @@
             data-question-description="{{ e($question->description ?? '') }}"
             data-question-placeholder="{{ e($question->placeholder ?? '') }}"
             data-question-type="{{ $type }}"
+            data-question-semantic-type="{{ $question->question_type ?? 'other' }}"
             data-form-context="custom"
             data-is-required="{{ $question->is_required ? '1' : '0' }}"
             data-is-active="{{ $question->is_active ? '1' : '0' }}"
@@ -279,6 +281,21 @@
           <label for="newQuestionPlaceholder" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Placeholder (optional)</label>
           <input type="text" id="newQuestionPlaceholder" name="newQuestionPlaceholder" placeholder="e.g., Enter your answer..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
           <p id="newQuestionPlaceholderError" class="hidden text-sm text-error mt-1"></p>
+        </div>
+        <div class="mb-3">
+          <label for="newQuestionSemanticType" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Question type <span class="text-error">*</span></label>
+          <select id="newQuestionSemanticType" name="newQuestionSemanticType" required class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="description">Description</option>
+            <option value="style">Style</option>
+            <option value="color">Color</option>
+            <option value="size">Size</option>
+            <option value="placement">Placement</option>
+            <option value="reference_image">Reference image</option>
+            <option value="placement_photo">Placement photo</option>
+            <option value="coverup_photo">Cover-up photo</option>
+            <option value="other" selected>Other</option>
+          </select>
+          <p id="newQuestionSemanticTypeError" class="hidden text-sm text-error mt-1"></p>
         </div>
         <div class="mb-3">
           <input type="hidden" id="form-context" name="form_context" value="default">
@@ -542,6 +559,7 @@
     clearFieldError($("#newQuestionText"), $("#newQuestionTextError"));
     clearFieldError($("#newQuestionDescription"), $("#newQuestionDescriptionError"));
     clearFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"));
+    clearFieldError($("#newQuestionSemanticType"), $("#newQuestionSemanticTypeError"));
     clearFieldError($("#newQuestionType"), $("#newQuestionTypeError"));
     clearOptionErrors();
     $("#addQuestionGeneralError").addClass("hidden").text("");
@@ -558,6 +576,7 @@
     $("#newQuestionText").val("");
     $("#newQuestionDescription").val("");
     $("#newQuestionPlaceholder").val("");
+    $("#newQuestionSemanticType").val("other");
     $("#newQuestionType").val("");
     $("#editingQuestionId").val("");
     $("#addQuestionModalTitle").text("Add question");
@@ -583,6 +602,7 @@
     const description = $row.data("question-description") || "";
     const placeholder = $row.data("question-placeholder") || "";
     const type = $row.data("question-type") || "";
+    const questionType = $row.data("question-semantic-type") || "other";
     const formContext = $row.data("form-context") || "default";
     const isRequired = String($row.data("is-required")) === "1";
     const isActive = String($row.data("is-active")) === "1";
@@ -593,6 +613,7 @@
     $("#newQuestionText").val(text);
     $("#newQuestionDescription").val(description);
     $("#newQuestionPlaceholder").val(placeholder);
+    $("#newQuestionSemanticType").val(questionType);
     $("#newQuestionType").val(type);
     $("#form-context").val(formContext);
     $("#newQuestionRequired").val(isRequired ? "true" : "false");
@@ -795,6 +816,7 @@
       question: $.trim($("#newQuestionText").val()),
       description: $.trim($("#newQuestionDescription").val()),
       placeholder: $.trim($("#newQuestionPlaceholder").val()),
+      question_type: $("#newQuestionSemanticType").val() || "other",
       type: $("#newQuestionType").val(),
       form_context: $("#form-context").val(),
       is_required: $("#newQuestionRequired").val() === "true",
@@ -843,6 +865,9 @@
         }
         if (serverErrors.placeholder && serverErrors.placeholder[0]) {
           setFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"), serverErrors.placeholder[0]);
+        }
+        if (serverErrors.question_type && serverErrors.question_type[0]) {
+          setFieldError($("#newQuestionSemanticType"), $("#newQuestionSemanticTypeError"), serverErrors.question_type[0]);
         }
         if (serverErrors.type && serverErrors.type[0]) {
           setFieldError($("#newQuestionType"), $("#newQuestionTypeError"), serverErrors.type[0]);

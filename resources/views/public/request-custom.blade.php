@@ -754,6 +754,7 @@
     var artistUsername = @json($artistUsername ?? '');
     var fallbackTattooSlug = @json($fallbackTattooSlug ?? '');
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
+    var prefilledQuestionAnswers = @json($prefilledQuestionAnswers ?? new \stdClass());
     var hiddenStyleOptions = @json($hiddenStyleOptions ?? []);
     var hiddenPlacementOptions = @json($hiddenPlacementOptions ?? []);
     var styleOtherModalContext = null;
@@ -769,11 +770,26 @@
         title: q.question || 'Question',
         subtitle: q.description || 'Please answer this question.',
         type: normalizedType,
+        question_type: q.question_type || 'other',
         options: opts,
         placeholder: q.placeholder || '',
         required: !!q.is_required
       };
     });
+
+    function applyPrefillQuestionAnswers() {
+      if (!prefilledQuestionAnswers || typeof prefilledQuestionAnswers !== 'object') return;
+      var applied = false;
+      Object.keys(prefilledQuestionAnswers).forEach(function(qId) {
+        var value = prefilledQuestionAnswers[qId];
+        if (value === undefined || value === null) return;
+        questionAnswers[qId] = value;
+        applied = true;
+      });
+      if (applied) {
+        restoreQuestionAnswersToDom();
+      }
+    }
 
     function escapeHtml(str) {
       return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -1147,6 +1163,7 @@
       if (typeof window.rcTryRestoreDraftFromSession === 'function') {
         window.rcTryRestoreDraftFromSession();
       }
+      applyPrefillQuestionAnswers();
     });
   })(jQuery);
   </script>

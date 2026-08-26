@@ -66,8 +66,8 @@
       color: #22C55E;
     }
     .status-badge.planned {
-      background: rgba(156, 163, 175, 0.18);
-      color: #9CA3AF;
+      background: #e8ddff;
+      color: #310f7a;
     }
     .status-badge.full {
       background: rgba(255, 191, 0, 0.18);
@@ -75,7 +75,7 @@
     }
     .status-badge.completed {
       background: rgba(209, 213, 219, 0.45);
-      color: #D1D5DB;
+      color: #000000;
     }
 
     .guest-spot-action {

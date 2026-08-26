@@ -53,6 +53,7 @@
         };
 
         return [
+            'id' => $portfolio->id,
             'title' => $portfolio->title,
             'desc' => trim((string) ($portfolio->description ?? '')),
             'style' => ucwords(str_replace('-', ' ', $portfolio->primary_style)),
@@ -66,6 +67,7 @@
             })->filter()->values()->all(),
         ];
     })->values();
+    $requestSimilarBaseUrl = route('public.request-custom', ['user_name' => $userDetail->user_name]);
   @endphp
 
   <script>
@@ -115,6 +117,60 @@
     /* Card hover */
     .design-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .design-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(49,15,122,0.12); }
+
+    /* Portfolio: Request similar tattoo */
+    .portfolio-card-media { position: relative; }
+    .portfolio-similar-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0.85rem;
+      background: linear-gradient(to top, rgba(28, 27, 33, 0.72) 0%, rgba(28, 27, 33, 0.2) 45%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+    .portfolio-card:hover .portfolio-similar-overlay,
+    .portfolio-card:focus-within .portfolio-similar-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    @media (hover: none) {
+      .portfolio-similar-overlay {
+        opacity: 1;
+        pointer-events: auto;
+        background: linear-gradient(to top, rgba(28, 27, 33, 0.55) 0%, transparent 55%);
+      }
+    }
+    .portfolio-similar-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      width: 100%;
+      padding: 0.55rem 0.9rem;
+      border-radius: 9999px;
+      border: none;
+      background: {{ $selectedTheme['primary'] }};
+      color: #ffffff;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      line-height: 1.2;
+      cursor: default;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+    .portfolio-similar-btn:hover {
+      background: {{ $selectedTheme['bg'] }};
+    }
+    .portfolio-similar-btn-modal {
+      width: 100%;
+      padding: 0.85rem 1.25rem;
+      font-size: 0.9375rem;
+      box-shadow: 0 8px 20px rgba(49, 15, 122, 0.18);
+    }
 
     /* Custom scrollbar for modals */
     .modal-body::-webkit-scrollbar { width: 6px; }
@@ -566,10 +622,21 @@
     <div id="content-portfolio" class="tab-content {{ $portfolioTabActive ? 'active' : '' }}">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         @foreach($artistPortfolios as $artistPortfolio)
-            <div class="design-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="openPortfolioModal({{ $loop->index }})">
-            <div class="aspect-1-1 bg-gradient-to-br from-warmGray-200 via-gray-300 to-gray-500 relative">
+            <div class="design-card portfolio-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="openPortfolioModal({{ $loop->index }})">
+            <div class="aspect-1-1 bg-gradient-to-br from-warmGray-200 via-gray-300 to-gray-500 portfolio-card-media">
                 <div class="absolute inset-0 flex items-center justify-center">
                     <img src="{{ asset($artistPortfolio->image) }}" alt="{{ $artistPortfolio->title }}" class="w-full h-full object-cover">
+                </div>
+                <div class="portfolio-similar-overlay">
+                  <button
+                    type="button"
+                    class="portfolio-similar-btn"
+                    onclick="event.stopPropagation(); requestSimilarTattoo({{ (int) $artistPortfolio->id }});"
+                    aria-label="Request similar tattoo"
+                  >
+                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">brush</span>
+                    Request similar tattoo
+                  </button>
                 </div>
             </div>
             <div class="p-4">
@@ -754,9 +821,18 @@
               <p id="portfolioModalColors" class="text-sm font-semibold text-on-surface">Full Color</p>
             </div>
           </div>
-          <div id="portfolioModalTags" class="flex flex-wrap gap-1.5">
+          <div id="portfolioModalTags" class="flex flex-wrap gap-1.5 mb-5">
             <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">#tag</span>
           </div>
+          <button
+            type="button"
+            id="portfolioModalSimilarBtn"
+            class="portfolio-similar-btn portfolio-similar-btn-modal"
+            aria-label="Request similar tattoo"
+          >
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">brush</span>
+            Request similar tattoo
+          </button>
         </div>
       </div>
     </div>
@@ -815,6 +891,15 @@
 
     // ── Data ──────────────────────────────────────────
       const portfolio = @json($portfolioForJs);
+      const requestSimilarBaseUrl = @json($requestSimilarBaseUrl);
+
+    function requestSimilarTattoo(portfolioId) {
+      const id = parseInt(portfolioId, 10);
+      if (!id || !requestSimilarBaseUrl) return;
+      const url = new URL(requestSimilarBaseUrl, window.location.origin);
+      url.searchParams.set('portfolio', String(id));
+      window.location.href = url.pathname + url.search;
+    }
 
     // ── Tab Switching ─────────────────────────────────
     // Hash deep-links use these exact ids: designs | portfolio | guest-spots | policies | faq
@@ -1023,6 +1108,13 @@
       tagsEl.innerHTML = tags.length
         ? tags.map(t => `<span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">${t}</span>`).join('')
         : '';
+
+      const similarBtn = document.getElementById('portfolioModalSimilarBtn');
+      if (similarBtn) {
+        similarBtn.onclick = function () {
+          requestSimilarTattoo(p.id);
+        };
+      }
 
       openModal('portfolioDetailModal');
     }

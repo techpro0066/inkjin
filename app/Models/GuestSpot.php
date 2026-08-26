@@ -223,11 +223,11 @@ class GuestSpot extends Model
     public function publicStatusColor(): string
     {
         return match ($this->effectiveStatusKey()) {
-            'planned' => '#9CA3AF',
+            'planned' => '#310F7A',
             'available' => '#22C55E',
             'full' => '#FFBF00',
-            'completed' => '#D1D5DB',
-            default => '#9CA3AF',
+            'completed' => '#000000',
+            default => '#310F7A',
         };
     }
 
@@ -237,11 +237,11 @@ class GuestSpot extends Model
     public function publicStatusBackground(): string
     {
         return match ($this->effectiveStatusKey()) {
-            'planned' => 'rgba(156, 163, 175, 0.18)',
+            'planned' => 'rgba(49, 15, 122, 0.12)',
             'available' => 'rgba(34, 197, 94, 0.15)',
             'full' => 'rgba(255, 191, 0, 0.18)',
             'completed' => 'rgba(209, 213, 219, 0.45)',
-            default => 'rgba(156, 163, 175, 0.18)',
+            default => 'rgba(49, 15, 122, 0.12)',
         };
     }
 

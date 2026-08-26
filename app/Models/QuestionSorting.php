@@ -68,6 +68,7 @@ class QuestionSorting extends Model
                     'description' => $question->description,
                     'placeholder' => $question->placeholder,
                     'type' => $question->type,
+                    'question_type' => $question->question_type ?? 'other',
                     'is_required' => $question->is_required,
                     'is_active' => $sorting->is_active,
                     'options' => $options,

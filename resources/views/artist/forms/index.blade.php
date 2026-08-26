@@ -403,6 +403,7 @@
                         data-id="{{ $question->id }}"
                         data-type="{{ $typeLabel }}"
                         data-type-value="{{ $type }}"
+                        data-question-type="{{ $question->question_type ?? 'other' }}"
                         data-form-context="default"
                         data-description="{{ e($question->description ?? '') }}"
                         data-placeholder="{{ e($question->placeholder ?? '') }}"
@@ -485,6 +486,7 @@
                         data-id="{{ $question->id }}"
                         data-type="{{ $typeLabel }}"
                         data-type-value="{{ $type }}"
+                        data-question-type="{{ $question->question_type ?? 'other' }}"
                         data-form-context="custom"
                         data-description="{{ e($question->description ?? '') }}"
                         data-placeholder="{{ e($question->placeholder ?? '') }}"
@@ -573,6 +575,21 @@
           <label for="newQuestionPlaceholder" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Placeholder (optional)</label>
           <input type="text" id="newQuestionPlaceholder" name="newQuestionPlaceholder" placeholder="e.g., Tell us your tattoo idea..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
           <p id="newQuestionPlaceholderError" class="hidden text-sm text-error mt-1"></p>
+        </div>
+        <div class="mb-2">
+          <label for="newQuestionSemanticType" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Question type <span class="text-error">*</span></label>
+          <select id="newQuestionSemanticType" name="newQuestionSemanticType" required class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="description">Description</option>
+            <option value="style">Style</option>
+            <option value="color">Color</option>
+            <option value="size">Size</option>
+            <option value="placement">Placement</option>
+            <option value="reference_image">Reference image</option>
+            <option value="placement_photo">Placement photo</option>
+            <option value="coverup_photo">Cover-up photo</option>
+            <option value="other" selected>Other</option>
+          </select>
+          <p id="newQuestionSemanticTypeError" class="hidden text-sm text-error mt-1"></p>
         </div>
         <div class="mb-2">
           <input type="hidden" id="form-context" name="form_context" value="default">
@@ -862,6 +879,7 @@
     clearFieldError($("#newQuestionText"), $("#newQuestionTextError"));
     clearFieldError($("#newQuestionDescription"), $("#newQuestionDescriptionError"));
     clearFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"));
+    clearFieldError($("#newQuestionSemanticType"), $("#newQuestionSemanticTypeError"));
     clearFieldError($("#newQuestionType"), $("#newQuestionTypeError"));
     clearOptionErrors();
     $("#addQuestionGeneralError").addClass("hidden").text("");
@@ -874,6 +892,7 @@
     $("#newQuestionText").val("");
     $("#newQuestionDescription").val("");
     $("#newQuestionPlaceholder").val("");
+    $("#newQuestionSemanticType").val("other");
     $("#newQuestionType").val("");
     $("#editingQuestionId").val("");
     $("#form-context").val(currentFormToContext[currentFormType] || "default");
@@ -901,6 +920,7 @@
     const questionDescription = String($row.data("description") || "");
     const questionPlaceholder = String($row.data("placeholder") || "");
     const typeValue = String($row.data("type-value") || "input");
+    const questionType = String($row.data("question-type") || "other");
     const formContext = String($row.data("form-context") || "default");
     const isRequired = String($row.data("required")) === "true";
     const isAvailable = String($row.data("available")) === "true";
@@ -911,6 +931,7 @@
     $("#newQuestionText").val(questionText);
     $("#newQuestionDescription").val(questionDescription);
     $("#newQuestionPlaceholder").val(questionPlaceholder);
+    $("#newQuestionSemanticType").val(questionType);
     $("#newQuestionType").val(typeValue);
     $("#form-context").val(formContext);
     $("#newQuestionRequired").val(isRequired ? "true" : "false");
@@ -1283,6 +1304,7 @@
       question: $.trim($("#newQuestionText").val()),
       description: $.trim($("#newQuestionDescription").val()),
       placeholder: $.trim($("#newQuestionPlaceholder").val()),
+      question_type: $("#newQuestionSemanticType").val() || "other",
       type: $("#newQuestionType").val(),
       form_context: $("#form-context").val() || currentFormToContext[currentFormType] || "default",
       is_required: $("#newQuestionRequired").val() === "true",
@@ -1332,6 +1354,9 @@
         }
         if (serverErrors.placeholder && serverErrors.placeholder[0]) {
           setFieldError($("#newQuestionPlaceholder"), $("#newQuestionPlaceholderError"), serverErrors.placeholder[0]);
+        }
+        if (serverErrors.question_type && serverErrors.question_type[0]) {
+          setFieldError($("#newQuestionSemanticType"), $("#newQuestionSemanticTypeError"), serverErrors.question_type[0]);
         }
         if (serverErrors.type && serverErrors.type[0]) {
           setFieldError($("#newQuestionType"), $("#newQuestionTypeError"), serverErrors.type[0]);
