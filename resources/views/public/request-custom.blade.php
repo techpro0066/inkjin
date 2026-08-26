@@ -355,7 +355,7 @@
       $activeGuestSpotCount = $activeGuestSpots->count();
       $showGuestEntry = empty($guestSpotId) && $activeGuestSpotCount > 0;
     @endphp
-    <div class="w-full max-w-xl text-center">
+    <div class="w-full max-w-xl mx-auto text-center">
       <div class="inline-flex items-center gap-3 bg-white rounded-2xl border border-outline-variant/30 px-5 py-4 shadow-sm {{ $showGuestEntry ? 'mb-4' : 'mb-8' }}">
         <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
           @if($userDetail->avatar && $userDetail->avatar != '')
@@ -447,7 +447,7 @@
 
   <!-- Dynamic artist questions (same engine as managed booking) -->
   <div class="tf-screen" data-screen="questions" id="questionsStep">
-    <div id="questionsMount" class="w-full max-w-xl mx-auto"></div>
+    <div id="questionsMount" class="w-full"></div>
     <div id="styleOtherModal" class="style-other-modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="styleOtherModalTitle">
       <div class="style-other-modal-backdrop js-style-other-close" aria-hidden="true"></div>
       <div class="style-other-modal-panel">
@@ -463,17 +463,27 @@
   </div>
 
   @if(!empty($isManagedScheduling))
+  @php
+    $rcStudioAddressLine = trim(implode(', ', array_filter([
+      $userDetail->studio_address ?? '',
+      $userDetail->city ?? '',
+      $userDetail->country ?? '',
+    ])));
+  @endphp
   <!-- Screen 9: Availability (managed scheduling) -->
   <div class="tf-screen" data-screen="9">
-    <div class="w-full max-w-xl">
+    <div class="w-full">
       <button type="button" onclick="prevScreen()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors">
         <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to Questions
       </button>
-      <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">When are you available?</h2>
-      <p class="text-on-surface-variant mb-6"><span id="rcManagedArtistHint">{{ $artistName }}</span> will confirm a time that works for both of you.</p>
 
-      <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 mb-6">
-        <div id="rcPrefBlocks" class="space-y-4 mb-4">
+      <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
+        <div class="mb-6">
+          <h3 class="text-xl font-bold text-on-surface mb-1">When are you available?</h3>
+          <p class="text-sm text-on-surface-variant"><span id="rcManagedArtistHint">{{ $artistName }}</span> will confirm a time that works for both of you.</p>
+        </div>
+
+        <div id="rcPrefBlocks" class="space-y-4 mb-6">
           <div class="pref-block" data-pref="0">
             <div class="pref-block-header">
               <p class="text-xs font-bold text-primary uppercase tracking-wider pref-block-label">Preference 1 <span class="text-error">*</span></p>
@@ -534,154 +544,177 @@
         </div>
       </div>
 
-      <div class="flex items-center justify-between mt-6">
-        <button type="button" onclick="nextScreen()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
-          Continue <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-        </button>
+      <div class="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl mb-6">
+        <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">{{ $userDetail->studio_name ?: 'Studio' }}</p>
+          <p class="text-xs text-on-surface-variant">{{ $rcStudioAddressLine ?: '—' }}</p>
+          @if(!empty($userDetail->google_maps_link))
+          <a href="{{ $userDetail->google_maps_link }}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+          @endif
+        </div>
       </div>
+
+      <button type="button" onclick="nextScreen()" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm flex items-center justify-center gap-2">
+        Continue to Your Details <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+      </button>
     </div>
   </div>
   @endif
 
-  <!-- Screen 10: Name -->
+  <!-- Screen 10: Register (name, email, phone, verify — same layout as browse design booking) -->
   <div class="tf-screen" data-screen="10">
-    <div class="w-full max-w-xl">
-      <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your name?</h2>
-      <p class="text-on-surface-variant mb-6">So the artist knows who they're working with.</p>
-      <input type="text" id="tfName" placeholder="Your full name"
-        class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-      <p id="tfNameError" class="text-sm text-error mt-2 hidden">This field is required.</p>
-      <div class="flex items-center justify-between mt-6">
-        <button onclick="nextScreen()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
-          Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-        </button>
-        <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
+    <div id="rcStepRegister" class="w-full">
+      <button type="button" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors" onclick="rcLeaveRegisterStep()"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
+      <!-- Name -->
+      <div class="question-div active" data-reg="0" id="rc-reg-0">
+        <div class="w-full max-w-xl mx-auto">
+          <p class="text-sm font-semibold text-primary mb-2">1 →</p>
+          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your name?</h2>
+          <p class="text-on-surface-variant mb-6">So the artist knows who they're working with.</p>
+          <input type="text" id="tfName" placeholder="Your full name"
+            class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="tfNameError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          <div class="flex items-center justify-between mt-6">
+            <button type="button" onclick="nextRcReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
+              Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            </button>
+            <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Screen 11: Email -->
-  <div class="tf-screen" data-screen="11">
-    <div class="w-full max-w-xl">
-      <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your email?</h2>
-      <p class="text-on-surface-variant mb-6">We'll send request updates and artist replies here.</p>
-      <input type="email" id="tfEmail" placeholder="you@example.com"
-        class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-      <p id="tfEmailError" class="text-sm text-error mt-2 hidden">This field is required.</p>
-      <div class="flex items-center justify-between mt-6">
-        <button onclick="nextScreen()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
-          Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-        </button>
-        <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
+      <!-- Email -->
+      <div class="question-div" data-reg="1" id="rc-reg-1">
+        <div class="w-full max-w-xl mx-auto">
+          <button type="button" onclick="prevRcReg()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
+          <p class="text-sm font-semibold text-primary mb-2">2 →</p>
+          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your email?</h2>
+          <p class="text-on-surface-variant mb-6">We'll send request updates and artist replies here.</p>
+          <input type="email" id="tfEmail" placeholder="you@example.com"
+            class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="tfEmailError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          <div class="flex items-center justify-between mt-6">
+            <button type="button" onclick="nextRcReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
+              Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            </button>
+            <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Screen 12: Phone -->
-  <div class="tf-screen" data-screen="12">
-    <div class="w-full max-w-xl">
-      <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your phone number?</h2>
-      <p class="text-on-surface-variant mb-6">In case the artist needs to reach you quickly.</p>
-      @include('partials.phone-country-input', ['idPrefix' => 'tf'])
-      <div class="flex items-center justify-between mt-6">
-        <button onclick="nextScreen()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
-          Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-        </button>
-        <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
+      <!-- Phone -->
+      <div class="question-div" data-reg="2" id="rc-reg-2">
+        <div class="w-full max-w-xl mx-auto">
+          <button type="button" onclick="prevRcReg()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
+          <p class="text-sm font-semibold text-primary mb-2">3 →</p>
+          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Your phone number?</h2>
+          <p class="text-on-surface-variant mb-6">In case the artist needs to reach you quickly.</p>
+          @include('partials.phone-country-input', ['idPrefix' => 'tf'])
+          <div class="flex items-center justify-between mt-6">
+            <button type="button" onclick="nextRcReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
+              Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            </button>
+            <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Screen 13: Verify email (same flow as managed booking) -->
-  <div class="tf-screen" data-screen="13">
-    <div class="w-full max-w-md mx-auto">
-      <button type="button" onclick="editRcContactDetails()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to edit email or phone</button>
-      <div id="rcAuthCreate">
-        <div class="text-center mb-6">
-          <span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span>
-          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2>
-          <p class="text-on-surface-variant">We sent a secure 4-digit code to <strong id="rcOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p>
+      <!-- Verify email -->
+      <div class="question-div" data-reg="3" id="rc-reg-3">
+        <div class="w-full max-w-md mx-auto">
+          <button type="button" onclick="editRcContactDetails()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to edit email or phone</button>
+          <div id="rcAuthCreate">
+            <div class="text-center mb-6">
+              <span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span>
+              <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2>
+              <p class="text-on-surface-variant">We sent a secure 4-digit code to <strong id="rcOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p>
+            </div>
+            <div class="mb-4 hidden">
+              <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpEmail">Email</label>
+              <input type="email" id="rcOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
+            </div>
+            <div class="mb-4" id="rcOtpCodeWrap">
+              <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpCode">4-digit code</label>
+              <input type="text" id="rcOtpCode" maxlength="4" inputmode="numeric" placeholder="1234" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <p id="rcOtpError" class="text-sm text-error mt-2 hidden">Please enter a valid 4-digit code.</p>
+            </div>
+            <p id="rcOtpStatus" class="hidden items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3"></p>
+            <div class="mb-5">
+              <label class="text-sm font-semibold text-on-surface-variant ml-1" for="rc_referral_source">How did you hear about us? <span class="text-xs text-on-surface-variant font-normal">(optional)</span></label>
+              <select id="rc_referral_source" name="referral_source" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1.5">
+                <option value="">Select...</option>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+                <option value="google">Google Search</option>
+                <option value="friend">Friend / Referral</option>
+                <option value="convention">Tattoo Convention</option>
+                <option value="blog">Blog / Article</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <button id="rcSendOtpBtn" type="button" onclick="sendRcOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Resend code</button>
+              <button id="rcVerifyOtpBtn" type="button" onclick="verifyRcOtp()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Verify & Continue</button>
+            </div>
+            <p class="text-center text-sm text-on-surface-variant mb-4"><button type="button" onclick="editRcContactDetails()" class="text-primary font-medium hover:underline">Wrong email or phone? Go back and edit</button></p>
+            <p id="rcConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
+            <p class="text-center text-sm text-on-surface-variant">Email verified once will stay connected for this request session.</p>
+          </div>
+          <div id="rcAuthLogin" class="hidden">
+            <div class="text-center mb-6">
+              <span class="material-symbols-outlined text-primary text-4xl mb-2">waving_hand</span>
+              <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Welcome back!</h2>
+              <p class="text-on-surface-variant">Log in to continue with your request.</p>
+            </div>
+            <div class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-3 mb-5">
+              <span class="material-symbols-outlined text-primary text-[18px]">mail</span>
+              <span class="text-sm text-on-surface" id="rcAuthLoginEmail">you@example.com</span>
+              <span class="material-symbols-outlined text-green-500 text-[16px] ml-auto">check_circle</span>
+            </div>
+            <div class="mb-5">
+              <input type="password" id="rcLoginPassword" placeholder="Enter your password" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            </div>
+            <button type="button" onclick="finishRcAuth()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">Log In & Continue</button>
+            <p class="text-center text-sm text-primary font-medium cursor-pointer mb-5">Forgot password?</p>
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex-1 h-px bg-outline-variant/30"></div>
+              <span class="text-sm text-on-surface-variant">or</span>
+              <div class="flex-1 h-px bg-outline-variant/30"></div>
+            </div>
+            <div class="space-y-2 mb-5">
+              <button type="button" class="social-btn" onclick="finishRcAuth()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google</button>
+              <button type="button" class="social-btn" onclick="finishRcAuth()"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Continue with Apple</button>
+            </div>
+            <p class="text-center text-sm text-on-surface-variant">Don't have an account? <span class="auth-toggle" onclick="toggleRcAuth()">Sign up</span></p>
+          </div>
         </div>
-        <div class="mb-4 hidden">
-          <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpEmail">Email</label>
-          <input type="email" id="rcOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
-        </div>
-        <div class="mb-4" id="rcOtpCodeWrap">
-          <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpCode">4-digit code</label>
-          <input type="text" id="rcOtpCode" maxlength="4" inputmode="numeric" placeholder="1234" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="rcOtpError" class="text-sm text-error mt-2 hidden">Please enter a valid 4-digit code.</p>
-        </div>
-        <p id="rcOtpStatus" class="hidden items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3"></p>
-        <div class="mb-5">
-          <label class="text-sm font-semibold text-on-surface-variant ml-1" for="rc_referral_source">How did you hear about us? <span class="text-xs text-on-surface-variant font-normal">(optional)</span></label>
-          <select id="rc_referral_source" name="referral_source" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1.5">
-            <option value="">Select...</option>
-            <option value="instagram">Instagram</option>
-            <option value="tiktok">TikTok</option>
-            <option value="google">Google Search</option>
-            <option value="friend">Friend / Referral</option>
-            <option value="convention">Tattoo Convention</option>
-            <option value="blog">Blog / Article</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-          <button id="rcSendOtpBtn" type="button" onclick="sendRcOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Resend code</button>
-          <button id="rcVerifyOtpBtn" type="button" onclick="verifyRcOtp()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Verify & Continue</button>
-        </div>
-        <p class="text-center text-sm text-on-surface-variant mb-4"><button type="button" onclick="editRcContactDetails()" class="text-primary font-medium hover:underline">Wrong email or phone? Go back and edit</button></p>
-        <p id="rcConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
-        <p class="text-center text-sm text-on-surface-variant">Email verified once will stay connected for this request session.</p>
-      </div>
-      <div id="rcAuthLogin" class="hidden">
-        <div class="text-center mb-6">
-          <span class="material-symbols-outlined text-primary text-4xl mb-2">waving_hand</span>
-          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Welcome back!</h2>
-          <p class="text-on-surface-variant">Log in to continue with your request.</p>
-        </div>
-        <div class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-3 mb-5">
-          <span class="material-symbols-outlined text-primary text-[18px]">mail</span>
-          <span class="text-sm text-on-surface" id="rcAuthLoginEmail">you@example.com</span>
-          <span class="material-symbols-outlined text-green-500 text-[16px] ml-auto">check_circle</span>
-        </div>
-        <div class="mb-5">
-          <input type="password" id="rcLoginPassword" placeholder="Enter your password" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-        </div>
-        <button type="button" onclick="finishRcAuth()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">Log In & Continue</button>
-        <p class="text-center text-sm text-primary font-medium cursor-pointer mb-5">Forgot password?</p>
-        <div class="flex items-center gap-3 mb-4">
-          <div class="flex-1 h-px bg-outline-variant/30"></div>
-          <span class="text-sm text-on-surface-variant">or</span>
-          <div class="flex-1 h-px bg-outline-variant/30"></div>
-        </div>
-        <div class="space-y-2 mb-5">
-          <button type="button" class="social-btn" onclick="finishRcAuth()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google</button>
-          <button type="button" class="social-btn" onclick="finishRcAuth()"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Continue with Apple</button>
-        </div>
-        <p class="text-center text-sm text-on-surface-variant">Don't have an account? <span class="auth-toggle" onclick="toggleRcAuth()">Sign up</span></p>
       </div>
     </div>
   </div>
 
   <!-- Screen 14: Additional Notes -->
   <div class="tf-screen" data-screen="14">
-    <div class="w-full max-w-xl">
+    <button type="button" onclick="prevScreen()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-6 transition-colors">
+      <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back
+    </button>
+    <div class="w-full max-w-xl mx-auto">
       <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Anything else?</h2>
       <p class="text-on-surface-variant mb-6">Any final thoughts, questions, or details for the artist.</p>
       <textarea id="tfNotes" rows="4" placeholder="e.g., I'd love to see a sketch before we start…"
         class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
       <div class="flex items-center justify-between mt-6">
-        <button onclick="nextScreen()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
+        <button type="button" onclick="nextScreen()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
           Review your request <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
         </button>
-        <button onclick="nextScreen()" class="text-sm text-on-surface-variant hover:text-primary transition-colors font-medium">Skip →</button>
+        <button type="button" onclick="nextScreen()" class="text-sm text-on-surface-variant hover:text-primary transition-colors font-medium">Skip →</button>
       </div>
     </div>
   </div>
 
   <!-- Screen 15: Review -->
   <div class="tf-screen" data-screen="15">
-    <div class="w-full max-w-xl">
+    <button type="button" onclick="prevScreen()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-6 transition-colors">
+      <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back
+    </button>
+    <div class="w-full max-w-xl mx-auto">
       <div class="text-center mb-6">
         <span class="material-symbols-outlined text-primary text-4xl mb-2">fact_check</span>
         <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Review your request</h2>
@@ -693,10 +726,10 @@
         </div>
       </div>
       <p id="customSubmitError" class="hidden text-sm text-error mb-3 text-center"></p>
-      <button type="button" onclick="submitRequest()" id="btnSubmit" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">
+      <button type="button" onclick="submitRequest()" id="btnSubmit" class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">
         Submit Request
       </button>
-      <button type="button" onclick="editRcAnswers()" class="w-full mt-2 py-3 rounded-xl font-semibold text-sm text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container transition-colors">
+      <button type="button" onclick="editRcAnswers()" class="w-full py-3 rounded-xl font-semibold text-sm text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container transition-colors">
         Back to edit your answers
       </button>
     </div>
@@ -704,11 +737,11 @@
 
   <!-- Screen 16: Success -->
   <div class="tf-screen" data-screen="16">
-    <div class="w-full max-w-xl text-center">
+    <div class="w-full max-w-xl mx-auto">
       <!-- Loading state -->
-      <div id="submitLoading">
-        <div class="flex justify-center mb-4"><div class="spinner"></div></div>
-        <p class="text-on-surface-variant">Submitting your request…</p>
+      <div id="submitLoading" class="flex flex-col items-center justify-center py-16">
+        <div class="spinner mb-4"></div>
+        <p class="text-sm text-on-surface-variant">Submitting your request…</p>
       </div>
       <!-- Success state -->
       <div id="submitSuccess" class="hidden">
@@ -718,12 +751,12 @@
             <path d="M24 42 L34 52 L56 30" stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="check-mark"/>
           </svg>
         </div>
-        <h2 class="text-2xl sm:text-3xl font-extrabold text-on-surface mb-3">Request Submitted! 🎉</h2>
-        <p class="text-sm text-on-surface-variant mb-2">Reference: <strong id="successRequestRef">—</strong></p>
-        <p class="text-on-surface-variant text-lg mb-8">
+        <h2 class="text-2xl font-extrabold text-center mb-2">Request Submitted! 🎉</h2>
+        <p class="text-sm text-on-surface-variant text-center mb-2">Reference: <strong id="successRequestRef">—</strong></p>
+        <p class="text-sm text-on-surface-variant text-center mb-8">
           <span id="successArtistName">{{ $artistName }}</span> will review your request @if(!empty($isManagedScheduling)) and confirm a time that works for both of you @endif. You'll receive updates via email.
         </p>
-        <div class="bg-surface-container-low rounded-2xl p-5 mb-8 text-left">
+        <div class="bg-surface-container-low rounded-2xl p-5 mb-8">
           <h3 class="text-sm font-bold mb-3">What happens next?</h3>
           <ul class="space-y-2 text-sm text-on-surface-variant">
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> The artist will review your request and references</li>
@@ -732,8 +765,7 @@
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Check your email for updates and messages</li>
           </ul>
         </div>
-        <a href="{{ $artistProfileUrl }}" class="inline-flex items-center gap-2 px-8 py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        <a href="{{ $artistProfileUrl }}" class="block w-full py-3.5 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">
           Back to Artist Page
         </a>
       </div>
@@ -1177,7 +1209,8 @@
     var guestSpotId = @json($guestSpotId ?? null);
     var isManagedScheduling = @json(!empty($isManagedScheduling));
     var questionCount = (typeof window.rcGetTotalQuestions === 'function') ? window.rcGetTotalQuestions() : 0;
-    var postScreens = isManagedScheduling ? [9, 10, 11, 12, 13, 14, 15, 16] : [10, 11, 12, 13, 14, 15, 16];
+    var postScreens = isManagedScheduling ? [9, 10, 14, 15, 16] : [10, 14, 15, 16];
+    var currentReg = 0;
     var rcMaxStep = isManagedScheduling ? 5 : 4;
     var rcCurrentQuestion = 0;
 
@@ -1246,6 +1279,7 @@
         rcOtpVerified: rcOtpVerified,
         rcConnectedEmail: rcConnectedEmail,
         rcConnectedName: rcConnectedName,
+        currentReg: currentReg,
       };
     }
 
@@ -1301,8 +1335,16 @@
           showQuestionsPhase(false);
         }
       } else if (typeof state.screen === 'number') {
-        showScreen(state.screen, false);
-        current = state.screen;
+        var screen = state.screen;
+        var regIndex = (typeof state.currentReg === 'number') ? state.currentReg : 0;
+        if (screen >= 11 && screen <= 13) {
+          regIndex = screen - 10;
+          screen = 10;
+        }
+        currentReg = regIndex;
+        showScreen(screen, false);
+        if (screen === 10) showRcRegScreen(regIndex);
+        current = screen;
       }
 
       syncRcOtpEmailFromForm();
@@ -1332,7 +1374,7 @@
       if (current === 0) return 0;
       if (inQuestions) return 1;
       if (isManagedScheduling && current === 9) return 2;
-      if (current >= 10 && current <= 13) return isManagedScheduling ? 3 : 2;
+      if (current === 10) return isManagedScheduling ? 3 : 2;
       if (current === 14 || current === 15) return isManagedScheduling ? 4 : 3;
       if (current === 16) return isManagedScheduling ? 5 : 4;
       return 0;
@@ -1388,10 +1430,42 @@
         if (reverse) target.classList.add('reverse');
       }
       updateBookingChrome();
-      if (screenId === 13) syncRcOtpEmailFromForm();
+      if (screenId === 10) showRcRegScreen(currentReg);
       scheduleRcDraftSave();
       window.scrollTo({ top: 0 });
     }
+
+    function showRcRegScreen(index) {
+      var regs = document.querySelectorAll('#rcStepRegister .question-div[data-reg]');
+      if (!regs.length) return;
+      if (index < 0) index = 0;
+      if (index >= regs.length) index = regs.length - 1;
+      regs.forEach(function(el) { el.classList.remove('active', 'reverse'); });
+      var target = document.querySelector('#rcStepRegister .question-div[data-reg="' + index + '"]');
+      if (target) target.classList.add('active');
+      currentReg = index;
+      if (index === 3) {
+        syncRcOtpEmailFromForm();
+        if (typeof window.rcUpdateConnectedUi === 'function') window.rcUpdateConnectedUi();
+      }
+      updateBookingChrome();
+      scheduleRcDraftSave();
+    }
+
+    window.rcLeaveRegisterStep = function() {
+      collectData();
+      if (isManagedScheduling) {
+        showScreen(9, true);
+        current = 9;
+        return;
+      }
+      if (questionCount > 0) {
+        showQuestionsPhase(true);
+        return;
+      }
+      showScreen(0, true);
+      current = 0;
+    };
 
     function showQuestionsPhase(reverse, opts) {
       opts = opts || {};
@@ -1443,6 +1517,7 @@
         showScreen(9, false);
         current = 9;
       } else {
+        currentReg = 0;
         showScreen(10, false);
         current = 10;
       }
@@ -1523,7 +1598,76 @@
 
     window.editRcContactDetails = function() {
       resetRcOtpUi();
-      showScreen(11, true);
+      if (current !== 10) {
+        showScreen(10, true);
+        current = 10;
+      }
+      showRcRegScreen(1);
+    };
+
+    window.prevRcReg = function() {
+      var active = document.querySelector('#rcStepRegister .question-div.active[data-reg]');
+      var activeIndex = active ? parseInt(active.getAttribute('data-reg'), 10) : currentReg;
+      if (!isNaN(activeIndex)) currentReg = activeIndex;
+      if (currentReg <= 0) return;
+      showRcRegScreen(currentReg - 1);
+    };
+
+    window.nextRcReg = async function() {
+      var active = document.querySelector('#rcStepRegister .question-div.active[data-reg]');
+      var activeIndex = active ? parseInt(active.getAttribute('data-reg'), 10) : currentReg;
+      if (!isNaN(activeIndex)) currentReg = activeIndex;
+
+      collectData();
+      clearRcError('tfName', 'tfNameError');
+      clearRcError('tfEmail', 'tfEmailError');
+      clearRcError('tfPhone', 'tfPhoneError');
+
+      if (currentReg === 0) {
+        var nameVal = String(document.getElementById('tfName')?.value || '').trim();
+        if (!nameVal) { setRcError('tfName', 'tfNameError', 'This field is required.'); shakeInput(document.getElementById('tfName')); return; }
+        data.name = nameVal;
+      }
+      if (currentReg === 1) {
+        var emailVal = String(document.getElementById('tfEmail')?.value || '').trim();
+        if (!emailVal) { setRcError('tfEmail', 'tfEmailError', 'This field is required.'); shakeInput(document.getElementById('tfEmail')); return; }
+        if (!isValidEmail(emailVal)) { setRcError('tfEmail', 'tfEmailError', 'Please enter a valid email address.'); shakeInput(document.getElementById('tfEmail')); return; }
+        try {
+          var allowed = await validateBookingEmailRole(emailVal);
+          if (!allowed) { setRcError('tfEmail', 'tfEmailError', 'Please use another email.'); shakeInput(document.getElementById('tfEmail')); return; }
+        } catch (err) {
+          setRcError('tfEmail', 'tfEmailError', err.message || 'Unable to validate email right now. Please try again.');
+          shakeInput(document.getElementById('tfEmail'));
+          return;
+        }
+        data.email = emailVal;
+      }
+      if (currentReg === 2) {
+        var phoneVal = (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getFullPhone('tf')) || '';
+        var nationalVal = String(document.getElementById('tfPhone')?.value || '').trim();
+        if (!nationalVal) { setRcError('tfPhone', 'tfPhoneError', 'This field is required.'); shakeInput(document.getElementById('tfPhone')); return; }
+        if (!document.getElementById('tfPhoneCountry')?.value) {
+          setRcError('tfPhone', 'tfPhoneError', 'Please select a country code.');
+          shakeInput(document.getElementById('tfPhoneCountry'));
+          return;
+        }
+        if (!isValidPhoneWithCountryCode(phoneVal)) {
+          setRcError('tfPhone', 'tfPhoneError', 'Enter a valid phone number for the selected country.');
+          shakeInput(document.getElementById('tfPhone'));
+          return;
+        }
+        data.phone = phoneVal;
+      }
+
+      var regs = document.querySelectorAll('#rcStepRegister .question-div[data-reg]');
+      var nextIndex = currentReg + 1;
+      if (nextIndex >= regs.length) return;
+      showRcRegScreen(nextIndex);
+      if (nextIndex === 3 && !rcOtpVerified) {
+        syncRcOtpEmailFromForm();
+        await window.sendRcOtp();
+      }
+      scheduleRcDraftSave();
     };
 
     function formatSecondsToMMSS(seconds) {
@@ -1834,12 +1978,9 @@
 
     window.nextScreen = async function() {
       if (inQuestions) return;
-      if (current === 13) return;
+      if (current === 10 && currentReg === 3) return;
 
       collectData();
-      clearRcError('tfName', 'tfNameError');
-      clearRcError('tfEmail', 'tfEmailError');
-      clearRcError('tfPhone', 'tfPhoneError');
 
       if (current === 0) {
         if (questionCount > 0) {
@@ -1850,6 +1991,7 @@
           showScreen(9, false);
           current = 9;
         } else {
+          currentReg = 0;
           showScreen(10, false);
           current = 10;
         }
@@ -1858,58 +2000,14 @@
 
       if (current === 9) {
         if (!validateRcManagedAvailability()) return;
+        currentReg = 0;
         showScreen(10, false);
         current = 10;
         return;
       }
 
       if (current === 10) {
-        var nameVal = String(document.getElementById('tfName')?.value || '').trim();
-        if (!nameVal) { setRcError('tfName', 'tfNameError', 'This field is required.'); shakeInput(document.getElementById('tfName')); return; }
-        data.name = nameVal;
-        showScreen(11, false);
-        current = 11;
-        return;
-      }
-
-      if (current === 11) {
-        var emailVal = String(document.getElementById('tfEmail')?.value || '').trim();
-        if (!emailVal) { setRcError('tfEmail', 'tfEmailError', 'This field is required.'); shakeInput(document.getElementById('tfEmail')); return; }
-        if (!isValidEmail(emailVal)) { setRcError('tfEmail', 'tfEmailError', 'Please enter a valid email address.'); shakeInput(document.getElementById('tfEmail')); return; }
-        try {
-          var allowed = await validateBookingEmailRole(emailVal);
-          if (!allowed) { setRcError('tfEmail', 'tfEmailError', 'Please use another email.'); shakeInput(document.getElementById('tfEmail')); return; }
-        } catch (err) {
-          setRcError('tfEmail', 'tfEmailError', err.message || 'Unable to validate email right now. Please try again.');
-          shakeInput(document.getElementById('tfEmail'));
-          return;
-        }
-        data.email = emailVal;
-        showScreen(12, false);
-        current = 12;
-        return;
-      }
-
-      if (current === 12) {
-        var phoneVal = (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getFullPhone('tf')) || '';
-        var nationalVal = String(document.getElementById('tfPhone')?.value || '').trim();
-        if (!nationalVal) { setRcError('tfPhone', 'tfPhoneError', 'This field is required.'); shakeInput(document.getElementById('tfPhone')); return; }
-        if (!document.getElementById('tfPhoneCountry')?.value) {
-          setRcError('tfPhone', 'tfPhoneError', 'Please select a country code.');
-          shakeInput(document.getElementById('tfPhoneCountry'));
-          return;
-        }
-        if (!isValidPhoneWithCountryCode(phoneVal)) {
-          setRcError('tfPhone', 'tfPhoneError', 'Enter a valid phone number for the selected country.');
-          shakeInput(document.getElementById('tfPhone'));
-          return;
-        }
-        data.phone = phoneVal;
-        syncRcOtpEmailFromForm();
-        showScreen(13, false);
-        current = 13;
-        if (!rcOtpVerified) await window.sendRcOtp();
-        scheduleRcDraftSave();
+        await window.nextRcReg();
         return;
       }
 
@@ -1935,17 +2033,11 @@
       collectData();
 
       if (current === 10) {
-        if (isManagedScheduling) {
-          showScreen(9, true);
-          current = 9;
+        if (currentReg > 0) {
+          window.prevRcReg();
           return;
         }
-        if (questionCount > 0) {
-          showQuestionsPhase(true);
-          return;
-        }
-        showScreen(0, true);
-        current = 0;
+        window.rcLeaveRegisterStep();
         return;
       }
 
@@ -2034,8 +2126,10 @@
 
       if (!rcOtpVerified) {
         syncRcOtpEmailFromForm();
-        showScreen(13, false);
-        current = 13;
+        currentReg = 3;
+        showScreen(10, false);
+        showRcRegScreen(3);
+        current = 10;
         var otpError = document.getElementById('rcOtpError');
         if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = 'Please verify your email before submitting.'; }
         return;
@@ -2116,13 +2210,15 @@
         if (!active) return;
         var screen = active.dataset.screen;
         if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
-        if (screen === 'questions' || screen === '13' || screen === '15' || screen === '16') return;
-        e.preventDefault();
-        if (screen === '13') {
+        if (screen === 'questions' || screen === '15' || screen === '16') return;
+        if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
+        if (screen === '10' && currentReg === 3) {
+          e.preventDefault();
           if (rcOtpVerified) finishRcAuth();
           else verifyRcOtp();
           return;
         }
+        e.preventDefault();
         nextScreen();
       }
       if (e.key === 'ArrowUp') {
