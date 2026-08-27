@@ -809,12 +809,23 @@
       };
     });
 
+    function hasExistingQuestionAnswer(qId) {
+      var existing = questionAnswers[qId];
+      if (existing === undefined) existing = questionAnswers[String(qId)];
+      if (existing === undefined || existing === null) return false;
+      if (typeof existing === 'string' && existing.trim() === '') return false;
+      if (Array.isArray(existing) && existing.length === 0) return false;
+      return true;
+    }
+
     function applyPrefillQuestionAnswers() {
       if (!prefilledQuestionAnswers || typeof prefilledQuestionAnswers !== 'object') return;
       var applied = false;
       Object.keys(prefilledQuestionAnswers).forEach(function(qId) {
         var value = prefilledQuestionAnswers[qId];
         if (value === undefined || value === null) return;
+        // Never overwrite answers already restored from the user's draft.
+        if (hasExistingQuestionAnswer(qId)) return;
         questionAnswers[qId] = value;
         applied = true;
       });
@@ -1109,11 +1120,13 @@
       };
     };
 
-    window.rcRestoreQuestionDraft = function(draft) {
+    window.rcRestoreQuestionDraft = function(draft, opts) {
+      opts = opts || {};
       if (!draft || typeof draft !== 'object') return;
       questionAnswers = draft.questionAnswers && typeof draft.questionAnswers === 'object'
         ? draft.questionAnswers
         : {};
+      if (opts.answersOnly) return;
       restoreQuestionAnswersToDom();
       showQuestion(parseInt(draft.currentQuestionIndex, 10) || 0);
     };
@@ -1327,14 +1340,19 @@
 
       rcCurrentQuestion = parseInt(state.rcCurrentQuestion, 10) || 0;
 
-      if (state.inQuestions || state.screen === 'questions') {
-        if (typeof window.rcRestoreQuestionDraft === 'function' && state.questionDraft) {
+      // Always restore question answers from draft first so prefill cannot overwrite edits.
+      if (state.questionDraft && typeof window.rcRestoreQuestionDraft === 'function') {
+        if (state.inQuestions || state.screen === 'questions') {
           showQuestionsPhase(false);
           window.rcRestoreQuestionDraft(state.questionDraft);
         } else {
-          showQuestionsPhase(false);
+          window.rcRestoreQuestionDraft(state.questionDraft, { answersOnly: true });
         }
-      } else if (typeof state.screen === 'number') {
+      } else if (state.inQuestions || state.screen === 'questions') {
+        showQuestionsPhase(false);
+      }
+
+      if (!(state.inQuestions || state.screen === 'questions') && typeof state.screen === 'number') {
         var screen = state.screen;
         var regIndex = (typeof state.currentReg === 'number') ? state.currentReg : 0;
         if (screen >= 11 && screen <= 13) {
