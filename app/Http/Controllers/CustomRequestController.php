@@ -342,40 +342,11 @@ class CustomRequestController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (! $portfolio) {
+        if (! $portfolio || ! filled($portfolio->image)) {
             return [];
         }
 
-        $imageUrl = filled($portfolio->image) ? asset($portfolio->image) : null;
-        $stylesJoined = collect([(string) ($portfolio->primary_style ?? '')])
-            ->merge(is_array($portfolio->other_styles) ? $portfolio->other_styles : [])
-            ->map(fn ($style) => trim((string) $style))
-            ->filter()
-            ->unique()
-            ->values()
-            ->implode(', ');
-
-        $colorLabel = match ((string) ($portfolio->color ?? '')) {
-            'color' => 'Full Color',
-            'black-grey' => 'Black & Grey',
-            'both' => 'Black & Color',
-            default => trim((string) ($portfolio->color ?? '')),
-        };
-
-        $valuesByQuestionType = [
-            'description' => trim((string) ($portfolio->description ?? '')),
-            'style' => $stylesJoined,
-            'color' => $colorLabel,
-            'placement' => trim((string) ($portfolio->placement ?? '')),
-            'size' => '',
-            'reference_image' => $imageUrl ? [$imageUrl] : null,
-            'placement_photo' => $imageUrl ? [$imageUrl] : null,
-            'coverup_photo' => null,
-            'other' => null,
-        ];
-
-        $seenQuestionTypes = [];
-        $prefilled = [];
+        $imageUrl = asset($portfolio->image);
 
         foreach ($questions as $question) {
             if (! is_array($question) || empty($question['id'])) {
@@ -383,130 +354,16 @@ class CustomRequestController extends Controller
             }
 
             $questionType = (string) ($question['question_type'] ?? 'other');
-            if ($questionType === '' || isset($seenQuestionTypes[$questionType])) {
+            $widgetType = (string) ($question['type'] ?? 'input');
+
+            // Only the first reference_image question (image widget).
+            if ($questionType !== 'reference_image' || $widgetType !== 'image') {
                 continue;
             }
 
-            $raw = $valuesByQuestionType[$questionType] ?? null;
-            $answer = $this->adaptPortfolioPrefillToQuestionWidget(
-                (string) ($question['type'] ?? 'input'),
-                $questionType,
-                $raw,
-                $portfolio,
-                is_array($question['options'] ?? null) ? $question['options'] : []
-            );
-
-            $seenQuestionTypes[$questionType] = true;
-
-            if ($answer === null || $answer === '' || $answer === []) {
-                continue;
-            }
-
-            $prefilled[(string) $question['id']] = $answer;
+            return [(string) $question['id'] => [$imageUrl]];
         }
 
-        return $prefilled;
-    }
-
-    /**
-     * Shape a portfolio value to the question's answer widget.
-     *
-     * @param  list<mixed>  $options
-     */
-    private function adaptPortfolioPrefillToQuestionWidget(
-        string $widgetType,
-        string $questionType,
-        mixed $raw,
-        Portfolio $portfolio,
-        array $options = []
-    ): mixed {
-        $imageQuestionTypes = ['reference_image', 'placement_photo', 'coverup_photo'];
-
-        if (in_array($questionType, $imageQuestionTypes, true) || $widgetType === 'image') {
-            if ($widgetType !== 'image') {
-                return null;
-            }
-
-            if (is_array($raw)) {
-                return array_values(array_filter($raw, fn ($url) => filled($url)));
-            }
-
-            return filled($raw) ? [(string) $raw] : null;
-        }
-
-        $optionStrings = collect($options)
-            ->map(fn ($option) => trim((string) $option))
-            ->filter()
-            ->values()
-            ->all();
-
-        if ($questionType === 'style' && in_array($widgetType, ['style', 'radio', 'select'], true)) {
-            $primary = trim((string) ($portfolio->primary_style ?? ''));
-
-            return $this->matchPrefillOption($primary, $optionStrings) ?? ($primary !== '' ? $primary : null);
-        }
-
-        if ($questionType === 'placement' && in_array($widgetType, ['placement', 'radio', 'select'], true)) {
-            $placement = trim((string) ($portfolio->placement ?? ''));
-
-            return $this->matchPrefillOption($placement, $optionStrings) ?? ($placement !== '' ? $placement : null);
-        }
-
-        if ($questionType === 'color') {
-            $candidates = array_values(array_filter([
-                is_string($raw) ? trim($raw) : null,
-                match ((string) ($portfolio->color ?? '')) {
-                    'color' => 'Color',
-                    'black-grey' => 'Black & Grey',
-                    'both' => 'Both',
-                    default => null,
-                },
-                match ((string) ($portfolio->color ?? '')) {
-                    'color' => 'Full Color',
-                    'black-grey' => 'Black & Grey',
-                    'both' => 'Black & Color',
-                    default => null,
-                },
-                trim((string) ($portfolio->color ?? '')),
-            ]));
-
-            if (in_array($widgetType, ['radio', 'select'], true) && $optionStrings !== []) {
-                foreach ($candidates as $candidate) {
-                    $matched = $this->matchPrefillOption($candidate, $optionStrings);
-                    if ($matched !== null) {
-                        return $matched;
-                    }
-                }
-            }
-
-            return $candidates[0] ?? null;
-        }
-
-        if (! is_string($raw)) {
-            return null;
-        }
-
-        $text = trim($raw);
-
-        return $text !== '' ? $text : null;
-    }
-
-    /**
-     * @param  list<string>  $options
-     */
-    private function matchPrefillOption(string $value, array $options): ?string
-    {
-        $value = trim($value);
-        if ($value === '' || $options === []) {
-            return null;
-        }
-
-        foreach ($options as $option) {
-            if (strcasecmp($option, $value) === 0) {
-                return $option;
-            }
-        }
-
-        return null;
+        return [];
     }
 }
