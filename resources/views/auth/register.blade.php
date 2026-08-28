@@ -176,6 +176,7 @@
       <option value="instagram">Instagram</option>
       <option value="tiktok">TikTok</option>
       <option value="google">Google Search</option>
+      <option value="ai">AI (ChatGPT, Claude, Gemini, other)</option>
       <option value="friend">Friend / Referral</option>
       <option value="convention">Tattoo Convention</option>
       <option value="blog">Blog / Article</option>

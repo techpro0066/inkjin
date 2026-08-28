@@ -757,6 +757,7 @@
                 <option value="instagram">Instagram</option>
                 <option value="tiktok">TikTok</option>
                 <option value="google">Google Search</option>
+                <option value="ai">AI (ChatGPT, Claude, Gemini, other)</option>
                 <option value="friend">Friend / Referral</option>
                 <option value="convention">Tattoo Convention</option>
                 <option value="blog">Blog / Article</option>
@@ -1638,6 +1639,7 @@
         consult_duration_minutes: parseInt(consultDurationMinutes || 30, 10) || 30,
         tattoo_duration_minutes: parseInt(tattooDurationMinutes || 120, 10) || 120,
         questions_answers: buildStructuredQuestionAnswers(),
+        referral_source: String($('#bd_referral_source').val() || '').trim(),
         notes: [
           getAnswerByKeywords(['placement', 'body part', 'where']),
           getAnswerByKeywords(['size', 'cm', 'inch'])
@@ -3125,7 +3127,12 @@
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken
           },
-          body: JSON.stringify({ email: email, code: code, name: name })
+          body: JSON.stringify({
+            email: email,
+            code: code,
+            name: name,
+            referral_source: String($('#bd_referral_source').val() || '').trim()
+          })
         });
         var data = await res.json();
         if (!res.ok || !data || !data.verified) {

@@ -208,6 +208,7 @@ class CustomRequestController extends Controller
         }
 
         $requestUser->syncPhoneNumber($payload['phone'] ?? null);
+        $requestUser->syncHearAboutUs($payload['referral_source'] ?? null);
 
         $questionsAnswers = is_array($payload['questions_answers'] ?? null) ? $payload['questions_answers'] : [];
         $phone = trim((string) ($payload['phone'] ?? ''));

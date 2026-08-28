@@ -30,6 +30,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'app_id',
         'email_verified_at',
         'country_user_belongs_in',
+        'hear_about_us',
     ];
 
     /**
@@ -96,6 +97,16 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         $this->forceFill(['phone_number' => $phone])->save();
+    }
+
+    public function syncHearAboutUs(?string $source): void
+    {
+        $source = trim((string) $source);
+        if ($source === '' || filled($this->hear_about_us)) {
+            return;
+        }
+
+        $this->forceFill(['hear_about_us' => $source])->save();
     }
 
     public function getNameAttribute(): string

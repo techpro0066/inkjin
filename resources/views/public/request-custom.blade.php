@@ -644,6 +644,7 @@
                 <option value="instagram">Instagram</option>
                 <option value="tiktok">TikTok</option>
                 <option value="google">Google Search</option>
+                <option value="ai">AI (ChatGPT, Claude, Gemini, other)</option>
                 <option value="friend">Friend / Referral</option>
                 <option value="convention">Tattoo Convention</option>
                 <option value="blog">Blog / Article</option>
@@ -1818,7 +1819,12 @@
         var res = await fetch('/api/public/verify-booking-otp', {
           method: 'POST',
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': rcCsrfToken },
-          body: JSON.stringify({ email: email, code: code, name: name })
+          body: JSON.stringify({
+            email: email,
+            code: code,
+            name: name,
+            referral_source: String(document.getElementById('rc_referral_source')?.value || '').trim()
+          })
         });
         var payload = await res.json();
         if (!res.ok || !payload || !payload.verified) throw new Error((payload && payload.message) || 'Verification failed.');

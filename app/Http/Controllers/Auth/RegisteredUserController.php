@@ -108,6 +108,7 @@ class RegisteredUserController extends Controller
             'on_app' => 1,
             'app_id' => null,
             'country_user_belongs_in' => $countryCode,
+            'hear_about_us' => trim((string) ($validated['referral_source'] ?? '')) ?: null,
         ];
 
         $user = User::create($userData);

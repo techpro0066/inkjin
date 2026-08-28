@@ -451,6 +451,7 @@
                 <option value="instagram">Instagram</option>
                 <option value="tiktok">TikTok</option>
                 <option value="google">Google Search</option>
+                <option value="ai">AI (ChatGPT, Claude, Gemini, other)</option>
                 <option value="friend">Friend / Referral</option>
                 <option value="convention">Tattoo Convention</option>
                 <option value="blog">Blog / Article</option>
@@ -1594,7 +1595,12 @@
         const res = await fetch('/api/public/verify-booking-otp', {
           method: 'POST',
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': mbCsrfToken },
-          body: JSON.stringify({ email: email, code: code, name: name })
+          body: JSON.stringify({
+            email: email,
+            code: code,
+            name: name,
+            referral_source: String(document.getElementById('bd_referral_source')?.value || '').trim()
+          })
         });
         const data = await res.json();
         if (!res.ok || !data || !data.verified) throw new Error((data && data.message) || 'Verification failed.');
@@ -1854,6 +1860,7 @@
         consultation_required: consultationRequired,
         consultation_type: isConsult ? (mcConsultType || null) : null,
         questions_answers: (typeof window.mbBuildStructuredQuestionAnswers === 'function') ? window.mbBuildStructuredQuestionAnswers() : {},
+        referral_source: String(document.getElementById('bd_referral_source')?.value || '').trim(),
         preferences: collectPreferredDateBlocks(isConsult ? '#mcPrefBlocks' : '#prefBlocks', isConsult ? '.mc-pref-date' : '.pref-date'),
         preferred_days: days,
         how_much_flexible: flex,

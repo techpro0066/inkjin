@@ -386,6 +386,7 @@ class InkJinController extends Controller
             'email' => ['required', 'email'],
             'code' => ['required', 'digits:4'],
             'name' => ['nullable', 'string', 'max:255'],
+            'referral_source' => ['nullable', 'string', 'max:255'],
         ]);
 
         $email = mb_strtolower(trim($validated['email']));
@@ -421,8 +422,11 @@ class InkJinController extends Controller
                 'role' => 'user',
                 'on_boarding' => 'yes',
                 'email_verified_at' => now(),
+                'hear_about_us' => trim((string) ($validated['referral_source'] ?? '')) ?: null,
             ]);
             $isNewUser = true;
+        } else {
+            $existingUser->syncHearAboutUs($validated['referral_source'] ?? null);
         }
 
         $verified = $request->session()->get('booking_verified_emails', []);
@@ -916,6 +920,7 @@ class InkJinController extends Controller
             'booking_payload.tattoo_time' => ['nullable', 'string', 'max:20'],
             'booking_payload.consultation_date' => ['nullable', 'date'],
             'booking_payload.consultation_time' => ['nullable', 'string', 'max:20'],
+            'booking_payload.referral_source' => ['nullable', 'string', 'max:255'],
         ]);
 
         $payload = $validated['booking_payload'];
@@ -968,6 +973,7 @@ class InkJinController extends Controller
         }
 
         $bookingUser->syncPhoneNumber($payload['phone'] ?? null);
+        $bookingUser->syncHearAboutUs($payload['referral_source'] ?? null);
 
         $artistTimezone = $userDetail->timezone ?: 'UTC';
         $consultationRequired = (bool) ($payload['consultation_required'] ?? false);
@@ -1165,6 +1171,7 @@ class InkJinController extends Controller
             'booking_payload.avoid_dates' => ['nullable', 'string'],
             'booking_payload.urgency' => ['nullable', 'string'],
             'booking_payload.session_gap' => ['nullable', 'string'],
+            'booking_payload.referral_source' => ['nullable', 'string', 'max:255'],
         ]);
 
         $payload = $validated['booking_payload'];
@@ -1230,6 +1237,7 @@ class InkJinController extends Controller
         }
 
         $bookingUser->syncPhoneNumber($payload['phone'] ?? null);
+        $bookingUser->syncHearAboutUs($payload['referral_source'] ?? null);
 
         $consultationDetails = null;
         if ($consultationRequired) {
