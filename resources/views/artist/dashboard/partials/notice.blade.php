@@ -35,6 +35,9 @@
     </div>
     <div class="dashboard-notice__content min-w-0 flex-1">
       <h3 class="dashboard-notice__title font-bold {{ $t['title'] }}">{{ $title }}</h3>
+      @if(!empty($subtitle))
+        <p class="dashboard-notice__subtitle text-sm font-semibold {{ $t['title'] }} mt-0.5">{{ $subtitle }}</p>
+      @endif
       <p class="dashboard-notice__text {{ $t['text'] }}">{{ $description }}</p>
     </div>
     <a href="{{ $buttonUrl }}" class="dashboard-notice__btn shrink-0 inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-xs font-bold text-white rounded-xl shadow-sm transition-colors {{ $t['btn'] }}">

@@ -167,6 +167,7 @@
     .dashboard-notice__icon-wrap { width: 2.5rem; height: 2.5rem; }
     .dashboard-notice__icon { font-size: 1.375rem; line-height: 1; }
     .dashboard-notice__title { font-size: 0.8125rem; line-height: 1.25; }
+    .dashboard-notice__subtitle { font-size: 0.75rem; line-height: 1.3; }
     .dashboard-notice__text {
       font-size: 0.75rem;
       line-height: 1.35;
@@ -204,18 +205,9 @@
   @include('layouts.components.artist_sidebar')
 
   <div class="flex-1 min-w-0 flex flex-col min-h-screen">
-    @if (! empty($showPayoutSetupBanner))
+    @if (! empty($payoutDashboardNotice))
       <div id="payoutSetupNoticeSource" class="hidden" aria-hidden="true">
-        @include('artist.dashboard.partials.notice', [
-          'id' => 'payoutSetupBanner',
-          'theme' => 'amber',
-          'icon' => 'payments',
-          'title' => 'Payouts not set up',
-          'description' => 'You need to setup payouts to accept deposits for bookings.',
-          'buttonText' => 'Setup payouts',
-          'buttonIcon' => 'settings',
-          'buttonUrl' => route('settings.payment'),
-        ])
+        @include('artist.dashboard.partials.notice', $payoutDashboardNotice)
       </div>
     @endif
 

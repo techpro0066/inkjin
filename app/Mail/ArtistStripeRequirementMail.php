@@ -22,7 +22,7 @@ class ArtistStripeRequirementMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Action needed: Stripe needs more information for your payouts'
+            subject: 'Your Bookpay payouts are paused'
         );
     }
 

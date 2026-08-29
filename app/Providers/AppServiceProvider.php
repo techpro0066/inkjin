@@ -47,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
             if (! $user instanceof User || ! in_array($user->role, ['user', 'artist'], true)) {
                 $view->with('chatBadgeEnabled', false);
                 $view->with('showPayoutSetupBanner', false);
+                $view->with('payoutDashboardNotice', null);
 
                 return;
             }
@@ -56,17 +57,18 @@ class AppServiceProvider extends ServiceProvider
             $view->with('chatBadgeEnabled', $streamChat->isConfigured()
                 && ChatChannel::query()->forUser($user->id)->exists());
 
-            $showPayoutSetupBanner = false;
+            $payoutDashboardNotice = null;
             if ($user->role === 'artist') {
                 $userDetail = $user->userDetail;
                 if ($userDetail?->relationLoaded('studio') !== true && ($userDetail?->payment_type ?? '') === 'studio_account') {
                     $userDetail?->loadMissing('studio');
                 }
-                $showPayoutSetupBanner = app(\App\Services\ArtistPayoutService::class)
-                    ->needsPayoutSetupBanner($userDetail);
+                $payoutDashboardNotice = app(\App\Services\ArtistPayoutService::class)
+                    ->payoutDashboardNotice($userDetail);
             }
 
-            $view->with('showPayoutSetupBanner', $showPayoutSetupBanner);
+            $view->with('payoutDashboardNotice', $payoutDashboardNotice);
+            $view->with('showPayoutSetupBanner', $payoutDashboardNotice !== null);
         });
     }
 }

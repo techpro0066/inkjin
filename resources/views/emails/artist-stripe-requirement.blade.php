@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Action needed: Stripe needs more information for your payouts</title>
+  <title>Your Bookpay payouts are paused</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
@@ -14,7 +14,7 @@
 </head>
 <body style="margin: 0; padding: 0; background-color: #fdf7ff; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
   <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
-    Stripe needs more information. Your payouts are disabled until this is completed.
+    Stripe paused your payouts. Bookings still work, but you won't get paid until this is fixed.
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fdf7ff;">
@@ -42,39 +42,38 @@
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-size: 16px; color: #494552; line-height: 1.7; padding: 0 0 16px 0;">
-                    Stripe needs more information on your payout account.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-size: 16px; color: #494552; line-height: 1.7; padding: 0 0 16px 0;">
-                    Until this is completed, your payouts are disabled — you can't collect deposits, confirm bookings, or get paid for new client payments.
-                  </td>
-                </tr>
-                <tr>
                   <td style="font-size: 16px; color: #494552; line-height: 1.7; padding: 0 0 28px 0;">
                     @if (!empty($isStudioPayout))
-                      Ask your studio to finish the required Stripe details, or open payout settings to send them a reminder.
+                      Stripe paused your payouts because your studio's payout account is missing some required info. Bookings and your booking page still work as normal, but you won't get paid until this is fixed.
                     @else
-                      It only takes a few minutes to finish the required Stripe details.
+                      Stripe paused your payouts because your account is missing some required info. Bookings and your booking page still work as normal, but you won't get paid until this is fixed.
                     @endif
                   </td>
                 </tr>
                 <tr>
                   <td align="center" style="padding: 0 0 28px 0;">
                     <a href="{{ $actionUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 12px; line-height: 1;">
-                      @if (!empty($isStudioPayout))
-                        Open payout settings &rarr;
-                      @else
-                        Complete Stripe details &rarr;
-                      @endif
+                      Fix Stripe account &rarr;
                     </a>
                   </td>
                 </tr>
                 <tr>
+                  <td style="font-size: 16px; color: #494552; line-height: 1.7; padding: 0 0 24px 0;">
+                    @if (!empty($isStudioPayout))
+                      Once the missing details are added, Stripe usually clears the restriction within a day or two, and your held payouts will release automatically.
+                    @else
+                      Once you add what's needed, Stripe usually clears the restriction within a day or two, and your held payouts will release automatically.
+                    @endif
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size: 16px; color: #494552; line-height: 1.7; padding: 0 0 24px 0;">
+                    Questions? Just reply to this email.
+                  </td>
+                </tr>
+                <tr>
                   <td style="font-size: 16px; color: #1c1b21; line-height: 1.7;">
-                    Talk soon,<br>
-                    <strong>Inkjin</strong>
+                    &mdash; Inkjin
                   </td>
                 </tr>
               </table>
@@ -82,10 +81,14 @@
           </tr>
 
           <tr>
-            <td align="center" style="padding: 28px 0 0 0;">
-              <p style="margin: 0; font-size: 12px; color: #8a8494; line-height: 1.5;">
-                You're receiving this because Stripe needs action on your Bookpay payout account.
-              </p>
+            <td align="center" style="padding: 32px 0 0 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="font-size: 12px; color: #494552; line-height: 1.5; text-align: center;">
+                    &copy; {{ date('Y') }} Inkjin &middot; All rights reserved
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
         </table>

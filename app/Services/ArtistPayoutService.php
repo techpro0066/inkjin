@@ -264,12 +264,84 @@ class ArtistPayoutService
     }
 
     /**
-     * Whether the artist dashboard should show the global “setup payouts” banner.
+     * Whether the artist dashboard should show the global payout banner.
      * Uses local flags only (no live Stripe API) so it is safe on every page.
      */
     public function needsPayoutSetupBanner(?UserDetail $userDetail): bool
     {
-        return $this->needsPayoutSetupReminder($userDetail);
+        return $this->payoutDashboardNotice($userDetail) !== null;
+    }
+
+    /**
+     * Global payout notice for the artist dashboard (setup vs Stripe restricted).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function payoutDashboardNotice(?UserDetail $userDetail): ?array
+    {
+        if (! $this->needsPayoutSetupReminder($userDetail)) {
+            return null;
+        }
+
+        if ($this->needsStripeRestrictedNotice($userDetail)) {
+            $isStudioPayout = ($userDetail->payment_type ?? '') === 'studio_account';
+
+            return [
+                'id' => 'payoutRestrictedBanner',
+                'theme' => 'red',
+                'icon' => 'pause_circle',
+                'title' => 'Restricted',
+                'subtitle' => 'Payouts paused',
+                'description' => $isStudioPayout
+                    ? 'Stripe paused payouts because your studio account is missing required information. Ask your studio to add the missing details to start receiving payouts again.'
+                    : 'Stripe paused your payouts because your account is missing required information. Add the missing details to start receiving payouts again.',
+                'buttonText' => 'Fix Stripe account',
+                'buttonIcon' => 'arrow_forward',
+                'buttonUrl' => $isStudioPayout
+                    ? route('settings.payment')
+                    : route('settings.payment.stripe.requirements'),
+            ];
+        }
+
+        return [
+            'id' => 'payoutSetupBanner',
+            'theme' => 'amber',
+            'icon' => 'payments',
+            'title' => 'Payouts not set up',
+            'description' => 'You need to setup payouts to accept deposits for bookings.',
+            'buttonText' => 'Setup payouts',
+            'buttonIcon' => 'settings',
+            'buttonUrl' => route('settings.payment'),
+        ];
+    }
+
+    /**
+     * Stripe is connected but still needs user-submittable information.
+     */
+    private function needsStripeRestrictedNotice(?UserDetail $userDetail): bool
+    {
+        if (! $userDetail) {
+            return false;
+        }
+
+        $paymentType = (string) ($userDetail->payment_type ?? '');
+
+        if ($paymentType === 'artist_account') {
+            $hasStripeAccount = trim((string) ($userDetail->stripe_account_id ?? '')) !== '';
+
+            return $hasStripeAccount && ! empty($userDetail->stripe_requirement);
+        }
+
+        if ($paymentType === 'studio_account') {
+            if (($userDetail->payment_status ?? '') !== 'approved') {
+                return false;
+            }
+
+            return ! empty($userDetail->stripe_requirement)
+                || ! empty($userDetail->studio?->stripe_requirement);
+        }
+
+        return false;
     }
 
     /**
