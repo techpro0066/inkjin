@@ -278,13 +278,16 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     
     Route::post('/settings/calendar', [OnboardingController::class, 'updateCalendar'])->name('settings.calendar.update');
     
-    Route::get('/settings/preferences', function (\Illuminate\Http\Request $request) {
+    Route::get('/settings/payments', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
         $userDetail = $user->userDetail;
         return view('artist.settings.preferences', compact('userDetail'));
     })->name('settings.preferences');
     
-    Route::post('/settings/preferences', [OnboardingController::class, 'savePreferences'])->name('settings.preferences.update');
+    Route::post('/settings/payments', [OnboardingController::class, 'savePreferences'])->name('settings.preferences.update');
+
+    // Legacy /settings/preferences URLs → /settings/payments
+    Route::redirect('/settings/preferences', '/settings/payments', 301);
 
     Route::get('/settings/payouts', [OnboardingController::class, 'paymentSettings'])->name('settings.payment');
     Route::post('/settings/payouts', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
