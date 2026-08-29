@@ -289,6 +289,8 @@
   $showStudioDisconnect = $studioPayoutCommitted;
   $showArtistStripeDisconnect = $artistStripeConnected;
   $stripeComplete = (bool) ($stripeStatus['complete'] ?? false);
+  $artistStripeNeedsAction = (bool) ($artistStripeNeedsAction ?? false);
+  $studioStripeNeedsAction = (bool) ($studioStripeNeedsAction ?? false);
   $stripeConnectLocale = $stripeConnectLocale ?? config('services.stripe.connect.locale', 'en-US');
   $payoutBankCountry = $payoutBankCountry ?? $ud->payout_bank_country ?? null;
   $payoutWaitingListCountry = $payoutWaitingListCountry ?? $ud->payout_waiting_list_country ?? null;
@@ -371,7 +373,8 @@
 
           <div id="artistPayoutConnected" class="max-w-2xl space-y-4 {{ $artistStripeConnected ? '' : 'hidden' }}">
             <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-800 border border-green-200/80 px-3 py-1 text-xs font-bold uppercase tracking-wide">Connected</span>
-            <p class="text-on-surface-variant text-sm">Your account is connected. You're ready to receive payments.</p>
+            <p id="artistConnectedNeedsActionMessage" class="text-on-surface-variant text-sm {{ $artistStripeNeedsAction ? '' : 'hidden' }}">Your Stripe account is connected, but Stripe needs more information before you can receive payments.</p>
+            <p id="artistConnectedReadyMessage" class="text-on-surface-variant text-sm {{ $artistStripeNeedsAction ? 'hidden' : '' }}">Your account is connected. You're ready to receive payments.</p>
             @if ($payoutBankCountry && ($payoutBankCountryName ?? null))
               <div>
                 <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
@@ -383,9 +386,19 @@
                 <p id="artistConnectedCountryName" class="text-sm font-semibold text-on-surface mt-1"></p>
               </div>
             @endif
-            <button type="button" id="disconnectStripeBtn" class="text-sm font-semibold text-error hover:text-on-error-container border border-error/20 px-4 py-2 rounded-xl hover:bg-error-container/30 transition-colors">
-              Disconnect
-            </button>
+            <a
+              id="artistStripeRequirementsBtn"
+              href="{{ route('settings.payment.stripe.requirements') }}"
+              class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all {{ $artistStripeNeedsAction ? '' : 'hidden' }}"
+            >
+              <span class="material-symbols-outlined text-xl">assignment</span>
+              Complete required information
+            </a>
+            <div>
+              <button type="button" id="disconnectStripeBtn" class="text-sm font-semibold text-error hover:text-on-error-container border border-error/20 px-4 py-2 rounded-xl hover:bg-error-container/30 transition-colors">
+                Disconnect
+              </button>
+            </div>
             <p id="artistStripeSavingMessage" class="hidden text-sm text-on-surface-variant">Saving your payout connection…</p>
           </div>
 
@@ -478,12 +491,27 @@
 
         <div id="studioPayoutConnected" class="max-w-2xl space-y-4 {{ $studioPayoutStatus !== 'connected' ? 'hidden' : '' }}">
           <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-800 border border-green-200/80 px-3 py-1 text-xs font-bold uppercase tracking-wide">Connected</span>
-          <p class="text-on-surface-variant text-sm">Your studio's bank account is connected. You're ready to receive payments.</p>
+          @if ($studioStripeNeedsAction ?? false)
+            <p class="text-on-surface-variant text-sm">Your studio's bank account is connected, but Stripe needs more information from your studio before you can receive payments.</p>
+          @else
+            <p class="text-on-surface-variant text-sm">Your studio's bank account is connected. You're ready to receive payments.</p>
+          @endif
           @if ($studioEmail)
             <div>
               <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Studio email</p>
               <p class="text-sm font-semibold text-on-surface mt-1">{{ $studioEmail }}</p>
             </div>
+          @endif
+          @if ($studioStripeNeedsAction ?? false)
+            <button
+              type="button"
+              id="studioRequirementsReminderBtn"
+              class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
+            >
+              <span class="material-symbols-outlined text-xl">mail</span>
+              Ask studio to complete required information
+            </button>
+            <p id="studioRequirementsReminderMsg" class="hidden text-sm text-on-surface-variant"></p>
           @endif
         </div>
 
@@ -559,7 +587,14 @@ window.setStripeOnboardingComplete = function (complete) {
   else if (hint) hint.classList.remove('hidden');
 };
 
-function showArtistStripeConnectedUi(countryName) {
+function setArtistStripeNeedsActionUi(needsAction) {
+  const needs = !!needsAction;
+  document.getElementById('artistConnectedReadyMessage')?.classList.toggle('hidden', needs);
+  document.getElementById('artistConnectedNeedsActionMessage')?.classList.toggle('hidden', !needs);
+  document.getElementById('artistStripeRequirementsBtn')?.classList.toggle('hidden', !needs);
+}
+
+function showArtistStripeConnectedUi(countryName, needsAction = false) {
   const setup = document.getElementById('artistStripeSetupSection');
   const notConnected = document.getElementById('artistPayoutNotConnected');
   const connected = document.getElementById('artistPayoutConnected');
@@ -575,6 +610,8 @@ function showArtistStripeConnectedUi(countryName) {
     countryNameEl.textContent = resolvedCountry;
     if (countryWrap) countryWrap.classList.remove('hidden');
   }
+
+  setArtistStripeNeedsActionUi(needsAction);
 
   window.artistStripeConnected = true;
   window.stripeOnboardingComplete = true;
@@ -602,9 +639,52 @@ window.lockPayoutOptions = function (activeKey) {
 };
 
 let autoSaveArtistStripeInProgress = false;
+let artistStripeAutoSaved = false;
+let stripeStatusPollTimer = null;
+
+function isStripeDetailsSubmitted(status) {
+  return !!(status?.success && (status.details_submitted || status.submitted || status.complete));
+}
+
+function stripeStatusNeedsAction(status) {
+  if (!status?.success) return false;
+  if (status.disabled_reason) return true;
+  if (Array.isArray(status.currently_due) && status.currently_due.length > 0) return true;
+  return false;
+}
+
+function stopStripeStatusPolling() {
+  if (stripeStatusPollTimer) {
+    clearInterval(stripeStatusPollTimer);
+    stripeStatusPollTimer = null;
+  }
+}
+
+async function maybeFinalizeArtistStripeConnect() {
+  if (autoSaveArtistStripeInProgress || artistStripeAutoSaved) {
+    return;
+  }
+
+  const status = await refreshStripeStatus();
+  if (!isStripeDetailsSubmitted(status)) {
+    return;
+  }
+
+  stopStripeStatusPolling();
+  const countryName = document.getElementById('payoutBankCountryName')?.textContent?.trim() || initialPayoutBankCountryName;
+  showArtistStripeConnectedUi(countryName, stripeStatusNeedsAction(status));
+  await tryAutoSaveArtistStripe();
+}
+
+function startStripeStatusPolling() {
+  stopStripeStatusPolling();
+  stripeStatusPollTimer = setInterval(() => {
+    maybeFinalizeArtistStripeConnect().catch(() => {});
+  }, 2000);
+}
 
 async function tryAutoSaveArtistStripe() {
-  if (autoSaveArtistStripeInProgress || window.artistStripeConnected) return;
+  if (autoSaveArtistStripeInProgress || artistStripeAutoSaved) return;
 
   const accountId = stripeSessionData?.account_id;
   if (!accountId) return;
@@ -630,7 +710,11 @@ async function tryAutoSaveArtistStripe() {
       throw new Error(data.message || (data.errors?.stripe_connect?.[0]) || 'Could not save Stripe payout connection.');
     }
 
-    window.location.reload();
+    artistStripeAutoSaved = true;
+    stopStripeStatusPolling();
+    setArtistStripeNeedsActionUi(!!data.artist_stripe_needs_action);
+    if (savingMsg) savingMsg.classList.add('hidden');
+    autoSaveArtistStripeInProgress = false;
   } catch (err) {
     autoSaveArtistStripeInProgress = false;
     if (savingMsg) savingMsg.classList.add('hidden');
@@ -643,13 +727,8 @@ async function tryAutoSaveArtistStripe() {
 }
 
 async function handleStripeOnboardingExit() {
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-  const status = await refreshStripeStatus();
-  if (status?.complete) {
-    const countryName = document.getElementById('payoutBankCountryName')?.textContent?.trim() || initialPayoutBankCountryName;
-    showArtistStripeConnectedUi(countryName);
-    await tryAutoSaveArtistStripe();
-  }
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  await maybeFinalizeArtistStripeConnect();
 }
 
 window.tryAutoSaveArtistStripe = tryAutoSaveArtistStripe;
@@ -671,6 +750,7 @@ async function createStripeSession() {
 }
 
 function resetStripeMount() {
+  stopStripeStatusPolling();
   onboardingMounted = false;
   connectInstance = null;
   stripeSessionData = null;
@@ -684,7 +764,9 @@ async function refreshStripeStatus() {
   const url = params.toString() ? `${statusUrl}?${params}` : statusUrl;
   const res = await fetch(url, { headers: { Accept: 'application/json' } });
   const data = await res.json();
-  if (res.ok && data.success) window.setStripeOnboardingComplete(!!data.complete);
+  if (res.ok && data.success) {
+    window.setStripeOnboardingComplete(!!(data.complete || data.details_submitted || data.submitted));
+  }
   return data;
 }
 
@@ -718,19 +800,15 @@ async function mountStripeOnboarding() {
     });
     accountOnboarding.setOnExit(handleStripeOnboardingExit);
     accountOnboarding.setOnStepChange(() => {
-      setTimeout(async () => {
-        const status = await refreshStripeStatus();
-        if (status?.complete) {
-          const countryName = document.getElementById('payoutBankCountryName')?.textContent?.trim() || initialPayoutBankCountryName;
-          showArtistStripeConnectedUi(countryName);
-          await tryAutoSaveArtistStripe();
-        }
+      setTimeout(() => {
+        maybeFinalizeArtistStripeConnect().catch(() => {});
       }, 800);
     });
 
     container.innerHTML = '';
     container.appendChild(accountOnboarding);
     onboardingMounted = true;
+    startStripeStatusPolling();
   } catch (err) {
     container.innerHTML = '';
     const errEl = document.getElementById('stripe_connect_error');
@@ -796,21 +874,24 @@ document.getElementById('connectBankAccountBtn')?.addEventListener('click', asyn
   const setup = document.getElementById('artistStripeSetupSection');
   if (setup) setup.classList.remove('hidden');
 
-  if (initialPayoutBankCountry || window.payoutBankCountrySelected) {
-    window.payoutBankCountrySelected = true;
-    const nameEl = document.getElementById('payoutBankCountryName');
-    const summary = document.getElementById('payoutStripeCountrySummary');
-    if (nameEl && initialPayoutBankCountryName) nameEl.textContent = initialPayoutBankCountryName;
-    if (summary && initialPayoutBankCountryName) summary.classList.remove('hidden');
-    window.showPayoutStep('stripe');
-    await mountStripeOnboarding();
-    return;
-  }
-
+  // Always let the user confirm/select country before creating a Stripe account.
+  // Country cannot be changed later inside Stripe embedded onboarding.
+  window.payoutBankCountrySelected = false;
   window.showPayoutStep('country');
   window.requestAnimationFrame(() => {
     initPayoutCountrySelect2();
     resetPayoutCountrySelect();
+    if (initialPayoutBankCountry) {
+      const select = document.getElementById('payout_bank_country');
+      if (select && window.jQuery) {
+        window.jQuery(select).val(initialPayoutBankCountry).trigger('change');
+      } else if (select) {
+        select.value = initialPayoutBankCountry;
+      }
+      if (typeof window.handlePayoutBankCountryChange === 'function') {
+        window.handlePayoutBankCountryChange(initialPayoutBankCountry);
+      }
+    }
   });
 });
 
@@ -1066,6 +1147,38 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
       }).always(function () {
         $btn.prop('disabled', false);
         updateStudioReminderButtonLabel();
+      });
+    });
+
+    $('#studioRequirementsReminderBtn').on('click', function () {
+      var $btn = $(this);
+      var $msg = $('#studioRequirementsReminderMsg');
+      var $alertEl = $('#payAlert');
+      $alertEl.addClass('hidden').text('');
+      if ($msg.length) $msg.addClass('hidden').text('');
+      $btn.prop('disabled', true);
+      $.ajax({
+        url: settingsPaymentSaveUrl,
+        type: 'POST',
+        data: {
+          _token: @json(csrf_token()),
+          resend_studio_email: 1,
+          requirements_reminder: 1,
+        },
+        headers: { 'X-CSRF-TOKEN': @json(csrf_token()), Accept: 'application/json' },
+      }).done(function (data) {
+        if (data.success) {
+          $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mb-6 bg-green-50 text-green-800 border border-green-200').text(data.message || 'Requirements reminder sent to your studio.').removeClass('hidden');
+          if ($msg.length) {
+            $msg.text(data.message || 'Requirements reminder sent to your studio.').removeClass('hidden');
+          }
+          return;
+        }
+        $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mb-6 bg-red-50 text-red-800 border border-red-200').text(data.message || 'Could not send reminder.').removeClass('hidden');
+      }).fail(function (xhr) {
+        $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mb-6 bg-red-50 text-red-800 border border-red-200').text((xhr.responseJSON && xhr.responseJSON.message) || 'Could not send reminder.').removeClass('hidden');
+      }).always(function () {
+        $btn.prop('disabled', false);
       });
     });
 

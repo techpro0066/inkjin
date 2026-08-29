@@ -8,6 +8,7 @@ use App\Mail\ManagedBookingDeclinedUserMail;
 use App\Mail\ManagedBookingSlotsOfferedArtistMail;
 use App\Mail\ManagedBookingSlotsOfferedUserMail;
 use App\Models\BookingRequest;
+use App\Services\ArtistPayoutService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -28,9 +29,20 @@ class RequestsController extends Controller
             ->values()
             ->all();
 
+        $userDetail = Auth::user()?->userDetail;
+        $payoutService = app(ArtistPayoutService::class);
+        $canOfferSlots = $userDetail
+            ? $payoutService->canAcceptClientPayments($userDetail)
+            : false;
+        $quotesBlockedMessage = $canOfferSlots || ! $userDetail
+            ? null
+            : $payoutService->clientPaymentsBlockedMessage($userDetail);
+
         return view('artist.requests.index', [
             'requests' => $requests,
             'requestsPayload' => $requestsPayload,
+            'canOfferSlots' => $canOfferSlots,
+            'quotesBlockedMessage' => $quotesBlockedMessage,
         ]);
     }
 
@@ -70,10 +82,23 @@ class RequestsController extends Controller
 
     public function offerSlots(OfferArtistSlotsRequest $request, BookingRequest $bookingRequest)
     {
+        if ((int) $bookingRequest->artist_id !== (int) Auth::id()) {
+            abort(403);
+        }
+
         if ($bookingRequest->status !== 'pending') {
             return response()->json([
                 'success' => false,
                 'message' => 'Only pending requests can be updated with offered times.',
+            ], 422);
+        }
+
+        $userDetail = Auth::user()?->userDetail;
+        $payoutService = app(ArtistPayoutService::class);
+        if ($userDetail && ! $payoutService->canAcceptClientPayments($userDetail)) {
+            return response()->json([
+                'success' => false,
+                'message' => $payoutService->clientPaymentsBlockedMessage($userDetail),
             ], 422);
         }
 

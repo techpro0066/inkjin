@@ -29,6 +29,7 @@ use App\Mail\UserWelcomeMail;
 use App\Services\CancellationService;
 use App\Services\GoogleCalendarBookingSyncService;
 use App\Exceptions\GoogleCalendarEventRequiredException;
+use App\Services\ArtistPayoutService;
 use App\Models\UserDetail;
 use App\Models\Waitlist;
 use App\Models\Question;
@@ -626,11 +627,20 @@ class InkJinController extends Controller
             ->take(3)
             ->get();
 
+        $isSoldOut = $tattoo->isSoldOut();
+        $payoutService = app(ArtistPayoutService::class);
+        $isAutoScheduling = ($userDetail->scheduling_type ?? '') === 'auto';
+        $canBookOnline = ! $isAutoScheduling || $payoutService->canAcceptClientPayments($userDetail);
+
         return view('public.tattoo', [
             'userDetail' => $userDetail,
             'tattoo' => $tattoo,
             'relatedTattoos' => $relatedTattoos,
-            'isSoldOut' => $tattoo->isSoldOut(),
+            'isSoldOut' => $isSoldOut,
+            'canBookOnline' => $canBookOnline,
+            'bookingUnavailableMessage' => $canBookOnline
+                ? null
+                : $payoutService->publicBookingUnavailableMessage(),
         ]);
     }
 
@@ -659,6 +669,14 @@ class InkJinController extends Controller
         }
 
         if ($tattoo->isSoldOut()) {
+            return redirect()->route('public.tattoo', [
+                'user_name' => $userName,
+                'tattoo_slug' => $tattooSlug,
+            ]);
+        }
+
+        $payoutService = app(ArtistPayoutService::class);
+        if (($userDetail->scheduling_type ?? '') === 'auto' && ! $payoutService->canAcceptClientPayments($userDetail)) {
             return redirect()->route('public.tattoo', [
                 'user_name' => $userName,
                 'tattoo_slug' => $tattooSlug,
@@ -813,6 +831,10 @@ class InkJinController extends Controller
             return response()->json(['message' => 'Artist not found.'], 404);
         }
 
+        if ($response = $this->rejectIfArtistCannotAcceptClientPayments($userDetail)) {
+            return $response;
+        }
+
         $tattoo = $userDetail->user->artistDesigns()
             ->where('slug', $validated['tattoo_slug'])
             ->where('is_active', true)
@@ -927,6 +949,10 @@ class InkJinController extends Controller
         $userDetail = UserDetail::query()->where('user_name', $validated['artist_username'])->first();
         if (!$userDetail || !$userDetail->user || $userDetail->user->role !== 'artist') {
             return response()->json(['message' => 'Artist not found.'], 404);
+        }
+
+        if ($response = $this->rejectIfArtistCannotAcceptClientPayments($userDetail)) {
+            return $response;
         }
 
         $design = $userDetail->user->artistDesigns()
@@ -1397,6 +1423,10 @@ class InkJinController extends Controller
             return response()->json(['message' => 'Artist not found.'], 404);
         }
 
+        if ($response = $this->rejectIfArtistCannotAcceptClientPayments($userDetail)) {
+            return $response;
+        }
+
         $tattoo = $userDetail->user->artistDesigns()
             ->where('slug', $validated['tattoo_slug'])
             ->where('is_active', true)
@@ -1496,6 +1526,18 @@ class InkJinController extends Controller
         }
 
         return response()->json($status);
+    }
+
+    private function rejectIfArtistCannotAcceptClientPayments(UserDetail $userDetail): ?JsonResponse
+    {
+        $payoutService = app(ArtistPayoutService::class);
+        if ($payoutService->canAcceptClientPayments($userDetail)) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => $payoutService->clientPaymentsBlockedMessage($userDetail),
+        ], 422);
     }
 
     private function rejectIfDesignSoldOut(ArtistDesign $design): ?JsonResponse

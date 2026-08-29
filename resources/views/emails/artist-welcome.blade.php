@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Welcome to Inkjin BookPay! 🎉</title>
+  <title>Welcome to Inkjin BookPay!</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
@@ -37,20 +37,18 @@
             <td style="background-color: #ffffff; border-radius: 16px; padding: 48px 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td align="center" style="padding: 0 0 20px 0; font-size: 40px;">🎉</td>
-                </tr>
-                <tr>
                   <td align="center" style="font-size: 24px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 12px 0;">
                     Welcome to Inkjin BookPay!
                   </td>
                 </tr>
                 <tr>
                   <td style="font-size: 16px; color: #494552; line-height: 1.6; padding: 0 0 28px 0; text-align: center;">
-                    Congrats - your artist profile is set up and ready to go. You're now part of a platform built to make bookings, payments, and client communication effortless.
+                    Congrats, your artist profile is set up and ready to go. You're now part of a platform built to make bookings, payments, and client communication effortless.
                   </td>
                 </tr>
+
                 <tr>
-                  <td style="padding: 0 0 32px 0;">
+                  <td style="padding: 0 0 28px 0;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #F8F1FB; border-radius: 12px;">
                       <tr>
                         <td style="padding: 24px;">
@@ -74,11 +72,78 @@
                     </table>
                   </td>
                 </tr>
+
                 <tr>
-                  <td align="center" style="padding: 0 0 16px 0;">
+                  <td align="center" style="padding: 0 0 36px 0;">
                     <a href="{{ $dashboardUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 12px; line-height: 1;">
-                      Go to Dashboard
+                      Go to Dashboard &rarr;
                     </a>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size: 18px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 10px 0;">
+                    Get updates on Instagram
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size: 15px; color: #494552; line-height: 1.7; padding: 0 0 20px 0;">
+                    Join the Bookpay Broadcast Channel on Instagram, just for artists using the platform. Early looks at new features, quick booking and pricing tips, and the occasional artist spotlight. Nothing spammy, just useful stuff.
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 0 36px 0;">
+                    <a href="{{ $instagramChannelUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; line-height: 1;">
+                      Join the channel &rarr;
+                    </a>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size: 18px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 10px 0;">
+                    Need help? Jump on our weekly call
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size: 15px; color: #494552; line-height: 1.7; padding: 0 0 20px 0;">
+                    Every Tuesday at 10am GMT we host a call open for Bookpay artists, ask us anything, get help setting things up, or just tell us what you want to see next.
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 0 36px 0;">
+                    <a href="{{ $weeklyCallUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; line-height: 1;">
+                      Join the call &rarr;
+                    </a>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding: 0 0 28px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #FFF8E8; border-radius: 12px; border: 1px solid #F5E0A8;">
+                      <tr>
+                        <td style="padding: 24px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                              <td style="font-size: 16px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 10px 0;">
+                                Important note: Set up your payouts
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="font-size: 15px; color: #494552; line-height: 1.7; padding: 0 0 20px 0;">
+                                If you haven't set up your payouts yet, know that without it you can't collect deposits, confirm bookings, or sell any flash designs you upload. It only takes a couple minutes.
+                              </td>
+                            </tr>
+                            <tr>
+                              <td align="center">
+                                <a href="{{ $payoutsUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; line-height: 1;">
+                                  Set up payouts &rarr;
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
@@ -102,4 +167,3 @@
   </table>
 </body>
 </html>
-

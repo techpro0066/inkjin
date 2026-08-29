@@ -6,6 +6,7 @@ use App\Mail\BookingCompletionCodeMail;
 use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\PaymentLink;
+use App\Services\ArtistPayoutService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
@@ -255,6 +256,17 @@ class BookingsController extends Controller
                 'message' => $validator->errors()->first() ?: 'Please fix the highlighted fields.',
                 'errors' => $validator->errors(),
             ], 422);
+        }
+
+        if ($type === BalanceCollection::TYPE_PAYMENT_LINK) {
+            $userDetail = Auth::user()?->userDetail;
+            $payoutService = app(ArtistPayoutService::class);
+            if ($userDetail && ! $payoutService->canAcceptClientPayments($userDetail)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $payoutService->clientPaymentsBlockedMessage($userDetail),
+                ], 422);
+            }
         }
 
         $amount = round((float) $request->input('amount'), 2);

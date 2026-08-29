@@ -221,6 +221,10 @@ class ArtistPayoutService
         $paymentType = (string) ($userDetail->payment_type ?? '');
 
         if ($paymentType === 'artist_account') {
+            if (! empty($userDetail->stripe_requirement)) {
+                return false;
+            }
+
             return $this->isStripeAccountPayoutReady($userDetail->stripe_account_id);
         }
 
@@ -234,10 +238,142 @@ class ArtistPayoutService
                 return false;
             }
 
+            if (! empty($studio->stripe_requirement) || ! empty($userDetail->stripe_requirement)) {
+                return false;
+            }
+
             return $this->isStripeAccountPayoutReady($studio->resolveStripeAccountId());
         }
 
         return false;
+    }
+
+    /**
+     * Whether the artist can accept online payments from clients (bookings, payment links, quotes).
+     * Platform-settled (inkjin) artists can accept payments before personal Stripe is ready.
+     */
+    public function canAcceptClientPayments(UserDetail $userDetail): bool
+    {
+        $paymentType = (string) ($userDetail->payment_type ?? '');
+
+        if ($paymentType === 'inkjin_account' || $paymentType === '') {
+            return true;
+        }
+
+        return $this->isArtistPaymentReady($userDetail);
+    }
+
+    /**
+     * Whether the artist dashboard should show the global “setup payouts” banner.
+     * Uses local flags only (no live Stripe API) so it is safe on every page.
+     */
+    public function needsPayoutSetupBanner(?UserDetail $userDetail): bool
+    {
+        return $this->needsPayoutSetupReminder($userDetail);
+    }
+
+    /**
+     * Whether the artist still needs to complete payout setup (local flags only).
+     */
+    public function needsPayoutSetupReminder(?UserDetail $userDetail): bool
+    {
+        if (! $userDetail) {
+            return true;
+        }
+
+        $paymentType = (string) ($userDetail->payment_type ?? '');
+
+        if ($paymentType === 'inkjin_account') {
+            return false;
+        }
+
+        if ($paymentType === '' || $paymentType === 'artist_account') {
+            if (! empty($userDetail->stripe_requirement)) {
+                return true;
+            }
+
+            if (($userDetail->payment_status ?? '') !== 'approved') {
+                return true;
+            }
+
+            return trim((string) ($userDetail->stripe_account_id ?? '')) === '';
+        }
+
+        if ($paymentType === 'studio_account') {
+            if (($userDetail->payment_status ?? '') !== 'approved') {
+                return true;
+            }
+
+            if (! empty($userDetail->stripe_requirement)) {
+                return true;
+            }
+
+            return ! empty($userDetail->studio?->stripe_requirement);
+        }
+
+        return true;
+    }
+
+    public function publicBookingUnavailableMessage(): string
+    {
+        return 'This artist is not currently accepting online bookings. Please check back later.';
+    }
+
+    public function clientPaymentsBlockedMessage(UserDetail $userDetail): string
+    {
+        $paymentType = (string) ($userDetail->payment_type ?? '');
+
+        if ($paymentType === 'studio_account' && ($userDetail->payment_status ?? '') !== 'approved') {
+            return 'Your studio payout approval is still pending. Complete payout setup in Payment settings before accepting client payments.';
+        }
+
+        if ($paymentType === 'studio_account' && (! empty($userDetail->stripe_requirement) || ! empty($userDetail->studio?->stripe_requirement))) {
+            return 'Your studio Stripe account has pending requirements. Ask your studio to complete the required information before accepting client payments.';
+        }
+
+        if ($paymentType === 'artist_account' && ($userDetail->payment_status ?? '') !== 'approved') {
+            if (! empty($userDetail->stripe_requirement)) {
+                return 'Your Stripe account has pending requirements. Complete payout setup in Payment settings before accepting client payments.';
+            }
+        }
+
+        $accountId = $this->resolveStripeAccountIdForStatus($userDetail);
+        if ($accountId !== null && $this->stripeConnect->isConfigured()) {
+            try {
+                $status = $this->stripeConnect->getOnboardingStatus($accountId);
+                if (! empty($status['currently_due'])) {
+                    return 'Your Stripe account has pending requirements. Complete payout setup in Payment settings before accepting client payments.';
+                }
+                if (empty($status['charges_enabled']) || empty($status['payouts_enabled'])) {
+                    return 'Your Stripe account is not fully enabled yet. Complete payout setup in Payment settings before accepting client payments.';
+                }
+            } catch (\Throwable) {
+                // Fall through to generic message.
+            }
+        }
+
+        if ($paymentType === 'artist_account' && trim((string) ($userDetail->stripe_account_id ?? '')) === '') {
+            return 'Connect and complete your Stripe payout setup in Payment settings before accepting client payments.';
+        }
+
+        return 'Complete payout setup in Payment settings before accepting client payments.';
+    }
+
+    private function resolveStripeAccountIdForStatus(UserDetail $userDetail): ?string
+    {
+        $paymentType = (string) ($userDetail->payment_type ?? '');
+
+        if ($paymentType === 'artist_account') {
+            $accountId = trim((string) ($userDetail->stripe_account_id ?? ''));
+
+            return $accountId !== '' ? $accountId : null;
+        }
+
+        if ($paymentType === 'studio_account') {
+            return $userDetail->studio?->resolveStripeAccountId();
+        }
+
+        return null;
     }
 
     public function resolveConnectedAccountId(UserDetail $userDetail): ?string

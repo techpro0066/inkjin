@@ -56,6 +56,12 @@
     <div class="bg-white rounded-2xl border border-outline-variant/30 p-6 sm:p-8 md:p-10 shadow-sm">
       <div id="paymentLinkFormView">
       <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight mb-2">New payment link</h1>
+      @if(empty($canCreatePaymentLinks))
+        <div class="mb-6 rounded-xl border px-4 py-3 text-sm font-medium" style="border-color: rgba(255,191,0,0.45); background: rgba(255,191,0,0.12); color: #8B6914;">
+          {{ $paymentLinksBlockedMessage ?? 'Complete payout setup in Payment settings before creating payment links.' }}
+          <a href="{{ route('settings.payment') }}" class="block mt-2 font-semibold text-primary hover:underline">Go to Payment settings</a>
+        </div>
+      @endif
       @if(!empty($isAutoScheduling))
         <p class="text-sm text-on-surface-variant mb-6 sm:mb-8">Artist — auto-scheduling on</p>
       @else
@@ -160,7 +166,7 @@
           <p id="expires_error" class="hidden text-sm text-error mt-1.5"></p>
         </div>
 
-        <button type="submit" id="paymentLinkGenerateBtn" class="w-full rounded-xl bg-[#1c1b21] px-4 py-4 text-base font-bold text-white">
+        <button type="submit" id="paymentLinkGenerateBtn" class="w-full rounded-xl bg-[#1c1b21] px-4 py-4 text-base font-bold text-white disabled:opacity-60 disabled:pointer-events-none" @if(empty($canCreatePaymentLinks)) disabled @endif>
           Generate link
         </button>
 

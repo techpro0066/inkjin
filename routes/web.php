@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\BookingsController as AdminBookingsController;
 use App\Http\Controllers\Admin\RequestsController as AdminRequestsController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\FinancialController as AdminFinancialController;
+use App\Http\Controllers\Admin\StripeConnectedAccountsController as AdminStripeConnectedAccountsController;
 use App\Http\Controllers\Admin\FormController;
 use App\Http\Controllers\Admin\PlacementController;
 use App\Http\Controllers\Admin\SizeController;
@@ -105,6 +106,12 @@ Route::get('/studio/payout-info/{userDetail}/stripe/status', [OnboardingControll
 Route::post('/studio/payout-info/{userDetail}/stripe/complete', [OnboardingController::class, 'completeStudioStripeOnboarding'])
     ->middleware('signed')
     ->name('studio.payout-info.stripe.complete');
+Route::get('/studio/payout-info/{userDetail}/stripe/requirements', [OnboardingController::class, 'showStudioStripeRequirements'])
+    ->middleware('signed')
+    ->name('studio.payout-info.stripe.requirements');
+Route::post('/studio/payout-info/{userDetail}/stripe/requirements/session', [OnboardingController::class, 'createStudioStripeRequirementsSession'])
+    ->middleware('signed')
+    ->name('studio.payout-info.stripe.requirements.session');
 
 Route::get('/studio/payout-link/{userDetail}/approve', [OnboardingController::class, 'approveStudioArtistBankLink'])
     ->middleware('signed')
@@ -186,6 +193,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     Route::get('/revenue', [AdminFinancialController::class, 'revenue'])->name('admin.revenue.index');
     Route::get('/fees', [AdminFinancialController::class, 'fees'])->name('admin.fees.index');
     Route::get('/payouts', [AdminFinancialController::class, 'payouts'])->name('admin.payouts.index');
+    Route::get('/stripe-accounts', [AdminStripeConnectedAccountsController::class, 'index'])->name('admin.stripe-accounts.index');
 
     Route::get('/forms', [FormController::class, 'index'])->name('admin.forms.index');
     Route::post('/forms/questions', [QuestionsController::class, 'store'])->name('admin.forms.questions.store');
@@ -282,6 +290,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/settings/payment', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
     Route::post('/settings/payment/bank-country', [OnboardingController::class, 'savePayoutBankCountry'])->name('settings.payment.bank-country');
     Route::post('/settings/payment/waiting-list', [OnboardingController::class, 'savePayoutWaitingList'])->name('settings.payment.waiting-list');
+    Route::get('/settings/payment/stripe/requirements', [OnboardingController::class, 'stripeRequirements'])->name('settings.payment.stripe.requirements');
     Route::post('/settings/payment/stripe/session', [OnboardingController::class, 'createStripeConnectSession'])->name('settings.payment.stripe.session');
     Route::get('/settings/payment/stripe/status', [OnboardingController::class, 'stripeConnectStatus'])->name('settings.payment.stripe.status');
     Route::get('/settings/other', [OtherSettingsController::class, 'edit'])->name('settings.other');

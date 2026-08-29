@@ -146,6 +146,43 @@
         z-index: 100;
       }
     }
+
+    /* Shared dashboard / global notices */
+    .dashboard-notices { display: flex; flex-direction: column; gap: 0.75rem; }
+    .dashboard-notice {
+      padding: 0.875rem 1rem;
+      display: flex;
+      align-items: center;
+    }
+    @media (min-width: 640px) {
+      .dashboard-notice {
+        padding: 0.875rem 1.125rem;
+        min-height: 4.75rem;
+      }
+    }
+    .dashboard-notice__inner { width: 100%; min-height: 3.25rem; }
+    @media (min-width: 640px) {
+      .dashboard-notice__inner { min-height: 3.5rem; }
+    }
+    .dashboard-notice__icon-wrap { width: 2.5rem; height: 2.5rem; }
+    .dashboard-notice__icon { font-size: 1.375rem; line-height: 1; }
+    .dashboard-notice__title { font-size: 0.8125rem; line-height: 1.25; }
+    .dashboard-notice__text {
+      font-size: 0.75rem;
+      line-height: 1.35;
+      margin-top: 0.125rem;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+    .dashboard-notice__btn {
+      padding: 0.5rem 0.875rem;
+      min-height: 2.25rem;
+    }
+    @media (max-width: 639px) {
+      .dashboard-notice__btn { width: 100%; }
+    }
   </style>
   <!-- end of common css -->
 
@@ -166,9 +203,25 @@
   <!-- Sidebar -->
   @include('layouts.components.artist_sidebar')
 
-  <!-- Main Content -->
-  @yield('content')
+  <div class="flex-1 min-w-0 flex flex-col min-h-screen">
+    @if (! empty($showPayoutSetupBanner))
+      <div id="payoutSetupNoticeSource" class="hidden" aria-hidden="true">
+        @include('artist.dashboard.partials.notice', [
+          'id' => 'payoutSetupBanner',
+          'theme' => 'amber',
+          'icon' => 'payments',
+          'title' => 'Payouts not set up',
+          'description' => 'You need to setup payouts to accept deposits for bookings.',
+          'buttonText' => 'Setup payouts',
+          'buttonIcon' => 'settings',
+          'buttonUrl' => route('settings.payment'),
+        ])
+      </div>
+    @endif
 
+    <!-- Main Content -->
+    @yield('content')
+  </div>
 
   <div id="saveToast" class="fixed top-6 right-6 z-50 transform translate-x-full opacity-0 transition-all duration-300">
     <div class="flex items-center gap-3 bg-on-surface text-white px-5 py-3 rounded-xl shadow-lg">
@@ -261,6 +314,62 @@
         closeMobileNav();
       }
     }
+
+    (function placePayoutSetupNotice() {
+      var source = document.getElementById('payoutSetupNoticeSource');
+      if (!source) return;
+      var notice = source.querySelector('.dashboard-notice');
+      if (!notice) return;
+
+      var main = document.querySelector('main.main-content') || document.querySelector('.main-content');
+
+      function firstPaddedShell(root) {
+        if (!root) return null;
+        return root.querySelector(':scope > div.flex-1.p-6')
+          || root.querySelector(':scope > div.p-6')
+          || root.querySelector(':scope > div.flex-1')
+          || null;
+      }
+
+      var target = null;
+      if (main) {
+        // Direct padded content (most pages)
+        target = firstPaddedShell(main);
+        // Settings pages wrap content in <form class="contents"> — look one level deeper
+        if (!target) {
+          var form = main.querySelector(':scope > form.contents');
+          target = firstPaddedShell(form);
+        }
+        // Last resort: any padded content shell, then first content div, then main
+        if (!target) {
+          target = main.querySelector('div.flex-1.p-6, div.p-6.md\\:p-10, div.p-6')
+            || main.querySelector(':scope > div')
+            || main;
+        }
+      }
+
+      source.remove();
+
+      if (!target) {
+        var fallbackWrap = document.createElement('div');
+        fallbackWrap.className = 'dashboard-notices mb-8';
+        fallbackWrap.appendChild(notice);
+        document.body.insertBefore(fallbackWrap, document.body.firstChild);
+        return;
+      }
+
+      // Reuse an existing notices stack when present (e.g. dashboard)
+      var existing = target.querySelector(':scope > .dashboard-notices');
+      if (existing) {
+        existing.insertBefore(notice, existing.firstChild);
+        return;
+      }
+
+      var wrap = document.createElement('div');
+      wrap.className = 'dashboard-notices mb-8';
+      wrap.appendChild(notice);
+      target.insertBefore(wrap, target.firstChild);
+    })();
   </script>
 
   @yield('scripts')

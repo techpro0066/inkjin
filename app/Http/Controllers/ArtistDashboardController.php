@@ -16,9 +16,9 @@ use App\Models\Style;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Services\ArtistDashboardService;
+use App\Services\ArtistPayoutService;
 use App\Services\BalanceCollectionCheckoutService;
 use App\Services\PaymentLinkCheckoutService;
-use App\Services\StripeConnectService;
 use App\Support\ArtistPolicyCopy;
 use App\Support\PaymentMethods;
 use Carbon\Carbon;
@@ -34,7 +34,7 @@ class ArtistDashboardController extends Controller
 {
     public function __construct(
         private ArtistDashboardService $dashboardService,
-        private StripeConnectService $stripeConnect,
+        private ArtistPayoutService $payoutService,
     ) {}
 
     public function index(Request $request): View
@@ -57,12 +57,14 @@ class ArtistDashboardController extends Controller
         $dashboard = $this->dashboardService->buildForArtist((int) Auth::id());
         $userDetail = $user?->userDetail;
         $showCustomizePageNotice = $userDetail && ! $userDetail->customize_page_notice_dismissed;
-        $paymentNotApproved = $this->shouldShowPayoutSetupNotice($userDetail);
+        $canCreatePaymentLinks = $userDetail
+            ? $this->payoutService->canAcceptClientPayments($userDetail)
+            : false;
 
         return view('artist.dashboard', [
             'needsWeeklyAvailabilitySetup' => $needsWeeklyAvailabilitySetup,
             'showCustomizePageNotice' => $showCustomizePageNotice,
-            'paymentNotApproved' => $paymentNotApproved,
+            'canCreatePaymentLinks' => $canCreatePaymentLinks,
             'recentCustomRequests' => $recentCustomRequests,
             'pendingCustomRequestsCount' => $pendingCustomRequestsCount,
             'dashboardStats' => $dashboard['stats'],
@@ -70,64 +72,47 @@ class ArtistDashboardController extends Controller
         ]);
     }
 
-    private function shouldShowPayoutSetupNotice(?UserDetail $userDetail): bool
+    private function rejectIfCannotCreatePaymentLinks(): ?JsonResponse
     {
-        if (! $userDetail) {
-            return false;
+        $userDetail = Auth::user()?->userDetail;
+        if (! $userDetail || $this->payoutService->canAcceptClientPayments($userDetail)) {
+            return null;
         }
 
-        $paymentType = (string) ($userDetail->payment_type ?? '');
-
-        if ($paymentType === 'studio_account') {
-            return ! empty($userDetail->studio_id) && ($userDetail->payment_status ?? '') === 'pending';
-        }
-
-        if ($paymentType !== 'artist_account') {
-            return false;
-        }
-
-        if (($userDetail->payment_status ?? '') === 'approved') {
-            return false;
-        }
-
-        $accountId = trim((string) ($userDetail->stripe_account_id ?? ''));
-        if ($accountId === '' || ! $this->stripeConnect->isConfigured()) {
-            return true;
-        }
-
-        try {
-            $status = $this->stripeConnect->getOnboardingStatus($accountId);
-        } catch (\Throwable) {
-            return true;
-        }
-
-        $stripeEnabled = ! empty($status['complete'])
-            || ! empty($status['payout_ready'])
-            || (! empty($status['charges_enabled']) && ! empty($status['payouts_enabled']));
-
-        if ($stripeEnabled && ($userDetail->payment_status ?? '') !== 'approved') {
-            $userDetail->payment_status = 'approved';
-            $userDetail->save();
-        }
-
-        return ! $stripeEnabled;
+        return response()->json([
+            'success' => false,
+            'message' => $this->payoutService->clientPaymentsBlockedMessage($userDetail),
+        ], 422);
     }
 
     public function paymentLink(Request $request): View
     {
-        $schedulingType = $request->user()?->userDetail?->scheduling_type ?? '';
+        $userDetail = $request->user()?->userDetail;
+        $schedulingType = $userDetail?->scheduling_type ?? '';
         $isAutoScheduling = $schedulingType === 'auto';
         $isManagedScheduling = $schedulingType === 'managed';
+        $canCreatePaymentLinks = $userDetail
+            ? $this->payoutService->canAcceptClientPayments($userDetail)
+            : false;
+        $paymentLinksBlockedMessage = $canCreatePaymentLinks || ! $userDetail
+            ? null
+            : $this->payoutService->clientPaymentsBlockedMessage($userDetail);
 
         return view('artist.payment-link', [
             'schedulingType' => $schedulingType,
             'isAutoScheduling' => $isAutoScheduling,
             'isManagedScheduling' => $isManagedScheduling,
+            'canCreatePaymentLinks' => $canCreatePaymentLinks,
+            'paymentLinksBlockedMessage' => $paymentLinksBlockedMessage,
         ]);
     }
 
     public function validatePaymentLink(Request $request): JsonResponse
     {
+        if ($response = $this->rejectIfCannotCreatePaymentLinks()) {
+            return $response;
+        }
+
         $validator = $this->makePaymentLinkValidator($request);
 
         if ($validator->fails()) {
@@ -146,6 +131,10 @@ class ArtistDashboardController extends Controller
 
     public function storePaymentLink(Request $request): JsonResponse
     {
+        if ($response = $this->rejectIfCannotCreatePaymentLinks()) {
+            return $response;
+        }
+
         $validator = $this->makePaymentLinkValidator($request);
 
         if ($validator->fails()) {

@@ -461,6 +461,9 @@
 <script>
   const requestScope = @json($scope ?? 'custom');
   const customRequestsById = @json(collect($requestsPayload)->keyBy('id'));
+  const canSendQuotes = @json($canSendQuotes ?? true);
+  const quotesBlockedMessage = @json($quotesBlockedMessage ?? null);
+  const paymentSettingsUrl = @json(route('settings.payment'));
   const declineRequestUrlTemplate = @json(route('artist.custom-requests.decline', ['customRequest' => 0]));
   const sendQuoteUrlTemplate = @json(route('artist.custom-requests.send-quote', ['customRequest' => 0]));
   let currentStatusFilter = 'all';
@@ -1174,7 +1177,23 @@
       '</div>';
   }
 
+  function buildSetPayoutPanelHtml() {
+    var detail = quotesBlockedMessage
+      ? escapeHtml(quotesBlockedMessage)
+      : 'You need to set up payouts before you can send a quote or respond to this request.';
+    return '<div class="custom-quote-panel space-y-4">' +
+      '<div><h4 class="font-bold text-on-surface mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">payments</span> Payouts not set up</h4>' +
+      '<p class="text-sm text-on-surface-variant">' + detail + '</p></div>' +
+      '<a href="' + escapeHtml(paymentSettingsUrl) + '" class="w-full inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">' +
+      '<span class="material-symbols-outlined text-lg">settings</span> Set Payout</a>' +
+      '</div>';
+  }
+
   function buildQuoteFormHtml(req) {
+    if (!canSendQuotes) {
+      return buildSetPayoutPanelHtml();
+    }
+
     var price = req.estimatedPrice != null && req.estimatedPrice !== '' ? String(req.estimatedPrice) : '';
     var duration = req.estimatedTime ? escapeHtml(req.estimatedTime) : '';
     var sessions = req.numberOfSessions ? escapeHtml(req.numberOfSessions) : '';
@@ -1344,7 +1363,7 @@
     left.innerHTML = buildCustomRequestLeftHtml(req);
     quote.innerHTML = buildQuotePanelHtml(req);
     bindQuoteFormValidationClear();
-    if (req.isPending && needsQuoteSessionSlots(req)) {
+    if (canSendQuotes && req.isPending && needsQuoteSessionSlots(req)) {
       hydrateSlotBlocks('session', req.artistSessionSlots || [], todayYmd());
     }
   }

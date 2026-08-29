@@ -208,7 +208,7 @@
 
     <p id="payment_type_error" class="text-error text-sm mt-4 hidden"></p>
     <div id="payAlert" class="hidden rounded-xl px-4 py-3 text-sm mt-4"></div>
-    <p id="paySkipHint" class="text-on-surface-variant text-sm mt-4 max-w-xl">You can skip this step and still accept bookings. You can complete your payout details anytime in your settings.</p>
+    <p id="paySkipHint" class="text-on-surface-variant text-sm mt-4 max-w-xl">You can finish this step now, or come back to it later — just know that payouts must be set up before you can collect deposits and confirm bookings.</p>
   </div>
 
   <div class="sticky bottom-0 bg-surface border-t border-outline-variant/10 px-8 md:px-12 py-5 flex flex-wrap items-center justify-between gap-4 mt-auto">
@@ -217,7 +217,7 @@
     </a>
     <div class="flex flex-wrap items-center gap-3 sm:ml-auto">
       <button type="button" id="paySkip" class="inline-flex items-center gap-2 font-semibold py-3 px-6 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high transition-colors">
-        Skip for now
+        Set up later
       </button>
     </div>
   </div>
@@ -258,6 +258,7 @@ window.savedPayoutBankCountry = null;
 let connectInstance = null;
 let onboardingMounted = false;
 let autoFinishInProgress = false;
+let stripeStatusPollTimer = null;
 
 window.setStripeOnboardingComplete = function (complete) {
   window.stripeOnboardingComplete = !!complete;
@@ -290,6 +291,40 @@ window.lockPayoutOptions = function (activeKey) {
 
 let stripeSessionData = null;
 
+function isStripeDetailsSubmitted(status) {
+  return !!(status?.success && (status.details_submitted || status.submitted || status.complete));
+}
+
+function stopStripeStatusPolling() {
+  if (stripeStatusPollTimer) {
+    clearInterval(stripeStatusPollTimer);
+    stripeStatusPollTimer = null;
+  }
+}
+
+function startStripeStatusPolling() {
+  stopStripeStatusPolling();
+  stripeStatusPollTimer = setInterval(() => {
+    maybeFinalizeOnboardingStripe().catch(() => {});
+  }, 2000);
+}
+
+async function maybeFinalizeOnboardingStripe() {
+  if (autoFinishInProgress || window.stripeAutoFinishTriggered) {
+    return;
+  }
+
+  const status = await refreshStripeStatus();
+  if (!isStripeDetailsSubmitted(status)) {
+    return;
+  }
+
+  stopStripeStatusPolling();
+  window.setStripeOnboardingComplete(true);
+  window.lockPayoutOptions('artist');
+  await tryAutoFinishOnboarding();
+}
+
 async function createStripeSession() {
   const res = await fetch(sessionUrl, {
     method: 'POST',
@@ -309,6 +344,7 @@ async function createStripeSession() {
 }
 
 function resetStripeMount() {
+  stopStripeStatusPolling();
   onboardingMounted = false;
   connectInstance = null;
   stripeSessionData = null;
@@ -320,7 +356,7 @@ async function refreshStripeStatus() {
   const res = await fetch(statusUrl, { headers: { Accept: 'application/json' } });
   const data = await res.json();
   if (res.ok && data.success) {
-    window.setStripeOnboardingComplete(!!data.complete);
+    window.setStripeOnboardingComplete(!!(data.complete || data.details_submitted || data.submitted));
   }
   return data;
 }
@@ -384,21 +420,20 @@ async function mountStripeOnboarding() {
       ...(collectionOptions.requirements ? { requirements: collectionOptions.requirements } : {}),
     });
     accountOnboarding.setOnExit(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const status = await refreshStripeStatus();
-      if (status?.complete) {
-        window.setStripeOnboardingComplete(true);
-        window.lockPayoutOptions('artist');
-        await tryAutoFinishOnboarding();
-      }
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await maybeFinalizeOnboardingStripe();
     });
     accountOnboarding.setOnStepChange(() => {
       window.clearOnboardingFieldError && window.clearOnboardingFieldError('stripe_connect');
+      setTimeout(() => {
+        maybeFinalizeOnboardingStripe().catch(() => {});
+      }, 800);
     });
 
     container.innerHTML = '';
     container.appendChild(accountOnboarding);
     onboardingMounted = true;
+    startStripeStatusPolling();
   } catch (err) {
     container.innerHTML = '';
     const errEl = document.getElementById('stripe_connect_error');

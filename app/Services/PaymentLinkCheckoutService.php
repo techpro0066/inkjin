@@ -465,6 +465,12 @@ class PaymentLinkCheckoutService
         if ($link->isExpired() || $link->status !== PaymentLink::STATUS_ACTIVE) {
             throw new RuntimeException('This payment link has expired.');
         }
+
+        $userDetail = $this->artistDetail($link);
+        $payoutService = app(ArtistPayoutService::class);
+        if (! $payoutService->canAcceptClientPayments($userDetail)) {
+            throw new RuntimeException('This artist is not currently accepting online payments.');
+        }
     }
 
     private function artistDetail(PaymentLink $link): UserDetail

@@ -435,6 +435,9 @@
   <script src="{{ asset('js/question-answer-display.js') }}"></script>
   <script>
     const bookingRequestsById = @json(collect($requestsPayload)->keyBy('id'));
+    const canOfferSlots = @json($canOfferSlots ?? true);
+    const quotesBlockedMessage = @json($quotesBlockedMessage ?? null);
+    const paymentSettingsUrl = @json(route('settings.payment'));
     const declineRequestUrlTemplate = @json(route('artist.requests.decline', ['bookingRequest' => 0]));
     const offerSlotsUrlTemplate = @json(route('artist.requests.offer-slots', ['bookingRequest' => 0]));
     let currentStatusFilter = 'all';
@@ -706,7 +709,23 @@
       return '<div class="bg-white rounded-2xl p-5 border border-outline-variant/20 mt-4"><h4 class="font-bold text-on-surface mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-error text-lg">block</span> Decline Request</h4><p class="text-sm text-on-surface-variant mb-4">Decline this request and share a reason with the client.</p><button type="button" onclick="openDeclineModal(' + requestId + ')" class="w-full inline-flex items-center justify-center gap-2 border border-error/30 text-error px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-error/5 transition-colors"><span class="material-symbols-outlined text-lg">block</span> Decline request</button></div>';
     }
 
+    function buildSetPayoutPanelHtml() {
+      var detail = quotesBlockedMessage
+        ? escapeHtml(quotesBlockedMessage)
+        : 'You need to set up payouts before you can offer times or respond to this request.';
+      return '<div class="space-y-4">' +
+        '<div><h4 class="font-bold text-on-surface mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">payments</span> Payouts not set up</h4>' +
+        '<p class="text-sm text-on-surface-variant">' + detail + '</p></div>' +
+        '<a href="' + escapeHtml(paymentSettingsUrl) + '" class="w-full inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">' +
+        '<span class="material-symbols-outlined text-lg">settings</span> Set Payout</a>' +
+        '</div>';
+    }
+
     function buildArtistOfferSlotsHtml(req) {
+      if (!canOfferSlots) {
+        return buildSetPayoutPanelHtml();
+      }
+
       var html = buildSlotsPanelHtml('session', 'Tattoo session', 'When you can do this tattoo session', 'artist_session_slots', 'artist-slots-panel--session', 'brush', req.tattooDurationLabel);
       if (requestHasConsultation(req)) {
         html += buildSlotsPanelHtml('consult', 'Consultation', 'When you can meet for the consultation (' + escapeHtml(req.consultationLabel) + ')', 'artist_consultation_slots', 'artist-slots-panel--consult', 'groups', req.consultDurationLabel);
@@ -1550,7 +1569,7 @@
         missing.classList.add('hidden');
         panel.classList.remove('hidden');
         renderRequestDetail(req);
-        if (req.isPending) hydrateOfferedSlotsFromRequest(req);
+        if (canOfferSlots && req.isPending) hydrateOfferedSlotsFromRequest(req);
       }
       document.getElementById('requestDetailModal').classList.add('open');
       document.body.style.overflow = 'hidden';

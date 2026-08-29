@@ -25,6 +25,7 @@ use App\Models\QuestionSorting;
 use App\Services\LocationPreferencesService;
 use App\Services\StripeConnectService;
 use App\Services\StripeCountrySpecService;
+use App\Services\StripeRequirementSyncService;
 use App\Support\SocialLinks;
 use App\Support\StripeConnectCountries;
 use Stripe\Exception\ApiErrorException;
@@ -223,13 +224,30 @@ class OnboardingController extends Controller
         return view('onboarding.payment', $this->onboardingViewData($request) + $this->paymentStripeViewData($userDetail, $stripeConnect, $stripeStatus));
     }
 
-    public function paymentSettings(Request $request, StripeConnectService $stripeConnect)
+    public function paymentSettings(Request $request, StripeConnectService $stripeConnect, StripeRequirementSyncService $stripeRequirementSync)
     {
         $userDetail = $request->user()->userDetail;
         $this->ensureDefaultArtistPaymentType($userDetail);
         $stripeStatus = null;
+        $studioStripeStatus = null;
 
-        if ($userDetail?->stripe_account_id && $stripeConnect->isConfigured()) {
+        if (
+            $userDetail
+            && ($userDetail->payment_type ?? '') === 'artist_account'
+            && $userDetail->stripe_account_id
+            && $stripeConnect->isConfigured()
+        ) {
+            try {
+                $stripeRequirementSync->syncUserDetail($userDetail);
+                $userDetail->refresh();
+            } catch (\Throwable $e) {
+                Log::warning('Could not sync Stripe requirements for payment settings', [
+                    'user_id' => $request->user()->id,
+                    'stripe_account_id' => $userDetail->stripe_account_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             try {
                 $stripeStatus = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
             } catch (ApiErrorException $e) {
@@ -239,25 +257,137 @@ class OnboardingController extends Controller
                     'error' => $e->getMessage(),
                 ]);
             }
+        } elseif (
+            $userDetail
+            && ($userDetail->payment_type ?? '') === 'studio_account'
+            && ($userDetail->payment_status ?? '') === 'approved'
+            && $userDetail->studio_id
+            && $stripeConnect->isConfigured()
+        ) {
+            $studio = $userDetail->studio;
+            if ($studio) {
+                try {
+                    $stripeRequirementSync->syncStudio($studio);
+                    $userDetail->refresh();
+                    $studio->refresh();
+                } catch (\Throwable $e) {
+                    Log::warning('Could not sync studio Stripe requirements for payment settings', [
+                        'user_id' => $request->user()->id,
+                        'studio_id' => $studio->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                $accountId = $studio->resolveStripeAccountId();
+                if ($accountId) {
+                    try {
+                        $studioStripeStatus = $stripeConnect->getOnboardingStatus($accountId);
+                    } catch (ApiErrorException $e) {
+                        Log::warning('Could not load studio Stripe status for payment settings', [
+                            'user_id' => $request->user()->id,
+                            'studio_id' => $studio->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
         }
 
         return view('artist.settings.payment', [
             'userDetail' => $userDetail,
-            ...$this->paymentStripeViewData($userDetail, $stripeConnect, $stripeStatus),
+            ...$this->paymentStripeViewData($userDetail, $stripeConnect, $stripeStatus, $studioStripeStatus),
+        ]);
+    }
+
+    /**
+     * Dedicated page for Stripe-required follow-up information (already connected accounts).
+     */
+    public function stripeRequirements(Request $request, StripeConnectService $stripeConnect, StripeRequirementSyncService $stripeRequirementSync)
+    {
+        $userDetail = $request->user()->userDetail;
+        $this->ensureDefaultArtistPaymentType($userDetail);
+
+        if (
+            ! $userDetail
+            || ($userDetail->payment_type ?? '') !== 'artist_account'
+            || empty($userDetail->stripe_account_id)
+        ) {
+            return redirect()
+                ->route('settings.payment')
+                ->with('error', 'Connect your Stripe payout account first.');
+        }
+
+        if (! $stripeConnect->isConfigured()) {
+            return redirect()
+                ->route('settings.payment')
+                ->with('error', 'Stripe is not configured. Please contact support.');
+        }
+
+        try {
+            $stripeRequirementSync->syncUserDetail($userDetail);
+            $userDetail->refresh();
+        } catch (\Throwable $e) {
+            Log::warning('Could not sync Stripe requirements page', [
+                'user_id' => $request->user()->id,
+                'stripe_account_id' => $userDetail->stripe_account_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $stripeStatus = null;
+        try {
+            $stripeStatus = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
+        } catch (ApiErrorException $e) {
+            Log::warning('Could not load Stripe status for requirements page', [
+                'user_id' => $request->user()->id,
+                'stripe_account_id' => $userDetail->stripe_account_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $needsAction = $stripeStatus !== null
+            ? $stripeConnect->accountNeedsUserSubmission($stripeStatus)
+            : $this->artistStripeNeedsAction($userDetail, $stripeStatus, $stripeConnect);
+
+        if (! $this->hasActiveArtistStripe($userDetail, $stripeStatus)) {
+            return redirect()->route('settings.payment');
+        }
+
+        if (! $needsAction) {
+            return redirect()
+                ->route('settings.payment')
+                ->with('success', 'Stripe does not need any more information from you right now.');
+        }
+
+        return view('artist.settings.stripe-requirements', [
+            'userDetail' => $userDetail,
+            'needsAction' => true,
+            'stripeStatus' => $stripeStatus,
+            'stripePublishableKey' => config('services.stripe.key'),
+            'stripeConnectConfigured' => true,
+            'stripeConnectLocale' => $stripeConnect->connectLocale(),
+            'payoutBankCountryName' => $userDetail->payout_bank_country
+                ? StripeConnectCountries::nameFor($userDetail->payout_bank_country)
+                : null,
         ]);
     }
 
     /**
      * @return array<string, mixed>
      */
-    protected function paymentStripeViewData(?UserDetail $userDetail, StripeConnectService $stripeConnect, ?array $stripeStatus): array
-    {
-        $lockState = $this->paymentPayoutLockState($userDetail, $stripeStatus);
+    protected function paymentStripeViewData(
+        ?UserDetail $userDetail,
+        StripeConnectService $stripeConnect,
+        ?array $stripeStatus,
+        ?array $studioStripeStatus = null,
+    ): array {
+        $lockState = $this->paymentPayoutLockState($userDetail, $stripeStatus, $studioStripeStatus);
 
         return [
             'stripePublishableKey' => config('services.stripe.key'),
             'stripeConnectConfigured' => $stripeConnect->isConfigured(),
             'stripeStatus' => $stripeStatus,
+            'studioStripeStatus' => $studioStripeStatus,
             'stripeConnectLocale' => $stripeConnect->connectLocale(),
             'payoutBankCountry' => $userDetail?->payout_bank_country,
             'payoutBankCountryName' => $userDetail?->payout_bank_country
@@ -275,18 +405,28 @@ class OnboardingController extends Controller
     /**
      * @return array{
      *     artistStripeConnected: bool,
+     *     artistStripeNeedsAction: bool,
+     *     studioStripeNeedsAction: bool,
      *     studioPayoutConnected: bool,
      *     payoutOptionLocked: bool
      * }
      */
-    protected function paymentPayoutLockState(?UserDetail $userDetail, ?array $stripeStatus = null): array
-    {
+    protected function paymentPayoutLockState(
+        ?UserDetail $userDetail,
+        ?array $stripeStatus = null,
+        ?array $studioStripeStatus = null,
+    ): array {
+        $stripeConnect = app(StripeConnectService::class);
         $artistStripeConnected = $this->hasActiveArtistStripe($userDetail, $stripeStatus);
         $studioPayoutConnected = $this->hasActiveStudioPayout($userDetail);
         $studioPayoutCommitted = $this->hasStudioPayoutCommitted($userDetail);
 
         return [
             'artistStripeConnected' => $artistStripeConnected,
+            'artistStripeNeedsAction' => $artistStripeConnected
+                && $this->artistStripeNeedsAction($userDetail, $stripeStatus, $stripeConnect),
+            'studioStripeNeedsAction' => $studioPayoutConnected
+                && $this->studioStripeNeedsAction($userDetail, $studioStripeStatus, $stripeConnect),
             'studioPayoutConnected' => $studioPayoutConnected,
             'studioPayoutCommitted' => $studioPayoutCommitted,
             'payoutOptionLocked' => $artistStripeConnected || $studioPayoutCommitted,
@@ -299,8 +439,14 @@ class OnboardingController extends Controller
             return false;
         }
 
+        // Already linked/saved — still "connected" even if Stripe later needs more info.
+        if (! empty($userDetail->stripe_requirement) || ($userDetail->payment_status ?? '') === 'approved') {
+            return true;
+        }
+
         if ($stripeStatus !== null) {
-            return (bool) ($stripeStatus['complete'] ?? false);
+            return (bool) ($stripeStatus['details_submitted'] ?? $stripeStatus['submitted'] ?? false)
+                || (bool) ($stripeStatus['complete'] ?? false);
         }
 
         $stripeConnect = app(StripeConnectService::class);
@@ -309,9 +455,71 @@ class OnboardingController extends Controller
         }
 
         try {
-            return $stripeConnect->isOnboardingSubmitted($userDetail->stripe_account_id);
+            $status = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
+
+            return (bool) ($status['details_submitted'] ?? $status['submitted'] ?? false)
+                || (bool) ($status['complete'] ?? false);
         } catch (\Throwable) {
             return false;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $stripeStatus
+     */
+    protected function artistStripeNeedsAction(?UserDetail $userDetail, ?array $stripeStatus, StripeConnectService $stripeConnect): bool
+    {
+        if (($userDetail?->payment_type ?? null) !== 'artist_account' || empty($userDetail->stripe_account_id)) {
+            return false;
+        }
+
+        // Button/form only when Stripe still has fields for the artist to submit.
+        if ($stripeStatus !== null) {
+            return $stripeConnect->accountNeedsUserSubmission($stripeStatus);
+        }
+
+        return ! empty($userDetail->stripe_requirement);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $studioStripeStatus
+     */
+    protected function studioStripeNeedsAction(
+        ?UserDetail $userDetail,
+        ?array $studioStripeStatus,
+        StripeConnectService $stripeConnect,
+    ): bool {
+        if (($userDetail?->payment_type ?? null) !== 'studio_account' || empty($userDetail->studio_id)) {
+            return false;
+        }
+
+        if (($userDetail->payment_status ?? '') !== 'approved') {
+            return false;
+        }
+
+        if ($studioStripeStatus !== null) {
+            return $stripeConnect->accountNeedsUserSubmission($studioStripeStatus);
+        }
+
+        $studio = $userDetail->studio;
+
+        return (bool) ($studio?->stripe_requirement || $userDetail->stripe_requirement);
+    }
+
+    protected function syncStripeRequirementsAfterConnect(UserDetail $userDetail): void
+    {
+        try {
+            app(StripeRequirementSyncService::class)->syncUserDetail($userDetail);
+        } catch (\Throwable $e) {
+            Log::warning('Stripe requirement sync after connect failed', [
+                'user_detail_id' => $userDetail->id,
+                'stripe_account_id' => $userDetail->stripe_account_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $userDetail->payment_status = 'pending';
+            $userDetail->stripe_requirement = true;
+            $userDetail->save();
         }
     }
 
@@ -579,7 +787,12 @@ class OnboardingController extends Controller
                 $phase = null;
             }
 
-            $session = $stripeConnect->createOnboardingSession($user, $userDetail, $phase);
+            $session = $stripeConnect->createOnboardingSession(
+                $user,
+                $userDetail,
+                $phase,
+                $request->boolean('requirements_only')
+            );
 
             return response()->json([
                 'success' => true,
@@ -1182,6 +1395,7 @@ class OnboardingController extends Controller
 
                 $userDetail->stripe_account_id = null;
                 $userDetail->payment_status = null;
+                $userDetail->stripe_requirement = false;
                 $userDetail->save();
 
                 $msg = 'Stripe payout disconnected. You can now switch payout options or connect again.';
@@ -1263,12 +1477,13 @@ class OnboardingController extends Controller
 
                     $userDetail->stripe_account_id = $accountId;
                     $userDetail->studio_id = null;
-                    $userDetail->payment_status = 'approved';
 
                     $currency = $stripeConnect->resolveCurrencyForAccount($accountId);
                     if ($currency !== null) {
                         $userDetail->currency = $currency;
                     }
+
+                    $this->syncStripeRequirementsAfterConnect($userDetail);
                 }
             } elseif ($paymentType === 'studio_account') {
                 $studioName = $userDetail->studio_name ?? 'Studio';
@@ -1292,10 +1507,30 @@ class OnboardingController extends Controller
                 $this->sendStudioPayoutInfoRequestEmail($user, $userDetail, $studio);
             }
 
+            $userDetail->refresh();
+
             if ($request->expectsJson() || $request->ajax()) {
+                $stripeConnect = app(StripeConnectService::class);
+                $liveStripeStatus = null;
+                if (
+                    $paymentType === 'artist_account'
+                    && $userDetail->stripe_account_id
+                    && $stripeConnect->isConfigured()
+                ) {
+                    try {
+                        $liveStripeStatus = $stripeConnect->getOnboardingStatus($userDetail->stripe_account_id);
+                    } catch (\Throwable) {
+                        $liveStripeStatus = null;
+                    }
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Payment settings updated successfully!',
+                    'artist_stripe_needs_action' => $paymentType === 'artist_account'
+                        && $this->artistStripeNeedsAction($userDetail, $liveStripeStatus, $stripeConnect),
+                    'payment_status' => $userDetail->payment_status,
+                    'stripe_requirement' => (bool) ($userDetail->stripe_requirement ?? false),
                 ]);
             }
 
@@ -1641,7 +1876,7 @@ class OnboardingController extends Controller
                     }
 
                     $userDetail->studio_id = null;
-                    $userDetail->payment_status = 'approved';
+                    $this->syncStripeRequirementsAfterConnect($userDetail);
                 }
             } elseif ($paymentType === 'studio_account') {
                 // Studio account: find or create studio record
@@ -1815,6 +2050,24 @@ class OnboardingController extends Controller
         $studioAlreadyConnected = $studio->hasStripeConnect();
         $paymentStatus = (string) ($userDetail->payment_status ?? 'pending');
 
+        if ($studioAlreadyConnected && $paymentStatus === 'approved' && $stripeConnect->isConfigured()) {
+            try {
+                app(StripeRequirementSyncService::class)->syncStudio($studio);
+                $studio->refresh();
+                $accountId = $studio->resolveStripeAccountId();
+                $status = $accountId ? $stripeConnect->getOnboardingStatus($accountId) : null;
+                if ($status && $stripeConnect->accountNeedsUserSubmission($status)) {
+                    return redirect()->to(URL::temporarySignedRoute(
+                        'studio.payout-info.stripe.requirements',
+                        now()->addDays(14),
+                        ['userDetail' => $userDetail->id]
+                    ));
+                }
+            } catch (\Throwable) {
+                // Fall through to normal payout form.
+            }
+        }
+
         $studioProfile = null;
         if ($studioAlreadyConnected) {
             $accountId = $studio->resolveStripeAccountId();
@@ -1960,11 +2213,159 @@ class OnboardingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'complete' => (bool) ($status['complete'] ?? false),
-                'details_submitted' => (bool) ($status['details_submitted'] ?? false),
+                ...$status,
             ]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Could not read Stripe status.'], 500);
+        }
+    }
+
+    /**
+     * Signed link: studio submits currently-due Stripe requirements.
+     */
+    public function showStudioStripeRequirements(
+        Request $request,
+        UserDetail $userDetail,
+        StripeConnectService $stripeConnect,
+        StripeRequirementSyncService $stripeRequirementSync,
+    ) {
+        if (! $request->hasValidSignature()) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Invalid link',
+                'message' => 'This link is invalid or has expired. Ask the artist to resend the requirements email.',
+            ]);
+        }
+
+        if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Request inactive',
+                'message' => 'This payout request is no longer active.',
+            ]);
+        }
+
+        $studio = Studio::find($userDetail->studio_id);
+        if (! $studio || ! $studio->resolveStripeAccountId()) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Stripe not connected',
+                'message' => 'Your studio has not completed Stripe payout setup yet.',
+            ]);
+        }
+
+        if (! $stripeConnect->isConfigured()) {
+            return view('studio.payout-form-result', [
+                'success' => false,
+                'title' => 'Unavailable',
+                'message' => 'Stripe is not configured. Please contact support.',
+            ]);
+        }
+
+        try {
+            $stripeRequirementSync->syncStudio($studio);
+            $studio->refresh();
+        } catch (\Throwable $e) {
+            Log::warning('Could not sync studio Stripe requirements page', [
+                'studio_id' => $studio->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $stripeStatus = null;
+        try {
+            $stripeStatus = $stripeConnect->getOnboardingStatus($studio->resolveStripeAccountId());
+        } catch (\Throwable $e) {
+            Log::warning('Could not load studio Stripe status for requirements page', [
+                'studio_id' => $studio->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $needsAction = $stripeStatus !== null
+            ? $stripeConnect->accountNeedsUserSubmission($stripeStatus)
+            : (bool) $studio->stripe_requirement;
+
+        if (! $needsAction) {
+            return view('studio.payout-form-result', [
+                'success' => true,
+                'title' => 'All set',
+                'message' => 'Stripe does not need any more information from your studio right now.',
+            ]);
+        }
+
+        $artist = $userDetail->user;
+        $artistName = trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''));
+        if ($artistName === '') {
+            $artistName = $userDetail->user_name ?? $artist->email ?? 'Artist';
+        }
+
+        return view('studio.stripe-requirements', [
+            'userDetail' => $userDetail,
+            'studio' => $studio,
+            'artistName' => $artistName,
+            'stripePublishableKey' => config('services.stripe.key'),
+            'stripeConnectConfigured' => true,
+            'stripeConnectLocale' => $stripeConnect->connectLocale(),
+            'stripeSessionUrl' => URL::temporarySignedRoute(
+                'studio.payout-info.stripe.requirements.session',
+                now()->addDays(14),
+                ['userDetail' => $userDetail->id]
+            ),
+            'stripeStatusUrl' => URL::temporarySignedRoute(
+                'studio.payout-info.stripe.status',
+                now()->addDays(14),
+                ['userDetail' => $userDetail->id]
+            ),
+            'requirementsUrl' => URL::temporarySignedRoute(
+                'studio.payout-info.stripe.requirements',
+                now()->addDays(14),
+                ['userDetail' => $userDetail->id]
+            ),
+        ]);
+    }
+
+    public function createStudioStripeRequirementsSession(
+        Request $request,
+        UserDetail $userDetail,
+        StripeConnectService $stripeConnect,
+    ) {
+        if (! $request->hasValidSignature()) {
+            return response()->json(['success' => false, 'message' => 'This link is invalid or has expired.'], 403);
+        }
+
+        if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
+            return response()->json(['success' => false, 'message' => 'This payout request is no longer active.'], 422);
+        }
+
+        $studio = Studio::find($userDetail->studio_id);
+        if (! $studio) {
+            return response()->json(['success' => false, 'message' => 'Studio record was not found.'], 404);
+        }
+
+        if (! $stripeConnect->isConfigured()) {
+            return response()->json(['success' => false, 'message' => 'Stripe is not configured.'], 500);
+        }
+
+        try {
+            $session = $stripeConnect->createStudioRequirementsSession($studio);
+
+            return response()->json([
+                'success' => true,
+                'client_secret' => $session['client_secret'],
+                'account_id' => $session['account_id'],
+                'collection_options' => $session['collection_options'],
+            ]);
+        } catch (ApiErrorException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not start Stripe requirements form: '.$e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage() ?: 'Could not start Stripe requirements form.',
+            ], 500);
         }
     }
 
@@ -2056,6 +2457,7 @@ class OnboardingController extends Controller
         $accountId = $studio->resolveStripeAccountId();
         $userDetail->stripe_account_id = $accountId;
         $userDetail->payment_status = 'approved';
+        $userDetail->stripe_requirement = false;
 
         $currency = $stripeConnect->resolveCurrencyForAccount($accountId);
         if ($currency !== null) {
@@ -2158,7 +2560,10 @@ class OnboardingController extends Controller
 
         try {
             Mail::to($user->email)->send(
-                new ArtistWelcomeMail(url(authenticated_home_url($user)))
+                new ArtistWelcomeMail(
+                    url(authenticated_home_url($user)),
+                    route('settings.payment'),
+                )
             );
         } catch (\Throwable $e) {
             Log::error('Failed to send artist welcome email after onboarding', [
@@ -2185,13 +2590,18 @@ class OnboardingController extends Controller
         }
 
         if (($userDetail->payment_status ?? null) === 'approved') {
-            $msg = 'Your studio payout is already connected.';
+            $studio = Studio::find($userDetail->studio_id);
+            $needsRequirements = (bool) ($studio?->stripe_requirement || $userDetail->stripe_requirement);
 
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json(['success' => false, 'message' => $msg], 422);
+            if (! $needsRequirements && ! (int) $request->input('requirements_reminder', 0)) {
+                $msg = 'Your studio payout is already connected.';
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+
+                return redirect()->back()->with('error', $msg);
             }
-
-            return redirect()->back()->with('error', $msg);
         }
 
         $studio = Studio::find($userDetail->studio_id);
@@ -2234,11 +2644,19 @@ class OnboardingController extends Controller
             }
         }
 
-        $this->sendStudioPayoutInfoRequestEmail($user, $userDetail, $studio);
+        $requirementsReminder = (int) $request->input('requirements_reminder', 0) === 1
+            || (
+                ($userDetail->payment_status ?? '') === 'approved'
+                && (bool) ($studio->stripe_requirement || $userDetail->stripe_requirement)
+            );
+
+        $this->sendStudioPayoutInfoRequestEmail($user, $userDetail, $studio, $requirementsReminder);
 
         $msg = $emailChanged
             ? 'Studio email updated. An invitation was sent to '.$studio->email.'.'
-            : 'Reminder sent to your studio.';
+            : ($requirementsReminder
+                ? 'Requirements reminder sent to your studio.'
+                : 'Reminder sent to your studio.');
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
@@ -2274,8 +2692,12 @@ class OnboardingController extends Controller
         }
     }
 
-    private function sendStudioPayoutInfoRequestEmail(User $artistUser, UserDetail $userDetail, Studio $studio): void
-    {
+    private function sendStudioPayoutInfoRequestEmail(
+        User $artistUser,
+        UserDetail $userDetail,
+        Studio $studio,
+        bool $requirementsReminder = false,
+    ): void {
         $studio->refresh();
 
         $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
@@ -2283,13 +2705,19 @@ class OnboardingController extends Controller
             $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
         }
 
-        $showApproveDecline = $studio->hasStripeConnect();
+        $showApproveDecline = $studio->hasStripeConnect() && ! $requirementsReminder;
 
-        $formUrl = URL::temporarySignedRoute(
-            'studio.payout-info.show',
-            now()->addDays(30),
-            ['userDetail' => $userDetail->id]
-        );
+        $formUrl = $requirementsReminder
+            ? URL::temporarySignedRoute(
+                'studio.payout-info.stripe.requirements',
+                now()->addDays(30),
+                ['userDetail' => $userDetail->id]
+            )
+            : URL::temporarySignedRoute(
+                'studio.payout-info.show',
+                now()->addDays(30),
+                ['userDetail' => $userDetail->id]
+            );
 
         $approveUrl = $showApproveDecline
             ? URL::temporarySignedRoute(
@@ -2314,12 +2742,14 @@ class OnboardingController extends Controller
                 $formUrl,
                 $showApproveDecline,
                 $approveUrl,
-                $declineUrl
+                $declineUrl,
+                $requirementsReminder,
             ));
         } catch (\Throwable $e) {
             Log::error('Failed to send studio payout info request email', [
                 'studio_id' => $studio->id,
                 'user_detail_id' => $userDetail->id,
+                'requirements_reminder' => $requirementsReminder,
                 'error' => $e->getMessage(),
             ]);
         }

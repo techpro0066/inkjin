@@ -19,15 +19,18 @@ class StudioPayoutInfoRequestMail extends Mailable
         public bool $showApproveDecline = false,
         public ?string $approveUrl = null,
         public ?string $declineUrl = null,
+        public bool $requirementsReminder = false,
     ) {
     }
 
     public function envelope(): Envelope
     {
         $appName = config('app.name', 'Inkjin');
-        $subject = $this->showApproveDecline
-            ? 'Payout approval requested — '.$this->artistName.' on '.$appName
-            : 'Connect your studio bank account — '.$this->artistName.' on '.$appName;
+        $subject = match (true) {
+            $this->requirementsReminder => 'Complete Stripe requirements — '.$this->artistName.' on '.$appName,
+            $this->showApproveDecline => 'Payout approval requested — '.$this->artistName.' on '.$appName,
+            default => 'Connect your studio bank account — '.$this->artistName.' on '.$appName,
+        };
 
         return new Envelope(
             subject: $subject,

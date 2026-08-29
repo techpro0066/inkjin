@@ -26,43 +26,6 @@
     .filter-pills { flex-wrap: wrap; }
     .request-card { overflow: hidden; word-break: break-word; }
 
-    /* Dashboard notices — uniform compact height & layout */
-    .dashboard-notices { display: flex; flex-direction: column; gap: 0.75rem; }
-    .dashboard-notice {
-      padding: 0.875rem 1rem;
-      display: flex;
-      align-items: center;
-    }
-    @media (min-width: 640px) {
-      .dashboard-notice {
-        padding: 0.875rem 1.125rem;
-        min-height: 4.75rem;
-      }
-    }
-    .dashboard-notice__inner { width: 100%; min-height: 3.25rem; }
-    @media (min-width: 640px) {
-      .dashboard-notice__inner { min-height: 3.5rem; }
-    }
-    .dashboard-notice__icon-wrap { width: 2.5rem; height: 2.5rem; }
-    .dashboard-notice__icon { font-size: 1.375rem; line-height: 1; }
-    .dashboard-notice__title { font-size: 0.8125rem; line-height: 1.25; }
-    .dashboard-notice__text {
-      font-size: 0.75rem;
-      line-height: 1.35;
-      margin-top: 0.125rem;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      overflow: hidden;
-    }
-    .dashboard-notice__btn {
-      padding: 0.5rem 0.875rem;
-      min-height: 2.25rem;
-    }
-    @media (max-width: 639px) {
-      .dashboard-notice__btn { width: 100%; }
-    }
-
     .status-new { background: #f3e8ff; color: #6b21a8; }
     .status-new .status-dot { background: #9333ea; }
     .status-confirmed { background: #f0fdf4; color: #15803d; }
@@ -116,12 +79,6 @@
       }
     @endphp
 
-    @php
-      $paymentNoticeDescription = ($ud && ($ud->payment_type ?? '') === 'studio_account')
-        ? 'Your studio still needs to approve payout details before you can receive earnings.'
-        : 'Complete and approve your payout method to receive earnings.';
-    @endphp
-
     <div class="dashboard-notices mb-8">
       @if(!empty($needsWeeklyAvailabilitySetup))
         @include('artist.dashboard.partials.notice', [
@@ -161,19 +118,6 @@
           'buttonUrl' => route('availability.index') . '?tab=status',
         ])
       @endif
-
-      @if($paymentNotApproved)
-        @include('artist.dashboard.partials.notice', [
-          'id' => 'paymentNotApprovedBanner',
-          'theme' => 'amber',
-          'icon' => 'payments',
-          'title' => 'Payout setup is not approved yet',
-          'description' => $paymentNoticeDescription,
-          'buttonText' => 'Payment settings',
-          'buttonIcon' => 'settings',
-          'buttonUrl' => route('settings.payment'),
-        ])
-      @endif
     </div>
 
     <!-- Welcome Header -->
@@ -184,7 +128,13 @@
           <p class="text-on-surface-variant mt-1 max-w-lg">Here's what's happening with your bookings today.</p>
         </div>
         <a href="{{ route('artist.payment-link') }}"
-          class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm shrink-0 w-full sm:w-auto">
+          @class([
+            'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm shrink-0 w-full sm:w-auto',
+            !empty($canCreatePaymentLinks)
+              ? 'bg-primary text-white hover:bg-primary-container'
+              : 'bg-surface-container-high text-on-surface-variant pointer-events-none opacity-60',
+          ])
+          @if(empty($canCreatePaymentLinks)) aria-disabled="true" tabindex="-1" @endif>
           <span class="material-symbols-outlined text-lg">add</span> New payment link
         </a>
       </div>

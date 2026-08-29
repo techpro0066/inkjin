@@ -11,6 +11,11 @@ class Studio extends Model
         'name',
         'email',
         'stripe_account_id',
+        'stripe_requirement',
+    ];
+
+    protected $casts = [
+        'stripe_requirement' => 'boolean',
     ];
 
     /**

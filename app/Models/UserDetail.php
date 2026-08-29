@@ -54,6 +54,8 @@ class UserDetail extends Model
         'consultation_tattoo_gap_value',
         'consultation_tattoo_gap_unit',
         'stripe_account_id',
+        'stripe_requirement',
+        'payout_setup_reminder_sent_at',
         'payout_bank_country',
         'payout_waiting_list_country',
         'payout_waiting_list_at',
@@ -90,6 +92,7 @@ class UserDetail extends Model
         'instagram_connected_at' => 'datetime',
         'design_whats_included' => 'array',
         'design_whats_included_is_active' => 'boolean',
+        'stripe_requirement' => 'boolean',
         'color_percent' => 'float',
         'customize_page_notice_dismissed' => 'boolean',
         'display_policies' => 'boolean',
@@ -100,6 +103,7 @@ class UserDetail extends Model
         'require_consultation' => 'boolean',
         'require_gap_between_consultation_tattoo' => 'boolean',
         'payout_waiting_list_at' => 'datetime',
+        'payout_setup_reminder_sent_at' => 'datetime',
     ];
 
     /**

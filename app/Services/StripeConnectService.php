@@ -50,15 +50,19 @@ class StripeConnectService
      *
      * @return array<string, mixed>
      */
-    public function embeddedCollectionOptions(?string $phase = null): array
+    public function embeddedCollectionOptions(?string $phase = null, bool $currentlyDueOnly = false): array
     {
         if ($this->usePhasedOnboarding() && $phase !== null && $phase !== '') {
             return $this->embeddedCollectionOptionsForPhase($phase);
         }
 
         $options = [
-            'fields' => (string) config('services.stripe.connect.onboarding_fields', 'eventually_due'),
-            'futureRequirements' => (string) config('services.stripe.connect.future_requirements', 'include'),
+            'fields' => $currentlyDueOnly
+                ? 'currently_due'
+                : (string) config('services.stripe.connect.onboarding_fields', 'eventually_due'),
+            'futureRequirements' => $currentlyDueOnly
+                ? 'omit'
+                : (string) config('services.stripe.connect.future_requirements', 'include'),
         ];
 
         $exclude = $this->excludedEmbeddedRequirements();
@@ -294,11 +298,12 @@ class StripeConnectService
     /**
      * @return array{account_id: string, client_secret: string, collection_options: array<string, mixed>}
      */
-    public function createOnboardingSession(User $user, UserDetail $userDetail, ?string $phase = null): array
+    public function createOnboardingSession(User $user, UserDetail $userDetail, ?string $phase = null, bool $currentlyDueOnly = false): array
     {
         $this->initialize();
 
         $accountId = $this->ensureConnectedAccount($user, $userDetail);
+        $this->ensureAccountCapabilitiesRequested($accountId);
 
         $session = AccountSession::create([
             'account' => $accountId,
@@ -310,7 +315,7 @@ class StripeConnectService
         return [
             'account_id' => $accountId,
             'client_secret' => $session->client_secret,
-            'collection_options' => $this->embeddedCollectionOptions($phase),
+            'collection_options' => $this->embeddedCollectionOptions($phase, $currentlyDueOnly),
             'phase' => $phase,
             'phased' => $this->usePhasedOnboarding(),
         ];
@@ -330,6 +335,7 @@ class StripeConnectService
         $this->initialize();
 
         $accountId = $this->ensureStudioConnectedAccount($studio, $userDetail, $setup);
+        $this->ensureAccountCapabilitiesRequested($accountId);
 
         $session = AccountSession::create([
             'account' => $accountId,
@@ -346,13 +352,52 @@ class StripeConnectService
     }
 
     /**
+     * Account session for an already-connected studio that still has Stripe fields due.
+     *
+     * @return array{account_id: string, client_secret: string, collection_options: array<string, mixed>}
+     */
+    public function createStudioRequirementsSession(Studio $studio): array
+    {
+        $this->initialize();
+
+        $accountId = trim((string) ($studio->resolveStripeAccountId() ?? ''));
+        if ($accountId === '' || ! preg_match('/^acct_[a-zA-Z0-9]+$/', $accountId)) {
+            throw new \RuntimeException('Studio does not have a connected Stripe account yet.');
+        }
+
+        if ($studio->stripe_account_id !== $accountId) {
+            $studio->stripe_account_id = $accountId;
+            $studio->save();
+        }
+
+        $this->ensureAccountCapabilitiesRequested($accountId);
+
+        $session = AccountSession::create([
+            'account' => $accountId,
+            'components' => [
+                'account_onboarding' => $this->accountOnboardingComponents(),
+            ],
+        ]);
+
+        return [
+            'account_id' => $accountId,
+            'client_secret' => $session->client_secret,
+            'collection_options' => $this->embeddedCollectionOptions(null, true),
+        ];
+    }
+
+    /**
      * @param  array{business_type: string, country: string, industry: string}  $setup
      */
     public function ensureStudioConnectedAccount(Studio $studio, UserDetail $userDetail, array $setup): string
     {
         $this->initialize();
 
-        $country = strtoupper(trim($setup['country']));
+        $country = strtoupper(trim((string) ($setup['country'] ?? '')));
+        if ($country === '') {
+            throw new \RuntimeException('Studio country must be selected before starting Stripe onboarding.');
+        }
+
         $businessType = $setup['business_type'] === 'individual' ? 'individual' : 'company';
 
         $existingId = $this->resolveStudioStripeAccountId($studio);
@@ -367,6 +412,7 @@ class StripeConnectService
                         'expected_country' => $country,
                     ]);
                 } else {
+                    $this->ensureAccountCapabilitiesRequested($existingId);
                     $this->syncStudioProfileToAccount($existingId, $studio, $userDetail, $setup);
 
                     return $existingId;
@@ -380,34 +426,15 @@ class StripeConnectService
             }
         }
 
-        $defaultCurrency = StripeConnectCountries::currencyForCountry($country);
-
-        $payload = [
-            'country' => $country,
-            'email' => $studio->email,
-            'business_type' => $businessType,
-            'default_currency' => $defaultCurrency ? strtolower($defaultCurrency) : null,
-            'capabilities' => [
-                'card_payments' => ['requested' => true],
-                'transfers' => ['requested' => true],
-            ],
-            'controller' => [
-                'fees' => ['payer' => 'application'],
-                'losses' => ['payments' => 'application'],
-                'stripe_dashboard' => ['type' => 'none'],
-                'requirement_collection' => 'application',
-            ],
-            'business_profile' => $this->buildStudioBusinessProfile($studio, $setup),
-            'metadata' => [
+        $payload = array_merge(
+            $this->baseConnectedAccountCreatePayload($businessType, [
                 'inkjin_studio_id' => (string) $studio->id,
                 'inkjin_studio_industry' => $setup['industry'],
                 'inkjin_studio_business_type' => $businessType,
+            ], $country),
+            [
+                'business_profile' => $this->buildStudioBusinessProfile($studio, $setup),
             ],
-        ];
-
-        $payload = array_replace_recursive(
-            $payload,
-            $this->buildStudioStripeAccountPrefill($studio, $userDetail, $setup)
         );
 
         $account = Account::create(array_filter($payload, fn ($value) => $value !== null));
@@ -590,7 +617,15 @@ class StripeConnectService
             $userDetail->currency = $currency;
         }
 
-        $userDetail->save();
+        try {
+            app(\App\Services\StripeRequirementSyncService::class)->syncStudio($studio);
+            $userDetail->refresh();
+        } catch (\Throwable) {
+            $studio->stripe_requirement = true;
+            $studio->save();
+            $userDetail->stripe_requirement = true;
+            $userDetail->save();
+        }
 
         app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
     }
@@ -658,27 +693,14 @@ class StripeConnectService
      */
     private function syncStudioProfileToAccount(string $accountId, Studio $studio, UserDetail $userDetail, array $setup): void
     {
-        $country = strtoupper(trim($setup['country']));
-        $businessType = $setup['business_type'] === 'individual' ? 'individual' : 'company';
-        $currency = StripeConnectCountries::currencyForCountry($country);
-
         $updates = array_filter([
-            'email' => $this->nonEmpty($studio->email),
-            'country' => $country,
-            'business_type' => $businessType,
-            'default_currency' => $currency ? strtolower($currency) : null,
             'business_profile' => $this->buildStudioBusinessProfile($studio, $setup),
             'metadata' => [
                 'inkjin_studio_id' => (string) $studio->id,
                 'inkjin_studio_industry' => $setup['industry'],
-                'inkjin_studio_business_type' => $businessType,
+                'inkjin_studio_business_type' => $setup['business_type'] === 'individual' ? 'individual' : 'company',
             ],
         ], fn ($value) => $value !== null && $value !== []);
-
-        $updates = array_replace_recursive(
-            $updates,
-            $this->buildStudioStripeAccountPrefill($studio, $userDetail, $setup)
-        );
 
         if ($updates === []) {
             return;
@@ -751,21 +773,26 @@ class StripeConnectService
     {
         $this->initialize();
 
+        $country = $this->resolvePayoutBankCountry($userDetail);
+        if ($country === null) {
+            throw new \RuntimeException('Bank account country must be selected before starting Stripe onboarding.');
+        }
+
         if (! empty($userDetail->stripe_account_id)) {
             try {
                 $account = Account::retrieve($userDetail->stripe_account_id);
-                $expectedCountry = $this->resolvePayoutBankCountry($userDetail);
-                if ($expectedCountry !== null && strtoupper((string) ($account->country ?? '')) !== $expectedCountry) {
+                if (strtoupper((string) ($account->country ?? '')) !== $country) {
                     Log::info('Stripe account country mismatch; creating a new connected account', [
                         'user_id' => $user->id,
                         'stripe_account_id' => $userDetail->stripe_account_id,
                         'account_country' => $account->country ?? null,
-                        'expected_country' => $expectedCountry,
+                        'expected_country' => $country,
                     ]);
                     $userDetail->stripe_account_id = null;
                     $userDetail->save();
                 } else {
                     $this->ensureIndividualBusinessType($userDetail->stripe_account_id);
+                    $this->ensureAccountCapabilitiesRequested($userDetail->stripe_account_id);
                     $this->syncProfileToAccount($userDetail->stripe_account_id, $user, $userDetail);
 
                     return $userDetail->stripe_account_id;
@@ -779,32 +806,12 @@ class StripeConnectService
             }
         }
 
-        $country = $this->resolvePayoutBankCountry($userDetail);
-        if ($country === null) {
-            throw new \RuntimeException('Bank account country must be selected before starting Stripe onboarding.');
-        }
-
-        $defaultCurrency = StripeConnectCountries::currencyForCountry($country);
-
-        $account = Account::create(array_filter(array_merge([
-            'country' => $country,
-            'email' => $user->email,
-            'business_type' => 'individual',
-            'default_currency' => $defaultCurrency ? strtolower($defaultCurrency) : null,
-            'capabilities' => [
-                'card_payments' => ['requested' => true],
-                'transfers' => ['requested' => true],
-            ],
-            'controller' => [
-                'fees' => ['payer' => 'application'],
-                'losses' => ['payments' => 'application'],
-                'stripe_dashboard' => ['type' => 'none'],
-                'requirement_collection' => 'application',
-            ],
-            'metadata' => [
+        $account = Account::create(array_filter(array_merge(
+            $this->baseConnectedAccountCreatePayload('individual', [
                 'inkjin_user_id' => (string) $user->id,
-            ],
-        ], $this->buildStripeAccountPrefill($user, $userDetail)), fn ($value) => $value !== null));
+            ], $country),
+            $this->buildStripeAccountPrefill($user, $userDetail),
+        ), fn ($value) => $value !== null));
 
         $userDetail->stripe_account_id = $account->id;
         $userDetail->save();
@@ -861,6 +868,42 @@ class StripeConnectService
     }
 
     /**
+     * Whether Stripe still needs user action (same rules as stripe:sync-requirements).
+     *
+     * @param  array<string, mixed>  $status
+     */
+    public function accountNeedsUserAction(array $status): bool
+    {
+        if (! empty($status['disabled_reason'])) {
+            return true;
+        }
+
+        if (! empty($status['currently_due'])) {
+            return true;
+        }
+
+        if (empty($status['charges_enabled']) || empty($status['payouts_enabled'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether the artist still has Stripe form fields to submit (not pending review alone).
+     *
+     * @param  array<string, mixed>  $status
+     */
+    public function accountNeedsUserSubmission(array $status): bool
+    {
+        if (! empty($status['disabled_reason'])) {
+            return true;
+        }
+
+        return ! empty($status['currently_due']);
+    }
+
+    /**
      * @param  array<int, string>  $currentlyDue
      * @param  array<int, string>  $eventuallyDue
      */
@@ -890,10 +933,14 @@ class StripeConnectService
 
     /**
      * True when the user has submitted their Stripe details (InkJin can finish onboarding).
+     * Details may still be under review or have later requirements.
      */
     public function isOnboardingSubmitted(string $accountId): bool
     {
-        return $this->getOnboardingStatus($accountId)['complete'];
+        $status = $this->getOnboardingStatus($accountId);
+
+        return (bool) ($status['details_submitted'] ?? false)
+            || (bool) ($status['complete'] ?? false);
     }
 
     public function isPayoutReady(string $accountId): bool
@@ -1030,17 +1077,6 @@ class StripeConnectService
     {
         $prefill = [];
 
-        $individual = array_filter([
-            'first_name' => $this->nonEmpty($user->first_name),
-            'last_name' => $this->nonEmpty($user->last_name),
-            'email' => $this->nonEmpty($user->email),
-            'phone' => $this->nonEmpty($userDetail->mobile_number),
-        ], fn ($value) => $value !== null && $value !== '');
-
-        if ($individual !== []) {
-            $prefill['individual'] = $individual;
-        }
-
         $businessProfile = [];
         $mcc = $this->artistMerchantCategoryCode();
         if ($mcc !== null) {
@@ -1048,14 +1084,11 @@ class StripeConnectService
         }
 
         if ($this->excludeBusinessDetailsFromUi()) {
-            $fullName = trim($user->first_name.' '.$user->last_name);
             $aliasMode = $userDetail->personal_page_name_alias;
             $displayName = match ($aliasMode) {
-                'username' => $this->nonEmpty($userDetail->user_name) ?? $fullName,
-                'display_name' => $this->nonEmpty($userDetail->display_name) ?? ($fullName !== ''
-                    ? $fullName
-                    : ($this->nonEmpty($userDetail->user_name) ?? '')),
-                default => $fullName !== '' ? $fullName : ($this->nonEmpty($userDetail->user_name) ?? ''),
+                'username' => $this->nonEmpty($userDetail->user_name),
+                'display_name' => $this->nonEmpty($userDetail->display_name),
+                default => $this->nonEmpty($userDetail->display_name) ?? $this->nonEmpty($userDetail->user_name),
             };
 
             $businessProfile = array_merge($businessProfile, array_filter([
@@ -1064,8 +1097,6 @@ class StripeConnectService
                 'product_description' => $this->nonEmpty($userDetail->personal_page_tagline)
                     ?? $this->nonEmpty($userDetail->personal_page_description)
                     ?? 'Professional tattoo artist and body art services.',
-                'support_phone' => $this->nonEmpty($userDetail->mobile_number),
-                'support_email' => $this->nonEmpty($user->email),
             ], fn ($value) => $value !== null && $value !== ''));
         }
 
@@ -1090,21 +1121,60 @@ class StripeConnectService
         return $mcc;
     }
 
+    /**
+     * Connect account create payload. Country must be set by the platform (InkJin)
+     * because accounts with no Stripe Dashboard cannot change country in embedded UI.
+     *
+     * @param  array<string, string>  $metadata
+     * @return array<string, mixed>
+     */
+    private function baseConnectedAccountCreatePayload(string $businessType, array $metadata, string $country): array
+    {
+        $country = strtoupper(trim($country));
+        $defaultCurrency = StripeConnectCountries::currencyForCountry($country);
+
+        return array_filter([
+            'country' => $country,
+            'business_type' => $businessType,
+            'default_currency' => $defaultCurrency ? strtolower($defaultCurrency) : null,
+            'capabilities' => [
+                'card_payments' => ['requested' => true],
+                'transfers' => ['requested' => true],
+            ],
+            'controller' => [
+                'fees' => ['payer' => 'application'],
+                'losses' => ['payments' => 'application'],
+                'stripe_dashboard' => ['type' => 'none'],
+                'requirement_collection' => 'application',
+            ],
+            'metadata' => $metadata,
+        ], fn ($value) => $value !== null);
+    }
+
+    private function ensureAccountCapabilitiesRequested(string $accountId): void
+    {
+        try {
+            Account::update($accountId, [
+                'capabilities' => [
+                    'card_payments' => ['requested' => true],
+                    'transfers' => ['requested' => true],
+                ],
+            ]);
+        } catch (ApiErrorException $e) {
+            Log::warning('Could not request Stripe Connect capabilities', [
+                'stripe_account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
     private function syncProfileToAccount(string $accountId, User $user, UserDetail $userDetail): void
     {
         $prefill = $this->buildStripeAccountPrefill($user, $userDetail);
         if ($prefill === []) {
             return;
-        }
-
-        $bankCountry = $this->resolvePayoutBankCountry($userDetail);
-        if ($bankCountry !== null) {
-            $currency = StripeConnectCountries::currencyForCountry($bankCountry);
-            $updates = array_filter([
-                'country' => $bankCountry,
-                'default_currency' => $currency ? strtolower($currency) : null,
-            ], fn ($value) => $value !== null);
-            $prefill = array_merge($updates, $prefill);
         }
 
         try {

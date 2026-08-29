@@ -66,7 +66,21 @@
         </div>
         <div class="email-body">
             <p class="greeting">Hello {{ $studioName }},</p>
-            @if(!empty($showApproveDecline))
+            @if(!empty($requirementsReminder))
+                <p class="content">
+                    <strong>{{ $artistName }}</strong> needs your studio to complete additional Stripe information for payouts on {{ config('app.name', 'Inkjin') }}.
+                </p>
+                <p class="content">
+                    Please open the secure link below and submit the required details.
+                </p>
+                <div class="button-row">
+                    <a href="{{ $formUrl }}" class="btn">Complete required information</a>
+                </div>
+                <p class="content" style="font-size: 13px; color: #888;">
+                    If the button does not work, copy and paste this URL into your browser:<br>
+                    <span style="word-break: break-all;">{{ $formUrl }}</span>
+                </p>
+            @elseif(!empty($showApproveDecline))
                 <p class="content">
                     <strong>{{ $artistName }}</strong> has selected your studio for payouts on {{ config('app.name', 'Inkjin') }}.
                 </p>

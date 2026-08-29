@@ -33,6 +33,7 @@
     <a href="{{ route('admin.revenue.index') }}" class="nav-item {{ request()->routeIs('admin.revenue.*') ? 'active' : '' }}"><span class="material-symbols-outlined">trending_up</span> Revenue</a>
     <a href="{{ route('admin.fees.index') }}" class="nav-item {{ request()->routeIs('admin.fees.*') ? 'active' : '' }}"><span class="material-symbols-outlined">receipt_long</span> Fees</a>
     <a href="{{ route('admin.payouts.index') }}" class="nav-item {{ request()->routeIs('admin.payouts.*') ? 'active' : '' }}"><span class="material-symbols-outlined">payments</span> Payouts</a>
+    <a href="{{ route('admin.stripe-accounts.index') }}" class="nav-item {{ request()->routeIs('admin.stripe-accounts.*') ? 'active' : '' }}"><span class="material-symbols-outlined">account_balance</span> Stripe Accounts</a>
     <div class="text-white/35 text-[10px] uppercase tracking-[2px] font-bold px-4 pt-5 pb-1">Account</div>
     <a href="{{ route('admin.settings.password') }}" class="nav-item {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}"><span class="material-symbols-outlined">settings</span> Settings</a>
   </nav>

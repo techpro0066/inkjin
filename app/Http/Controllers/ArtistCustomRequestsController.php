@@ -9,6 +9,7 @@ use App\Mail\CustomRequestQuoteArtistMail;
 use App\Mail\CustomRequestQuoteUserMail;
 use App\Models\CustomRequest;
 use App\Models\User;
+use App\Services\ArtistPayoutService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,12 +36,22 @@ class ArtistCustomRequestsController extends Controller
             ->values()
             ->all();
 
+        $userDetail = Auth::user()?->userDetail;
+        $canSendQuotes = $userDetail
+            ? app(ArtistPayoutService::class)->canAcceptClientPayments($userDetail)
+            : false;
+        $quotesBlockedMessage = $canSendQuotes || ! $userDetail
+            ? null
+            : app(ArtistPayoutService::class)->clientPaymentsBlockedMessage($userDetail);
+
         return view('artist.custom-requests.index', [
             'scope' => $isGuestScope ? 'guest' : 'custom',
             'activeTab' => $isGuestScope ? 'guest' : 'custom',
             'requests' => $requests,
             'requestsPayload' => $requestsPayload,
             'pendingCount' => $requests->where('status', 'pending')->count(),
+            'canSendQuotes' => $canSendQuotes,
+            'quotesBlockedMessage' => $quotesBlockedMessage,
         ]);
     }
 
@@ -93,6 +104,15 @@ class ArtistCustomRequestsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Only pending requests can receive a quote.',
+            ], 422);
+        }
+
+        $userDetail = Auth::user()?->userDetail;
+        $payoutService = app(ArtistPayoutService::class);
+        if ($userDetail && ! $payoutService->canAcceptClientPayments($userDetail)) {
+            return response()->json([
+                'success' => false,
+                'message' => $payoutService->clientPaymentsBlockedMessage($userDetail),
             ], 422);
         }
 

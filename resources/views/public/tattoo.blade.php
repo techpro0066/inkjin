@@ -77,6 +77,15 @@
 
   <!-- MAIN CONTENT -->
   <main class="max-w-[900px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    @php
+      $canBookOnline = $canBookOnline ?? true;
+      $bookingUnavailableMessage = $bookingUnavailableMessage ?? 'This artist is not currently accepting online bookings. Please check back later.';
+    @endphp
+    @if(!$canBookOnline)
+    <div class="mb-6 rounded-xl border px-4 py-3 text-sm font-medium" style="border-color: rgba(255,191,0,0.45); background: rgba(255,191,0,0.12); color: #8B6914;">
+      {{ $bookingUnavailableMessage }}
+    </div>
+    @endif
 
     <!-- HERO SECTION: Image + Details -->
     <div class="flex flex-col md:flex-row gap-6 md:gap-8 mb-10">
@@ -154,6 +163,13 @@
             @else
               This one-of-a-kind design has already been booked.
             @endif
+          </p>
+          @elseif(!$canBookOnline)
+          <div class="block w-full py-3.5 bg-surface-container-high text-on-surface-variant rounded-full text-base font-semibold text-center cursor-not-allowed">
+            Booking Unavailable
+          </div>
+          <p class="text-xs text-on-surface-variant text-center mt-2">
+            {{ $bookingUnavailableMessage }}
           </p>
           @else
           <a id="ctaDesktop" href="{{route('public.tattoo.book', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug])}}" class="block w-full py-3.5 bg-primary text-on-primary rounded-full text-base font-semibold hover:bg-primary-container transition-colors text-center shadow-md shadow-primary/20">
@@ -359,7 +375,7 @@
 
   <!-- MOBILE STICKY CTA -->
   <div class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-sm border-t border-outline-variant px-4 py-3">
-    @php $isSoldOut = $isSoldOut ?? $tattoo->isSoldOut(); @endphp
+    @php $isSoldOut = $isSoldOut ?? $tattoo->isSoldOut(); $canBookOnline = $canBookOnline ?? true; @endphp
     @if($isSoldOut)
     <div class="block w-full py-3.5 bg-surface-container-high text-on-surface-variant rounded-full text-base font-semibold text-center cursor-not-allowed">
       Sold Out
@@ -371,6 +387,11 @@
         This one-of-a-kind design has already been booked.
       @endif
     </p>
+    @elseif(!$canBookOnline)
+    <div class="block w-full py-3.5 bg-surface-container-high text-on-surface-variant rounded-full text-base font-semibold text-center cursor-not-allowed">
+      Booking Unavailable
+    </div>
+    <p class="text-[11px] text-on-surface-variant text-center mt-1.5">{{ $bookingUnavailableMessage }}</p>
     @else
     <a id="ctaMobile" href="{{route('public.tattoo.book', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug])}}" class="block w-full py-3.5 bg-primary text-on-primary rounded-full text-base font-semibold hover:bg-primary-container transition-colors text-center shadow-lg shadow-primary/25">
       Book Now — €{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}

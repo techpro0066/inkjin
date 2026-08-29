@@ -8,29 +8,27 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ArtistWelcomeMail extends Mailable
+class PayoutSetupReminderMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
-        public string $dashboardUrl,
+        public string $firstName,
         public string $payoutsUrl,
-        public string $instagramChannelUrl = 'https://www.instagram.com/channel/AbYwJKN7J0hktPIG/',
-        public string $weeklyCallUrl = 'https://meet.google.com/ptq-argf-zap',
     ) {
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Welcome to Inkjin BookPay!'
+            subject: "Don't miss your next booking, set up payouts."
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.artist-welcome'
+            view: 'emails.payout-setup-reminder'
         );
     }
 }
