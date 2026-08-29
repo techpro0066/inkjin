@@ -775,7 +775,7 @@ class StripeConnectService
 
         $country = $this->resolvePayoutBankCountry($userDetail);
         if ($country === null) {
-            throw new \RuntimeException('Bank account country must be selected before starting Stripe onboarding.');
+            throw new \RuntimeException('Signup country is missing or not supported for Stripe payouts.');
         }
 
         if (! empty($userDetail->stripe_account_id)) {

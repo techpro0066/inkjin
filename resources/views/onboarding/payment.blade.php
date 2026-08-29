@@ -24,7 +24,9 @@
   $payoutBankCountry = $payoutBankCountry ?? $ud->payout_bank_country ?? null;
   $payoutWaitingListCountry = $payoutWaitingListCountry ?? $ud->payout_waiting_list_country ?? null;
   $payoutRegistrationCountries = $payoutRegistrationCountries ?? [];
-  $bankCountryRoute = route('onboarding.payment.bank-country');
+  $payoutBankCountryName = $payoutBankCountryName ?? ($payoutBankCountry ? \App\Support\StripeConnectCountries::nameFor($payoutBankCountry) : null);
+  $hasSignupPayoutCountry = $payoutBankCountry
+    && \App\Support\StripeConnectCountries::isSupported($payoutBankCountry);
 @endphp
 
 @section('content')
@@ -85,8 +87,17 @@
               <p class="text-sm">We'll notify you at <strong>{{ auth()->user()->email }}</strong> when payouts become available.</p>
             </div>
           @else
+            @if (! $hasSignupPayoutCountry)
+              <div class="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-4 max-w-md">
+                <p class="text-sm font-semibold mb-1">Payout country missing</p>
+                <p class="text-sm">We need the country you chose at signup to set up Stripe payouts. Please contact support if this looks wrong.</p>
+              </div>
+            @else
             <div id="payoutConnectIntroStep" class="max-w-2xl">
               <p class="text-on-surface-variant text-sm mb-5">Connect your bank account through Stripe to receive payouts directly.</p>
+              @if ($payoutBankCountryName)
+                <p class="text-sm text-on-surface mb-4">Bank account country from signup: <strong>{{ $payoutBankCountryName }}</strong></p>
+              @endif
               <button
                 type="button"
                 id="connectBankAccountBtn"
@@ -97,38 +108,12 @@
               </button>
             </div>
 
-            <div id="payoutCountryStep" class="hidden max-w-2xl space-y-4">
-              <div id="payoutCountryFields">
-                <label for="payout_bank_country" class="block text-base font-semibold text-on-surface mb-2">Where is your bank account based?</label>
-                <p id="payoutCountryDescription" class="text-on-surface-variant text-sm mb-4">
-                  This is the country of your bank account where you'll receive your payouts.
-                  Are you using Revolut? Check your IBAN in the app — the first two letters show the country.
-                  GR = Greece, LT = Lithuania, GB = United Kingdom.
-                </p>
-                <select id="payout_bank_country" name="payout_bank_country" class="js-payout-country-select w-full max-w-md text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" aria-label="Bank account country">
-                  <option value="">Select country</option>
-                  @foreach ($payoutRegistrationCountries as $country)
-                    <option value="{{ $country['code'] }}">{{ $country['name'] }}</option>
-                  @endforeach
-                </select>
-                <p id="payout_bank_country_error" class="text-error text-xs mt-2 hidden"></p>
-                <button type="button" id="payoutCountryContinue" class="hidden mt-4 inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all disabled:opacity-70">
-                  <span id="payoutCountryContinueLabel">Continue</span>
-                  <span id="payoutCountryContinueIcon" class="material-symbols-outlined text-lg">arrow_forward</span>
-                </button>
-              </div>
-            </div>
-
             <div id="payoutStripeStep" class="hidden">
               <div class="mb-4 pb-4 border-b border-outline-variant/20 max-w-2xl">
                 <p id="payoutStripeStepTitle" class="text-base font-semibold text-on-surface">Complete your payout details</p>
                 <p id="payoutStripeStepDescription" class="text-on-surface-variant text-sm mt-2">
-                  Add your personal details, upload an identity document (passport or ID), and enter your bank account below. Onboarding will finish automatically when you're done.
+                  Add your personal details, upload an identity document (passport or ID), and enter your bank account below{{ $payoutBankCountryName ? ' for payouts to '.$payoutBankCountryName : '' }}. Onboarding will finish automatically when you're done.
                 </p>
-                <div id="payoutStripeCountrySummary" class="mt-4 hidden">
-                  <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
-                  <p id="payoutBankCountryName" class="text-sm font-semibold text-on-surface"></p>
-                </div>
               </div>
 
               @if (!($stripeConnectConfigured ?? false))
@@ -143,6 +128,7 @@
                 </p>
               @endif
             </div>
+            @endif
           @endif
         @endif
       </div>
@@ -245,15 +231,14 @@ const stripeConfigured = @json($stripeConnectConfigured ?? false);
 const publishableKey = @json($stripePublishableKey ?? '');
 const sessionUrl = @json(route('onboarding.payment.stripe.session'));
 const statusUrl = @json(route('onboarding.payment.stripe.status'));
-const bankCountryUrl = @json($bankCountryRoute);
 const stripeConnectLocale = @json($stripeConnectLocale);
 const stripeConnectAppearance = @json(config('services.stripe.connect.appearance', []));
 const initialWaitingListCountry = @json($payoutWaitingListCountry);
+const initialPayoutBankCountry = @json($payoutBankCountry);
+const initialPayoutBankCountryName = @json($payoutBankCountryName ?? null);
 window.stripeOnboardingComplete = @json($stripeComplete);
 window.stripeAutoFinishTriggered = false;
-window.payoutBankCountrySelected = false;
-window.payoutSupportedCountryPending = null;
-window.savedPayoutBankCountry = null;
+window.payoutBankCountrySelected = @json((bool) $hasSignupPayoutCountry);
 
 let connectInstance = null;
 let onboardingMounted = false;
@@ -369,9 +354,6 @@ async function tryAutoFinishOnboarding() {
   }
   autoFinishInProgress = true;
   try {
-    if (window.payoutSupportedCountryPending && !window.payoutBankCountrySelected) {
-      await savePayoutBankCountry(window.payoutSupportedCountryPending);
-    }
     if (typeof window.submitPaymentForm === 'function') {
       window.stripeAutoFinishTriggered = true;
       await window.submitPaymentForm({ auto: true, stripeExit: true });
@@ -453,10 +435,8 @@ window.mountStripeOnboardingIfNeeded = async function () {
 
 window.showPayoutStep = function (step) {
   const intro = document.getElementById('payoutConnectIntroStep');
-  const country = document.getElementById('payoutCountryStep');
   const stripe = document.getElementById('payoutStripeStep');
   if (intro) intro.classList.toggle('hidden', step !== 'intro');
-  if (country) country.classList.toggle('hidden', step !== 'country');
   if (stripe) stripe.classList.toggle('hidden', step !== 'stripe');
   window.updatePaymentSkipUi(step);
 };
@@ -465,205 +445,29 @@ window.updatePaymentSkipUi = function (payoutStep) {
   const paymentType = document.getElementById('payment_type')?.value;
   const inArtistConnectFlow = paymentType === 'artist_account'
     && !window.artistStripeConnected
-    && (payoutStep === 'country' || payoutStep === 'stripe');
+    && payoutStep === 'stripe';
   const skipHint = document.getElementById('paySkipHint');
   const skipBtn = document.getElementById('paySkip');
   if (skipHint) skipHint.classList.toggle('hidden', inArtistConnectFlow);
   if (skipBtn) skipBtn.classList.toggle('hidden', inArtistConnectFlow);
 };
 
-function initPayoutCountrySelect2() {
-  if (!window.jQuery || !window.jQuery.fn.select2) return;
-  const $select = window.jQuery('#payout_bank_country');
-  if (!$select.length) return;
-  if ($select.hasClass('select2-hidden-accessible')) {
-    $select.select2('destroy');
-  }
-  $select.select2({
-    width: '100%',
-    dropdownParent: window.jQuery('body'),
-    placeholder: 'Select country',
-  });
-}
-
-function resetPayoutCountrySelect() {
-  const select = document.getElementById('payout_bank_country');
-  if (window.jQuery && select) {
-    const $select = window.jQuery(select);
-    if ($select.hasClass('select2-hidden-accessible')) {
-      $select.val('').trigger('change');
-    } else {
-      select.value = '';
-    }
-  } else if (select) {
-    select.value = '';
-  }
-  togglePayoutCountryContinue(false);
-  window.payoutSupportedCountryPending = null;
-  const errEl = document.getElementById('payout_bank_country_error');
-  if (errEl) {
-    errEl.classList.add('hidden');
-    errEl.textContent = '';
-  }
-}
-
-document.getElementById('connectBankAccountBtn')?.addEventListener('click', () => {
-  window.showPayoutStep('country');
-  window.requestAnimationFrame(() => {
-    initPayoutCountrySelect2();
-    resetPayoutCountrySelect();
-  });
-});
-
-function setPayoutCountrySaving(saving) {
-  const bankSelect = document.getElementById('payout_bank_country');
-  if (bankSelect) bankSelect.disabled = saving;
-}
-
-function setCountryContinueLoading(loading) {
-  const btn = document.getElementById('payoutCountryContinue');
-  const label = document.getElementById('payoutCountryContinueLabel');
-  const icon = document.getElementById('payoutCountryContinueIcon');
-  const desc = document.getElementById('payoutCountryDescription');
-  if (btn) btn.disabled = loading;
-  if (label) label.textContent = loading ? 'Setting up payout verification…' : 'Continue';
-  if (icon) {
-    icon.textContent = loading ? 'progress_activity' : 'arrow_forward';
-    icon.classList.toggle('animate-spin', loading);
-  }
-  if (desc && loading) {
-    desc.textContent = 'Saving your bank country and loading secure identity and bank verification…';
-  }
-}
-
-function resetCountryStepCopy() {
-  const desc = document.getElementById('payoutCountryDescription');
-  if (desc) {
-    desc.textContent = "This is the country of your bank account where you'll receive your payouts. Are you using Revolut? Check your IBAN in the app — the first two letters show the country. GR = Greece, LT = Lithuania, GB = United Kingdom.";
-  }
-  setCountryContinueLoading(false);
-}
-
-function updateStripeStepCopy(countryName) {
-  const title = document.getElementById('payoutStripeStepTitle');
-  const desc = document.getElementById('payoutStripeStepDescription');
-  const summary = document.getElementById('payoutStripeCountrySummary');
-  const nameEl = document.getElementById('payoutBankCountryName');
-  if (title) title.textContent = 'Complete your payout details';
-  if (desc && countryName) {
-    desc.textContent = `Add your personal details, upload an identity document (passport or ID), and enter your bank account below for payouts to ${countryName}. Onboarding will finish automatically when you're done.`;
-  }
-  if (nameEl && countryName) nameEl.textContent = countryName;
-  if (summary) summary.classList.remove('hidden');
-}
-
-function togglePayoutCountryContinue(show) {
-  const btn = document.getElementById('payoutCountryContinue');
-  if (btn) btn.classList.toggle('hidden', !show);
-  if (show) {
-    setCountryContinueLoading(false);
-  }
-}
-
-async function savePayoutBankCountry(countryCode) {
-  const errEl = document.getElementById('payout_bank_country_error');
-  if (errEl) {
-    errEl.classList.add('hidden');
-    errEl.textContent = '';
-  }
-
-  setPayoutCountrySaving(true);
-  setCountryContinueLoading(true);
-  try {
-    const res = await fetch(bankCountryUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ payout_bank_country: countryCode }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || (data.errors && data.errors.payout_bank_country && data.errors.payout_bank_country[0]) || 'Could not save bank country.');
-    }
-    window.payoutBankCountrySelected = true;
-    window.savedPayoutBankCountry = countryCode;
-    onboardingMounted = false;
-    connectInstance = null;
-    stripeSessionData = null;
-    const nameEl = document.getElementById('payoutBankCountryName');
-    const countryLabel = data.payout_bank_country_name || countryCode;
-    if (nameEl && countryLabel) {
-      nameEl.textContent = countryLabel;
-    }
-    updateStripeStepCopy(countryLabel);
-    window.showPayoutStep('stripe');
-    togglePayoutCountryContinue(false);
-    window.payoutSupportedCountryPending = null;
-    await mountStripeOnboarding();
-    return data;
-  } finally {
-    setPayoutCountrySaving(false);
-    setCountryContinueLoading(false);
-  }
-}
-
-window.handlePayoutBankCountryChange = async function (value) {
-  const errEl = document.getElementById('payout_bank_country_error');
-
-  if (errEl) {
-    errEl.classList.add('hidden');
-    errEl.textContent = '';
-  }
-
-  if (!value) {
-    togglePayoutCountryContinue(false);
-    window.payoutSupportedCountryPending = null;
-    return;
-  }
-
-  window.payoutSupportedCountryPending = value;
-  togglePayoutCountryContinue(true);
-};
-
-document.getElementById('payoutCountryContinue')?.addEventListener('click', async () => {
-  const select = document.getElementById('payout_bank_country');
-  const errEl = document.getElementById('payout_bank_country_error');
-  const btn = document.getElementById('payoutCountryContinue');
-  const countryCode = window.payoutSupportedCountryPending || select?.value;
-
-  if (!countryCode) {
+document.getElementById('connectBankAccountBtn')?.addEventListener('click', async () => {
+  if (!window.payoutBankCountrySelected) {
+    const errEl = document.getElementById('stripe_connect_error');
     if (errEl) {
-      errEl.textContent = 'Please select where your bank account is based.';
+      errEl.textContent = 'Your signup country is required before connecting Stripe.';
       errEl.classList.remove('hidden');
     }
     return;
   }
-
-  if (btn) btn.disabled = true;
-  setCountryContinueLoading(true);
-  try {
-    await savePayoutBankCountry(countryCode);
-  } catch (err) {
-    if (errEl) {
-      errEl.textContent = err.message || 'Could not save bank country.';
-      errEl.classList.remove('hidden');
-    }
-    if (select) select.value = '';
-    togglePayoutCountryContinue(false);
-    window.payoutSupportedCountryPending = null;
-    resetCountryStepCopy();
-  } finally {
-    if (btn) btn.disabled = false;
-    setCountryContinueLoading(false);
-  }
+  window.showPayoutStep('stripe');
+  await mountStripeOnboarding();
 });
 
 window.artistStripeConnected = @json($artistStripeConnected);
 
-if (!window.artistStripeConnected && !initialWaitingListCountry) {
+if (!window.artistStripeConnected && !initialWaitingListCountry && window.payoutBankCountrySelected) {
   window.showPayoutStep('intro');
 }
 </script>
@@ -689,20 +493,15 @@ function selectPayout(type, el) {
   $('#payout-artist').toggleClass('hidden', type !== 'artist');
   $('#payout-studio').toggleClass('hidden', type !== 'studio');
   if (type === 'artist' && !artistStripeConnected && typeof window.showPayoutStep === 'function') {
-    window.showPayoutStep(window.payoutBankCountrySelected ? 'stripe' : 'intro');
+    window.showPayoutStep('intro');
   } else if (typeof window.updatePaymentSkipUi === 'function') {
-    window.updatePaymentSkipUi(type === 'artist' && window.payoutBankCountrySelected ? 'stripe' : 'intro');
+    window.updatePaymentSkipUi('intro');
   }
   if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('payment_type');
   if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('stripe_connect');
   if (typeof window.clearOnboardingAlert === 'function') window.clearOnboardingAlert('payAlert');
 }
 $(function () {
-  $('#payout_bank_country').on('change select2:select', function () {
-    if (typeof window.handlePayoutBankCountryChange === 'function') {
-      window.handlePayoutBankCountryChange($(this).val());
-    }
-  });
   $('#studio_email').on('input', function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('studio_email');
   });

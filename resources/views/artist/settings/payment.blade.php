@@ -3,7 +3,6 @@
 @section('title', 'Payout Settings')
 
 @section('styles')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <style>
   .payout-card { border: 1.5px solid #cac4d3; border-radius: 16px; padding: 32px; cursor: pointer; transition: all 0.2s; background: white; position: relative; }
   .payout-card.selected { border-color: #310f7a; border-width: 2px; }
@@ -12,28 +11,6 @@
   .payout-card.selected .radio-indicator::after { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; }
   .payout-card.locked-other { opacity: 0.55; cursor: not-allowed; }
   .payout-card.locked-other:hover { border-color: #cac4d3; }
-  .select2-container { width: 100% !important; z-index: 1; }
-  .select2-container--open { z-index: 10060 !important; }
-  .select2-container--default .select2-selection--single {
-    min-height: 48px;
-    padding: 6px 12px;
-    border-radius: 0.75rem;
-    border: 1px solid rgba(202,196,211,0.5) !important;
-    background: #fff !important;
-  }
-  .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: 2.25rem;
-    padding-left: 4px;
-    color: #1c1b21;
-  }
-  .select2-container--default .select2-selection--single .select2-selection__arrow { height: 46px; }
-  .select2-container--default.select2-container--focus .select2-selection--single,
-  .select2-container--default.select2-container--open .select2-selection--single {
-    border-color: #310f7a !important;
-    box-shadow: 0 0 0 2px rgba(49,15,122,0.25);
-  }
-  .select2-dropdown { border-radius: 0.75rem; border-color: rgba(202,196,211,0.5); overflow: hidden; }
-  .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #310f7a !important; }
   @media (max-width: 1023px) {
     .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
     body { overflow-x: hidden; }
@@ -294,6 +271,9 @@
   $stripeConnectLocale = $stripeConnectLocale ?? config('services.stripe.connect.locale', 'en-US');
   $payoutBankCountry = $payoutBankCountry ?? $ud->payout_bank_country ?? null;
   $payoutWaitingListCountry = $payoutWaitingListCountry ?? $ud->payout_waiting_list_country ?? null;
+  $payoutBankCountryName = $payoutBankCountryName ?? ($payoutBankCountry ? \App\Support\StripeConnectCountries::nameFor($payoutBankCountry) : null);
+  $hasSignupPayoutCountry = $payoutBankCountry
+    && \App\Support\StripeConnectCountries::isSupported($payoutBankCountry);
 @endphp
 <main class="main-content flex-1 min-h-screen flex flex-col">
   <form id="paymentForm" class="contents">
@@ -357,6 +337,11 @@
             <p class="text-sm font-semibold mb-1">Your country isn't supported yet</p>
             <p class="text-sm">We'll notify you at <strong>{{ auth()->user()->email }}</strong> when payouts become available.</p>
           </div>
+        @elseif (! $hasSignupPayoutCountry)
+          <div class="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-4 max-w-md">
+            <p class="text-sm font-semibold mb-1">Payout country missing</p>
+            <p class="text-sm">We need the country you chose at signup to set up Stripe payouts. Please contact support if this looks wrong.</p>
+          </div>
         @else
           <div id="artistPayoutNotConnected" class="max-w-2xl space-y-4 {{ $artistStripeConnected ? 'hidden' : '' }}">
             <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant/40 px-3 py-1 text-xs font-bold uppercase tracking-wide">Not connected</span>
@@ -375,18 +360,7 @@
             <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-800 border border-green-200/80 px-3 py-1 text-xs font-bold uppercase tracking-wide">Connected</span>
             <p id="artistConnectedNeedsActionMessage" class="text-on-surface-variant text-sm {{ $artistStripeNeedsAction ? '' : 'hidden' }}">Your Stripe account is connected, but Stripe needs more information before you can receive payments.</p>
             <p id="artistConnectedReadyMessage" class="text-on-surface-variant text-sm {{ $artistStripeNeedsAction ? 'hidden' : '' }}">Your account is connected. You're ready to receive payments.</p>
-            @if ($payoutBankCountry && ($payoutBankCountryName ?? null))
-              <div>
-                <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
-                <p id="artistConnectedCountryName" class="text-sm font-semibold text-on-surface mt-1">{{ $payoutBankCountryName }}</p>
-              </div>
-            @else
-              <div id="artistConnectedCountryWrap" class="hidden">
-                <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
-                <p id="artistConnectedCountryName" class="text-sm font-semibold text-on-surface mt-1"></p>
-              </div>
-            @endif
-            <a
+           <a
               id="artistStripeRequirementsBtn"
               href="{{ route('settings.payment.stripe.requirements') }}"
               class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all {{ $artistStripeNeedsAction ? '' : 'hidden' }}"
@@ -403,38 +377,12 @@
           </div>
 
           <div id="artistStripeSetupSection" class="hidden space-y-6">
-            <div id="payoutCountryStep" class="hidden max-w-2xl space-y-4">
-              <div id="payoutCountryFields">
-                <label for="payout_bank_country" class="block text-base font-semibold text-on-surface mb-2">Where is your bank account based?</label>
-                <p id="payoutCountryDescription" class="text-on-surface-variant text-sm mb-4">
-                  This is the country of your bank account where you'll receive your payouts.
-                  Are you using Revolut? Check your IBAN in the app — the first two letters show the country.
-                  GR = Greece, LT = Lithuania, GB = United Kingdom.
-                </p>
-                <select id="payout_bank_country" name="payout_bank_country" class="js-payout-country-select w-full max-w-md text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" aria-label="Bank account country">
-                  <option value="">Select country</option>
-                  @foreach ($payoutRegistrationCountries as $country)
-                    <option value="{{ $country['code'] }}">{{ $country['name'] }}</option>
-                  @endforeach
-                </select>
-                <p id="payout_bank_country_error" class="text-error text-xs mt-2 hidden"></p>
-                <button type="button" id="payoutCountryContinue" class="hidden mt-4 inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all disabled:opacity-70">
-                  <span id="payoutCountryContinueLabel">Continue</span>
-                  <span id="payoutCountryContinueIcon" class="material-symbols-outlined text-lg">arrow_forward</span>
-                </button>
-              </div>
-            </div>
-
             <div id="payoutStripeStep" class="hidden">
               <div class="mb-4 pb-4 border-b border-outline-variant/20 max-w-2xl">
                 <p id="payoutStripeStepTitle" class="text-base font-semibold text-on-surface">Complete your payout details</p>
                 <p id="payoutStripeStepDescription" class="text-on-surface-variant text-sm mt-2">
-                  Add your personal details, upload an identity document (passport or ID), and enter your bank account below.
+                  Add your personal details, upload an identity document (passport or ID).
                 </p>
-                <div id="payoutStripeCountrySummary" class="mt-4 hidden">
-                  <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
-                  <p id="payoutBankCountryName" class="text-sm font-semibold text-on-surface"></p>
-                </div>
               </div>
 
               @if (!($stripeConnectConfigured ?? false))
@@ -557,7 +505,6 @@
 @endsection
 
 @section('scripts')
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script type="module">
 import { loadConnectAndInitialize } from 'https://esm.sh/@stripe/connect-js@3.3.34/pure';
 
@@ -565,7 +512,6 @@ const stripeConfigured = @json($stripeConnectConfigured ?? false);
 const publishableKey = @json($stripePublishableKey ?? '');
 const sessionUrl = @json(route('settings.payment.stripe.session'));
 const statusUrl = @json(route('settings.payment.stripe.status'));
-const bankCountryUrl = @json(route('settings.payment.bank-country'));
 const savePaymentUrl = @json(route('settings.payment.update'));
 const initialPayoutBankCountryName = @json($payoutBankCountryName ?? null);
 const stripeConnectLocale = @json($stripeConnectLocale);
@@ -573,8 +519,7 @@ const stripeConnectAppearance = @json(config('services.stripe.connect.appearance
 const initialPayoutBankCountry = @json($payoutBankCountry);
 const initialWaitingListCountry = @json($payoutWaitingListCountry);
 window.stripeOnboardingComplete = @json($stripeComplete);
-window.payoutBankCountrySelected = !!initialPayoutBankCountry;
-window.payoutSupportedCountryPending = null;
+window.payoutBankCountrySelected = @json((bool) $hasSignupPayoutCountry);
 
 let connectInstance = null;
 let onboardingMounted = false;
@@ -829,150 +774,24 @@ window.mountStripeOnboardingIfNeeded = async function () {
 };
 
 window.showPayoutStep = function (step) {
-  const country = document.getElementById('payoutCountryStep');
   const stripe = document.getElementById('payoutStripeStep');
-  if (country) country.classList.toggle('hidden', step !== 'country');
   if (stripe) stripe.classList.toggle('hidden', step !== 'stripe');
 };
 
-function initPayoutCountrySelect2() {
-  if (!window.jQuery || !window.jQuery.fn.select2) return;
-  const $select = window.jQuery('#payout_bank_country');
-  if (!$select.length) return;
-  if ($select.hasClass('select2-hidden-accessible')) {
-    $select.select2('destroy');
-  }
-  $select.select2({
-    width: '100%',
-    dropdownParent: window.jQuery('body'),
-    placeholder: 'Select country',
-  });
-}
-
-function resetPayoutCountrySelect() {
-  const select = document.getElementById('payout_bank_country');
-  if (window.jQuery && select) {
-    const $select = window.jQuery(select);
-    if ($select.hasClass('select2-hidden-accessible')) {
-      $select.val('').trigger('change');
-    } else {
-      select.value = '';
-    }
-  } else if (select) {
-    select.value = '';
-  }
-  togglePayoutCountryContinue(false);
-  window.payoutSupportedCountryPending = null;
-  const errEl = document.getElementById('payout_bank_country_error');
-  if (errEl) {
-    errEl.classList.add('hidden');
-    errEl.textContent = '';
-  }
-}
-
 document.getElementById('connectBankAccountBtn')?.addEventListener('click', async () => {
+  if (!window.payoutBankCountrySelected) {
+    const errEl = document.getElementById('stripe_connect_error');
+    if (errEl) {
+      errEl.textContent = 'Your signup country is required before connecting Stripe.';
+      errEl.classList.remove('hidden');
+    }
+    return;
+  }
+
   const setup = document.getElementById('artistStripeSetupSection');
   if (setup) setup.classList.remove('hidden');
-
-  // Always let the user confirm/select country before creating a Stripe account.
-  // Country cannot be changed later inside Stripe embedded onboarding.
-  window.payoutBankCountrySelected = false;
-  window.showPayoutStep('country');
-  window.requestAnimationFrame(() => {
-    initPayoutCountrySelect2();
-    resetPayoutCountrySelect();
-    if (initialPayoutBankCountry) {
-      const select = document.getElementById('payout_bank_country');
-      if (select && window.jQuery) {
-        window.jQuery(select).val(initialPayoutBankCountry).trigger('change');
-      } else if (select) {
-        select.value = initialPayoutBankCountry;
-      }
-      if (typeof window.handlePayoutBankCountryChange === 'function') {
-        window.handlePayoutBankCountryChange(initialPayoutBankCountry);
-      }
-    }
-  });
-});
-
-function setCountryContinueLoading(loading) {
-  const btn = document.getElementById('payoutCountryContinue');
-  const label = document.getElementById('payoutCountryContinueLabel');
-  const icon = document.getElementById('payoutCountryContinueIcon');
-  if (btn) btn.disabled = loading;
-  if (label) label.textContent = loading ? 'Setting up payout verification…' : 'Continue';
-  if (icon) {
-    icon.textContent = loading ? 'progress_activity' : 'arrow_forward';
-    icon.classList.toggle('animate-spin', loading);
-  }
-}
-
-function togglePayoutCountryContinue(show) {
-  const btn = document.getElementById('payoutCountryContinue');
-  if (btn) btn.classList.toggle('hidden', !show);
-}
-
-async function savePayoutBankCountry(countryCode) {
-  const res = await fetch(bankCountryUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ payout_bank_country: countryCode }),
-  });
-  const data = await res.json();
-  if (!res.ok || !data.success) {
-    throw new Error(data.message || 'Could not save bank country.');
-  }
-  window.payoutBankCountrySelected = true;
-  onboardingMounted = false;
-  connectInstance = null;
-  stripeSessionData = null;
-  const nameEl = document.getElementById('payoutBankCountryName');
-  const summary = document.getElementById('payoutStripeCountrySummary');
-  const countryLabel = data.payout_bank_country_name || countryCode;
-  if (nameEl) nameEl.textContent = countryLabel;
-  if (summary) summary.classList.remove('hidden');
-  const stripeDesc = document.getElementById('payoutStripeStepDescription');
-  if (stripeDesc && countryLabel) {
-    stripeDesc.textContent = `Add your personal details, upload an identity document (passport or ID), and enter your bank account below for payouts to ${countryLabel}.`;
-  }
   window.showPayoutStep('stripe');
-  togglePayoutCountryContinue(false);
-  window.payoutSupportedCountryPending = null;
   await mountStripeOnboarding();
-  return data;
-}
-
-window.handlePayoutBankCountryChange = function (value) {
-  const errEl = document.getElementById('payout_bank_country_error');
-  if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
-  if (!value) {
-    togglePayoutCountryContinue(false);
-    window.payoutSupportedCountryPending = null;
-    return;
-  }
-  window.payoutSupportedCountryPending = value;
-  togglePayoutCountryContinue(true);
-};
-
-document.getElementById('payoutCountryContinue')?.addEventListener('click', async () => {
-  const countryCode = window.payoutSupportedCountryPending || document.getElementById('payout_bank_country')?.value;
-  const errEl = document.getElementById('payout_bank_country_error');
-  if (!countryCode) {
-    if (errEl) { errEl.textContent = 'Please select where your bank account is based.'; errEl.classList.remove('hidden'); }
-    return;
-  }
-  setCountryContinueLoading(true);
-  try {
-    await savePayoutBankCountry(countryCode);
-  } catch (err) {
-    if (errEl) { errEl.textContent = err.message || 'Could not save bank country.'; errEl.classList.remove('hidden'); }
-  } finally {
-    setCountryContinueLoading(false);
-  }
 });
 
 window.artistStripeConnected = @json($artistStripeConnected);
@@ -1003,12 +822,6 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
     $('#payAlert').addClass('hidden').text('');
   }
   $(function () {
-    $('#payout_bank_country').on('change select2:select', function () {
-      if (typeof window.handlePayoutBankCountryChange === 'function') {
-        window.handlePayoutBankCountryChange($(this).val());
-      }
-    });
-
     function openStripeModal() { $('#disconnectStripeModal').removeClass('hidden'); }
     function closeStripeModal() { $('#disconnectStripeModal').addClass('hidden'); }
     $('#disconnectStripeBtn').on('click', openStripeModal);

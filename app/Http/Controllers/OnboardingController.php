@@ -760,9 +760,9 @@ class OnboardingController extends Controller
             if (! $userDetail->payout_bank_country || ! StripeConnectCountries::isSupported($userDetail->payout_bank_country)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Please select where your bank account is based before continuing.',
+                    'message' => 'Your signup country is missing or not supported for payouts. Please contact support.',
                     'errors' => [
-                        'payout_bank_country' => ['Please select where your bank account is based.'],
+                        'payout_bank_country' => ['Your signup country is required for Stripe payouts.'],
                     ],
                 ], 422);
             }
@@ -1396,6 +1396,7 @@ class OnboardingController extends Controller
                 $userDetail->stripe_account_id = null;
                 $userDetail->payment_status = null;
                 $userDetail->stripe_requirement = false;
+                $userDetail->stripe_requirement_email_sent_at = null;
                 $userDetail->save();
 
                 $msg = 'Stripe payout disconnected. You can now switch payout options or connect again.';

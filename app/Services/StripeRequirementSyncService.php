@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Mail\ArtistStripeRequirementMail;
 use App\Models\Studio;
+use App\Models\User;
 use App\Models\UserDetail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class StripeRequirementSyncService
 {
@@ -134,6 +137,8 @@ class StripeRequirementSyncService
                     'disabled_reason' => $status['disabled_reason'] ?? null,
                 ]);
 
+                $this->notifyLinkedStudioArtists($studio);
+
                 return 'flagged';
             }
 
@@ -154,11 +159,38 @@ class StripeRequirementSyncService
 
     private function propagateStudioRequirementToArtists(Studio $studio, bool $needsRequirement): void
     {
+        $query = UserDetail::query()
+            ->where('studio_id', $studio->id)
+            ->where('payment_type', 'studio_account')
+            ->where('payment_status', 'approved');
+
+        if ($needsRequirement) {
+            $query->update(['stripe_requirement' => true]);
+
+            return;
+        }
+
+        $query->update([
+            'stripe_requirement' => false,
+            'stripe_requirement_email_sent_at' => null,
+        ]);
+    }
+
+    private function notifyLinkedStudioArtists(Studio $studio): void
+    {
         UserDetail::query()
+            ->with('user')
             ->where('studio_id', $studio->id)
             ->where('payment_type', 'studio_account')
             ->where('payment_status', 'approved')
-            ->update(['stripe_requirement' => $needsRequirement]);
+            ->where('stripe_requirement', true)
+            ->whereNull('stripe_requirement_email_sent_at')
+            ->orderBy('id')
+            ->chunkById(50, function ($details) {
+                foreach ($details as $userDetail) {
+                    $this->sendRequirementEmail($userDetail, isStudioPayout: true);
+                }
+            });
     }
 
     /**
@@ -201,6 +233,8 @@ class StripeRequirementSyncService
                     'disabled_reason' => $status['disabled_reason'] ?? null,
                 ]);
 
+                $this->sendRequirementEmail($userDetail, isStudioPayout: false);
+
                 return 'flagged';
             }
 
@@ -208,6 +242,7 @@ class StripeRequirementSyncService
         }
 
         $userDetail->stripe_requirement = false;
+        $userDetail->stripe_requirement_email_sent_at = null;
         if (($userDetail->payment_type ?? '') === 'artist_account' && $previousPaymentStatus !== 'rejected') {
             $userDetail->payment_status = 'approved';
         }
@@ -223,6 +258,52 @@ class StripeRequirementSyncService
         }
 
         return 'unchanged';
+    }
+
+    private function sendRequirementEmail(UserDetail $userDetail, bool $isStudioPayout): void
+    {
+        if ($userDetail->stripe_requirement_email_sent_at) {
+            return;
+        }
+
+        $userDetail->loadMissing('user');
+        $user = $userDetail->user;
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $email = trim((string) ($user->email ?? ''));
+        if ($email === '') {
+            return;
+        }
+
+        $firstName = trim((string) ($user->first_name ?? ''));
+        if ($firstName === '') {
+            $firstName = 'there';
+        }
+
+        $actionUrl = $isStudioPayout
+            ? route('settings.payment')
+            : route('settings.payment.stripe.requirements');
+
+        try {
+            Mail::to($email)->send(new ArtistStripeRequirementMail(
+                $firstName,
+                $actionUrl,
+                $isStudioPayout,
+            ));
+
+            $userDetail->forceFill([
+                'stripe_requirement_email_sent_at' => now(),
+            ])->save();
+        } catch (\Throwable $e) {
+            Log::error('Failed to send Stripe requirement email to artist', [
+                'user_id' => $user->id,
+                'user_detail_id' => $userDetail->id,
+                'is_studio_payout' => $isStudioPayout,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

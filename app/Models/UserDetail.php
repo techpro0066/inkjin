@@ -56,6 +56,7 @@ class UserDetail extends Model
         'stripe_account_id',
         'stripe_requirement',
         'payout_setup_reminder_sent_at',
+        'stripe_requirement_email_sent_at',
         'payout_bank_country',
         'payout_waiting_list_country',
         'payout_waiting_list_at',
@@ -104,6 +105,7 @@ class UserDetail extends Model
         'require_gap_between_consultation_tattoo' => 'boolean',
         'payout_waiting_list_at' => 'datetime',
         'payout_setup_reminder_sent_at' => 'datetime',
+        'stripe_requirement_email_sent_at' => 'datetime',
     ];
 
     /**
