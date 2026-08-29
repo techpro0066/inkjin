@@ -70,6 +70,15 @@ class UserController extends Controller
                     $client->where('role', 'user')->whereNull('email_verified_at');
                 });
             });
+        } elseif (preg_match('/^step_([1-6])$/', (string) $statusFilter, $stepMatch)) {
+            $step = (int) $stepMatch[1];
+            $query->where('role', 'artist')
+                ->where(function ($onboarding) {
+                    $onboarding->whereNull('on_boarding')->orWhere('on_boarding', '!=', 'yes');
+                })
+                ->whereHas('userDetail', function (Builder $detailQuery) use ($step) {
+                    $detailQuery->where('current_step', $step);
+                });
         }
 
         $this->applyUserSort($query, $sort, $roleFilter);

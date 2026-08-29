@@ -53,6 +53,11 @@
             <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>All</option>
             <option value="active" {{ $statusFilter === 'active' ? 'selected' : '' }}>Active</option>
             <option value="pending_onboarding" {{ $statusFilter === 'pending_onboarding' ? 'selected' : '' }}>Pending Onboarding</option>
+            @foreach (\App\Support\OnboardingProgress::STEP_LABELS as $step => $stepLabel)
+              <option value="step_{{ $step }}" {{ $statusFilter === 'step_'.$step ? 'selected' : '' }}>
+                Step {{ $step }} — {{ $stepLabel }}
+              </option>
+            @endforeach
           </select>
         </div>
         <div>
