@@ -286,13 +286,17 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     
     Route::post('/settings/preferences', [OnboardingController::class, 'savePreferences'])->name('settings.preferences.update');
 
-    Route::get('/settings/payment', [OnboardingController::class, 'paymentSettings'])->name('settings.payment');
-    Route::post('/settings/payment', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
-    Route::post('/settings/payment/bank-country', [OnboardingController::class, 'savePayoutBankCountry'])->name('settings.payment.bank-country');
-    Route::post('/settings/payment/waiting-list', [OnboardingController::class, 'savePayoutWaitingList'])->name('settings.payment.waiting-list');
-    Route::get('/settings/payment/stripe/requirements', [OnboardingController::class, 'stripeRequirements'])->name('settings.payment.stripe.requirements');
-    Route::post('/settings/payment/stripe/session', [OnboardingController::class, 'createStripeConnectSession'])->name('settings.payment.stripe.session');
-    Route::get('/settings/payment/stripe/status', [OnboardingController::class, 'stripeConnectStatus'])->name('settings.payment.stripe.status');
+    Route::get('/settings/payouts', [OnboardingController::class, 'paymentSettings'])->name('settings.payment');
+    Route::post('/settings/payouts', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
+    Route::post('/settings/payouts/bank-country', [OnboardingController::class, 'savePayoutBankCountry'])->name('settings.payment.bank-country');
+    Route::post('/settings/payouts/waiting-list', [OnboardingController::class, 'savePayoutWaitingList'])->name('settings.payment.waiting-list');
+    Route::get('/settings/payouts/stripe/requirements', [OnboardingController::class, 'stripeRequirements'])->name('settings.payment.stripe.requirements');
+    Route::post('/settings/payouts/stripe/session', [OnboardingController::class, 'createStripeConnectSession'])->name('settings.payment.stripe.session');
+    Route::get('/settings/payouts/stripe/status', [OnboardingController::class, 'stripeConnectStatus'])->name('settings.payment.stripe.status');
+
+    // Legacy /settings/payment URLs → /settings/payouts
+    Route::redirect('/settings/payment', '/settings/payouts', 301);
+    Route::redirect('/settings/payment/stripe/requirements', '/settings/payouts/stripe/requirements', 301);
     Route::get('/settings/other', [OtherSettingsController::class, 'edit'])->name('settings.other');
     Route::post('/settings/other', [OtherSettingsController::class, 'update'])->name('settings.other.update');
 
