@@ -28,12 +28,6 @@
         <p class="text-on-surface-variant text-sm">
           Complete the form below. When you’re done, you’ll return to payout settings.
         </p>
-        @if ($payoutBankCountryName ?? null)
-          <div>
-            <p class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Bank account country</p>
-            <p class="text-sm font-semibold text-on-surface mt-1">{{ $payoutBankCountryName }}</p>
-          </div>
-        @endif
       </div>
 
       @if (!($stripeConnectConfigured ?? false))
