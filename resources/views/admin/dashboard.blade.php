@@ -17,7 +17,7 @@
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-10">
+      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 mb-10">
         <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
           <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
             <span class="material-symbols-outlined text-primary text-xl">brush</span>
@@ -59,6 +59,32 @@
           </div>
           <p class="text-2xl font-extrabold text-on-surface">€{{ number_format($stats['pending_payouts'], 2) }}</p>
           <p class="text-xs font-semibold text-on-surface-variant mt-1">Pending Payouts</p>
+        </a>
+        @php
+          $stripeCurrency = $stripeBalance['currency'] ?? 'EUR';
+          $stripeSymbol = $stripeCurrency === 'EUR' ? '€' : $stripeCurrency.' ';
+          $stripeAvailable = (float) ($stripeBalance['available'] ?? 0);
+          $stripePending = (float) ($stripeBalance['pending'] ?? 0);
+          $stripeConfigured = (bool) ($stripeBalance['configured'] ?? false);
+          $stripeError = $stripeBalance['error'] ?? null;
+        @endphp
+        <a href="{{ route('admin.stripe-accounts.index') }}" class="stat-card block bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
+          <div class="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-teal-600 text-xl">account_balance</span>
+          </div>
+          @if ($stripeConfigured && ! $stripeError)
+            <p class="text-2xl font-extrabold text-on-surface">{{ $stripeSymbol }}{{ number_format($stripeAvailable, 2) }}</p>
+            <p class="text-xs font-semibold text-on-surface-variant mt-1">Stripe Available Balance</p>
+            @if ($stripePending > 0)
+              <p class="text-[11px] text-outline mt-1">{{ $stripeSymbol }}{{ number_format($stripePending, 2) }} pending</p>
+            @endif
+          @else
+            <p class="text-2xl font-extrabold text-on-surface">—</p>
+            <p class="text-xs font-semibold text-on-surface-variant mt-1">Stripe Available Balance</p>
+            @if ($stripeError)
+              <p class="text-[11px] text-outline mt-1">{{ $stripeError }}</p>
+            @endif
+          @endif
         </a>
       </div>
 

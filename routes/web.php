@@ -379,6 +379,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/clients', [ArtistClientsController::class, 'index'])->name('artist.clients.index');
     Route::post('/clients/waitlist/notify', [ArtistClientsController::class, 'notifyWaitlist'])->name('artist.clients.waitlist.notify');
     Route::get('/payments', [ArtistPaymentsController::class, 'index'])->name('artist.payments.index');
+    Route::post('/payments/request-payout', [ArtistPaymentsController::class, 'requestPayout'])->name('artist.payments.request-payout');
 });
 
 // User routes

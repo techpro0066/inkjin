@@ -11,6 +11,19 @@
   .payout-card.selected .radio-indicator::after { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; }
   .payout-card.locked-other { opacity: 0.55; cursor: not-allowed; }
   .payout-card.locked-other:hover { border-color: #cac4d3; }
+  .payout-mode-option { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+  .payout-mode-option + .payout-mode-option { margin-top: 20px; }
+  .payout-mode-radio {
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid #cac4d3;
+    flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .payout-mode-option.selected .payout-mode-radio {
+    border-color: #310f7a; background: #310f7a;
+  }
+  .payout-mode-option.selected .payout-mode-radio::after {
+    content: ''; width: 6px; height: 6px; background: white; border-radius: 50%;
+  }
   @media (max-width: 1023px) {
     .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
     body { overflow-x: hidden; }
@@ -274,6 +287,9 @@
   $payoutBankCountryName = $payoutBankCountryName ?? ($payoutBankCountry ? \App\Support\StripeConnectCountries::nameFor($payoutBankCountry) : null);
   $hasSignupPayoutCountry = $payoutBankCountry
     && \App\Support\StripeConnectCountries::isSupported($payoutBankCountry);
+  $payoutMode = in_array(($ud->payout_mode ?? 'manual'), ['manual', 'automatic'], true)
+    ? ($ud->payout_mode ?? 'manual')
+    : 'manual';
 @endphp
 <main class="main-content flex-1 min-h-screen flex flex-col">
   <form id="paymentForm" class="contents">
@@ -476,6 +492,41 @@
       </div>
     </div>
 
+    <!-- Payout mode -->
+    <div class="mt-8 bg-white rounded-2xl border border-outline-variant/20 p-6 md:p-8">
+      <h3 class="text-lg font-bold text-on-surface mb-6">Payout mode</h3>
+
+      <div
+        class="payout-mode-option {{ $payoutMode === 'automatic' ? 'selected' : '' }}"
+        data-payout-mode="automatic"
+        onclick="requestPayoutModeChange('automatic')"
+        role="radio"
+        aria-checked="{{ $payoutMode === 'automatic' ? 'true' : 'false' }}"
+        tabindex="0"
+      >
+        <span class="payout-mode-radio" aria-hidden="true"></span>
+        <div>
+          <p class="text-base font-bold text-on-surface">Automatic</p>
+          <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">Your balance is sent to your bank account automatically when it becomes available.</p>
+        </div>
+      </div>
+
+      <div
+        class="payout-mode-option {{ $payoutMode === 'manual' ? 'selected' : '' }}"
+        data-payout-mode="manual"
+        onclick="requestPayoutModeChange('manual')"
+        role="radio"
+        aria-checked="{{ $payoutMode === 'manual' ? 'true' : 'false' }}"
+        tabindex="0"
+      >
+        <span class="payout-mode-radio" aria-hidden="true"></span>
+        <div>
+          <p class="text-base font-bold text-on-surface">Manual</p>
+          <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">You choose when to get paid. Request a payout anytime once your balance is available.</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   </form>
@@ -499,6 +550,17 @@
     <div class="flex justify-end gap-3">
       <button type="button" id="cancelDisconnectStudio" class="rounded-xl px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low">Cancel</button>
       <button type="button" id="confirmDisconnectStudioBtn" class="rounded-xl px-5 py-2.5 text-sm font-semibold bg-error text-white hover:opacity-90">Disconnect</button>
+    </div>
+  </div>
+</div>
+
+<div id="payoutModeConfirmModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true" aria-labelledby="payoutModeConfirmTitle">
+  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+    <h5 id="payoutModeConfirmTitle" class="text-lg font-bold text-on-surface mb-2">Change payout mode?</h5>
+    <p id="payoutModeConfirmMessage" class="text-on-surface-variant text-sm mb-6"></p>
+    <div class="flex justify-end gap-3">
+      <button type="button" id="cancelPayoutModeBtn" class="rounded-xl px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low">Cancel</button>
+      <button type="button" id="confirmPayoutModeBtn" class="rounded-xl px-5 py-2.5 text-sm font-semibold bg-gradient-to-br from-primary to-primary-container text-white hover:opacity-90">Confirm</button>
     </div>
   </div>
 </div>
@@ -821,6 +883,112 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
     $('#payment_type_error').text('').addClass('hidden');
     $('#payAlert').addClass('hidden').text('');
   }
+
+  function selectPayoutMode(mode) {
+    document.querySelectorAll('.payout-mode-option').forEach(function (option) {
+      const selected = option.getAttribute('data-payout-mode') === mode;
+      option.classList.toggle('selected', selected);
+      option.setAttribute('aria-checked', selected ? 'true' : 'false');
+    });
+  }
+
+  window.currentPayoutMode = @json($payoutMode);
+  let pendingPayoutMode = null;
+  let payoutModeSaveInProgress = false;
+
+  function payoutModeConfirmCopy(mode) {
+    if (mode === 'automatic') {
+      return {
+        title: 'Switch to automatic payouts?',
+        message: 'Your available balance will be sent to your bank account automatically. You can switch back to manual anytime.',
+      };
+    }
+
+    return {
+      title: 'Switch to manual payouts?',
+      message: 'You\'ll choose when to get paid. Request a payout anytime once your balance is available.',
+    };
+  }
+
+  window.requestPayoutModeChange = function (mode) {
+    if (mode === window.currentPayoutMode || payoutModeSaveInProgress) {
+      return;
+    }
+
+    pendingPayoutMode = mode;
+    const copy = payoutModeConfirmCopy(mode);
+    const titleEl = document.getElementById('payoutModeConfirmTitle');
+    const messageEl = document.getElementById('payoutModeConfirmMessage');
+    if (titleEl) titleEl.textContent = copy.title;
+    if (messageEl) messageEl.textContent = copy.message;
+    document.getElementById('payoutModeConfirmModal')?.classList.remove('hidden');
+  };
+
+  function closePayoutModeModal() {
+    pendingPayoutMode = null;
+    document.getElementById('payoutModeConfirmModal')?.classList.add('hidden');
+  }
+
+  function savePayoutMode(mode) {
+    if (payoutModeSaveInProgress) return;
+    payoutModeSaveInProgress = true;
+
+    const confirmBtn = document.getElementById('confirmPayoutModeBtn');
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Saving…';
+    }
+
+    $.ajax({
+      url: @json(route('settings.payment.update')),
+      type: 'POST',
+      data: {
+        _token: @json(csrf_token()),
+        update_payout_mode: 1,
+        payout_mode: mode,
+      },
+      headers: { 'X-CSRF-TOKEN': @json(csrf_token()), Accept: 'application/json' },
+    }).done(function (data) {
+      if (!data?.success) {
+        if (typeof showSaveToast === 'function') {
+          showSaveToast(data?.message || 'Could not update payout mode.');
+        }
+        return;
+      }
+
+      window.currentPayoutMode = data.payout_mode || mode;
+      selectPayoutMode(window.currentPayoutMode);
+      closePayoutModeModal();
+      if (typeof showSaveToast === 'function') {
+        showSaveToast(data.message || 'Payout mode updated.');
+      }
+    }).fail(function (xhr) {
+      const msg = xhr.responseJSON?.message
+        || xhr.responseJSON?.errors?.payout_mode?.[0]
+        || 'Could not update payout mode.';
+      if (typeof showSaveToast === 'function') {
+        showSaveToast(msg);
+      }
+    }).always(function () {
+      payoutModeSaveInProgress = false;
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Confirm';
+      }
+    });
+  }
+
+  $(function () {
+    $('#cancelPayoutModeBtn').on('click', closePayoutModeModal);
+    $('#payoutModeConfirmModal').on('click', function (e) {
+      if (e.target === this) closePayoutModeModal();
+    });
+    $('#confirmPayoutModeBtn').on('click', function () {
+      if (!pendingPayoutMode) return;
+      savePayoutMode(pendingPayoutMode);
+    });
+  });
+
   $(function () {
     function openStripeModal() { $('#disconnectStripeModal').removeClass('hidden'); }
     function closeStripeModal() { $('#disconnectStripeModal').addClass('hidden'); }

@@ -67,6 +67,7 @@ class UserDetail extends Model
         'payment_type',
         'studio_id',
         'payment_status',
+        'payout_mode',
         'availability_status',
         'personal_page_background_image',
         'personal_page_color',

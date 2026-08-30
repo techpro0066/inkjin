@@ -33,5 +33,13 @@ return [
     'default_per_page' => env('INKJIN_DEFAULT_PER_PAGE', 10),
 
     'max_per_page' => env('INKJIN_MAX_PER_PAGE', 9999),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin notifications
+    |--------------------------------------------------------------------------
+    */
+
+    'admin_email' => env('ADMIN_EMAIL'),
 ];
 

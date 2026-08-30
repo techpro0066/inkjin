@@ -1431,6 +1431,32 @@ class OnboardingController extends Controller
                 return redirect()->route('settings.payment')->with('success', $msg);
             }
 
+            if ((int) $request->input('update_payout_mode', 0) === 1) {
+                $validated = $request->validate([
+                    'payout_mode' => ['required', 'in:manual,automatic'],
+                ], [
+                    'payout_mode.required' => 'Please select a payout mode.',
+                    'payout_mode.in' => 'Invalid payout mode selected.',
+                ]);
+
+                $userDetail->payout_mode = $validated['payout_mode'];
+                $userDetail->save();
+
+                $msg = $validated['payout_mode'] === 'automatic'
+                    ? 'Payout mode updated to automatic.'
+                    : 'Payout mode updated to manual.';
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $msg,
+                        'payout_mode' => $validated['payout_mode'],
+                    ]);
+                }
+
+                return redirect()->route('settings.payment')->with('success', $msg);
+            }
+
             $rules = [
                 'payment_type' => ['required', 'in:artist_account,studio_account'],
             ];
@@ -1911,17 +1937,8 @@ class OnboardingController extends Controller
                 $this->sendArtistWelcomeEmail($user);
                 app(\App\Services\MailcoachSubscriberService::class)
                     ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_ARTIST);
-            }
 
-            $questions = QuestionSorting::where('user_id', '1')->where('is_active', true)->orderBy('order')->get();
-
-            foreach ($questions as $question) {
-                QuestionSorting::create([
-                    'user_id' => $user->id,
-                    'question_id' => $question->question_id,
-                    'order' => $question->order,
-                    'is_active' => $question->is_active,
-                ]);
+                $this->seedDefaultQuestionSortingForArtist($user);
             }
 
             return response()->json([
@@ -1984,16 +2001,7 @@ class OnboardingController extends Controller
             app(\App\Services\MailcoachSubscriberService::class)
                 ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_ARTIST);
 
-            $questions = QuestionSorting::where('user_id', '1')->where('is_active', true)->orderBy('order')->get();
-
-            foreach ($questions as $question) {
-                QuestionSorting::create([
-                    'user_id' => $user->id,
-                    'question_id' => $question->question_id,
-                    'order' => $question->order,
-                    'is_active' => $question->is_active,
-                ]);
-            }
+            $this->seedDefaultQuestionSortingForArtist($user);
 
             return response()->json([
                 'success' => true,
@@ -2551,6 +2559,42 @@ class OnboardingController extends Controller
             'message' => $message,
             'hideSidebar' => true,
         ]);
+    }
+
+    /**
+     * Copy default consultation questions for a newly onboarded artist (once).
+     */
+    private function seedDefaultQuestionSortingForArtist(User $user): void
+    {
+        try {
+            if (QuestionSorting::query()->where('user_id', $user->id)->exists()) {
+                return;
+            }
+
+            $questions = QuestionSorting::query()
+                ->where('user_id', 1)
+                ->where('is_active', true)
+                ->orderBy('order')
+                ->get();
+
+            foreach ($questions as $question) {
+                QuestionSorting::query()->firstOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'question_id' => $question->question_id,
+                    ],
+                    [
+                        'order' => $question->order,
+                        'is_active' => $question->is_active,
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to seed default question sorting after onboarding', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function sendArtistWelcomeEmail(User $user): void

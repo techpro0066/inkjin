@@ -149,8 +149,8 @@
         data-open-booking="{{ request('booking', '') }}"
         data-csrf="{{ csrf_token() }}"
         data-locked-message="{{ $role === 'artist'
-          ? 'This chat is locked. You need an open booking with this client to send messages.'
-          : 'This chat is locked. You need an open booking with this artist to send messages.' }}">
+          ? 'This chat is read-only. You cannot send new messages for this booking.'
+          : 'This chat is read-only. You cannot send new messages for this booking.' }}">
 
         <div class="flex h-[600px] chat-layout" id="chatLayout">
           <div class="w-full lg:w-[340px] flex-shrink-0 border-r border-outline-variant/15 flex flex-col" id="convList">
@@ -238,7 +238,7 @@
       </div>
 
       <script src="https://cdn.jsdelivr.net/npm/stream-chat@8.40.0/dist/browser.full-bundle.min.js"></script>
-      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=17"></script>
+      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=18"></script>
     @endif
   </div>
 </main>

@@ -6,11 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\ArtistPayout;
 use App\Models\Booking;
 use App\Models\User;
+use App\Services\StripeConnectService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private readonly StripeConnectService $stripeConnect,
+    ) {}
+
     public function index(): View
     {
         $monthStart = now()->startOfMonth();
@@ -36,6 +41,8 @@ class DashboardController extends Controller
                 ->sum('platform_fee'),
             'pending_payouts' => (float) (clone $pendingPayouts)->sum('amount'),
         ];
+
+        $stripeBalance = $this->stripeConnect->getPlatformBalanceSummary();
 
         $recentUsers = User::query()
             ->with('userDetail')
@@ -93,6 +100,7 @@ class DashboardController extends Controller
             'attentionItems',
             'attentionCount',
             'trends',
+            'stripeBalance',
         ));
     }
 

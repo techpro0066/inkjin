@@ -376,10 +376,10 @@
                           data-balance-due-label="{{ e($balanceDueLabel) }}">
                           <span class="material-symbols-outlined text-[22px]">visibility</span>
                         </button>
-                        @if($booking->isOpenForChat())
+                        @if($booking->canViewChat())
                           <a href="{{ route('artist.chat.index', ['client' => $booking->user_id, 'booking' => $booking->id]) }}"
                             class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
-                            title="Message client">
+                            title="{{ $booking->isOpenForChat() ? 'Message client' : 'View chat history' }}">
                             <span class="material-symbols-outlined text-[22px]">chat</span>
                           </a>
                         @endif
@@ -566,10 +566,10 @@
                     data-design-image="{{ e($designImage) }}">
                     <span class="material-symbols-outlined text-[22px]">visibility</span>
                   </button>
-                  @if($booking->isOpenForChat())
+                  @if($booking->canViewChat())
                     <a href="{{ route('artist.chat.index', ['client' => $booking->user_id, 'booking' => $booking->id]) }}"
                       class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/25 text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
-                      title="Message client">
+                      title="{{ $booking->isOpenForChat() ? 'Message client' : 'View chat history' }}">
                       <span class="material-symbols-outlined text-[22px]">chat</span>
                     </a>
                   @endif

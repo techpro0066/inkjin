@@ -88,6 +88,7 @@ class ChatController extends Controller
 
         $channel = ChatChannel::query()
             ->where('stream_channel_id', $streamChannelId)
+            ->with('booking')
             ->firstOrFail();
 
         if ($channel->otherPartyUserIdFor($user->id) === null) {
@@ -96,6 +97,7 @@ class ChatController extends Controller
 
         return response()->json([
             'can_send' => $channel->isChatAllowed(),
+            'locked_reason' => $channel->booking?->chatLockedReason(),
             'stream_channel_id' => $channel->stream_channel_id,
         ]);
     }
@@ -124,6 +126,8 @@ class ChatController extends Controller
                         'message' => 'No active booking for this conversation.',
                     ], 403);
                 }
+
+                $this->streamChat->syncChannelForBooking($booking);
             } else {
                 $this->streamChat->ensureChannelForBooking($booking);
             }
@@ -238,6 +242,7 @@ class ChatController extends Controller
             'status' => $booking?->status,
             'stream_channel_id' => $channel->stream_channel_id,
             'can_chat' => $channel->isChatAllowed(),
+            'locked_reason' => $booking?->chatLockedReason(),
             'client_user_id' => $channel->client_user_id,
             'artist_user_id' => $channel->artist_user_id,
         ];

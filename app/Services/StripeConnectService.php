@@ -9,6 +9,7 @@ use App\Support\StripeConnectCountries;
 use Illuminate\Support\Facades\Log;
 use Stripe\Account;
 use Stripe\AccountSession;
+use Stripe\Balance;
 use Stripe\Exception\ApiErrorException;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
@@ -1273,6 +1274,129 @@ class StripeConnectService
         $normalized = strtolower($country);
 
         return self::COUNTRY_NAME_TO_ISO[$normalized] ?? $default;
+    }
+
+    /**
+     * Platform Stripe balance (available + pending) for the admin dashboard.
+     *
+     * @return array{
+     *     available: float,
+     *     pending: float,
+     *     currency: string,
+     *     configured: bool,
+     *     error: string|null
+     * }|null
+     */
+    public function getPlatformBalanceSummary(): ?array
+    {
+        if (! $this->isConfigured()) {
+            return [
+                'available' => 0.0,
+                'pending' => 0.0,
+                'currency' => 'EUR',
+                'configured' => false,
+                'error' => 'Stripe is not configured.',
+            ];
+        }
+
+        try {
+            $this->initialize();
+            $balance = Balance::retrieve();
+
+            $preferredCurrency = strtolower((string) config('services.stripe.connect.default_currency', 'eur'));
+            $available = $this->sumBalanceAmount($balance->available ?? [], $preferredCurrency);
+            $pending = $this->sumBalanceAmount($balance->pending ?? [], $preferredCurrency);
+            $currency = strtoupper($preferredCurrency);
+
+            if ($available <= 0 && $pending <= 0) {
+                $fallback = $this->firstBalanceCurrency($balance->available ?? [], $balance->pending ?? []);
+                if ($fallback !== null) {
+                    [$currency, $available, $pending] = $fallback;
+                }
+            }
+
+            return [
+                'available' => round($available, 2),
+                'pending' => round($pending, 2),
+                'currency' => $currency,
+                'configured' => true,
+                'error' => null,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Unable to retrieve Stripe platform balance', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'available' => 0.0,
+                'pending' => 0.0,
+                'currency' => 'EUR',
+                'configured' => true,
+                'error' => 'Unable to load Stripe balance.',
+            ];
+        }
+    }
+
+    /**
+     * @param  array<int, object{amount?: int, currency?: string}>|\Stripe\StripeObject  $items
+     */
+    private function sumBalanceAmount(array|\Stripe\StripeObject $items, string $currency): float
+    {
+        $total = 0.0;
+        $currency = strtolower($currency);
+
+        foreach ($items as $item) {
+            if (strtolower((string) ($item->currency ?? '')) !== $currency) {
+                continue;
+            }
+
+            $total += ((int) ($item->amount ?? 0)) / 100;
+        }
+
+        return $total;
+    }
+
+    /**
+     * @param  array<int, object{amount?: int, currency?: string}>|\Stripe\StripeObject  $available
+     * @param  array<int, object{amount?: int, currency?: string}>|\Stripe\StripeObject  $pending
+     * @return array{0: string, 1: float, 2: float}|null
+     */
+    private function firstBalanceCurrency(array|\Stripe\StripeObject $available, array|\Stripe\StripeObject $pending): ?array
+    {
+        $totals = [];
+
+        foreach ([$available, $pending] as $items) {
+            foreach ($items as $item) {
+                $currency = strtoupper((string) ($item->currency ?? ''));
+                if ($currency === '') {
+                    continue;
+                }
+
+                $totals[$currency] = ($totals[$currency] ?? 0.0) + (((int) ($item->amount ?? 0)) / 100);
+            }
+        }
+
+        if ($totals === []) {
+            return null;
+        }
+
+        $currency = array_key_first($totals);
+
+        $availableTotal = 0.0;
+        foreach ($available as $item) {
+            if (strtoupper((string) ($item->currency ?? '')) === $currency) {
+                $availableTotal += ((int) ($item->amount ?? 0)) / 100;
+            }
+        }
+
+        $pendingTotal = 0.0;
+        foreach ($pending as $item) {
+            if (strtoupper((string) ($item->currency ?? '')) === $currency) {
+                $pendingTotal += ((int) ($item->amount ?? 0)) / 100;
+            }
+        }
+
+        return [$currency, round($availableTotal, 2), round($pendingTotal, 2)];
     }
 
     /**

@@ -28,7 +28,7 @@ class BookingsController extends Controller
         $rescheduleEligibility = [];
         $artistReschedulePending = [];
         foreach ($bookings as $booking) {
-            if (in_array($booking->status, ['confirmed', 'pending', 'cancelled'], true)) {
+            if (in_array($booking->status, ['confirmed', 'pending', 'cancelled', 'completed', 'no_show'], true)) {
                 $bookingModalPayload[$booking->id] = $this->buildUserBookingModalPayload($booking);
             }
             $artistReschedulePending[$booking->id] = (

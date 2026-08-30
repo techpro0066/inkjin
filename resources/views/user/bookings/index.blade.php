@@ -130,10 +130,15 @@
                 $sessionEndUtc = \Carbon\Carbon::parse($booking->booking_date->format('Y-m-d') . ' ' . $booking->end_time_utc);
                 $cancellationDeadline = $sessionStartUtc->copy()->subHours($artistCancellationWindowHours);
                 $canFullRefund = now()->lt($cancellationDeadline);
-                $cardFilterStatus = $sessionEndUtc->isPast() ? 'completed' : 'upcoming';
+                $artistRequested = !empty($artistReschedulePending[$booking->id]);
+                $isMarkedCompleted = $booking->status === 'completed';
+                $isPastSession = $sessionEndUtc->isPast();
+                $isNoShow = $booking->status === 'no_show';
+                $isCompletedCard = $isMarkedCompleted || $isNoShow || ($booking->status === 'confirmed' && $isPastSession);
+                $isUpcomingCard = ($booking->status === 'confirmed' || ($artistRequested && $booking->status === 'pending')) && ! $isCompletedCard;
             @endphp
-            @if($booking->status == 'confirmed' || (!empty($artistReschedulePending[$booking->id]) && $booking->status == 'pending'))
-                <div class="booking-card bg-white rounded-2xl shadow-sm border border-outline-variant/20 p-6" data-status="{{ $cardFilterStatus }}">
+            @if($isUpcomingCard)
+                <div class="booking-card bg-white rounded-2xl shadow-sm border border-outline-variant/20 p-6" data-status="upcoming">
                     <div class="flex flex-col sm:flex-row sm:items-start gap-4">
                         <div class="flex-1 min-w-0">
                             <div class="flex flex-wrap items-center gap-2 mb-3">
@@ -172,9 +177,8 @@
                             <span><strong class="text-on-surface">Remaining:</strong> €{{ number_format($booking->remainingBalanceAmount(), 2) }}</span>
                             </div>
                             @php
-                                $artistRequested = !empty($artistReschedulePending[$booking->id]);
+                                $re = $rescheduleEligibility[$booking->id] ?? ['can_reschedule' => false, 'message' => ''];
                             @endphp
-                            <!-- AR prompt -->
                             <div class="flex items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2 mb-3">
                             <span class="text-sm">📲</span>
                             <p class="text-xs text-on-surface-variant">Not sure about placement? Try it in AR first</p>
@@ -208,9 +212,6 @@
                                     </button>
                                 </div>
                             </div>
-                            @php
-                                $re = $rescheduleEligibility[$booking->id] ?? ['can_reschedule' => false, 'message' => ''];
-                            @endphp
                             @if ($artistRequested)
                                 <div class="rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3 mb-3 text-sm">
                                     <p class="font-semibold text-blue-900">Your artist requested to reschedule this booking.</p>
@@ -221,13 +222,13 @@
                             @endif
                             <div class="flex flex-wrap gap-2 items-center">
                             <button type="button" class="js-booking-detail-open text-sm font-semibold text-primary hover:underline text-left" data-booking-id="{{ $booking->id }}">View Details</button>
-                            @if ($booking->isOpenForChat())
+                            @if ($booking->canViewChat())
                                 <span class="text-outline">·</span>
                                 <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id, 'booking' => $booking->id]) }}"
                                    class="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-                                   title="Message artist">
+                                   title="{{ $booking->isOpenForChat() ? 'Message artist' : 'View chat history' }}">
                                     <span class="material-symbols-outlined text-[18px]">chat</span>
-                                    Message
+                                    {{ $booking->isOpenForChat() ? 'Message' : 'View chat' }}
                                 </a>
                             @endif
                             @if (!empty($re['can_reschedule']) || $artistRequested)
@@ -240,6 +241,85 @@
                             @if (empty($re['can_reschedule']) && !$artistRequested && !empty($re['message']))
                                 <p class="text-xs text-on-surface-variant mt-2 max-w-xl">{{ $re['message'] }}</p>
                             @endif
+                        </div>
+                    </div>
+                </div>
+            @elseif($isCompletedCard)
+                @php
+                    $tz = $booking->timezone ?: 'UTC';
+                    $sessionStart = \Carbon\Carbon::createFromFormat('H:i:s', (string) $booking->start_time_utc)->setTimezone($tz);
+                    $sessionEnd = \Carbon\Carbon::createFromFormat('H:i:s', (string) $booking->end_time_utc)->setTimezone($tz);
+                    $artistUd = $booking->artist?->userDetail;
+                    $rebookUrl = ($booking->tattoo && $artistUd?->user_name && $booking->tattoo->slug)
+                        ? route('public.tattoo.book', ['user_name' => $artistUd->user_name, 'tattoo_slug' => $booking->tattoo->slug])
+                        : null;
+                    $totalPaid = (float) ($booking->total_amount_paid ?? 0);
+                    if ($totalPaid <= 0) {
+                        $totalPaid = (float) ($booking->deposit_amount ?? 0);
+                    }
+                    $statusLabel = $isNoShow ? 'No show' : ($isMarkedCompleted ? 'Completed' : 'Past session');
+                    $statusBadgeClass = $isNoShow
+                        ? 'bg-orange-50 text-orange-800'
+                        : 'bg-slate-100 text-slate-700';
+                    $statusDotClass = $isNoShow ? 'bg-orange-500' : 'bg-slate-400';
+                @endphp
+                <div class="booking-card bg-white rounded-2xl shadow-sm border border-outline-variant/20 p-6" data-status="completed">
+                    <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-3">
+                                <span class="inline-flex items-center gap-1.5 {{ $statusBadgeClass }} text-xs font-semibold px-3 py-1 rounded-full">
+                                    <span class="w-1.5 h-1.5 {{ $statusDotClass }} rounded-full"></span> {{ $statusLabel }}
+                                </span>
+                                <span class="text-xs text-on-surface-variant font-medium">#INK-{{ str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT) }}</span>
+                            </div>
+                            <h3 class="font-bold text-on-surface text-lg mb-2">{{ $booking->displayTitle() }}</h3>
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                    <img src="{{ ($artistUd && $artistUd->avatar != '') ? asset($artistUd->avatar) : asset('design/images/icons/avatar.jpg') }}" alt="{{ $artistUd?->publicDisplayName() ?? ($booking->artist?->first_name ?? '') }}" class="w-full h-full object-cover rounded-full">
+                                </div>
+                                <span class="text-sm text-on-surface-variant">{{ $artistUd?->publicDisplayName() ?? trim(($booking->artist?->first_name ?? '').' '.($booking->artist?->last_name ?? '')) }}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-on-surface-variant mb-3">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-base text-outline">calendar_today</span>
+                                    {{ $booking->booking_date->format('F j, Y') }} at {{ $sessionStart->format('g:i A') }} – {{ $sessionEnd->format('g:i A') }}
+                                </span>
+                                @if ($booking->studioNameForClient())
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-base text-outline">location_on</span>
+                                        {{ $booking->studioNameForClient() }}
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-on-surface-variant mb-3">
+                                <span><strong class="text-on-surface">Total paid:</strong> €{{ number_format($totalPaid, 2) }}</span>
+                                @if ($booking->full_amount_paid)
+                                    <span class="text-green-700 font-medium">Paid in full</span>
+                                @elseif ($booking->remainingBalanceAmount() > 0.009)
+                                    <span><strong class="text-on-surface">Remaining:</strong> €{{ number_format($booking->remainingBalanceAmount(), 2) }}</span>
+                                @endif
+                            </div>
+                            @if ($booking->completed_at)
+                                <p class="text-xs text-on-surface-variant mb-3">Completed {{ $booking->completed_at->timezone($tz)->format('F j, Y \a\t g:i A') }}</p>
+                            @elseif ($isPastSession && ! $isMarkedCompleted)
+                                <p class="text-xs text-on-surface-variant mb-3">Session date has passed.</p>
+                            @endif
+                            <div class="flex flex-wrap gap-2 items-center">
+                                <button type="button" class="js-booking-detail-open text-sm font-semibold text-primary hover:underline text-left" data-booking-id="{{ $booking->id }}">View Details</button>
+                                @if ($booking->canViewChat())
+                                    <span class="text-outline">·</span>
+                                    <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id, 'booking' => $booking->id]) }}"
+                                       class="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+                                       title="View chat history">
+                                        <span class="material-symbols-outlined text-[18px]">chat</span>
+                                        View chat
+                                    </a>
+                                @endif
+                                @if ($rebookUrl)
+                                    <span class="text-outline">·</span>
+                                    <a href="{{ $rebookUrl }}" class="text-sm font-semibold text-primary hover:underline">Book again</a>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -304,6 +384,12 @@
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 <button type="button" class="js-booking-detail-open text-sm font-semibold text-primary hover:underline text-left" data-booking-id="{{ $booking->id }}">View Details</button>
+                                @if ($booking->canViewChat())
+                                    <span class="text-outline">·</span>
+                                    <a href="{{ route('user.chat.index', ['artist' => $booking->artist_user_id, 'booking' => $booking->id]) }}"
+                                       class="text-sm font-semibold text-primary hover:underline"
+                                       title="View chat history">View chat</a>
+                                @endif
                                 @if ($rebookUrl)
                                     <span class="text-outline">·</span>
                                     <a href="{{ $rebookUrl }}" class="text-sm font-semibold text-primary hover:underline">Rebook</a>

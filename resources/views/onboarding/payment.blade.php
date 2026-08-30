@@ -205,6 +205,9 @@
       <button type="button" id="paySkip" class="inline-flex items-center gap-2 font-semibold py-3 px-6 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high transition-colors">
         Set up later
       </button>
+      <button type="button" id="payFinish" class="hidden inline-flex items-center gap-2 font-bold py-3 px-6 rounded-xl bg-gradient-to-br from-primary to-primary-container text-white shadow-lg shadow-primary/20 hover:opacity-90 transition-all">
+        Go to dashboard
+      </button>
     </div>
   </div>
 </form>
@@ -244,6 +247,9 @@ let connectInstance = null;
 let onboardingMounted = false;
 let autoFinishInProgress = false;
 let stripeStatusPollTimer = null;
+let currentPayoutStep = 'intro';
+let autoFinishAttempts = 0;
+const MAX_AUTO_FINISH_ATTEMPTS = 3;
 
 window.setStripeOnboardingComplete = function (complete) {
   window.stripeOnboardingComplete = !!complete;
@@ -253,6 +259,7 @@ window.setStripeOnboardingComplete = function (complete) {
   } else if (hint) {
     hint.classList.remove('hidden');
   }
+  window.updatePaymentSkipUi(currentPayoutStep);
 };
 
 window.lockPayoutOptions = function (activeKey) {
@@ -294,8 +301,13 @@ function startStripeStatusPolling() {
   }, 2000);
 }
 
+function resetAutoFinishFlags() {
+  autoFinishInProgress = false;
+  window.stripeAutoFinishTriggered = false;
+}
+
 async function maybeFinalizeOnboardingStripe() {
-  if (autoFinishInProgress || window.stripeAutoFinishTriggered) {
+  if (autoFinishInProgress) {
     return;
   }
 
@@ -304,7 +316,6 @@ async function maybeFinalizeOnboardingStripe() {
     return;
   }
 
-  stopStripeStatusPolling();
   window.setStripeOnboardingComplete(true);
   window.lockPayoutOptions('artist');
   await tryAutoFinishOnboarding();
@@ -348,19 +359,56 @@ async function refreshStripeStatus() {
 
 window.refreshStripeOnboardingStatus = refreshStripeStatus;
 
-async function tryAutoFinishOnboarding() {
-  if (autoFinishInProgress || window.stripeAutoFinishTriggered) {
-    return;
+async function tryAutoFinishOnboarding(options = {}) {
+  if (autoFinishInProgress) {
+    return false;
   }
+
+  if (!options.force && autoFinishAttempts >= MAX_AUTO_FINISH_ATTEMPTS) {
+    window.updatePaymentSkipUi(currentPayoutStep);
+    stopStripeStatusPolling();
+    return false;
+  }
+
+  if (typeof window.submitPaymentForm !== 'function') {
+    setTimeout(() => {
+      tryAutoFinishOnboarding(options).catch(() => {});
+    }, 300);
+    return false;
+  }
+
   autoFinishInProgress = true;
+  window.stripeAutoFinishTriggered = true;
+  if (!options.force) {
+    autoFinishAttempts += 1;
+  }
+
   try {
-    if (typeof window.submitPaymentForm === 'function') {
-      window.stripeAutoFinishTriggered = true;
-      await window.submitPaymentForm({ auto: true, stripeExit: true });
+    const data = await window.submitPaymentForm({
+      auto: true,
+      stripeExit: true,
+      _retried: !!options._retried,
+    });
+
+    if (data?.success && data?.redirect) {
+      stopStripeStatusPolling();
+      window.location.href = data.redirect;
+      return true;
     }
+
+    throw new Error(data?.message || 'Could not complete onboarding.');
   } catch (err) {
-    window.stripeAutoFinishTriggered = false;
+    resetAutoFinishFlags();
+    window.updatePaymentSkipUi(currentPayoutStep);
+
+    if (autoFinishAttempts < MAX_AUTO_FINISH_ATTEMPTS && onboardingMounted && !stripeStatusPollTimer) {
+      startStripeStatusPolling();
+    } else {
+      stopStripeStatusPolling();
+    }
+
     console.warn('Auto-finish onboarding failed', err);
+    return false;
   } finally {
     autoFinishInProgress = false;
   }
@@ -434,22 +482,32 @@ window.mountStripeOnboardingIfNeeded = async function () {
 };
 
 window.showPayoutStep = function (step) {
+  currentPayoutStep = step || 'intro';
   const intro = document.getElementById('payoutConnectIntroStep');
   const stripe = document.getElementById('payoutStripeStep');
-  if (intro) intro.classList.toggle('hidden', step !== 'intro');
-  if (stripe) stripe.classList.toggle('hidden', step !== 'stripe');
-  window.updatePaymentSkipUi(step);
+  if (intro) intro.classList.toggle('hidden', currentPayoutStep !== 'intro');
+  if (stripe) stripe.classList.toggle('hidden', currentPayoutStep !== 'stripe');
+  window.updatePaymentSkipUi(currentPayoutStep);
 };
 
 window.updatePaymentSkipUi = function (payoutStep) {
+  currentPayoutStep = payoutStep || currentPayoutStep || 'intro';
   const paymentType = document.getElementById('payment_type')?.value;
+  const stripeReady = !!(window.stripeOnboardingComplete || window.artistStripeConnected);
   const inArtistConnectFlow = paymentType === 'artist_account'
     && !window.artistStripeConnected
-    && payoutStep === 'stripe';
+    && !window.stripeOnboardingComplete
+    && currentPayoutStep === 'stripe';
   const skipHint = document.getElementById('paySkipHint');
   const skipBtn = document.getElementById('paySkip');
-  if (skipHint) skipHint.classList.toggle('hidden', inArtistConnectFlow);
-  if (skipBtn) skipBtn.classList.toggle('hidden', inArtistConnectFlow);
+  const finishBtn = document.getElementById('payFinish');
+
+  if (skipHint) skipHint.classList.toggle('hidden', inArtistConnectFlow || (paymentType === 'artist_account' && stripeReady));
+  if (skipBtn) skipBtn.classList.toggle('hidden', inArtistConnectFlow || (paymentType === 'artist_account' && stripeReady));
+  if (finishBtn) {
+    const showFinish = paymentType === 'artist_account' && stripeReady;
+    finishBtn.classList.toggle('hidden', !showFinish);
+  }
 };
 
 document.getElementById('connectBankAccountBtn')?.addEventListener('click', async () => {
@@ -469,6 +527,8 @@ window.artistStripeConnected = @json($artistStripeConnected);
 
 if (!window.artistStripeConnected && !initialWaitingListCountry && window.payoutBankCountrySelected) {
   window.showPayoutStep('intro');
+} else {
+  window.updatePaymentSkipUi(window.artistStripeConnected ? 'intro' : 'intro');
 }
 </script>
 <script>
@@ -517,14 +577,10 @@ $(function () {
     }
   }
 
-  function validateArtistStripeSetup() {
-    return validateArtistStripeSetupAsync();
-  }
-
   async function validateArtistStripeSetupAsync() {
     var paymentType = $('#payment_type').val();
     if (paymentType !== 'artist_account') return true;
-    if (artistStripeConnected) return true;
+    if (artistStripeConnected || window.stripeOnboardingComplete) return true;
     if (!@json($stripeConnectConfigured ?? false)) return true;
     if (!window.payoutBankCountrySelected) {
       $('#stripe_connect_error').text('Please connect your bank account and complete payout setup before continuing.').removeClass('hidden');
@@ -537,7 +593,7 @@ $(function () {
     if (typeof window.refreshStripeOnboardingStatus === 'function') {
       await window.refreshStripeOnboardingStatus();
     }
-    if (!window.stripeOnboardingComplete) {
+    if (!window.stripeOnboardingComplete && !artistStripeConnected) {
       $('#stripe_connect_error').text('Please complete Stripe payout setup before continuing.').removeClass('hidden');
       if (typeof window.scrollToFirstOnboardingError === 'function') {
         window.scrollToFirstOnboardingError(document.getElementById('paymentForm'));
@@ -547,96 +603,132 @@ $(function () {
     return true;
   }
 
-  async function submitPaymentForm(options) {
+  function submitPaymentForm(options) {
     options = options || {};
     var $alertEl = $('#payAlert');
     var $skip = $('#paySkip');
+    var $finish = $('#payFinish');
     var $studioSend = $('#payStudioSend');
     var originalStudioSendHtml = $studioSend.length ? $studioSend.html() : '';
+    var originalFinishHtml = $finish.length ? $finish.html() : '';
     $('#paymentForm').find('[id$="_error"]').addClass('hidden').text('');
 
-    if (!options.auto) {
-      if (!await validateArtistStripeSetupAsync()) return;
-    }
+    return (async function () {
+      if (!options.auto) {
+        if (!await validateArtistStripeSetupAsync()) {
+          throw new Error('Please complete Stripe payout setup before continuing.');
+        }
+      }
 
-    $skip.prop('disabled', true);
-    if ($studioSend.length) {
-      $studioSend.prop('disabled', true);
-      $studioSend.text(options.auto ? 'Finishing onboarding…' : 'Sending...');
-    }
-    var fd = new FormData(document.getElementById('paymentForm'));
-    $.ajax({
-      url: @json(route('onboarding.payment.save')),
-      type: 'POST',
-      data: fd,
-      processData: false,
-      contentType: false,
-      headers: {
-        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-        Accept: 'application/json',
-      },
-    })
-      .done(function (data) {
-        if (data.success && data.redirect) {
-          const paymentType = $('#payment_type').val();
-          if (typeof window.lockPayoutOptions === 'function') {
-            if (paymentType === 'artist_account') {
-              window.lockPayoutOptions('artist');
-            } else if (paymentType === 'studio_account') {
-              window.lockPayoutOptions('studio');
-            }
-          }
-          window.location.href = data.redirect;
-          return;
-        }
-        if (data.errors) {
-          showPaymentErrors(data.errors);
-          $alertEl.addClass('hidden');
-          if (options.auto && options.stripeExit && !options._retried) {
-            setTimeout(function () {
-              submitPaymentForm({ auto: true, stripeExit: true, _retried: true });
-            }, 2000);
-            return;
-          }
-          if (options.auto) {
-            window.stripeAutoFinishTriggered = false;
-          }
-        } else {
-          $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-red-50 text-red-800 border border-red-200');
-          $alertEl.text(data.message || 'Could not complete').removeClass('hidden');
-        }
-      })
-      .fail(function (xhr) {
-        if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-          showPaymentErrors(xhr.responseJSON.errors);
-          $alertEl.addClass('hidden');
-          if (options.auto && options.stripeExit && !options._retried) {
-            setTimeout(function () {
-              submitPaymentForm({ auto: true, stripeExit: true, _retried: true });
-            }, 2000);
-            return;
-          }
-        } else {
-          $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-red-50 text-red-800 border border-red-200');
-          $alertEl.text('Network error').removeClass('hidden');
-        }
-        if (options.auto) {
-          window.stripeAutoFinishTriggered = false;
-        }
-      })
-      .always(function () {
-        $skip.prop('disabled', false);
-        if ($studioSend.length) {
-          $studioSend.prop('disabled', false);
-          $studioSend.html(originalStudioSendHtml);
-        }
-        if (!options.auto) {
-          window.stripeAutoFinishTriggered = false;
-        }
-      });
+      $skip.prop('disabled', true);
+      $finish.prop('disabled', true);
+      if ($finish.length && !options.auto) {
+        $finish.text('Finishing…');
+      }
+      if ($studioSend.length) {
+        $studioSend.prop('disabled', true);
+        $studioSend.text(options.auto ? 'Finishing onboarding…' : 'Sending...');
+      }
+
+      const runAjax = function (attemptOptions) {
+        return new Promise(function (resolve, reject) {
+          var fd = new FormData(document.getElementById('paymentForm'));
+          $.ajax({
+            url: @json(route('onboarding.payment.save')),
+            type: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            headers: {
+              'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+              Accept: 'application/json',
+            },
+          })
+            .done(function (data) {
+              if (data.success && data.redirect) {
+                const paymentType = $('#payment_type').val();
+                if (typeof window.lockPayoutOptions === 'function') {
+                  if (paymentType === 'artist_account') {
+                    window.lockPayoutOptions('artist');
+                  } else if (paymentType === 'studio_account') {
+                    window.lockPayoutOptions('studio');
+                  }
+                }
+                resolve(data);
+                window.location.href = data.redirect;
+                return;
+              }
+
+              if (data.errors) {
+                showPaymentErrors(data.errors);
+                $alertEl.addClass('hidden');
+                if (attemptOptions.auto && attemptOptions.stripeExit && !attemptOptions._retried) {
+                  setTimeout(function () {
+                    runAjax({ auto: true, stripeExit: true, _retried: true }).then(resolve).catch(reject);
+                  }, 2000);
+                  return;
+                }
+                reject(new Error((data.errors.stripe_connect && data.errors.stripe_connect[0]) || data.message || 'Could not complete'));
+                return;
+              }
+
+              $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-red-50 text-red-800 border border-red-200');
+              $alertEl.text(data.message || 'Could not complete').removeClass('hidden');
+              reject(new Error(data.message || 'Could not complete'));
+            })
+            .fail(function (xhr) {
+              if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                showPaymentErrors(xhr.responseJSON.errors);
+                $alertEl.addClass('hidden');
+                if (attemptOptions.auto && attemptOptions.stripeExit && !attemptOptions._retried) {
+                  setTimeout(function () {
+                    runAjax({ auto: true, stripeExit: true, _retried: true }).then(resolve).catch(reject);
+                  }, 2000);
+                  return;
+                }
+                const firstError = Object.values(xhr.responseJSON.errors || {})[0];
+                reject(new Error((firstError && firstError[0]) || xhr.responseJSON.message || 'Could not complete'));
+                return;
+              }
+
+              const msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Network error';
+              $alertEl.attr('class', 'rounded-xl px-4 py-3 text-sm mt-4 bg-red-50 text-red-800 border border-red-200');
+              $alertEl.text(msg).removeClass('hidden');
+              reject(new Error(msg));
+            })
+            .always(function () {
+              $skip.prop('disabled', false);
+              $finish.prop('disabled', false);
+              if ($finish.length) $finish.html(originalFinishHtml);
+              if ($studioSend.length) {
+                $studioSend.prop('disabled', false);
+                $studioSend.html(originalStudioSendHtml);
+              }
+            });
+        });
+      };
+
+      return runAjax(options);
+    })();
   }
 
   window.submitPaymentForm = submitPaymentForm;
+
+  $('#payFinish').on('click', function () {
+    autoFinishAttempts = 0;
+    submitPaymentForm({ auto: false }).catch(function () {});
+  });
+
+  if (artistStripeConnected || window.stripeOnboardingComplete) {
+    if (typeof window.updatePaymentSkipUi === 'function') {
+      window.updatePaymentSkipUi('intro');
+    }
+    setTimeout(function () {
+      if (typeof window.tryAutoFinishOnboarding === 'function') {
+        window.tryAutoFinishOnboarding().catch(function () {});
+      }
+    }, 400);
+  }
 
   $('#payStudioSend').on('click', function () {
     $('#payment_type').val('studio_account');
@@ -646,7 +738,7 @@ $(function () {
       return;
     }
     $('#studio_email_error').addClass('hidden').text('');
-    submitPaymentForm();
+    submitPaymentForm().catch(function () {});
   });
 
   function openStudioDisconnectModal() { $('#disconnectStudioModal').removeClass('hidden'); }

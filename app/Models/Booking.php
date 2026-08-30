@@ -235,7 +235,33 @@ class Booking extends Model
 
     public function isOpenForChat(): bool
     {
-        return in_array($this->status, ['pending', 'confirmed', 'completed', 'cancelled', 'no_show', 'rescheduled'], true);
+        return in_array($this->status, ['pending', 'confirmed'], true);
+    }
+
+    /**
+     * Whether the user can open this booking's chat thread (read-only when not open for sending).
+     */
+    public function canViewChat(): bool
+    {
+        if ($this->isOpenForChat()) {
+            return true;
+        }
+
+        return in_array($this->status, ['completed', 'cancelled', 'no_show'], true);
+    }
+
+    public function chatLockedReason(): ?string
+    {
+        if ($this->isOpenForChat()) {
+            return null;
+        }
+
+        return match ($this->status) {
+            'completed' => 'This booking is completed. You can read past messages but cannot send new ones.',
+            'cancelled' => 'This booking was cancelled. You can read past messages but cannot send new ones.',
+            'no_show' => 'This booking was marked as a no-show. You can read past messages but cannot send new ones.',
+            default => 'This chat is read-only. You cannot send new messages for this booking.',
+        };
     }
 
     // Helper methods
