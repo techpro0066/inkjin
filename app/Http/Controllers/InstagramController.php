@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class InstagramController extends Controller
@@ -92,6 +93,9 @@ class InstagramController extends Controller
             $profile = $this->fetchProfile($token);
             $username = $profile['username'] ?? null;
             $userId = isset($profile['user_id']) ? (string) $profile['user_id'] : ($profile['id'] ?? $userId);
+            $profilePictureUrl = isset($profile['profile_picture_url'])
+                ? trim((string) $profile['profile_picture_url'])
+                : '';
 
             /** @var UserDetail|null $detail */
             $detail = Auth::user()?->userDetail;
@@ -99,9 +103,12 @@ class InstagramController extends Controller
                 return redirect($portfolioUrl)->with('error', 'Artist profile not found.');
             }
 
+            $storedPicture = $this->storeProfilePicture($detail, $profilePictureUrl !== '' ? $profilePictureUrl : null);
+
             $detail->update([
                 'instagram_user_id' => $userId,
                 'instagram_username' => $username,
+                'instagram_profile_picture' => $storedPicture,
                 'instagram_access_token' => $token,
                 'instagram_token_expires_at' => $expiresIn > 0 ? now()->addSeconds($expiresIn) : null,
                 'instagram_connected_at' => now(),
@@ -284,6 +291,38 @@ class InstagramController extends Controller
         }
     }
 
+    /**
+     * Backfill Instagram profile picture for already-connected accounts.
+     */
+    public function syncProfilePictureForDetail(UserDetail $detail): void
+    {
+        $token = trim((string) ($detail->instagram_access_token ?? ''));
+        if ($token === '' || filled($detail->instagram_profile_picture)) {
+            return;
+        }
+
+        try {
+            $profile = $this->fetchProfile($token);
+            $remoteUrl = isset($profile['profile_picture_url'])
+                ? trim((string) $profile['profile_picture_url'])
+                : '';
+
+            if ($remoteUrl === '') {
+                return;
+            }
+
+            $stored = $this->storeProfilePicture($detail, $remoteUrl);
+            if ($stored) {
+                $detail->update(['instagram_profile_picture' => $stored]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Instagram profile picture sync failed', [
+                'user_id' => $detail->user_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function disconnect(Request $request): RedirectResponse
     {
         /** @var UserDetail|null $detail */
@@ -342,9 +381,12 @@ class InstagramController extends Controller
 
     private function clearInstagramConnection(UserDetail $detail): void
     {
+        $this->deleteStoredProfilePicture($detail);
+
         $detail->update([
             'instagram_user_id' => null,
             'instagram_username' => null,
+            'instagram_profile_picture' => null,
             'instagram_access_token' => null,
             'instagram_token_expires_at' => null,
             'instagram_connected_at' => null,
@@ -452,14 +494,14 @@ class InstagramController extends Controller
     private function fetchProfile(string $accessToken): array
     {
         $response = Http::get('https://graph.instagram.com/v21.0/me', [
-            'fields' => 'user_id,username',
+            'fields' => 'user_id,username,profile_picture_url',
             'access_token' => $accessToken,
         ]);
 
         if (! $response->successful()) {
             // Fallback field set used by some Graph versions.
             $response = Http::get('https://graph.instagram.com/me', [
-                'fields' => 'id,username',
+                'fields' => 'id,username,profile_picture_url',
                 'access_token' => $accessToken,
             ]);
         }
@@ -471,5 +513,50 @@ class InstagramController extends Controller
         }
 
         return $response->json() ?: [];
+    }
+
+    private function storeProfilePicture(UserDetail $detail, ?string $remoteUrl): ?string
+    {
+        $remoteUrl = trim((string) $remoteUrl);
+        if ($remoteUrl === '') {
+            return $detail->instagram_profile_picture;
+        }
+
+        try {
+            $response = Http::timeout(20)->get($remoteUrl);
+            if (! $response->successful() || blank($response->body())) {
+                return $remoteUrl;
+            }
+
+            $path = 'instagram/profiles/'.$detail->user_id.'.jpg';
+            Storage::disk('public')->put($path, $response->body());
+
+            return $path;
+        } catch (\Throwable $e) {
+            Log::warning('Instagram profile picture download failed', [
+                'user_id' => $detail->user_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $remoteUrl;
+        }
+    }
+
+    private function deleteStoredProfilePicture(UserDetail $detail): void
+    {
+        $path = trim((string) ($detail->instagram_profile_picture ?? ''));
+        if ($path === '' || Str::startsWith($path, ['http://', 'https://'])) {
+            return;
+        }
+
+        try {
+            Storage::disk('public')->delete($path);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to delete Instagram profile picture', [
+                'user_id' => $detail->user_id,
+                'path' => $path,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

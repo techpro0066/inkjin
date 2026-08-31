@@ -28,6 +28,7 @@ class UserDetail extends Model
         'google_calendar_id',
         'instagram_user_id',
         'instagram_username',
+        'instagram_profile_picture',
         'instagram_access_token',
         'instagram_token_expires_at',
         'instagram_connected_at',

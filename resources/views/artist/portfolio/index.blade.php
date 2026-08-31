@@ -101,6 +101,40 @@
       width: 1.25rem;
       height: 1.25rem;
     }
+    .instagram-status-avatar {
+      position: relative;
+      width: 3rem;
+      height: 3rem;
+      flex-shrink: 0;
+    }
+    .instagram-status-avatar img {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 9999px;
+      object-fit: cover;
+      display: block;
+      background: #f3f0f6;
+      border: 1px solid rgba(121, 116, 126, 0.15);
+    }
+    .instagram-status-avatar-badge {
+      position: absolute;
+      right: -2px;
+      bottom: -2px;
+      width: 1.15rem;
+      height: 1.15rem;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      border: 2px solid #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+    }
+    .instagram-status-avatar-badge svg {
+      width: 0.65rem;
+      height: 0.65rem;
+    }
     .instagram-status-actions {
       display: flex;
       flex-wrap: wrap;
@@ -460,9 +494,18 @@
 
         @if ($showInstagramUi && !empty($instagramConnected))
         <div class="instagram-status-card">
-          <div class="instagram-status-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="{{ $igIconPath }}"/></svg>
-          </div>
+          @if (!empty($instagramProfilePictureUrl))
+            <div class="instagram-status-avatar">
+              <img src="{{ $instagramProfilePictureUrl }}" alt="{{ !empty($instagramUsername) ? '@'.ltrim((string) $instagramUsername, '@') : 'Instagram profile' }}" width="48" height="48" loading="lazy" referrerpolicy="no-referrer">
+              <span class="instagram-status-avatar-badge" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="{{ $igIconPath }}"/></svg>
+              </span>
+            </div>
+          @else
+            <div class="instagram-status-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="{{ $igIconPath }}"/></svg>
+            </div>
+          @endif
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
               <span class="font-semibold text-on-surface text-sm">Instagram</span>

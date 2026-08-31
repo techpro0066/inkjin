@@ -32,6 +32,7 @@ use App\Http\Controllers\ArtistDashboardController;
 use App\Http\Controllers\Artist\ChatController as ArtistChatController;
 use App\Http\Controllers\Artist\ClientsController as ArtistClientsController;
 use App\Http\Controllers\Artist\PaymentsController as ArtistPaymentsController;
+use App\Http\Controllers\Artist\ReferEarnController as ArtistReferEarnController;
 use App\Http\Controllers\Artist\OtherSettingsController;
 use App\Http\Controllers\Api\ChatController as ApiChatController;
 use App\Http\Controllers\CustomRequestController;
@@ -378,6 +379,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/chat', [ArtistChatController::class, 'index'])->name('artist.chat.index');
     Route::get('/clients', [ArtistClientsController::class, 'index'])->name('artist.clients.index');
     Route::post('/clients/waitlist/notify', [ArtistClientsController::class, 'notifyWaitlist'])->name('artist.clients.waitlist.notify');
+    Route::get('/refer-earn', [ArtistReferEarnController::class, 'index'])->name('artist.refer-earn.index');
     Route::get('/payments', [ArtistPaymentsController::class, 'index'])->name('artist.payments.index');
     Route::post('/payments/request-payout', [ArtistPaymentsController::class, 'requestPayout'])->name('artist.payments.request-payout');
 });

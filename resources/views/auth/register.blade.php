@@ -119,8 +119,14 @@
   
   
   </div>
-  <form class="space-y-6" id="register-form" action="{{ route('register') }}" method="POST">
+  <form class="space-y-6" id="register-form" action="{{ route('register.store') }}" method="POST">
   @csrf
+  @php
+    $resolvedReferrerUserId = $referrerUserId ?? session('artist_referral_referrer_user_id');
+  @endphp
+  @if ($resolvedReferrerUserId)
+    <input type="hidden" name="referrer_user_id" value="{{ $resolvedReferrerUserId }}">
+  @endif
   <div id="register-alert" class="hidden rounded-xl bg-error-container/40 border border-error-container/60 px-4 py-3 text-sm text-error"></div>
   <div class="space-y-2">
   <label class="block text-sm font-semibold text-on-surface mb-2" for="email" style="">Email Address</label>

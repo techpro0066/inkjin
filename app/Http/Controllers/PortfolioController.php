@@ -99,6 +99,13 @@ class PortfolioController extends Controller
         $userDetail = Auth::user()->userDetail;
         $instagramConnected = filled($userDetail?->instagram_access_token);
         $instagramUsername = $userDetail?->instagram_username;
+
+        if ($instagramConnected && $userDetail && blank($userDetail->instagram_profile_picture)) {
+            app(InstagramController::class)->syncProfilePictureForDetail($userDetail);
+            $userDetail->refresh();
+        }
+
+        $instagramProfilePictureUrl = $this->resolveInstagramProfilePictureUrl($userDetail?->instagram_profile_picture);
         $instagramImportedCount = Auth::user()->portfolios()
             ->whereNotNull('instagram_media_id')
             ->count();
@@ -110,9 +117,24 @@ class PortfolioController extends Controller
             'placements',
             'instagramConnected',
             'instagramUsername',
+            'instagramProfilePictureUrl',
             'instagramImportedCount',
             'instagramAutoImport'
         ));
+    }
+
+    private function resolveInstagramProfilePictureUrl(?string $path): ?string
+    {
+        $path = trim((string) $path);
+        if ($path === '') {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return asset('storage/'.$path);
     }
 
     public function store(Request $request)

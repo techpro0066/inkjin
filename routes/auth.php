@@ -14,7 +14,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
+    Route::get('register/{username?}', [RegisteredUserController::class, 'create'])
+        ->where('username', '^[A-Za-z0-9._]+$')
         ->name('register');
 
     Route::post('register', [RegisteredUserController::class, 'store'])
