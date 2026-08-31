@@ -100,9 +100,19 @@ class PortfolioController extends Controller
         $instagramConnected = filled($userDetail?->instagram_access_token);
         $instagramUsername = $userDetail?->instagram_username;
 
-        if ($instagramConnected && $userDetail && blank($userDetail->instagram_profile_picture)) {
-            app(InstagramController::class)->syncProfilePictureForDetail($userDetail);
-            $userDetail->refresh();
+        if ($instagramConnected && $userDetail) {
+            $picture = trim((string) ($userDetail->instagram_profile_picture ?? ''));
+            $needsPublicPicture = $picture === ''
+                || (
+                    ! str_starts_with($picture, 'http://')
+                    && ! str_starts_with($picture, 'https://')
+                    && ! str_starts_with($picture, 'uploads/instagram-profiles/')
+                );
+
+            if ($needsPublicPicture) {
+                app(InstagramController::class)->syncProfilePictureForDetail($userDetail, true);
+                $userDetail->refresh();
+            }
         }
 
         $instagramProfilePictureUrl = $this->resolveInstagramProfilePictureUrl($userDetail?->instagram_profile_picture);
@@ -134,7 +144,7 @@ class PortfolioController extends Controller
             return $path;
         }
 
-        return asset('storage/'.$path);
+        return asset($path);
     }
 
     public function store(Request $request)

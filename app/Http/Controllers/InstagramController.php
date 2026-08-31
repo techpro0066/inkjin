@@ -8,9 +8,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class InstagramController extends Controller
@@ -294,10 +294,21 @@ class InstagramController extends Controller
     /**
      * Backfill Instagram profile picture for already-connected accounts.
      */
-    public function syncProfilePictureForDetail(UserDetail $detail): void
+    public function syncProfilePictureForDetail(UserDetail $detail, bool $force = false): void
     {
         $token = trim((string) ($detail->instagram_access_token ?? ''));
-        if ($token === '' || filled($detail->instagram_profile_picture)) {
+        if ($token === '') {
+            return;
+        }
+
+        $existing = trim((string) ($detail->instagram_profile_picture ?? ''));
+        $needsSync = $force
+            || $existing === ''
+            || (
+                ! Str::startsWith($existing, ['http://', 'https://', 'uploads/instagram-profiles/'])
+            );
+
+        if (! $needsSync) {
             return;
         }
 
@@ -528,10 +539,18 @@ class InstagramController extends Controller
                 return $remoteUrl;
             }
 
-            $path = 'instagram/profiles/'.$detail->user_id.'.jpg';
-            Storage::disk('public')->put($path, $response->body());
+            $destination = public_path('uploads/instagram-profiles');
+            if (! File::exists($destination)) {
+                File::makeDirectory($destination, 0755, true);
+            }
 
-            return $path;
+            $this->deleteStoredProfilePicture($detail);
+
+            $filename = $detail->user_id.'_'.time().'.jpg';
+            $relative = 'uploads/instagram-profiles/'.$filename;
+            File::put(public_path($relative), $response->body());
+
+            return $relative;
         } catch (\Throwable $e) {
             Log::warning('Instagram profile picture download failed', [
                 'user_id' => $detail->user_id,
@@ -550,7 +569,9 @@ class InstagramController extends Controller
         }
 
         try {
-            Storage::disk('public')->delete($path);
+            if (Str::startsWith($path, 'uploads/instagram-profiles/') && File::exists(public_path($path))) {
+                File::delete(public_path($path));
+            }
         } catch (\Throwable $e) {
             Log::warning('Failed to delete Instagram profile picture', [
                 'user_id' => $detail->user_id,
