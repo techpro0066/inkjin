@@ -134,6 +134,60 @@
     -webkit-overflow-scrolling: touch;
   }
   .referrals-table-scroll table { min-width: 640px; }
+  .refer-earnings-stat {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px 24px;
+    border: 1px solid rgba(202,196,211,0.2);
+  }
+  .refer-earnings-stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #494552;
+    margin-bottom: 8px;
+  }
+  .refer-earnings-stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1c1b21;
+    line-height: 1.1;
+  }
+  .refer-earnings-list {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid rgba(202,196,211,0.2);
+    overflow: hidden;
+  }
+  .refer-earnings-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(202,196,211,0.15);
+  }
+  .refer-earnings-item:last-child { border-bottom: 0; }
+  .refer-earnings-item-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1c1b21;
+    line-height: 1.35;
+  }
+  .refer-earnings-item-subtitle {
+    font-size: 13px;
+    color: #494552;
+    margin-top: 2px;
+  }
+  .refer-earnings-item-amount {
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .refer-earnings-item-amount.is-pending { color: #494552; }
+  .refer-earnings-item-amount.is-paid { color: #15803d; }
   @media (max-width: 1023px) {
     .main-content { padding: 16px; padding-top: 70px; }
   }
@@ -152,6 +206,8 @@
     ? preg_replace('#^https?://#', '', $referralLink)
     : null;
   $referrals = $referrals ?? collect();
+  $earnings = $earnings ?? ['pending_total' => 0, 'paid_total' => 0, 'items' => collect()];
+  $earningsItems = $earnings['items'] ?? collect();
 @endphp
 <main class="main-content flex-1 min-h-screen min-w-0 w-full">
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl w-full min-w-0 mx-auto">
@@ -295,7 +351,36 @@
         </div>
       </div>
     </div>
-    <div data-refer-panel="earnings" class="hidden"></div>
+    <div data-refer-panel="earnings" class="hidden space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="refer-earnings-stat">
+          <p class="refer-earnings-stat-label">Pending</p>
+          <p class="refer-earnings-stat-value">${{ number_format((float) ($earnings['pending_total'] ?? 0), 0) }}</p>
+        </div>
+        <div class="refer-earnings-stat">
+          <p class="refer-earnings-stat-label">Paid out</p>
+          <p class="refer-earnings-stat-value">${{ number_format((float) ($earnings['paid_total'] ?? 0), 0) }}</p>
+        </div>
+      </div>
+
+      <div class="refer-earnings-list">
+        @forelse ($earningsItems as $item)
+          <div class="refer-earnings-item">
+            <div class="min-w-0">
+              <p class="refer-earnings-item-title">{{ $item['artist_label'] }} — first booking</p>
+              <p class="refer-earnings-item-subtitle">{{ $item['subtitle'] }}</p>
+            </div>
+            <p class="refer-earnings-item-amount {{ $item['state'] === 'paid' ? 'is-paid' : 'is-pending' }}">
+              ${{ number_format((float) $item['amount'], 0) }}
+            </p>
+          </div>
+        @empty
+          <div class="px-6 py-12 text-center text-sm text-on-surface-variant">
+            No earnings yet. When a referred artist completes their first booking, your reward will show here.
+          </div>
+        @endforelse
+      </div>
+    </div>
 
   </div>
 </main>
