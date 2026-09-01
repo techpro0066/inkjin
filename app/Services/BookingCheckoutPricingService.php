@@ -7,10 +7,33 @@ use App\Support\EuVat;
 
 class BookingCheckoutPricingService
 {
+    public function __construct(
+        private readonly ?ArtistReferralFeeWaiverService $referralFeeWaiver = null,
+    ) {}
+
+    private function waiverService(): ArtistReferralFeeWaiverService
+    {
+        return $this->referralFeeWaiver ?? app(ArtistReferralFeeWaiverService::class);
+    }
+
+    /**
+     * @return array{base_fee: float, fee_type: string, client_fee: float, artist_fee: float, referral_fee_waived?: bool}
+     */
+    public function resolveBookingFee(UserDetail $userDetail): array
+    {
+        $bookingFee = $this->resolveBookingFeeWithoutReferralWaiver($userDetail);
+
+        if ($this->waiverService()->eligible($userDetail)) {
+            return $this->waiverService()->waiveBookingFee($bookingFee);
+        }
+
+        return $bookingFee;
+    }
+
     /**
      * @return array{base_fee: float, fee_type: string, client_fee: float, artist_fee: float}
      */
-    public function resolveBookingFee(UserDetail $userDetail): array
+    public function resolveBookingFeeWithoutReferralWaiver(UserDetail $userDetail): array
     {
         $baseFee = 10.00;
         $feeType = (string) ($userDetail->booking_fee_type ?: 'client');

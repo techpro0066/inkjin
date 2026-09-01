@@ -30,6 +30,7 @@ use App\Services\CancellationService;
 use App\Services\GoogleCalendarBookingSyncService;
 use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Services\ArtistPayoutService;
+use App\Services\BookingCheckoutPricingService;
 use App\Models\UserDetail;
 use App\Models\Waitlist;
 use App\Models\Question;
@@ -38,7 +39,6 @@ use App\Models\Placement;
 use App\Models\Style;
 use App\Models\UserQuestion;
 use App\Support\PaymentMethods;
-use App\Support\EuVat;
 use App\Models\PendingVivaPayment;
 use App\Services\VivaCheckoutService;
 use Stripe\Exception\ApiErrorException;
@@ -63,54 +63,6 @@ class InkJinController extends Controller
             now()->addDays(14),
             ['user' => $user->id, 'bookingRequest' => $bookingRequest->id]
         );
-    }
-
-    private function resolveBookingFee(UserDetail $userDetail): array
-    {
-        $baseFee = 10.00;
-        $feeType = (string) ($userDetail->booking_fee_type ?: 'client');
-        if (!in_array($feeType, ['client', 'artist', 'split'], true)) {
-            $feeType = 'client';
-        }
-
-        $clientFee = $baseFee;
-        if ($feeType === 'artist') {
-            $clientFee = 0.00;
-        } elseif ($feeType === 'split') {
-            $clientFee = $baseFee / 2;
-        }
-
-        $artistFee = max(0, $baseFee - $clientFee);
-
-        return [
-            'base_fee' => $baseFee,
-            'fee_type' => $feeType,
-            'client_fee' => round($clientFee, 2),
-            'artist_fee' => round($artistFee, 2),
-        ];
-    }
-
-    private function resolveDepositForTattoo(UserDetail $userDetail, float $tattooMinPrice): array
-    {
-        $type = (string) ($userDetail->minimum_deposit_type ?: 'percentage');
-        $amount = (float) ($userDetail->minimum_deposit_amount ?? 30);
-
-        if ($type === 'amount') {
-            $deposit = min($tattooMinPrice, max(0, $amount));
-            $label = 'fixed';
-        } else {
-            $type = 'percentage';
-            $amount = max(0, $amount);
-            $deposit = $tattooMinPrice * ($amount / 100);
-            $label = rtrim(rtrim(number_format($amount, 2, '.', ''), '0'), '.') . '%';
-        }
-
-        return [
-            'deposit' => round($deposit, 2),
-            'type' => $type,
-            'amount' => $amount,
-            'label' => $label,
-        ];
     }
 
     /**
@@ -859,13 +811,22 @@ class InkJinController extends Controller
             return response()->json(['message' => 'Stripe is not configured.'], 500);
         }
 
-        $depositMeta = $this->resolveDepositForTattoo($userDetail, (float) $tattoo->min_price);
-        $bookingFee = $this->resolveBookingFee($userDetail);
-        $deposit = (float) $depositMeta['deposit'];
-        $platformFee = (float) $bookingFee['client_fee'];
-        $vat = EuVat::taxOnBookingFee($platformFee, $validated['phone'] ?? null);
-        $totalDueNow = round($deposit + $platformFee + (float) $vat['tax_amount'], 2);
+        $pricing = app(BookingCheckoutPricingService::class);
+        $totals = $pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, $validated['phone'] ?? null);
+        $depositMeta = $totals['deposit_meta'];
+        $bookingFee = $totals['booking_fee'];
+        $deposit = (float) $totals['deposit'];
+        $platformFee = (float) $totals['platform_fee'];
+        $taxAmount = (float) $totals['tax_amount'];
+        $totalDueNow = (float) $totals['total_due'];
         $amountCents = (int) round($totalDueNow * 100);
+        $vat = [
+            'tax_amount' => $taxAmount,
+            'rate' => $totals['tax_rate'],
+            'country_code' => $totals['tax_country'],
+            'label' => $totals['tax_label'],
+            'is_eu' => $totals['tax_rate'] !== null,
+        ];
 
         $payoutPreference = $this->artistPayoutPreferenceLabel($userDetail);
 
@@ -1058,13 +1019,12 @@ class InkJinController extends Controller
             ], 422);
         }
 
-        $depositMeta = $this->resolveDepositForTattoo($userDetail, (float) $design->min_price);
-        $bookingFee = $this->resolveBookingFee($userDetail);
-        $depositAmount = (float) $depositMeta['deposit'];
-        $platformFee = (float) $bookingFee['client_fee'];
-        $vat = EuVat::taxOnBookingFee($platformFee, $payload['phone'] ?? null);
-        $taxAmount = (float) $vat['tax_amount'];
-        $totalPaid = round($depositAmount + $platformFee + $taxAmount, 2);
+        $pricing = app(BookingCheckoutPricingService::class);
+        $totals = $pricing->checkoutTotals($userDetail, (float) $design->min_price, $payload['phone'] ?? null);
+        $depositAmount = (float) $totals['deposit'];
+        $platformFee = (float) $totals['platform_fee'];
+        $taxAmount = (float) $totals['tax_amount'];
+        $totalPaid = (float) $totals['total_due'];
 
         $booking = Booking::create([
             'user_id' => $bookingUser->id,
@@ -1087,9 +1047,9 @@ class InkJinController extends Controller
             'deposit_amount' => $depositAmount,
             'platform_fee' => $platformFee,
             'tax_amount' => $taxAmount,
-            'tax_rate' => $vat['is_eu'] ? $vat['rate'] : null,
-            'tax_country' => $vat['country_code'],
-            'tax_label' => $vat['label'],
+            'tax_rate' => $totals['tax_rate'],
+            'tax_country' => $totals['tax_country'],
+            'tax_label' => $totals['tax_label'],
             'total_amount_paid' => $totalPaid,
             'currency' => strtoupper((string) ($intent->currency ?: 'eur')),
             'questions_answers' => $payload['questions_answers'] ?? [],
@@ -1463,10 +1423,9 @@ class InkJinController extends Controller
             return response()->json(['message' => 'IRIS payment is not available for this checkout.'], 422);
         }
 
-        $depositMeta = $this->resolveDepositForTattoo($userDetail, (float) $tattoo->min_price);
-        $bookingFee = $this->resolveBookingFee($userDetail);
-        $vat = EuVat::taxOnBookingFee((float) $bookingFee['client_fee'], $clientPhone);
-        $amountCents = (int) round(((float) $depositMeta['deposit'] + (float) $bookingFee['client_fee'] + (float) $vat['tax_amount']) * 100);
+        $pricing = app(BookingCheckoutPricingService::class);
+        $totals = $pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, $clientPhone);
+        $amountCents = (int) round(((float) $totals['total_due']) * 100);
 
         try {
             $order = $vivaCheckout->createOrReuseOrderForPublicBooking(

@@ -1844,6 +1844,14 @@ class OnboardingController extends Controller
                 ]);
             }
 
+            if ($user->on_boarding === 'yes') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Onboarding already completed.',
+                    'redirect' => authenticated_home_url(),
+                ]);
+            }
+
             // Base validation - payment_type is always required
             $rules = [
                 'payment_type' => ['required', 'in:artist_account,studio_account'],
@@ -1895,7 +1903,17 @@ class OnboardingController extends Controller
                         ]);
                     }
 
+                    $userDetail->refresh();
                     $accountId = $userDetail->stripe_account_id;
+                    if (! $accountId) {
+                        try {
+                            $accountId = $stripeConnect->ensureConnectedAccount($user, $userDetail);
+                            $userDetail->refresh();
+                        } catch (\Throwable) {
+                            $accountId = null;
+                        }
+                    }
+
                     if (! $accountId || ! $stripeConnect->isOnboardingSubmitted($accountId)) {
                         throw ValidationException::withMessages([
                             'stripe_connect' => ['Please complete Stripe payout setup before finishing onboarding.'],

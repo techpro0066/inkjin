@@ -88,16 +88,9 @@
             </div>
           @else
             @if (! $hasSignupPayoutCountry)
-              <div class="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-4 max-w-md">
-                <p class="text-sm font-semibold mb-1">Payout country missing</p>
-                <p class="text-sm">We need the country you chose at signup to set up Stripe payouts. Please contact support if this looks wrong.</p>
-              </div>
             @else
             <div id="payoutConnectIntroStep" class="max-w-2xl">
               <p class="text-on-surface-variant text-sm mb-5">Connect your bank account through Stripe to receive payouts directly.</p>
-              @if ($payoutBankCountryName)
-                <p class="text-sm text-on-surface mb-4">Bank account country from signup: <strong>{{ $payoutBankCountryName }}</strong></p>
-              @endif
               <button
                 type="button"
                 id="connectBankAccountBtn"
@@ -112,7 +105,7 @@
               <div class="mb-4 pb-4 border-b border-outline-variant/20 max-w-2xl">
                 <p id="payoutStripeStepTitle" class="text-base font-semibold text-on-surface">Complete your payout details</p>
                 <p id="payoutStripeStepDescription" class="text-on-surface-variant text-sm mt-2">
-                  Add your personal details, upload an identity document (passport or ID), and enter your bank account below{{ $payoutBankCountryName ? ' for payouts to '.$payoutBankCountryName : '' }}. Onboarding will finish automatically when you're done.
+                  Add your personal details, upload an identity document (passport or ID). Onboarding will finish automatically when you're done.
                 </p>
               </div>
 
@@ -205,9 +198,6 @@
       <button type="button" id="paySkip" class="inline-flex items-center gap-2 font-semibold py-3 px-6 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high transition-colors">
         Set up later
       </button>
-      <button type="button" id="payFinish" class="hidden inline-flex items-center gap-2 font-bold py-3 px-6 rounded-xl bg-gradient-to-br from-primary to-primary-container text-white shadow-lg shadow-primary/20 hover:opacity-90 transition-all">
-        Go to dashboard
-      </button>
     </div>
   </div>
 </form>
@@ -249,7 +239,8 @@ let autoFinishInProgress = false;
 let stripeStatusPollTimer = null;
 let currentPayoutStep = 'intro';
 let autoFinishAttempts = 0;
-const MAX_AUTO_FINISH_ATTEMPTS = 3;
+const MAX_AUTO_FINISH_ATTEMPTS = 8;
+window.PAYMENT_SAVE_MAX_RETRIES = 4;
 
 window.setStripeOnboardingComplete = function (complete) {
   window.stripeOnboardingComplete = !!complete;
@@ -304,7 +295,10 @@ function startStripeStatusPolling() {
 function resetAutoFinishFlags() {
   autoFinishInProgress = false;
   window.stripeAutoFinishTriggered = false;
+  autoFinishAttempts = 0;
 }
+
+window.resetAutoFinishFlags = resetAutoFinishFlags;
 
 async function maybeFinalizeOnboardingStripe() {
   if (autoFinishInProgress) {
@@ -366,7 +360,6 @@ async function tryAutoFinishOnboarding(options = {}) {
 
   if (!options.force && autoFinishAttempts >= MAX_AUTO_FINISH_ATTEMPTS) {
     window.updatePaymentSkipUi(currentPayoutStep);
-    stopStripeStatusPolling();
     return false;
   }
 
@@ -401,10 +394,8 @@ async function tryAutoFinishOnboarding(options = {}) {
     resetAutoFinishFlags();
     window.updatePaymentSkipUi(currentPayoutStep);
 
-    if (autoFinishAttempts < MAX_AUTO_FINISH_ATTEMPTS && onboardingMounted && !stripeStatusPollTimer) {
+    if (onboardingMounted && !stripeStatusPollTimer) {
       startStripeStatusPolling();
-    } else {
-      stopStripeStatusPolling();
     }
 
     console.warn('Auto-finish onboarding failed', err);
@@ -500,14 +491,9 @@ window.updatePaymentSkipUi = function (payoutStep) {
     && currentPayoutStep === 'stripe';
   const skipHint = document.getElementById('paySkipHint');
   const skipBtn = document.getElementById('paySkip');
-  const finishBtn = document.getElementById('payFinish');
 
   if (skipHint) skipHint.classList.toggle('hidden', inArtistConnectFlow || (paymentType === 'artist_account' && stripeReady));
   if (skipBtn) skipBtn.classList.toggle('hidden', inArtistConnectFlow || (paymentType === 'artist_account' && stripeReady));
-  if (finishBtn) {
-    const showFinish = paymentType === 'artist_account' && stripeReady;
-    finishBtn.classList.toggle('hidden', !showFinish);
-  }
 };
 
 document.getElementById('connectBankAccountBtn')?.addEventListener('click', async () => {
@@ -566,15 +552,63 @@ $(function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('studio_email');
   });
 
+  function showPaymentAlert(message, type) {
+    type = type || 'error';
+    var $alertEl = $('#payAlert');
+    var classes = type === 'error'
+      ? 'rounded-xl px-4 py-3 text-sm mt-4 bg-red-50 text-red-800 border border-red-200'
+      : 'rounded-xl px-4 py-3 text-sm mt-4 bg-amber-50 text-amber-900 border border-amber-200';
+    $alertEl.attr('class', classes).text(message).removeClass('hidden');
+    if ($alertEl[0] && typeof $alertEl[0].scrollIntoView === 'function') {
+      $alertEl[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
   function showPaymentErrors(errors) {
+    var firstMessage = null;
     $.each(errors, function (k, messages) {
+      if (!firstMessage && messages && messages[0]) {
+        firstMessage = messages[0];
+      }
       var errId = k === 'stripe_connect' ? 'stripe_connect_error' : (k + '_error');
       var $el = $('#' + errId);
       if ($el.length) $el.text(messages[0]).removeClass('hidden');
     });
+    if (firstMessage) {
+      showPaymentAlert(firstMessage, 'error');
+    }
     if (typeof window.scrollToFirstOnboardingError === 'function') {
       window.scrollToFirstOnboardingError(document.getElementById('paymentForm'));
     }
+  }
+
+  function shouldRetryPaymentSave(attemptOptions, errors) {
+    var retryCount = attemptOptions._retryCount || 0;
+    var maxRetries = window.PAYMENT_SAVE_MAX_RETRIES || 4;
+    if (retryCount >= maxRetries) {
+      return false;
+    }
+    if (!errors || !errors.stripe_connect) {
+      return false;
+    }
+    return !!attemptOptions.auto;
+  }
+
+  function schedulePaymentSaveRetry(attemptOptions, resolve, reject, runAjax) {
+    var nextOptions = $.extend({}, attemptOptions, {
+      _retryCount: (attemptOptions._retryCount || 0) + 1,
+    });
+    var delay = 1500 * nextOptions._retryCount;
+
+    setTimeout(function () {
+      var refresh = (typeof window.refreshStripeOnboardingStatus === 'function')
+        ? window.refreshStripeOnboardingStatus()
+        : Promise.resolve();
+
+      refresh.finally(function () {
+        runAjax(nextOptions).then(resolve).catch(reject);
+      });
+    }, delay);
   }
 
   async function validateArtistStripeSetupAsync() {
@@ -583,7 +617,9 @@ $(function () {
     if (artistStripeConnected || window.stripeOnboardingComplete) return true;
     if (!@json($stripeConnectConfigured ?? false)) return true;
     if (!window.payoutBankCountrySelected) {
-      $('#stripe_connect_error').text('Please connect your bank account and complete payout setup before continuing.').removeClass('hidden');
+      var countryMessage = 'Please connect your bank account and complete payout setup before continuing.';
+      $('#stripe_connect_error').text(countryMessage).removeClass('hidden');
+      showPaymentAlert(countryMessage, 'error');
       window.showPayoutStep('intro');
       if (typeof window.scrollToFirstOnboardingError === 'function') {
         window.scrollToFirstOnboardingError(document.getElementById('paymentForm'));
@@ -594,7 +630,9 @@ $(function () {
       await window.refreshStripeOnboardingStatus();
     }
     if (!window.stripeOnboardingComplete && !artistStripeConnected) {
-      $('#stripe_connect_error').text('Please complete Stripe payout setup before continuing.').removeClass('hidden');
+      var stripeMessage = 'Please complete Stripe payout setup before continuing.';
+      $('#stripe_connect_error').text(stripeMessage).removeClass('hidden');
+      showPaymentAlert(stripeMessage, 'error');
       if (typeof window.scrollToFirstOnboardingError === 'function') {
         window.scrollToFirstOnboardingError(document.getElementById('paymentForm'));
       }
@@ -607,24 +645,23 @@ $(function () {
     options = options || {};
     var $alertEl = $('#payAlert');
     var $skip = $('#paySkip');
-    var $finish = $('#payFinish');
     var $studioSend = $('#payStudioSend');
     var originalStudioSendHtml = $studioSend.length ? $studioSend.html() : '';
-    var originalFinishHtml = $finish.length ? $finish.html() : '';
     $('#paymentForm').find('[id$="_error"]').addClass('hidden').text('');
 
     return (async function () {
       if (!options.auto) {
+        if (typeof window.refreshStripeOnboardingStatus === 'function') {
+          await window.refreshStripeOnboardingStatus();
+        }
         if (!await validateArtistStripeSetupAsync()) {
           throw new Error('Please complete Stripe payout setup before continuing.');
         }
       }
 
+      $alertEl.addClass('hidden').text('');
+
       $skip.prop('disabled', true);
-      $finish.prop('disabled', true);
-      if ($finish.length && !options.auto) {
-        $finish.text('Finishing…');
-      }
       if ($studioSend.length) {
         $studioSend.prop('disabled', true);
         $studioSend.text(options.auto ? 'Finishing onboarding…' : 'Sending...');
@@ -661,11 +698,8 @@ $(function () {
 
               if (data.errors) {
                 showPaymentErrors(data.errors);
-                $alertEl.addClass('hidden');
-                if (attemptOptions.auto && attemptOptions.stripeExit && !attemptOptions._retried) {
-                  setTimeout(function () {
-                    runAjax({ auto: true, stripeExit: true, _retried: true }).then(resolve).catch(reject);
-                  }, 2000);
+                if (shouldRetryPaymentSave(attemptOptions, data.errors)) {
+                  schedulePaymentSaveRetry(attemptOptions, resolve, reject, runAjax);
                   return;
                 }
                 reject(new Error((data.errors.stripe_connect && data.errors.stripe_connect[0]) || data.message || 'Could not complete'));
@@ -679,11 +713,8 @@ $(function () {
             .fail(function (xhr) {
               if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
                 showPaymentErrors(xhr.responseJSON.errors);
-                $alertEl.addClass('hidden');
-                if (attemptOptions.auto && attemptOptions.stripeExit && !attemptOptions._retried) {
-                  setTimeout(function () {
-                    runAjax({ auto: true, stripeExit: true, _retried: true }).then(resolve).catch(reject);
-                  }, 2000);
+                if (shouldRetryPaymentSave(attemptOptions, xhr.responseJSON.errors)) {
+                  schedulePaymentSaveRetry(attemptOptions, resolve, reject, runAjax);
                   return;
                 }
                 const firstError = Object.values(xhr.responseJSON.errors || {})[0];
@@ -698,8 +729,6 @@ $(function () {
             })
             .always(function () {
               $skip.prop('disabled', false);
-              $finish.prop('disabled', false);
-              if ($finish.length) $finish.html(originalFinishHtml);
               if ($studioSend.length) {
                 $studioSend.prop('disabled', false);
                 $studioSend.html(originalStudioSendHtml);
@@ -713,11 +742,6 @@ $(function () {
   }
 
   window.submitPaymentForm = submitPaymentForm;
-
-  $('#payFinish').on('click', function () {
-    autoFinishAttempts = 0;
-    submitPaymentForm({ auto: false }).catch(function () {});
-  });
 
   if (artistStripeConnected || window.stripeOnboardingComplete) {
     if (typeof window.updatePaymentSkipUi === 'function') {

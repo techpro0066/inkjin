@@ -481,7 +481,8 @@ class ArtistPayoutService
 
         $bookingFee = 0.0;
         if ($userDetail) {
-            $bookingFee = (float) $this->pricing->resolveBookingFee($userDetail)['artist_fee'];
+            $bookingFee = app(ArtistReferralFeeWaiverService::class)
+                ->artistFeeForBooking($booking, $userDetail);
         }
 
         $net = $userDetail
@@ -512,8 +513,8 @@ class ArtistPayoutService
 
     public function computeArtistPayoutAmount(Booking $booking, UserDetail $userDetail): float
     {
-        $bookingFee = $this->pricing->resolveBookingFee($userDetail);
-        $artistFee = (float) $bookingFee['artist_fee'];
+        $artistFee = app(ArtistReferralFeeWaiverService::class)
+            ->artistFeeForBooking($booking, $userDetail);
 
         return max(0, round($this->collectedGrossForArtist($booking) - $artistFee, 2));
     }

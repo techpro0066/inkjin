@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('artist-payouts:process')->daily();
+        $schedule->command('artist-referrals:process-rewards')->hourly();
         $schedule->command('artists:send-payout-setup-reminders')->daily();
         $schedule->command('signups:purge-unverified-bots')->hourly();
         $schedule->command('payment-links:send-session-reminders')->hourly();

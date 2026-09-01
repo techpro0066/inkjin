@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\StyleController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\ReferralsController as AdminReferralsController;
 use App\Http\Controllers\QuestionsController;
 
 use App\Http\Controllers\UserController\BookingsController;
@@ -227,6 +228,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     
     Route::get('/users', [AdminUserController::class, 'index'])->name('admin.users.index');
     Route::get('/users/{id}', [AdminUserController::class, 'show'])->name('admin.users.show');
+    Route::get('/referrals', [AdminReferralsController::class, 'index'])->name('admin.referrals.index');
+    Route::post('/referrals/{referral}/send-reward', [AdminReferralsController::class, 'sendReward'])->name('admin.referrals.send-reward');
+    Route::post('/referrals/{referral}/reject', [AdminReferralsController::class, 'reject'])->name('admin.referrals.reject');
 });
 
 // Artist routes

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\CountryNotAvailableMail;
+use App\Models\ArtistReferral;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserNotRegistered;
@@ -25,11 +26,21 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): View
+    public function create(?string $username = null): View
     {
+        $referrer = $this->resolveReferrerByUsername($username);
+
+        if ($referrer) {
+            session(['artist_referral_referrer_user_id' => $referrer->id]);
+        } elseif ($username !== null && $username !== '') {
+            session()->forget('artist_referral_referrer_user_id');
+        }
+
         return view('auth.register', [
             'registrationCountries' => StripeConnectCountries::registrationCountriesForSelect(),
             'unlistedCountries' => StripeConnectCountries::unsupportedCountryNamesForWaitingList(),
+            'referrerUsername' => $referrer?->userDetail?->user_name,
+            'referrerUserId' => $referrer?->id,
         ]);
     }
 
@@ -60,6 +71,7 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'payout_bank_country' => ['required', 'string', Rule::in(array_merge($registrationCodes, ['__not_listed__']))],
             'referral_source' => ['nullable', 'string', 'max:255'],
+            'referrer_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ];
 
         if ($isUnlisted) {
@@ -120,6 +132,9 @@ class RegisteredUserController extends Controller
         StripeConnectCountries::syncCurrencyFromBankCountry($userDetail);
         $userDetail->save();
 
+        $this->createArtistReferralIfValid($user, $validated['referrer_user_id'] ?? null);
+        $request->session()->forget('artist_referral_referrer_user_id');
+
         // Login user temporarily so they can access verification page
         Auth::login($user);
 
@@ -133,5 +148,48 @@ class RegisteredUserController extends Controller
 
         // Redirect to verification notice
         return redirect()->route('verification.notice');
+    }
+
+    private function resolveReferrerByUsername(?string $username): ?User
+    {
+        $username = trim((string) $username);
+        if ($username === '') {
+            return null;
+        }
+
+        $userDetail = UserDetail::query()
+            ->whereRaw('LOWER(user_name) = ?', [strtolower($username)])
+            ->whereHas('user', fn ($query) => $query->where('role', 'artist'))
+            ->with('user')
+            ->first();
+
+        return $userDetail?->user;
+    }
+
+    private function createArtistReferralIfValid(User $newUser, mixed $referrerUserId): void
+    {
+        $referrerId = (int) ($referrerUserId ?: session('artist_referral_referrer_user_id'));
+        if ($referrerId < 1 || $referrerId === (int) $newUser->id) {
+            return;
+        }
+
+        $referrer = User::query()
+            ->whereKey($referrerId)
+            ->where('role', 'artist')
+            ->first();
+
+        if (! $referrer) {
+            return;
+        }
+
+        ArtistReferral::query()->firstOrCreate(
+            ['referred_user_id' => $newUser->id],
+            [
+                'referrer_user_id' => $referrer->id,
+                'status' => ArtistReferral::STATUS_PENDING,
+                'reward_amount' => 20.00,
+                'fee_waived' => false,
+            ]
+        );
     }
 }
