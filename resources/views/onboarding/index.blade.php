@@ -312,19 +312,24 @@
             <p class="text-muted mb-4">Choose how you want to manage your scheduling. This step is required.</p>
             <form id="calendarForm">
               @csrf
-              <input type="hidden" name="scheduling_type" id="scheduling_type" value="{{ $userDetail->scheduling_type ?? '' }}">
+              @php
+                $defaultSchedulingType = ($userDetail->scheduling_type ?? '') !== ''
+                  ? $userDetail->scheduling_type
+                  : 'managed';
+              @endphp
+              <input type="hidden" name="scheduling_type" id="scheduling_type" value="{{ $defaultSchedulingType }}">
               
               <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                  <div class="card border-2 h-100 cursor-pointer scheduling-option {{ ($userDetail->scheduling_type ?? '') == 'auto' ? 'border-primary' : 'border-dashed' }}" 
+                  <div class="card border-2 h-100 cursor-pointer scheduling-option {{ $defaultSchedulingType == 'auto' ? 'border-primary' : 'border-dashed' }}" 
                        data-scheduling-type="auto"
                        onclick="selectSchedulingType('auto', this)" 
                        style="cursor: pointer; transition: all 0.3s;">
                     <div class="card-body text-center py-5">
-                      <i class="ti ti-calendar-automated ti-3x {{ ($userDetail->scheduling_type ?? '') == 'auto' ? 'text-primary' : 'text-muted' }} mb-3"></i>
+                      <i class="ti ti-calendar-automated ti-3x {{ $defaultSchedulingType == 'auto' ? 'text-primary' : 'text-muted' }} mb-3"></i>
                       <h6 class="mb-2">Auto Scheduling</h6>
                       <p class="text-muted mb-3">Connect your Google Calendar to automatically sync your availability and bookings.</p>
-                      @if(($userDetail->scheduling_type ?? '') == 'auto')
+                      @if($defaultSchedulingType == 'auto')
                         <span class="badge bg-primary mb-3">
                           <i class="ti ti-check me-1"></i> Selected
                         </span>
@@ -334,15 +339,15 @@
                 </div>
                 
                 <div class="col-md-6">
-                  <div class="card border-2 h-100 cursor-pointer scheduling-option {{ ($userDetail->scheduling_type ?? '') == 'managed' ? 'border-primary' : 'border-dashed' }}" 
+                  <div class="card border-2 h-100 cursor-pointer scheduling-option {{ $defaultSchedulingType == 'managed' ? 'border-primary' : 'border-dashed' }}" 
                        data-scheduling-type="managed"
                        onclick="selectSchedulingType('managed', this)" 
                        style="cursor: pointer; transition: all 0.3s;">
                     <div class="card-body text-center py-5">
-                      <i class="ti ti-calendar-user ti-3x {{ ($userDetail->scheduling_type ?? '') == 'managed' ? 'text-primary' : 'text-muted' }} mb-3"></i>
+                      <i class="ti ti-calendar-user ti-3x {{ $defaultSchedulingType == 'managed' ? 'text-primary' : 'text-muted' }} mb-3"></i>
                       <h6 class="mb-2">Managed Scheduling</h6>
                       <p class="text-muted mb-3">Manage your schedule manually without connecting a calendar.</p>
-                      @if(($userDetail->scheduling_type ?? '') == 'managed')
+                      @if($defaultSchedulingType == 'managed')
                         <span class="badge bg-primary mb-3">
                           <i class="ti ti-check me-1"></i> Selected
                         </span>
@@ -353,7 +358,7 @@
               </div>
               
               <!-- Calendar Connection Section (only shown for Auto Scheduling) -->
-              <div class="row g-3 mb-4" id="calendarConnectionSection" style="display: {{ ($userDetail->scheduling_type ?? '') == 'auto' ? 'flex' : 'none' }};">
+              <div class="row g-3 mb-4" id="calendarConnectionSection" style="display: {{ $defaultSchedulingType == 'auto' ? 'flex' : 'none' }};">
                 <div class="col-12">
                   <div class="card border-2 {{ ($userDetail->google_calendar_token ?? null) ? 'border-success' : 'border-dashed' }}">
                     <div class="card-body text-center py-4">

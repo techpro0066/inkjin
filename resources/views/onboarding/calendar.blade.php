@@ -12,8 +12,9 @@
   } elseif (!empty($user?->email)) {
       $connectedCalendarEmail = (string) $user->email;
   }
-  // If Google Calendar is connected, default to auto scheduling in the UI.
-  $defaultSched = $gcal ? 'auto' : ($st !== '' ? $st : 'auto');
+  // Prefer saved choice. If Google Calendar is connected and nothing is saved yet, use auto.
+  // Otherwise default new artists to Managed Scheduling.
+  $defaultSched = $st !== '' ? $st : ($gcal ? 'auto' : 'managed');
   $isAuto = $defaultSched === 'auto';
 @endphp
 
