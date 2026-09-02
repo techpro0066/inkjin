@@ -974,6 +974,7 @@
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   @include('partials.phone-country-scripts')
   <script src="https://js.stripe.com/v3/"></script>
+  @include('partials.bookpay-public-api')
   <script>
     var currentStep = 1;
     var currentQuestionIndex = 0;
@@ -1580,8 +1581,9 @@
     window.expandCancellationPolicy = expandCancellationPolicy;
 
     async function createBookingPaymentIntent() {
-      var response = await fetch('/api/public/create-booking-payment-intent', {
+      var response = await fetch(bookpayUrl('/api/public/create-booking-payment-intent'), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -1666,8 +1668,9 @@
     }
 
     async function persistBookingRecord(paymentIntentId, bookingPayloadOverride) {
-      var response = await fetch('/api/public/confirm-booking-payment', {
+      var response = await fetch(bookpayUrl('/api/public/confirm-booking-payment'), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -1696,7 +1699,8 @@
 
       return await new Promise(function(resolve, reject) {
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/public/upload-booking-question-image');
+        xhr.open('POST', bookpayUrl('/api/public/upload-booking-question-image'));
+        xhr.withCredentials = true;
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
         if (xhr.upload && typeof progressCb === 'function') {
@@ -2900,8 +2904,9 @@
     }
 
     async function validateBookingEmailRole(email) {
-      var res = await fetch('/api/public/check-email-availability?email=' + encodeURIComponent(email), {
+      var res = await fetch(bookpayUrl('/api/public/check-email-availability?email=' + encodeURIComponent(email)), {
         method: 'GET',
+        credentials: 'include',
         headers: { 'Accept': 'application/json' }
       });
 
@@ -3064,8 +3069,9 @@
 
       $('#bdSendOtpBtn').prop('disabled', true).text('Sending...');
       try {
-        var res = await fetch('/api/public/send-booking-otp', {
+        var res = await fetch(bookpayUrl('/api/public/send-booking-otp'), {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -3120,8 +3126,9 @@
 
       $('#bdVerifyOtpBtn').prop('disabled', true).text('Verifying...');
       try {
-        var res = await fetch('/api/public/verify-booking-otp', {
+        var res = await fetch(bookpayUrl('/api/public/verify-booking-otp'), {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -3466,8 +3473,9 @@
         var cardholderName = (ev && ev.payerName)
           ? String(ev.payerName).trim()
           : String($('#inputCardName').val() || $('#bdName').val() || '').trim();
-        var response = await fetch('/api/public/create-booking-payment-intent', {
+        var response = await fetch(bookpayUrl('/api/public/create-booking-payment-intent'), {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -3549,8 +3557,9 @@
         } catch (e) {}
       },
       getClientSecret: async function (billing) {
-        var response = await fetch('/api/public/create-booking-payment-intent', {
+        var response = await fetch(bookpayUrl('/api/public/create-booking-payment-intent'), {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',

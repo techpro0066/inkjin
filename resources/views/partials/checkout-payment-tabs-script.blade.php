@@ -168,7 +168,10 @@
       url += '&' + extra;
     }
 
-    var res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    var res = await fetch(url, {
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' }
+    });
     var data = await res.json();
     if (!res.ok) return false;
 
@@ -308,7 +311,7 @@
           'X-CSRF-TOKEN': window.vivaCsrfToken || '',
           'X-Requested-With': 'XMLHttpRequest'
         },
-        credentials: 'same-origin',
+        credentials: 'include',
         body: JSON.stringify(typeof window.vivaOrderBody === 'function' ? window.vivaOrderBody() : {})
       });
       var data = await res.json();

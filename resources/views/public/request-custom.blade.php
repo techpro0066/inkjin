@@ -780,6 +780,7 @@
   <script src="{{ asset('js/question-answer-display.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   @include('partials.phone-country-scripts')
+  @include('partials.bookpay-public-api')
   <script>
   (function($) {
     'use strict';
@@ -861,7 +862,8 @@
       formData.append('tattoo_slug', fallbackTattooSlug);
       return await new Promise(function(resolve, reject) {
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/public/upload-booking-question-image');
+        xhr.open('POST', bookpayUrl('/api/public/upload-booking-question-image'));
+        xhr.withCredentials = true;
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
         if (xhr.upload && typeof progressCb === 'function') {
@@ -1574,8 +1576,9 @@
     }
 
     async function validateBookingEmailRole(email) {
-      var res = await fetch('/api/public/check-email-availability?email=' + encodeURIComponent(email), {
+      var res = await fetch(bookpayUrl('/api/public/check-email-availability?email=' + encodeURIComponent(email)), {
         method: 'GET',
+        credentials: 'include',
         headers: { 'Accept': 'application/json' }
       });
       if (!res.ok) throw new Error('Unable to validate email right now. Please try again.');
@@ -1768,8 +1771,9 @@
       }
       if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
       try {
-        var res = await fetch('/api/public/send-booking-otp', {
+        var res = await fetch(bookpayUrl('/api/public/send-booking-otp'), {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': rcCsrfToken },
           body: JSON.stringify({ email: email })
         });
@@ -1816,8 +1820,9 @@
       }
       if (verifyBtn) { verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying...'; }
       try {
-        var res = await fetch('/api/public/verify-booking-otp', {
+        var res = await fetch(bookpayUrl('/api/public/verify-booking-otp'), {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': rcCsrfToken },
           body: JSON.stringify({
             email: email,
@@ -2194,14 +2199,14 @@
           artist_username: @json($artistUsername ?? ''),
           request_payload: requestPayload
         };
-        var res = await fetch('/api/public/submit-custom-request', {
+        var res = await fetch(bookpayUrl('/api/public/submit-custom-request'), {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': rcCsrfToken
           },
-          credentials: 'same-origin',
+          credentials: 'include',
           body: JSON.stringify(payload)
         });
         var result = await res.json();

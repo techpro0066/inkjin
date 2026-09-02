@@ -882,6 +882,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/js/all.min.js" integrity="sha512-6BTOlkauINO65nLhXhthZMtepgJSghyimIalb+crKRPhvhmsCdnIuGcVbR5/aQY2A+260iC1OPy1oCdB6pSSwQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  @include('partials.bookpay-public-api')
   <!-- ═══════════════════════════════════════════════ -->
   <!-- JAVASCRIPT                                      -->
   <!-- ═══════════════════════════════════════════════ -->
@@ -896,9 +897,9 @@
     function requestSimilarTattoo(portfolioId) {
       const id = parseInt(portfolioId, 10);
       if (!id || !requestSimilarBaseUrl) return;
-      const url = new URL(requestSimilarBaseUrl, window.location.origin);
+      const url = new URL(requestSimilarBaseUrl, window.BOOKPAY_BASE_URL || window.location.origin);
       url.searchParams.set('portfolio', String(id));
-      window.location.href = url.pathname + url.search;
+      window.location.href = url.toString();
     }
 
     // ── Tab Switching ─────────────────────────────────
@@ -1160,8 +1161,9 @@
       }
 
       try {
-        const response = await fetch('/api/public/submit-waitlist', {
+        const response = await fetch(bookpayUrl('/api/public/submit-waitlist'), {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
