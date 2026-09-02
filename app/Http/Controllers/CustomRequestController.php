@@ -12,6 +12,7 @@ use App\Models\Placement;
 use App\Models\Style;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Services\PublicBookingEmailVerificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -131,7 +132,7 @@ class CustomRequestController extends Controller
         ]);
     }
 
-    public function submitCustomRequest(Request $request): JsonResponse
+    public function submitCustomRequest(Request $request, PublicBookingEmailVerificationService $emailVerification): JsonResponse
     {
         $userDetail = UserDetail::query()->where('user_name', $request->input('artist_username'))->first();
         if (
@@ -170,13 +171,8 @@ class CustomRequestController extends Controller
         $payload = $validated['request_payload'];
         $email = mb_strtolower(trim((string) ($payload['email'] ?? '')));
 
-        $verified = $request->session()->get('booking_verified_emails', []);
-        $verifiedEntry = is_array($verified[$email] ?? null) ? $verified[$email] : null;
-        if (
-            !$verifiedEntry
-            || empty($verifiedEntry['user_id'])
-            || now()->timestamp > (int) ($verifiedEntry['verified_until'] ?? 0)
-        ) {
+        $verifiedEntry = $emailVerification->getVerified($email);
+        if (! $verifiedEntry) {
             return response()->json(['message' => 'Please verify your email before submitting your request.'], 422);
         }
 

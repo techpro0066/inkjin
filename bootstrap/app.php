@@ -38,6 +38,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'webhooks/viva',
             'auth/instagram/deauthorize',
+            // Public pages may be reverse-proxied from inkjin.com while APIs hit bookpay.inkjin.com.
+            // Session cookies are not shared across that hop, so CSRF tokens cannot be validated.
+            'api/public/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

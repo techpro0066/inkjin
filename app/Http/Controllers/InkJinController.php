@@ -41,6 +41,7 @@ use App\Models\UserQuestion;
 use App\Support\PaymentMethods;
 use App\Models\PendingVivaPayment;
 use App\Services\VivaCheckoutService;
+use App\Services\PublicBookingEmailVerificationService;
 use Stripe\Exception\ApiErrorException;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
@@ -291,33 +292,25 @@ class InkJinController extends Controller
         ]);
     }
 
-    public function sendBookingOtp(Request $request): JsonResponse
+    public function sendBookingOtp(Request $request, PublicBookingEmailVerificationService $emailVerification): JsonResponse
     {
         $validated = $request->validate([
             'email' => ['required', 'email'],
         ]);
 
         $email = mb_strtolower(trim($validated['email']));
-        $cooldownKey = 'booking_otp_cooldown.' . $email;
-        $cooldownUntil = (int) $request->session()->get($cooldownKey, 0);
-        $nowTs = now()->timestamp;
+        $remaining = $emailVerification->cooldownRemainingSeconds($email);
 
-        if ($cooldownUntil > $nowTs) {
+        if ($remaining > 0) {
             return response()->json([
                 'sent' => false,
                 'message' => 'Please wait before requesting another code.',
-                'resend_available_in_seconds' => $cooldownUntil - $nowTs,
+                'resend_available_in_seconds' => $remaining,
             ], 429);
         }
 
         $otpCode = (string) random_int(1000, 9999);
-        $cooldownSeconds = 60;
-
-        $request->session()->put('booking_otp.' . $email, [
-            'code' => $otpCode,
-            'expires_at' => now()->addMinutes(10)->timestamp,
-        ]);
-        $request->session()->put($cooldownKey, $nowTs + $cooldownSeconds);
+        $cooldownSeconds = $emailVerification->storeOtp($email, $otpCode);
 
         Mail::send('emails.booking-otp', [
             'otpCode' => $otpCode,
@@ -328,12 +321,12 @@ class InkJinController extends Controller
 
         return response()->json([
             'sent' => true,
-            'expires_in_seconds' => 600,
+            'expires_in_seconds' => $emailVerification->otpTtlSeconds(),
             'resend_available_in_seconds' => $cooldownSeconds,
         ]);
     }
 
-    public function verifyBookingOtp(Request $request): JsonResponse
+    public function verifyBookingOtp(Request $request, PublicBookingEmailVerificationService $emailVerification): JsonResponse
     {
         $validated = $request->validate([
             'email' => ['required', 'email'],
@@ -344,7 +337,7 @@ class InkJinController extends Controller
 
         $email = mb_strtolower(trim($validated['email']));
         $code = trim($validated['code']);
-        $otpPayload = $request->session()->get('booking_otp.' . $email);
+        $otpPayload = $emailVerification->getOtp($email);
 
         if (!is_array($otpPayload) || empty($otpPayload['code']) || empty($otpPayload['expires_at'])) {
             return response()->json(['verified' => false, 'message' => 'Verification code not found. Please request a new code.'], 422);
@@ -382,14 +375,11 @@ class InkJinController extends Controller
             $existingUser->syncHearAboutUs($validated['referral_source'] ?? null);
         }
 
-        $verified = $request->session()->get('booking_verified_emails', []);
-        $verified[$email] = [
+        $emailVerification->markVerified($email, [
             'user_id' => $existingUser->id,
             'verified_until' => now()->addMinutes(10)->timestamp,
             'is_new_user' => $isNewUser,
-        ];
-        $request->session()->put('booking_verified_emails', $verified);
-        $request->session()->forget('booking_otp.' . $email);
+        ]);
 
         return response()->json([
             'verified' => true,
@@ -700,8 +690,7 @@ class InkJinController extends Controller
             }
             $this->appendGoogleCalendarBusyToBusyMap($userDetail, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
 
-            // Refreshing the booking page should require reconnecting again.
-            session()->forget('booking_verified_emails');
+            // Verified emails are stored in cache (not session) for reverse-proxy compatibility.
 
             $vivaRestore = null;
             if ($request->query('viva') === 'fail' && $request->filled('s')) {
@@ -1139,7 +1128,7 @@ class InkJinController extends Controller
         ]);
     }
 
-    public function submitManagedBooking(Request $request): JsonResponse
+    public function submitManagedBooking(Request $request, PublicBookingEmailVerificationService $emailVerification): JsonResponse
     {
         $validated = $request->validate([
             'artist_username' => ['required', 'string'],
@@ -1163,13 +1152,8 @@ class InkJinController extends Controller
         $payload = $validated['booking_payload'];
         $email = mb_strtolower(trim((string) ($payload['email'] ?? '')));
 
-        $verified = $request->session()->get('booking_verified_emails', []);
-        $verifiedEntry = is_array($verified[$email] ?? null) ? $verified[$email] : null;
-        if (
-            !$verifiedEntry
-            || empty($verifiedEntry['user_id'])
-            || now()->timestamp > (int) ($verifiedEntry['verified_until'] ?? 0)
-        ) {
+        $verifiedEntry = $emailVerification->getVerified($email);
+        if (! $verifiedEntry) {
             return response()->json(['message' => 'Please verify your email before submitting your request.'], 422);
         }
 
