@@ -854,12 +854,14 @@
     }
 
     async function uploadQuestionImage(file, questionId, progressCb) {
-      if (!fallbackTattooSlug) throw new Error('Image upload is not available for this artist.');
+      if (!artistUsername) throw new Error('Image upload is not available for this artist.');
       var formData = new FormData();
       formData.append('image', file);
       formData.append('question_id', String(questionId || ''));
       formData.append('artist_username', artistUsername);
-      formData.append('tattoo_slug', fallbackTattooSlug);
+      if (fallbackTattooSlug) {
+        formData.append('tattoo_slug', fallbackTattooSlug);
+      }
       return await new Promise(function(resolve, reject) {
         var xhr = new XMLHttpRequest();
         xhr.open('POST', bookpayUrl('/api/public/upload-booking-question-image'));

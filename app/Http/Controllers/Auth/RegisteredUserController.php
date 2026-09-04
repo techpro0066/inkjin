@@ -24,9 +24,9 @@ use Illuminate\View\View;
 class RegisteredUserController extends Controller
 {
     /**
-     * Display the registration view.
+     * Display the registration view (or referral welcome landing).
      */
-    public function create(?string $username = null): View
+    public function create(Request $request, ?string $username = null): View
     {
         $referrer = $this->resolveReferrerByUsername($username);
 
@@ -34,6 +34,20 @@ class RegisteredUserController extends Controller
             session(['artist_referral_referrer_user_id' => $referrer->id]);
         } elseif ($username !== null && $username !== '') {
             session()->forget('artist_referral_referrer_user_id');
+        }
+
+        $showSignupForm = $request->boolean('signup')
+            || $username === null
+            || $username === ''
+            || ! $referrer;
+
+        if (! $showSignupForm) {
+            $referrer->loadMissing('userDetail');
+
+            return view('auth.referral-welcome', [
+                'referrer' => $referrer,
+                'referrerUsername' => $referrer->userDetail?->user_name,
+            ]);
         }
 
         return view('auth.register', [

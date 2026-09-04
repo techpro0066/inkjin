@@ -1,6 +1,6 @@
 @extends('layouts.artist_dashboard_layout')
 
-@section('title', 'Refer & earn')
+@section('title', 'Refer & Earn')
 
 @section('styles')
 <style>
@@ -213,7 +213,7 @@
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl w-full min-w-0 mx-auto">
 
     <div class="mb-8">
-      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Refer & earn</h2>
+      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Refer & Earn</h2>
       <p class="text-on-surface-variant mt-1">Earn cash when you bring artists you know to Bookpay.</p>
     </div>
 

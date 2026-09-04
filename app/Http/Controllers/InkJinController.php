@@ -396,7 +396,7 @@ class InkJinController extends Controller
     {
         $validated = $request->validate([
             'artist_username' => ['required', 'string'],
-            'tattoo_slug' => ['required', 'string'],
+            'tattoo_slug' => ['nullable', 'string'],
             'question_id' => ['required'],
             'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ]);
@@ -409,13 +409,16 @@ class InkJinController extends Controller
             return response()->json(['success' => false, 'message' => 'Artist not found.'], 404);
         }
 
-        $design = $userDetail->user->artistDesigns()
-            ->where('slug', $validated['tattoo_slug'])
-            ->where('is_active', true)
-            ->first();
+        $tattooSlug = trim((string) ($validated['tattoo_slug'] ?? ''));
+        if ($tattooSlug !== '') {
+            $design = $userDetail->user->artistDesigns()
+                ->where('slug', $tattooSlug)
+                ->where('is_active', true)
+                ->first();
 
-        if (!$design) {
-            return response()->json(['success' => false, 'message' => 'Tattoo design not found.'], 404);
+            if (!$design) {
+                return response()->json(['success' => false, 'message' => 'Tattoo design not found.'], 404);
+            }
         }
 
         $file = $request->file('image');
