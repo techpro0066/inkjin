@@ -55,11 +55,31 @@ class QuestionAnswerPresenter
     }
 
     /**
+     * Collect every uploaded image URL across question answers.
+     *
+     * @param  mixed  $questionsAnswers
+     * @return array<int, string>
+     */
+    public static function allImageUrls(mixed $questionsAnswers): array
+    {
+        $urls = [];
+        foreach (self::rows($questionsAnswers) as $row) {
+            foreach ($row['images'] as $url) {
+                $urls[] = $url;
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function imageUrls(mixed $answer, string $type = ''): array
     {
         $urls = [];
+        $type = strtolower(trim($type));
+        $imageTypes = ['image', 'reference_image', 'placement_photo', 'coverup_photo'];
 
         if (is_array($answer)) {
             foreach ($answer as $item) {
@@ -71,7 +91,7 @@ class QuestionAnswerPresenter
             return $urls;
         }
 
-        if (self::isImageUrl($answer) || $type === 'image') {
+        if (self::isImageUrl($answer) || in_array($type, $imageTypes, true)) {
             $single = trim((string) ($answer ?? ''));
             if (self::isImageUrl($single)) {
                 $urls[] = $single;
@@ -81,17 +101,21 @@ class QuestionAnswerPresenter
         return $urls;
     }
 
+    public static function formatPhotoLabels(int $count): string
+    {
+        $total = max(0, $count);
+        if ($total <= 0) {
+            return '';
+        }
+
+        return $total === 1 ? '1 picture' : $total.' pictures';
+    }
+
     public static function formatAnswer(mixed $answer, string $type = ''): string
     {
         $images = self::imageUrls($answer, $type);
         if ($images !== []) {
-            $count = count($images);
-            $labels = [];
-            for ($i = 1; $i <= $count; $i++) {
-                $labels[] = 'Photo '.$i;
-            }
-
-            return implode(', ', $labels);
+            return self::formatPhotoLabels(count($images));
         }
 
         if (is_bool($answer)) {
@@ -103,11 +127,14 @@ class QuestionAnswerPresenter
         }
 
         $text = trim((string) ($answer ?? ''));
+        if ($text !== '' && self::isImageUrl($text)) {
+            return self::formatPhotoLabels(1);
+        }
 
         return $text !== '' ? $text : '—';
     }
 
-    private static function isImageUrl(mixed $value): bool
+    public static function isImageUrl(mixed $value): bool
     {
         $text = trim((string) ($value ?? ''));
         if ($text === '') {

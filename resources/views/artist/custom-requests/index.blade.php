@@ -349,6 +349,18 @@
                   · {{ $customRequest->contactPhone() }}
                 @endif
               </p>
+              @if ($customRequest->attachedImageCount() > 0)
+                <div class="mb-3">
+                  <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-primary/10 text-primary border border-primary/15" title="{{ $customRequest->attachedImagesLabel() }}">
+                    @foreach ($customRequest->attachedImageUrls() as $index => $imageUrl)
+                      <a href="{{ $imageUrl }}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" class="inline-flex items-center justify-center hover:opacity-80" title="Picture {{ $index + 1 }}">
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true">image</span>
+                      </a>
+                    @endforeach
+                    <span>{{ $customRequest->attachedImagesLabel() }}</span>
+                  </span>
+                </div>
+              @endif
               <div class="flex flex-col items-end gap-1.5" data-card-actions>
                 <div class="flex flex-wrap items-center gap-2 justify-end">
                   @if($customRequest->status === 'pending')
@@ -474,22 +486,26 @@
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  function isImageUrl(value) {
+    var text = String(value || '').trim();
+    if (!text) return false;
+    return /^https?:\/\//i.test(text) || text.indexOf('/uploads/') !== -1 || text.indexOf('uploads/') === 0;
+  }
+
   function formatAnswer(answer, answerType) {
     if (window.QuestionAnswerDisplay) {
       var imageUrls = window.QuestionAnswerDisplay.imageUrlsFromAnswer(answer, answerType);
       if (imageUrls.length) {
-        return imageUrls.map(function (url, idx) {
-          return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="text-primary font-semibold hover:underline">Photo ' + (idx + 1) + '</a>';
-        }).join(', ');
+        return window.QuestionAnswerDisplay.buildImageCountHtml(imageUrls);
       }
       return escapeHtml(window.QuestionAnswerDisplay.formatAnswerForReview(answer, answerType));
     }
     if (typeof answer === 'boolean') return answer ? 'Yes' : 'No';
-    if (Array.isArray(answer) && answer.length) {
-      return answer.map(function (_, idx) { return 'Photo ' + (idx + 1); }).join(', ');
+    if (Array.isArray(answer) && answer.length && answer.every(isImageUrl)) {
+      return answer.length === 1 ? '1 picture' : (answer.length + ' pictures');
     }
-    if (typeof answer === 'string' && /^https?:\/\//i.test(answer)) {
-      return '<a href="' + escapeHtml(answer) + '" target="_blank" rel="noopener" class="text-primary font-semibold hover:underline">Photo 1</a>';
+    if (typeof answer === 'string' && isImageUrl(answer)) {
+      return '1 picture';
     }
     return escapeHtml(String(answer || '—'));
   }

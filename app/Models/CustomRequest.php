@@ -546,6 +546,24 @@ class CustomRequest extends Model
         return array_values($output);
     }
 
+    /**
+     * @return list<string>
+     */
+    public function attachedImageUrls(): array
+    {
+        return \App\Support\QuestionAnswerPresenter::allImageUrls($this->questions_answers);
+    }
+
+    public function attachedImageCount(): int
+    {
+        return count($this->attachedImageUrls());
+    }
+
+    public function attachedImagesLabel(): string
+    {
+        return \App\Support\QuestionAnswerPresenter::formatPhotoLabels($this->attachedImageCount());
+    }
+
     public function artistDisplayName(): string
     {
         $artist = $this->artist;

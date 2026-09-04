@@ -33,6 +33,16 @@
         @if ($request->placementLabel() !== '—')
           <span class="info-tag text-xs font-medium px-2.5 py-1 rounded-lg">{{ $request->placementLabel() }}</span>
         @endif
+        @if ($request->attachedImageCount() > 0)
+          <span class="info-tag text-xs font-medium px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5" title="{{ $request->attachedImagesLabel() }}">
+            @foreach ($request->attachedImageUrls() as $index => $imageUrl)
+              <a href="{{ $imageUrl }}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" class="inline-flex items-center justify-center text-primary hover:opacity-80" title="Picture {{ $index + 1 }}">
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">image</span>
+              </a>
+            @endforeach
+            <span>{{ $request->attachedImagesLabel() }}</span>
+          </span>
+        @endif
         <span class="info-tag text-xs font-medium px-2.5 py-1 rounded-lg">{{ $request->priceLabel() }}</span>
         <div class="ml-auto flex items-center gap-2 flex-wrap justify-end">
           @if ($request->status === 'pending')

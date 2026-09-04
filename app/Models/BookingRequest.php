@@ -389,29 +389,56 @@ class BookingRequest extends Model
     {
         $answers = is_array($this->questions_answers) ? $this->questions_answers : [];
         foreach ($answers as $item) {
-            if (!is_array($item)) {
+            if (! is_array($item)) {
                 continue;
             }
             $question = Str::lower((string) ($item['question'] ?? ''));
+            $type = Str::lower((string) ($item['type'] ?? ''));
             foreach ($keywords as $keyword) {
-                if (!str_contains($question, Str::lower($keyword))) {
+                if (! str_contains($question, Str::lower($keyword))) {
                     continue;
                 }
                 $answer = $item['answer'] ?? null;
+                // Image / reference uploads must not appear as placement text.
+                if (\App\Support\QuestionAnswerPresenter::imageUrls($answer, $type) !== []) {
+                    continue;
+                }
                 if (is_bool($answer)) {
                     return $answer ? 'Yes' : 'No';
                 }
                 if (is_array($answer)) {
-                    return implode(', ', $answer);
+                    $joined = trim(implode(', ', array_map(static fn ($v) => (string) $v, $answer)));
+                    if ($joined !== '') {
+                        return $joined;
+                    }
+                    continue;
                 }
                 $text = trim((string) $answer);
-                if ($text !== '') {
+                if ($text !== '' && ! \App\Support\QuestionAnswerPresenter::isImageUrl($text)) {
                     return $text;
                 }
             }
         }
 
         return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function attachedImageUrls(): array
+    {
+        return \App\Support\QuestionAnswerPresenter::allImageUrls($this->questions_answers);
+    }
+
+    public function attachedImageCount(): int
+    {
+        return count($this->attachedImageUrls());
+    }
+
+    public function attachedImagesLabel(): string
+    {
+        return \App\Support\QuestionAnswerPresenter::formatPhotoLabels($this->attachedImageCount());
     }
 
     public function placementLabel(): string
