@@ -76,6 +76,19 @@
     cursor: not-allowed;
   }
   .refer-action-btn:disabled:hover { background: #fff; }
+  .refer-action-btn.is-copied {
+    background: #f0fdf4;
+    border-color: rgba(34, 197, 94, 0.35);
+    color: #15803d;
+  }
+  .refer-action-btn .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
+    vertical-align: -3px;
+  }
+  .refer-action-btn.is-copied .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+  }
   .referrals-table th {
     text-align: left;
     font-size: 12px;
@@ -205,6 +218,9 @@
   $referralLinkDisplay = $referralLink
     ? preg_replace('#^https?://#', '', $referralLink)
     : null;
+  $shareMessage = $referralLinkDisplay
+    ? "I'm using BookPay to manage bookings and payments and I think you'd love it too. Use my link to sign up and your first client's booking fee will be free: ".$referralLinkDisplay
+    : null;
   $referrals = $referrals ?? collect();
   $earnings = $earnings ?? ['pending_total' => 0, 'paid_total' => 0, 'items' => collect()];
   $earningsItems = $earnings['items'] ?? collect();
@@ -281,7 +297,9 @@
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-        <button type="button" class="refer-action-btn" @disabled(! $referralLink)>Share via message</button>
+        <button type="button" class="refer-action-btn" id="referShareMessageBtn" @disabled(! $shareMessage) data-message="{{ $shareMessage }}">
+          <span class="refer-share-label">Share via message</span>
+        </button>
         <button type="button" class="refer-action-btn" id="referShowQrBtn" @disabled(! $referralLink)>Show QR code</button>
       </div>
     </div>
@@ -484,9 +502,38 @@
       });
     });
 
+    function fallbackCopyText(text, onSuccess) {
+      var input = document.createElement('textarea');
+      input.value = text;
+      input.setAttribute('readonly', '');
+      input.style.position = 'absolute';
+      input.style.left = '-9999px';
+      document.body.appendChild(input);
+      input.select();
+      try {
+        document.execCommand('copy');
+        if (typeof onSuccess === 'function') {
+          onSuccess();
+        }
+      } catch (e) {}
+      document.body.removeChild(input);
+    }
+
+    function copyText(text, onSuccess) {
+      if (!text) {
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(function () {
+          fallbackCopyText(text, onSuccess);
+        });
+        return;
+      }
+      fallbackCopyText(text, onSuccess);
+    }
+
     var copyBtn = document.getElementById('referCopyBtn');
     if (copyBtn) {
-      var copyLabel = copyBtn.querySelector('.refer-copy-label');
       var resetTimer = null;
 
       function showCopiedState() {
@@ -498,37 +545,36 @@
         resetTimer = setTimeout(function () {
           copyBtn.classList.remove('is-copied');
           copyBtn.innerHTML = '<span class="refer-copy-label">Copy</span>';
-          copyLabel = copyBtn.querySelector('.refer-copy-label');
         }, 2000);
       }
 
-      function fallbackCopy(text) {
-        var input = document.createElement('textarea');
-        input.value = text;
-        input.setAttribute('readonly', '');
-        input.style.position = 'absolute';
-        input.style.left = '-9999px';
-        document.body.appendChild(input);
-        input.select();
-        try {
-          document.execCommand('copy');
-          showCopiedState();
-        } catch (e) {}
-        document.body.removeChild(input);
+      copyBtn.addEventListener('click', function () {
+        copyText(copyBtn.getAttribute('data-link') || '', showCopiedState);
+      });
+    }
+
+    var shareMessageBtn = document.getElementById('referShareMessageBtn');
+    if (shareMessageBtn) {
+      var shareResetTimer = null;
+      var defaultShareLabel = 'Share via message';
+
+      function showMessageCopiedState() {
+        shareMessageBtn.classList.add('is-copied');
+        shareMessageBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">check_circle</span> <span class="refer-share-label">Message copied</span>';
+        if (shareResetTimer) {
+          clearTimeout(shareResetTimer);
+        }
+        shareResetTimer = setTimeout(function () {
+          shareMessageBtn.classList.remove('is-copied');
+          shareMessageBtn.innerHTML = '<span class="refer-share-label">' + defaultShareLabel + '</span>';
+        }, 2000);
       }
 
-      copyBtn.addEventListener('click', function () {
-        var link = copyBtn.getAttribute('data-link') || '';
-        if (!link) {
+      shareMessageBtn.addEventListener('click', function () {
+        if (shareMessageBtn.disabled) {
           return;
         }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(link).then(showCopiedState).catch(function () {
-            fallbackCopy(link);
-          });
-          return;
-        }
-        fallbackCopy(link);
+        copyText(shareMessageBtn.getAttribute('data-message') || '', showMessageCopiedState);
       });
     }
 

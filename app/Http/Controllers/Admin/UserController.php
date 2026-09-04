@@ -229,6 +229,8 @@ class UserController extends Controller
             'studio' => $detail?->studio_name ?: '—',
             'location' => $location,
             'styles' => $isArtist ? $this->resolveStyleLabels($detail?->tattoo_styles, $styleLabels) : [],
+            'social' => $isArtist ? $this->resolveSocialLinks($detail) : [],
+            'instagram' => $isArtist ? $this->resolveInstagram($detail) : null,
             'bookings' => (int) $stats['bookings'],
             'revenue' => (float) $stats['revenue'],
             'designs' => $isArtist ? (int) $user->artist_designs_count : 0,
@@ -297,6 +299,86 @@ class UserController extends Controller
         }
 
         return array_values(array_unique($styles));
+    }
+
+    /**
+     * @return list<array{label:string,url:string,handle:?string}>
+     */
+    private function resolveSocialLinks($detail): array
+    {
+        if (! $detail) {
+            return [];
+        }
+
+        $links = is_array($detail->social_links) ? $detail->social_links : [];
+        $platforms = [
+            'website' => 'Website',
+            'instagram' => 'Instagram',
+            'tiktok' => 'TikTok',
+            'youtube' => 'YouTube',
+            'facebook' => 'Facebook',
+        ];
+
+        $items = [];
+        foreach ($platforms as $key => $label) {
+            $url = trim((string) ($links[$key] ?? ''));
+            if ($url === '') {
+                continue;
+            }
+            $items[] = [
+                'label' => $label,
+                'url' => $url,
+                'handle' => $key === 'instagram' ? $this->instagramHandleFromUrl($url) : null,
+            ];
+        }
+
+        // Connected Instagram account when no manual social link was saved.
+        $connectedUsername = trim((string) ($detail->instagram_username ?? ''));
+        if ($connectedUsername !== '') {
+            $alreadyHasInstagram = collect($items)->contains(fn (array $item) => $item['label'] === 'Instagram');
+            if (! $alreadyHasInstagram) {
+                $items[] = [
+                    'label' => 'Instagram',
+                    'url' => 'https://www.instagram.com/'.ltrim($connectedUsername, '@/'),
+                    'handle' => '@'.ltrim($connectedUsername, '@/'),
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return array{url:string,handle:string}|null
+     */
+    private function resolveInstagram($detail): ?array
+    {
+        foreach ($this->resolveSocialLinks($detail) as $item) {
+            if ($item['label'] === 'Instagram') {
+                return [
+                    'url' => $item['url'],
+                    'handle' => $item['handle'] ?: $item['url'],
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    private function instagramHandleFromUrl(string $url): ?string
+    {
+        $path = trim((string) (parse_url($url, PHP_URL_PATH) ?? ''), '/');
+        if ($path === '') {
+            return null;
+        }
+
+        $segment = explode('/', $path)[0] ?? '';
+        $segment = trim($segment);
+        if ($segment === '') {
+            return null;
+        }
+
+        return '@'.ltrim($segment, '@/');
     }
 
     /**

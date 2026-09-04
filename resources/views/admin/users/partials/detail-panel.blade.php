@@ -90,16 +90,41 @@
         </div>
       </div>
 
-      @if(!empty($user['styles']))
+      <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-4">
         <div>
           <h4 class="text-sm font-bold mb-2">Styles</h4>
-          <div class="flex flex-wrap gap-2">
-            @foreach($user['styles'] as $style)
-              <span class="inline-block bg-primary/5 text-primary text-xs font-semibold px-3 py-1 rounded-full">{{ $style }}</span>
-            @endforeach
-          </div>
+          @if(!empty($user['styles']))
+            <div class="flex flex-wrap gap-2">
+              @foreach($user['styles'] as $style)
+                <span class="inline-block bg-primary/5 text-primary text-xs font-semibold px-3 py-1 rounded-full">{{ $style }}</span>
+              @endforeach
+            </div>
+          @else
+            <p class="text-sm text-on-surface-variant">No styles selected.</p>
+          @endif
         </div>
-      @endif
+
+        <div class="border-t border-outline-variant/10 pt-4">
+          <h4 class="text-sm font-bold mb-2">Social</h4>
+          @if(!empty($user['social']))
+            <div class="space-y-0">
+              @foreach($user['social'] as $index => $social)
+                <div @class([
+                  'flex justify-between py-2 gap-4',
+                  'border-b border-outline-variant/10' => $index < count($user['social']) - 1,
+                ])>
+                  <span class="text-sm text-on-surface-variant shrink-0">{{ $social['label'] }}</span>
+                  <a href="{{ $social['url'] }}" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-primary text-right break-all hover:underline">
+                    {{ $social['handle'] ?: $social['url'] }}
+                  </a>
+                </div>
+              @endforeach
+            </div>
+          @else
+            <p class="text-sm text-on-surface-variant">No social links added.</p>
+          @endif
+        </div>
+      </div>
 
       <div class="flex flex-wrap gap-2 text-xs font-semibold text-primary">
         <span>{{ number_format($user['designs']) }} designs</span>
