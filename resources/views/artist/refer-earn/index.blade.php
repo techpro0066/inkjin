@@ -264,7 +264,7 @@
           </li>
           <li class="flex items-center gap-3 text-[15px] text-on-surface">
             <span class="refer-earn-step-num">2</span>
-            <span>An artist signs up and completes their first booking</span>
+            <span>An artist friend signs up and completes their first booking</span>
           </li>
           <li class="flex items-center gap-3 text-[15px] text-on-surface">
             <span class="refer-earn-step-num">3</span>
@@ -272,9 +272,14 @@
           </li>
           <li class="flex items-center gap-3 text-[15px] text-on-surface">
             <span class="refer-earn-step-num">4</span>
-            <span>They get their first booking fee waived</span>
+            <span>They get their first client's booking fee waived</span>
           </li>
         </ol>
+        <p class="mt-5 pt-1">
+          <a href="https://inkjin.com/en/refer-and-earn-terms" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-primary underline underline-offset-2 hover:opacity-80">
+            Refer &amp; Earn terms and conditions
+          </a>
+        </p>
       </div>
 
       <div class="refer-earn-card">
