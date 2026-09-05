@@ -248,7 +248,7 @@
     <div data-refer-panel="link" class="space-y-4">
       <div class="refer-earn-card">
         <p class="text-[15px] leading-relaxed text-on-surface">
-          Know an artist who'd love Bookpay? Share your link. When they complete their first booking, you'll get <strong>$20</strong> straight to your account — and they'll get their <strong>first booking fee waived.</strong>
+          Know an artist who'd love Bookpay? Share your link. When their first client completes a booking, you'll get <strong>$20</strong> straight to your account — and they'll get their <strong>first client booking fee waived.</strong>
         </p>
         <p class="text-sm text-on-surface-variant mt-3 leading-relaxed">
           No limit on how many artists you can refer. No expiration — whenever they book, you get paid.
@@ -264,7 +264,7 @@
           </li>
           <li class="flex items-center gap-3 text-[15px] text-on-surface">
             <span class="refer-earn-step-num">2</span>
-            <span>An artist friend signs up and completes their first booking</span>
+            <span>An artist friend signs up. A client of theirs completes their first booking.</span>
           </li>
           <li class="flex items-center gap-3 text-[15px] text-on-surface">
             <span class="refer-earn-step-num">3</span>
