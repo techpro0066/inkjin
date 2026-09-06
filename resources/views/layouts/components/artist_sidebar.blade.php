@@ -34,6 +34,9 @@
         <span class="inline-flex items-center rounded-md px-1.5 py-1.5 text-[11px] font-semibold leading-none" style="background:#f8f1fb;color:#1c1b21;">(Earn €20)</span>
       </span>
     </a>
+    <button type="button" data-intercom-get-help class="nav-item w-full text-left border-0 bg-transparent cursor-pointer font-[inherit]" aria-expanded="false">
+      <span class="material-symbols-outlined">help</span> Get Help
+    </button>
     <a href="{{ route('profile.edit') }}" class="nav-item {{ request()->routeIs('profile.edit') || request()->routeIs('profile.password') || request()->routeIs('settings.*') || request()->routeIs('availability.index') ? 'active' : '' }}">
       <span class="material-symbols-outlined">settings</span> Settings
     </a>

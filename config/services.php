@@ -127,4 +127,11 @@ return [
         'api_token' => env('Mailing_API_Token', env('MAILING_API_TOKEN')),
     ],
 
+    'intercom' => [
+        'app_id' => env('INTERCOM_APP_ID', 'xnzds730'),
+        // Messenger Identity Verification / HMAC secret (server-only).
+        'identity_secret' => env('INTERCOM_IDENTITY_SECRET'),
+        'api_base' => env('INTERCOM_API_BASE', 'https://api-iam.intercom.io'),
+    ],
+
 ];

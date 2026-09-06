@@ -366,6 +366,8 @@
 
   @yield('scripts')
 
+  @include('layouts.partials.intercom-messenger')
+
   @if (! empty($chatBadgeEnabled))
     <script src="{{ asset('js/chat-unread-badge.js') }}?v=1" defer data-api-base="{{ url('/api/chat') }}"></script>
   @endif
