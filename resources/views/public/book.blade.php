@@ -1710,13 +1710,19 @@
         }
         xhr.onload = function() {
           try {
-            var data = JSON.parse(xhr.responseText);
+            var data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
             if (xhr.status >= 200 && xhr.status < 300 && data && data.success && data.file_url) {
               resolve(data.file_url);
+            } else if (xhr.status === 413) {
+              reject(new Error((data && data.message) || 'Image is too large for the server upload limit.'));
             } else {
               reject(new Error((data && data.message) || 'Unable to upload image.'));
             }
-          } catch(e) { reject(new Error('Unable to upload image.')); }
+          } catch(e) {
+            reject(new Error(xhr.status === 413
+              ? 'Image is too large for the server upload limit.'
+              : 'Unable to upload image.'));
+          }
         };
         xhr.onerror = function() { reject(new Error('Network error during upload.')); };
         xhr.send(formData);

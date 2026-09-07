@@ -394,18 +394,71 @@ class InkJinController extends Controller
 
     public function uploadBookingQuestionImage(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'artist_username' => ['required', 'string'],
-            'tattoo_slug' => ['nullable', 'string'],
-            'question_id' => ['required'],
-            'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
-        ]);
+        $contentLength = (int) $request->server('CONTENT_LENGTH', 0);
+        $uploadMax = $this->phpIniBytes((string) ini_get('upload_max_filesize'));
+        $postMax = $this->phpIniBytes((string) ini_get('post_max_size'));
+
+        // When post_max_size is exceeded, PHP drops the entire body (no files/input).
+        if ($contentLength > 0 && empty($request->all()) && ! $request->files->count()) {
+            Log::warning('Booking question image upload rejected: empty body (likely post_max_size)', [
+                'content_length' => $contentLength,
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+                'post_max_size' => ini_get('post_max_size'),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Image is too large for the server upload limit. Please use a PNG/JPG under 10MB.',
+            ], 413);
+        }
+
+        $incoming = $request->file('image');
+        if ($incoming && ! $incoming->isValid()) {
+            $error = (int) $incoming->getError();
+            if (in_array($error, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+                Log::warning('Booking question image upload rejected by PHP size limit', [
+                    'php_error' => $error,
+                    'upload_max_filesize' => ini_get('upload_max_filesize'),
+                    'post_max_size' => ini_get('post_max_size'),
+                    'original_name' => $incoming->getClientOriginalName(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Image is too large for the server upload limit. Please use a PNG/JPG under 10MB.',
+                ], 422);
+            }
+        }
+
+        try {
+            $validated = $request->validate([
+                'artist_username' => ['required', 'string'],
+                'tattoo_slug' => ['nullable', 'string'],
+                'question_id' => ['required'],
+                'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $message = collect($e->errors())->flatten()->first() ?: 'Unable to upload image.';
+
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+                'errors' => $e->errors(),
+                'limits' => [
+                    'app_max_kb' => 10240,
+                    'upload_max_filesize' => ini_get('upload_max_filesize'),
+                    'post_max_size' => ini_get('post_max_size'),
+                    'upload_max_bytes' => $uploadMax,
+                    'post_max_bytes' => $postMax,
+                ],
+            ], 422);
+        }
 
         $userDetail = UserDetail::query()
             ->where('user_name', $validated['artist_username'])
             ->first();
 
-        if (!$userDetail || !$userDetail->user || $userDetail->user->role !== 'artist') {
+        if (! $userDetail || ! $userDetail->user || $userDetail->user->role !== 'artist') {
             return response()->json(['success' => false, 'message' => 'Artist not found.'], 404);
         }
 
@@ -416,33 +469,53 @@ class InkJinController extends Controller
                 ->where('is_active', true)
                 ->first();
 
-            if (!$design) {
+            if (! $design) {
                 return response()->json(['success' => false, 'message' => 'Tattoo design not found.'], 404);
             }
         }
 
         $file = $request->file('image');
-        if (!$file) {
+        if (! $file) {
             return response()->json(['success' => false, 'message' => 'Image file is required.'], 422);
         }
 
         $folder = public_path('uploads/booking-questions');
-        if (!is_dir($folder)) {
+        if (! is_dir($folder)) {
             @mkdir($folder, 0775, true);
         }
 
         $extension = strtolower((string) $file->getClientOriginalExtension());
-        $filename = 'q_' . preg_replace('/[^A-Za-z0-9_-]/', '', (string) $validated['question_id'])
-            . '_' . time() . '_' . Str::random(8) . '.' . $extension;
+        if (! in_array($extension, ['jpg', 'jpeg', 'png'], true)) {
+            $extension = str_contains((string) $file->getMimeType(), 'png') ? 'png' : 'jpg';
+        }
+        $filename = 'q_'.preg_replace('/[^A-Za-z0-9_-]/', '', (string) $validated['question_id'])
+            .'_'.time().'_'.Str::random(8).'.'.$extension;
 
         $file->move($folder, $filename);
-        $publicPath = '/uploads/booking-questions/' . $filename;
+        $publicPath = '/uploads/booking-questions/'.$filename;
 
         return response()->json([
             'success' => true,
             'file_path' => $publicPath,
             'file_url' => asset(ltrim($publicPath, '/')),
         ]);
+    }
+
+    private function phpIniBytes(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return 0;
+        }
+
+        $unit = strtolower(substr($value, -1));
+        $number = (float) $value;
+        return (int) match ($unit) {
+            'g' => $number * 1024 * 1024 * 1024,
+            'm' => $number * 1024 * 1024,
+            'k' => $number * 1024,
+            default => (int) $number,
+        };
     }
 
     public function publicArtistProfile(string $userName)

@@ -169,6 +169,8 @@
 
   var MAX_BYTES = 10 * 1024 * 1024;
   var MAX_IMAGES = 5;
+  // Live hosts often allow only ~2MB PHP uploads; compress larger picks before send.
+  var UPLOAD_TARGET_BYTES = 1800 * 1024;
   var ALLOWED_TYPES = { 'image/jpeg': true, 'image/jpg': true, 'image/png': true };
 
   function escapeHtml(str) {
@@ -221,6 +223,61 @@
         return 'Image must be 10MB or smaller.';
       }
       return '';
+    },
+
+    prepareFileForUpload: function(file) {
+      return new Promise(function(resolve) {
+        if (!file || file.size <= UPLOAD_TARGET_BYTES) {
+          resolve(file);
+          return;
+        }
+
+        var url = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload = function() {
+          URL.revokeObjectURL(url);
+          var maxEdge = 2400;
+          var width = img.naturalWidth || img.width || 1;
+          var height = img.naturalHeight || img.height || 1;
+          var scale = Math.min(1, maxEdge / Math.max(width, height));
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(width * scale));
+          canvas.height = Math.max(1, Math.round(height * scale));
+          var ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          var quality = 0.85;
+          var tryExport = function() {
+            canvas.toBlob(function(blob) {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              if (blob.size > UPLOAD_TARGET_BYTES && quality > 0.55) {
+                quality -= 0.1;
+                tryExport();
+                return;
+              }
+              if (blob.size > MAX_BYTES) {
+                resolve(file);
+                return;
+              }
+              var base = String(file.name || 'image').replace(/\.[^.]+$/, '');
+              resolve(new File([blob], base + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
+            }, 'image/jpeg', quality);
+          };
+          tryExport();
+        };
+        img.onerror = function() {
+          URL.revokeObjectURL(url);
+          resolve(file);
+        };
+        img.src = url;
+      });
     },
 
     getUrls: function($zone) {
@@ -349,7 +406,8 @@
 
         try {
           var progressCb = function(pct) { self._updatePlaceholder($zone, uploadId, pct); };
-          var imageUrl = await this._uploadHandler(file, qId, progressCb);
+          var readyFile = await this.prepareFileForUpload(file);
+          var imageUrl = await this._uploadHandler(readyFile, qId, progressCb);
           self._removePlaceholder($zone, uploadId);
           if (imageUrl) {
             urls.push(imageUrl);
