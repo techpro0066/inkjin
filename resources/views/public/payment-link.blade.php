@@ -115,11 +115,9 @@
             </button>
           </div>
           <div id="paymentLinkTimeGrid" class="grid grid-cols-2 gap-2 mb-5"></div>
-        @else
-          <p class="text-sm text-on-surface-variant mb-5">No open times right now. Check back later or ask the artist for a new link.</p>
         @endif
 
-        <button type="button" id="paymentLinkBookBtn" class="w-full rounded-xl bg-[#1c1b21] px-4 py-4 text-base font-bold text-white disabled:opacity-40" {{ count($autoDates) > 0 ? '' : 'disabled' }}>
+        <button type="button" id="paymentLinkBookBtn" class="w-full rounded-xl bg-[#1c1b21] px-4 py-4 text-base font-bold text-white disabled:opacity-40">
           Book
         </button>
       @else

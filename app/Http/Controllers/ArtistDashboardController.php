@@ -1114,10 +1114,19 @@ class ArtistDashboardController extends Controller
             ])
             ->all();
 
-        $busy = $this->paymentLinkBusyMap($userDetail, $timezone, $now->copy()->startOfDay(), $now->copy()->addDays(21)->endOfDay());
+        // Collect open slots without a short fixed window (e.g. 21 days).
+        // Scan far enough ahead to find weekly availability; cap pills for the UI.
+        $lookAheadDays = 365;
+        $maxDates = 60;
+        $busy = $this->paymentLinkBusyMap(
+            $userDetail,
+            $timezone,
+            $now->copy()->startOfDay(),
+            $now->copy()->addDays($lookAheadDays)->endOfDay()
+        );
         $dates = [];
 
-        for ($i = 0; $i < 21; $i++) {
+        for ($i = 0; $i < $lookAheadDays; $i++) {
             $day = $now->copy()->startOfDay()->addDays($i);
             $ymd = $day->format('Y-m-d');
             if ($this->paymentLinkDateIsBlocked($ymd, $blocked)) {
@@ -1162,6 +1171,10 @@ class ArtistDashboardController extends Controller
                 'book_label' => $day->format('D j M'),
                 'times' => $times,
             ];
+
+            if (count($dates) >= $maxDates) {
+                break;
+            }
         }
 
         return $dates;
