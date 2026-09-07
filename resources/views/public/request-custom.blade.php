@@ -464,11 +464,26 @@
 
   @if(!empty($isManagedScheduling))
   @php
-    $rcStudioAddressLine = trim(implode(', ', array_filter([
-      $userDetail->studio_address ?? '',
-      $userDetail->city ?? '',
-      $userDetail->country ?? '',
-    ])));
+    $isGuestAvailability = ! empty($guestSpotId) && ! empty($guestSpot);
+    if ($isGuestAvailability) {
+      $rcStudioName = trim((string) ($guestSpot->studio_name ?? '')) ?: 'Guest studio';
+      $rcStudioAddressLine = trim(implode(', ', array_filter([
+        $guestSpot->studio_address ?? '',
+        $guestSpot->studio_city ?? ($guestSpot->city ?? ''),
+        $guestSpot->studio_state ?? '',
+        $guestSpot->postal_code ?? '',
+        $guestSpot->studio_country ?? ($guestSpot->country ?? ''),
+      ])));
+      $rcStudioMapsLink = trim((string) ($guestSpot->google_maps_link ?? ''));
+    } else {
+      $rcStudioName = trim((string) ($userDetail->studio_name ?? '')) ?: 'Studio';
+      $rcStudioAddressLine = trim(implode(', ', array_filter([
+        $userDetail->studio_address ?? '',
+        $userDetail->city ?? '',
+        $userDetail->country ?? '',
+      ])));
+      $rcStudioMapsLink = trim((string) ($userDetail->google_maps_link ?? ''));
+    }
   @endphp
   <!-- Screen 9: Availability (managed scheduling) -->
   <div class="tf-screen" data-screen="9">
@@ -545,12 +560,15 @@
       </div>
 
       <div class="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl mb-6">
-        <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+        <span class="material-symbols-outlined text-primary mt-0.5">{{ $isGuestAvailability ? 'luggage' : 'location_on' }}</span>
         <div>
-          <p class="text-sm font-semibold text-on-surface">{{ $userDetail->studio_name ?: 'Studio' }}</p>
+          @if($isGuestAvailability)
+            <p class="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Guest location</p>
+          @endif
+          <p class="text-sm font-semibold text-on-surface">{{ $rcStudioName }}</p>
           <p class="text-xs text-on-surface-variant">{{ $rcStudioAddressLine ?: '—' }}</p>
-          @if(!empty($userDetail->google_maps_link))
-          <a href="{{ $userDetail->google_maps_link }}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
+          @if($rcStudioMapsLink !== '')
+          <a href="{{ $rcStudioMapsLink }}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
           @endif
         </div>
       </div>
