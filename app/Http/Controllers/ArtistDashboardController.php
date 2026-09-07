@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\GoogleCalendarEventRequiredException;
-use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Availability;
 use App\Models\AvailabilityOverride;
 use App\Models\BalanceCollection;
@@ -18,6 +17,7 @@ use App\Models\UserDetail;
 use App\Services\ArtistDashboardService;
 use App\Services\ArtistPayoutService;
 use App\Services\BalanceCollectionCheckoutService;
+use App\Services\BookingCalendarAvailabilityService;
 use App\Services\PaymentLinkCheckoutService;
 use App\Services\PublicBookingEmailVerificationService;
 use App\Support\ArtistPolicyCopy;
@@ -1207,67 +1207,8 @@ class ArtistDashboardController extends Controller
 
     private function paymentLinkBusyMap(UserDetail $userDetail, string $timezone, Carbon $from, Carbon $to): array
     {
-        $map = [];
-        $buffer = max(0, (int) ($userDetail->session_buffer_period ?? 0));
-
-        $bookings = Booking::query()
-            ->where('artist_user_id', $userDetail->user_id)
-            ->where('status', 'confirmed')
-            ->whereDate('booking_date', '>=', $from->toDateString())
-            ->whereDate('booking_date', '<=', $to->toDateString())
-            ->get();
-
-        foreach ($bookings as $booking) {
-            $ymd = $booking->booking_date instanceof Carbon
-                ? $booking->booking_date->format('Y-m-d')
-                : (string) $booking->booking_date;
-            try {
-                $startAt = Carbon::parse($ymd.' '.$booking->start_time_utc, 'UTC')->timezone($timezone);
-                $endAt = Carbon::parse($ymd.' '.$booking->end_time_utc, 'UTC')->timezone($timezone);
-                if ($buffer > 0) {
-                    $endAt->addMinutes($buffer);
-                }
-                $key = $startAt->format('Y-m-d');
-                $map[$key][] = [
-                    'start' => ($startAt->hour * 60) + $startAt->minute,
-                    'end' => ($endAt->hour * 60) + $endAt->minute,
-                ];
-            } catch (\Throwable) {
-                continue;
-            }
-        }
-
-        if (! empty($userDetail->google_calendar_token)) {
-            try {
-                $blocks = GoogleCalendarController::getBusyBlocksForDateRange(
-                    $userDetail,
-                    $from->toDateString(),
-                    $to->toDateString(),
-                    $timezone
-                );
-                foreach ($blocks as $block) {
-                    $startUtc = $block['start_datetime_utc'] ?? null;
-                    $endUtc = $block['end_datetime_utc'] ?? null;
-                    if (! $startUtc || ! $endUtc) {
-                        continue;
-                    }
-                    $startAt = ($startUtc instanceof Carbon ? $startUtc->copy() : Carbon::parse((string) $startUtc, 'UTC'))->timezone($timezone);
-                    $endAt = ($endUtc instanceof Carbon ? $endUtc->copy() : Carbon::parse((string) $endUtc, 'UTC'))->timezone($timezone);
-                    if ($buffer > 0) {
-                        $endAt->addMinutes($buffer);
-                    }
-                    $key = $startAt->format('Y-m-d');
-                    $map[$key][] = [
-                        'start' => ($startAt->hour * 60) + $startAt->minute,
-                        'end' => ($endAt->hour * 60) + $endAt->minute,
-                    ];
-                }
-            } catch (\Throwable) {
-                // Availability still works without Google Calendar busy times.
-            }
-        }
-
-        return $map;
+        return app(BookingCalendarAvailabilityService::class)
+            ->busyIntervalsByDateForRange($userDetail, $from, $to);
     }
 
     private function makePaymentLinkValidator(Request $request)

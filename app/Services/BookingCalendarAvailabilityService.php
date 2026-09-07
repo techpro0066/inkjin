@@ -313,33 +313,52 @@ class BookingCalendarAvailabilityService
             return;
         }
 
-        $d = $startAt->copy()->startOfDay();
-        $lastDay = $endAt->copy()->startOfDay();
-        $guard = 0;
+        $this->appendLocalRangeSegmentsToBusyMap($map, $startAt, $endAt);
+    }
 
-        while ($d->lte($lastDay) && $guard++ < 14) {
-            $dayStart = $d->copy()->startOfDay();
-            $dayEndExclusive = $d->copy()->addDay()->startOfDay();
-            $segFrom = $startAt->copy()->max($dayStart);
-            $segTo = $endAt->copy()->min($dayEndExclusive);
+    /**
+     * Busy intervals by local date for an artist (bookings + Google Calendar free/busy).
+     * Used by payment-link auto slots and other server-side availability checks.
+     *
+     * @param  list<int>  $excludeBookingIds
+     * @return array<string, list<array{start:int,end:int}>>
+     */
+    public function busyIntervalsByDateForRange(
+        UserDetail $userDetail,
+        Carbon $from,
+        Carbon $to,
+        array $excludeBookingIds = []
+    ): array {
+        $artistTz = $userDetail->timezone ?: 'UTC';
+        $buffer = max(0, (int) ($userDetail->session_buffer_period ?? 0));
+        $map = [];
+        $excludeIds = array_values(array_unique(array_filter(array_map('intval', $excludeBookingIds))));
 
-            if ($segTo > $segFrom) {
-                $key = $d->format('Y-m-d');
-                $startMinutes = ($segFrom->hour * 60) + $segFrom->minute;
-                $endMinutes = $startMinutes + (int) max(1, $segFrom->diffInMinutes($segTo));
-                if ($endMinutes > 24 * 60) {
-                    $endMinutes = 24 * 60;
-                }
-                if ($endMinutes > $startMinutes) {
-                    if (! isset($map[$key])) {
-                        $map[$key] = [];
-                    }
-                    $map[$key][] = ['start' => $startMinutes, 'end' => $endMinutes];
-                }
+        $bookings = Booking::query()
+            ->where('artist_user_id', $userDetail->user_id)
+            ->where('status', 'confirmed')
+            ->where(function ($query) use ($from, $to) {
+                $query->where(function ($inner) use ($from, $to) {
+                    $inner->whereDate('booking_date', '>=', $from->toDateString())
+                        ->whereDate('booking_date', '<=', $to->toDateString());
+                })->orWhere(function ($inner) use ($from, $to) {
+                    $inner->whereNotNull('consultation_date')
+                        ->whereDate('consultation_date', '>=', $from->toDateString())
+                        ->whereDate('consultation_date', '<=', $to->toDateString());
+                });
+            })
+            ->get();
+
+        foreach ($bookings as $booking) {
+            if (in_array((int) $booking->id, $excludeIds, true)) {
+                continue;
             }
-
-            $d->addDay();
+            $this->appendBookingOccupancyToBusyMap($booking, $artistTz, $map, $buffer);
         }
+
+        $this->appendGoogleCalendarBusyToBusyMap($userDetail, $artistTz, $map, $buffer, $from, $to);
+
+        return $map;
     }
 
     /**
@@ -347,14 +366,23 @@ class BookingCalendarAvailabilityService
      *
      * @param  array<string, list<array{start:int,end:int}>>  $map
      */
-    private function appendGoogleCalendarBusyToBusyMap(UserDetail $userDetail, string $artistTz, array &$map, int $bufferAfterMinutes = 0): void
-    {
+    private function appendGoogleCalendarBusyToBusyMap(
+        UserDetail $userDetail,
+        string $artistTz,
+        array &$map,
+        int $bufferAfterMinutes = 0,
+        ?Carbon $from = null,
+        ?Carbon $to = null
+    ): void {
         if (empty($userDetail->google_calendar_token)) {
             return;
         }
 
-        $startDate = Carbon::now($artistTz)->startOfDay();
-        $endDate = $startDate->copy()->addDays(180);
+        $startDate = $from?->copy()->timezone($artistTz)->startOfDay()
+            ?? Carbon::now($artistTz)->startOfDay();
+        $endDate = $to?->copy()->timezone($artistTz)->endOfDay()
+            ?? $startDate->copy()->addDays(180)->endOfDay();
+
         $busyBlocks = GoogleCalendarController::getBusyBlocksForDateRange(
             $userDetail,
             $startDate->format('Y-m-d'),
@@ -365,7 +393,7 @@ class BookingCalendarAvailabilityService
         foreach ($busyBlocks as $block) {
             $startUtc = $block['start_datetime_utc'] ?? null;
             $endUtc = $block['end_datetime_utc'] ?? null;
-            if (!$startUtc || !$endUtc) {
+            if (! $startUtc || ! $endUtc) {
                 continue;
             }
 
@@ -396,11 +424,27 @@ class BookingCalendarAvailabilityService
             return;
         }
 
+        $this->appendLocalRangeSegmentsToBusyMap($map, $startAt, $endAt);
+    }
+
+    /**
+     * Split a local busy range across calendar days (handles all-day and multi-day blocks).
+     *
+     * @param  array<string, list<array{start:int,end:int}>>  $map
+     */
+    private function appendLocalRangeSegmentsToBusyMap(array &$map, Carbon $startAt, Carbon $endAt): void
+    {
         $d = $startAt->copy()->startOfDay();
         $lastDay = $endAt->copy()->startOfDay();
-        $guard = 0;
+        // Exclusive midnight end (typical all-day FreeBusy) belongs to previous day only.
+        if ($endAt->equalTo($lastDay) && $endAt->gt($startAt)) {
+            $lastDay = $lastDay->copy()->subDay();
+        }
 
-        while ($d->lte($lastDay) && $guard++ < 14) {
+        $guard = 0;
+        $maxDays = min(400, max(1, (int) $d->diffInDays($lastDay) + 2));
+
+        while ($d->lte($lastDay) && $guard++ < $maxDays) {
             $dayStart = $d->copy()->startOfDay();
             $dayEndExclusive = $d->copy()->addDay()->startOfDay();
             $segFrom = $startAt->copy()->max($dayStart);
@@ -414,7 +458,7 @@ class BookingCalendarAvailabilityService
                     $endMinutes = 24 * 60;
                 }
                 if ($endMinutes > $startMinutes) {
-                    if (!isset($map[$key])) {
+                    if (! isset($map[$key])) {
                         $map[$key] = [];
                     }
                     $map[$key][] = ['start' => $startMinutes, 'end' => $endMinutes];
