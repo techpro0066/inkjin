@@ -186,6 +186,21 @@ class CustomRequestController extends Controller
             return response()->json(['message' => 'This guest spot is no longer available.'], 422);
         }
 
+        if ($isGuestRequest && $isManagedScheduling) {
+            $preferences = is_array($payload['preferences'] ?? null) ? $payload['preferences'] : [];
+            foreach ($preferences as $pref) {
+                $ymd = trim((string) ($pref['date'] ?? ''));
+                if ($ymd === '') {
+                    continue;
+                }
+                if (! $guestSpot->containsBookableDate($ymd)) {
+                    return response()->json([
+                        'message' => 'Preferred dates must be within the guest spot dates ('.$guestSpot->from_date->format('M j, Y').' – '.$guestSpot->to_date->format('M j, Y').').',
+                    ], 422);
+                }
+            }
+        }
+
         if (in_array($userDetail->availability_status, ['closed', 'design_only'], true)) {
             return response()->json(['message' => 'This artist is not accepting custom requests right now.'], 422);
         }

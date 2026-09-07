@@ -465,6 +465,18 @@
   @if(!empty($isManagedScheduling))
   @php
     $isGuestAvailability = ! empty($guestSpotId) && ! empty($guestSpot);
+    $guestPrefDateMin = null;
+    $guestPrefDateMax = null;
+    if ($isGuestAvailability && $guestSpot->from_date && $guestSpot->to_date) {
+      $todayYmd = now(($userDetail->timezone ?? null) ?: config('app.timezone'))->format('Y-m-d');
+      $fromYmd = $guestSpot->from_date->format('Y-m-d');
+      $toYmd = $guestSpot->to_date->format('Y-m-d');
+      $guestPrefDateMin = $fromYmd > $todayYmd ? $fromYmd : $todayYmd;
+      $guestPrefDateMax = $toYmd;
+      if ($guestPrefDateMin > $guestPrefDateMax) {
+        $guestPrefDateMin = $guestPrefDateMax;
+      }
+    }
     if ($isGuestAvailability) {
       $rcStudioName = trim((string) ($guestSpot->studio_name ?? '')) ?: 'Guest studio';
       $rcStudioAddressLine = trim(implode(', ', array_filter([
@@ -496,6 +508,9 @@
         <div class="mb-6">
           <h3 class="text-xl font-bold text-on-surface mb-1">When are you available?</h3>
           <p class="text-sm text-on-surface-variant"><span id="rcManagedArtistHint">{{ $artistName }}</span> will confirm a time that works for both of you.</p>
+          @if($isGuestAvailability && $guestPrefDateMin && $guestPrefDateMax)
+            <p class="text-xs text-on-surface-variant mt-2">Preferred dates must fall within this guest spot: {{ \Carbon\Carbon::parse($guestSpot->from_date)->format('M j, Y') }} – {{ \Carbon\Carbon::parse($guestSpot->to_date)->format('M j, Y') }}.</p>
+          @endif
         </div>
 
         <div id="rcPrefBlocks" class="space-y-4 mb-6">
@@ -506,7 +521,13 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label>
-                <input type="date" class="rc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <input
+                  type="date"
+                  class="rc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  @if($guestPrefDateMin) min="{{ $guestPrefDateMin }}" @endif
+                  @if($guestPrefDateMax) max="{{ $guestPrefDateMax }}" @endif
+                >
+                <p id="rcManagedPrefDateError" class="hidden text-sm text-error mt-2">Please choose a date within the guest spot dates.</p>
               </div>
               <div>
                 <label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label>
@@ -1236,6 +1257,11 @@
   })(jQuery);
   </script>
 
+  @php
+    $guestPrefDateMin = $guestPrefDateMin ?? null;
+    $guestPrefDateMax = $guestPrefDateMax ?? null;
+  @endphp
+
   <script>
   (function() {
     'use strict';
@@ -1243,6 +1269,8 @@
     var artistName = @json($artistName ?? 'Artist');
     var rcArtistUsername = @json($artistUsername ?? '');
     var guestSpotId = @json($guestSpotId ?? null);
+    var guestPrefDateMin = @json($guestPrefDateMin);
+    var guestPrefDateMax = @json($guestPrefDateMax);
     var isManagedScheduling = @json(!empty($isManagedScheduling));
     var questionCount = (typeof window.rcGetTotalQuestions === 'function') ? window.rcGetTotalQuestions() : 0;
     var postScreens = isManagedScheduling ? [9, 10, 14, 15, 16] : [10, 14, 15, 16];
@@ -1913,11 +1941,36 @@
       return '<button type="button" class="pref-remove-btn" onclick="rcRemovePreferenceBlock(this)" aria-label="Remove preference"><span class="material-symbols-outlined text-[16px]">close</span> Remove</button>';
     }
 
+    function rcApplyGuestPrefDateBounds(input) {
+      if (!input) return;
+      if (guestPrefDateMin) input.setAttribute('min', guestPrefDateMin);
+      else input.removeAttribute('min');
+      if (guestPrefDateMax) input.setAttribute('max', guestPrefDateMax);
+      else input.removeAttribute('max');
+      if (input.value) {
+        if (guestPrefDateMin && input.value < guestPrefDateMin) input.value = '';
+        if (guestPrefDateMax && input.value > guestPrefDateMax) input.value = '';
+      }
+    }
+
+    function rcApplyGuestPrefDateBoundsToAll() {
+      document.querySelectorAll('#rcPrefBlocks .rc-pref-date').forEach(rcApplyGuestPrefDateBounds);
+    }
+
+    function rcIsGuestPrefDateAllowed(ymd) {
+      if (!guestSpotId || !guestPrefDateMin || !guestPrefDateMax) return true;
+      if (!ymd) return false;
+      return ymd >= guestPrefDateMin && ymd <= guestPrefDateMax;
+    }
+
     function rcBuildPreferenceBlockHtml(num, deletable) {
       var req = num === 1 ? ' <span class="text-error">*</span>' : '';
       var html = '<div class="pref-block-header"><p class="text-xs font-bold text-primary uppercase tracking-wider pref-block-label">Preference ' + num + req + '</p>';
       if (deletable) html += rcPrefRemoveBtnHtml();
-      html += '</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="rc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label>' + RC_PREF_TIME_PILLS + '</div></div>';
+      html += '</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="rc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"';
+      if (guestPrefDateMin) html += ' min="' + guestPrefDateMin + '"';
+      if (guestPrefDateMax) html += ' max="' + guestPrefDateMax + '"';
+      html += '></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label>' + RC_PREF_TIME_PILLS + '</div></div>';
       return html;
     }
 
@@ -1960,6 +2013,7 @@
       block.dataset.pref = String(rcPrefCount - 1);
       block.innerHTML = rcBuildPreferenceBlockHtml(rcPrefCount, true);
       document.getElementById('rcPrefBlocks').appendChild(block);
+      rcApplyGuestPrefDateBounds(block.querySelector('.rc-pref-date'));
       if (rcPrefCount >= 5) document.getElementById('rcAddPrefBtn').classList.add('hidden');
     };
 
@@ -1988,7 +2042,7 @@
 
     function validateRcManagedAvailability() {
       if (!isManagedScheduling) return true;
-      ['rcManagedDayError', 'rcManagedFlexError', 'rcManagedUrgencyError'].forEach(function(id) {
+      ['rcManagedDayError', 'rcManagedFlexError', 'rcManagedUrgencyError', 'rcManagedPrefDateError'].forEach(function(id) {
         setRcManagedError(id, false);
       });
       var valid = true;
@@ -2001,12 +2055,38 @@
       if (!document.querySelector('#rcDayPills .day-pill.selected')) fail('rcManagedDayError');
       if (!document.querySelector('#rcFlexPills .pill-btn.selected')) fail('rcManagedFlexError');
       if (!document.querySelector('#rcUrgencyPills .pill-btn.selected')) fail('rcManagedUrgencyError');
+
+      if (guestSpotId && guestPrefDateMin && guestPrefDateMax) {
+        var firstPrefDate = document.querySelector('#rcPrefBlocks .pref-block[data-pref="0"] .rc-pref-date');
+        var firstDateVal = firstPrefDate ? String(firstPrefDate.value || '') : '';
+        if (!rcIsGuestPrefDateAllowed(firstDateVal)) {
+          fail('rcManagedPrefDateError');
+        }
+        document.querySelectorAll('#rcPrefBlocks .rc-pref-date').forEach(function(input) {
+          var val = String(input.value || '');
+          if (val && !rcIsGuestPrefDateAllowed(val)) {
+            input.value = '';
+            fail('rcManagedPrefDateError');
+          }
+        });
+      }
+
       if (!valid && firstInvalid) {
         var field = firstInvalid.closest('[data-rc-field]') || firstInvalid;
         field.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       return valid;
     }
+
+    rcApplyGuestPrefDateBoundsToAll();
+    document.addEventListener('change', function(e) {
+      if (e.target && e.target.classList && e.target.classList.contains('rc-pref-date')) {
+        rcApplyGuestPrefDateBounds(e.target);
+        if (rcIsGuestPrefDateAllowed(e.target.value) || !e.target.value) {
+          setRcManagedError('rcManagedPrefDateError', false);
+        }
+      }
+    });
 
     function buildRcManagedAvailabilityReviewLines() {
       if (!isManagedScheduling) return [];
