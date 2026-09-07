@@ -19,6 +19,7 @@ use App\Services\ArtistDashboardService;
 use App\Services\ArtistPayoutService;
 use App\Services\BalanceCollectionCheckoutService;
 use App\Services\PaymentLinkCheckoutService;
+use App\Services\PublicBookingEmailVerificationService;
 use App\Support\ArtistPolicyCopy;
 use App\Support\PaymentMethods;
 use Carbon\Carbon;
@@ -362,7 +363,10 @@ class ArtistDashboardController extends Controller
             'slot_time' => $request->input('slot_time') ?: $paymentLink->slot_time,
         ]);
 
-        $otpResponse = app(InkJinController::class)->sendBookingOtp($request);
+        $otpResponse = app(InkJinController::class)->sendBookingOtp(
+            $request,
+            app(PublicBookingEmailVerificationService::class)
+        );
         if ($otpResponse->getStatusCode() !== 200) {
             return $otpResponse;
         }
@@ -398,7 +402,10 @@ class ArtistDashboardController extends Controller
         }
 
         $pending = $request->session()->get($this->paymentLinkOtpSessionKey($code));
-        $otpResponse = app(InkJinController::class)->verifyBookingOtp($request);
+        $otpResponse = app(InkJinController::class)->verifyBookingOtp(
+            $request,
+            app(PublicBookingEmailVerificationService::class)
+        );
         if ($otpResponse->getStatusCode() !== 200) {
             return $otpResponse;
         }
