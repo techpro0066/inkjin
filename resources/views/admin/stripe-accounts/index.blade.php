@@ -93,7 +93,7 @@
                     <div class="text-xs text-on-surface-variant mt-0.5">{{ $account['owner_email'] }}</div>
                   @endif
                   @if($account['owner_username'] !== '')
-                    <div class="text-xs text-on-surface-variant mt-0.5">@{{ $account['owner_username'] }}</div>
+                    <div class="text-xs text-on-surface-variant mt-0.5">{{ '@'.$account['owner_username'] }}</div>
                   @endif
                 </td>
                 <td class="px-5 py-4">
