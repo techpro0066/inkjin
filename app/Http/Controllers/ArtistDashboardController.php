@@ -724,14 +724,36 @@ class ArtistDashboardController extends Controller
     {
         $this->assertPaymentLinkSessionDetailsAccess($request, $code, $booking);
 
-        $validated = $request->validate([
-            'question_id' => ['required'],
-            'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
-        ]);
+        try {
+            $validated = $request->validate([
+                'question_id' => ['required'],
+                'image' => ['required', 'file', 'max:10240'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $message = collect($e->errors())->flatten()->first() ?: 'Unable to upload image.';
+
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+                'errors' => $e->errors(),
+            ], 422);
+        }
 
         $file = $request->file('image');
         if (! $file) {
             return response()->json(['success' => false, 'message' => 'Image file is required.'], 422);
+        }
+
+        $path = $file->getRealPath() ?: $file->getPathname();
+        $info = $path ? @getimagesize($path) : false;
+        $mime = strtolower((string) ($file->getMimeType() ?: ''));
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        $ok = $info !== false
+            || str_contains($mime, 'jpeg')
+            || str_contains($mime, 'png')
+            || in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true);
+        if (! $ok) {
+            return response()->json(['success' => false, 'message' => 'Please upload a valid JPG or PNG image.'], 422);
         }
 
         $folder = public_path('uploads/booking-questions');
@@ -739,9 +761,15 @@ class ArtistDashboardController extends Controller
             @mkdir($folder, 0775, true);
         }
 
-        $extension = strtolower((string) $file->getClientOriginalExtension());
+        if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            $ext = str_contains($mime, 'png') ? 'png' : 'jpg';
+        }
+        if ($ext === 'jpeg') {
+            $ext = 'jpg';
+        }
+
         $filename = 'q_'.preg_replace('/[^A-Za-z0-9_-]/', '', (string) $validated['question_id'])
-            .'_'.time().'_'.Str::random(8).'.'.$extension;
+            .'_'.time().'_'.Str::random(8).'.'.$ext;
 
         $file->move($folder, $filename);
         $publicPath = '/uploads/booking-questions/'.$filename;

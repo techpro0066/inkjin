@@ -171,7 +171,25 @@
   var MAX_IMAGES = 5;
   // Live hosts often allow only ~2MB PHP uploads; compress larger picks before send.
   var UPLOAD_TARGET_BYTES = 1800 * 1024;
-  var ALLOWED_TYPES = { 'image/jpeg': true, 'image/jpg': true, 'image/png': true };
+  var ALLOWED_MIME = {
+    'image/jpeg': true,
+    'image/jpg': true,
+    'image/pjpeg': true,
+    'image/png': true,
+    'image/webp': true,
+    'image/heic': true,
+    'image/heif': true,
+    'image/heic-sequence': true,
+    'image/heif-sequence': true
+  };
+  var ALLOWED_EXT = {
+    jpg: true,
+    jpeg: true,
+    png: true,
+    webp: true,
+    heic: true,
+    heif: true
+  };
 
   function escapeHtml(str) {
     return String(str || '')
@@ -181,11 +199,24 @@
       .replace(/"/g, '&quot;');
   }
 
-  function openFilePicker($input) {
-    if (!$input || !$input.length) return;
-    var el = $input[0];
-    if (el && typeof el.click === 'function') {
-      el.click();
+  function fileExtension(file) {
+    var name = String((file && file.name) || '');
+    var match = name.toLowerCase().match(/\.([a-z0-9]+)$/);
+    return match ? match[1] : '';
+  }
+
+  function blobToJpegFile(blob, originalName) {
+    var base = String(originalName || 'image').replace(/\.[^.]+$/, '') || 'image';
+    var filename = base + '.jpg';
+    try {
+      return new File([blob], filename, { type: 'image/jpeg', lastModified: Date.now() });
+    } catch (e) {
+      try {
+        blob.name = filename;
+        blob.lastModifiedDate = new Date();
+        blob.lastModified = Date.now();
+      } catch (ignored) {}
+      return blob;
     }
   }
 
@@ -198,17 +229,59 @@
       this._uploadHandler = typeof handler === 'function' ? handler : null;
     },
 
+    appendImageToFormData: function(formData, file) {
+      var name = String((file && file.name) || 'upload.jpg');
+      if (!/\.(jpe?g|png|webp|heic|heif)$/i.test(name)) {
+        name = 'upload.jpg';
+      } else if (file && String(file.type || '').indexOf('jpeg') !== -1 && !/\.jpe?g$/i.test(name)) {
+        name = name.replace(/\.[^.]+$/, '') + '.jpg';
+      }
+      // Third argument is required on iOS Safari so PHP receives a real filename.
+      formData.append('image', file, name);
+    },
+
+    parseUploadXhrError: function(xhr) {
+      var fallback = 'Image upload failed. Please try a JPG photo under 10MB.';
+      if (!xhr) return fallback;
+      if (xhr.status === 413) {
+        return 'Image is too large for the server upload limit. Please try a smaller photo.';
+      }
+      if (xhr.status === 419) {
+        return 'Your session expired. Please refresh the page and try again.';
+      }
+      var data = null;
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+      } catch (e) {
+        if (xhr.status >= 500) return 'Server error while uploading. Please try again.';
+        return fallback;
+      }
+      if (data && data.message) return String(data.message);
+      if (data && data.errors) {
+        var first = null;
+        Object.keys(data.errors).some(function(key) {
+          if (data.errors[key] && data.errors[key][0]) {
+            first = data.errors[key][0];
+            return true;
+          }
+          return false;
+        });
+        if (first) return String(first);
+      }
+      return fallback;
+    },
+
     buildHtml: function(questionId) {
       var inputId = 'q-image-input-' + String(questionId);
       return '' +
         '<div class="q-image-upload relative" data-question-id="' + questionId + '">' +
-          '<input type="file" id="' + inputId + '" accept="image/png,image/jpeg,image/jpg" multiple data-question-id="' + questionId + '" class="q-image-upload-input js-question-file">' +
+          '<input type="file" id="' + inputId + '" accept="image/*,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png,.webp" multiple data-question-id="' + questionId + '" class="q-image-upload-input js-question-file">' +
           '<div class="q-image-upload-list" aria-live="polite"></div>' +
           '<label for="' + inputId + '" class="q-image-upload-empty">' +
             '<span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span>' +
             '<p class="q-image-upload-text q-image-upload-text-primary">Drop images here or <span class="q-image-upload-browse">browse</span></p>' +
             '<p class="q-image-upload-text q-image-upload-text-more hidden">Add more images</p>' +
-            '<p class="q-image-upload-hint">PNG, JPG up to 10MB each</p>' +
+            '<p class="q-image-upload-hint">Photos up to 10MB each (JPG, PNG, HEIC)</p>' +
           '</label>' +
           '<p class="q-image-upload-meta"><span class="q-image-upload-count">0</span>/' + MAX_IMAGES + ' images</p>' +
         '</div>';
@@ -216,19 +289,27 @@
 
     validateFile: function(file) {
       if (!file) return 'Please choose an image.';
-      if (!ALLOWED_TYPES[String(file.type || '').toLowerCase()]) {
-        return 'Only PNG and JPG images are allowed.';
-      }
       if (file.size > MAX_BYTES) {
         return 'Image must be 10MB or smaller.';
       }
-      return '';
+
+      var mime = String(file.type || '').toLowerCase();
+      var ext = fileExtension(file);
+
+      if (mime && ALLOWED_MIME[mime]) return '';
+      if (ext && ALLOWED_EXT[ext]) return '';
+      // iOS camera / Drive may omit both; allow and try canvas convert next.
+      if (!mime && !ext) return '';
+      if (mime === 'application/octet-stream' && (!ext || ALLOWED_EXT[ext])) return '';
+      if (mime.indexOf('image/') === 0) return '';
+
+      return 'Please upload a photo (JPG, PNG, or HEIC).';
     },
 
     prepareFileForUpload: function(file) {
-      return new Promise(function(resolve) {
-        if (!file || file.size <= UPLOAD_TARGET_BYTES) {
-          resolve(file);
+      return new Promise(function(resolve, reject) {
+        if (!file) {
+          reject(new Error('Please choose an image.'));
           return;
         }
 
@@ -245,37 +326,46 @@
           canvas.height = Math.max(1, Math.round(height * scale));
           var ctx = canvas.getContext('2d');
           if (!ctx) {
-            resolve(file);
+            reject(new Error('Unable to process this image. Please try a JPG instead.'));
             return;
           }
+          // White background so transparent PNGs become valid JPEGs.
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          var quality = 0.85;
+          var quality = file.size > UPLOAD_TARGET_BYTES ? 0.82 : 0.9;
           var tryExport = function() {
             canvas.toBlob(function(blob) {
               if (!blob) {
-                resolve(file);
+                reject(new Error('Unable to process this image. Please try a JPG instead.'));
                 return;
               }
-              if (blob.size > UPLOAD_TARGET_BYTES && quality > 0.55) {
-                quality -= 0.1;
+              if (blob.size > UPLOAD_TARGET_BYTES && quality > 0.5) {
+                quality = Math.max(0.5, quality - 0.1);
                 tryExport();
                 return;
               }
               if (blob.size > MAX_BYTES) {
-                resolve(file);
+                reject(new Error('Image is still too large after compression. Please choose a smaller photo.'));
                 return;
               }
-              var base = String(file.name || 'image').replace(/\.[^.]+$/, '');
-              resolve(new File([blob], base + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
+              resolve(blobToJpegFile(blob, file.name || 'photo.jpg'));
             }, 'image/jpeg', quality);
           };
           tryExport();
         };
         img.onerror = function() {
           URL.revokeObjectURL(url);
-          resolve(file);
+          var ext = fileExtension(file);
+          var mime = String(file.type || '').toLowerCase();
+          if (ext === 'heic' || ext === 'heif' || mime.indexOf('heic') !== -1 || mime.indexOf('heif') !== -1) {
+            reject(new Error('This iPhone photo format could not be read. Please choose JPG, or set Camera to Most Compatible.'));
+            return;
+          }
+          reject(new Error('Could not read this image. Please try another JPG or PNG.'));
         };
+        img.decoding = 'async';
         img.src = url;
       });
     },
@@ -413,6 +503,9 @@
             urls.push(imageUrl);
             this.setUrls($zone, urls);
             this.clearError($zone);
+          } else {
+            hadError = true;
+            this.showError($zone, 'Image upload failed. Please try again.');
           }
         } catch (error) {
           self._removePlaceholder($zone, uploadId);
@@ -455,9 +548,7 @@
         $zone.on('dragover dragenter', function(event) {
           event.preventDefault();
           event.stopPropagation();
-          if (self.getUrls($zone).length < MAX_IMAGES) {
-            $zone.addClass('is-dragover');
-          }
+          $zone.addClass('is-dragover');
         });
 
         $zone.on('dragleave dragend drop', function(event) {
@@ -467,11 +558,9 @@
         });
 
         $zone.on('drop', function(event) {
-          var dt = event.originalEvent && event.originalEvent.dataTransfer
-            ? event.originalEvent.dataTransfer.files
-            : null;
-          if (!dt || !dt.length) return;
-          self.processFiles($zone, dt);
+          var dt = event.originalEvent && event.originalEvent.dataTransfer;
+          if (!dt || !dt.files || !dt.files.length) return;
+          self.processFiles($zone, dt.files);
         });
 
         self.render($zone);
@@ -482,5 +571,5 @@
   $(function() {
     window.QuestionImageField.initIn($(document));
   });
-})(window, jQuery);
+})(window, window.jQuery);
 </script>

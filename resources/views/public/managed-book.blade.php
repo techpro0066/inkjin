@@ -701,7 +701,11 @@
 
     async function uploadQuestionImage(file, questionId, progressCb) {
       var formData = new FormData();
-      formData.append('image', file);
+      if (window.QuestionImageField && typeof window.QuestionImageField.appendImageToFormData === 'function') {
+        window.QuestionImageField.appendImageToFormData(formData, file);
+      } else {
+        formData.append('image', file, (file && file.name) || 'upload.jpg');
+      }
       formData.append('question_id', String(questionId || ''));
       formData.append('artist_username', bookingArtistUsername);
       formData.append('tattoo_slug', bookingTattooSlug);
@@ -721,15 +725,17 @@
             var data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
             if (xhr.status >= 200 && xhr.status < 300 && data && data.success) {
               resolve(data.file_url || data.file_path || '');
-            } else if (xhr.status === 413) {
-              reject(new Error((data && data.message) || 'Image is too large for the server upload limit.'));
             } else {
-              reject(new Error((data && data.message) || 'Image upload failed.'));
+              var msg = (window.QuestionImageField && window.QuestionImageField.parseUploadXhrError)
+                ? window.QuestionImageField.parseUploadXhrError(xhr)
+                : ((data && data.message) || 'Image upload failed.');
+              reject(new Error(msg));
             }
           } catch(e) {
-            reject(new Error(xhr.status === 413
-              ? 'Image is too large for the server upload limit.'
-              : 'Image upload failed.'));
+            var fallback = (window.QuestionImageField && window.QuestionImageField.parseUploadXhrError)
+              ? window.QuestionImageField.parseUploadXhrError(xhr)
+              : 'Image upload failed.';
+            reject(new Error(fallback));
           }
         };
         xhr.onerror = function() { reject(new Error('Network error during upload.')); };

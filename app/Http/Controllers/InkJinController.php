@@ -435,7 +435,8 @@ class InkJinController extends Controller
                 'artist_username' => ['required', 'string'],
                 'tattoo_slug' => ['nullable', 'string'],
                 'question_id' => ['required'],
-                'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+                // Client normalizes to JPEG; keep PNG accepted as fallback.
+                'image' => ['required', 'file', 'max:10240'],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             $message = collect($e->errors())->flatten()->first() ?: 'Unable to upload image.';
@@ -479,15 +480,17 @@ class InkJinController extends Controller
             return response()->json(['success' => false, 'message' => 'Image file is required.'], 422);
         }
 
+        $imageCheck = $this->assertUploadIsSupportedImage($file);
+        if ($imageCheck !== true) {
+            return response()->json(['success' => false, 'message' => $imageCheck], 422);
+        }
+
         $folder = public_path('uploads/booking-questions');
         if (! is_dir($folder)) {
             @mkdir($folder, 0775, true);
         }
 
-        $extension = strtolower((string) $file->getClientOriginalExtension());
-        if (! in_array($extension, ['jpg', 'jpeg', 'png'], true)) {
-            $extension = str_contains((string) $file->getMimeType(), 'png') ? 'png' : 'jpg';
-        }
+        $extension = $this->resolveUploadImageExtension($file);
         $filename = 'q_'.preg_replace('/[^A-Za-z0-9_-]/', '', (string) $validated['question_id'])
             .'_'.time().'_'.Str::random(8).'.'.$extension;
 
@@ -501,6 +504,55 @@ class InkJinController extends Controller
         ]);
     }
 
+    /**
+     * @return true|string
+     */
+    private function assertUploadIsSupportedImage(\Illuminate\Http\UploadedFile $file): bool|string
+    {
+        $path = $file->getRealPath() ?: $file->getPathname();
+        $info = $path ? @getimagesize($path) : false;
+        if ($info !== false) {
+            $type = (int) ($info[2] ?? 0);
+            if (in_array($type, [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP, IMAGETYPE_GIF], true)) {
+                return true;
+            }
+        }
+
+        $mime = strtolower((string) ($file->getMimeType() ?: ''));
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        $allowedMime = [
+            'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/webp', 'image/gif',
+        ];
+        $allowedExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+        if (in_array($mime, $allowedMime, true) || in_array($ext, $allowedExt, true)) {
+            // Trust browser-normalized JPEG uploads even if getimagesize fails briefly.
+            if (str_contains($mime, 'jpeg') || in_array($ext, ['jpg', 'jpeg'], true)) {
+                return true;
+            }
+        }
+
+        return 'Please upload a valid JPG or PNG image.';
+    }
+
+    private function resolveUploadImageExtension(\Illuminate\Http\UploadedFile $file): string
+    {
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return $ext === 'jpeg' ? 'jpg' : $ext;
+        }
+
+        $mime = strtolower((string) ($file->getMimeType() ?: ''));
+        if (str_contains($mime, 'png')) {
+            return 'png';
+        }
+        if (str_contains($mime, 'webp')) {
+            return 'webp';
+        }
+
+        return 'jpg';
+    }
+
     private function phpIniBytes(string $value): int
     {
         $value = trim($value);
@@ -510,6 +562,7 @@ class InkJinController extends Controller
 
         $unit = strtolower(substr($value, -1));
         $number = (float) $value;
+
         return (int) match ($unit) {
             'g' => $number * 1024 * 1024 * 1024,
             'm' => $number * 1024 * 1024,
