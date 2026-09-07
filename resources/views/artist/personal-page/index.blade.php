@@ -1300,6 +1300,26 @@
           formData.append('remove_personal_page_background_image', '1');
         }
 
+        function reportPersonalPageClientError(payload) {
+          try {
+            fetch(@json(route('personal-page.client-error')), {
+              method: 'POST',
+              headers: {
+                'X-CSRF-TOKEN': @json(csrf_token()),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(Object.assign({
+                url: window.location.href,
+                user_agent: navigator.userAgent,
+                banner_blob_size: croppedBannerBlob ? croppedBannerBlob.size : null,
+                banner_blob_type: croppedBannerBlob ? croppedBannerBlob.type : null
+              }, payload || {}))
+            }).catch(function () {});
+          } catch (e) {}
+        }
+
         fetch(@json(route('personal-page.update')), {
           method: 'POST',
           headers: {
@@ -1309,10 +1329,45 @@
           },
           body: formData
         }).then(function (response) {
-          return response.json().then(function (data) {
-            return { ok: response.ok, status: response.status, data: data };
+          return response.text().then(function (raw) {
+            var data = null;
+            var parseError = null;
+            if (raw) {
+              try {
+                data = JSON.parse(raw);
+              } catch (e) {
+                parseError = e && e.message ? e.message : 'JSON parse failed';
+              }
+            }
+            return {
+              ok: response.ok,
+              status: response.status,
+              data: data,
+              raw: raw,
+              parseError: parseError
+            };
           });
         }).then(function (result) {
+          if (result.parseError) {
+            reportPersonalPageClientError({
+              stage: 'response_parse',
+              status: result.status,
+              message: result.parseError,
+              response_snippet: (result.raw || '').slice(0, 1500)
+            });
+            const errorAlert = document.getElementById('personalPageErrorAlert');
+            if (result.status === 413) {
+              errorAlert.textContent = 'Upload is too large for the server. Please use an image under 4 MB.';
+            } else if (result.status === 419) {
+              errorAlert.textContent = 'Your session expired. Please refresh the page and try again.';
+            } else {
+              errorAlert.textContent = 'Could not save personal page (server returned an unexpected response).';
+            }
+            errorAlert.classList.remove('hidden');
+            scrollToFirstPersonalPageError();
+            return;
+          }
+
           if (result.ok && result.data && result.data.success) {
             const successAlert = document.getElementById('personalPageSuccessAlert');
             successAlert.textContent = result.data.message || 'Personal page updated successfully.';
@@ -1331,17 +1386,34 @@
             return;
           }
           if (result.status === 422 && result.data && result.data.errors) {
+            reportPersonalPageClientError({
+              stage: 'validation',
+              status: result.status,
+              message: (result.data && result.data.message) || 'Validation failed',
+              response_snippet: JSON.stringify(result.data.errors).slice(0, 1500)
+            });
             Object.keys(result.data.errors).forEach(function (key) {
               setFieldError(key, result.data.errors[key][0]);
             });
             scrollToFirstPersonalPageError();
             return;
           }
+
+          reportPersonalPageClientError({
+            stage: 'server_error',
+            status: result.status,
+            message: (result.data && result.data.message) || 'Could not save personal page.',
+            response_snippet: JSON.stringify(result.data || {}).slice(0, 1500)
+          });
           const errorAlert = document.getElementById('personalPageErrorAlert');
           errorAlert.textContent = (result.data && result.data.message) ? result.data.message : 'Could not save personal page.';
           errorAlert.classList.remove('hidden');
           scrollToFirstPersonalPageError();
-        }).catch(function () {
+        }).catch(function (err) {
+          reportPersonalPageClientError({
+            stage: 'network',
+            message: (err && err.message) ? err.message : 'Network error'
+          });
           const errorAlert = document.getElementById('personalPageErrorAlert');
           errorAlert.textContent = 'Network error. Please try again.';
           errorAlert.classList.remove('hidden');
