@@ -60,26 +60,14 @@ class BookingCalendarAvailabilityService
         $artistBlockedPeriods = app(ManagedRequestBookingService::class)
             ->artistBlockedPeriods($artistUserId);
 
-        $sessionBufferMinutes = max(0, (int) ($userDetail->session_buffer_period ?? 0));
-
         $excludeIds = array_values(array_unique(array_filter([
             (int) $booking->id,
             $booking->consultation_booking_id ? (int) $booking->consultation_booking_id : null,
         ])));
 
-        $artistBusyIntervalsByDate = [];
-        $existingBookings = Booking::query()
-            ->where('artist_user_id', $artistUserId)
-            ->where('status', 'confirmed')
-            ->get();
-
-        foreach ($existingBookings as $b) {
-            if (in_array((int) $b->id, $excludeIds, true)) {
-                continue;
-            }
-            $this->appendBookingOccupancyToBusyMap($b, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
-        }
-        $this->appendGoogleCalendarBusyToBusyMap($userDetail, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
+        $from = Carbon::now($artistTimezone)->startOfDay();
+        $to = $from->copy()->addDays(180)->endOfDay();
+        $artistBusyIntervalsByDate = $this->busyIntervalsByDateForRange($userDetail, $from, $to, $excludeIds);
 
         $timing = strtolower((string) ($booking->consultation_timing_type ?? 'combined'));
         if ($timing !== 'separate') {
@@ -153,17 +141,9 @@ class BookingCalendarAvailabilityService
         $artistBlockedPeriods = app(ManagedRequestBookingService::class)
             ->artistBlockedPeriods($artistUserId, $exceptGuestSpotId ?: null);
 
-        $sessionBufferMinutes = max(0, (int) ($userDetail->session_buffer_period ?? 0));
-        $artistBusyIntervalsByDate = [];
-        $existingBookings = Booking::query()
-            ->where('artist_user_id', $artistUserId)
-            ->where('status', 'confirmed')
-            ->get();
-
-        foreach ($existingBookings as $booking) {
-            $this->appendBookingOccupancyToBusyMap($booking, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
-        }
-        $this->appendGoogleCalendarBusyToBusyMap($userDetail, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
+        $from = Carbon::now($artistTimezone)->startOfDay();
+        $to = $from->copy()->addDays(180)->endOfDay();
+        $artistBusyIntervalsByDate = $this->busyIntervalsByDateForRange($userDetail, $from, $to);
 
         $allowedDateRange = null;
         $guestSpot = $customRequest->isGuestRequest() ? $customRequest->guestSpot : null;
@@ -213,6 +193,179 @@ class BookingCalendarAvailabilityService
                 'isGuest' => $customRequest->isGuestRequest(),
             ],
         ];
+    }
+
+    /**
+     * Same availability payload shape used by the public booking calendar.
+     *
+     * @return array{
+     *     artistAvailabilitySchedule: array<string, list<array{start:string,end:string}>>,
+     *     artistTimezone: string,
+     *     artistBlockedPeriods: list<array{start_date:string,end_date:string}>,
+     *     artistBusyIntervalsByDate: array<string, list<array{start:int,end:int}>>,
+     *     tattooDurationMinutes: int
+     * }
+     */
+    public function calendarPayloadForArtist(
+        UserDetail $userDetail,
+        int $durationMinutes = 120,
+        int $busyLookAheadDays = 180,
+        ?int $exceptGuestSpotId = null
+    ): array {
+        $artistUserId = (int) $userDetail->user_id;
+        $artistTimezone = $userDetail->timezone ?: 'UTC';
+        $from = Carbon::now($artistTimezone)->startOfDay();
+        $to = $from->copy()->addDays(max(1, $busyLookAheadDays))->endOfDay();
+
+        return [
+            'artistAvailabilitySchedule' => $this->weeklyAvailabilitySchedule($artistUserId, $artistTimezone),
+            'artistTimezone' => $artistTimezone,
+            'artistBlockedPeriods' => app(ManagedRequestBookingService::class)
+                ->artistBlockedPeriods($artistUserId, $exceptGuestSpotId),
+            'artistBusyIntervalsByDate' => $this->busyIntervalsByDateForRange($userDetail, $from, $to),
+            'tattooDurationMinutes' => max(15, $durationMinutes),
+        ];
+    }
+
+    /**
+     * Open date/time pills for payment-link auto scheduling using booking calendar rules.
+     *
+     * @return list<array{ymd:string,label:string,book_label:string,times:list<string>}>
+     */
+    public function openDatePillsForArtist(
+        UserDetail $userDetail,
+        int $durationMinutes,
+        int $lookAheadDays = 365,
+        int $maxDates = 60
+    ): array {
+        $payload = $this->calendarPayloadForArtist($userDetail, $durationMinutes, $lookAheadDays);
+        $timezone = $payload['artistTimezone'];
+        $schedule = $payload['artistAvailabilitySchedule'];
+        $blocked = $payload['artistBlockedPeriods'];
+        $busy = $payload['artistBusyIntervalsByDate'];
+        $durationMinutes = max(15, $durationMinutes);
+        $now = Carbon::now($timezone);
+        $dates = [];
+
+        for ($i = 0; $i < $lookAheadDays; $i++) {
+            $day = $now->copy()->startOfDay()->addDays($i);
+            $ymd = $day->format('Y-m-d');
+            if ($this->isDateBlocked($ymd, $blocked)) {
+                continue;
+            }
+
+            $weekday = strtolower($day->format('l'));
+            $ranges = $schedule[$weekday] ?? [];
+            if ($ranges === []) {
+                continue;
+            }
+
+            $times = [];
+            foreach ($ranges as $range) {
+                $startParts = explode(':', (string) ($range['start'] ?? '0:0'));
+                $endParts = explode(':', (string) ($range['end'] ?? '0:0'));
+                $startMinutes = ((int) ($startParts[0] ?? 0) * 60) + (int) ($startParts[1] ?? 0);
+                $endMinutes = ((int) ($endParts[0] ?? 0) * 60) + (int) ($endParts[1] ?? 0);
+                if ($endMinutes <= $startMinutes) {
+                    continue;
+                }
+
+                // Match booking JS: step 30m, require full duration to fit before range end.
+                for ($minute = $startMinutes; $minute < $endMinutes; $minute += 30) {
+                    if ($minute + $durationMinutes > $endMinutes) {
+                        break;
+                    }
+                    // Match booking JS: today slots must be strictly after now.
+                    if ($i === 0 && $minute <= (($now->hour * 60) + $now->minute)) {
+                        continue;
+                    }
+                    if ($this->slotOverlapsBusy($busy[$ymd] ?? [], $minute, $durationMinutes)) {
+                        continue;
+                    }
+                    $times[] = sprintf('%02d:%02d', intdiv($minute, 60), $minute % 60);
+                }
+            }
+
+            $times = array_values(array_unique($times));
+            if ($times === []) {
+                continue;
+            }
+
+            $dates[] = [
+                'ymd' => $ymd,
+                'label' => $day->format('D j'),
+                'book_label' => $day->format('D j M'),
+                'times' => $times,
+            ];
+
+            if (count($dates) >= $maxDates) {
+                break;
+            }
+        }
+
+        return $dates;
+    }
+
+    /**
+     * @return array<string, list<array{start:string,end:string}>>
+     */
+    private function weeklyAvailabilitySchedule(int $artistUserId, string $artistTimezone): array
+    {
+        return Availability::query()
+            ->where('user_id', $artistUserId)
+            ->orderBy('day_of_week')
+            ->orderBy('start_time')
+            ->get()
+            ->groupBy('day_of_week')
+            ->map(function ($rows) use ($artistTimezone) {
+                return $rows->map(function ($availability) use ($artistTimezone) {
+                    $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->start_time, 'UTC')
+                        ->setTimezone($artistTimezone)
+                        ->format('H:i');
+                    $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->end_time, 'UTC')
+                        ->setTimezone($artistTimezone)
+                        ->format('H:i');
+
+                    return [
+                        'start' => $startLocal,
+                        'end' => $endLocal,
+                    ];
+                })->values()->all();
+            })
+            ->toArray();
+    }
+
+    /**
+     * @param  list<array{start_date?:string,end_date?:string,start?:string,end?:string}>  $blocked
+     */
+    private function isDateBlocked(string $ymd, array $blocked): bool
+    {
+        foreach ($blocked as $period) {
+            $start = (string) ($period['start_date'] ?? $period['start'] ?? '');
+            $end = (string) ($period['end_date'] ?? $period['end'] ?? '');
+            if ($start !== '' && $end !== '' && $ymd >= $start && $ymd <= $end) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  list<array{start:int,end:int}>  $intervals
+     */
+    private function slotOverlapsBusy(array $intervals, int $startMinutes, int $durationMinutes): bool
+    {
+        $endMinutes = $startMinutes + $durationMinutes;
+        foreach ($intervals as $interval) {
+            $busyStart = (int) ($interval['start'] ?? 0);
+            $busyEnd = (int) ($interval['end'] ?? 0);
+            if ($startMinutes < $busyEnd && $endMinutes > $busyStart) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function normalizeAvailabilityTime(mixed $time): ?string

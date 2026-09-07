@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\GoogleCalendarEventRequiredException;
-use App\Models\Availability;
-use App\Models\AvailabilityOverride;
 use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\CustomRequest;
@@ -1080,135 +1078,8 @@ class ArtistDashboardController extends Controller
 
     private function paymentLinkAutoDates(UserDetail $userDetail, int $durationMinutes): array
     {
-        $timezone = $userDetail->timezone ?: 'UTC';
-        $now = Carbon::now($timezone);
-        $schedule = Availability::query()
-            ->where('user_id', $userDetail->user_id)
-            ->orderBy('day_of_week')
-            ->orderBy('start_time')
-            ->get()
-            ->groupBy('day_of_week')
-            ->map(function ($rows) use ($timezone) {
-                return $rows->map(function ($availability) use ($timezone) {
-                    $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->start_time, 'UTC')
-                        ->setTimezone($timezone)
-                        ->format('H:i');
-                    $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->end_time, 'UTC')
-                        ->setTimezone($timezone)
-                        ->format('H:i');
-
-                    return [
-                        'start' => $startLocal,
-                        'end' => $endLocal,
-                    ];
-                })->values()->all();
-            })
-            ->toArray();
-
-        $blocked = AvailabilityOverride::query()
-            ->where('user_id', $userDetail->user_id)
-            ->get()
-            ->map(fn (AvailabilityOverride $override) => [
-                'start' => $override->start_date->format('Y-m-d'),
-                'end' => $override->end_date->format('Y-m-d'),
-            ])
-            ->all();
-
-        // Collect open slots without a short fixed window (e.g. 21 days).
-        // Scan far enough ahead to find weekly availability; cap pills for the UI.
-        $lookAheadDays = 365;
-        $maxDates = 60;
-        $busy = $this->paymentLinkBusyMap(
-            $userDetail,
-            $timezone,
-            $now->copy()->startOfDay(),
-            $now->copy()->addDays($lookAheadDays)->endOfDay()
-        );
-        $dates = [];
-
-        for ($i = 0; $i < $lookAheadDays; $i++) {
-            $day = $now->copy()->startOfDay()->addDays($i);
-            $ymd = $day->format('Y-m-d');
-            if ($this->paymentLinkDateIsBlocked($ymd, $blocked)) {
-                continue;
-            }
-
-            $weekday = strtolower($day->format('l'));
-            $ranges = $schedule[$weekday] ?? [];
-            if ($ranges === []) {
-                continue;
-            }
-
-            $times = [];
-            foreach ($ranges as $range) {
-                $startParts = explode(':', (string) ($range['start'] ?? '0:0'));
-                $endParts = explode(':', (string) ($range['end'] ?? '0:0'));
-                $startMinutes = ((int) ($startParts[0] ?? 0) * 60) + (int) ($startParts[1] ?? 0);
-                $endMinutes = ((int) ($endParts[0] ?? 0) * 60) + (int) ($endParts[1] ?? 0);
-                if ($endMinutes <= $startMinutes) {
-                    continue;
-                }
-
-                for ($minute = $startMinutes; $minute + $durationMinutes <= $endMinutes; $minute += 30) {
-                    if ($i === 0 && $minute <= (($now->hour * 60) + $now->minute)) {
-                        continue;
-                    }
-                    if ($this->paymentLinkSlotIsBusy($busy[$ymd] ?? [], $minute, $durationMinutes)) {
-                        continue;
-                    }
-                    $times[] = sprintf('%02d:%02d', intdiv($minute, 60), $minute % 60);
-                }
-            }
-
-            $times = array_values(array_unique($times));
-            if ($times === []) {
-                continue;
-            }
-
-            $dates[] = [
-                'ymd' => $ymd,
-                'label' => $day->format('D j'),
-                'book_label' => $day->format('D j M'),
-                'times' => $times,
-            ];
-
-            if (count($dates) >= $maxDates) {
-                break;
-            }
-        }
-
-        return $dates;
-    }
-
-    private function paymentLinkDateIsBlocked(string $ymd, array $blocked): bool
-    {
-        foreach ($blocked as $period) {
-            if ($ymd >= $period['start'] && $ymd <= $period['end']) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function paymentLinkSlotIsBusy(array $intervals, int $startMinutes, int $durationMinutes): bool
-    {
-        $endMinutes = $startMinutes + $durationMinutes;
-        foreach ($intervals as $interval) {
-            $busyStart = (int) ($interval['start'] ?? 0);
-            $busyEnd = (int) ($interval['end'] ?? 0);
-            if ($startMinutes < $busyEnd && $endMinutes > $busyStart) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function paymentLinkBusyMap(UserDetail $userDetail, string $timezone, Carbon $from, Carbon $to): array
-    {
         return app(BookingCalendarAvailabilityService::class)
-            ->busyIntervalsByDateForRange($userDetail, $from, $to);
+            ->openDatePillsForArtist($userDetail, $durationMinutes);
     }
 
     private function makePaymentLinkValidator(Request $request)

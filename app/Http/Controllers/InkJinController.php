@@ -654,44 +654,14 @@ class InkJinController extends Controller
                 preg_match('/(\d+)/', (string) ($tattoo->session_duration ?? ''), $durationMatch);
                 $tattooDurationMinutes = isset($durationMatch[1]) ? ((int) $durationMatch[1] * 60) : 120;
             }
-            $artistAvailabilitySchedule = Availability::query()
-                ->where('user_id', $userDetail->user_id)
-                ->orderBy('day_of_week')
-                ->orderBy('start_time')
-                ->get()
-                ->groupBy('day_of_week')
-                ->map(function ($rows) use ($artistTimezone) {
-                    return $rows->map(function ($availability) use ($artistTimezone) {
-                        $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d') . ' ' . $availability->start_time, 'UTC')
-                            ->setTimezone($artistTimezone)
-                            ->format('H:i');
-                        $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d') . ' ' . $availability->end_time, 'UTC')
-                            ->setTimezone($artistTimezone)
-                            ->format('H:i');
 
-                        return [
-                            'start' => $startLocal,
-                            'end' => $endLocal,
-                        ];
-                    })->values()->all();
-                })
-                ->toArray();
-
-            $artistBlockedPeriods = app(\App\Services\ManagedRequestBookingService::class)
-                ->artistBlockedPeriods((int) $userDetail->user_id);
-
-            $artistBusyIntervalsByDate = [];
-            $existingBookings = Booking::query()
-                ->where('artist_user_id', $userDetail->user_id)
-                ->where('status', 'confirmed')
-                ->get();
-
-            $sessionBufferMinutes = max(0, (int) ($userDetail->session_buffer_period ?? 0));
-
-            foreach ($existingBookings as $booking) {
-                $this->appendBookingOccupancyToBusyMap($booking, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
-            }
-            $this->appendGoogleCalendarBusyToBusyMap($userDetail, $artistTimezone, $artistBusyIntervalsByDate, $sessionBufferMinutes);
+            $calendarPayload = app(\App\Services\BookingCalendarAvailabilityService::class)
+                ->calendarPayloadForArtist($userDetail, $tattooDurationMinutes);
+            $artistAvailabilitySchedule = $calendarPayload['artistAvailabilitySchedule'];
+            $artistBlockedPeriods = $calendarPayload['artistBlockedPeriods'];
+            $artistBusyIntervalsByDate = $calendarPayload['artistBusyIntervalsByDate'];
+            $artistTimezone = $calendarPayload['artistTimezone'] ?: $artistTimezone;
+            $tattooDurationMinutes = $calendarPayload['tattooDurationMinutes'] ?: $tattooDurationMinutes;
 
             // Verified emails are stored in cache (not session) for reverse-proxy compatibility.
 
