@@ -61,7 +61,13 @@ class PublicBookingEmailVerificationService
     public function markVerified(string $email, array $payload): void
     {
         $email = $this->normalizeEmail($email);
-        Cache::put($this->verifiedKey($email), $payload, self::VERIFIED_TTL_SECONDS);
+        $verifiedUntil = (int) ($payload['verified_until'] ?? 0);
+        $ttl = max(self::VERIFIED_TTL_SECONDS, $verifiedUntil - now()->timestamp);
+        if ($ttl < 1) {
+            $ttl = self::VERIFIED_TTL_SECONDS;
+        }
+
+        Cache::put($this->verifiedKey($email), $payload, $ttl);
         $this->forgetOtp($email);
     }
 

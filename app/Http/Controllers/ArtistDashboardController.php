@@ -424,25 +424,34 @@ class ArtistDashboardController extends Controller
             'slot_time' => $slotTime ?: $paymentLink->slot_time,
         ]);
 
-        $verified = $request->session()->get('booking_verified_emails', []);
-        if (isset($verified[$email]) && is_array($verified[$email])) {
-            $verified[$email]['verified_until'] = now()->addMinutes(45)->timestamp;
-            $request->session()->put('booking_verified_emails', $verified);
+        $otpData = json_decode($otpResponse->getContent(), true);
+        if (! is_array($otpData)) {
+            $otpData = ['verified' => true];
+        }
+
+        $emailVerification = app(PublicBookingEmailVerificationService::class);
+        $cacheVerified = $emailVerification->getVerified($email);
+        $userId = (int) ($otpData['user']['id'] ?? ($cacheVerified['user_id'] ?? 0));
+        if ($userId <= 0) {
+            $userId = (int) (User::query()->whereRaw('LOWER(email) = ?', [$email])->value('id') ?? 0);
+        }
+
+        if ($userId > 0) {
+            $emailVerification->markVerified($email, [
+                'user_id' => $userId,
+                'verified_until' => now()->addMinutes(45)->timestamp,
+                'is_new_user' => (bool) ($cacheVerified['is_new_user'] ?? $otpData['user']['is_new_user'] ?? false),
+            ]);
         }
 
         $request->session()->put($this->paymentLinkCheckoutSessionKey($code), [
             'name' => $name,
             'email' => $email,
             'phone' => $phone,
-            'user_id' => $verified[$email]['user_id'] ?? null,
+            'user_id' => $userId > 0 ? $userId : null,
             'expires_at' => now()->addMinutes(45)->timestamp,
         ]);
         $request->session()->forget($this->paymentLinkOtpSessionKey($code));
-
-        $otpData = json_decode($otpResponse->getContent(), true);
-        if (! is_array($otpData)) {
-            $otpData = ['verified' => true];
-        }
 
         $paymentLink->refresh();
         $otpData['checkout'] = $this->paymentLinkCheckoutPayload($paymentLink, $phone);
@@ -914,6 +923,7 @@ class ArtistDashboardController extends Controller
         $email = '';
         $name = '';
         $phone = '';
+        $sessionUserId = null;
 
         if (is_array($checkout) && ! empty($checkout['email'])) {
             if (empty($checkout['expires_at']) || now()->timestamp > (int) $checkout['expires_at']) {
@@ -922,6 +932,7 @@ class ArtistDashboardController extends Controller
                 $email = mb_strtolower(trim((string) $checkout['email']));
                 $name = (string) ($checkout['name'] ?? '');
                 $phone = (string) ($checkout['phone'] ?? '');
+                $sessionUserId = ! empty($checkout['user_id']) ? (int) $checkout['user_id'] : null;
             }
         }
 
@@ -935,13 +946,17 @@ class ArtistDashboardController extends Controller
             return null;
         }
 
-        $verified = $request->session()->get('booking_verified_emails', []);
-        $entry = is_array($verified[$email] ?? null) ? $verified[$email] : null;
-        if (
-            ! $entry
-            || empty($entry['user_id'])
-            || now()->timestamp > (int) ($entry['verified_until'] ?? 0)
-        ) {
+        if ($sessionUserId) {
+            return [
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'user_id' => $sessionUserId,
+            ];
+        }
+
+        $entry = app(PublicBookingEmailVerificationService::class)->getVerified($email);
+        if (! $entry || empty($entry['user_id'])) {
             return null;
         }
 
@@ -980,7 +995,8 @@ class ArtistDashboardController extends Controller
         }
 
         $email = mb_strtolower(trim((string) $pending['email']));
-        $otpPayload = $request->session()->get('booking_otp.'.$email);
+        $emailVerification = app(PublicBookingEmailVerificationService::class);
+        $otpPayload = $emailVerification->getOtp($email);
         $otpExpired = ! is_array($otpPayload)
             || empty($otpPayload['expires_at'])
             || now()->timestamp > (int) $otpPayload['expires_at'];
@@ -992,15 +1008,13 @@ class ArtistDashboardController extends Controller
             return null;
         }
 
-        $cooldownUntil = (int) $request->session()->get('booking_otp_cooldown.'.$email, 0);
-
         return [
             'name' => (string) ($pending['name'] ?? ''),
             'email' => $email,
             'phone' => (string) ($pending['phone'] ?? ''),
             'slot_ymd' => $pending['slot_ymd'] ?? null,
             'slot_time' => $pending['slot_time'] ?? null,
-            'resend_available_in_seconds' => max(0, $cooldownUntil - now()->timestamp),
+            'resend_available_in_seconds' => $emailVerification->cooldownRemainingSeconds($email),
         ];
     }
 
