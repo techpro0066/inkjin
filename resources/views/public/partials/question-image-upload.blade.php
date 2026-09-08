@@ -169,8 +169,8 @@
 
   var MAX_BYTES = 10 * 1024 * 1024;
   var MAX_IMAGES = 5;
-  // Live hosts often allow only ~2MB PHP uploads; compress larger picks before send.
-  var UPLOAD_TARGET_BYTES = 1800 * 1024;
+  // Keep compressed uploads under common live PHP/nginx 1–2MB caps.
+  var UPLOAD_TARGET_BYTES = 900 * 1024;
   var ALLOWED_MIME = {
     'image/jpeg': true,
     'image/jpg': true,
@@ -243,18 +243,30 @@
     parseUploadXhrError: function(xhr) {
       var fallback = 'Image upload failed. Please try a JPG photo under 10MB.';
       if (!xhr) return fallback;
+      if (xhr.status === 0) {
+        return 'Network error during upload. Please check your connection and try again.';
+      }
       if (xhr.status === 413) {
         return 'Image is too large for the server upload limit. Please try a smaller photo.';
       }
       if (xhr.status === 419) {
         return 'Your session expired. Please refresh the page and try again.';
       }
+      if (xhr.status === 403 || xhr.status === 401) {
+        return 'Upload was blocked. Please refresh the page and try again.';
+      }
       var data = null;
+      var raw = String(xhr.responseText || '');
       try {
-        data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+        data = raw ? JSON.parse(raw) : null;
       } catch (e) {
-        if (xhr.status >= 500) return 'Server error while uploading. Please try again.';
-        return fallback;
+        if (xhr.status >= 500) {
+          return 'Server error while uploading (HTTP ' + xhr.status + '). Please try again.';
+        }
+        if (/request entity too large|413/i.test(raw)) {
+          return 'Image is too large for the server upload limit. Please try a smaller photo.';
+        }
+        return 'Image upload failed (HTTP ' + xhr.status + '). Please refresh and try a JPG under 10MB.';
       }
       if (data && data.message) return String(data.message);
       if (data && data.errors) {
@@ -267,6 +279,9 @@
           return false;
         });
         if (first) return String(first);
+      }
+      if (xhr.status) {
+        return 'Image upload failed (HTTP ' + xhr.status + '). Please try a JPG photo under 10MB.';
       }
       return fallback;
     },

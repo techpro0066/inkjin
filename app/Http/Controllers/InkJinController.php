@@ -480,21 +480,83 @@ class InkJinController extends Controller
             return response()->json(['success' => false, 'message' => 'Image file is required.'], 422);
         }
 
+        Log::info('Booking question image upload received', [
+            'size' => $file->getSize(),
+            'mime' => $file->getMimeType(),
+            'ext' => $file->getClientOriginalExtension(),
+            'artist' => $validated['artist_username'] ?? null,
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            'post_max_size' => ini_get('post_max_size'),
+        ]);
+
         $imageCheck = $this->assertUploadIsSupportedImage($file);
         if ($imageCheck !== true) {
             return response()->json(['success' => false, 'message' => $imageCheck], 422);
         }
 
         $folder = public_path('uploads/booking-questions');
-        if (! is_dir($folder)) {
-            @mkdir($folder, 0775, true);
+        if (! is_dir($folder) && ! @mkdir($folder, 0775, true) && ! is_dir($folder)) {
+            Log::error('Booking question image upload: cannot create upload folder', [
+                'folder' => $folder,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not save the image on the server. Please try again.',
+            ], 500);
+        }
+
+        if (! is_writable($folder)) {
+            Log::error('Booking question image upload: upload folder is not writable', [
+                'folder' => $folder,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not save the image on the server. Please try again.',
+            ], 500);
         }
 
         $extension = $this->resolveUploadImageExtension($file);
         $filename = 'q_'.preg_replace('/[^A-Za-z0-9_-]/', '', (string) $validated['question_id'])
             .'_'.time().'_'.Str::random(8).'.'.$extension;
 
-        $file->move($folder, $filename);
+        try {
+            // Prefer contents copy — more reliable than move() on some hosts.
+            $saved = @file_put_contents(
+                $folder.DIRECTORY_SEPARATOR.$filename,
+                file_get_contents($file->getRealPath() ?: $file->getPathname())
+            );
+            if ($saved === false) {
+                $file->move($folder, $filename);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Booking question image upload: save failed', [
+                'error' => $e->getMessage(),
+                'folder' => $folder,
+                'filename' => $filename,
+                'size' => $file->getSize(),
+                'mime' => $file->getMimeType(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not save the image on the server. Please try again.',
+            ], 500);
+        }
+
+        if (! is_file($folder.DIRECTORY_SEPARATOR.$filename)) {
+            Log::error('Booking question image upload: file missing after save', [
+                'folder' => $folder,
+                'filename' => $filename,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not save the image on the server. Please try again.',
+            ], 500);
+        }
+
         $publicPath = '/uploads/booking-questions/'.$filename;
 
         return response()->json([
