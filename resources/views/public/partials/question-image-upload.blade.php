@@ -205,9 +205,28 @@
     return match ? match[1] : '';
   }
 
+  // Hosts/WAFs often 403 filenames with quotes, spaces, or unicode (e.g. Investor's Night...).
+  function safeUploadFilename(originalName, fallbackExt) {
+    var raw = String(originalName || 'upload');
+    var extMatch = raw.toLowerCase().match(/\.([a-z0-9]+)$/);
+    var ext = (extMatch ? extMatch[1] : '') || String(fallbackExt || 'jpg');
+    if (!/^(jpe?g|png|webp|heic|heif)$/i.test(ext)) {
+      ext = 'jpg';
+    }
+    if (ext === 'jpeg') ext = 'jpg';
+    var base = raw.replace(/\.[^.]+$/, '');
+    base = base
+      .replace(/['’`"]/g, '')
+      .replace(/[^A-Za-z0-9._-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^[._-]+|[._-]+$/g, '');
+    if (!base) base = 'upload';
+    if (base.length > 80) base = base.slice(0, 80);
+    return base + '.' + ext;
+  }
+
   function blobToJpegFile(blob, originalName) {
-    var base = String(originalName || 'image').replace(/\.[^.]+$/, '') || 'image';
-    var filename = base + '.jpg';
+    var filename = safeUploadFilename(originalName, 'jpg').replace(/\.[^.]+$/, '') + '.jpg';
     try {
       return new File([blob], filename, { type: 'image/jpeg', lastModified: Date.now() });
     } catch (e) {
@@ -230,13 +249,10 @@
     },
 
     appendImageToFormData: function(formData, file) {
-      var name = String((file && file.name) || 'upload.jpg');
-      if (!/\.(jpe?g|png|webp|heic|heif)$/i.test(name)) {
-        name = 'upload.jpg';
-      } else if (file && String(file.type || '').indexOf('jpeg') !== -1 && !/\.jpe?g$/i.test(name)) {
-        name = name.replace(/\.[^.]+$/, '') + '.jpg';
-      }
-      // Third argument is required on iOS Safari so PHP receives a real filename.
+      var mime = String((file && file.type) || '').toLowerCase();
+      var fallbackExt = mime.indexOf('png') !== -1 ? 'png' : (mime.indexOf('webp') !== -1 ? 'webp' : 'jpg');
+      var name = safeUploadFilename((file && file.name) || ('upload.' + fallbackExt), fallbackExt);
+      // Always send a sanitized filename — apostrophes/spaces trigger live 403s.
       formData.append('image', file, name);
     },
 
@@ -253,7 +269,7 @@
         return 'Your session expired. Please refresh the page and try again.';
       }
       if (xhr.status === 403 || xhr.status === 401) {
-        return 'Upload was blocked. Please refresh the page and try again.';
+        return 'Upload was blocked by the server. Try again, or rename the file (avoid apostrophes/spaces) and re-upload.';
       }
       var data = null;
       var raw = String(xhr.responseText || '');
