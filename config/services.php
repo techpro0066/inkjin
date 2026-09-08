@@ -121,7 +121,10 @@ return [
 
     'mailcoach' => [
         // Keys match the Bookpay .env names supplied by the client.
+        // Default list: artists / studios (and fallback if a tag-specific list is unset).
         'list_uuid' => env('Mailing_List_UUID', env('MAILING_LIST_UUID')),
+        // Separate Mailcoach list for clients (tag = user). Falls back to list_uuid if empty.
+        'user_list_uuid' => env('Mailing_List_UUID_User', env('MAILING_LIST_UUID_USER')),
         'api_url' => env('Mailing_API_URL', env('MAILING_API_URL')),
         'api_domain' => env('Mailing_API_Domain', env('MAILING_API_DOMAIN')),
         'api_token' => env('Mailing_API_Token', env('MAILING_API_TOKEN')),

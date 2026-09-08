@@ -15,11 +15,31 @@ class MailcoachSubscriberService
 
     public const TAG_STUDIO = 'studio';
 
-    public function isConfigured(): bool
+    public function isConfigured(?string $tag = null): bool
     {
-        return filled(config('services.mailcoach.list_uuid'))
+        return filled($this->listUuidForTag($tag))
             && filled(config('services.mailcoach.api_token'))
             && ($this->apiBaseUrl() !== null);
+    }
+
+    /**
+     * Resolve which Mailcoach email-list UUID to use for a tag.
+     * Clients (user) can target a separate list; others use the default list.
+     */
+    public function listUuidForTag(?string $tag): ?string
+    {
+        $tag = trim((string) $tag);
+
+        if ($tag === self::TAG_USER) {
+            $userList = trim((string) config('services.mailcoach.user_list_uuid'));
+            if ($userList !== '') {
+                return $userList;
+            }
+        }
+
+        $default = trim((string) config('services.mailcoach.list_uuid'));
+
+        return $default !== '' ? $default : null;
     }
 
     public function queueSubscribeUser(User $user, string $tag): void
@@ -68,11 +88,15 @@ class MailcoachSubscriberService
      */
     public function queueSubscribe(array $payload): void
     {
-        if (! $this->isConfigured()) {
+        $tag = (string) ($payload['tag'] ?? '');
+
+        if (! $this->isConfigured($tag)) {
             Log::warning('Mailcoach skip: not configured', [
                 'email' => $payload['email'] ?? null,
-                'tag' => $payload['tag'] ?? null,
-                'has_list_uuid' => filled(config('services.mailcoach.list_uuid')),
+                'tag' => $tag !== '' ? $tag : null,
+                'list_uuid' => $this->listUuidForTag($tag),
+                'has_default_list_uuid' => filled(config('services.mailcoach.list_uuid')),
+                'has_user_list_uuid' => filled(config('services.mailcoach.user_list_uuid')),
                 'has_token' => filled(config('services.mailcoach.api_token')),
                 'api_base' => $this->apiBaseUrl(),
             ]);
@@ -86,19 +110,21 @@ class MailcoachSubscriberService
                 (string) $payload['email'],
                 $payload['first_name'] ?? null,
                 $payload['last_name'] ?? null,
-                (string) $payload['tag']
+                $tag
             );
 
             if ($ok) {
                 Log::info('Mailcoach subscribe ok', [
                     'email' => $payload['email'] ?? null,
-                    'tag' => $payload['tag'] ?? null,
+                    'tag' => $tag !== '' ? $tag : null,
+                    'list_uuid' => $this->listUuidForTag($tag),
                 ]);
             }
         } catch (\Throwable $e) {
             Log::warning('Mailcoach subscribe failed', [
                 'email' => $payload['email'] ?? null,
-                'tag' => $payload['tag'] ?? null,
+                'tag' => $tag !== '' ? $tag : null,
+                'list_uuid' => $this->listUuidForTag($tag),
                 'message' => $e->getMessage(),
             ]);
         }
@@ -106,7 +132,7 @@ class MailcoachSubscriberService
 
     public function subscribe(string $email, ?string $firstName, ?string $lastName, string $tag): bool
     {
-        if (! $this->isConfigured()) {
+        if (! $this->isConfigured($tag)) {
             return false;
         }
 
@@ -115,9 +141,9 @@ class MailcoachSubscriberService
             return false;
         }
 
-        $listUuid = (string) config('services.mailcoach.list_uuid');
+        $listUuid = $this->listUuidForTag($tag);
         $base = $this->apiBaseUrl();
-        if ($base === null) {
+        if ($listUuid === null || $base === null) {
             return false;
         }
 
@@ -145,6 +171,7 @@ class MailcoachSubscriberService
             Log::warning('Mailcoach subscribe rejected', [
                 'email' => $email,
                 'tag' => $tag,
+                'list_uuid' => $listUuid,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
