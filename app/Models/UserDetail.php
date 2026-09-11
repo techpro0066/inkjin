@@ -83,6 +83,9 @@ class UserDetail extends Model
         'customize_page_notice_dismissed',
         'design_whats_included',
         'design_whats_included_is_active',
+        'aftercare_send_automatically',
+        'aftercare_content',
+        'consent_questions_seeded_at',
     ];
 
     protected $casts = [
@@ -95,6 +98,9 @@ class UserDetail extends Model
         'instagram_connected_at' => 'datetime',
         'design_whats_included' => 'array',
         'design_whats_included_is_active' => 'boolean',
+        'aftercare_send_automatically' => 'boolean',
+        'aftercare_content' => 'array',
+        'consent_questions_seeded_at' => 'datetime',
         'stripe_requirement' => 'boolean',
         'color_percent' => 'float',
         'customize_page_notice_dismissed' => 'boolean',

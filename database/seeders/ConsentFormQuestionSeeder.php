@@ -8,9 +8,8 @@ use Illuminate\Database\Seeder;
 class ConsentFormQuestionSeeder extends Seeder
 {
     /**
-     * Seed default consent form questions for user_id 1.
-     * Content taken from public/data/consent-default-items-strings.json
-     * and embedded here (not loaded from the file at runtime).
+     * Seed default consent form question templates for user_id 1 (admin),
+     * then copy them to artists who have not been seeded yet.
      */
     public function run(): void
     {
@@ -1011,13 +1010,25 @@ class ConsentFormQuestionSeeder extends Seeder
   ),
 );
 
-        foreach ($questions as $question) {
-            ConsentFormQuestion::query()->create([
-                'user_id' => $userId,
-                'question_type' => $question['question_type'],
-                'translations' => $question['translations'],
-                'enabled' => $question['enabled'],
-            ]);
+        $existing = ConsentFormQuestion::query()
+            ->where('user_id', $userId)
+            ->exists();
+
+        if (! $existing) {
+            $order = 0;
+            foreach ($questions as $question) {
+                $order++;
+                ConsentFormQuestion::query()->create([
+                    'user_id' => $userId,
+                    'question_type' => $question['question_type'],
+                    'translations' => $question['translations'],
+                    'enabled' => $question['enabled'],
+                    'order' => $order,
+                ]);
+            }
         }
+
+        // Copy templates to artists who have not been seeded yet (covers already-registered users).
+        app(\App\Services\ConsentFormQuestionService::class)->seedForAllArtistsMissing();
     }
 }

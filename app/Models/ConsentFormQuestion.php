@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ConsentFormQuestion extends Model
 {
@@ -15,21 +14,18 @@ class ConsentFormQuestion extends Model
         'question_type',
         'translations',
         'enabled',
+        'order',
     ];
 
     protected $casts = [
         'translations' => 'array',
         'enabled' => 'boolean',
+        'order' => 'integer',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function sortings(): HasMany
-    {
-        return $this->hasMany(ConsentFormQuestionSorting::class, 'consent_form_question_id');
     }
 
     public function isSystemQuestion(): bool

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\ConsentFormQuestion;
-use App\Models\ConsentFormQuestionSorting;
 use App\Services\ConsentFormQuestionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,23 +24,13 @@ class ArtistConsentFormQuestionController extends Controller
             'user_id' => $userId,
             'question_type' => $validated['question_type'],
             'translations' => $validated['translations'],
-            'enabled' => true,
-        ]);
-
-        $nextOrder = (int) ConsentFormQuestionSorting::query()
-            ->where('user_id', $userId)
-            ->max('order');
-
-        ConsentFormQuestionSorting::query()->create([
-            'user_id' => $userId,
-            'consent_form_question_id' => $question->id,
-            'order' => $nextOrder + 1,
-            'is_active' => $validated['enabled'] ?? true,
+            'enabled' => $validated['enabled'] ?? true,
+            'order' => $this->consentQuestions->nextOrderForUser($userId),
         ]);
 
         return response()->json([
             'success' => true,
-            'question' => $this->serializeArtistQuestion($question, $validated['enabled'] ?? true, false),
+            'question' => $this->serializeArtistQuestion($question),
         ]);
     }
 
@@ -54,27 +43,19 @@ class ArtistConsentFormQuestionController extends Controller
 
         $validated = $this->validateQuestion($request);
 
-        $question->update([
+        $payload = [
             'question_type' => $validated['question_type'],
             'translations' => $validated['translations'],
-        ]);
-
-        $sorting = ConsentFormQuestionSorting::query()
-            ->where('user_id', $userId)
-            ->where('consent_form_question_id', $question->id)
-            ->first();
-
-        if ($sorting && array_key_exists('enabled', $validated)) {
-            $sorting->update(['is_active' => (bool) $validated['enabled']]);
+        ];
+        if (array_key_exists('enabled', $validated)) {
+            $payload['enabled'] = (bool) $validated['enabled'];
         }
+
+        $question->update($payload);
 
         return response()->json([
             'success' => true,
-            'question' => $this->serializeArtistQuestion(
-                $question->fresh(),
-                $sorting ? (bool) $sorting->is_active : true,
-                false
-            ),
+            'question' => $this->serializeArtistQuestion($question->fresh()),
         ]);
     }
 
@@ -85,33 +66,15 @@ class ArtistConsentFormQuestionController extends Controller
             'enabled' => ['required', 'boolean'],
         ]);
 
-        $sorting = ConsentFormQuestionSorting::query()
+        $question = ConsentFormQuestion::query()
             ->where('user_id', $userId)
-            ->where('consent_form_question_id', $id)
-            ->firstOrFail();
+            ->findOrFail($id);
 
-        $question = $sorting->question;
-        if (! $question) {
-            abort(404);
-        }
-
-        // System questions disabled by admin are not toggleable.
-        if ($question->isSystemQuestion() && ! $question->enabled) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This system question is disabled by admin.',
-            ], 422);
-        }
-
-        $sorting->update(['is_active' => $validated['enabled']]);
+        $question->update(['enabled' => $validated['enabled']]);
 
         return response()->json([
             'success' => true,
-            'question' => $this->serializeArtistQuestion(
-                $question,
-                (bool) $sorting->is_active,
-                $question->isSystemQuestion()
-            ),
+            'question' => $this->serializeArtistQuestion($question->fresh()),
         ]);
     }
 
@@ -123,10 +86,10 @@ class ArtistConsentFormQuestionController extends Controller
         ]);
 
         $userId = (int) Auth::id();
-        $ownedIds = ConsentFormQuestionSorting::query()
+        $ownedIds = ConsentFormQuestion::query()
             ->where('user_id', $userId)
-            ->whereIn('consent_form_question_id', $validated['ordered_ids'])
-            ->pluck('consent_form_question_id')
+            ->whereIn('id', $validated['ordered_ids'])
+            ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
 
@@ -147,11 +110,6 @@ class ArtistConsentFormQuestionController extends Controller
             ->where('user_id', $userId)
             ->findOrFail($id);
 
-        ConsentFormQuestionSorting::query()
-            ->where('user_id', $userId)
-            ->where('consent_form_question_id', $question->id)
-            ->delete();
-
         $question->delete();
 
         return response()->json(['success' => true]);
@@ -169,8 +127,6 @@ class ArtistConsentFormQuestionController extends Controller
             'enabled' => ['sometimes', 'boolean'],
         ]);
 
-        // Use raw input for locales — validated() only keeps keys with explicit rules
-        // (e.g. translations.en), which would drop studio-language translations.
         $translations = [];
         foreach ((array) $request->input('translations', []) as $locale => $text) {
             $locale = strtolower(trim((string) $locale));
@@ -203,17 +159,17 @@ class ArtistConsentFormQuestionController extends Controller
     }
 
     /**
-     * @param  array<string, string>  $translations
-     * @return array{id: int, question_type: string, translations: array<string, string>, enabled: bool, is_system: bool}
+     * @return array{id: int, question_type: string, translations: array<string, string>, enabled: bool, is_system: bool, order: int}
      */
-    private function serializeArtistQuestion(ConsentFormQuestion $question, bool $enabled, bool $isSystem): array
+    private function serializeArtistQuestion(ConsentFormQuestion $question): array
     {
         return [
             'id' => (int) $question->id,
             'question_type' => (string) $question->question_type,
             'translations' => is_array($question->translations) ? $question->translations : [],
-            'enabled' => $enabled,
-            'is_system' => $isSystem,
+            'enabled' => (bool) $question->enabled,
+            'is_system' => false,
+            'order' => (int) $question->order,
         ];
     }
 }

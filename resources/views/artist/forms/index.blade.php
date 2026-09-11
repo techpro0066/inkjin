@@ -340,7 +340,7 @@
         <button class="form-tab active" onclick="switchFormType('booking', this)" id="tabBooking">Available
           Design</button>
         <button class="form-tab" onclick="switchFormType('request', this)" id="tabRequest">Custom Request</button>
-        <a href="{{ route('artist.forms.consent') }}" class="form-tab" id="tabConsent">Content form</a>
+        <a href="{{ route('artist.forms.consent') }}" class="form-tab" id="tabConsent">Consent form</a>
       </div>
 
       <div class="max-w-3xl">

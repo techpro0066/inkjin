@@ -11,4 +11,5 @@
   <a href="{{ route('guest-spots.index') }}" class="{{ $bookingTabClass('guest-spots') }}">Guest spots</a>
   <a href="{{ route('artist.faq.index') }}" class="{{ $bookingTabClass('faq') }}">FAQ</a>
   <a href="{{ route('personal-page.index') }}" class="{{ $bookingTabClass('style') }}">Content &amp; Style</a>
+  <a href="{{ route('artist.aftercare.index') }}" class="{{ $bookingTabClass('aftercare') }}">Aftercare</a>
 </div>

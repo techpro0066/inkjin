@@ -108,7 +108,7 @@
         </div>
         <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Scheduling</span>
-          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['books_mode'] ?? ($user['scheduling_type'] ?: '—') }}</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['scheduling_mode'] ?? ($user['scheduling_type'] ?: '—') }}</span>
         </div>
         <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Google Calendar</span>

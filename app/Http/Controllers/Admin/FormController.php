@@ -51,7 +51,7 @@ class FormController extends Controller
 
         $consentQuestions = ConsentFormQuestion::query()
             ->where('user_id', ConsentFormQuestion::SYSTEM_USER_ID)
-            ->orderByRaw("CASE question_type WHEN 'health' THEN 1 WHEN 'risk' THEN 2 WHEN 'aftercare' THEN 3 ELSE 4 END")
+            ->orderBy('order')
             ->orderBy('id')
             ->get();
 

@@ -3,7 +3,7 @@
   $typeMeta = [
     'health' => [
       'label' => 'Health conditions',
-      'hint' => 'Clients answer yes/no to each item. Drag to reorder — system & custom in one list.',
+      'hint' => 'Clients answer yes/no to each item. Drag to reorder.',
       'icon' => 'health_and_safety',
       'typeBadge' => 'Health',
       'typeBadgeClass' => 'badge-toggle',
@@ -31,7 +31,7 @@
 <div class="max-w-3xl mt-6 space-y-6" id="artistConsentQuestionsPanel">
   @foreach($typeMeta as $typeKey => $meta)
     @php $items = $consentQuestionsByType[$typeKey] ?? collect(); @endphp
-    <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden" data-consent-section="{{ $typeKey }}">
       <div class="px-6 py-4 border-b border-outline-variant/15 flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
           <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -44,10 +44,11 @@
         </div>
         <button
           type="button"
-          class="js-artist-consent-add shrink-0 inline-flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-xl font-semibold text-xs hover:bg-primary-container transition-colors"
+          class="js-artist-consent-reset shrink-0 inline-flex items-center gap-1 border border-outline-variant/30 text-on-surface-variant px-3 py-1.5 rounded-xl font-semibold text-xs hover:bg-surface-container-low transition-colors"
           data-question-type="{{ $typeKey }}"
+          title="Reset this section to last saved"
         >
-          <span class="material-symbols-outlined" style="font-size:14px;">add</span> Add
+          <span class="material-symbols-outlined" style="font-size:14px;">restart_alt</span> Reset
         </button>
       </div>
       <div class="questions-list-scroll">
@@ -59,7 +60,6 @@
           @forelse($items as $question)
             @php
               $en = (string) (($question['translations']['en'] ?? '') ?: 'Untitled question');
-              $isSystem = !empty($question['is_system']);
               $enabled = !empty($question['enabled']);
               $questionWords = preg_split('/\s+/u', trim($en), -1, PREG_SPLIT_NO_EMPTY) ?: [];
               $questionWrapped = implode("\n", array_map(
@@ -71,7 +71,7 @@
               class="js-artist-consent-row q-row flex gap-3 px-5 py-3.5 {{ $enabled ? '' : 'disabled' }}"
               data-id="{{ $question['id'] }}"
               data-question-type="{{ $question['question_type'] }}"
-              data-system="{{ $isSystem ? '1' : '0' }}"
+              data-system="0"
               data-enabled="{{ $enabled ? '1' : '0' }}"
               data-question-en="{{ e($en) }}"
               data-translations="{{ base64_encode(json_encode($question['translations'] ?? [], JSON_UNESCAPED_UNICODE)) }}"
@@ -83,7 +83,6 @@
               </div>
               <div class="q-meta">
                 <span class="badge {{ $meta['typeBadgeClass'] }}">{{ $meta['typeBadge'] }}</span>
-                <span class="badge {{ $isSystem ? 'badge-system' : 'badge-custom' }}">{{ $isSystem ? 'SYSTEM' : 'CUSTOM' }}</span>
                 <button
                   type="button"
                   class="js-artist-consent-toggle toggle-switch {{ $enabled ? 'active' : '' }}"
@@ -91,24 +90,29 @@
                   aria-checked="{{ $enabled ? 'true' : 'false' }}"
                   title="Enable/Disable"
                 ></button>
-                @if($isSystem)
-                  <span class="material-symbols-outlined text-outline/40" style="font-size:16px;" title="System question">lock</span>
-                @else
-                  <div class="flex items-center gap-1">
-                    <button type="button" class="js-artist-consent-edit w-7 h-7 rounded-lg flex items-center justify-center hover:bg-surface-container-low" title="Edit">
-                      <span class="material-symbols-outlined text-on-surface-variant" style="font-size:16px;">edit</span>
-                    </button>
-                    <button type="button" class="js-artist-consent-delete w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50" title="Delete">
-                      <span class="material-symbols-outlined text-red-500" style="font-size:16px;">delete</span>
-                    </button>
-                  </div>
-                @endif
+                <div class="flex items-center gap-1">
+                  <button type="button" class="js-artist-consent-edit w-7 h-7 rounded-lg flex items-center justify-center hover:bg-surface-container-low" title="Edit">
+                    <span class="material-symbols-outlined text-on-surface-variant" style="font-size:16px;">edit</span>
+                  </button>
+                  <button type="button" class="js-artist-consent-delete w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50" title="Delete">
+                    <span class="material-symbols-outlined text-red-500" style="font-size:16px;">delete</span>
+                  </button>
+                </div>
               </div>
             </div>
           @empty
             <p class="js-artist-consent-empty px-5 py-6 text-sm text-on-surface-variant">No {{ strtolower($meta['label']) }} yet.</p>
           @endforelse
         </div>
+      </div>
+      <div class="px-6 py-3 border-t border-outline-variant/15">
+        <button
+          type="button"
+          class="js-artist-consent-add w-full inline-flex items-center justify-center gap-1 bg-primary text-white px-3 py-2 rounded-xl font-semibold text-xs hover:bg-primary-container transition-colors"
+          data-question-type="{{ $typeKey }}"
+        >
+          <span class="material-symbols-outlined" style="font-size:14px;">add</span> Add
+        </button>
       </div>
     </div>
   @endforeach

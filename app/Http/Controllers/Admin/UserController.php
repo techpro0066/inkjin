@@ -369,7 +369,9 @@ class UserController extends Controller
             'on_boarding_complete' => $user->on_boarding === 'yes',
             'onboarding_progress' => $onboardingProgress,
             'scheduling_type' => $detail?->scheduling_type,
-            'books_mode' => $isArtist ? $this->formatBooksMode($detail?->scheduling_type) : null,
+            'scheduling_mode' => $isArtist ? $this->formatSchedulingMode($detail?->scheduling_type) : null,
+            'books_mode' => $isArtist ? $this->formatBooksMode($detail?->availability_status) : null,
+            'availability_status' => $detail?->availability_status,
             'instagram_connected' => $isArtist ? filled($detail?->instagram_access_token) : null,
             'smart_pricing_on' => $isArtist ? (($detail?->pricing_type ?? 'manual') === 'smart') : null,
             'guest_spots_on' => $isArtist ? (bool) ($detail?->display_guest_spots ?? false) : null,
@@ -389,7 +391,18 @@ class UserController extends Controller
         ];
     }
 
-    private function formatBooksMode(?string $schedulingType): string
+    private function formatBooksMode(?string $availabilityStatus): string
+    {
+        return match (strtolower(trim((string) $availabilityStatus))) {
+            'design_custom' => 'Open (Available Designs + Custom)',
+            'design_only' => 'Open (Available Designs Only)',
+            'custom_only' => 'Open (Custom Only)',
+            'closed' => 'Books Closed',
+            default => '—',
+        };
+    }
+
+    private function formatSchedulingMode(?string $schedulingType): string
     {
         return match (strtolower(trim((string) $schedulingType))) {
             'auto' => 'Auto',

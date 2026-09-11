@@ -1957,6 +1957,7 @@ class OnboardingController extends Controller
                     ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_ARTIST);
 
                 $this->seedDefaultQuestionSortingForArtist($user);
+                $this->seedDefaultConsentQuestionsForArtist($user);
                 app(\App\Services\ArtistReferralRewardService::class)
                     ->markPendingWhenReferredArtistBecomesActive($user);
             }
@@ -2022,6 +2023,7 @@ class OnboardingController extends Controller
                 ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_ARTIST);
 
             $this->seedDefaultQuestionSortingForArtist($user);
+            $this->seedDefaultConsentQuestionsForArtist($user);
             app(\App\Services\ArtistReferralRewardService::class)
                 ->markPendingWhenReferredArtistBecomesActive($user);
 
@@ -2613,6 +2615,21 @@ class OnboardingController extends Controller
             }
         } catch (\Throwable $e) {
             Log::error('Failed to seed default question sorting after onboarding', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Copy admin consent-form question templates into the artist's account (once).
+     */
+    private function seedDefaultConsentQuestionsForArtist(User $user): void
+    {
+        try {
+            app(\App\Services\ConsentFormQuestionService::class)->seedForArtist((int) $user->id);
+        } catch (\Throwable $e) {
+            Log::error('Failed to seed consent questions after onboarding', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);

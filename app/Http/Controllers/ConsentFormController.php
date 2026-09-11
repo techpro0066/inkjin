@@ -56,7 +56,7 @@ class ConsentFormController extends Controller
             ->map(fn ($code) => strtoupper((string) $code))
             ->all();
 
-        $validated = $request->validate([
+        $request->validate([
             'studio_market' => ['required', 'string', 'size:2', Rule::in($marketCodes)],
             'registration_number' => ['nullable', 'string', 'max:255'],
             'allow_younger' => ['required', 'boolean'],
@@ -69,15 +69,44 @@ class ConsentFormController extends Controller
             'other_language' => ['nullable', 'string', 'max:8'],
             'ask_photo' => ['required', 'boolean'],
             'send_automatically' => ['required', 'boolean'],
+            'questions' => ['required', 'array'],
+            'questions.*.id' => ['nullable'],
+            'questions.*.question_type' => ['required', Rule::in(['health', 'risk', 'aftercare'])],
+            'questions.*.translations' => ['required', 'array'],
+            'questions.*.translations.en' => ['required', 'string'],
+            'questions.*.enabled' => ['required', 'boolean'],
         ]);
 
-        $market = strtoupper($validated['studio_market']);
-        $marketLocale = ConsentFormSetting::localeForMarket($market);
-        $mode = $validated['language_mode'];
+        // Use raw input for question translations — validated() only keeps keys with
+        // explicit rules (translations.en), which would drop studio-language text.
+        $normalizedQuestions = [];
+        foreach (array_values((array) $request->input('questions', [])) as $index => $question) {
+            $question = is_array($question) ? $question : [];
+            $translations = $this->consentQuestions->normalizeTranslations($question['translations'] ?? []);
+            if (! isset($translations['en']) || $translations['en'] === '') {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "questions.$index.translations.en" => ['English question is required.'],
+                ]);
+            }
+            $type = (string) ($question['question_type'] ?? 'health');
+            if (! in_array($type, ['health', 'risk', 'aftercare'], true)) {
+                $type = 'health';
+            }
+            $normalizedQuestions[] = [
+                'id' => $question['id'] ?? null,
+                'question_type' => $type,
+                'translations' => $translations,
+                'enabled' => filter_var($question['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
+            ];
+        }
 
-        $formLanguage = strtolower($validated['form_language']);
-        $otherLanguage = isset($validated['other_language'])
-            ? strtolower((string) $validated['other_language'])
+        $market = strtoupper((string) $request->input('studio_market'));
+        $marketLocale = ConsentFormSetting::localeForMarket($market);
+        $mode = (string) $request->input('language_mode');
+
+        $formLanguage = strtolower((string) $request->input('form_language'));
+        $otherLanguage = $request->filled('other_language')
+            ? strtolower((string) $request->input('other_language'))
             : null;
 
         if ($mode === ConsentFormSetting::LANGUAGE_MODE_BOTH) {
@@ -97,29 +126,33 @@ class ConsentFormController extends Controller
             }
         }
 
-        $allowYounger = (bool) $validated['allow_younger'];
+        $allowYounger = $request->boolean('allow_younger');
         $ageAllow = $allowYounger
-            ? (int) ($validated['age_allow'] ?? 16)
+            ? (int) ($request->input('age_allow') ?? 16)
             : null;
 
         $settings = ConsentFormSetting::query()->updateOrCreate(
             ['user_id' => $userId],
             [
                 'studio_market' => $market,
-                'registration_number' => $validated['registration_number'] ?: null,
+                'registration_number' => $request->input('registration_number') ?: null,
                 'allow_younger' => $allowYounger,
                 'age_allow' => $ageAllow,
                 'language_mode' => $mode,
                 'form_language' => $formLanguage,
                 'other_language' => $otherLanguage,
-                'ask_photo' => (bool) $validated['ask_photo'],
-                'send_automatically' => (bool) $validated['send_automatically'],
+                'ask_photo' => $request->boolean('ask_photo'),
+                'send_automatically' => $request->boolean('send_automatically'),
             ]
         );
 
+        $questions = $this->consentQuestions->syncForArtist($userId, $normalizedQuestions);
+
         return response()->json([
             'success' => true,
+            'message' => 'Consent form saved.',
             'settings' => $settings->fresh()->toArtistArray(),
+            'questions' => $questions->values(),
         ]);
     }
 

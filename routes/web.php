@@ -335,6 +335,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/personal-page/display-faq', [\App\Http\Controllers\PersonalPageController::class, 'updateDisplayFaq'])->name('personal-page.display-faq');
     Route::post('/personal-page/profile-content-visibility', [\App\Http\Controllers\PersonalPageController::class, 'updateProfileContentVisibility'])->name('personal-page.profile-content-visibility');
 
+    Route::get('/aftercare', [\App\Http\Controllers\ArtistAftercareController::class, 'index'])->name('artist.aftercare.index');
+    Route::put('/aftercare', [\App\Http\Controllers\ArtistAftercareController::class, 'update'])->name('artist.aftercare.update');
+
     Route::get('/portfolio', [\App\Http\Controllers\PortfolioController::class, 'index'])->name('portfolio.index');
     Route::post('/portfolio', [\App\Http\Controllers\PortfolioController::class, 'store'])->name('portfolio.store');
     Route::post('/portfolio/ai-suggest', [\App\Http\Controllers\PortfolioController::class, 'suggestWithAi'])->name('portfolio.ai-suggest');
@@ -359,11 +362,11 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/artist-designs', [\App\Http\Controllers\ArtistDesignsController::class, 'store'])->name('artist-designs.store');
     Route::post('/artist-designs/ai-suggest', [\App\Http\Controllers\ArtistDesignsController::class, 'suggestWithAi'])->name('artist-designs.ai-suggest');
     Route::post('/artist-designs/reorder', [\App\Http\Controllers\ArtistDesignsController::class, 'reorder'])->name('artist-designs.reorder');
-    Route::put('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'update'])->name('artist-designs.update');
     Route::put('/artist-designs/settings/whats-included', [\App\Http\Controllers\ArtistDesignsController::class, 'updateWhatsIncluded'])->name('artist-designs.whats-included.update');
     Route::put('/artist-designs/settings/pricing-type', [\App\Http\Controllers\ArtistDesignsController::class, 'updatePricingType'])->name('artist-designs.pricing-type.update');
     Route::post('/artist-designs/settings/smart-pricing/validate', [\App\Http\Controllers\ArtistDesignsController::class, 'validateSmartPricing'])->name('artist-designs.smart-pricing.validate');
     Route::post('/artist-designs/settings/smart-pricing', [\App\Http\Controllers\ArtistDesignsController::class, 'validateSmartPricing'])->name('artist-designs.smart-pricing.update');
+    Route::put('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'update'])->name('artist-designs.update');
     Route::patch('/artist-designs/{artistDesign}/availability', [\App\Http\Controllers\ArtistDesignsController::class, 'toggleAvailability'])->name('artist-designs.toggle-availability');
     Route::patch('/artist-designs/{artistDesign}/visibility', [\App\Http\Controllers\ArtistDesignsController::class, 'toggleVisibility'])->name('artist-designs.toggle-visibility');
     Route::delete('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'destroy'])->name('artist-designs.destroy');

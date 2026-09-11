@@ -194,7 +194,7 @@
 
   <!-- Mobile Header -->
   <div class="mobile-header fixed top-0 left-0 right-0 z-[110] bg-primary text-white px-4 py-3 items-center justify-between">
-    <span class="text-lg font-bold flex-shrink-0">Inkjin</span>
+    <span class="text-lg font-bold tracking-tighter flex-shrink-0" style="font-family: 'Space Grotesk', sans-serif;">bookpay</span>
     <button type="button" id="mobileMenuBtn" onclick="toggleMobileNav()" class="material-symbols-outlined text-white p-1 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0" aria-expanded="false" aria-label="Open menu">menu</button>
   </div>
 

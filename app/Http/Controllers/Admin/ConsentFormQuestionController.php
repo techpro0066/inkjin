@@ -14,11 +14,16 @@ class ConsentFormQuestionController extends Controller
     {
         $validated = $this->validateQuestion($request);
 
+        $nextOrder = ((int) ConsentFormQuestion::query()
+            ->where('user_id', ConsentFormQuestion::SYSTEM_USER_ID)
+            ->max('order')) + 1;
+
         $question = ConsentFormQuestion::query()->create([
             'user_id' => ConsentFormQuestion::SYSTEM_USER_ID,
             'question_type' => $validated['question_type'],
             'translations' => $validated['translations'],
             'enabled' => $validated['enabled'] ?? true,
+            'order' => $nextOrder,
         ]);
 
         return response()->json([
@@ -133,6 +138,7 @@ class ConsentFormQuestionController extends Controller
             'question_type' => $question->question_type,
             'translations' => is_array($question->translations) ? $question->translations : [],
             'enabled' => (bool) $question->enabled,
+            'order' => (int) $question->order,
         ];
     }
 }

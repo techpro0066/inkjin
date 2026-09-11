@@ -664,7 +664,9 @@
       </div>
     </div>
   </div>
+@endsection
 
+@section('scripts')
   <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script>
     const PROFILE_TAGLINE = @json($tagline);
