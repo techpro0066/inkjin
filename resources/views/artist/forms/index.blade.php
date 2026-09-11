@@ -216,6 +216,9 @@
       border-top: none;
       border-left: none;
       border-right: none;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
     }
 
     .form-tab.active {
@@ -337,6 +340,7 @@
         <button class="form-tab active" onclick="switchFormType('booking', this)" id="tabBooking">Available
           Design</button>
         <button class="form-tab" onclick="switchFormType('request', this)" id="tabRequest">Custom Request</button>
+        <a href="{{ route('artist.forms.consent') }}" class="form-tab" id="tabConsent">Content form</a>
       </div>
 
       <div class="max-w-3xl">

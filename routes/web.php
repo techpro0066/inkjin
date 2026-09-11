@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\FinancialController as AdminFinancialController;
 use App\Http\Controllers\Admin\StripeConnectedAccountsController as AdminStripeConnectedAccountsController;
 use App\Http\Controllers\Admin\FormController;
+use App\Http\Controllers\Admin\ConsentFormQuestionController;
 use App\Http\Controllers\Admin\PlacementController;
 use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\StyleController;
@@ -153,6 +154,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'client_password'])->group(
     Route::get('/api/bookings/live-status', [\App\Http\Controllers\BookingsController::class, 'liveStatus'])->name('api.bookings.live-status');
     Route::post('/api/bookings/{id}/mark-completed', [\App\Http\Controllers\BookingsController::class, 'markCompleted'])->name('api.bookings.mark-completed');
     Route::post('/api/bookings/{id}/balance-collections', [\App\Http\Controllers\BookingsController::class, 'storeBalanceCollection'])->name('api.bookings.balance-collections.store');
+    Route::post('/api/bookings/{id}/consent/resend', [\App\Http\Controllers\BookingsController::class, 'resendConsent'])->name('api.bookings.consent.resend');
     
     // Booking rescheduling routes
     Route::get('/api/bookings/{id}/can-reschedule', [\App\Http\Controllers\ReschedulingController::class, 'checkCanReschedule'])->name('api.bookings.can-reschedule');
@@ -202,6 +204,10 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     Route::put('/forms/questions/{id}', [QuestionsController::class, 'update'])->name('admin.forms.questions.update');
     Route::post('/forms/questions/reorder', [QuestionsController::class, 'reorder'])->name('admin.forms.questions.reorder');
     Route::delete('/forms/questions/{id}', [QuestionsController::class, 'destroy'])->name('admin.forms.questions.destroy');
+    Route::post('/forms/consent-questions', [ConsentFormQuestionController::class, 'store'])->name('admin.forms.consent-questions.store');
+    Route::put('/forms/consent-questions/{id}', [ConsentFormQuestionController::class, 'update'])->name('admin.forms.consent-questions.update');
+    Route::patch('/forms/consent-questions/{id}/status', [ConsentFormQuestionController::class, 'updateStatus'])->name('admin.forms.consent-questions.status');
+    Route::delete('/forms/consent-questions/{id}', [ConsentFormQuestionController::class, 'destroy'])->name('admin.forms.consent-questions.destroy');
 
     Route::get('/styles', [StyleController::class, 'index'])->name('admin.styles.index');
     Route::post('/styles', [StyleController::class, 'store'])->name('admin.styles.store');
@@ -227,6 +233,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     // Route::delete('/questions/{id}', [\App\Http\Controllers\Admin\QuestionController::class, 'destroy'])->name('admin.questions.destroy');
     
     Route::get('/users', [AdminUserController::class, 'index'])->name('admin.users.index');
+    Route::get('/users/export', [AdminUserController::class, 'export'])->name('admin.users.export');
     Route::get('/users/{id}', [AdminUserController::class, 'show'])->name('admin.users.show');
     Route::get('/referrals', [AdminReferralsController::class, 'index'])->name('admin.referrals.index');
     Route::post('/referrals/{referral}/send-reward', [AdminReferralsController::class, 'sendReward'])->name('admin.referrals.send-reward');
@@ -362,6 +369,13 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::delete('/artist-designs/{artistDesign}', [\App\Http\Controllers\ArtistDesignsController::class, 'destroy'])->name('artist-designs.destroy');
 
     Route::get('/forms', [QuestionsController::class, 'index'])->name('artist.forms.index');
+    Route::get('/forms/consent', [\App\Http\Controllers\ConsentFormController::class, 'index'])->name('artist.forms.consent');
+    Route::put('/forms/consent/settings', [\App\Http\Controllers\ConsentFormController::class, 'updateSettings'])->name('artist.forms.consent.settings');
+    Route::post('/forms/consent-questions', [\App\Http\Controllers\ArtistConsentFormQuestionController::class, 'store'])->name('artist.forms.consent-questions.store');
+    Route::put('/forms/consent-questions/{id}', [\App\Http\Controllers\ArtistConsentFormQuestionController::class, 'update'])->name('artist.forms.consent-questions.update');
+    Route::patch('/forms/consent-questions/{id}/status', [\App\Http\Controllers\ArtistConsentFormQuestionController::class, 'updateStatus'])->name('artist.forms.consent-questions.status');
+    Route::post('/forms/consent-questions/reorder', [\App\Http\Controllers\ArtistConsentFormQuestionController::class, 'reorder'])->name('artist.forms.consent-questions.reorder');
+    Route::delete('/forms/consent-questions/{id}', [\App\Http\Controllers\ArtistConsentFormQuestionController::class, 'destroy'])->name('artist.forms.consent-questions.destroy');
     Route::post('/forms/questions', [QuestionsController::class, 'store'])->name('artist.forms.questions.store');
     Route::put('/forms/questions/{id}', [QuestionsController::class, 'update'])->name('artist.forms.questions.update');
     Route::patch('/forms/questions/{id}/status', [QuestionsController::class, 'updateSystemQuestionStatus'])->name('artist.forms.questions.status');
@@ -456,6 +470,18 @@ Route::get('/chat', function () {
 
     return redirect()->route('login');
 })->name('public.chat');
+// Client consent form (live token + artist preview)
+Route::get('/consent/artist/{artist}', [\App\Http\Controllers\ClientConsentController::class, 'preview'])
+    ->whereNumber('artist')
+    ->name('public.consent.preview');
+Route::get('/consent/{token}', [\App\Http\Controllers\ClientConsentController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{32,64}')
+    ->name('public.consent');
+Route::post('/consent/{token}', [\App\Http\Controllers\ClientConsentController::class, 'submit'])
+    ->where('token', '[A-Za-z0-9]{32,64}')
+    ->middleware('throttle:30,1')
+    ->name('public.consent.submit');
+
 Route::get('/p/{code}', [ArtistDashboardController::class, 'publicPaymentLink'])->name('public.payment-link');
 Route::post('/p/{code}/otp/send', [ArtistDashboardController::class, 'sendPaymentLinkOtp'])->name('public.payment-link.otp.send');
 Route::post('/p/{code}/otp/verify', [ArtistDashboardController::class, 'verifyPaymentLinkOtp'])->name('public.payment-link.otp.verify');
