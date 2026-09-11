@@ -71,7 +71,14 @@
         </div>
         @include('admin.partials.per-page', ['perPage' => $perPage ?? 10, 'selectId' => 'usersPerPage'])
       </div>
-      <div class="mt-4 flex justify-end">
+      <div class="mt-4 flex flex-wrap justify-end gap-2">
+        <a
+          href="{{ route('admin.users.export', request()->query()) }}"
+          class="inline-flex items-center gap-2 border border-outline-variant/40 bg-white text-on-surface px-4 py-2 rounded-xl font-semibold text-sm hover:bg-surface-container-low transition-colors"
+        >
+          <span class="material-symbols-outlined text-[18px]">download</span>
+          Export CSV
+        </a>
         <button type="submit" class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors">
           <span class="material-symbols-outlined text-[18px]">filter_alt</span>
           Apply filters

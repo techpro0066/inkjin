@@ -7,6 +7,7 @@ use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\PaymentLink;
 use App\Services\ArtistPayoutService;
+use App\Services\BookingConsentService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class BookingsController extends Controller
     {
         $bookings = Booking::query()
             ->where('artist_user_id', Auth::id())
-            ->with(['user', 'tattoo', 'latestBalanceCollection'])
+            ->with(['user', 'tattoo', 'latestBalanceCollection', 'consentAnswer'])
             ->orderByDesc('booking_date')
             ->orderByDesc('id')
             ->paginate(20)
@@ -43,6 +44,51 @@ class BookingsController extends Controller
             ->withQueryString();
 
         return view('artist.bookings.payment-links', compact('paymentLinks'));
+    }
+
+    public function resendConsent(Request $request, int $id, BookingConsentService $consents)
+    {
+        $booking = Booking::query()
+            ->with(['user', 'consentAnswer', 'artist.userDetail'])
+            ->whereKey($id)
+            ->firstOrFail();
+
+        if ((int) $booking->artist_user_id !== (int) Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized.',
+            ], 403);
+        }
+
+        if ((string) $booking->status !== 'confirmed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only confirmed bookings can receive a consent form.',
+            ], 422);
+        }
+
+        $consent = $consents->syncForBooking($booking);
+        if (! $consent || $consent->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => $consent?->isCompleted()
+                    ? 'Consent form already completed.'
+                    : 'Unable to prepare consent form.',
+            ], 422);
+        }
+
+        if (! $consents->resendEmail($consent)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not send consent email. Check the client has an email address.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Consent form email sent.',
+            'consent_url' => $consent->fresh()->publicUrl(),
+        ]);
     }
 
     public function sendCompletionCode(Request $request, int $id)

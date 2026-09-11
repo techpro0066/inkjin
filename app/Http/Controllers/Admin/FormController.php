@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ConsentFormQuestion;
 use App\Models\Question;
 use Illuminate\Support\Facades\Auth;
 
@@ -32,6 +33,7 @@ class FormController extends Controller
             ->map(function (Question $question) {
                 $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
                 $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
+
                 return $question;
             });
 
@@ -43,9 +45,16 @@ class FormController extends Controller
             ->map(function (Question $question) {
                 $question->setAttribute('order', optional($question->sorting)->order ?? $question->id);
                 $question->setAttribute('is_active', optional($question->sorting)->is_active ?? true);
+
                 return $question;
             });
 
-        return view('admin.forms.index', compact('defaultQuestions', 'customQuestions'));
+        $consentQuestions = ConsentFormQuestion::query()
+            ->where('user_id', ConsentFormQuestion::SYSTEM_USER_ID)
+            ->orderByRaw("CASE question_type WHEN 'health' THEN 1 WHEN 'risk' THEN 2 WHEN 'aftercare' THEN 3 ELSE 4 END")
+            ->orderBy('id')
+            ->get();
+
+        return view('admin.forms.index', compact('defaultQuestions', 'customQuestions', 'consentQuestions'));
     }
 }

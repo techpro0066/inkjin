@@ -7,6 +7,7 @@
   use App\Models\ArtistReferral;
   use App\Services\ArtistReferralRewardService;
   $statusClasses = [
+    'signup_not_completed' => 'bg-gray-100 text-gray-700',
     'pending' => 'bg-amber-50 text-amber-700',
     'sent_to_admin' => 'bg-blue-50 text-blue-700',
     'rewarded' => 'bg-green-50 text-green-700',

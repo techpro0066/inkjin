@@ -95,6 +95,43 @@
     .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: transform 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
     .toggle-switch.active::after { transform: translateX(22px); }
 
+    /* What's included editor */
+    .included-item-row { display: flex; align-items: center; gap: 0.5rem; }
+    .included-item-row input { flex: 1; min-width: 0; }
+    .included-item-remove {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #7a7583;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .included-item-remove:hover { background: #fce8e8; color: #ba1a1a; }
+    .included-item-remove.is-hidden { visibility: hidden; pointer-events: none; }
+    .included-preset-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.375rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px dashed rgba(122, 117, 131, 0.45);
+      background: #fff;
+      color: #494552;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .included-preset-chip:hover:not(:disabled) {
+      border-color: #310f7a;
+      background: #f8f1fb;
+      color: #310f7a;
+    }
+    .included-preset-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+
     /* Mobile overflow fixes */
     @media (max-width: 1023px) {
       .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
@@ -114,6 +151,10 @@
   $displayBio = (bool) ($userDetail->display_bio ?? false);
   $displayGuestSpots = (bool) ($userDetail->display_guest_spots ?? false);
   $displayFaq = (bool) ($userDetail->display_faq ?? false);
+  $whatsIncludedIsActive = (bool) ($userDetail->design_whats_included_is_active ?? false);
+  $whatsIncludedItems = is_array($userDetail->design_whats_included ?? null)
+      ? array_values($userDetail->design_whats_included)
+      : [];
   $policyCopy = \App\Support\ArtistPolicyCopy::for($userDetail);
   $tagline = $userDetail->personal_page_tagline ?? '';
   $description = $userDetail->personal_page_description ?? '';
@@ -449,6 +490,47 @@
           Edit your questions in <a href="{{ route('artist.faq.index') }}" class="text-primary hover:underline">FAQ</a>.
         </p>
         <p id="displayFaqStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>
+      </div>
+
+      <!-- What's Included -->
+      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20" id="whatsIncludedPanel">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
+          <div class="flex items-start gap-3 min-w-0 flex-1">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-primary text-lg">checklist</span>
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-bold text-on-surface">What's included in the session</h3>
+              <p class="text-xs text-on-surface-variant mt-1 max-w-2xl">Let clients know what's part of your service — sizing, placement, touch-ups, aftercare.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <span class="text-sm font-semibold text-on-surface-variant">Show on page</span>
+            <div id="toggleWhatsIncluded" class="toggle-switch @if($whatsIncludedIsActive) active @endif" role="switch" aria-checked="{{ $whatsIncludedIsActive ? 'true' : 'false' }}" title="Show or hide What's Included on your public page"></div>
+            <span id="toggleWhatsIncludedLabel" class="text-xs font-semibold {{ $whatsIncludedIsActive ? 'text-primary' : 'text-on-surface-variant' }} min-w-[1.75rem]">{{ $whatsIncludedIsActive ? 'Yes' : 'No' }}</span>
+          </div>
+        </div>
+
+        <div id="whatsIncludedEditor" class="space-y-5 @if(!$whatsIncludedIsActive) hidden @endif">
+          <div id="whatsIncludedList" class="space-y-2.5" aria-label="What's included items"></div>
+
+          <button type="button" id="btnAddIncludedItem" class="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-container transition-colors">
+            <span class="material-symbols-outlined text-[18px]">add</span> Add item
+          </button>
+          <p id="whatsIncludedLimitHint" class="hidden text-xs text-on-surface-variant">You can add up to 8 items. Remove one to add another preset.</p>
+
+          <div>
+            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2.5">Suggestions</p>
+            <div id="whatsIncludedPresets" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 border-t border-outline-variant/15">
+            <button type="button" id="btnSaveWhatsIncluded" class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
+              <span class="material-symbols-outlined text-lg">save</span> Save
+            </button>
+            <p id="whatsIncludedSaveStatus" class="hidden text-sm font-medium text-green-700"></p>
+          </div>
+        </div>
       </div>
 
       <!-- 5. Color Scheme Section -->
@@ -1424,5 +1506,290 @@
         });
       });
     });
+
+    (function initWhatsIncludedUi() {
+      var WHATS_INCLUDED_UPDATE_URL = @json(route('artist-designs.whats-included.update'));
+      var WHATS_INCLUDED_INITIAL = @json(['is_active' => $whatsIncludedIsActive, 'items' => $whatsIncludedItems]);
+      var MAX_ITEMS = 8;
+      var DEFAULT_PLACEHOLDERS = [
+        'e.g. Custom sizing consultation',
+        'e.g. Design placement guidance',
+        'e.g. Touch-up session within 3 months',
+        'e.g. Aftercare instructions'
+      ];
+      var PRESETS = [
+        'Sizing consultation',
+        'Placement guidance',
+        'Color matching consultation',
+        'Custom adjustments',
+        'Stencil preview',
+        'Breaks as needed',
+        'Reference photos provided',
+        'Aftercare instructions',
+        'Aftercare product recommendations',
+        'Healing check-in (photo review)'
+      ];
+      var $list = $('#whatsIncludedList');
+      var $editor = $('#whatsIncludedEditor');
+      var $presets = $('#whatsIncludedPresets');
+      var $addBtn = $('#btnAddIncludedItem');
+      var $limitHint = $('#whatsIncludedLimitHint');
+      var $toggle = $('#toggleWhatsIncluded');
+      var $toggleLabel = $('#toggleWhatsIncludedLabel');
+      var $saveStatus = $('#whatsIncludedSaveStatus');
+
+      if (!$list.length) return;
+
+      function syncToggleUi() {
+        var on = $toggle.hasClass('active');
+        $toggle.attr('aria-checked', on ? 'true' : 'false');
+        $toggleLabel.text(on ? 'Yes' : 'No').toggleClass('text-primary', on).toggleClass('text-on-surface-variant', !on);
+        $editor.toggleClass('hidden', !on);
+      }
+
+      function rowCount() {
+        return $list.find('.included-item-row').length;
+      }
+
+      function rowValues() {
+        var values = [];
+        $list.find('.included-item-input').each(function () {
+          var v = $.trim($(this).val());
+          if (v) values.push(v.toLowerCase());
+        });
+        return values;
+      }
+
+      function syncRemoveButtons() {
+        $list.find('.included-item-row').each(function () {
+          var hasText = $.trim($(this).find('.included-item-input').val()) !== '';
+          $(this).find('.included-item-remove').toggleClass('is-hidden', !hasText);
+        });
+      }
+
+      function syncAddButton() {
+        var atMax = rowCount() >= MAX_ITEMS;
+        $addBtn.prop('disabled', atMax).toggleClass('opacity-40 cursor-not-allowed', atMax);
+        $limitHint.toggleClass('hidden', !atMax);
+      }
+
+      function syncPresetButtons() {
+        var existing = rowValues();
+        $presets.find('.included-preset-chip').each(function () {
+          var label = String($(this).data('preset') || '').trim().toLowerCase();
+          var used = existing.indexOf(label) !== -1;
+          $(this).prop('disabled', used || rowCount() >= MAX_ITEMS);
+        });
+      }
+
+      function buildRow(placeholder, value) {
+        var $row = $('<div class="included-item-row"></div>');
+        var $input = $('<input type="text" class="included-item-input w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" maxlength="255">');
+        $input.attr('placeholder', placeholder || 'e.g. Add a service detail');
+        if (value) $input.val(value);
+        var $remove = $('<button type="button" class="included-item-remove is-hidden" title="Remove item" aria-label="Remove item"><span class="material-symbols-outlined text-[18px]">close</span></button>');
+        $row.append($input, $remove);
+        return $row;
+      }
+
+      function appendRow(placeholder, value) {
+        if (rowCount() >= MAX_ITEMS) return false;
+        $list.append(buildRow(placeholder, value || ''));
+        syncRemoveButtons();
+        syncAddButton();
+        syncPresetButtons();
+        return true;
+      }
+
+      function firstEmptyInput() {
+        var $empty = null;
+        $list.find('.included-item-input').each(function () {
+          if (!$empty && $.trim($(this).val()) === '') {
+            $empty = $(this);
+          }
+        });
+        return $empty;
+      }
+
+      function insertPreset(text) {
+        var label = String(text || '').trim();
+        if (!label || rowCount() >= MAX_ITEMS) return;
+        var lower = label.toLowerCase();
+        if (rowValues().indexOf(lower) !== -1) return;
+        var $empty = firstEmptyInput();
+        if ($empty && $empty.length) {
+          $empty.val(label);
+        } else {
+          appendRow('e.g. Add a service detail', label);
+        }
+        syncRemoveButtons();
+        syncPresetButtons();
+      }
+
+      function loadInitialRows() {
+        $list.empty();
+        var savedItems = (WHATS_INCLUDED_INITIAL && WHATS_INCLUDED_INITIAL.items) || [];
+        if (savedItems.length) {
+          savedItems.forEach(function (item, idx) {
+            appendRow(DEFAULT_PLACEHOLDERS[idx] || 'e.g. Add a service detail', item);
+          });
+        } else {
+          DEFAULT_PLACEHOLDERS.forEach(function (ph) {
+            appendRow(ph, '');
+          });
+        }
+      }
+
+      loadInitialRows();
+
+      PRESETS.forEach(function (label) {
+        $presets.append(
+          $('<button type="button" class="included-preset-chip"></button>')
+            .attr('data-preset', label)
+            .html('<span class="material-symbols-outlined text-[16px]">add</span> ' + label)
+        );
+      });
+
+      $addBtn.on('click', function () {
+        appendRow('e.g. Add a service detail', '');
+        $list.find('.included-item-row:last .included-item-input').trigger('focus');
+      });
+
+      $list.on('input', '.included-item-input', function () {
+        syncRemoveButtons();
+        syncPresetButtons();
+      });
+
+      $list.on('click', '.included-item-remove', function () {
+        var $row = $(this).closest('.included-item-row');
+        if (rowCount() <= 1) {
+          $row.find('.included-item-input').val('');
+          syncRemoveButtons();
+          syncPresetButtons();
+          return;
+        }
+        $row.remove();
+        syncRemoveButtons();
+        syncAddButton();
+        syncPresetButtons();
+      });
+
+      $presets.on('click', '.included-preset-chip', function () {
+        if ($(this).prop('disabled')) return;
+        insertPreset($(this).data('preset'));
+      });
+
+      function collectItems() {
+        var items = [];
+        $list.find('.included-item-input').each(function () {
+          var v = $.trim($(this).val());
+          if (v) items.push(v);
+        });
+        return items;
+      }
+
+      function showWhatsIncludedStatus(message, isError) {
+        $saveStatus.removeClass('hidden text-green-700 text-error')
+          .addClass(isError ? 'text-error' : 'text-green-700')
+          .text(message || '');
+        clearTimeout($saveStatus.data('timer'));
+        if (message) {
+          var t = setTimeout(function () { $saveStatus.addClass('hidden').text(''); }, 4000);
+          $saveStatus.data('timer', t);
+        }
+      }
+
+      function saveWhatsIncluded(payload) {
+        return fetch(WHATS_INCLUDED_UPDATE_URL, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(payload),
+          credentials: 'same-origin'
+        }).then(function (res) {
+          var ct = res.headers.get('content-type') || '';
+          if (ct.indexOf('application/json') !== -1) {
+            return res.json().then(function (data) {
+              return { ok: res.ok, status: res.status, data: data };
+            });
+          }
+          return res.text().then(function () {
+            return { ok: false, status: res.status, data: {} };
+          });
+        });
+      }
+
+      $toggle.on('click', function () {
+        var $t = $(this);
+        var wasActive = $t.hasClass('active');
+        $t.toggleClass('active');
+        syncToggleUi();
+        var isActive = $t.hasClass('active');
+        $t.addClass('opacity-60 pointer-events-none');
+
+        saveWhatsIncluded({ is_active: isActive }).then(function (result) {
+          if (result.ok && result.data && result.data.success) {
+            if (typeof showSaveToast === 'function') {
+              showSaveToast();
+            }
+          } else {
+            if (wasActive) {
+              $t.addClass('active');
+            } else {
+              $t.removeClass('active');
+            }
+            syncToggleUi();
+            showWhatsIncludedStatus(
+              (result.data && result.data.message) || 'Could not update visibility. Please try again.',
+              true
+            );
+          }
+        }).catch(function () {
+          if (wasActive) {
+            $t.addClass('active');
+          } else {
+            $t.removeClass('active');
+          }
+          syncToggleUi();
+          showWhatsIncludedStatus('Could not update visibility. Please try again.', true);
+        }).finally(function () {
+          $t.removeClass('opacity-60 pointer-events-none');
+        });
+      });
+
+      $('#btnSaveWhatsIncluded').on('click', function () {
+        var items = collectItems();
+        var isActive = $toggle.hasClass('active');
+        var $btn = $(this);
+        var btnHtml = $btn.html();
+        $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-[16px] animate-pulse">hourglass_empty</span> Saving…');
+
+        saveWhatsIncluded({ is_active: isActive, items: items }).then(function (result) {
+          if (result.ok && result.data && result.data.success) {
+            showWhatsIncludedStatus(result.data.message || 'Saved.', false);
+            if (typeof showSaveToast === 'function') {
+              showSaveToast();
+            }
+          } else {
+            showWhatsIncludedStatus(
+              (result.data && result.data.message) || 'Could not save. Please try again.',
+              true
+            );
+          }
+        }).catch(function () {
+          showWhatsIncludedStatus('Could not save. Please try again.', true);
+        }).finally(function () {
+          $btn.prop('disabled', false).html(btnHtml);
+        });
+      });
+
+      syncAddButton();
+      syncPresetButtons();
+      syncToggleUi();
+    })();
   </script>
 @endsection

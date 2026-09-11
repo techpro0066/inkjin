@@ -51,6 +51,12 @@
         <span class="text-sm text-on-surface-variant shrink-0">Role</span>
         <span class="text-sm font-semibold text-on-surface text-right">{{ $user['role'] === 'artist' ? 'Artist' : 'Client' }}</span>
       </div>
+      @if($user['role'] === 'artist')
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Acquisition Source</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['acquisition_source'] ?? '—' }}</span>
+        </div>
+      @endif
       <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
         <span class="text-sm text-on-surface-variant shrink-0">Join Date</span>
         <span class="text-sm font-semibold text-on-surface text-right">{{ $user['join_date_label'] }}</span>
@@ -67,6 +73,30 @@
 
     @if($user['role'] === 'artist')
       <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-0">
+        <h4 class="text-sm font-bold mb-2">Feature status</h4>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Books</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['books_mode'] ?? '—' }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Connected Instagram</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ !empty($user['instagram_connected']) ? 'Yes' : 'No' }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Smart Pricing</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ !empty($user['smart_pricing_on']) ? 'On' : 'Off' }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Guest Spots</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ !empty($user['guest_spots_on']) ? 'On' : 'Off' }}</span>
+        </div>
+        <div class="flex justify-between py-2 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">FAQ</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ !empty($user['faq_on']) ? 'On' : 'Off' }}</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-0">
         <h4 class="text-sm font-bold mb-2">Studio & Scheduling</h4>
         <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Studio</span>
@@ -78,7 +108,7 @@
         </div>
         <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Scheduling</span>
-          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['scheduling_type'] ?: '—' }}</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['books_mode'] ?? ($user['scheduling_type'] ?: '—') }}</span>
         </div>
         <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Google Calendar</span>

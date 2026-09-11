@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UserController extends Controller
 {
@@ -27,6 +28,170 @@ class UserController extends Controller
         $sort = $request->get('sort', 'newest');
         $expandedId = (int) $request->get('expanded', 0);
         $perPage = AdminListPagination::perPage($request);
+
+        $query = $this->filteredUsersQuery($request);
+        $this->applyUserSort($query, $sort, $roleFilter);
+
+        $paginator = $query->paginate($perPage)->withQueryString();
+        $styleLabels = Style::query()->pluck('name', 'name')->all();
+        $bookingStats = $this->bookingStatsForUsers(
+            $paginator->getCollection()->pluck('id')->all(),
+            $roleFilter
+        );
+
+        $paginator->setCollection(
+            $paginator->getCollection()
+                ->map(fn (User $user) => $this->mapUserForAdminList($user, $styleLabels, $bookingStats))
+                ->values()
+        );
+
+        $stats = [
+            'total' => User::query()->where('role', '!=', 'admin')->count(),
+            'artists' => User::query()->where('role', 'artist')->count(),
+            'clients' => User::query()->where('role', 'user')->count(),
+        ];
+
+        $pageTitle = match ($roleFilter) {
+            'artist' => 'Artists',
+            'user' => 'Clients',
+            default => 'Users',
+        };
+
+        $pageSubtitle = match ($roleFilter) {
+            'artist' => number_format($stats['artists']).' artists on the platform',
+            'user' => number_format($stats['clients']).' clients on the platform',
+            default => number_format($stats['total']).' users on the platform',
+        };
+
+        return view('admin.users.index', [
+            'users' => $paginator,
+            'roleFilter' => $roleFilter,
+            'search' => $search,
+            'statusFilter' => $statusFilter,
+            'sort' => $sort,
+            'expandedId' => $expandedId,
+            'stats' => $stats,
+            'pageTitle' => $pageTitle,
+            'pageSubtitle' => $pageSubtitle,
+            'perPage' => $perPage,
+        ]);
+    }
+
+    /**
+     * Download filtered users as CSV (full list, not paginated).
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $roleFilter = $request->get('role', 'all');
+
+        $query = $this->filteredUsersQuery($request);
+        // Stable id order for chunked export (avoids gaps from revenue/booking sorts).
+        $query->reorder()->orderBy('id');
+
+        $filename = 'users-export-'.now()->format('Y-m-d-His').'.csv';
+        $styleLabels = Style::query()->pluck('name', 'name')->all();
+
+        return response()->streamDownload(function () use ($query, $roleFilter, $styleLabels) {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+
+            // UTF-8 BOM for Excel
+            fwrite($out, "\xEF\xBB\xBF");
+
+            fputcsv($out, [
+                'ID',
+                'Join Date',
+                'Name',
+                'Email',
+                'Phone',
+                'Role',
+                'Status',
+                'Email Verified',
+                'Location',
+                'Username',
+                'Studio',
+                'Studio Address',
+                'Bookings',
+                'Revenue',
+                'Designs',
+                'Portfolio Items',
+                'Availability Slots',
+                'Acquisition Source',
+                'Books',
+                'Connected Instagram',
+                'Smart Pricing',
+                'Guest Spots',
+                'FAQ',
+                'Google Calendar',
+                'Payment Type',
+                'Payment Status',
+                'Styles',
+                'Social',
+                'Currency',
+                'Timezone',
+            ]);
+
+            $query->chunkById(200, function (Collection $chunk) use ($out, $roleFilter, $styleLabels) {
+                $stats = $this->bookingStatsForUsers($chunk->pluck('id')->all(), $roleFilter);
+                foreach ($chunk as $user) {
+                    /** @var User $user */
+                    $row = $this->mapUserForAdminList($user, $styleLabels, $stats);
+                    $social = '';
+                    if (! empty($row['social']) && is_array($row['social'])) {
+                        $social = collect($row['social'])
+                            ->map(fn ($s) => trim(($s['label'] ?? '').': '.($s['url'] ?? '')))
+                            ->filter()
+                            ->implode(' | ');
+                    }
+
+                    fputcsv($out, [
+                        $row['id'],
+                        $row['join_date'],
+                        $row['name'],
+                        $row['email'],
+                        $row['phone'],
+                        $row['role'] === 'artist' ? 'Artist' : 'Client',
+                        $row['status'],
+                        ! empty($row['email_verified']) ? 'Yes' : 'No',
+                        $row['location'],
+                        $row['username'] ?? '',
+                        $row['studio'] ?? '',
+                        $row['studio_address'] ?? '',
+                        $row['bookings'],
+                        number_format((float) $row['revenue'], 2, '.', ''),
+                        $row['designs'],
+                        $row['portfolio_items'],
+                        $row['availability_slots'],
+                        $row['role'] === 'artist' ? ($row['acquisition_source'] ?? '—') : '',
+                        $row['role'] === 'artist' ? ($row['books_mode'] ?? '—') : '',
+                        $row['role'] === 'artist' ? (! empty($row['instagram_connected']) ? 'Yes' : 'No') : '',
+                        $row['role'] === 'artist' ? (! empty($row['smart_pricing_on']) ? 'On' : 'Off') : '',
+                        $row['role'] === 'artist' ? (! empty($row['guest_spots_on']) ? 'On' : 'Off') : '',
+                        $row['role'] === 'artist' ? (! empty($row['faq_on']) ? 'On' : 'Off') : '',
+                        $row['role'] === 'artist' ? (! empty($row['google_calendar_connected']) ? 'Connected' : 'Not connected') : '',
+                        $row['payment_type'] ?? '',
+                        $row['payment_status'] ?? '',
+                        is_array($row['styles'] ?? null) ? implode(', ', $row['styles']) : '',
+                        $social,
+                        $row['currency'] ?? '',
+                        $row['timezone'] ?? '',
+                    ]);
+                }
+            });
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    private function filteredUsersQuery(Request $request): Builder
+    {
+        $roleFilter = $request->get('role', 'all');
+        $search = trim((string) $request->get('q', ''));
+        $statusFilter = $request->get('status', 'all');
 
         $query = User::query()
             ->with('userDetail')
@@ -81,51 +246,7 @@ class UserController extends Controller
                 });
         }
 
-        $this->applyUserSort($query, $sort, $roleFilter);
-
-        $paginator = $query->paginate($perPage)->withQueryString();
-        $styleLabels = Style::query()->pluck('name', 'name')->all();
-        $bookingStats = $this->bookingStatsForUsers(
-            $paginator->getCollection()->pluck('id')->all(),
-            $roleFilter
-        );
-
-        $paginator->setCollection(
-            $paginator->getCollection()
-                ->map(fn (User $user) => $this->mapUserForAdminList($user, $styleLabels, $bookingStats))
-                ->values()
-        );
-
-        $stats = [
-            'total' => User::query()->where('role', '!=', 'admin')->count(),
-            'artists' => User::query()->where('role', 'artist')->count(),
-            'clients' => User::query()->where('role', 'user')->count(),
-        ];
-
-        $pageTitle = match ($roleFilter) {
-            'artist' => 'Artists',
-            'user' => 'Clients',
-            default => 'Users',
-        };
-
-        $pageSubtitle = match ($roleFilter) {
-            'artist' => number_format($stats['artists']).' artists on the platform',
-            'user' => number_format($stats['clients']).' clients on the platform',
-            default => number_format($stats['total']).' users on the platform',
-        };
-
-        return view('admin.users.index', [
-            'users' => $paginator,
-            'roleFilter' => $roleFilter,
-            'search' => $search,
-            'statusFilter' => $statusFilter,
-            'sort' => $sort,
-            'expandedId' => $expandedId,
-            'stats' => $stats,
-            'pageTitle' => $pageTitle,
-            'pageSubtitle' => $pageSubtitle,
-            'perPage' => $perPage,
-        ]);
+        return $query;
     }
 
     /**
@@ -189,6 +310,10 @@ class UserController extends Controller
                 'email_verified_at' => $user->email_verified_at,
                 'on_boarding' => $user->on_boarding,
                 'created_at' => $user->created_at,
+                'hear_about_us' => $user->hear_about_us,
+                'acquisition_source' => $user->role === 'artist'
+                    ? $this->formatAcquisitionSource($user->hear_about_us)
+                    : null,
             ],
             'userDetail' => $this->userDetailPayload($userDetail),
             'availabilities' => $availabilities,
@@ -244,13 +369,54 @@ class UserController extends Controller
             'on_boarding_complete' => $user->on_boarding === 'yes',
             'onboarding_progress' => $onboardingProgress,
             'scheduling_type' => $detail?->scheduling_type,
+            'books_mode' => $isArtist ? $this->formatBooksMode($detail?->scheduling_type) : null,
+            'instagram_connected' => $isArtist ? filled($detail?->instagram_access_token) : null,
+            'smart_pricing_on' => $isArtist ? (($detail?->pricing_type ?? 'manual') === 'smart') : null,
+            'guest_spots_on' => $isArtist ? (bool) ($detail?->display_guest_spots ?? false) : null,
+            'faq_on' => $isArtist ? (bool) ($detail?->display_faq ?? false) : null,
             'payment_type' => $detail?->payment_type,
             'payment_status' => $detail?->payment_status,
             'google_calendar_connected' => ! empty($detail?->google_calendar_token),
             'studio_address' => $detail?->studio_address,
             'currency' => $detail?->currency,
             'timezone' => $detail?->timezone,
+            'acquisition_source' => $isArtist
+                ? $this->formatAcquisitionSource($user->hear_about_us)
+                : null,
+            'acquisition_source_key' => $isArtist
+                ? (trim((string) ($user->hear_about_us ?? '')) ?: null)
+                : null,
         ];
+    }
+
+    private function formatBooksMode(?string $schedulingType): string
+    {
+        return match (strtolower(trim((string) $schedulingType))) {
+            'auto' => 'Auto',
+            'managed' => 'Managed',
+            default => '—',
+        };
+    }
+
+    private function formatAcquisitionSource(?string $source): string
+    {
+        $key = strtolower(trim((string) $source));
+        if ($key === '') {
+            return '—';
+        }
+
+        return match ($key) {
+            'instagram' => 'Instagram',
+            'friend' => 'Friend / Referral',
+            'inkjin_team' => 'Inkjin team',
+            'google' => 'Google / Search',
+            'ai' => 'AI (ChatGPT, Claude, Gemini, etc.)',
+            'convention' => 'Tattoo Convention',
+            'blog' => 'Blog / Article',
+            'tiktok' => 'TikTok',
+            'other' => 'Other',
+            default => ucwords(str_replace(['_', '-'], ' ', $key)),
+        };
     }
 
     /**

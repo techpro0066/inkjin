@@ -180,10 +180,10 @@
     <select id="referral_source" name="referral_source" class="js-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
       <option value="">Select...</option>
       <option value="instagram">Instagram</option>
-      <option value="tiktok">TikTok</option>
-      <option value="google">Google Search</option>
-      <option value="ai">AI (ChatGPT, Claude, Gemini, other)</option>
       <option value="friend">Friend / Referral</option>
+      <option value="inkjin_team">Inkjin team</option>
+      <option value="google">Google / Search</option>
+      <option value="ai">AI (ChatGPT, Claude, Gemini, etc.)</option>
       <option value="convention">Tattoo Convention</option>
       <option value="blog">Blog / Article</option>
       <option value="other">Other</option>

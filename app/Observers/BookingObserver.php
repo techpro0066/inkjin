@@ -5,8 +5,10 @@ namespace App\Observers;
 use App\Models\Booking;
 use App\Services\ArtistReferralFeeWaiverService;
 use App\Services\ArtistReferralRewardService;
+use App\Services\BookingConsentService;
 use App\Services\MailcoachSubscriberService;
 use App\Services\StreamChatService;
+use Illuminate\Support\Facades\Log;
 
 class BookingObserver
 {
@@ -15,6 +17,7 @@ class BookingObserver
         private MailcoachSubscriberService $mailcoach,
         private ArtistReferralFeeWaiverService $referralFeeWaiver,
         private ArtistReferralRewardService $referralRewards,
+        private BookingConsentService $bookingConsents,
     ) {}
 
     public function created(Booking $booking): void
@@ -30,6 +33,7 @@ class BookingObserver
 
         $this->referralFeeWaiver->consumeForPaidBooking($booking);
         $this->referralRewards->evaluateBooking($booking);
+        $this->syncConsent($booking);
     }
 
     public function updated(Booking $booking): void
@@ -45,6 +49,41 @@ class BookingObserver
             if ((string) $booking->status === 'completed') {
                 $this->referralRewards->evaluateBooking($booking);
             }
+        }
+
+        if ($booking->wasChanged([
+            'booking_date',
+            'start_time_utc',
+            'timezone',
+        ])) {
+            // Allow 72h/24h reminders to fire again for the new session time.
+            $booking->forceFill([
+                'reminder_72h_sent_at' => null,
+                'reminder_24h_sent_at' => null,
+            ])->saveQuietly();
+        }
+
+        if ($booking->wasChanged([
+            'status',
+            'booking_date',
+            'start_time_utc',
+            'timezone',
+            'artist_user_id',
+            'user_id',
+        ])) {
+            $this->syncConsent($booking);
+        }
+    }
+
+    private function syncConsent(Booking $booking): void
+    {
+        try {
+            $this->bookingConsents->syncForBooking($booking);
+        } catch (\Throwable $e) {
+            Log::error('Failed to sync booking consent row', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

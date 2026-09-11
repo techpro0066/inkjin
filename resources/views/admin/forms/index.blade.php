@@ -8,6 +8,50 @@
     .question-row:hover { background: #f8f1fb; }
   .sortable-ghost { opacity: 0.45; background: #f8f1fb; }
   .sortable-chosen { cursor: grabbing; }
+  .form-tab {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #494552;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s ease;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+  .form-tab:hover:not(.active) { color: #1c1b21; }
+  .form-tab.active {
+    color: #310f7a;
+    border-bottom-color: #310f7a;
+  }
+  .consent-type-badge-health { background: #ecfdf5; color: #047857; }
+  .consent-type-badge-risk { background: #fff7ed; color: #c2410c; }
+  .consent-type-badge-aftercare { background: #eff6ff; color: #1d4ed8; }
+  .consent-lang-scroll {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid rgba(202, 196, 211, 0.35);
+    border-radius: 0.75rem;
+    background: #faf8fc;
+  }
+  .consent-lang-row {
+    padding: 0.75rem 0.875rem;
+    border-bottom: 1px solid rgba(202, 196, 211, 0.2);
+  }
+  .consent-lang-row:last-child { border-bottom: none; }
+  .consent-lang-row label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
     @media (max-width: 1023px) {
       .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
       body { overflow-x: hidden; }
@@ -86,12 +130,25 @@
 
 <main class="main-content flex-1 min-h-screen">
     <div class="p-6 md:p-10 lg:p-12 max-w-5xl">
+      @php
+        $formsTab = request('tab', 'booking');
+        if (! in_array($formsTab, ['booking', 'custom', 'consent'], true)) {
+          $formsTab = 'booking';
+        }
+      @endphp
 
       <div class="mb-8">
         <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Form Management</h2>
-        <p class="text-on-surface-variant mt-1">Manage default questions for booking forms and custom requests.</p>
+        <p class="text-on-surface-variant mt-1">Manage default questions for booking forms, custom requests, and consent.</p>
       </div>
 
+      <div class="flex border-b border-outline-variant/20 mb-6 overflow-x-auto">
+        <a href="{{ route('admin.forms.index', ['tab' => 'booking']) }}" class="form-tab {{ $formsTab === 'booking' ? 'active' : '' }}">Available design</a>
+        <a href="{{ route('admin.forms.index', ['tab' => 'custom']) }}" class="form-tab {{ $formsTab === 'custom' ? 'active' : '' }}">Custom</a>
+        <a href="{{ route('admin.forms.index', ['tab' => 'consent']) }}" class="form-tab {{ $formsTab === 'consent' ? 'active' : '' }}">Consent</a>
+      </div>
+
+      @if($formsTab === 'booking')
       <!-- Section 1: Available Design Bookings -->
       <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-8 overflow-hidden">
         <div class="px-6 py-5 border-b border-outline-variant/15">
@@ -169,7 +226,9 @@
           </button>
         </div>
       </div>
+      @endif
 
+      @if($formsTab === 'custom')
       <!-- Section 2: Custom Requests -->
       <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-8 overflow-hidden">
         <div class="px-6 py-5 border-b border-outline-variant/15">
@@ -250,6 +309,81 @@
           </button>
         </div>
       </div>
+      @endif
+
+      @if($formsTab === 'consent')
+      @php
+        $consentTypeBadge = [
+          'health' => ['consent-type-badge-health', 'Health'],
+          'risk' => ['consent-type-badge-risk', 'Risk'],
+          'aftercare' => ['consent-type-badge-aftercare', 'Aftercare'],
+        ];
+      @endphp
+      <!-- Section 3: Consent questions -->
+      <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-8 overflow-hidden">
+        <div class="px-6 py-5 border-b border-outline-variant/15">
+          <h3 class="text-lg font-bold text-on-surface">Consent form questions</h3>
+          <p class="text-xs text-on-surface-variant mt-1">Default health, risk, and aftercare questions for artist consent forms.</p>
+        </div>
+        <div class="divide-y divide-outline-variant/10" id="consentQuestions">
+          @forelse($consentQuestions ?? [] as $question)
+            @php
+              $translations = is_array($question->translations) ? $question->translations : [];
+              $en = (string) ($translations['en'] ?? '');
+              $otherCount = count(array_filter($translations, fn ($v, $k) => $k !== 'en' && filled($v), ARRAY_FILTER_USE_BOTH));
+              $badge = $consentTypeBadge[$question->question_type] ?? ['bg-gray-100 text-gray-700', ucfirst($question->question_type)];
+            @endphp
+            <div
+              class="question-row px-6 py-4 flex items-center gap-4"
+              data-consent-id="{{ $question->id }}"
+              data-question-type="{{ $question->question_type }}"
+              data-enabled="{{ $question->enabled ? '1' : '0' }}"
+              data-translations='@json($translations)'
+            >
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-on-surface">{{ $en !== '' ? $en : 'Untitled question' }}</p>
+                <p class="text-xs text-outline mt-0.5">
+                  @if($otherCount > 0)
+                    {{ $otherCount }} translation{{ $otherCount === 1 ? '' : 's' }} filled
+                  @else
+                    English only
+                  @endif
+                </p>
+              </div>
+              <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 {{ $badge[0] }}">{{ $badge[1] }}</span>
+              <div class="flex flex-col items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  class="js-consent-enabled-toggle toggle-switch {{ $question->enabled ? 'active' : '' }}"
+                  role="switch"
+                  aria-checked="{{ $question->enabled ? 'true' : 'false' }}"
+                  title="Enable/Disable"
+                  aria-label="Toggle active"
+                ></button>
+                <span class="js-consent-enabled-label text-[10px] font-medium {{ $question->enabled ? 'text-emerald-700' : 'text-gray-500' }}">
+                  {{ $question->enabled ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+              <div class="flex gap-1">
+                <button type="button" class="js-edit-consent-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-surface-container-low" aria-label="Edit">
+                  <span class="material-symbols-outlined text-on-surface-variant" style="font-size:16px;">edit</span>
+                </button>
+                <button type="button" class="js-remove-consent-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50" aria-label="Delete">
+                  <span class="material-symbols-outlined text-red-500" style="font-size:16px;">delete</span>
+                </button>
+              </div>
+            </div>
+          @empty
+            <p class="js-consent-empty-msg px-6 py-8 text-sm text-on-surface-variant text-center">No consent questions yet. Add one to get started.</p>
+          @endforelse
+        </div>
+        <div class="px-6 py-4 border-t border-outline-variant/15">
+          <button type="button" id="btnAddConsentQuestion" class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-semibold text-xs hover:bg-primary-container transition-colors">
+            <span class="material-symbols-outlined" style="font-size:16px;">add</span> Add Question
+          </button>
+        </div>
+      </div>
+      @endif
 
     </div>
   </main>
@@ -363,6 +497,58 @@
   </div>
 </div>
 
+<!-- Consent question modal -->
+<div class="modal-backdrop" id="consentQuestionModal" aria-hidden="true">
+  <div class="add-question-modal-inner bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/15">
+      <h3 id="consentQuestionModalTitle" class="text-lg font-bold text-on-surface">Add consent question</h3>
+      <button type="button" id="btnCloseConsentQuestionModal" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-container-low transition-colors" aria-label="Close">
+        <span class="material-symbols-outlined text-on-surface-variant">close</span>
+      </button>
+    </div>
+    <div class="p-5 space-y-4">
+      <input type="hidden" id="editingConsentQuestionId" value="">
+      <p id="consentQuestionGeneralError" class="hidden text-sm text-error rounded-xl bg-error-container/30 border border-error/20 px-3 py-2"></p>
+      <p class="text-xs text-on-surface-variant rounded-xl bg-surface-container-low/60 border border-outline-variant/20 px-3 py-2">
+        Enter the English question, then add translations for other languages below as needed.
+      </p>
+      <div>
+        <label for="consentQuestionType" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Question type</label>
+        <select id="consentQuestionType" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <option value="health">Health</option>
+          <option value="risk">Risk</option>
+          <option value="aftercare">Aftercare</option>
+        </select>
+        <p id="consentQuestionTypeError" class="hidden text-sm text-error mt-1"></p>
+      </div>
+      <div>
+        <label for="consentQuestionTextEn" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Question (English)</label>
+        <textarea id="consentQuestionTextEn" rows="3" placeholder="e.g. Diabetes (Type 1 or Type 2)" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
+        <p id="consentQuestionTextEnError" class="hidden text-sm text-error mt-1"></p>
+      </div>
+      <div>
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <label class="block text-xs font-semibold text-on-surface-variant">Other languages</label>
+          <span class="text-[10px] font-medium text-on-surface-variant uppercase tracking-wide">Scroll for all</span>
+        </div>
+        <div id="consentLangFields" class="consent-lang-scroll" aria-label="Translations for other languages"></div>
+      </div>
+      <div class="flex items-center justify-between sm:justify-start sm:gap-3 pt-1">
+        <span class="text-sm text-on-surface">Available</span>
+        <button type="button" id="consentQuestionEnabledToggle" class="toggle-switch active" role="switch" aria-checked="true" aria-label="Toggle available"></button>
+        <input type="hidden" id="consentQuestionEnabled" value="true">
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t border-outline-variant/15 flex items-center justify-end gap-3">
+      <button type="button" id="btnCancelConsentQuestionModal" class="text-sm font-semibold text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-xl transition-colors">Cancel</button>
+      <button type="button" id="btnSubmitConsentQuestion" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm inline-flex items-center gap-2">
+        <span id="btnSubmitConsentQuestionIcon" class="material-symbols-outlined text-lg">add</span>
+        <span id="btnSubmitConsentQuestionText">Add question</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @section('scripts')
@@ -371,12 +557,17 @@
   const QUESTION_DELETE_URL_TEMPLATE = @json(route('admin.forms.questions.destroy', ['id' => '__ID__']));
   const QUESTION_UPDATE_URL_TEMPLATE = @json(route('admin.forms.questions.update', ['id' => '__ID__']));
   const REORDER_URL = @json(route('admin.forms.questions.reorder'));
+  const CONSENT_STORE_URL = @json(route('admin.forms.consent-questions.store'));
+  const CONSENT_UPDATE_URL_TEMPLATE = @json(route('admin.forms.consent-questions.update', ['id' => '__ID__']));
+  const CONSENT_STATUS_URL_TEMPLATE = @json(route('admin.forms.consent-questions.status', ['id' => '__ID__']));
+  const CONSENT_DELETE_URL_TEMPLATE = @json(route('admin.forms.consent-questions.destroy', ['id' => '__ID__']));
   // ===== Cached DOM references =====
   const $addQuestionModal = $("#addQuestionModal");
   const $deleteQuestionModal = $("#deleteQuestionModal");
   const $newQuestionType = $("#newQuestionType");
   const $addOptionsDiv = $(".add-options-div");
   let $pendingDeleteRow = null;
+  let $pendingConsentDeleteRow = null;
 
   // ===== Option field helpers =====
   function getOptionRows() {
@@ -509,6 +700,7 @@
   }
 
   function openDeleteQuestionModal($row) {
+    $pendingConsentDeleteRow = null;
     $pendingDeleteRow = $row;
     $("#deleteQuestionError").addClass("hidden").text("");
     $deleteQuestionModal.attr("aria-hidden", "false").addClass("modal-visible");
@@ -522,6 +714,7 @@
     setTimeout(function () {
       $deleteQuestionModal.removeClass("modal-visible").attr("aria-hidden", "true");
       $pendingDeleteRow = null;
+      $pendingConsentDeleteRow = null;
       $("#deleteQuestionError").addClass("hidden").text("");
     }, 300);
   }
@@ -758,10 +951,48 @@
   $(document).on("click", ".js-remove-question", function () {
     const $row = $(this).closest(".question-row");
     if (!$row.length) return;
+    $pendingConsentDeleteRow = null;
     openDeleteQuestionModal($row);
   });
 
   $("#btnConfirmDeleteQuestion").on("click", function () {
+    // Consent form question delete
+    if ($pendingConsentDeleteRow && $pendingConsentDeleteRow.length) {
+      const consentId = $pendingConsentDeleteRow.data("consent-id");
+      if (!consentId) {
+        $("#deleteQuestionError").removeClass("hidden").text("Could not determine question id.");
+        return;
+      }
+
+      const $consentBtn = $(this);
+      const consentOriginal = $consentBtn.html();
+      $consentBtn.prop("disabled", true).html("Deleting...");
+
+      $.ajax({
+        url: CONSENT_DELETE_URL_TEMPLATE.replace("__ID__", String(consentId)),
+        method: "DELETE",
+        headers: {
+          "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      }).done(function () {
+        const $list = $("#consentQuestions");
+        $pendingConsentDeleteRow.remove();
+        $pendingConsentDeleteRow = null;
+        if ($list.length && !$list.find(".question-row").length) {
+          $list.append('<p class="js-consent-empty-msg px-6 py-8 text-sm text-on-surface-variant text-center">No consent questions yet. Add one to get started.</p>');
+        }
+        closeDeleteQuestionModal();
+      }).fail(function (xhr) {
+        const msg = (xhr.responseJSON && xhr.responseJSON.message) || "Something went wrong while deleting.";
+        $("#deleteQuestionError").removeClass("hidden").text(msg);
+      }).always(function () {
+        $consentBtn.prop("disabled", false).html(consentOriginal);
+      });
+      return;
+    }
+
     if (!$pendingDeleteRow || !$pendingDeleteRow.length) {
       closeDeleteQuestionModal();
       return;
@@ -849,7 +1080,8 @@
         // On success, reset modal and refresh list data from server.
         resetAddQuestionForm();
           closeAddQuestionModal();
-        window.location.reload();
+        const tab = ($("#form-context").val() === "custom") ? "custom" : "booking";
+        window.location.href = @json(route('admin.forms.index')) + "?tab=" + tab;
         return;
       }
       $("#addQuestionGeneralError").removeClass("hidden").text("Unexpected response from server.");
@@ -888,6 +1120,346 @@
       $submitBtn.prop("disabled", false).html(originalBtnHtml);
       });
     });
+
+  // ===== Consent questions (DB-backed) =====
+  const $consentQuestionModal = $("#consentQuestionModal");
+  const consentTypeLabels = { health: "Health", risk: "Risk", aftercare: "Aftercare" };
+  const CONSENT_LANGUAGE_LABELS = {
+    de: "German",
+    nl: "Dutch",
+    fr: "French",
+    es: "Spanish",
+    it: "Italian",
+    el: "Greek",
+    pt: "Portuguese",
+    sv: "Swedish",
+    da: "Danish",
+    fi: "Finnish",
+    no: "Norwegian",
+    pl: "Polish",
+    cs: "Czech",
+    sk: "Slovak",
+    hu: "Hungarian",
+    ro: "Romanian",
+    bg: "Bulgarian",
+    hr: "Croatian",
+    sl: "Slovenian",
+    et: "Estonian",
+    lv: "Latvian",
+    lt: "Lithuanian"
+  };
+
+  function buildConsentLangFields() {
+    const $wrap = $("#consentLangFields");
+    if (!$wrap.length || $wrap.children().length) return;
+    Object.keys(CONSENT_LANGUAGE_LABELS).forEach(function (code) {
+      const label = CONSENT_LANGUAGE_LABELS[code];
+      $wrap.append(
+        '<div class="consent-lang-row">' +
+          '<label for="consentLang_' + code + '">' +
+            '<span class="text-xs font-semibold text-on-surface">' + label + '</span>' +
+            '<span class="text-[10px] font-medium uppercase tracking-wide text-on-surface-variant">' + code + "</span>" +
+          "</label>" +
+          '<textarea id="consentLang_' + code + '" data-locale="' + code + '" rows="2" class="js-consent-lang-field w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" placeholder="' + label + ' translation"></textarea>' +
+        "</div>"
+      );
+    });
+  }
+
+  function clearConsentLangFields() {
+    $("#consentLangFields .js-consent-lang-field").val("");
+  }
+
+  function fillConsentLangFields(translations) {
+    const map = translations && typeof translations === "object" ? translations : {};
+    $("#consentLangFields .js-consent-lang-field").each(function () {
+      const locale = String($(this).data("locale") || "");
+      $(this).val(map[locale] ? String(map[locale]) : "");
+    });
+  }
+
+  function collectConsentTranslations() {
+    const translations = { en: $.trim($("#consentQuestionTextEn").val() || "") };
+    $("#consentLangFields .js-consent-lang-field").each(function () {
+      const locale = String($(this).data("locale") || "");
+      const text = $.trim($(this).val() || "");
+      if (locale && text) translations[locale] = text;
+    });
+    return translations;
+  }
+
+  function setConsentEnabledToggle(isEnabled) {
+    $("#consentQuestionEnabled").val(isEnabled ? "true" : "false");
+    $("#consentQuestionEnabledToggle")
+      .toggleClass("active", !!isEnabled)
+      .attr("aria-checked", isEnabled ? "true" : "false");
+  }
+
+  function resetConsentQuestionForm() {
+    $("#editingConsentQuestionId").val("");
+    $("#consentQuestionType").val("health");
+    $("#consentQuestionTextEn").val("");
+    clearConsentLangFields();
+    setConsentEnabledToggle(true);
+    $("#consentQuestionTypeError, #consentQuestionTextEnError").addClass("hidden").text("");
+    $("#consentQuestionGeneralError").addClass("hidden").text("");
+    $("#consentQuestionModalTitle").text("Add consent question");
+    $("#btnSubmitConsentQuestionText").text("Add question");
+    $("#btnSubmitConsentQuestionIcon").text("add");
+  }
+
+  function openConsentQuestionModal() {
+    buildConsentLangFields();
+    resetConsentQuestionForm();
+    $consentQuestionModal.addClass("modal-visible");
+    requestAnimationFrame(function () {
+      $consentQuestionModal.addClass("modal-open").attr("aria-hidden", "false");
+    });
+  }
+
+  function openEditConsentQuestionModal($row) {
+    buildConsentLangFields();
+    resetConsentQuestionForm();
+
+    const id = $row.data("consent-id");
+    const type = $row.data("question-type") || "health";
+    const enabled = String($row.data("enabled")) === "1";
+    let translations = $row.data("translations");
+    if (typeof translations === "string") {
+      try { translations = JSON.parse(translations); } catch (e) { translations = {}; }
+    }
+    if (!translations || typeof translations !== "object") translations = {};
+
+    const en = String(translations.en || "");
+    $("#editingConsentQuestionId").val(id);
+    $("#consentQuestionType").val(type);
+    $("#consentQuestionTextEn").val(en);
+    fillConsentLangFields(translations);
+    setConsentEnabledToggle(enabled);
+    $("#consentQuestionModalTitle").text("Edit consent question");
+    $("#btnSubmitConsentQuestionText").text("Update question");
+    $("#btnSubmitConsentQuestionIcon").text("save");
+
+    $consentQuestionModal.addClass("modal-visible");
+    requestAnimationFrame(function () {
+      $consentQuestionModal.addClass("modal-open").attr("aria-hidden", "false");
+    });
+  }
+
+  function closeConsentQuestionModal() {
+    $consentQuestionModal.removeClass("modal-open").attr("aria-hidden", "true");
+    setTimeout(function () {
+      $consentQuestionModal.removeClass("modal-visible");
+    }, 280);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function consentTranslationCount(translations) {
+    return Object.keys(translations || {}).filter(function (k) {
+      return k !== "en" && String(translations[k] || "").trim() !== "";
+    }).length;
+  }
+
+  function buildConsentRowHtml(question) {
+    const type = question.question_type;
+    const translations = question.translations || {};
+    const en = String(translations.en || "Untitled question");
+    const otherCount = consentTranslationCount(translations);
+    const label = consentTypeLabels[type] || type;
+    const badgeClass = "consent-type-badge-" + type;
+    const enabled = !!question.enabled;
+    const sub = otherCount
+      ? otherCount + " translation" + (otherCount === 1 ? "" : "s") + " filled"
+      : "English only";
+    const status =
+      '<div class="flex flex-col items-center gap-1 shrink-0">' +
+        '<button type="button" class="js-consent-enabled-toggle toggle-switch' + (enabled ? ' active' : '') + '" role="switch" aria-checked="' + (enabled ? 'true' : 'false') + '" title="Enable/Disable" aria-label="Toggle active"></button>' +
+        '<span class="js-consent-enabled-label text-[10px] font-medium ' + (enabled ? 'text-emerald-700' : 'text-gray-500') + '">' + (enabled ? 'Active' : 'Inactive') + '</span>' +
+      '</div>';
+
+    const $row = $(
+      '<div class="question-row px-6 py-4 flex items-center gap-4">' +
+        '<div class="flex-1 min-w-0">' +
+          '<p class="text-sm font-semibold text-on-surface">' + escapeHtml(en) + "</p>" +
+          '<p class="text-xs text-outline mt-0.5">' + escapeHtml(sub) + "</p>" +
+        "</div>" +
+        '<span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 ' + badgeClass + '">' + escapeHtml(label) + "</span>" +
+        status +
+        '<div class="flex gap-1">' +
+          '<button type="button" class="js-edit-consent-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-surface-container-low" aria-label="Edit">' +
+            '<span class="material-symbols-outlined text-on-surface-variant" style="font-size:16px;">edit</span>' +
+          "</button>" +
+          '<button type="button" class="js-remove-consent-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50" aria-label="Delete">' +
+            '<span class="material-symbols-outlined text-red-500" style="font-size:16px;">delete</span>' +
+          "</button>" +
+        "</div>" +
+      "</div>"
+    );
+    $row.attr("data-consent-id", question.id);
+    $row.attr("data-question-type", type);
+    $row.attr("data-enabled", enabled ? "1" : "0");
+    $row.attr("data-translations", JSON.stringify(translations));
+    return $row;
+  }
+
+  $("#btnAddConsentQuestion").on("click", openConsentQuestionModal);
+  $("#btnCloseConsentQuestionModal, #btnCancelConsentQuestionModal").on("click", closeConsentQuestionModal);
+  $consentQuestionModal.on("click", function (event) {
+    if (event.target === this) closeConsentQuestionModal();
+  });
+
+  $("#consentQuestionEnabledToggle").on("click", function () {
+    const next = !$(this).hasClass("active");
+    setConsentEnabledToggle(next);
+  });
+
+  $(document).on("click", ".js-edit-consent-question", function () {
+    const $row = $(this).closest(".question-row");
+    if (!$row.length) return;
+    openEditConsentQuestionModal($row);
+  });
+
+  $(document).on("click", ".js-consent-enabled-toggle", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const $toggle = $(this);
+    const $row = $toggle.closest(".question-row");
+    const id = $row.data("consent-id");
+    if (!id || $toggle.data("busy")) return;
+
+    const nextEnabled = !$toggle.hasClass("active");
+    $toggle.data("busy", true);
+
+    $.ajax({
+      url: CONSENT_STATUS_URL_TEMPLATE.replace("__ID__", String(id)),
+      method: "PATCH",
+      data: JSON.stringify({ enabled: nextEnabled }),
+      contentType: "application/json; charset=UTF-8",
+      headers: {
+        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+        "Accept": "application/json",
+        "X-Requested-With": "XMLHttpRequest"
+      }
+    }).done(function (response) {
+      const enabled = !!(response && response.question ? response.question.enabled : nextEnabled);
+      $toggle.toggleClass("active", enabled).attr("aria-checked", enabled ? "true" : "false");
+      $row.attr("data-enabled", enabled ? "1" : "0");
+      $row.find(".js-consent-enabled-label")
+        .text(enabled ? "Active" : "Inactive")
+        .toggleClass("text-emerald-700", enabled)
+        .toggleClass("text-gray-500", !enabled);
+      if (response && response.question && response.question.translations) {
+        $row.attr("data-translations", JSON.stringify(response.question.translations));
+      }
+    }).fail(function () {
+      // leave UI unchanged on failure
+    }).always(function () {
+      $toggle.data("busy", false);
+    });
+  });
+
+  $("#btnSubmitConsentQuestion").on("click", function () {
+    const type = String($("#consentQuestionType").val() || "").trim();
+    const translations = collectConsentTranslations();
+    const en = translations.en || "";
+    const editingId = $("#editingConsentQuestionId").val();
+    const isEditing = !!editingId;
+    let valid = true;
+
+    $("#consentQuestionTypeError, #consentQuestionTextEnError").addClass("hidden").text("");
+    $("#consentQuestionGeneralError").addClass("hidden").text("");
+    if (!["health", "risk", "aftercare"].includes(type)) {
+      $("#consentQuestionTypeError").removeClass("hidden").text("Select a question type.");
+      valid = false;
+    }
+    if (!en) {
+      $("#consentQuestionTextEnError").removeClass("hidden").text("English question is required.");
+      valid = false;
+    }
+    if (!valid) return;
+
+    const payload = {
+      question_type: type,
+      translations: translations,
+      enabled: $("#consentQuestionEnabled").val() === "true"
+    };
+
+    const $submitBtn = $("#btnSubmitConsentQuestion");
+    const originalBtnHtml = $submitBtn.html();
+    $submitBtn.prop("disabled", true).html("Saving...");
+
+    $.ajax({
+      url: isEditing ? CONSENT_UPDATE_URL_TEMPLATE.replace("__ID__", String(editingId)) : CONSENT_STORE_URL,
+      method: isEditing ? "PUT" : "POST",
+      data: JSON.stringify(payload),
+      contentType: "application/json; charset=UTF-8",
+      headers: {
+        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+        "Accept": "application/json",
+        "X-Requested-With": "XMLHttpRequest"
+      }
+    }).done(function (response) {
+      if (!(response && response.success && response.question)) {
+        $("#consentQuestionGeneralError").removeClass("hidden").text("Unexpected response from server.");
+        return;
+      }
+      const $list = $("#consentQuestions");
+      $list.find(".js-consent-empty-msg").remove();
+      const $row = buildConsentRowHtml(response.question);
+      if (isEditing) {
+        const $existing = $list.find('.question-row[data-consent-id="' + editingId + '"]');
+        if ($existing.length) $existing.replaceWith($row);
+        else $list.append($row);
+      } else {
+        $list.append($row);
+      }
+      closeConsentQuestionModal();
+    }).fail(function (xhr) {
+      if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+        const errors = xhr.responseJSON.errors;
+        if (errors.question_type && errors.question_type[0]) {
+          $("#consentQuestionTypeError").removeClass("hidden").text(errors.question_type[0]);
+        }
+        if (errors["translations.en"] && errors["translations.en"][0]) {
+          $("#consentQuestionTextEnError").removeClass("hidden").text(errors["translations.en"][0]);
+        }
+        const first = Object.values(errors)[0];
+        if (first && first[0]) {
+          $("#consentQuestionGeneralError").removeClass("hidden").text(first[0]);
+        }
+        return;
+      }
+      const msg = (xhr.responseJSON && xhr.responseJSON.message) || "Something went wrong while saving.";
+      $("#consentQuestionGeneralError").removeClass("hidden").text(msg);
+    }).always(function () {
+      $submitBtn.prop("disabled", false).html(originalBtnHtml);
+    });
+  });
+
+  $(document).on("click", ".js-remove-consent-question", function () {
+    const $row = $(this).closest(".question-row");
+    if (!$row.length || !$row.data("consent-id")) return;
+    $pendingDeleteRow = null;
+    $pendingConsentDeleteRow = $row;
+    $("#deleteQuestionError").addClass("hidden").text("");
+    $deleteQuestionModal.addClass("modal-visible");
+    requestAnimationFrame(function () {
+      $deleteQuestionModal.addClass("modal-open").attr("aria-hidden", "false");
+    });
+  });
+
+  // Prefetch language fields when Consent tab is open
+  if ($("#btnAddConsentQuestion").length) {
+    buildConsentLangFields();
+  }
   </script>
 
 @endsection

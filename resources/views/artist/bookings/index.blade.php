@@ -76,6 +76,22 @@
   .artist-urm.artist-urm-open .artist-urm-panel { opacity: 1; transform: translateY(0) scale(1); }
   .artist-urm-backdrop, .artist-urm-panel { pointer-events: none; }
   .artist-urm.artist-urm-open .artist-urm-backdrop, .artist-urm.artist-urm-open .artist-urm-panel { pointer-events: auto; }
+  .artist-cdm { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+  .artist-cdm.artist-cdm-open { pointer-events: auto; opacity: 1; }
+  .artist-cdm-backdrop { opacity: 0; transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+  .artist-cdm.artist-cdm-open .artist-cdm-backdrop { opacity: 1; }
+  .artist-cdm-panel { opacity: 0; transform: translateY(1rem) scale(0.97); transition: opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1), transform 0.36s cubic-bezier(0.22, 1, 0.36, 1); }
+  .artist-cdm.artist-cdm-open .artist-cdm-panel { opacity: 1; transform: translateY(0) scale(1); }
+  .artist-cdm-backdrop, .artist-cdm-panel { pointer-events: none; }
+  .artist-cdm.artist-cdm-open .artist-cdm-backdrop, .artist-cdm.artist-cdm-open .artist-cdm-panel { pointer-events: auto; }
+  .artist-cpm { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+  .artist-cpm.artist-cpm-open { pointer-events: auto; opacity: 1; }
+  .artist-cpm-backdrop { opacity: 0; transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+  .artist-cpm.artist-cpm-open .artist-cpm-backdrop { opacity: 1; }
+  .artist-cpm-panel { opacity: 0; transform: translateY(1rem) scale(0.97); transition: opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1), transform 0.36s cubic-bezier(0.22, 1, 0.36, 1); }
+  .artist-cpm.artist-cpm-open .artist-cpm-panel { opacity: 1; transform: translateY(0) scale(1); }
+  .artist-cpm-backdrop, .artist-cpm-panel { pointer-events: none; }
+  .artist-cpm.artist-cpm-open .artist-cpm-backdrop, .artist-cpm.artist-cpm-open .artist-cpm-panel { pointer-events: auto; }
   .rpm-option-dot { width: 18px; height: 18px; border-radius: 9999px; border: 2px solid #c9c4ce; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
   .rpm-option-dot::after { content: ''; width: 10px; height: 10px; border-radius: 9999px; background: transparent; }
   .rpm-option[aria-checked="true"] .rpm-option-dot { border-color: #1b5e4a; }
@@ -350,6 +366,13 @@
                             data-nudge="{{ e($unsettledNudge) }}">Collect</button>
                         </div>
                       @endif
+                      @include('artist.bookings.partials.consent-bar', [
+                        'booking' => $booking,
+                        'clientName' => $clientName,
+                        'bookingRef' => $bookingRef,
+                        'dateLong' => $dateLong,
+                        'startEnd' => $startEnd,
+                      ])
                       <div class="js-artist-row-actions flex items-center gap-1">
                         <button type="button"
                           class="js-artist-booking-view inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
@@ -543,6 +566,14 @@
                       data-nudge="{{ e($unsettledNudge) }}">Collect</button>
                   </div>
                 @endif
+                @include('artist.bookings.partials.consent-bar', [
+                  'booking' => $booking,
+                  'clientName' => $clientName,
+                  'bookingRef' => $bookingRef,
+                  'dateLong' => $dateLong,
+                  'startEnd' => $startEnd,
+                  'compact' => true,
+                ])
                 <div class="js-artist-row-actions flex flex-wrap items-center gap-2 pt-1">
                   <button type="button"
                     class="js-artist-booking-view inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/25 text-on-surface-variant hover:bg-surface-container-low"
@@ -778,6 +809,83 @@
         <li id="urmSavedNote" class="hidden"></li>
         <li id="urmNudgeNote" class="hidden"></li>
       </ul>
+    </div>
+  </div>
+</div>
+
+<div id="artistConsentDetailModal"
+  class="artist-cdm fixed inset-0 z-[116] flex items-end sm:items-center justify-center p-4 sm:p-6"
+  aria-hidden="true"
+  aria-modal="true"
+  role="dialog"
+  aria-labelledby="acdmTitle">
+  <div class="artist-cdm-backdrop absolute inset-0 bg-black/45" data-close-artist-cdm></div>
+  <div class="artist-cdm-panel relative w-full max-w-lg max-h-[min(90vh,720px)] overflow-y-auto rounded-2xl bg-white shadow-xl border border-outline-variant/20">
+    <div class="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4 border-b border-outline-variant/15 bg-white/95 backdrop-blur-sm rounded-t-2xl">
+      <h3 id="acdmTitle" class="text-lg font-bold text-on-surface truncate pr-2">Consent form</h3>
+      <button type="button" class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-cdm aria-label="Close">
+        <span class="material-symbols-outlined text-[22px]">close</span>
+      </button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p id="acdmClient" class="text-base font-bold text-on-surface truncate">—</p>
+          <p id="acdmBookingRef" class="mt-0.5 text-sm font-medium text-on-surface-variant tabular-nums">—</p>
+          <p id="acdmWhen" class="mt-1 text-sm text-on-surface">—</p>
+        </div>
+        <span class="inline-flex shrink-0 items-center text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset bg-green-50 text-green-700 ring-green-500/20">Submitted</span>
+      </div>
+      <div class="flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3.5 py-2.5">
+        <p class="text-sm font-bold text-[#8a5a12]">Consent submitted</p>
+        <p id="acdmSignedAt" class="text-xs font-semibold text-[#8a5a12]">—</p>
+      </div>
+      <div id="acdmBody" class="space-y-4 text-sm"></div>
+    </div>
+  </div>
+</div>
+
+<div id="artistConsentPendingModal"
+  class="artist-cpm fixed inset-0 z-[116] flex items-end sm:items-center justify-center p-4 sm:p-6"
+  aria-hidden="true"
+  aria-modal="true"
+  role="dialog"
+  aria-labelledby="acpmTitle">
+  <div class="artist-cpm-backdrop absolute inset-0 bg-black/45" data-close-artist-cpm></div>
+  <div class="artist-cpm-panel relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl border border-outline-variant/20">
+    <div class="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4 border-b border-outline-variant/15 bg-white rounded-t-2xl">
+      <h3 id="acpmTitle" class="text-lg font-bold text-on-surface">Consent pending</h3>
+      <button type="button" class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-cpm aria-label="Close">
+        <span class="material-symbols-outlined text-[22px]">close</span>
+      </button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div>
+        <p id="acpmClient" class="text-base font-bold text-on-surface">—</p>
+        <p id="acpmBookingRef" class="mt-0.5 text-sm font-medium text-on-surface-variant tabular-nums">—</p>
+        <p id="acpmWhen" class="mt-1 text-sm text-on-surface">—</p>
+      </div>
+      <div class="flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3.5 py-2.5">
+        <p class="text-sm font-bold text-[#8a5a12]">Consent pending</p>
+      </div>
+      <p class="text-sm text-on-surface-variant leading-relaxed">
+        Client hasn’t completed the consent form yet. Resend the email or show a QR code they can scan.
+      </p>
+      <div class="space-y-2">
+        <button type="button" id="acpmResendBtn" class="w-full rounded-xl bg-[#1b5e4a] px-4 py-3.5 text-sm font-bold text-white disabled:opacity-70 disabled:cursor-wait">
+          Resend email
+        </button>
+        <button type="button" id="acpmShowQrBtn" class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3 text-sm font-semibold text-on-surface" aria-expanded="false" aria-controls="acpmQrWrap">
+          Show QR
+        </button>
+        <div id="acpmQrWrap" class="hidden">
+          <div class="rounded-xl border border-outline-variant/40 bg-white px-4 py-5 flex flex-col items-center justify-center">
+            <img id="acpmQrImage" alt="Consent form QR code" class="h-48 w-48 rounded-lg bg-white object-contain">
+            <p class="mt-3 text-xs text-on-surface-variant text-center">Scan to open the consent form</p>
+          </div>
+        </div>
+      </div>
+      <p id="acpmStatus" class="hidden text-xs font-semibold"></p>
     </div>
   </div>
 </div>
@@ -2750,6 +2858,331 @@
     }
     if (reminderModal && reminderModal.classList.contains('artist-urm-open')) {
       closeReminder();
+    }
+  });
+})();
+</script>
+<script>
+(function () {
+  var modal = document.getElementById('artistConsentDetailModal');
+  if (!modal) return;
+
+  var clientEl = document.getElementById('acdmClient');
+  var refEl = document.getElementById('acdmBookingRef');
+  var whenEl = document.getElementById('acdmWhen');
+  var signedAtEl = document.getElementById('acdmSignedAt');
+  var bodyEl = document.getElementById('acdmBody');
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function row(label, value) {
+    if (value == null || String(value).trim() === '') return '';
+    return '<div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">' +
+      '<dt class="text-on-surface-variant font-medium">' + esc(label) + '</dt>' +
+      '<dd class="text-on-surface text-right">' + esc(value) + '</dd></div>';
+  }
+
+  function section(title, html) {
+    if (!html) return '';
+    return '<div class="rounded-xl border border-outline-variant/20 bg-surface-container-low/40 p-4">' +
+      '<p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-3">' + esc(title) + '</p>' +
+      html + '</div>';
+  }
+
+  function yesNoBadge(answer) {
+    var a = String(answer || '').toLowerCase();
+    if (a === 'yes') {
+      return '<span class="inline-flex text-xs font-semibold px-2 py-0.5 rounded-full bg-[#FDF6EE] text-[#9A5B13]">Yes</span>';
+    }
+    if (a === 'no') {
+      return '<span class="inline-flex text-xs font-semibold px-2 py-0.5 rounded-full bg-[#EAF2EF] text-[#1E3A34]">No</span>';
+    }
+    return esc(answer || '—');
+  }
+
+  function parseConsent(raw) {
+    if (!raw) return null;
+    if (typeof raw === 'object') return raw;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+  }
+
+  function openModal(btn) {
+    var ds = btn.dataset || {};
+    var consent = parseConsent(ds.consent);
+    if (!consent) return;
+
+    if (clientEl) clientEl.textContent = ds.clientName || '—';
+    if (refEl) refEl.textContent = ds.bookingRef || '—';
+    if (whenEl) {
+      var when = [ds.dateDisplay, ds.timeRange].filter(Boolean).join(' · ');
+      whenEl.textContent = when || '—';
+    }
+    if (signedAtEl) signedAtEl.textContent = consent.completed_at || 'Signed';
+
+    var parts = [];
+    parts.push(section('Client details',
+      '<dl>' +
+      row('Full name', consent.full_name) +
+      row('Date of birth', consent.date_of_birth) +
+      row('Phone', consent.phone) +
+      row('Emergency contact', consent.emergency_contact) +
+      row('Signature', consent.typed_signature) +
+      row('Language', consent.form_language) +
+      '</dl>'
+    ));
+
+    if (consent.guardian_name || consent.guardian_signature) {
+      parts.push(section('Guardian consent',
+        '<dl>' +
+        row('Guardian name', consent.guardian_name) +
+        row('Relationship', consent.guardian_relationship) +
+        row('ID reference', consent.guardian_id_reference) +
+        row('Guardian signature', consent.guardian_signature) +
+        '</dl>'
+      ));
+    }
+
+    var health = Array.isArray(consent.health) ? consent.health : [];
+    if (health.length) {
+      var healthHtml = '<div class="space-y-2.5">' + health.map(function (item) {
+        return '<div class="flex items-start justify-between gap-3">' +
+          '<p class="text-on-surface leading-snug">' + esc(item.text || item.label || '') + '</p>' +
+          yesNoBadge(item.answer) +
+          '</div>';
+      }).join('') + '</div>';
+      if (consent.other_health_note) {
+        healthHtml += '<p class="mt-3 text-on-surface-variant"><span class="font-medium text-on-surface">Other notes:</span> ' +
+          esc(consent.other_health_note) + '</p>';
+      }
+      parts.push(section('Health screening', healthHtml));
+    }
+
+    var risk = Array.isArray(consent.risk) ? consent.risk : [];
+    if (risk.length) {
+      parts.push(section('Risks accepted',
+        '<ul class="space-y-2 list-disc pl-5 text-on-surface">' +
+        risk.map(function (item) {
+          return '<li>' + esc(item.text || item.label || '') + '</li>';
+        }).join('') +
+        '</ul>' +
+        '<p class="mt-3 text-xs text-on-surface-variant">' +
+        (consent.accepted_risks ? 'Client accepted the risks.' : 'Risks acknowledgement missing.') +
+        '</p>'
+      ));
+    }
+
+    var aftercare = Array.isArray(consent.aftercare) ? consent.aftercare : [];
+    if (aftercare.length) {
+      parts.push(section('Aftercare accepted',
+        '<ul class="space-y-2 list-disc pl-5 text-on-surface">' +
+        aftercare.map(function (item) {
+          return '<li>' + esc(item.text || item.label || '') + '</li>';
+        }).join('') +
+        '</ul>' +
+        '<p class="mt-3 text-xs text-on-surface-variant">' +
+        (consent.accepted_aftercare ? 'Client agreed to follow aftercare.' : 'Aftercare acknowledgement missing.') +
+        '</p>'
+      ));
+    }
+
+    parts.push(section('Acknowledgements',
+      '<ul class="space-y-1.5 text-on-surface">' +
+      '<li>Health data consent: <strong>' + (consent.accepted_health_consent ? 'Yes' : 'No') + '</strong></li>' +
+      '<li>Data protection notice: <strong>' + (consent.accepted_data_notice ? 'Yes' : 'No') + '</strong></li>' +
+      '<li>Photo consent: <strong>' + (consent.accepted_photo ? 'Yes' : 'No') + '</strong></li>' +
+      '</ul>'
+    ));
+
+    if (bodyEl) bodyEl.innerHTML = parts.filter(Boolean).join('');
+
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function () {
+      modal.classList.add('artist-cdm-open');
+    });
+  }
+
+  function closeModal() {
+    modal.classList.remove('artist-cdm-open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  document.querySelectorAll('.js-artist-consent-view').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openModal(btn);
+    });
+  });
+
+  modal.querySelectorAll('[data-close-artist-cdm]').forEach(function (el) {
+    el.addEventListener('click', closeModal);
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modal.classList.contains('artist-cdm-open')) {
+      closeModal();
+    }
+  });
+})();
+</script>
+<script>
+(function () {
+  var modal = document.getElementById('artistConsentPendingModal');
+  if (!modal) return;
+
+  var clientEl = document.getElementById('acpmClient');
+  var refEl = document.getElementById('acpmBookingRef');
+  var whenEl = document.getElementById('acpmWhen');
+  var resendBtn = document.getElementById('acpmResendBtn');
+  var showQrBtn = document.getElementById('acpmShowQrBtn');
+  var qrWrap = document.getElementById('acpmQrWrap');
+  var qrImage = document.getElementById('acpmQrImage');
+  var statusEl = document.getElementById('acpmStatus');
+
+  var currentResendUrl = '';
+  var currentConsentUrl = '';
+  var sending = false;
+
+  function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+  }
+
+  function setStatus(msg, isError) {
+    if (!statusEl) return;
+    if (!msg) {
+      statusEl.classList.add('hidden');
+      statusEl.textContent = '';
+      return;
+    }
+    statusEl.textContent = msg;
+    statusEl.classList.remove('hidden');
+    statusEl.className = 'text-xs font-semibold ' + (isError ? 'text-error' : 'text-[#1b5e4a]');
+  }
+
+  function hideQr() {
+    if (qrWrap) qrWrap.classList.add('hidden');
+    if (showQrBtn) {
+      showQrBtn.setAttribute('aria-expanded', 'false');
+      showQrBtn.textContent = 'Show QR';
+    }
+  }
+
+  function openModal(btn) {
+    var ds = btn.dataset || {};
+    currentResendUrl = ds.resendUrl || '';
+    currentConsentUrl = ds.consentUrl || '';
+    sending = false;
+    if (resendBtn) {
+      resendBtn.disabled = false;
+      resendBtn.textContent = 'Resend email';
+    }
+    hideQr();
+    setStatus('');
+
+    if (clientEl) clientEl.textContent = ds.clientName || '—';
+    if (refEl) refEl.textContent = ds.bookingRef || '—';
+    if (whenEl) {
+      var when = [ds.dateDisplay, ds.timeRange].filter(Boolean).join(' · ');
+      whenEl.textContent = when || '—';
+    }
+
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function () {
+      modal.classList.add('artist-cpm-open');
+    });
+  }
+
+  function closeModal() {
+    modal.classList.remove('artist-cpm-open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    hideQr();
+  }
+
+  if (showQrBtn) {
+    showQrBtn.addEventListener('click', function () {
+      if (!currentConsentUrl) {
+        setStatus('Consent link is not ready yet. Resend email first.', true);
+        return;
+      }
+      var open = showQrBtn.getAttribute('aria-expanded') === 'true';
+      if (open) {
+        hideQr();
+        return;
+      }
+      if (qrImage) {
+        qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(currentConsentUrl);
+      }
+      if (qrWrap) qrWrap.classList.remove('hidden');
+      showQrBtn.setAttribute('aria-expanded', 'true');
+      showQrBtn.textContent = 'Hide QR';
+    });
+  }
+
+  if (resendBtn) {
+    resendBtn.addEventListener('click', function () {
+      if (sending || !currentResendUrl) return;
+      sending = true;
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Sending…';
+      setStatus('');
+
+      fetch(currentResendUrl, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({})
+      })
+        .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+        .then(function (result) {
+          if (!result.ok || !result.data.success) {
+            setStatus((result.data && result.data.message) || 'Could not send email.', true);
+            return;
+          }
+          if (result.data.consent_url) {
+            currentConsentUrl = result.data.consent_url;
+            document.querySelectorAll('.js-artist-consent-pending[data-resend-url="' + currentResendUrl + '"]').forEach(function (btn) {
+              btn.setAttribute('data-consent-url', currentConsentUrl);
+            });
+          }
+          setStatus(result.data.message || 'Consent form email sent.', false);
+        })
+        .catch(function () {
+          setStatus('Could not send email. Please try again.', true);
+        })
+        .finally(function () {
+          sending = false;
+          resendBtn.disabled = false;
+          resendBtn.textContent = 'Resend email';
+        });
+    });
+  }
+
+  document.querySelectorAll('.js-artist-consent-pending').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openModal(btn);
+    });
+  });
+
+  modal.querySelectorAll('[data-close-artist-cpm]').forEach(function (el) {
+    el.addEventListener('click', closeModal);
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modal.classList.contains('artist-cpm-open')) {
+      closeModal();
     }
   });
 })();

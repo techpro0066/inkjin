@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ArtistReferral extends Model
 {
+    public const STATUS_SIGNUP_NOT_COMPLETED = 'signup_not_completed';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_SENT_TO_ADMIN = 'sent_to_admin';
@@ -54,6 +56,11 @@ class ArtistReferral extends Model
     public function qualifiedBooking(): BelongsTo
     {
         return $this->belongsTo(Booking::class, 'qualified_booking_id');
+    }
+
+    public function isSignupNotCompleted(): bool
+    {
+        return $this->status === self::STATUS_SIGNUP_NOT_COMPLETED;
     }
 
     public function isPending(): bool

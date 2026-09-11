@@ -1957,6 +1957,8 @@ class OnboardingController extends Controller
                     ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_ARTIST);
 
                 $this->seedDefaultQuestionSortingForArtist($user);
+                app(\App\Services\ArtistReferralRewardService::class)
+                    ->markPendingWhenReferredArtistBecomesActive($user);
             }
 
             return response()->json([
@@ -2020,6 +2022,8 @@ class OnboardingController extends Controller
                 ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_ARTIST);
 
             $this->seedDefaultQuestionSortingForArtist($user);
+            app(\App\Services\ArtistReferralRewardService::class)
+                ->markPendingWhenReferredArtistBecomesActive($user);
 
             return response()->json([
                 'success' => true,

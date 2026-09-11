@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bookpay — Consent Form (Client)</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style> body { margin: 0; } </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const { useState } = React;
+
+// Minimal inline icon set — simple generic SVGs standing in for
+// lucide-react so this file has zero npm dependency. Not pixel-exact
+// to the original icon set, just visually equivalent.
+const Icon = ({
+  children,
+  size = 16,
+  className = "",
+  style
+}) => /*#__PURE__*/React.createElement("svg", {
+  width: size,
+  height: size,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  className: className,
+  style: style
+}, children);
+const Lock = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("rect", {
+  x: "4",
+  y: "11",
+  width: "16",
+  height: "9",
+  rx: "2"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M8 11V7a4 4 0 0 1 8 0v4"
+}));
+const ShieldCheck = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M9 12l2 2 4-4"
+}));
+const Info = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "12",
+  r: "9"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "12",
+  y1: "11",
+  x2: "12",
+  y2: "16"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "7.5",
+  r: "0.6",
+  fill: "currentColor",
+  stroke: "none"
+}));
+const ChevronDown = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("polyline", {
+  points: "6 9 12 15 18 9"
+}));
+const ChevronLeft = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("polyline", {
+  points: "15 18 9 12 15 6"
+}));
+const AlertTriangle = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M12 3l10 18H2L12 3z"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "12",
+  y1: "10",
+  x2: "12",
+  y2: "14"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "17",
+  r: "0.6",
+  fill: "currentColor",
+  stroke: "none"
+}));
+const Check = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("polyline", {
+  points: "5 13 10 18 19 7"
+}));
+const X = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("line", {
+  x1: "6",
+  y1: "6",
+  x2: "18",
+  y2: "18"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "18",
+  y1: "6",
+  x2: "6",
+  y2: "18"
+}));
+const Trash2 = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("polyline", {
+  points: "4 7 20 7"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M10 11v6"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M14 11v6"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M9 7V4h6v3"
+}));
+const Plus = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("line", {
+  x1: "12",
+  y1: "5",
+  x2: "12",
+  y2: "19"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "5",
+  y1: "12",
+  x2: "19",
+  y2: "12"
+}));
+const RotateCcw = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M3 12a9 9 0 1 0 3-6.7"
+}), /*#__PURE__*/React.createElement("polyline", {
+  points: "3 4 3 9 8 9"
+}));
+const Languages = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "12",
+  r: "9"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M3 12h18"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M12 3a13 13 0 0 1 0 18a13 13 0 0 1 0-18z"
+}));
+const Globe = Languages;
+const QrCode = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("rect", {
+  x: "3",
+  y: "3",
+  width: "7",
+  height: "7"
+}), /*#__PURE__*/React.createElement("rect", {
+  x: "14",
+  y: "3",
+  width: "7",
+  height: "7"
+}), /*#__PURE__*/React.createElement("rect", {
+  x: "3",
+  y: "14",
+  width: "7",
+  height: "7"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "14",
+  y1: "14",
+  x2: "14",
+  y2: "21"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "21",
+  y1: "14",
+  x2: "21",
+  y2: "21"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "17.5",
+  y1: "14",
+  x2: "17.5",
+  y2: "17.5"
+}));
+const Sparkles = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M19 15l0.7 2.1L22 18l-2.3 0.9L19 21l-0.7-2.1L16 18l2.3-0.9z"
+}));
+const Clock = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "12",
+  r: "9"
+}), /*#__PURE__*/React.createElement("polyline", {
+  points: "12 7 12 12 16 14"
+}));
+const Send = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("line", {
+  x1: "21",
+  y1: "3",
+  x2: "10",
+  y2: "14"
+}), /*#__PURE__*/React.createElement("polygon", {
+  points: "21 3 14 21 10 14 3 10 21 3"
+}));
+const FileText = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "9",
+  y1: "12",
+  x2: "15",
+  y2: "12"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "9",
+  y1: "16",
+  x2: "15",
+  y2: "16"
+}));
+const RISK_ITEMS = ["Tattooing is permanent and cannot be easily reversed.", "Results vary depending on skin type, tone, and healing.", "There is a risk of infection, even with proper aftercare.", "Tattoo inks may cause an allergic reaction.", "Scarring or granulomas can occur.", "Ink can spread beyond the intended line (blowout).", "Tattoos fade over time and may need touch-ups.", "The final result may not exactly match a reference image.", "Healing outcome depends significantly on aftercare.", "I confirm I am not under the influence of alcohol or drugs."];
+const AFTERCARE_ITEMS = ["Keep the wrap on for 2 hours after your session.", "Wash gently with fragrance-free, dye-free soap and clean hands.", "Pat dry with a clean paper towel — don't rub.", "Apply a thin layer of the recommended moisturiser.", "Repeat washing and moisturising 2–3 times daily until fully healed.", "Avoid direct sun exposure on the healing tattoo.", "Don't submerge in pools, hot tubs, or open water until fully healed.", "Don't scratch, pick, or peel flaking skin.", "Avoid tight clothing over the tattoo site during healing."];
+const HEALTH_ITEMS = [{
+  id: "heart",
+  label: "Heart condition, pacemaker, or heart surgery history"
+}, {
+  id: "diabetes",
+  label: "Diabetes (Type 1 or Type 2)"
+}, {
+  id: "bleeding",
+  label: "Haemophilia or other bleeding disorder"
+}, {
+  id: "pregnant",
+  label: "Currently pregnant or breastfeeding"
+}, {
+  id: "epilepsy",
+  label: "Epilepsy or seizure history"
+}, {
+  id: "bloodborne",
+  label: "HIV, hepatitis B, or hepatitis C"
+}, {
+  id: "skin",
+  label: "Active skin condition at or near the tattoo site"
+}, {
+  id: "bloodthinners",
+  label: "Blood thinners, aspirin, or ibuprofen in the last 24 hours"
+}, {
+  id: "substances",
+  label: "Alcohol or recreational drugs in the last 24 hours"
+}, {
+  id: "inkallergy",
+  label: "Prior allergic reaction to tattoo ink or pigment"
+}, {
+  id: "latex",
+  label: "Latex allergy"
+}, {
+  id: "keloid",
+  label: "History of keloid or hypertrophic scarring"
+}, {
+  id: "roaccutane",
+  label: "Roaccutane or other photosensitising medication in the last 6 months"
+}];
+function YesNoRow({
+  item,
+  value,
+  onChange
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between gap-3 py-2.5"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm text-[#1C1B18] leading-snug"
+  }, item.label), /*#__PURE__*/React.createElement("div", {
+    className: "flex shrink-0 rounded-lg border border-stone-300 overflow-hidden text-xs font-medium"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => onChange(item.id, "yes"),
+    className: `px-3 py-1.5 ${value === "yes" ? "text-white" : "bg-white text-[#6B6858]"}`,
+    style: value === "yes" ? {
+      backgroundColor: "#9A5B13"
+    } : undefined
+  }, "Yes"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => onChange(item.id, "no"),
+    className: `px-3 py-1.5 border-l border-stone-300 ${value === "no" ? "text-white" : "bg-white text-[#6B6858]"}`,
+    style: value === "no" ? {
+      backgroundColor: "#1E3A34"
+    } : undefined
+  }, "No")));
+}
+function ClientConsentView() {
+  const [fullName, setFullName] = useState("");
+  const [dob, setDob] = useState("");
+  const [phone, setPhone] = useState("");
+  const [emergencyContact, setEmergencyContact] = useState("");
+  const [healthAnswers, setHealthAnswers] = useState({});
+  const [otherHealthNote, setOtherHealthNote] = useState("");
+  const [liabilityChecked, setLiabilityChecked] = useState(false);
+  const [healthConsentChecked, setHealthConsentChecked] = useState(false);
+  const [aftercareChecked, setAftercareChecked] = useState(false);
+  const [dataNoticeChecked, setDataNoticeChecked] = useState(false);
+  const [photoConsentChecked, setPhotoConsentChecked] = useState(false);
+  const [typedName, setTypedName] = useState("");
+  const [signed, setSigned] = useState(false);
+  const setHealthAnswer = (id, val) => setHealthAnswers(prev => ({
+    ...prev,
+    [id]: val
+  }));
+  const healthComplete = HEALTH_ITEMS.every(i => healthAnswers[i.id]);
+  const flaggedCount = HEALTH_ITEMS.filter(i => healthAnswers[i.id] === "yes").length;
+  const allRequiredChecked = fullName.trim().length > 1 && dob.trim().length > 0 && healthComplete && liabilityChecked && healthConsentChecked && aftercareChecked && dataNoticeChecked && typedName.trim().length > 1;
+  if (signed) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "min-h-screen w-full bg-[#F7F6F2] flex items-center justify-center px-5 font-sans"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "w-full max-w-[420px] rounded-2xl border border-stone-200 bg-white p-8 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#EAF2EF]"
+    }, /*#__PURE__*/React.createElement(Check, {
+      size: 22,
+      className: "text-[#1E3A34]"
+    })), /*#__PURE__*/React.createElement("h1", {
+      className: "text-lg font-semibold text-[#1C1B18]"
+    }, "Signed"), /*#__PURE__*/React.createElement("p", {
+      className: "mt-1.5 text-sm text-[#6B6858] leading-relaxed"
+    }, "Thanks, ", typedName.split(" ")[0] || "there", ". Artem has been notified — see you Thursday at 3:00 PM."), /*#__PURE__*/React.createElement("p", {
+      className: "mt-3 text-xs text-[#6B6858] leading-relaxed"
+    }, "Bring a valid passport or driving licence — Artem will confirm your ID and date of birth in person before your session.")));
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen w-full bg-[#F7F6F2] font-sans"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mx-auto max-w-[420px] px-4 py-8"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-5 flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3.5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-white text-sm font-semibold",
+    style: {
+      backgroundColor: "#1E3A34"
+    }
+  }, "AK"), /*#__PURE__*/React.createElement("div", {
+    className: "min-w-0"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-semibold text-[#1C1B18] truncate"
+  }, "Artem K."), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-[#6B6858]"
+  }, "Ink & Bone Studio · Thu, Aug 6 · 3:00 PM"))), /*#__PURE__*/React.createElement("div", {
+    className: "rounded-2xl border border-stone-200 bg-white overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-4 border-b border-stone-100"
+  }, /*#__PURE__*/React.createElement("h1", {
+    className: "text-base font-semibold text-[#1C1B18] mb-1.5"
+  }, "Consent form"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm text-[#3A382F] leading-relaxed"
+  }, "Please complete this before your appointment. It takes about 3 minutes.")), /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-4 border-b border-stone-100 space-y-3"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs font-semibold uppercase tracking-wide text-[#6B6858]"
+  }, "Your details"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-sm font-medium text-[#1C1B18] mb-1"
+  }, "Full legal name"), /*#__PURE__*/React.createElement("input", {
+    value: fullName,
+    onChange: e => setFullName(e.target.value),
+    className: "w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A34]/20 focus:border-[#1E3A34]"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-sm font-medium text-[#1C1B18] mb-1"
+  }, "Date of birth"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: dob,
+    onChange: e => setDob(e.target.value),
+    className: "w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A34]/20 focus:border-[#1E3A34]"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-sm font-medium text-[#1C1B18] mb-1"
+  }, "Phone number"), /*#__PURE__*/React.createElement("input", {
+    value: phone,
+    onChange: e => setPhone(e.target.value),
+    className: "w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A34]/20 focus:border-[#1E3A34]"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-sm font-medium text-[#1C1B18] mb-1"
+  }, "Emergency contact (name & phone)"), /*#__PURE__*/React.createElement("input", {
+    value: emergencyContact,
+    onChange: e => setEmergencyContact(e.target.value),
+    className: "w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A34]/20 focus:border-[#1E3A34]"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-4 border-b border-stone-100 bg-[#FDF6EE]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start gap-2"
+  }, /*#__PURE__*/React.createElement(AlertTriangle, {
+    size: 14,
+    className: "text-[#9A5B13] mt-0.5 shrink-0"
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-[#7A5210] leading-relaxed"
+  }, "It is a criminal offence to tattoo anyone under 18 in the UK. There is no parental consent exception. Artem will confirm your date of birth against valid photo ID in person before your session begins."))), /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-4 border-b border-stone-100"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs font-semibold uppercase tracking-wide text-[#6B6858] mb-1"
+  }, "Health screening"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-[#6B6858] mb-1 leading-relaxed"
+  }, "Please answer honestly — this protects both you and your artist."), /*#__PURE__*/React.createElement("div", {
+    className: "divide-y divide-stone-100"
+  }, HEALTH_ITEMS.map(item => /*#__PURE__*/React.createElement(YesNoRow, {
+    key: item.id,
+    item: item,
+    value: healthAnswers[item.id],
+    onChange: setHealthAnswer
+  }))), flaggedCount > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 flex items-start gap-2 rounded-lg bg-[#FDF6EE] px-3 py-2"
+  }, /*#__PURE__*/React.createElement(Info, {
+    size: 13,
+    className: "text-[#9A5B13] mt-0.5 shrink-0"
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-[#7A5210] leading-relaxed"
+  }, flaggedCount, " item", flaggedCount > 1 ? "s" : "", " flagged \"yes\" — Artem will review these with you before starting.")), /*#__PURE__*/React.createElement("div", {
+    className: "mt-3"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "block text-sm font-medium text-[#1C1B18] mb-1"
+  }, "Anything else Artem should know?"), /*#__PURE__*/React.createElement("input", {
+    value: otherHealthNote,
+    onChange: e => setOtherHealthNote(e.target.value),
+    placeholder: "Optional",
+    className: "w-full rounded-lg border border-stone-300 px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#1E3A34]/20 focus:border-[#1E3A34]"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-4 border-b border-stone-100"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs font-semibold uppercase tracking-wide text-[#6B6858] mb-1"
+  }, "Risks & consent"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-[#6B6858] mb-1 leading-relaxed"
+  }, "Please read each item before agreeing below."), /*#__PURE__*/React.createElement("ul", {
+    className: "divide-y divide-stone-100"
+  }, RISK_ITEMS.map((item, idx) => /*#__PURE__*/React.createElement("li", {
+    key: idx,
+    className: "py-2.5 flex items-start gap-2.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mt-1.5 h-1 w-1 rounded-full bg-[#6B6858] shrink-0"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm text-[#1C1B18] leading-snug"
+  }, item))))), /*#__PURE__*/React.createElement("label", {
+    className: "flex items-start gap-3 px-5 py-4 border-b border-stone-100 cursor-pointer"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: liabilityChecked,
+    onChange: e => setLiabilityChecked(e.target.checked),
+    className: "mt-0.5 h-4 w-4 rounded border-stone-300 accent-[#1E3A34]"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm text-[#1C1B18]"
+  }, "I've read and accept the risks above.")), /*#__PURE__*/React.createElement("label", {
+    className: "flex items-start gap-3 px-5 py-4 border-b border-stone-100 cursor-pointer bg-stone-50/50"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: healthConsentChecked,
+    onChange: e => setHealthConsentChecked(e.target.checked),
+    className: "mt-0.5 h-4 w-4 rounded border-stone-300 accent-[#1E3A34]"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm text-[#1C1B18]"
+  }, "I consent to Artem K. processing the health information above for the purpose of this tattoo session.")), /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-4 border-b border-stone-100"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs font-semibold uppercase tracking-wide text-[#6B6858] mb-1"
+  }, "Aftercare"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-[#6B6858] mb-1 leading-relaxed"
+  }, "Follow these steps while your tattoo heals."), /*#__PURE__*/React.createElement("ul", {
+    className: "divide-y divide-stone-100"
+  }, AFTERCARE_ITEMS.map((item, idx) => /*#__PURE__*/React.createElement("li", {
+    key: idx,
+    className: "py-2.5 flex items-start gap-2.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mt-1.5 h-1 w-1 rounded-full bg-[#6B6858] shrink-0"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm text-[#1C1B18] leading-snug"
+  }, item))))), /*#__PURE__*/React.createElement("label", {
+    className: "flex items-start gap-3 px-5 py-4 border-b border-stone-100 cursor-pointer"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: aftercareChecked,
+    onChange: e => setAftercareChecked(e.target.checked),
+    className: "mt-0.5 h-4 w-4 rounded border-stone-300 accent-[#1E3A34]"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm text-[#1C1B18]"
+  }, "I've read and will follow the aftercare instructions above.")), /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-3.5 border-b border-stone-100 bg-stone-50/50"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start gap-2 mb-2.5"
+  }, /*#__PURE__*/React.createElement(Info, {
+    size: 13,
+    className: "text-[#6B6858] mt-0.5 shrink-0"
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-[#6B6858] leading-relaxed"
+  }, "Ink & Bone Studio is the data controller for the information on this form. It's kept as a legal and safety record for the minimum period local rules require, then securely destroyed. You can request access or deletion from the studio once that period ends.")), /*#__PURE__*/React.createElement("label", {
+    className: "flex items-start gap-3 cursor-pointer"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: dataNoticeChecked,
+    onChange: e => setDataNoticeChecked(e.target.checked),
+    className: "mt-0.5 h-4 w-4 rounded border-stone-300 accent-[#1E3A34]"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm text-[#1C1B18]"
+  }, "I acknowledge this data protection notice."))), /*#__PURE__*/React.createElement("label", {
+    className: "flex items-start gap-3 px-5 py-4 border-b border-stone-100 cursor-pointer"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: photoConsentChecked,
+    onChange: e => setPhotoConsentChecked(e.target.checked),
+    className: "mt-0.5 h-4 w-4 rounded border-stone-300 accent-[#1E3A34]"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm text-[#1C1B18]"
+  }, "Optional — I agree Artem K. may photograph my completed tattoo (not my face) and use it in their portfolio and social media.")), /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-4 border-b border-stone-100"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "block text-sm font-medium text-[#1C1B18] mb-1.5"
+  }, "Type your full name to sign"), /*#__PURE__*/React.createElement("input", {
+    value: typedName,
+    onChange: e => setTypedName(e.target.value),
+    placeholder: "Full name",
+    className: "w-full rounded-lg border border-stone-300 px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#1E3A34]/20 focus:border-[#1E3A34]"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-3 text-center"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-stone-400"
+  }, "This consent form was provided by Artem K. / Ink and Bone Studio."))), /*#__PURE__*/React.createElement("button", {
+    disabled: !allRequiredChecked,
+    onClick: () => setSigned(true),
+    className: `mt-5 w-full rounded-xl py-3.5 text-sm font-semibold transition-colors ${allRequiredChecked ? "text-white" : "bg-stone-200 text-stone-400 cursor-not-allowed"}`,
+    style: allRequiredChecked ? {
+      backgroundColor: "#1E3A34"
+    } : undefined
+  }, "Sign and submit")));
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(ClientConsentView));
+</script>
+</body>
+</html>

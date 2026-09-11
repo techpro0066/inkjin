@@ -123,6 +123,8 @@
   }
   .refer-status-pending { background: #fffbeb; color: #b45309; }
   .refer-status-pending .refer-status-dot { background: #f59e0b; }
+  .refer-status-signup_not_completed { background: #f3f4f6; color: #4b5563; }
+  .refer-status-signup_not_completed .refer-status-dot { background: #9ca3af; }
   .refer-status-rewarded { background: #f0fdf4; color: #15803d; }
   .refer-status-rewarded .refer-status-dot { background: #22c55e; }
   .refer-status-rejected { background: #fef2f2; color: #b91c1c; }

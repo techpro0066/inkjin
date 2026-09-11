@@ -64,6 +64,8 @@ class Booking extends Model
         'no_show_marked_at',
         'action_history',
         'reminder_sent_at',
+        'reminder_72h_sent_at',
+        'reminder_24h_sent_at',
         'google_calendar_event_id',
         'google_meet_link',
         'consultation_timing_type',
@@ -95,6 +97,8 @@ class Booking extends Model
         'completed_at' => 'datetime',
         'no_show_marked_at' => 'datetime',
         'reminder_sent_at' => 'datetime',
+        'reminder_72h_sent_at' => 'datetime',
+        'reminder_24h_sent_at' => 'datetime',
         'rescheduled_at' => 'datetime',
         'deposit_amount' => 'decimal:2',
         'platform_fee' => 'decimal:2',
@@ -144,6 +148,11 @@ class Booking extends Model
     public function paymentLink(): HasOne
     {
         return $this->hasOne(PaymentLink::class, 'booking_id');
+    }
+
+    public function consentAnswer(): HasOne
+    {
+        return $this->hasOne(ConsentAnswer::class, 'booking_id');
     }
 
     public function balanceCollections(): HasMany

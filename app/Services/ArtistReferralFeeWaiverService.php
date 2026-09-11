@@ -22,6 +22,7 @@ class ArtistReferralFeeWaiverService
         $hasPendingReferral = ArtistReferral::query()
             ->where('referred_user_id', $artistUserId)
             ->where('fee_waived', false)
+            ->where('status', '!=', ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED)
             ->exists();
 
         if (! $hasPendingReferral) {
@@ -88,6 +89,7 @@ class ArtistReferralFeeWaiverService
             $referral = ArtistReferral::query()
                 ->where('referred_user_id', $artistUserId)
                 ->where('fee_waived', false)
+                ->where('status', '!=', ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED)
                 ->lockForUpdate()
                 ->first();
 

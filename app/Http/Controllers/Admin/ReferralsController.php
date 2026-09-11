@@ -42,6 +42,7 @@ class ReferralsController extends Controller
             'total' => $total,
             'perPage' => $perPage,
             'statuses' => [
+                ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED,
                 ArtistReferral::STATUS_PENDING,
                 ArtistReferral::STATUS_SENT_TO_ADMIN,
                 ArtistReferral::STATUS_REWARDED,
@@ -102,6 +103,7 @@ class ReferralsController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::in([
                 'all',
+                ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED,
                 ArtistReferral::STATUS_PENDING,
                 ArtistReferral::STATUS_SENT_TO_ADMIN,
                 ArtistReferral::STATUS_REWARDED,

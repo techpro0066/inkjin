@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('signups:purge-unverified-bots')->hourly();
         $schedule->command('payment-links:send-session-reminders')->hourly();
         $schedule->command('payment-links:send-expiry-reminders')->hourly();
+        $schedule->command('consents:send-due')->everyFifteenMinutes();
+        $schedule->command('bookings:send-appointment-reminders')->everyFifteenMinutes();
         $schedule->command('guest-spots:expire-holds')->everyFiveMinutes();
         $schedule->command('stripe:sync-requirements')->everyFiveMinutes();
     })

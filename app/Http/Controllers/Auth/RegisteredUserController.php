@@ -200,7 +200,7 @@ class RegisteredUserController extends Controller
             ['referred_user_id' => $newUser->id],
             [
                 'referrer_user_id' => $referrer->id,
-                'status' => ArtistReferral::STATUS_PENDING,
+                'status' => ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED,
                 'reward_amount' => 20.00,
                 'fee_waived' => false,
             ]

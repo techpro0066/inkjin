@@ -179,10 +179,6 @@ class ArtistDesignsController extends Controller
             ->orderBy('id')
             ->get();
 
-        $whatsIncludedItems = is_array($userDetail?->design_whats_included)
-            ? array_values($userDetail->design_whats_included)
-            : [];
-        
         $styles = $this->styles();
         $placements = $this->placements();
 
@@ -202,8 +198,6 @@ class ArtistDesignsController extends Controller
 
         return view('artist.artist_designs.index', [
             'artistDesigns' => $artistDesigns,
-            'whatsIncludedIsActive' => (bool) ($userDetail?->design_whats_included_is_active ?? false),
-            'whatsIncludedItems' => $whatsIncludedItems,
             'styles' => $styles,
             'placements' => $placements,
             'sizeUnit' => in_array(($userDetail?->size_unit ?? 'cm'), ['cm', 'in'], true)

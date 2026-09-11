@@ -473,9 +473,29 @@ class ArtistReferralRewardService
         };
     }
 
+    /**
+     * When a referred artist finishes onboarding (becomes Active), move referral to pending.
+     */
+    public function markPendingWhenReferredArtistBecomesActive(User $referredArtist): void
+    {
+        if ((string) ($referredArtist->role ?? '') !== 'artist') {
+            return;
+        }
+
+        if ((string) ($referredArtist->on_boarding ?? '') !== 'yes') {
+            return;
+        }
+
+        ArtistReferral::query()
+            ->where('referred_user_id', $referredArtist->id)
+            ->where('status', ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED)
+            ->update(['status' => ArtistReferral::STATUS_PENDING]);
+    }
+
     public static function statusLabel(?string $status): string
     {
         return match ($status) {
+            ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED => 'Signup - not completed',
             ArtistReferral::STATUS_PENDING => 'Pending',
             ArtistReferral::STATUS_SENT_TO_ADMIN => 'Wait for approval',
             ArtistReferral::STATUS_REWARDED => 'Rewarded',
@@ -490,6 +510,7 @@ class ArtistReferralRewardService
     public static function artistDashboardStatusLabel(?string $status): string
     {
         return match ($status) {
+            ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED => 'Signup - not completed',
             ArtistReferral::STATUS_REWARDED => 'Rewarded',
             ArtistReferral::STATUS_REJECTED => 'Rejected',
             default => 'Pending',
@@ -502,6 +523,7 @@ class ArtistReferralRewardService
     public static function artistDashboardStatusKey(?string $status): string
     {
         return match ($status) {
+            ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED => ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED,
             ArtistReferral::STATUS_REWARDED => ArtistReferral::STATUS_REWARDED,
             ArtistReferral::STATUS_REJECTED => ArtistReferral::STATUS_REJECTED,
             default => ArtistReferral::STATUS_PENDING,
