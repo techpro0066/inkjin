@@ -239,7 +239,7 @@
         <div class="px-5 py-4 flex items-start justify-between gap-4">
           <div class="min-w-0">
             <p class="text-sm font-medium text-on-surface">Send automatically</p>
-            <p class="text-xs text-on-surface-variant mt-0.5 leading-relaxed">When on, Bookpay will automatically send the consent form to clients before their appointment.</p>
+            <p class="text-xs text-on-surface-variant mt-0.5 leading-relaxed">When turned on, Bookpay will automatically send the consent form to clients before their appointment. If you prefer not to send it automatically, you can display a QR code at the session for the client to scan and sign.</p>
           </div>
           <div class="flex items-center gap-3 shrink-0">
             <button type="button" id="consent-send-auto-toggle" class="toggle-switch js-consent-toggle" role="switch" aria-checked="false"></button>
@@ -266,8 +266,8 @@
         </div>
         <div class="px-5 py-4 space-y-3">
           <div>
-            <label class="block text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-1" for="consent-registration-number">Local registration / licence no.</label>
-            <input id="consent-registration-number" type="text" value="{{ $s['registration_number'] ?? '' }}" placeholder="e.g. LON-TAT-004471" class="w-full rounded-lg border border-outline-variant/30 px-3 py-2 text-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <label class="block text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-1" for="consent-registration-number">Local registration / licence no. <span class="normal-case tracking-normal font-normal">(optional)</span></label>
+            <input id="consent-registration-number" type="text" value="{{ $s['registration_number'] ?? '' }}" placeholder="Licence registration number, if applicable in your country" class="w-full rounded-lg border border-outline-variant/30 px-3 py-2 text-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
           </div>
           <div id="consent-governing-law-wrap" class="hidden">
             <label class="block text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-1" for="consent-governing-law">Governing law</label>
@@ -354,7 +354,7 @@
           <div class="px-5 py-4 border-b border-outline-variant/15 flex items-start justify-between gap-4">
             <div>
               <p class="text-sm font-medium text-on-surface">Offer both languages to clients</p>
-              <p class="text-xs text-on-surface-variant mt-0.5">Only turns on once both languages below are 100% complete.</p>
+              <p class="text-xs text-on-surface-variant mt-0.5">When turned on, clients can choose between the languages below. Make sure both translations are 100% complete before enabling.</p>
             </div>
             <button type="button" id="consent-both-languages-toggle" class="toggle-switch js-consent-toggle shrink-0" role="switch" aria-checked="false"></button>
           </div>

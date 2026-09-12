@@ -91,6 +91,79 @@ class BookingsController extends Controller
         ]);
     }
 
+    public function consentLink(Request $request, int $id, BookingConsentService $consents)
+    {
+        $booking = Booking::query()
+            ->with('consentAnswer')
+            ->whereKey($id)
+            ->firstOrFail();
+
+        if ((int) $booking->artist_user_id !== (int) Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized.',
+            ], 403);
+        }
+
+        if ((string) $booking->status !== 'confirmed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Consent links are only available for confirmed bookings.',
+            ], 422);
+        }
+
+        $consent = $consents->syncForBooking($booking);
+        if (! $consent || $consent->isCompleted() || ! $consent->isOpenForClient()) {
+            return response()->json([
+                'success' => false,
+                'message' => $consent?->isCompleted()
+                    ? 'Consent form already completed.'
+                    : 'Unable to prepare consent form link.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'consent_url' => $consent->publicUrl(),
+        ]);
+    }
+
+    public function updateConsentAgeVerified(Request $request, int $id)
+    {
+        $validated = $request->validate([
+            'age_verified_by_artist' => ['required', 'boolean'],
+        ]);
+
+        $booking = Booking::query()
+            ->with('consentAnswer')
+            ->whereKey($id)
+            ->firstOrFail();
+
+        if ((int) $booking->artist_user_id !== (int) Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized.',
+            ], 403);
+        }
+
+        $consent = $booking->consentAnswer;
+        if (! $consent || ! $consent->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Consent form must be completed before verifying age.',
+            ], 422);
+        }
+
+        $consent->update([
+            'age_verified_by_artist' => (bool) $validated['age_verified_by_artist'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'age_verified_by_artist' => (bool) $consent->age_verified_by_artist,
+        ]);
+    }
+
     public function sendCompletionCode(Request $request, int $id)
     {
         $booking = Booking::query()

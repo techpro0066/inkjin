@@ -28,5 +28,13 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         
+        $this->call([
+            ConsentFormQuestionSeeder::class,
+            PlacementSeeder::class,
+            QuestionSeeder::class,
+            SizeSeeder::class,
+            StyleSeeder::class,
+        ]);
+    
     }
 }

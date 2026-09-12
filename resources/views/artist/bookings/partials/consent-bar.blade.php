@@ -3,23 +3,13 @@
   $consentCompleted = $consentAnswer && $consentAnswer->isCompleted();
   $consentDetail = $consentCompleted ? $consentAnswer->toArtistDetailArray() : null;
 
-  $consentPending = false;
-  if (! $consentCompleted) {
-      $sessionStart = $booking->sessionStartUtc();
-      $within24h = $sessionStart
-          && $sessionStart->gt(now())
-          && $sessionStart->lte(now()->copy()->addHours(24));
-      $isOpenConsent = ! $consentAnswer || $consentAnswer->isOpenForClient();
-      $consentPending = $within24h
-          && $isOpenConsent
-          && (string) $booking->status === 'confirmed';
+  if (! $consentCompleted && (string) $booking->status === 'confirmed') {
+      $consentAnswer = app(\App\Services\BookingConsentService::class)->syncForBooking($booking) ?? $consentAnswer;
   }
 
-  $consentUrl = $consentAnswer?->publicUrl();
-  if ($consentPending && ! $consentUrl) {
-      $consentAnswer = app(\App\Services\BookingConsentService::class)->syncForBooking($booking);
-      $consentUrl = $consentAnswer?->publicUrl();
-  }
+  $consentUrl = ($consentAnswer && ! $consentCompleted && $consentAnswer->isOpenForClient())
+      ? $consentAnswer->publicUrl()
+      : null;
   $resendUrl = route('api.bookings.consent.resend', $booking->id);
 
   $barPad = ($compact ?? false) ? 'py-2.5' : 'py-2';
@@ -27,7 +17,7 @@
 @endphp
 @if($consentCompleted)
   <div class="js-artist-consent-wrap flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3 {{ $barPad }} {{ $barExtra }}">
-    <p class="js-artist-consent-label text-sm font-bold text-[#8a5a12] whitespace-nowrap">Consent submitted</p>
+    <p class="js-artist-consent-label text-sm font-bold text-[#8a5a12] whitespace-nowrap">Consent submitted &amp; signed</p>
     <button type="button"
       class="js-artist-consent-view text-sm font-bold text-[#1b5e4a] underline underline-offset-2 whitespace-nowrap"
       aria-haspopup="dialog"
@@ -39,7 +29,7 @@
       data-time-range="{{ e($startEnd) }}"
       data-consent='@json($consentDetail)'>View detail</button>
   </div>
-@elseif($consentPending)
+@else
   <div class="js-artist-consent-wrap flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3 {{ $barPad }} {{ $barExtra }}">
     <p class="js-artist-consent-label text-sm font-bold text-[#8a5a12] whitespace-nowrap">Consent pending</p>
     <button type="button"

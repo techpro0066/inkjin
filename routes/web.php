@@ -155,6 +155,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'client_password'])->group(
     Route::post('/api/bookings/{id}/mark-completed', [\App\Http\Controllers\BookingsController::class, 'markCompleted'])->name('api.bookings.mark-completed');
     Route::post('/api/bookings/{id}/balance-collections', [\App\Http\Controllers\BookingsController::class, 'storeBalanceCollection'])->name('api.bookings.balance-collections.store');
     Route::post('/api/bookings/{id}/consent/resend', [\App\Http\Controllers\BookingsController::class, 'resendConsent'])->name('api.bookings.consent.resend');
+    Route::get('/api/bookings/{id}/consent/link', [\App\Http\Controllers\BookingsController::class, 'consentLink'])->name('api.bookings.consent.link');
+    Route::post('/api/bookings/{id}/consent/age-verified', [\App\Http\Controllers\BookingsController::class, 'updateConsentAgeVerified'])->name('api.bookings.consent.age-verified');
     
     // Booking rescheduling routes
     Route::get('/api/bookings/{id}/can-reschedule', [\App\Http\Controllers\ReschedulingController::class, 'checkCanReschedule'])->name('api.bookings.can-reschedule');

@@ -21,7 +21,7 @@ class ManagedBookingSlotsOfferedArtistMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Copy: times sent to '.$this->bookingRequest->clientDisplayName(),
+            subject: 'Times sent to '.$this->bookingRequest->clientDisplayName(),
         );
     }
 

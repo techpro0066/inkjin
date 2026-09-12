@@ -97,6 +97,35 @@
   .rpm-option[aria-checked="true"] .rpm-option-dot { border-color: #1b5e4a; }
   .rpm-option[aria-checked="true"] .rpm-option-dot::after { background: #1b5e4a; }
   .rpm-option[aria-checked="true"] .rpm-option-label { font-weight: 700; color: #1c1b21; }
+  .acdm-age-toggle {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    background: #cac4d3;
+    border-radius: 11px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .acdm-age-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  .acdm-age-toggle.active { background: #1b5e4a; }
+  .acdm-age-toggle.active::after { transform: translateX(18px); }
+  .acdm-age-verified-wrap.is-verified {
+    border-color: rgba(27, 94, 74, 0.25);
+    background: rgba(234, 242, 239, 0.55);
+  }
 </style>
 @endsection
 
@@ -837,8 +866,19 @@
         <span class="inline-flex shrink-0 items-center text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset bg-green-50 text-green-700 ring-green-500/20">Submitted</span>
       </div>
       <div class="flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3.5 py-2.5">
-        <p class="text-sm font-bold text-[#8a5a12]">Consent submitted</p>
+        <p class="text-sm font-bold text-[#8a5a12]">Consent submitted &amp; signed</p>
         <p id="acdmSignedAt" class="text-xs font-semibold text-[#8a5a12]">—</p>
+      </div>
+      <div id="acdmAgeVerifiedWrap" class="acdm-age-verified-wrap rounded-xl border border-outline-variant/20 bg-white px-3.5 py-3 transition-colors">
+        <div class="flex items-center justify-between gap-3">
+          <p id="acdmAgeVerifiedLabel" class="text-sm text-on-surface leading-snug">I have verified the client&rsquo;s age with a valid ID</p>
+          <button type="button"
+            id="acdmAgeVerifiedToggle"
+            class="acdm-age-toggle"
+            role="switch"
+            aria-checked="false"
+            aria-labelledby="acdmAgeVerifiedLabel"></button>
+        </div>
       </div>
       <div id="acdmBody" class="space-y-4 text-sm"></div>
     </div>
@@ -869,8 +909,17 @@
         <p class="text-sm font-bold text-[#8a5a12]">Consent pending</p>
       </div>
       <p class="text-sm text-on-surface-variant leading-relaxed">
-        Client hasn’t completed the consent form yet. Resend the email or show a QR code they can scan.
+        Client hasn&rsquo;t completed the consent form yet. Copy the link below, resend the email, or show a QR code they can scan.
       </p>
+      <div class="space-y-2">
+        <label for="acpmConsentLink" class="block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Consent form link</label>
+        <div class="flex items-stretch gap-2">
+          <input id="acpmConsentLink" type="text" readonly placeholder="Preparing link…" class="min-w-0 flex-1 rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20">
+          <button type="button" id="acpmCopyLinkBtn" class="shrink-0 rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low disabled:opacity-60 disabled:cursor-not-allowed" disabled>
+            Copy link
+          </button>
+        </div>
+      </div>
       <div class="space-y-2">
         <button type="button" id="acpmResendBtn" class="w-full rounded-xl bg-[#1b5e4a] px-4 py-3.5 text-sm font-bold text-white disabled:opacity-70 disabled:cursor-wait">
           Resend email
@@ -2872,6 +2921,39 @@
   var whenEl = document.getElementById('acdmWhen');
   var signedAtEl = document.getElementById('acdmSignedAt');
   var bodyEl = document.getElementById('acdmBody');
+  var ageVerifiedWrap = document.getElementById('acdmAgeVerifiedWrap');
+  var ageVerifiedToggle = document.getElementById('acdmAgeVerifiedToggle');
+  var currentViewBtn = null;
+  var savingAgeVerified = false;
+
+  function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+  }
+
+  function ageVerifiedUrl(bookingId) {
+    return @json(url('/api/bookings')) + '/' + encodeURIComponent(bookingId) + '/consent/age-verified';
+  }
+
+  function setAgeVerified(active, disabled) {
+    if (!ageVerifiedToggle) return;
+    ageVerifiedToggle.classList.toggle('active', active);
+    ageVerifiedToggle.setAttribute('aria-checked', active ? 'true' : 'false');
+    if (ageVerifiedWrap) ageVerifiedWrap.classList.toggle('is-verified', active);
+    if (typeof disabled === 'boolean') {
+      ageVerifiedToggle.disabled = disabled;
+      ageVerifiedToggle.classList.toggle('opacity-60', disabled);
+      ageVerifiedToggle.classList.toggle('cursor-wait', disabled);
+    }
+  }
+
+  function syncConsentPayloadAgeVerified(btn, active) {
+    if (!btn || !btn.dataset.consent) return;
+    var consent = parseConsent(btn.dataset.consent);
+    if (!consent) return;
+    consent.age_verified_by_artist = !!active;
+    btn.dataset.consent = JSON.stringify(consent);
+  }
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -2916,6 +2998,7 @@
     var ds = btn.dataset || {};
     var consent = parseConsent(ds.consent);
     if (!consent) return;
+    currentViewBtn = btn;
 
     if (clientEl) clientEl.textContent = ds.clientName || '—';
     if (refEl) refEl.textContent = ds.bookingRef || '—';
@@ -3000,6 +3083,7 @@
     ));
 
     if (bodyEl) bodyEl.innerHTML = parts.filter(Boolean).join('');
+    setAgeVerified(!!consent.age_verified_by_artist, false);
 
     modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
@@ -3012,6 +3096,49 @@
     modal.classList.remove('artist-cdm-open');
     modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
+    currentViewBtn = null;
+    savingAgeVerified = false;
+    setAgeVerified(false, false);
+  }
+
+  if (ageVerifiedToggle) {
+    ageVerifiedToggle.addEventListener('click', function () {
+      if (savingAgeVerified || !currentViewBtn || !currentViewBtn.dataset.bookingId) return;
+
+      var bookingId = currentViewBtn.dataset.bookingId;
+      var next = !ageVerifiedToggle.classList.contains('active');
+      var previous = !next;
+      setAgeVerified(next, true);
+      savingAgeVerified = true;
+
+      fetch(ageVerifiedUrl(bookingId), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ age_verified_by_artist: next })
+      })
+        .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+        .then(function (result) {
+          if (!result.ok || !result.data.success) {
+            setAgeVerified(previous, false);
+            return;
+          }
+          var saved = !!result.data.age_verified_by_artist;
+          setAgeVerified(saved, false);
+          syncConsentPayloadAgeVerified(currentViewBtn, saved);
+        })
+        .catch(function () {
+          setAgeVerified(previous, false);
+        })
+        .finally(function () {
+          savingAgeVerified = false;
+          if (ageVerifiedToggle) ageVerifiedToggle.disabled = false;
+        });
+    });
   }
 
   document.querySelectorAll('.js-artist-consent-view').forEach(function (btn) {
@@ -3044,10 +3171,15 @@
   var qrWrap = document.getElementById('acpmQrWrap');
   var qrImage = document.getElementById('acpmQrImage');
   var statusEl = document.getElementById('acpmStatus');
+  var consentLinkInput = document.getElementById('acpmConsentLink');
+  var copyLinkBtn = document.getElementById('acpmCopyLinkBtn');
 
   var currentResendUrl = '';
   var currentConsentUrl = '';
+  var currentBookingId = '';
+  var currentPendingBtn = null;
   var sending = false;
+  var loadingConsentLink = false;
 
   function csrfToken() {
     var meta = document.querySelector('meta[name="csrf-token"]');
@@ -3074,8 +3206,104 @@
     }
   }
 
+  function consentLinkUrl(bookingId) {
+    return @json(url('/api/bookings')) + '/' + encodeURIComponent(bookingId) + '/consent/link';
+  }
+
+  function setConsentLink(url, loading) {
+    currentConsentUrl = url || '';
+    if (consentLinkInput) {
+      consentLinkInput.value = url || '';
+      consentLinkInput.placeholder = loading ? 'Preparing link…' : 'Link unavailable';
+    }
+    if (copyLinkBtn) {
+      copyLinkBtn.disabled = loading || !url;
+      if (!loading) copyLinkBtn.textContent = 'Copy link';
+    }
+    if (currentPendingBtn) {
+      currentPendingBtn.setAttribute('data-consent-url', url || '');
+    }
+  }
+
+  function syncPendingConsentUrl(url) {
+    if (!currentPendingBtn || !url) return;
+    currentPendingBtn.setAttribute('data-consent-url', url);
+    document.querySelectorAll('.js-artist-consent-pending[data-resend-url="' + currentResendUrl + '"]').forEach(function (btn) {
+      btn.setAttribute('data-consent-url', url);
+    });
+  }
+
+  function loadConsentLink(bookingId) {
+    if (!bookingId) {
+      setConsentLink('', false);
+      return;
+    }
+
+    if (currentConsentUrl) {
+      setConsentLink(currentConsentUrl, false);
+      return;
+    }
+
+    loadingConsentLink = true;
+    setConsentLink('', true);
+
+    fetch(consentLinkUrl(bookingId), {
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok || !result.data.success || !result.data.consent_url) {
+          setConsentLink('', false);
+          if (!currentConsentUrl) {
+            setStatus((result.data && result.data.message) || 'Consent link is not available yet.', true);
+          }
+          return;
+        }
+        setConsentLink(result.data.consent_url, false);
+        syncPendingConsentUrl(result.data.consent_url);
+      })
+      .catch(function () {
+        setConsentLink('', false);
+        setStatus('Could not load consent link. Please try again.', true);
+      })
+      .finally(function () {
+        loadingConsentLink = false;
+      });
+  }
+
+  function copyConsentLink() {
+    if (!currentConsentUrl || !copyLinkBtn) return;
+    var done = function () {
+      copyLinkBtn.textContent = 'Copied';
+      clearTimeout(copyLinkBtn._copyTimer);
+      copyLinkBtn._copyTimer = setTimeout(function () {
+        copyLinkBtn.textContent = 'Copy link';
+      }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(currentConsentUrl).then(done).catch(function () {
+        if (consentLinkInput) {
+          consentLinkInput.focus();
+          consentLinkInput.select();
+          try { document.execCommand('copy'); done(); } catch (e) {}
+        }
+      });
+      return;
+    }
+    if (consentLinkInput) {
+      consentLinkInput.focus();
+      consentLinkInput.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+    }
+  }
+
   function openModal(btn) {
     var ds = btn.dataset || {};
+    currentPendingBtn = btn;
+    currentBookingId = ds.bookingId || '';
     currentResendUrl = ds.resendUrl || '';
     currentConsentUrl = ds.consentUrl || '';
     sending = false;
@@ -3085,6 +3313,7 @@
     }
     hideQr();
     setStatus('');
+    setConsentLink(currentConsentUrl, !!currentBookingId && !currentConsentUrl);
 
     if (clientEl) clientEl.textContent = ds.clientName || '—';
     if (refEl) refEl.textContent = ds.bookingRef || '—';
@@ -3092,6 +3321,8 @@
       var when = [ds.dateDisplay, ds.timeRange].filter(Boolean).join(' · ');
       whenEl.textContent = when || '—';
     }
+
+    loadConsentLink(currentBookingId);
 
     modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
@@ -3105,12 +3336,20 @@
     modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     hideQr();
+    currentPendingBtn = null;
+    currentBookingId = '';
+    loadingConsentLink = false;
+  }
+
+  if (copyLinkBtn) {
+    copyLinkBtn.addEventListener('click', copyConsentLink);
   }
 
   if (showQrBtn) {
     showQrBtn.addEventListener('click', function () {
       if (!currentConsentUrl) {
-        setStatus('Consent link is not ready yet. Resend email first.', true);
+        setStatus('Consent link is not ready yet. Try again in a moment.', true);
+        if (currentBookingId && !loadingConsentLink) loadConsentLink(currentBookingId);
         return;
       }
       var open = showQrBtn.getAttribute('aria-expanded') === 'true';
@@ -3152,10 +3391,8 @@
             return;
           }
           if (result.data.consent_url) {
-            currentConsentUrl = result.data.consent_url;
-            document.querySelectorAll('.js-artist-consent-pending[data-resend-url="' + currentResendUrl + '"]').forEach(function (btn) {
-              btn.setAttribute('data-consent-url', currentConsentUrl);
-            });
+            setConsentLink(result.data.consent_url, false);
+            syncPendingConsentUrl(result.data.consent_url);
           }
           setStatus(result.data.message || 'Consent form email sent.', false);
         })

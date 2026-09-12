@@ -26,6 +26,7 @@ class ConsentAnswer extends Model
         'send_at',
         'sent_at',
         'completed_at',
+        'age_verified_by_artist',
         'full_name',
         'date_of_birth',
         'phone',
@@ -48,6 +49,7 @@ class ConsentAnswer extends Model
         'send_at' => 'datetime',
         'sent_at' => 'datetime',
         'completed_at' => 'datetime',
+        'age_verified_by_artist' => 'boolean',
         'date_of_birth' => 'date',
         'accepted_risks' => 'boolean',
         'accepted_health_consent' => 'boolean',
@@ -99,6 +101,7 @@ class ConsentAnswer extends Model
         return [
             'status' => $this->status,
             'completed_at' => $this->completed_at?->timezone(config('app.timezone'))->format('M j, Y · g:i A'),
+            'age_verified_by_artist' => (bool) $this->age_verified_by_artist,
             'full_name' => $this->full_name,
             'date_of_birth' => $this->date_of_birth?->format('M j, Y'),
             'phone' => $this->phone,
