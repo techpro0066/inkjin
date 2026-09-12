@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\StripeConnectCountries;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -51,6 +52,51 @@ class ConsentFormSetting extends Model
         $code = strtoupper(trim($countryCode));
 
         return self::MARKET_LOCALE[$code] ?? 'en';
+    }
+
+    /**
+     * Prefer the artist's registration country, then payout / studio country, then GR.
+     */
+    public static function defaultMarketForArtist(?User $user, ?UserDetail $userDetail = null): string
+    {
+        $userDetail ??= $user?->userDetail;
+
+        foreach ([
+            $user?->country_user_belongs_in,
+            $userDetail?->payout_bank_country,
+            $userDetail?->country,
+        ] as $candidate) {
+            $code = self::normalizeMarketCountryCode((string) ($candidate ?? ''));
+            if ($code !== null) {
+                return $code;
+            }
+        }
+
+        return 'GR';
+    }
+
+    public static function normalizeMarketCountryCode(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        if (strlen($value) === 2 && ctype_alpha($value)) {
+            $code = strtoupper($value);
+
+            return StripeConnectCountries::isRegistrationCountry($code) ? $code : null;
+        }
+
+        foreach (StripeConnectCountries::registrationCountriesForSelect() as $country) {
+            $name = trim((string) ($country['name'] ?? ''));
+            $code = strtoupper((string) ($country['code'] ?? ''));
+            if ($name !== '' && $code !== '' && strcasecmp($name, $value) === 0) {
+                return StripeConnectCountries::isRegistrationCountry($code) ? $code : null;
+            }
+        }
+
+        return null;
     }
 
     /**

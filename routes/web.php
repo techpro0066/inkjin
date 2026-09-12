@@ -312,8 +312,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     // Legacy /settings/payment URLs → /settings/payouts
     Route::redirect('/settings/payment', '/settings/payouts', 301);
     Route::redirect('/settings/payment/stripe/requirements', '/settings/payouts/stripe/requirements', 301);
-    Route::get('/settings/other', [OtherSettingsController::class, 'edit'])->name('settings.other');
-    Route::post('/settings/other', [OtherSettingsController::class, 'update'])->name('settings.other.update');
+    Route::redirect('/settings/other', '/settings/regional', 301);
+    Route::get('/settings/regional', [OtherSettingsController::class, 'edit'])->name('settings.regional');
+    Route::post('/settings/regional', [OtherSettingsController::class, 'update'])->name('settings.regional.update');
 
     // Availability routes (for artists)
     Route::get('/availability', [\App\Http\Controllers\AvailabilityController::class, 'index'])->name('availability.index');

@@ -196,6 +196,7 @@
 @php
   $bookingPageUsername = Auth::user()->userDetail->user_name ?? null;
   $bookingPageUrl = $bookingPageUsername ? 'https://inkjin.com/@'.$bookingPageUsername : null;
+  $studioName = trim((string) (Auth::user()->userDetail?->studio_name ?? ''));
   $s = $consentSettings ?? [];
   $market = strtoupper((string) ($s['studio_market'] ?? $defaultMarketCountry ?? 'GR'));
 @endphp
@@ -238,7 +239,7 @@
         <div class="px-5 py-4 flex items-start justify-between gap-4">
           <div class="min-w-0">
             <p class="text-sm font-medium text-on-surface">Send automatically</p>
-            <p class="text-xs text-on-surface-variant mt-0.5 leading-relaxed">When on, Bookpay can send the consent form to clients automatically before appointment.</p>
+            <p class="text-xs text-on-surface-variant mt-0.5 leading-relaxed">When on, Bookpay will automatically send the consent form to clients before their appointment.</p>
           </div>
           <div class="flex items-center gap-3 shrink-0">
             <button type="button" id="consent-send-auto-toggle" class="toggle-switch js-consent-toggle" role="switch" aria-checked="false"></button>
@@ -260,7 +261,7 @@
       {{-- Studio details --}}
       <section class="mb-4 rounded-xl border border-outline-variant/20 bg-white overflow-hidden">
         <div class="px-5 py-4 border-b border-outline-variant/15">
-          <h2 class="text-sm font-semibold text-on-surface">Studio details</h2>
+          <h2 class="text-sm font-semibold text-on-surface">Studio@if($studioName !== ''): {{ $studioName }}@endif</h2>
           <p class="text-xs text-on-surface-variant mt-0.5">Printed on every signed consent record.</p>
         </div>
         <div class="px-5 py-4 space-y-3">

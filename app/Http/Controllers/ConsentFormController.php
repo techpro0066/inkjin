@@ -24,10 +24,7 @@ class ConsentFormController extends Controller
     {
         $user = Auth::user();
         $userDetail = $user?->userDetail;
-        $defaultMarketCountry = strtoupper((string) ($userDetail?->payout_bank_country ?? ''));
-        if ($defaultMarketCountry === '' || ! StripeConnectCountries::isRegistrationCountry($defaultMarketCountry)) {
-            $defaultMarketCountry = 'GR';
-        }
+        $defaultMarketCountry = ConsentFormSetting::defaultMarketForArtist($user, $userDetail);
 
         $settings = $this->settingsForArtist((int) $user->id, $defaultMarketCountry);
         $consentQuestions = $this->consentQuestions->listForArtist((int) $user->id);
@@ -158,13 +155,25 @@ class ConsentFormController extends Controller
 
     private function settingsForArtist(int $userId, string $defaultMarket): ConsentFormSetting
     {
-        $existing = ConsentFormSetting::query()->where('user_id', $userId)->first();
-        if ($existing) {
-            return $existing;
-        }
-
         $market = strtoupper($defaultMarket);
         $locale = ConsentFormSetting::localeForMarket($market);
+        $existing = ConsentFormSetting::query()->where('user_id', $userId)->first();
+
+        if ($existing) {
+            // Auto-created rows keep created_at == updated_at until the artist saves.
+            // Re-align those with the artist's country so older GR defaults correct themselves.
+            $untouched = $existing->created_at
+                && $existing->updated_at
+                && $existing->created_at->equalTo($existing->updated_at);
+            if ($untouched && strtoupper((string) $existing->studio_market) !== $market) {
+                $existing->forceFill([
+                    'studio_market' => $market,
+                    'other_language' => $locale !== 'en' ? $locale : null,
+                ])->save();
+            }
+
+            return $existing->fresh() ?? $existing;
+        }
 
         return ConsentFormSetting::query()->create([
             'user_id' => $userId,

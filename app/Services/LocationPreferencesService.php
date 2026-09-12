@@ -14,6 +14,49 @@ class LocationPreferencesService
      */
     private const US_ALIASES = ['us', 'usa', 'united states', 'united states of america'];
 
+    /**
+     * Default IANA timezone per supported registration country code.
+     *
+     * @var array<string, string>
+     */
+    private const DEFAULT_TIMEZONE_BY_COUNTRY = [
+        'AT' => 'Europe/Vienna',
+        'BE' => 'Europe/Brussels',
+        'BG' => 'Europe/Sofia',
+        'HR' => 'Europe/Zagreb',
+        'CY' => 'Asia/Nicosia',
+        'CZ' => 'Europe/Prague',
+        'DK' => 'Europe/Copenhagen',
+        'EE' => 'Europe/Tallinn',
+        'FI' => 'Europe/Helsinki',
+        'FR' => 'Europe/Paris',
+        'DE' => 'Europe/Berlin',
+        'GR' => 'Europe/Athens',
+        'HU' => 'Europe/Budapest',
+        'IE' => 'Europe/Dublin',
+        'IT' => 'Europe/Rome',
+        'LV' => 'Europe/Riga',
+        'LT' => 'Europe/Vilnius',
+        'LU' => 'Europe/Luxembourg',
+        'MT' => 'Europe/Malta',
+        'NL' => 'Europe/Amsterdam',
+        'PL' => 'Europe/Warsaw',
+        'PT' => 'Europe/Lisbon',
+        'RO' => 'Europe/Bucharest',
+        'SK' => 'Europe/Bratislava',
+        'SI' => 'Europe/Ljubljana',
+        'ES' => 'Europe/Madrid',
+        'SE' => 'Europe/Stockholm',
+        'NO' => 'Europe/Oslo',
+        'CH' => 'Europe/Zurich',
+        'GB' => 'Europe/London',
+        'US' => 'America/New_York',
+        'CA' => 'America/Toronto',
+        'AU' => 'Australia/Sydney',
+        'NZ' => 'Pacific/Auckland',
+        'SG' => 'Asia/Singapore',
+    ];
+
     private function apiKey(): ?string
     {
         $key = config('services.google.timezone_api_key')
@@ -122,5 +165,43 @@ class LocationPreferencesService
     public function sizeUnitForCountry(?string $country): string
     {
         return $this->isUnitedStates($country) ? 'in' : 'cm';
+    }
+
+    public function timezoneForCountryCode(?string $countryCode): string
+    {
+        $code = strtoupper(trim((string) $countryCode));
+
+        return self::DEFAULT_TIMEZONE_BY_COUNTRY[$code] ?? 'UTC';
+    }
+
+    /**
+     * @return array{timezone: string, date_time_format: string, size_unit: string}
+     */
+    public function preferencesForCountryCode(?string $countryCode): array
+    {
+        $code = strtoupper(trim((string) $countryCode));
+
+        return [
+            'timezone' => $this->timezoneForCountryCode($code),
+            'date_time_format' => $this->dateFormatForCountry($code),
+            'size_unit' => $this->sizeUnitForCountry($code),
+        ];
+    }
+
+    /**
+     * @return array<string, array{timezone: string, date_time_format: string, size_unit: string}>
+     */
+    public function preferencesMapForCountries(array $countryCodes): array
+    {
+        $map = [];
+        foreach ($countryCodes as $countryCode) {
+            $code = strtoupper(trim((string) $countryCode));
+            if ($code === '') {
+                continue;
+            }
+            $map[$code] = $this->preferencesForCountryCode($code);
+        }
+
+        return $map;
     }
 }

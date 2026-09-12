@@ -8,7 +8,6 @@ use App\Models\Booking;
 use App\Models\ConsentAnswer;
 use App\Models\ConsentFormSetting;
 use App\Models\User;
-use App\Support\StripeConnectCountries;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -406,10 +405,7 @@ class BookingConsentService
             $detail->setRelation('user', $artist);
         }
 
-        $defaultMarket = strtoupper((string) ($detail?->payout_bank_country ?? ''));
-        if ($defaultMarket === '' || ! StripeConnectCountries::isRegistrationCountry($defaultMarket)) {
-            $defaultMarket = 'GR';
-        }
+        $defaultMarket = ConsentFormSetting::defaultMarketForArtist($artist, $detail);
 
         $settings = ConsentFormSetting::query()->where('user_id', $artist->id)->first()
             ?: $this->defaultSettingsStub((int) $artist->id, $defaultMarket);

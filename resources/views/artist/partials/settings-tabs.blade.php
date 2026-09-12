@@ -12,5 +12,5 @@
   <a href="{{ route('settings.preferences') }}" class="{{ $settingsTabClass('payments') }}">Payments</a>
   <a href="{{ route('settings.calendar') }}" class="{{ $settingsTabClass('calendar') }}">Calendar</a>
   <a href="{{ route('settings.payment') }}" class="{{ $settingsTabClass('payouts') }}">Payouts</a>
-  <a href="{{ route('settings.other') }}" class="{{ $settingsTabClass('other') }}">Other</a>
+  <a href="{{ route('settings.regional') }}" class="{{ $settingsTabClass('regional') }}">Regional</a>
 </div>
