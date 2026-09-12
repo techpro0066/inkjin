@@ -261,7 +261,7 @@
       {{-- Studio details --}}
       <section class="mb-4 rounded-xl border border-outline-variant/20 bg-white overflow-hidden">
         <div class="px-5 py-4 border-b border-outline-variant/15">
-          <h2 class="text-sm font-semibold text-on-surface">Studio@if($studioName !== ''): {{ $studioName }}@endif</h2>
+          <h2 class="text-sm font-semibold text-on-surface">Studio{{ $studioName !== '' ? ': ' . $studioName : '' }}</h2>
           <p class="text-xs text-on-surface-variant mt-0.5">Printed on every signed consent record.</p>
         </div>
         <div class="px-5 py-4 space-y-3">
