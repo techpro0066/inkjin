@@ -27,7 +27,7 @@
       data-booking-ref="{{ e($bookingRef) }}"
       data-date-display="{{ e($dateLong) }}"
       data-time-range="{{ e($startEnd) }}"
-      data-consent='@json($consentDetail)'>View detail</button>
+      data-consent='@json($consentDetail)'>View</button>
   </div>
 @else
   <div class="js-artist-consent-wrap flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3 {{ $barPad }} {{ $barExtra }}">

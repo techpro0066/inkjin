@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\ConsentAnswer;
 use App\Models\ConsentFormSetting;
 use App\Models\User;
+use App\Support\PhoneCountryCodes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -436,6 +437,10 @@ class BookingConsentService
             : strtoupper(mb_substr(preg_replace('/\s+/', '', $artistName) ?: 'AR', 0, 2));
         $studio = trim((string) ($detail?->studio_name ?? ''));
         $avatarPath = trim((string) ($detail?->avatar ?? ''));
+        $studioMarket = strtoupper((string) ($settings->studio_market ?: $defaultMarket));
+        $defaultPhoneCountry = PhoneCountryCodes::dialForIso($studioMarket)
+            ? $studioMarket
+            : PhoneCountryCodes::defaultIso();
 
         return [
             'artist' => [
@@ -463,6 +468,8 @@ class BookingConsentService
                 'risk' => $questions->where('question_type', 'risk')->values()->all(),
                 'aftercare' => $questions->where('question_type', 'aftercare')->values()->all(),
             ],
+            'phone_countries' => PhoneCountryCodes::all(),
+            'default_phone_country' => $defaultPhoneCountry,
         ];
     }
 

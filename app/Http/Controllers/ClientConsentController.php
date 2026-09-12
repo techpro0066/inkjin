@@ -97,7 +97,7 @@ class ClientConsentController extends Controller
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
             'date_of_birth' => ['required', 'date', 'before:today'],
-            'phone' => ['nullable', 'string', 'max:64'],
+            'phone' => ['nullable', 'string', 'max:64', 'regex:/^\+[1-9]\d{7,14}$/'],
             'emergency_contact' => ['nullable', 'string', 'max:255'],
             'guardian_name' => ['nullable', 'string', 'max:255'],
             'guardian_relationship' => ['nullable', 'string', 'max:255'],
