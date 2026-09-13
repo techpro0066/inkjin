@@ -330,7 +330,7 @@
                 <span class="text-xs text-on-surface-variant">Guardian signature (typed name)</span>
               </div>
             </div>
-            <p class="mt-2.5 text-xs text-on-surface-variant leading-relaxed">Guardian fields only appear when you turn on &quot;Allow younger clients with guardian consent.&quot;</p>
+            <p class="mt-2.5 text-xs text-on-surface-variant leading-relaxed">When a submitted consent is for a client under 18, guardian fields appear on the booking View so you can complete them in studio.</p>
             <label class="mt-3 flex items-start gap-3 cursor-pointer">
               <input id="consent-minor-law-ack" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-outline-variant accent-primary">
               <span class="text-xs text-on-surface leading-relaxed">I've confirmed my local law allows tattooing minors with guardian consent, and I know the minimum age and requirements that apply in <span id="consent-market-country-label">your market</span>.</span>
@@ -444,10 +444,19 @@
       </section>
 
       <div class="flex items-center justify-between gap-4">
-        <p id="consent-save-error" class="hidden text-xs font-medium text-[#c2410c] leading-relaxed max-w-md" role="alert"></p>
-        <button type="button" id="btnSaveConsentSettings" class="ml-auto inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white bg-primary hover:bg-primary-container transition-colors">
-          Save changes
-        </button>
+        <a href="{{ route('public.consent.preview', ['artist' => Auth::id()]) }}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center justify-center gap-2 rounded-lg border border-outline-variant/30 bg-white px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low transition-colors">
+          <span class="material-symbols-outlined text-[18px]">visibility</span>
+          Preview
+        </a>
+        <div class="flex items-center gap-3 ml-auto min-w-0">
+          <p id="consent-save-error" class="hidden text-xs font-medium text-[#c2410c] leading-relaxed max-w-md text-right" role="alert"></p>
+          <button type="button" id="btnSaveConsentSettings" class="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white bg-primary hover:bg-primary-container transition-colors">
+            Save changes
+          </button>
+        </div>
       </div>
     </div>
   </div>

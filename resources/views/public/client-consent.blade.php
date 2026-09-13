@@ -60,6 +60,17 @@
 
   <script>
     window.CLIENT_CONSENT = @json($payload);
+    @php
+      $consentUiStringsPath = public_path('consent-ui-strings.json');
+      $consentUiStrings = is_readable($consentUiStringsPath)
+        ? json_decode((string) file_get_contents($consentUiStringsPath), true)
+        : [];
+      if (! is_array($consentUiStrings)) {
+          $consentUiStrings = [];
+      }
+    @endphp
+    window.CONSENT_UI_STRINGS = @json($consentUiStrings);
+    window.CONSENT_UI_STRINGS_URL = @json(asset('consent-ui-strings.json'));
   </script>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>

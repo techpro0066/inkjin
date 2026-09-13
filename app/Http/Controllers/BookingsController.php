@@ -164,6 +164,62 @@ class BookingsController extends Controller
         ]);
     }
 
+    public function updateConsentGuardian(Request $request, int $id)
+    {
+        $validated = $request->validate([
+            'guardian_name' => ['required', 'string', 'min:2', 'max:255'],
+            'guardian_relationship' => ['required', 'string', 'min:1', 'max:255'],
+            'guardian_id_reference' => ['required', 'string', 'min:1', 'max:255'],
+            'guardian_signature' => ['required', 'string', 'min:2', 'max:255'],
+        ]);
+
+        $booking = Booking::query()
+            ->with('consentAnswer')
+            ->whereKey($id)
+            ->firstOrFail();
+
+        if ((int) $booking->artist_user_id !== (int) Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized.',
+            ], 403);
+        }
+
+        $consent = $booking->consentAnswer;
+        if (! $consent || ! $consent->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Consent form must be completed before saving guardian details.',
+            ], 422);
+        }
+
+        if (! $consent->date_of_birth || $consent->date_of_birth->age >= 18) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Guardian details are only required for clients under 18.',
+            ], 422);
+        }
+
+        $consent->update([
+            'guardian_name' => trim((string) $validated['guardian_name']),
+            'guardian_relationship' => trim((string) $validated['guardian_relationship']),
+            'guardian_id_reference' => trim((string) $validated['guardian_id_reference']),
+            'guardian_signature' => trim((string) $validated['guardian_signature']),
+            'guardian_signed_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'guardian_name' => $consent->guardian_name,
+            'guardian_relationship' => $consent->guardian_relationship,
+            'guardian_id_reference' => $consent->guardian_id_reference,
+            'guardian_signature' => $consent->guardian_signature,
+            'guardian_signed_at' => $consent->guardian_signed_at
+                ? $consent->guardian_signed_at->timezone(config('app.timezone'))->format('M j, Y · g:i A')
+                : null,
+        ]);
+    }
+
     public function sendCompletionCode(Request $request, int $id)
     {
         $booking = Booking::query()

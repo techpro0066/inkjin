@@ -122,6 +122,10 @@
   }
   .acdm-age-toggle.active { background: #1b5e4a; }
   .acdm-age-toggle.active::after { transform: translateX(18px); }
+  .acdm-guardian-input.is-invalid {
+    border-color: #c2410c !important;
+    box-shadow: 0 0 0 2px rgba(194, 65, 12, 0.15);
+  }
   .acdm-age-verified-wrap.is-verified {
     border-color: rgba(27, 94, 74, 0.25);
     background: rgba(234, 242, 239, 0.55);
@@ -878,6 +882,61 @@
             role="switch"
             aria-checked="false"
             aria-labelledby="acdmAgeVerifiedLabel"></button>
+        </div>
+        <div id="acdmGuardianFields" class="hidden mt-3 pt-3 border-t border-outline-variant/15 space-y-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Guardian consent</p>
+            <p id="acdmGuardianFormHint" class="mt-1 text-xs text-on-surface-variant leading-relaxed">Complete these with the parent or guardian present in studio. All fields are required.</p>
+          </div>
+          <div id="acdmGuardianForm" class="space-y-3">
+            <div>
+              <label for="acdmGuardianName" class="block text-sm font-medium text-on-surface mb-1">Guardian full name</label>
+              <input id="acdmGuardianName" type="text" autocomplete="name" required class="acdm-guardian-input w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20" aria-describedby="acdmGuardianNameError">
+              <p id="acdmGuardianNameError" class="hidden mt-1 text-xs font-medium text-[#c2410c]" role="alert"></p>
+            </div>
+            <div>
+              <label for="acdmGuardianRelationship" class="block text-sm font-medium text-on-surface mb-1">Relationship to client</label>
+              <input id="acdmGuardianRelationship" type="text" placeholder="e.g. Parent, Legal guardian" required class="acdm-guardian-input w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20" aria-describedby="acdmGuardianRelationshipError">
+              <p id="acdmGuardianRelationshipError" class="hidden mt-1 text-xs font-medium text-[#c2410c]" role="alert"></p>
+            </div>
+            <div>
+              <label for="acdmGuardianIdRef" class="block text-sm font-medium text-on-surface mb-1">Guardian ID reference</label>
+              <input id="acdmGuardianIdRef" type="text" placeholder="Passport / ID number" required class="acdm-guardian-input w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20" aria-describedby="acdmGuardianIdRefError">
+              <p id="acdmGuardianIdRefError" class="hidden mt-1 text-xs font-medium text-[#c2410c]" role="alert"></p>
+            </div>
+            <div>
+              <label for="acdmGuardianSignature" class="block text-sm font-medium text-on-surface mb-1">Guardian signature (typed name)</label>
+              <input id="acdmGuardianSignature" type="text" placeholder="Type full name to sign" required class="acdm-guardian-input w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20" aria-describedby="acdmGuardianSignatureError">
+              <p id="acdmGuardianSignatureError" class="hidden mt-1 text-xs font-medium text-[#c2410c]" role="alert"></p>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <p id="acdmGuardianStatus" class="text-xs text-on-surface-variant min-h-[1rem]"></p>
+              <button type="button" id="acdmGuardianSaveBtn" class="shrink-0 rounded-xl bg-[#1b5e4a] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-70 disabled:cursor-wait">
+                Save guardian
+              </button>
+            </div>
+          </div>
+          <div id="acdmGuardianSummary" class="hidden space-y-3">
+            <dl class="text-sm">
+              <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+                <dt class="text-on-surface-variant font-medium">Guardian name</dt>
+                <dd id="acdmGuardianSummaryName" class="text-on-surface text-right">—</dd>
+              </div>
+              <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+                <dt class="text-on-surface-variant font-medium">Relationship</dt>
+                <dd id="acdmGuardianSummaryRelationship" class="text-on-surface text-right">—</dd>
+              </div>
+              <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+                <dt class="text-on-surface-variant font-medium">ID reference</dt>
+                <dd id="acdmGuardianSummaryIdRef" class="text-on-surface text-right">—</dd>
+              </div>
+              <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+                <dt class="text-on-surface-variant font-medium">Guardian signature</dt>
+                <dd id="acdmGuardianSummarySignature" class="text-on-surface text-right">—</dd>
+              </div>
+            </dl>
+            <p id="acdmGuardianSignedAt" class="text-xs font-medium text-on-surface-variant"></p>
+          </div>
         </div>
       </div>
       <div id="acdmBody" class="space-y-4 text-sm"></div>
@@ -2923,8 +2982,35 @@
   var bodyEl = document.getElementById('acdmBody');
   var ageVerifiedWrap = document.getElementById('acdmAgeVerifiedWrap');
   var ageVerifiedToggle = document.getElementById('acdmAgeVerifiedToggle');
+  var guardianFieldsEl = document.getElementById('acdmGuardianFields');
+  var guardianFormEl = document.getElementById('acdmGuardianForm');
+  var guardianFormHintEl = document.getElementById('acdmGuardianFormHint');
+  var guardianSummaryEl = document.getElementById('acdmGuardianSummary');
+  var guardianSummaryNameEl = document.getElementById('acdmGuardianSummaryName');
+  var guardianSummaryRelationshipEl = document.getElementById('acdmGuardianSummaryRelationship');
+  var guardianSummaryIdRefEl = document.getElementById('acdmGuardianSummaryIdRef');
+  var guardianSummarySignatureEl = document.getElementById('acdmGuardianSummarySignature');
+  var guardianNameEl = document.getElementById('acdmGuardianName');
+  var guardianRelationshipEl = document.getElementById('acdmGuardianRelationship');
+  var guardianIdRefEl = document.getElementById('acdmGuardianIdRef');
+  var guardianSignatureEl = document.getElementById('acdmGuardianSignature');
+  var guardianNameErrorEl = document.getElementById('acdmGuardianNameError');
+  var guardianRelationshipErrorEl = document.getElementById('acdmGuardianRelationshipError');
+  var guardianIdRefErrorEl = document.getElementById('acdmGuardianIdRefError');
+  var guardianSignatureErrorEl = document.getElementById('acdmGuardianSignatureError');
+  var guardianSignedAtEl = document.getElementById('acdmGuardianSignedAt');
+  var guardianSaveBtn = document.getElementById('acdmGuardianSaveBtn');
+  var guardianStatusEl = document.getElementById('acdmGuardianStatus');
   var currentViewBtn = null;
   var savingAgeVerified = false;
+  var savingGuardian = false;
+
+  var guardianFieldMap = [
+    { el: guardianNameEl, errorEl: guardianNameErrorEl, key: 'guardian_name', label: 'Guardian full name', min: 2 },
+    { el: guardianRelationshipEl, errorEl: guardianRelationshipErrorEl, key: 'guardian_relationship', label: 'Relationship to client', min: 1 },
+    { el: guardianIdRefEl, errorEl: guardianIdRefErrorEl, key: 'guardian_id_reference', label: 'Guardian ID reference', min: 1 },
+    { el: guardianSignatureEl, errorEl: guardianSignatureErrorEl, key: 'guardian_signature', label: 'Guardian signature', min: 2 }
+  ];
 
   function csrfToken() {
     var meta = document.querySelector('meta[name="csrf-token"]');
@@ -2933,6 +3019,27 @@
 
   function ageVerifiedUrl(bookingId) {
     return @json(url('/api/bookings')) + '/' + encodeURIComponent(bookingId) + '/consent/age-verified';
+  }
+
+  function guardianUrl(bookingId) {
+    return @json(url('/api/bookings')) + '/' + encodeURIComponent(bookingId) + '/consent/guardian';
+  }
+
+  function ageFromIso(iso) {
+    if (!iso) return null;
+    var parts = String(iso).split('-');
+    if (parts.length !== 3) return null;
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10) - 1;
+    var d = parseInt(parts[2], 10);
+    if (!y || isNaN(m) || !d) return null;
+    var dob = new Date(y, m, d);
+    if (isNaN(dob.getTime())) return null;
+    var today = new Date();
+    var age = today.getFullYear() - dob.getFullYear();
+    var md = today.getMonth() - dob.getMonth();
+    if (md < 0 || (md === 0 && today.getDate() < dob.getDate())) age -= 1;
+    return age;
   }
 
   function setAgeVerified(active, disabled) {
@@ -2947,11 +3054,132 @@
     }
   }
 
+  function setGuardianStatus(message, isError) {
+    if (!guardianStatusEl) return;
+    guardianStatusEl.textContent = message || '';
+    guardianStatusEl.classList.toggle('text-[#c2410c]', !!isError);
+    guardianStatusEl.classList.toggle('font-semibold', !!isError);
+    guardianStatusEl.classList.toggle('text-on-surface-variant', !isError);
+  }
+
+  function setFieldError(field, message) {
+    if (!field || !field.el) return;
+    var hasError = !!message;
+    field.el.classList.toggle('is-invalid', hasError);
+    field.el.setAttribute('aria-invalid', hasError ? 'true' : 'false');
+    if (field.errorEl) {
+      field.errorEl.textContent = message || '';
+      field.errorEl.classList.toggle('hidden', !hasError);
+    }
+  }
+
+  function clearGuardianErrors() {
+    guardianFieldMap.forEach(function (field) {
+      setFieldError(field, '');
+    });
+  }
+
+  function validateGuardianForm() {
+    clearGuardianErrors();
+    var firstInvalid = null;
+    var ok = true;
+
+    guardianFieldMap.forEach(function (field) {
+      var value = field.el ? field.el.value.trim() : '';
+      if (!value) {
+        setFieldError(field, field.label + ' is required.');
+        if (!firstInvalid) firstInvalid = field.el;
+        ok = false;
+        return;
+      }
+      if (value.length < field.min) {
+        setFieldError(field, field.label + ' is too short.');
+        if (!firstInvalid) firstInvalid = field.el;
+        ok = false;
+      }
+    });
+
+    if (firstInvalid) firstInvalid.focus();
+    return ok;
+  }
+
+  function applyServerGuardianErrors(errors) {
+    if (!errors || typeof errors !== 'object') return false;
+    var applied = false;
+    var firstInvalid = null;
+    guardianFieldMap.forEach(function (field) {
+      var messages = errors[field.key];
+      if (Array.isArray(messages) && messages.length) {
+        setFieldError(field, messages[0]);
+        if (!firstInvalid) firstInvalid = field.el;
+        applied = true;
+      }
+    });
+    if (firstInvalid) firstInvalid.focus();
+    return applied;
+  }
+
+  function isGuardianSubmitted(consent) {
+    return !!(consent && consent.guardian_signed_at && consent.guardian_signature);
+  }
+
+  function setGuardianFieldsVisible(visible) {
+    if (!guardianFieldsEl) return;
+    guardianFieldsEl.classList.toggle('hidden', !visible);
+  }
+
+  function setGuardianSignedAt(timestamp) {
+    if (!guardianSignedAtEl) return;
+    guardianSignedAtEl.textContent = timestamp ? ('Signed by guardian: ' + timestamp) : '';
+  }
+
+  function setGuardianMode(submitted, consent) {
+    var data = consent || {};
+    if (guardianFormEl) guardianFormEl.classList.toggle('hidden', !!submitted);
+    if (guardianFormHintEl) guardianFormHintEl.classList.toggle('hidden', !!submitted);
+    if (guardianSummaryEl) guardianSummaryEl.classList.toggle('hidden', !submitted);
+
+    if (submitted) {
+      if (guardianSummaryNameEl) guardianSummaryNameEl.textContent = data.guardian_name || '—';
+      if (guardianSummaryRelationshipEl) guardianSummaryRelationshipEl.textContent = data.guardian_relationship || '—';
+      if (guardianSummaryIdRefEl) guardianSummaryIdRefEl.textContent = data.guardian_id_reference || '—';
+      if (guardianSummarySignatureEl) guardianSummarySignatureEl.textContent = data.guardian_signature || '—';
+      setGuardianSignedAt(data.guardian_signed_at || '');
+      setGuardianStatus('');
+      clearGuardianErrors();
+      return;
+    }
+
+    if (guardianNameEl) guardianNameEl.value = data.guardian_name || '';
+    if (guardianRelationshipEl) guardianRelationshipEl.value = data.guardian_relationship || '';
+    if (guardianIdRefEl) guardianIdRefEl.value = data.guardian_id_reference || '';
+    if (guardianSignatureEl) guardianSignatureEl.value = data.guardian_signature || '';
+    setGuardianSignedAt('');
+    clearGuardianErrors();
+    setGuardianStatus('');
+  }
+
+  function fillGuardianFields(consent) {
+    setGuardianMode(isGuardianSubmitted(consent), consent || {});
+  }
+
   function syncConsentPayloadAgeVerified(btn, active) {
     if (!btn || !btn.dataset.consent) return;
     var consent = parseConsent(btn.dataset.consent);
     if (!consent) return;
     consent.age_verified_by_artist = !!active;
+    btn.dataset.consent = JSON.stringify(consent);
+  }
+
+  function syncConsentPayloadGuardian(btn, data) {
+    if (!btn || !btn.dataset.consent) return;
+    var consent = parseConsent(btn.dataset.consent);
+    if (!consent) return;
+    consent.guardian_name = data.guardian_name || null;
+    consent.guardian_relationship = data.guardian_relationship || null;
+    consent.guardian_id_reference = data.guardian_id_reference || null;
+    consent.guardian_signature = data.guardian_signature || null;
+    consent.guardian_signed_at = data.guardian_signed_at || null;
     btn.dataset.consent = JSON.stringify(consent);
   }
 
@@ -3008,6 +3236,10 @@
     }
     if (signedAtEl) signedAtEl.textContent = consent.completed_at || 'Signed';
 
+    var clientAge = ageFromIso(consent.date_of_birth_iso);
+    setGuardianFieldsVisible(clientAge !== null && clientAge < 18);
+    fillGuardianFields(consent);
+
     var parts = [];
     parts.push(section('Client details',
       '<dl>' +
@@ -3019,17 +3251,6 @@
       row('Language', consent.form_language) +
       '</dl>'
     ));
-
-    if (consent.guardian_name || consent.guardian_signature) {
-      parts.push(section('Guardian consent',
-        '<dl>' +
-        row('Guardian name', consent.guardian_name) +
-        row('Relationship', consent.guardian_relationship) +
-        row('ID reference', consent.guardian_id_reference) +
-        row('Guardian signature', consent.guardian_signature) +
-        '</dl>'
-      ));
-    }
 
     var health = Array.isArray(consent.health) ? consent.health : [];
     if (health.length) {
@@ -3098,7 +3319,11 @@
     document.body.style.overflow = '';
     currentViewBtn = null;
     savingAgeVerified = false;
+    savingGuardian = false;
     setAgeVerified(false, false);
+    setGuardianFieldsVisible(false);
+    fillGuardianFields({});
+    if (guardianSaveBtn) guardianSaveBtn.disabled = false;
   }
 
   if (ageVerifiedToggle) {
@@ -3140,6 +3365,72 @@
         });
     });
   }
+
+  if (guardianSaveBtn) {
+    guardianSaveBtn.addEventListener('click', function () {
+      if (savingGuardian || !currentViewBtn || !currentViewBtn.dataset.bookingId) return;
+      if (guardianFormEl && guardianFormEl.classList.contains('hidden')) return;
+
+      if (!validateGuardianForm()) {
+        setGuardianStatus('Please complete all required guardian fields.', true);
+        return;
+      }
+
+      var bookingId = currentViewBtn.dataset.bookingId;
+      var payload = {
+        guardian_name: guardianNameEl ? guardianNameEl.value.trim() : '',
+        guardian_relationship: guardianRelationshipEl ? guardianRelationshipEl.value.trim() : '',
+        guardian_id_reference: guardianIdRefEl ? guardianIdRefEl.value.trim() : '',
+        guardian_signature: guardianSignatureEl ? guardianSignatureEl.value.trim() : ''
+      };
+
+      savingGuardian = true;
+      guardianSaveBtn.disabled = true;
+      setGuardianStatus('Saving…');
+
+      fetch(guardianUrl(bookingId), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(payload)
+      })
+        .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+        .then(function (result) {
+          if (!result.ok || !result.data.success) {
+            clearGuardianErrors();
+            if (applyServerGuardianErrors(result.data && result.data.errors)) {
+              setGuardianStatus('Please fix the highlighted fields.', true);
+            } else {
+              setGuardianStatus((result.data && result.data.message) || 'Could not save. Try again.', true);
+            }
+            return;
+          }
+          syncConsentPayloadGuardian(currentViewBtn, result.data);
+          fillGuardianFields(result.data);
+        })
+        .catch(function () {
+          setGuardianStatus('Could not save. Try again.', true);
+        })
+        .finally(function () {
+          savingGuardian = false;
+          if (guardianSaveBtn) guardianSaveBtn.disabled = false;
+        });
+    });
+  }
+
+  guardianFieldMap.forEach(function (field) {
+    if (!field.el) return;
+    field.el.addEventListener('input', function () {
+      setFieldError(field, '');
+      if (guardianStatusEl && guardianStatusEl.classList.contains('text-[#c2410c]')) {
+        setGuardianStatus('');
+      }
+    });
+  });
 
   document.querySelectorAll('.js-artist-consent-view').forEach(function (btn) {
     btn.addEventListener('click', function () {
