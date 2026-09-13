@@ -315,7 +315,7 @@
               <label class="block text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-1" for="consent-min-age">Minimum age for this exception</label>
               <input id="consent-min-age" type="number" min="1" max="17" value="{{ $s['age_allow'] ?? 16 }}" class="w-28 rounded-lg border border-outline-variant/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
             </div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-2">Added to your form for clients under 18</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-2">Added to your form for clients under <span class="js-consent-min-age-label">{{ (int) ($s['age_allow'] ?? 16) }}</span></p>
             <div class="space-y-2">
               <div class="flex items-center gap-2 rounded-md border border-dashed border-outline-variant/40 bg-white px-3 py-2">
                 <span class="text-xs text-on-surface-variant">Guardian full name</span>
@@ -330,7 +330,7 @@
                 <span class="text-xs text-on-surface-variant">Guardian signature (typed name)</span>
               </div>
             </div>
-            <p class="mt-2.5 text-xs text-on-surface-variant leading-relaxed">When a submitted consent is for a client under 18, guardian fields appear on the booking View so you can complete them in studio.</p>
+            <p class="mt-2.5 text-xs text-on-surface-variant leading-relaxed">When a submitted consent is for a client under <span class="js-consent-min-age-label">{{ (int) ($s['age_allow'] ?? 16) }}</span>, guardian fields will appear on the booking, so the guardian can complete and sign in person at the studio.</p>
             <label class="mt-3 flex items-start gap-3 cursor-pointer">
               <input id="consent-minor-law-ack" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-outline-variant accent-primary">
               <span class="text-xs text-on-surface leading-relaxed">I've confirmed my local law allows tattooing minors with guardian consent, and I know the minimum age and requirements that apply in <span id="consent-market-country-label">your market</span>.</span>
