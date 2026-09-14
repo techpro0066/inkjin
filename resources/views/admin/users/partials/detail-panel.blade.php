@@ -90,9 +90,13 @@
           <span class="text-sm text-on-surface-variant shrink-0">Guest Spots</span>
           <span class="text-sm font-semibold text-on-surface text-right">{{ !empty($user['guest_spots_on']) ? 'On' : 'Off' }}</span>
         </div>
-        <div class="flex justify-between py-2 gap-4">
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">FAQ</span>
           <span class="text-sm font-semibold text-on-surface text-right">{{ !empty($user['faq_on']) ? 'On' : 'Off' }}</span>
+        </div>
+        <div class="flex justify-between py-2 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Consent form</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ !empty($user['consent_form_on']) ? 'On' : 'Off' }}</span>
         </div>
       </div>
 

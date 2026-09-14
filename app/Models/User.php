@@ -122,6 +122,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(UserDetail::class);
     }
 
+    public function consentFormSetting()
+    {
+        return $this->hasOne(ConsentFormSetting::class);
+    }
+
     /**
      * Get the availabilities for the user.
      */

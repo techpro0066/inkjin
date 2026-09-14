@@ -27,6 +27,8 @@ class UserController extends Controller
         $statusFilter = $request->get('status', 'all');
         $sort = $request->get('sort', 'newest');
         $expandedId = (int) $request->get('expanded', 0);
+        $booksFilter = $request->get('books', 'all');
+        $payoutsFilter = $request->get('payouts', 'all');
         $perPage = AdminListPagination::perPage($request);
 
         $query = $this->filteredUsersQuery($request);
@@ -68,6 +70,8 @@ class UserController extends Controller
             'roleFilter' => $roleFilter,
             'search' => $search,
             'statusFilter' => $statusFilter,
+            'booksFilter' => $booksFilter,
+            'payoutsFilter' => $payoutsFilter,
             'sort' => $sort,
             'expandedId' => $expandedId,
             'stats' => $stats,
@@ -192,9 +196,11 @@ class UserController extends Controller
         $roleFilter = $request->get('role', 'all');
         $search = trim((string) $request->get('q', ''));
         $statusFilter = $request->get('status', 'all');
+        $booksFilter = strtolower(trim((string) $request->get('books', 'all')));
+        $payoutsFilter = strtolower(trim((string) $request->get('payouts', 'all')));
 
         $query = User::query()
-            ->with('userDetail')
+            ->with(['userDetail', 'consentFormSetting'])
             ->withCount(['artistDesigns', 'portfolios', 'availabilities'])
             ->where('role', '!=', 'admin');
 
@@ -243,6 +249,47 @@ class UserController extends Controller
                 })
                 ->whereHas('userDetail', function (Builder $detailQuery) use ($step) {
                     $detailQuery->where('current_step', $step);
+                });
+        }
+
+        if (in_array($booksFilter, ['open', 'closed'], true)) {
+            $query->where('role', 'artist')
+                ->whereHas('userDetail', function (Builder $detailQuery) use ($booksFilter) {
+                    if ($booksFilter === 'closed') {
+                        $detailQuery->where('availability_status', 'closed');
+
+                        return;
+                    }
+
+                    $detailQuery->whereIn('availability_status', [
+                        'design_custom',
+                        'design_only',
+                        'custom_only',
+                    ]);
+                });
+        }
+
+        if (in_array($payoutsFilter, ['connected', 'not_connected'], true)) {
+            $query->where('role', 'artist')
+                ->whereHas('userDetail', function (Builder $detailQuery) use ($payoutsFilter) {
+                    if ($payoutsFilter === 'connected') {
+                        $detailQuery->where(function (Builder $connected) {
+                            $connected->where('payment_type', 'inkjin_account')
+                                ->orWhere('payment_status', 'approved');
+                        });
+
+                        return;
+                    }
+
+                    $detailQuery->where(function (Builder $notConnected) {
+                        $notConnected->where(function (Builder $type) {
+                            $type->whereNull('payment_type')
+                                ->orWhere('payment_type', '!=', 'inkjin_account');
+                        })->where(function (Builder $status) {
+                            $status->whereNull('payment_status')
+                                ->orWhere('payment_status', '!=', 'approved');
+                        });
+                    });
                 });
         }
 
@@ -376,6 +423,7 @@ class UserController extends Controller
             'smart_pricing_on' => $isArtist ? (($detail?->pricing_type ?? 'manual') === 'smart') : null,
             'guest_spots_on' => $isArtist ? (bool) ($detail?->display_guest_spots ?? false) : null,
             'faq_on' => $isArtist ? (bool) ($detail?->display_faq ?? false) : null,
+            'consent_form_on' => $isArtist ? (bool) ($user->consentFormSetting?->send_automatically ?? false) : null,
             'payment_type' => $detail?->payment_type,
             'payment_status' => $detail?->payment_status,
             'google_calendar_connected' => ! empty($detail?->google_calendar_token),

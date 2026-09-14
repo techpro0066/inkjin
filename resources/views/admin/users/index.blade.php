@@ -61,6 +61,22 @@
           </select>
         </div>
         <div>
+          <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Books</label>
+          <select name="books" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="all" {{ ($booksFilter ?? 'all') === 'all' ? 'selected' : '' }}>All</option>
+            <option value="open" {{ ($booksFilter ?? 'all') === 'open' ? 'selected' : '' }}>Open</option>
+            <option value="closed" {{ ($booksFilter ?? 'all') === 'closed' ? 'selected' : '' }}>Closed</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Payouts</label>
+          <select name="payouts" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="all" {{ ($payoutsFilter ?? 'all') === 'all' ? 'selected' : '' }}>All</option>
+            <option value="connected" {{ ($payoutsFilter ?? 'all') === 'connected' ? 'selected' : '' }}>Connected</option>
+            <option value="not_connected" {{ ($payoutsFilter ?? 'all') === 'not_connected' ? 'selected' : '' }}>Not connected</option>
+          </select>
+        </div>
+        <div>
           <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Sort by</label>
           <select name="sort" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
             <option value="newest" {{ $sort === 'newest' ? 'selected' : '' }}>Newest</option>
