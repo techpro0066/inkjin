@@ -498,7 +498,7 @@ class GuestSpot extends Model
             || $this->listLocationLabel()
             || $this->listBufferLabel()
             || $this->listAvailabilityTimeLabel()
-            || ($this->status === 'available' ? $this->listRemainingSpotsLabel() : null));
+            || $this->status === 'available');
     }
 
     /**

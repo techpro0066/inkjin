@@ -119,6 +119,34 @@
       flex-shrink: 0;
       margin-top: 1px;
     }
+    .guest-spot-copy-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border: 1px solid rgba(202, 196, 211, 0.55);
+      background: #fff;
+      color: #1c1b21;
+      border-radius: 0.65rem;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.2;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .guest-spot-copy-link:hover {
+      background: #f8f1fb;
+      border-color: rgba(49, 15, 122, 0.35);
+      color: #310f7a;
+    }
+    .guest-spot-copy-link .material-symbols-outlined {
+      font-size: 15px;
+      margin-top: 0;
+    }
+    .guest-spot-copy-link.is-copied {
+      border-color: rgba(27, 94, 74, 0.35);
+      color: #1b5e4a;
+      background: rgba(27, 94, 74, 0.06);
+    }
 
     .info-tooltip { position: relative; display: inline-flex; cursor: help; vertical-align: middle; }
     .info-tooltip .tooltip-text {
@@ -591,6 +619,16 @@
                   <span class="guest-spot-remaining">{{ $spot->listRemainingSpotsLabel() }}</span>
                 </span>
                 @endif
+                @if ($spot->status === 'available' && $bookingPageUsername)
+                <button
+                  type="button"
+                  class="guest-spot-copy-link js-copy-guest-spot-link"
+                  data-url="{{ url('/@'.$bookingPageUsername.'/request/custom').'?guest_spot='.$spot->id }}"
+                >
+                  <span class="material-symbols-outlined">content_copy</span>
+                  <span class="guest-spot-copy-label">Copy guest spot link</span>
+                </button>
+                @endif
               </div>
               @else
               <div class="guest-spot-details hidden sm:col-span-7"></div>
@@ -647,6 +685,11 @@ function selectGuestStatus(card) {
 (function () {
   var storeUrl = @json(route('guest-spots.store'));
   var reorderUrl = @json(route('guest-spots.reorder'));
+  var guestSpotLinkBase = @json(
+    ($bookingPageUsername ?? null)
+      ? url('/@'.$bookingPageUsername.'/request/custom')
+      : null
+  );
   var csrf = $('meta[name="csrf-token"]').attr('content');
   var $list = $('#guestSpotsList');
   var $listWrap = $('#guestSpotsListWrap');
@@ -892,6 +935,17 @@ function selectGuestStatus(card) {
     );
   }
 
+  function guestSpotCopyLinkHtml(spotId) {
+    if (!guestSpotLinkBase || !spotId) return '';
+    var url = guestSpotLinkBase + '?guest_spot=' + encodeURIComponent(spotId);
+    return (
+      '<button type="button" class="guest-spot-copy-link js-copy-guest-spot-link" data-url="' + $('<div>').text(url).html() + '">' +
+        '<span class="material-symbols-outlined">content_copy</span>' +
+        '<span class="guest-spot-copy-label">Copy guest spot link</span>' +
+      '</button>'
+    );
+  }
+
   function fillRowDetails($row, spot) {
     var $details = $row.find('.guest-spot-details');
     var canShowDetails = spot && (spot.status === 'available' || spot.status === 'completed' || spot.display_status === 'completed');
@@ -915,6 +969,9 @@ function selectGuestStatus(card) {
     }
     if (spot.status === 'available' && spot.list_remaining_spots) {
       html.push(detailItemHtml('group', spot.list_remaining_spots, 'guest-spot-remaining'));
+    }
+    if (spot.status === 'available') {
+      html.push(guestSpotCopyLinkHtml(spot.id));
     }
 
     if (!html.length) {
@@ -1399,6 +1456,63 @@ function selectGuestStatus(card) {
     if (!$.trim($el.val())) {
       $el.attr('placeholder', $el.attr('data-placeholder') || '0');
     }
+  });
+
+  function fallbackCopyText(text, onSuccess, onFail) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) onSuccess();
+      else if (onFail) onFail();
+    } catch (e) {
+      if (onFail) onFail();
+    }
+  }
+
+  function copyGuestSpotLink(url, $btn) {
+    if (!url) {
+      showAlert('Set up your username first to share a guest spot link.', 'error');
+      return;
+    }
+    var $label = $btn.find('.guest-spot-copy-label');
+    var original = $label.text() || 'Copy guest spot link';
+    var done = function () {
+      $btn.addClass('is-copied');
+      $label.text('Copied');
+      clearTimeout($btn.data('copyTimer'));
+      $btn.data('copyTimer', setTimeout(function () {
+        $btn.removeClass('is-copied');
+        $label.text(original);
+      }, 1800));
+    };
+    var fail = function () {
+      showAlert('Could not copy link. Please copy it manually.', 'error');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(function () {
+        fallbackCopyText(url, done, fail);
+      });
+      return;
+    }
+    fallbackCopyText(url, done, fail);
+  }
+
+  $(document).on('click', '.js-copy-guest-spot-link', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var $btn = $(this);
+    copyGuestSpotLink($btn.attr('data-url') || '', $btn);
+  });
+
+  $(document).on('mousedown', '.js-copy-guest-spot-link', function (e) {
+    e.stopPropagation();
   });
 })();
 </script>
