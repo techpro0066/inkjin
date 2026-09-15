@@ -678,7 +678,7 @@ class ArtistPayoutService
                 'amount' => round($amount, 2),
                 'available_at' => $deadline->toIso8601String(),
                 'available_label' => $label,
-                'reason' => 'After booking is completed',
+                'reason' => 'After your cancellation window expires.',
                 'sort_key' => $deadline->format('Y-m-d H:i:s'),
             ];
         }

@@ -122,6 +122,9 @@
     .guest-spot-copy-link {
       display: inline-flex;
       align-items: center;
+      align-self: flex-start;
+      width: fit-content;
+      max-width: 100%;
       gap: 0.35rem;
       border: 1px solid rgba(202, 196, 211, 0.55);
       background: #fff;
@@ -336,7 +339,7 @@
             </div>
 
             <div>
-              <label for="guest_address_search" class="block text-sm font-semibold text-on-surface mb-2">Find Your Address <span class="text-red-600">*</span></label>
+              <label for="guest_address_search" class="block text-sm font-semibold text-on-surface mb-2">Find studio's address <span class="text-red-600">*</span></label>
               <div class="relative" id="guestAddressSearchWrapper">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">location_on</span>
                 <input type="text" id="guest_address_search" autocomplete="off" placeholder="Start typing your studio address..." class="w-full text-sm border border-outline-variant/30 rounded-xl pl-10 pr-4 py-3 bg-white text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/30">

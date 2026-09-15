@@ -112,7 +112,7 @@
           </div>
         </div>
         @if ($hasPendingSchedule)
-          <p class="text-xs text-primary font-semibold">View availability by booking →</p>
+          <p class="text-xs text-primary font-semibold">View pending payouts by booking →</p>
         @else
           <p class="text-xs text-on-surface-variant">{{ $stats['pending_count'] }} {{ Str::plural('payment', $stats['pending_count']) }} processing</p>
         @endif
