@@ -69,7 +69,11 @@ class RequestsController extends Controller
         ]);
 
         $bookingRequest->refresh();
-        $bookingRequest->load(['user', 'tattoo', 'artist']);
+        $bookingRequest->load(['user', 'tattoo', 'artist', 'chatChannel']);
+
+        if ($bookingRequest->chatChannel) {
+            app(\App\Services\StreamChatService::class)->syncChannelFreezeState($bookingRequest->chatChannel);
+        }
 
         $this->sendDeclineEmails($bookingRequest);
 

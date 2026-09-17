@@ -6,6 +6,8 @@
     || $hasOpenBooking
     || request()->filled('artist')
     || request()->filled('client')
+    || request()->filled('booking_request')
+    || request()->filled('custom_request')
   );
 @endphp
 
@@ -134,7 +136,7 @@
         </div>
         <p class="text-lg font-semibold text-on-surface">No conversation is there</p>
         <p class="mx-auto mt-2 max-w-md text-sm text-on-surface-variant">
-          You can message {{ $role === 'artist' ? 'a client' : 'your artist' }} when you have an open booking.
+          You can message {{ $role === 'artist' ? 'a client' : 'your artist' }} when you have an open request or booking.
         </p>
       </div>
     @else
@@ -147,6 +149,8 @@
         data-open-artist="{{ request('artist', '') }}"
         data-open-client="{{ request('client', '') }}"
         data-open-booking="{{ request('booking', '') }}"
+        data-open-booking-request="{{ request('booking_request', '') }}"
+        data-open-custom-request="{{ request('custom_request', '') }}"
         data-csrf="{{ csrf_token() }}"
         data-locked-message="{{ $role === 'artist'
           ? 'This chat is read-only. You cannot send new messages for this booking.'
@@ -238,7 +242,7 @@
       </div>
 
       <script src="https://cdn.jsdelivr.net/npm/stream-chat@8.40.0/dist/browser.full-bundle.min.js"></script>
-      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=18"></script>
+      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=19"></script>
     @endif
   </div>
 </main>

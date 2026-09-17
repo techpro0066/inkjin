@@ -12,6 +12,8 @@ class ChatChannel extends Model
         'client_user_id',
         'artist_user_id',
         'booking_id',
+        'booking_request_id',
+        'custom_request_id',
     ];
 
     public function client(): BelongsTo
@@ -27,6 +29,16 @@ class ChatChannel extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function bookingRequest(): BelongsTo
+    {
+        return $this->belongsTo(BookingRequest::class);
+    }
+
+    public function customRequest(): BelongsTo
+    {
+        return $this->belongsTo(CustomRequest::class);
     }
 
     public function scopeForUser($query, int $userId)
@@ -58,6 +70,16 @@ class ChatChannel extends Model
         return 'u'.$clientId.'-a'.$artistId.'-b'.$bookingId;
     }
 
+    public static function channelIdForBookingRequest(int $clientId, int $artistId, int $requestId): string
+    {
+        return 'u'.$clientId.'-a'.$artistId.'-br'.$requestId;
+    }
+
+    public static function channelIdForCustomRequest(int $clientId, int $artistId, int $requestId): string
+    {
+        return 'u'.$clientId.'-a'.$artistId.'-cr'.$requestId;
+    }
+
     public function pairKey(): string
     {
         return $this->client_user_id.'-'.$this->artist_user_id;
@@ -65,9 +87,40 @@ class ChatChannel extends Model
 
     public function isChatAllowed(): bool
     {
-        $this->loadMissing('booking');
+        $this->loadMissing(['booking', 'bookingRequest', 'customRequest']);
 
-        return $this->booking?->isOpenForChat() ?? false;
+        if ($this->booking) {
+            return $this->booking->isOpenForChat();
+        }
+
+        if ($this->bookingRequest) {
+            return $this->bookingRequest->isOpenForChat();
+        }
+
+        if ($this->customRequest) {
+            return $this->customRequest->isOpenForChat();
+        }
+
+        return false;
+    }
+
+    public function chatLockedReason(): ?string
+    {
+        $this->loadMissing(['booking', 'bookingRequest', 'customRequest']);
+
+        if ($this->booking) {
+            return $this->booking->chatLockedReason();
+        }
+
+        if ($this->bookingRequest) {
+            return $this->bookingRequest->chatLockedReason();
+        }
+
+        if ($this->customRequest) {
+            return $this->customRequest->chatLockedReason();
+        }
+
+        return 'This chat is read-only. You cannot send new messages.';
     }
 
     public function otherPartyUserIdFor(int $userId): ?int

@@ -298,7 +298,7 @@
         </div>
         <div>
           <label for="searchClient" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
-          <input type="search" id="searchClient" oninput="applyFilters()" placeholder="Client name, email, reference…" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <input type="search" id="searchClient" oninput="applyFilters()" placeholder="Client name, reference…" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
         </div>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -329,7 +329,7 @@
             <div class="flex-1 min-w-0">
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                 <div class="flex items-center gap-3 flex-wrap">
-                  <p class="font-semibold text-on-surface">{{ $customRequest->clientDisplayName() }}</p>
+                  <p class="font-semibold text-on-surface">{{ $customRequest->clientArtistFacingName() }}</p>
                   <span class="request-status-badge inline-flex items-center gap-1.5 {{ $badgeClass }} text-xs font-semibold px-3 py-1 rounded-full">
                     <span class="w-1.5 h-1.5 rounded-full status-dot"></span> <span class="request-status-label">{{ $filterStatus }}</span>
                   </span>
@@ -344,9 +344,6 @@
                 @endif
                 @if($answerCount > 0)
                   · {{ $answerCount }} {{ $answerCount === 1 ? 'answer' : 'answers' }}
-                @endif
-                @if($customRequest->contactPhone())
-                  · {{ $customRequest->contactPhone() }}
                 @endif
               </p>
               @if ($customRequest->attachedImageCount() > 0)
@@ -363,6 +360,11 @@
               @endif
               <div class="flex flex-col items-end gap-1.5" data-card-actions>
                 <div class="flex flex-wrap items-center gap-2 justify-end">
+                  @if($customRequest->artistChatUrl())
+                  <a href="{{ $customRequest->artistChatUrl() }}" onclick="event.stopPropagation();" class="text-xs font-semibold text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container-low px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1" title="Message client">
+                    <span class="material-symbols-outlined text-sm">chat</span> Message
+                  </a>
+                  @endif
                   @if($customRequest->status === 'pending')
                   <button type="button" data-decline-btn onclick="event.stopPropagation(); openDeclineModal({{ $customRequest->id }})" class="text-xs font-semibold text-error border border-error/30 hover:bg-error/5 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
                     <span class="material-symbols-outlined text-sm">block</span> Decline
@@ -628,10 +630,7 @@
     return '' +
       '<div class="flex items-center gap-4">' +
         '<div class="w-14 h-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0"><span class="text-white text-lg font-bold">' + escapeHtml(req.clientInitials) + '</span></div>' +
-        '<div><p class="font-bold text-lg text-on-surface">' + escapeHtml(req.clientName) + '</p>' +
-        '<p class="text-sm text-on-surface-variant">' + escapeHtml(req.clientEmail) + '</p>' +
-        (req.clientPhone ? '<p class="text-sm text-on-surface-variant">' + escapeHtml(req.clientPhone) + '</p>' : '') +
-        '</div></div>' +
+        '<div><p class="font-bold text-lg text-on-surface">' + escapeHtml(req.clientName) + '</p></div></div>' +
       '<div class="flex items-center gap-3 flex-wrap">' +
         '<span class="inline-flex items-center gap-1.5 ' + escapeHtml(req.statusBadgeClass) + ' text-xs font-semibold px-3 py-1 rounded-full"><span class="w-1.5 h-1.5 rounded-full status-dot"></span> ' + escapeHtml(req.filterStatus) + '</span>' +
         '<span class="text-xs text-outline">Submitted ' + escapeHtml(req.submittedAt) + '</span>' +

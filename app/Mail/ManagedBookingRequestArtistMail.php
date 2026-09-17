@@ -20,7 +20,7 @@ class ManagedBookingRequestArtistMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $clientName = $this->bookingRequest->clientDisplayName();
+        $clientName = $this->bookingRequest->clientArtistFacingName();
 
         return new Envelope(
             subject: 'New booking request from '.$clientName,

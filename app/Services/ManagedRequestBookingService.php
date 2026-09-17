@@ -377,6 +377,8 @@ class ManagedRequestBookingService
                 'booking_id' => $booking->id,
             ]);
         }
+
+        app(StreamChatService::class)->attachBookingRequestChannel($bookingRequest, $booking);
     }
 
     private function sendConfirmationEmails(Booking $booking): void

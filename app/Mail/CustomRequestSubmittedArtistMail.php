@@ -21,7 +21,7 @@ class CustomRequestSubmittedArtistMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'New custom tattoo request from ' . $this->customRequest->clientDisplayName(),
+            subject: 'New custom tattoo request from ' . $this->customRequest->clientArtistFacingName(),
         );
     }
 

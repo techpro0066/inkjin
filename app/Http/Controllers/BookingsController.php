@@ -26,7 +26,7 @@ class BookingsController extends Controller
     {
         $bookings = Booking::query()
             ->where('artist_user_id', Auth::id())
-            ->with(['user', 'tattoo', 'latestBalanceCollection', 'consentAnswer'])
+            ->with(['user.userDetail', 'tattoo', 'latestBalanceCollection', 'consentAnswer'])
             ->orderByDesc('booking_date')
             ->orderByDesc('id')
             ->paginate(20)

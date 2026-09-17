@@ -318,6 +318,8 @@ class CustomRequestBookingService
                 'booking_id' => $booking->id,
             ]);
         }
+
+        app(StreamChatService::class)->attachCustomRequestChannel($customRequest, $booking);
     }
 
     private function consumeGuestSpotForPayment(CustomRequest $customRequest): bool

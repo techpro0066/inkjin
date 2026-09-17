@@ -56,6 +56,84 @@ class CustomRequest extends Model
         return $this->belongsTo(Booking::class);
     }
 
+    public function chatChannel(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ChatChannel::class);
+    }
+
+    public function isOpenForChat(): bool
+    {
+        return ! in_array($this->status, ['cancelled', 'moved_to_booking'], true);
+    }
+
+    public function canViewChat(): bool
+    {
+        if ($this->isOpenForChat()) {
+            return true;
+        }
+
+        if ($this->isBooked() && $this->booking) {
+            return $this->booking->canViewChat();
+        }
+
+        return $this->status === 'cancelled' && $this->chatChannel()->exists();
+    }
+
+    public function chatLockedReason(): ?string
+    {
+        if ($this->isOpenForChat()) {
+            return null;
+        }
+
+        if ($this->isBooked() && $this->booking) {
+            return $this->booking->chatLockedReason();
+        }
+
+        return match ($this->status) {
+            'cancelled' => 'This request was declined. You can read past messages but cannot send new ones.',
+            'moved_to_booking' => 'This request is booked. Continue in the booking conversation.',
+            default => 'This chat is read-only. You cannot send new messages for this request.',
+        };
+    }
+
+    public function artistChatUrl(): ?string
+    {
+        if ($this->isBooked() && $this->booking_id) {
+            return route('artist.chat.index', [
+                'client' => $this->user_id,
+                'booking' => $this->booking_id,
+            ]);
+        }
+
+        if ($this->isOpenForChat() || $this->canViewChat()) {
+            return route('artist.chat.index', [
+                'client' => $this->user_id,
+                'custom_request' => $this->id,
+            ]);
+        }
+
+        return null;
+    }
+
+    public function userChatUrl(): ?string
+    {
+        if ($this->isBooked() && $this->booking_id) {
+            return route('user.chat.index', [
+                'artist' => $this->artist_id,
+                'booking' => $this->booking_id,
+            ]);
+        }
+
+        if ($this->isOpenForChat() || $this->canViewChat()) {
+            return route('user.chat.index', [
+                'artist' => $this->artist_id,
+                'custom_request' => $this->id,
+            ]);
+        }
+
+        return null;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -90,6 +168,24 @@ class CustomRequest extends Model
         $name = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
 
         return $name !== '' ? $name : (string) ($user->email ?? 'Client');
+    }
+
+    /**
+     * Name shown to artists before the client has paid (requests only).
+     */
+    public function clientArtistFacingName(): string
+    {
+        $user = $this->user;
+        if (! $user) {
+            return 'Client #'.$this->user_id;
+        }
+
+        $first = trim((string) ($user->first_name ?? ''));
+        if ($first !== '') {
+            return $first;
+        }
+
+        return 'Client';
     }
 
     public function contactPhone(): ?string
@@ -510,18 +606,15 @@ class CustomRequest extends Model
         if (!$user) {
             return 'CL';
         }
-        $first = Str::substr((string) ($user->first_name ?? ''), 0, 1);
-        $last = Str::substr((string) ($user->last_name ?? ''), 0, 1);
-        $initials = strtoupper($first.$last);
+        $first = strtoupper(Str::substr(trim((string) ($user->first_name ?? '')), 0, 1));
 
-        return $initials !== '' ? $initials : 'CL';
+        return $first !== '' ? $first : 'CL';
     }
 
     public function clientSearchKey(): string
     {
         $parts = [
-            Str::lower($this->clientDisplayName()),
-            Str::lower((string) ($this->user?->email ?? '')),
+            Str::lower($this->clientArtistFacingName()),
             Str::lower($this->referenceLabel()),
         ];
 
@@ -720,6 +813,7 @@ class CustomRequest extends Model
             'paymentUrl' => $this->canPay()
                 ? route('user.custom-requests.payment', ['customRequest' => $this->id])
                 : null,
+            'chatUrl' => $this->userChatUrl(),
         ];
     }
 
@@ -731,10 +825,10 @@ class CustomRequest extends Model
             'status' => $this->status,
             'filterStatus' => $this->filterStatusLabel(),
             'statusBadgeClass' => $this->statusBadgeClass(),
-            'clientName' => $this->clientDisplayName(),
+            'clientName' => $this->clientArtistFacingName(),
             'clientInitials' => $this->clientInitials(),
-            'clientEmail' => (string) ($this->user?->email ?? ''),
-            'clientPhone' => $this->contactPhone() ?? '',
+            'clientEmail' => '',
+            'clientPhone' => '',
             'clientSearch' => $this->clientSearchKey(),
             'submittedAt' => $this->created_at?->format('M j, Y') ?? '—',
             'submittedIso' => $this->created_at?->format('Y-m-d') ?? '',
@@ -756,6 +850,7 @@ class CustomRequest extends Model
             'messageForClient' => $this->message_for_client,
             'isPending' => $this->status === 'pending',
             'canDecline' => $this->status === 'pending',
+            'chatUrl' => $this->artistChatUrl(),
         ];
     }
 

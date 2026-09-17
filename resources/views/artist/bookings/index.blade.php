@@ -325,6 +325,10 @@
                       $bookingRef = $booking->referenceLabel();
                       $dateLong = $booking->booking_date?->format('l, F j, Y') ?? '—';
                       $clientEmail = (string) ($booking->user?->email ?? '');
+                      $clientPhone = trim((string) ($booking->user?->phone_number ?? ''));
+                      if ($clientPhone === '') {
+                          $clientPhone = trim((string) ($booking->user?->userDetail?->mobile_number ?? ''));
+                      }
                       $questionsAnswersData = is_array($booking->questions_answers ?? null) ? $booking->questions_answers : [];
                       $balanceLabel = $booking->estimatedBalanceLabel();
                       $balanceDue = $booking->remainingBalanceAmount();
@@ -415,6 +419,7 @@
                           data-booking-ref="{{ e($bookingRef) }}"
                           data-client-name="{{ e($clientName) }}"
                           data-client-email="{{ e($clientEmail) }}"
+                          data-client-phone="{{ e($clientPhone) }}"
                           data-service="{{ e($serviceTitle) }}"
                           data-date-display="{{ e($dateLong) }}"
                           data-time-range="{{ e($startEnd) }}"
@@ -524,6 +529,10 @@
                   $bookingRef = $booking->referenceLabel();
                   $dateLong = $booking->booking_date?->format('l, F j, Y') ?? '—';
                   $clientEmail = (string) ($booking->user?->email ?? '');
+                  $clientPhone = trim((string) ($booking->user?->phone_number ?? ''));
+                  if ($clientPhone === '') {
+                      $clientPhone = trim((string) ($booking->user?->userDetail?->mobile_number ?? ''));
+                  }
                   $questionsAnswersData = is_array($booking->questions_answers ?? null) ? $booking->questions_answers : [];
                   $balanceLabel = $booking->estimatedBalanceLabel();
                   $balanceDue = $booking->remainingBalanceAmount();
@@ -616,6 +625,7 @@
                     data-booking-ref="{{ e($bookingRef) }}"
                     data-client-name="{{ e($clientName) }}"
                     data-client-email="{{ e($clientEmail) }}"
+                    data-client-phone="{{ e($clientPhone) }}"
                     data-service="{{ e($serviceTitle) }}"
                     data-date-display="{{ e($dateLong) }}"
                     data-time-range="{{ e($startEnd) }}"
@@ -701,11 +711,23 @@
   aria-labelledby="abdmTitle">
   <div class="artist-bdm-backdrop absolute inset-0 bg-black/45" data-close-artist-bdm></div>
   <div class="artist-bdm-panel relative w-full max-w-lg max-h-[min(90vh,640px)] overflow-y-auto rounded-2xl bg-white shadow-xl border border-outline-variant/20">
-    <div class="sticky top-0 flex items-center justify-between gap-3 px-5 py-4 border-b border-outline-variant/15 bg-white/95 backdrop-blur-sm rounded-t-2xl z-10">
-      <h3 id="abdmTitle" class="text-lg font-bold text-on-surface truncate pr-2">—</h3>
-      <button type="button" class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-bdm aria-label="Close">
-        <span class="material-symbols-outlined text-[22px]">close</span>
-      </button>
+    <div class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm rounded-t-2xl border-b border-outline-variant/15">
+      <div class="flex items-center justify-between gap-3 px-5 py-4">
+        <h3 id="abdmTitle" class="text-lg font-bold text-on-surface truncate pr-2">—</h3>
+        <button type="button" class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-bdm aria-label="Close">
+          <span class="material-symbols-outlined text-[22px]">close</span>
+        </button>
+      </div>
+      <div class="flex items-center gap-1 px-5" role="tablist" aria-label="Booking detail sections">
+        <button type="button" id="abdmTabDetails" role="tab" aria-selected="true" aria-controls="abdmPanelDetails" data-abdm-tab="details"
+          class="abdm-tab px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary transition-all">
+          Details
+        </button>
+        <button type="button" id="abdmTabRequest" role="tab" aria-selected="false" aria-controls="abdmPanelRequest" data-abdm-tab="request"
+          class="abdm-tab px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">
+          Original request
+        </button>
+      </div>
     </div>
     <div class="p-5 space-y-5">
       <div class="flex gap-4">
@@ -720,55 +742,66 @@
           <p id="abdmType" class="text-sm text-on-surface-variant">—</p>
         </div>
       </div>
-      <dl class="grid grid-cols-1 gap-3 text-sm">
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Client</dt>
-          <dd id="abdmClientName" class="text-on-surface font-semibold text-right">—</dd>
+
+      <div id="abdmPanelDetails" role="tabpanel" aria-labelledby="abdmTabDetails">
+        <dl class="grid grid-cols-1 gap-3 text-sm">
+          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Client</dt>
+            <dd id="abdmClientName" class="text-on-surface font-semibold text-right">—</dd>
+          </div>
+          <div id="abdmClientEmailRow" class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Email</dt>
+            <dd id="abdmClientEmail" class="text-on-surface text-right break-all">—</dd>
+          </div>
+          <div id="abdmClientPhoneRow" class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Mobile</dt>
+            <dd id="abdmClientPhone" class="text-on-surface text-right break-all">—</dd>
+          </div>
+          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Service</dt>
+            <dd id="abdmService" class="text-on-surface text-right">—</dd>
+          </div>
+          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Date</dt>
+            <dd id="abdmDate" class="text-on-surface text-right">—</dd>
+          </div>
+          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Time</dt>
+            <dd id="abdmTime" class="text-on-surface text-right">—</dd>
+          </div>
+          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Duration</dt>
+            <dd id="abdmDuration" class="text-on-surface text-right tabular-nums">—</dd>
+          </div>
+          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Timezone</dt>
+            <dd id="abdmTimezone" class="text-on-surface text-right text-xs">—</dd>
+          </div>
+          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Deposit</dt>
+            <dd id="abdmDeposit" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
+          </div>
+          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+            <dt class="text-on-surface-variant font-medium">Balance (est.)</dt>
+            <dd id="abdmBalance" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
+          </div>
+          <div id="abdmPaidRow" class="hidden flex justify-between gap-4 py-2">
+            <dt class="text-on-surface-variant font-medium">Paid</dt>
+            <dd id="abdmPaid" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div id="abdmPanelRequest" role="tabpanel" aria-labelledby="abdmTabRequest" class="hidden">
+        <div id="abdmQaSection" class="rounded-xl border border-outline-variant/20 bg-surface-container-low/40 p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-3">Intake form answers</p>
+          <div id="abdmQaList" class="space-y-3 text-sm"></div>
+          <p id="abdmQaEmpty" class="hidden text-sm text-on-surface-variant">No intake form answers for this booking.</p>
         </div>
-        <div id="abdmClientEmailRow" class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Email</dt>
-          <dd id="abdmClientEmail" class="text-on-surface text-right break-all">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Service</dt>
-          <dd id="abdmService" class="text-on-surface text-right">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Date</dt>
-          <dd id="abdmDate" class="text-on-surface text-right">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Time</dt>
-          <dd id="abdmTime" class="text-on-surface text-right">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Duration</dt>
-          <dd id="abdmDuration" class="text-on-surface text-right tabular-nums">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Timezone</dt>
-          <dd id="abdmTimezone" class="text-on-surface text-right text-xs">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Deposit</dt>
-          <dd id="abdmDeposit" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Balance (est.)</dt>
-          <dd id="abdmBalance" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
-        </div>
-        <div id="abdmPaidRow" class="hidden flex justify-between gap-4 py-2">
-          <dt class="text-on-surface-variant font-medium">Paid</dt>
-          <dd id="abdmPaid" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
-        </div>
-      </dl>
-      <div id="abdmQaSection" class="hidden rounded-xl border border-outline-variant/20 bg-surface-container-low/40 p-4">
-        <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-3">Client answers</p>
-        <div id="abdmQaList" class="space-y-3 text-sm"></div>
       </div>
     </div>
-        </div>
-      </div>
+  </div>
+</div>
 
 <div id="artistCancelBookingModal"
   class="artist-cbm fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4 sm:p-6"
@@ -2072,6 +2105,8 @@
   var nameEl = document.getElementById('abdmClientName');
   var emailRow = document.getElementById('abdmClientEmailRow');
   var emailEl = document.getElementById('abdmClientEmail');
+  var phoneRow = document.getElementById('abdmClientPhoneRow');
+  var phoneEl = document.getElementById('abdmClientPhone');
   var serviceEl = document.getElementById('abdmService');
   var dateEl = document.getElementById('abdmDate');
   var timeEl = document.getElementById('abdmTime');
@@ -2079,11 +2114,34 @@
   var tzEl = document.getElementById('abdmTimezone');
   var depEl = document.getElementById('abdmDeposit');
   var balEl = document.getElementById('abdmBalance');
-  var qaSectionEl = document.getElementById('abdmQaSection');
   var qaListEl = document.getElementById('abdmQaList');
+  var qaEmptyEl = document.getElementById('abdmQaEmpty');
+  var panelDetails = document.getElementById('abdmPanelDetails');
+  var panelRequest = document.getElementById('abdmPanelRequest');
+  var tabButtons = modal.querySelectorAll('[data-abdm-tab]');
+  var activeTabClass = 'abdm-tab px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary transition-all';
+  var inactiveTabClass = 'abdm-tab px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all';
+
+  function setAbdmTab(tab) {
+    var isDetails = tab !== 'request';
+    tabButtons.forEach(function (btn) {
+      var selected = btn.getAttribute('data-abdm-tab') === (isDetails ? 'details' : 'request');
+      btn.setAttribute('aria-selected', selected ? 'true' : 'false');
+      btn.className = selected ? activeTabClass : inactiveTabClass;
+    });
+    if (panelDetails) panelDetails.classList.toggle('hidden', !isDetails);
+    if (panelRequest) panelRequest.classList.toggle('hidden', isDetails);
+  }
+
+  tabButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setAbdmTab(btn.getAttribute('data-abdm-tab') || 'details');
+    });
+  });
 
   function openModal(btn) {
     var ds = btn.dataset;
+    setAbdmTab('details');
     if (titleEl) titleEl.textContent = ds.service || 'Booking';
     if (imgEl) {
       var fallback = '{{ e(asset('design/images/icons/avatar.jpg')) }}';
@@ -2113,6 +2171,16 @@
         emailEl.textContent = '';
       }
     }
+    if (phoneRow && phoneEl) {
+      var phone = (ds.clientPhone || '').trim();
+      if (phone) {
+        phoneRow.classList.remove('hidden');
+        phoneEl.textContent = phone;
+      } else {
+        phoneRow.classList.add('hidden');
+        phoneEl.textContent = '';
+      }
+    }
     if (serviceEl) serviceEl.textContent = ds.service || '—';
     if (dateEl) dateEl.textContent = ds.dateDisplay || '—';
     if (timeEl) timeEl.textContent = ds.timeRange || '—';
@@ -2133,7 +2201,7 @@
         paidRow.classList.add('hidden');
       }
     }
-    if (qaSectionEl && qaListEl) {
+    if (qaListEl) {
       qaListEl.innerHTML = '';
       var rawQuestions = ds.questions || '';
       var parsedQuestions = null;
@@ -2145,10 +2213,10 @@
       var entries = parsedQuestions && typeof parsedQuestions === 'object'
         ? Object.entries(parsedQuestions)
         : [];
-      if (!entries.length) {
-        qaSectionEl.classList.add('hidden');
-      } else {
-        qaSectionEl.classList.remove('hidden');
+      var hasAnswers = entries.length > 0;
+      if (qaEmptyEl) qaEmptyEl.classList.toggle('hidden', hasAnswers);
+      if (qaListEl) qaListEl.classList.toggle('hidden', !hasAnswers);
+      if (hasAnswers) {
         entries.forEach(function (pair) {
           var qKey = String(pair[0] || '').trim();
           var payload = window.QuestionAnswerDisplay

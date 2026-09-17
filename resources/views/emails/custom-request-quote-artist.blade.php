@@ -12,7 +12,7 @@
 </head>
 <body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   @php
-    $clientName = $customRequest->clientDisplayName();
+    $clientName = $customRequest->clientArtistFacingName();
     $reference = $customRequest->referenceLabel();
     $message = trim((string) ($customRequest->message_for_client ?? ''));
   @endphp

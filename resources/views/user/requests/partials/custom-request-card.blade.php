@@ -48,6 +48,11 @@
           <span class="text-xs text-on-surface-variant">Waiting for artist response</span>
         @endif
         <div class="ml-auto flex flex-wrap items-center gap-2">
+          @if ($customRequest->userChatUrl())
+            <a href="{{ $customRequest->userChatUrl() }}" onclick="event.stopPropagation();" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-outline-variant/30 text-on-surface-variant text-xs font-semibold hover:bg-surface-container-low transition-colors" title="Message artist">
+              <span class="material-symbols-outlined text-sm">chat</span> Message
+            </a>
+          @endif
           @if ($customRequest->canAccessConfirmTimesPage())
             <a href="{{ route('user.custom-requests.confirm-times', ['customRequest' => $customRequest, 'fresh' => 1]) }}" onclick="event.stopPropagation();" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container transition-colors">
               <span class="material-symbols-outlined text-sm">event</span> Set date &amp; time

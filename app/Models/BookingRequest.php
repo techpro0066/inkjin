@@ -62,6 +62,84 @@ class BookingRequest extends Model
         return $this->belongsTo(Booking::class);
     }
 
+    public function chatChannel(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ChatChannel::class);
+    }
+
+    public function isOpenForChat(): bool
+    {
+        return ! in_array($this->status, ['cancelled', 'moved_to_booking'], true);
+    }
+
+    public function canViewChat(): bool
+    {
+        if ($this->isOpenForChat()) {
+            return true;
+        }
+
+        if ($this->isBooked() && $this->booking) {
+            return $this->booking->canViewChat();
+        }
+
+        return $this->status === 'cancelled' && $this->chatChannel()->exists();
+    }
+
+    public function chatLockedReason(): ?string
+    {
+        if ($this->isOpenForChat()) {
+            return null;
+        }
+
+        if ($this->isBooked() && $this->booking) {
+            return $this->booking->chatLockedReason();
+        }
+
+        return match ($this->status) {
+            'cancelled' => 'This request was declined. You can read past messages but cannot send new ones.',
+            'moved_to_booking' => 'This request is booked. Continue in the booking conversation.',
+            default => 'This chat is read-only. You cannot send new messages for this request.',
+        };
+    }
+
+    public function artistChatUrl(): ?string
+    {
+        if ($this->isBooked() && $this->booking_id) {
+            return route('artist.chat.index', [
+                'client' => $this->user_id,
+                'booking' => $this->booking_id,
+            ]);
+        }
+
+        if ($this->isOpenForChat() || $this->canViewChat()) {
+            return route('artist.chat.index', [
+                'client' => $this->user_id,
+                'booking_request' => $this->id,
+            ]);
+        }
+
+        return null;
+    }
+
+    public function userChatUrl(): ?string
+    {
+        if ($this->isBooked() && $this->booking_id) {
+            return route('user.chat.index', [
+                'artist' => $this->artist_id,
+                'booking' => $this->booking_id,
+            ]);
+        }
+
+        if ($this->isOpenForChat() || $this->canViewChat()) {
+            return route('user.chat.index', [
+                'artist' => $this->artist_id,
+                'booking_request' => $this->id,
+            ]);
+        }
+
+        return null;
+    }
+
     public function referenceLabel(): string
     {
         return '#REQ-' . str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
@@ -215,22 +293,41 @@ class BookingRequest extends Model
         return $name !== '' ? $name : (string) ($user->email ?? 'Client');
     }
 
+    /**
+     * Name shown to artists before the client has paid (requests only).
+     */
+    public function clientArtistFacingName(): string
+    {
+        $user = $this->user;
+        if (! $user) {
+            return 'Client #'.$this->user_id;
+        }
+
+        $first = trim((string) ($user->first_name ?? ''));
+        if ($first !== '') {
+            return $first;
+        }
+
+        return 'Client';
+    }
+
     public function clientInitials(): string
     {
         $user = $this->user;
         if (!$user) {
             return 'CL';
         }
-        $first = Str::substr((string) ($user->first_name ?? ''), 0, 1);
-        $last = Str::substr((string) ($user->last_name ?? ''), 0, 1);
-        $initials = strtoupper($first . $last);
+        $first = strtoupper(Str::substr(trim((string) ($user->first_name ?? '')), 0, 1));
 
-        return $initials !== '' ? $initials : 'CL';
+        return $first !== '' ? $first : 'CL';
     }
 
     public function clientSearchKey(): string
     {
-        return Str::lower($this->clientDisplayName());
+        return trim(implode(' ', array_filter([
+            Str::lower($this->clientArtistFacingName()),
+            Str::lower($this->referenceLabel()),
+        ])));
     }
 
     public function artistDisplayName(): string
@@ -737,6 +834,7 @@ class BookingRequest extends Model
             'paymentUrl' => $this->canPay()
                 ? route('user.requests.payment', ['bookingRequest' => $this->id])
                 : null,
+            'chatUrl' => $this->userChatUrl(),
             'clientSessionSlots' => $this->normalizedArtistSlots($this->client_session_slots),
             'clientConsultationSlots' => $this->normalizedArtistSlots($this->client_consultation_slots),
             'isDeclined' => $this->status === 'cancelled',
@@ -758,9 +856,9 @@ class BookingRequest extends Model
             'status' => $this->status,
             'filterStatus' => $this->filterStatusLabel(),
             'statusBadgeClass' => $this->statusBadgeClass(),
-            'clientName' => $this->clientDisplayName(),
+            'clientName' => $this->clientArtistFacingName(),
             'clientInitials' => $this->clientInitials(),
-            'clientEmail' => (string) ($this->user?->email ?? ''),
+            'clientEmail' => '',
             'clientSearch' => $this->clientSearchKey(),
             'submittedAt' => $this->created_at?->format('M j, Y') ?? '—',
             'submittedIso' => $this->created_at?->format('Y-m-d') ?? '',
@@ -777,6 +875,7 @@ class BookingRequest extends Model
             'designImage' => $this->designImageUrl(),
             'isPending' => $this->status === 'pending',
             'canDecline' => $this->status === 'pending',
+            'chatUrl' => $this->artistChatUrl(),
             'reasonDecline' => $this->reason_decline,
             'artistNotesToClient' => $this->artist_notes_to_client,
             'artistSessionSlots' => $this->normalizedArtistSlots($this->artist_session_slots),

@@ -12,7 +12,7 @@
 </head>
 <body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   @php
-    $clientName = $bookingRequest->clientDisplayName();
+    $clientName = $bookingRequest->clientArtistFacingName();
     $designTitle = (string) ($bookingRequest->tattoo?->title ?? 'Design');
     $reference = $bookingRequest->referenceLabel();
     $reason = trim((string) ($bookingRequest->reason_decline ?? ''));

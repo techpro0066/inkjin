@@ -40,6 +40,11 @@
           <span class="text-xs text-on-surface-variant">Waiting for artist response</span>
         @endif
         <div class="ml-auto flex flex-wrap items-center gap-2">
+          @if ($request->userChatUrl())
+            <a href="{{ $request->userChatUrl() }}" onclick="event.stopPropagation();" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-outline-variant/30 text-on-surface-variant text-xs font-semibold hover:bg-surface-container-low transition-colors" title="Message artist">
+              <span class="material-symbols-outlined text-sm">chat</span> Message
+            </a>
+          @endif
           @if ($request->canPay())
             <a href="{{ route('user.requests.payment', $request) }}" onclick="event.stopPropagation();" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container transition-colors">
               <span class="material-symbols-outlined text-sm">payments</span> Complete payment

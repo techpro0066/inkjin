@@ -213,7 +213,7 @@
         <div class="booking-row px-6 py-4 border-b border-outline-variant/10 last:border-b-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap mb-1">
-              <p class="font-semibold text-on-surface">{{ $customRequest->clientDisplayName() }}</p>
+              <p class="font-semibold text-on-surface">{{ $customRequest->clientArtistFacingName() }}</p>
               <span class="inline-flex items-center gap-1.5 {{ $customRequest->statusBadgeClass() }} text-xs font-semibold px-2.5 py-0.5 rounded-full">
                 <span class="w-1.5 h-1.5 rounded-full status-dot"></span> {{ $customRequest->filterStatusLabel() }}
               </span>

@@ -78,7 +78,11 @@ class ArtistCustomRequestsController extends Controller
         ]);
 
         $customRequest->refresh();
-        $customRequest->load(['user', 'artist']);
+        $customRequest->load(['user', 'artist', 'chatChannel']);
+
+        if ($customRequest->chatChannel) {
+            app(\App\Services\StreamChatService::class)->syncChannelFreezeState($customRequest->chatChannel);
+        }
 
         $this->sendDeclineEmails($customRequest);
 

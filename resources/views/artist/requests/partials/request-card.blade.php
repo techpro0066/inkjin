@@ -19,7 +19,7 @@
     <div class="flex-1 min-w-0">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
         <div class="flex items-center gap-3 flex-wrap">
-          <p class="font-semibold text-on-surface">{{ $request->clientDisplayName() }}</p>
+          <p class="font-semibold text-on-surface">{{ $request->clientArtistFacingName() }}</p>
           <span class="request-status-badge inline-flex items-center gap-1.5 {{ $badgeClass }} text-xs font-semibold px-3 py-1 rounded-full">
             <span class="w-1.5 h-1.5 rounded-full status-dot"></span> <span class="request-status-label">{{ $filterStatus }}</span>
           </span>
@@ -45,6 +45,11 @@
         @endif
         <span class="info-tag text-xs font-medium px-2.5 py-1 rounded-lg">{{ $request->priceLabel() }}</span>
         <div class="ml-auto flex items-center gap-2 flex-wrap justify-end">
+          @if ($request->artistChatUrl())
+            <a href="{{ $request->artistChatUrl() }}" onclick="event.stopPropagation();" class="text-xs font-semibold text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container-low px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1" title="Message client">
+              <span class="material-symbols-outlined text-sm">chat</span> Message
+            </a>
+          @endif
           @if ($request->status === 'pending')
             <button type="button" data-decline-btn onclick="event.stopPropagation(); openDeclineModal({{ $request->id }})" class="request-decline-btn text-xs font-semibold text-error border border-error/30 hover:bg-error/5 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
               <span class="material-symbols-outlined text-sm">block</span> Decline

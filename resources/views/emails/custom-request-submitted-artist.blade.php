@@ -14,10 +14,9 @@
 </head>
 <body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   @php
-    $clientName = $customRequest->clientDisplayName();
+    $clientName = $customRequest->clientArtistFacingName();
     $reference = $customRequest->referenceLabel();
     $submittedAt = $customRequest->created_at?->format('M j, Y \a\t g:i A') ?? now()->format('M j, Y \a\t g:i A');
-    $clientPhone = $customRequest->contactPhone();
   @endphp
 
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
@@ -75,12 +74,6 @@
                           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                             <tr><td style="font-size:14px;font-weight:700;color:#310f7a;text-transform:uppercase;letter-spacing:.5px;padding:0 0 16px 0;">Request details</td></tr>
                             <tr><td style="padding:0 0 10px 0;font-size:15px;color:#1c1b21;"><strong>Client:</strong> {{ $clientName }}</td></tr>
-                            @if($customRequest->user?->email)
-                            <tr><td style="padding:0 0 10px 0;font-size:15px;color:#1c1b21;"><strong>Email:</strong> {{ $customRequest->user->email }}</td></tr>
-                            @endif
-                            @if($clientPhone)
-                            <tr><td style="padding:0 0 10px 0;font-size:15px;color:#1c1b21;"><strong>Phone:</strong> {{ $clientPhone }}</td></tr>
-                            @endif
                             <tr><td style="padding:0 0 10px 0;font-size:15px;color:#1c1b21;"><strong>Reference:</strong> {{ $reference }}</td></tr>
                             <tr><td style="font-size:15px;color:#1c1b21;"><strong>Submitted:</strong> {{ $submittedAt }}</td></tr>
                           </table>
