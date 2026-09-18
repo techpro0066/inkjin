@@ -875,6 +875,7 @@ class BookingRequest extends Model
             'designImage' => $this->designImageUrl(),
             'isPending' => $this->status === 'pending',
             'canDecline' => $this->status === 'pending',
+            'isBooked' => $this->isBooked(),
             'chatUrl' => $this->artistChatUrl(),
             'reasonDecline' => $this->reason_decline,
             'artistNotesToClient' => $this->artist_notes_to_client,

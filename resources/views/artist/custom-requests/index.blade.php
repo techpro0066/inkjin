@@ -626,11 +626,15 @@
     var requestTitle = req.isGuest ? 'Guest Spot Request' : 'Custom Tattoo Request';
     var requestSubtitle = req.isGuest ? 'Client reservation for your guest spot' : 'Client-submitted custom work inquiry';
     var requestIcon = req.isGuest ? 'luggage' : 'brush';
+    var messageClientHtml = req.chatUrl
+      ? '<a href="' + escapeHtml(req.chatUrl) + '" class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold px-3.5 py-1.5 hover:bg-primary/15 transition-colors"><span class="material-symbols-outlined text-[18px]">chat</span> Message client</a>' +
+        (req.isBooked ? '' : '<p class="text-xs text-on-surface-variant mt-1.5">Full details unlock after payment.</p>')
+      : '';
 
     return '' +
       '<div class="flex items-center gap-4">' +
         '<div class="w-14 h-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0"><span class="text-white text-lg font-bold">' + escapeHtml(req.clientInitials) + '</span></div>' +
-        '<div><p class="font-bold text-lg text-on-surface">' + escapeHtml(req.clientName) + '</p></div></div>' +
+        '<div><p class="font-bold text-lg text-on-surface">' + escapeHtml(req.clientName) + '</p>' + messageClientHtml + '</div></div>' +
       '<div class="flex items-center gap-3 flex-wrap">' +
         '<span class="inline-flex items-center gap-1.5 ' + escapeHtml(req.statusBadgeClass) + ' text-xs font-semibold px-3 py-1 rounded-full"><span class="w-1.5 h-1.5 rounded-full status-dot"></span> ' + escapeHtml(req.filterStatus) + '</span>' +
         '<span class="text-xs text-outline">Submitted ' + escapeHtml(req.submittedAt) + '</span>' +

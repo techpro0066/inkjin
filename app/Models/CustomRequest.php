@@ -850,6 +850,7 @@ class CustomRequest extends Model
             'messageForClient' => $this->message_for_client,
             'isPending' => $this->status === 'pending',
             'canDecline' => $this->status === 'pending',
+            'isBooked' => $this->isBooked(),
             'chatUrl' => $this->artistChatUrl(),
         ];
     }
