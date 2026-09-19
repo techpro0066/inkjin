@@ -405,7 +405,7 @@ class GuestSpot extends Model
             $this->studioDisplayName(),
             trim((string) ($this->city ?? '')),
             trim((string) ($this->country ?? '')),
-        ], fn (string $part) => $part !== ''));
+        ], fn (?string $part) => $part !== null && $part !== ''));
 
         return $parts !== [] ? implode(', ', $parts) : null;
     }
@@ -428,7 +428,7 @@ class GuestSpot extends Model
             $studioLine,
             $streetLine,
             $postalCode,
-        ], fn (string $line) => $line !== ''));
+        ], fn (?string $line) => $line !== null && $line !== ''));
     }
 
     public function listLocationLabel(): ?string
