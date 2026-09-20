@@ -4,10 +4,7 @@
 
 @section('styles')
 @php
-  $showInstagramUi = in_array(strtolower((string) (Auth::user()->email ?? '')), [
-    'ilias@inkjin.com',
-    'touseef132ahmad@gmail.com',
-  ], true);
+  $showInstagramUi = true;
 @endphp
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
