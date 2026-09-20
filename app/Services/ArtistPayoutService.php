@@ -976,10 +976,10 @@ class ArtistPayoutService
         }
 
         if ($paymentType === 'artist_account' && trim((string) ($userDetail->stripe_account_id ?? '')) === '') {
-            return 'Connect and complete your Stripe payout setup in Payment settings before accepting client payments.';
+            return 'Connect and complete your Stripe payout setup in settings before accepting client payments.';
         }
 
-        return 'Complete payout setup in Payment settings before accepting client payments.';
+        return 'Connect and complete your Stripe payout setup in settings before accepting client payments.';
     }
 
     private function resolveStripeAccountIdForStatus(UserDetail $userDetail): ?string

@@ -13,6 +13,7 @@ class ArtistDesign extends Model
         'title',
         'description',
         'image',
+        'original_image',
         'is_active',
         'is_visible',
         'is_repeatable',

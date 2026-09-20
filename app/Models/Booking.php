@@ -61,6 +61,7 @@ class Booking extends Model
         'notes',
         'completed_at',
         'completion_notes',
+        'actual_duration_minutes',
         'no_show_marked_at',
         'action_history',
         'reminder_sent_at',

@@ -716,12 +716,12 @@
     function buildSetPayoutPanelHtml() {
       var detail = quotesBlockedMessage
         ? escapeHtml(quotesBlockedMessage)
-        : 'You need to set up payouts before you can offer times or respond to this request.';
+        : 'Connect and complete your Stripe payout setup in settings before accepting client payments.';
       return '<div class="space-y-4">' +
-        '<div><h4 class="font-bold text-on-surface mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">payments</span> Payouts not set up</h4>' +
+        '<div><h4 class="font-bold text-on-surface mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">payments</span> Payouts are not set up</h4>' +
         '<p class="text-sm text-on-surface-variant">' + detail + '</p></div>' +
         '<a href="' + escapeHtml(paymentSettingsUrl) + '" class="w-full inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">' +
-        '<span class="material-symbols-outlined text-lg">settings</span> Set Payout</a>' +
+        '<span class="material-symbols-outlined text-lg">settings</span> Complete Payouts</a>' +
         '</div>';
     }
 

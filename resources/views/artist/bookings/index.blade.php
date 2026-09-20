@@ -1121,6 +1121,30 @@
             placeholder="Bank transfer on Friday">
         </div>
       </div>
+      <div id="rpmActualDurationFields" class="space-y-2">
+        <label class="block text-sm font-semibold text-on-surface">Actual duration <span class="text-error">*</span></label>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="rpmDurationHours" class="block text-xs font-medium text-on-surface-variant mb-1.5">Hours</label>
+            <select id="rpmDurationHours"
+              class="w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+              @for ($h = 0; $h <= 12; $h++)
+                <option value="{{ $h }}" @selected($h === 0)>{{ $h }}</option>
+              @endfor
+            </select>
+          </div>
+          <div>
+            <label for="rpmDurationMinutes" class="block text-xs font-medium text-on-surface-variant mb-1.5">Minutes</label>
+            <select id="rpmDurationMinutes"
+              class="w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+              @foreach ([0, 15, 30, 45] as $m)
+                <option value="{{ $m }}" @selected($m === 0)>{{ $m }}</option>
+              @endforeach
+            </select>
+          </div>
+        </div>
+        <p id="rpmDurationError" class="hidden text-xs font-semibold text-error"></p>
+      </div>
       <div class="flex items-start justify-between gap-3 pt-1">
         <button type="button" class="rounded-xl border border-outline-variant/40 bg-white px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low" data-close-artist-rpm>Back</button>
         <div class="text-right">
@@ -2304,6 +2328,8 @@
   var linkSettleAmountInput = document.getElementById('rpmLinkSettleAmountInput');
   var linkSettleAmountEdit = document.getElementById('rpmLinkSettleAmountEdit');
   var completionCode = document.getElementById('rpmCompletionCode');
+  var durationHours = document.getElementById('rpmDurationHours');
+  var durationMinutes = document.getElementById('rpmDurationMinutes');
   var unsettledFields = document.getElementById('rpmUnsettledFields');
   var unsettledNote = document.getElementById('rpmUnsettledNote');
   var unsettledDate = document.getElementById('rpmUnsettledDate');
@@ -2387,9 +2413,12 @@
     setTextError(document.getElementById('rpmLinkAmountError'), '');
     setTextError(document.getElementById('rpmCashAmountError'), '');
     setTextError(document.getElementById('rpmCompletionCodeError'), '');
+    setTextError(document.getElementById('rpmDurationError'), '');
     setTextError(document.getElementById('rpmWhenError'), '');
     setTextError(document.getElementById('rpmDateError'), '');
     setInputInvalid(completionCode, false);
+    setInputInvalid(durationHours, false);
+    setInputInvalid(durationMinutes, false);
     setInputInvalid(unsettledDate, false);
     setWrapInvalid(linkAmountWrap, false);
     setWrapInvalid(cashAmountWrap, false);
@@ -2410,6 +2439,7 @@
     clearFieldErrors();
     var amountMsg = firstError(errors, 'amount');
     var codeMsg = firstError(errors, 'completion_code');
+    var durationMsg = firstError(errors, 'actual_duration_minutes') || firstError(errors, 'actual_duration_hours');
     var whenMsg = firstError(errors, 'expected_payment_type');
     var dateMsg = firstError(errors, 'expected_payment_date');
     if (amountMsg) showAmountError(amountMsg);
@@ -2417,12 +2447,24 @@
       setTextError(document.getElementById('rpmCompletionCodeError'), codeMsg);
       setInputInvalid(completionCode, true);
     }
+    if (durationMsg) {
+      setTextError(document.getElementById('rpmDurationError'), durationMsg);
+      setInputInvalid(durationHours, true);
+      setInputInvalid(durationMinutes, true);
+    }
     if (whenMsg) setTextError(document.getElementById('rpmWhenError'), whenMsg);
     if (dateMsg) {
       setTextError(document.getElementById('rpmDateError'), dateMsg);
       setInputInvalid(unsettledDate, true);
     }
-    var mapped = { amount: true, completion_code: true, expected_payment_type: true, expected_payment_date: true };
+    var mapped = {
+      amount: true,
+      completion_code: true,
+      actual_duration_hours: true,
+      actual_duration_minutes: true,
+      expected_payment_type: true,
+      expected_payment_date: true
+    };
     var leftover = '';
     Object.keys(errors || {}).forEach(function (key) {
       if (!mapped[key] && !leftover) leftover = firstError(errors, key);
@@ -2447,9 +2489,23 @@
 
     var typeMap = { link: 'payment_link', cash: 'paid_in_cash', unsettled: 'not_settled_yet' };
     var whenMap = { '3-days': '3_days', '1-week': '1_week', 'pick-date': 'pick_date', 'no-date': 'no_date' };
+    var hours = durationHours ? parseInt(durationHours.value, 10) : 0;
+    var minutes = durationMinutes ? parseInt(durationMinutes.value, 10) : 0;
+    if (!Number.isFinite(hours)) hours = 0;
+    if (!Number.isFinite(minutes)) minutes = 0;
+    if ((hours * 60) + minutes <= 0) {
+      setTextError(document.getElementById('rpmDurationError'), 'Actual duration must be greater than 0.');
+      setInputInvalid(durationHours, true);
+      setInputInvalid(durationMinutes, true);
+      if (durationHours) durationHours.focus();
+      return;
+    }
+
     var payload = {
       collection_type: typeMap[currentOption] || 'payment_link',
-      amount: amount
+      amount: amount,
+      actual_duration_hours: hours,
+      actual_duration_minutes: minutes
     };
 
     if (currentOption === 'cash') {
@@ -2791,6 +2847,8 @@
     if (cashAmountDisplay) cashAmountDisplay.textContent = currentAmountLabel;
     if (linkSettleAmountDisplay) linkSettleAmountDisplay.textContent = currentAmountLabel;
     if (completionCode) completionCode.value = '';
+    if (durationHours) durationHours.value = '0';
+    if (durationMinutes) durationMinutes.value = '0';
     if (unsettledNote) unsettledNote.value = '';
     if (unsettledDate) unsettledDate.value = '';
     setWhenChip('3-days');

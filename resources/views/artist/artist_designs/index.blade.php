@@ -1208,6 +1208,7 @@
       var $deleteDesignModal = $('#deleteDesignModal');
       var $designCropperImg = $('#designCropperImg');
       var designCropper = null;
+      var pendingOriginalImageFile = null;
       var CROP_OUT_W = 1080;
       var CROP_OUT_H = 1350;
       var CROP_RATIO = 4 / 5;
@@ -1927,6 +1928,7 @@
           alert('Image must be 10MB or smaller.');
           return;
         }
+        pendingOriginalImageFile = file;
         destroyDesignCropper();
         revokeDesignCropBlob();
         var url = URL.createObjectURL(file);
@@ -2119,6 +2121,7 @@
           try { designAiSuggestXhr.abort(); } catch (e) { /* ignore */ }
         }
         setDesignAiBusy(false);
+        pendingOriginalImageFile = null;
         $('#designImageData').val('');
         $('#designImagePreviewImg').attr('src', '');
         var slot = document.getElementById('designImageUpload');
@@ -2672,6 +2675,10 @@
         var fd = new FormData();
         if (blob) {
           fd.append('image', blob, 'design.jpg');
+        }
+        if (pendingOriginalImageFile) {
+          var originalName = pendingOriginalImageFile.name || 'design-original.jpg';
+          fd.append('original_image', pendingOriginalImageFile, originalName);
         }
         fd.append('title', $.trim($('#designTitle').val()));
         fd.append('description', $.trim($('#designDescription').val()));

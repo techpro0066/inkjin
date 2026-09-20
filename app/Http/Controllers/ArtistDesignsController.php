@@ -79,6 +79,7 @@ class ArtistDesignsController extends Controller
         $rules['image'] = $requireImage
             ? ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240']
             : ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240'];
+        $rules['original_image'] = ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240'];
 
         return $rules;
     }
@@ -127,7 +128,10 @@ class ArtistDesignsController extends Controller
 
     private function deleteUploadIfSafe(?string $relativePath): void
     {
-        if (! $relativePath || ! str_starts_with($relativePath, 'uploads/artist-designs/')) {
+        if (! $relativePath || (
+            ! str_starts_with($relativePath, 'uploads/artist-designs/')
+            && ! str_starts_with($relativePath, 'uploads/artist-designs-originals/')
+        )) {
             return;
         }
         $full = public_path($relativePath);
@@ -139,7 +143,7 @@ class ArtistDesignsController extends Controller
     private function storeUploadedImage(Request $request): string
     {
         $file = $request->file('image');
-        $filename = time().'_'.uniqid().'.'.strtolower($file->getClientOriginalExtension());
+        $filename = time().'_'.uniqid().'.'.strtolower($file->getClientOriginalExtension() ?: 'jpg');
         $destination = public_path('uploads/artist-designs');
         if (! File::exists($destination)) {
             File::makeDirectory($destination, 0755, true);
@@ -147,6 +151,24 @@ class ArtistDesignsController extends Controller
         $file->move($destination, $filename);
 
         return 'uploads/artist-designs/'.$filename;
+    }
+
+    private function storeUploadedOriginalImage(Request $request): ?string
+    {
+        $file = $request->file('original_image');
+        if (! $file) {
+            return null;
+        }
+
+        $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+        $filename = time().'_'.uniqid().'_original.'.$ext;
+        $destination = public_path('uploads/artist-designs-originals');
+        if (! File::exists($destination)) {
+            File::makeDirectory($destination, 0755, true);
+        }
+        $file->move($destination, $filename);
+
+        return 'uploads/artist-designs-originals/'.$filename;
     }
 
     private function normalizedRepeatLimit(Request $request, ?ArtistDesign $existing = null): ?int
@@ -222,6 +244,7 @@ class ArtistDesignsController extends Controller
         [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
         $minSize = $this->normalizedMinSize($validated);
         $imagePath = $this->storeUploadedImage($request);
+        $originalImagePath = $this->storeUploadedOriginalImage($request);
         $repeatLimit = $this->normalizedRepeatLimit($request);
         $userId = (int) Auth::id();
 
@@ -230,6 +253,7 @@ class ArtistDesignsController extends Controller
             'title' => $validated['title'],
             'description' => trim((string) ($validated['description'] ?? '')),
             'image' => $imagePath,
+            'original_image' => $originalImagePath,
             'is_active' => $request->boolean('is_active'),
             'is_visible' => $request->boolean('is_visible'),
             'is_repeatable' => $request->boolean('is_repeatable'),
@@ -268,15 +292,21 @@ class ArtistDesignsController extends Controller
         $repeatLimit = $this->normalizedRepeatLimit($request, $artistDesign);
 
         $imagePath = $artistDesign->image;
+        $originalImagePath = $artistDesign->original_image;
         if ($request->hasFile('image')) {
             $this->deleteUploadIfSafe($artistDesign->image);
             $imagePath = $this->storeUploadedImage($request);
+        }
+        if ($request->hasFile('original_image')) {
+            $this->deleteUploadIfSafe($artistDesign->original_image);
+            $originalImagePath = $this->storeUploadedOriginalImage($request);
         }
 
         $artistDesign->update([
             'title' => $validated['title'],
             'description' => trim((string) ($validated['description'] ?? '')),
             'image' => $imagePath,
+            'original_image' => $originalImagePath,
             'is_active' => $request->boolean('is_active'),
             'is_visible' => $request->boolean('is_visible'),
             'is_repeatable' => $request->boolean('is_repeatable'),
@@ -615,6 +645,7 @@ class ArtistDesignsController extends Controller
         }
 
         $this->deleteUploadIfSafe($artistDesign->image);
+        $this->deleteUploadIfSafe($artistDesign->original_image);
         $artistDesign->delete();
 
         return response()->json([

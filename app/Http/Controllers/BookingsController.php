@@ -401,6 +401,8 @@ class BookingsController extends Controller
             'collection_type' => ['required', 'in:payment_link,paid_in_cash,not_settled_yet'],
             'amount' => ['required', 'numeric', 'gt:0'],
             'note' => ['nullable', 'string', 'max:1000'],
+            'actual_duration_hours' => ['required', 'integer', 'min:0', 'max:12'],
+            'actual_duration_minutes' => ['required', 'integer', 'in:0,15,30,45'],
         ];
 
         if ($type === BalanceCollection::TYPE_PAID_IN_CASH) {
@@ -423,6 +425,9 @@ class BookingsController extends Controller
             'expected_payment_type.required' => 'Please choose when you expect the payment.',
             'expected_payment_date.required_if' => 'Please pick a date.',
             'expected_payment_date.after_or_equal' => 'Please pick today or a future date.',
+            'actual_duration_hours.required' => 'Please select the actual duration.',
+            'actual_duration_minutes.required' => 'Please select the actual duration.',
+            'actual_duration_minutes.in' => 'Minutes must be 0, 15, 30, or 45.',
         ]);
 
         if ($validator->fails()) {
@@ -430,6 +435,18 @@ class BookingsController extends Controller
                 'success' => false,
                 'message' => $validator->errors()->first() ?: 'Please fix the highlighted fields.',
                 'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $durationHours = (int) $request->input('actual_duration_hours');
+        $durationMinutesPart = (int) $request->input('actual_duration_minutes');
+        $actualDurationMinutes = ($durationHours * 60) + $durationMinutesPart;
+
+        if ($actualDurationMinutes <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Actual duration must be greater than 0.',
+                'errors' => ['actual_duration_minutes' => ['Actual duration must be greater than 0.']],
             ], 422);
         }
 
@@ -508,7 +525,11 @@ class BookingsController extends Controller
 
         $bookingCompleted = false;
 
-        $record = DB::transaction(function () use ($booking, $payload, $type, &$bookingCompleted) {
+        $record = DB::transaction(function () use ($booking, $payload, $type, $actualDurationMinutes, &$bookingCompleted) {
+            $booking->forceFill([
+                'actual_duration_minutes' => $actualDurationMinutes,
+            ])->save();
+
             $saved = $this->saveBalanceCollectionForBooking($booking->id, $payload);
 
             if ($type === BalanceCollection::TYPE_PAID_IN_CASH) {
