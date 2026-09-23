@@ -27,18 +27,14 @@ class Studio extends Model
     }
 
     /**
-     * Stripe connected account id shared by artists linked to this studio (stored on user_details).
+     * Stripe Connect account id for this studio (stored on studios.stripe_account_id only).
+     * Do not fall back to linked artists — those hold the artist's own payout account.
      */
     public function resolveStripeAccountId(): ?string
     {
-        if (! empty($this->stripe_account_id)) {
-            return $this->stripe_account_id;
-        }
+        $accountId = trim((string) ($this->stripe_account_id ?? ''));
 
-        return UserDetail::query()
-            ->where('studio_id', $this->id)
-            ->whereNotNull('stripe_account_id')
-            ->value('stripe_account_id');
+        return $accountId !== '' ? $accountId : null;
     }
 
     /**
@@ -47,7 +43,7 @@ class Studio extends Model
     public function hasStripeConnect(): bool
     {
         $accountId = $this->resolveStripeAccountId();
-        if ($accountId === null || $accountId === '') {
+        if ($accountId === null) {
             return false;
         }
 

@@ -79,7 +79,11 @@ class ChatController extends Controller
 
     public function unreadSummary(Request $request): JsonResponse
     {
-        $summary = $this->streamChat->getUnreadSummaryForUser($request->user());
+        try {
+            $summary = $this->streamChat->getUnreadSummaryForUser($request->user());
+        } catch (\Throwable) {
+            $summary = ['total' => 0, 'channels' => []];
+        }
 
         return response()->json($summary);
     }

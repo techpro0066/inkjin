@@ -116,7 +116,7 @@ Route::post('/studio/payout-info/{userDetail}/stripe/requirements/session', [Onb
     ->middleware('signed')
     ->name('studio.payout-info.stripe.requirements.session');
 
-Route::get('/studio/payout-link/{userDetail}/approve', [OnboardingController::class, 'approveStudioArtistBankLink'])
+Route::match(['get', 'post'], '/studio/payout-link/{userDetail}/approve', [OnboardingController::class, 'approveStudioArtistBankLink'])
     ->middleware('signed')
     ->name('studio.payout-artist-link.approve');
 Route::get('/studio/payout-link/{userDetail}/decline', [OnboardingController::class, 'declineStudioArtistBankLink'])

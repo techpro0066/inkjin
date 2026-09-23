@@ -67,6 +67,8 @@ class UserDetail extends Model
         'booking_fee_type',
         'payment_type',
         'studio_id',
+        'studio_revenue_artist_percent',
+        'studio_relationship_type',
         'payment_status',
         'payout_mode',
         'availability_status',
@@ -114,6 +116,15 @@ class UserDetail extends Model
         'payout_waiting_list_at' => 'datetime',
         'payout_setup_reminder_sent_at' => 'datetime',
         'stripe_requirement_email_sent_at' => 'datetime',
+        'studio_revenue_artist_percent' => 'integer',
+    ];
+
+    public const STUDIO_RELATIONSHIP_TYPES = [
+        'co_owner',
+        'resident',
+        'collective_member',
+        'apprentice',
+        'other',
     ];
 
     /**

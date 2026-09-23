@@ -80,33 +80,22 @@
                     If the button does not work, copy and paste this URL into your browser:<br>
                     <span style="word-break: break-all;">{{ $formUrl }}</span>
                 </p>
-            @elseif(!empty($showApproveDecline))
-                <p class="content">
-                    <strong>{{ $artistName }}</strong> has selected your studio for payouts on {{ config('app.name', 'Inkjin') }}.
-                </p>
-                <p class="content">
-                    Your studio already has a bank account connected for payouts. Please review your studio information and choose whether to allow this artist to receive payouts through your studio on {{ config('app.name', 'Inkjin') }}.
-                </p>
-                <div class="button-row">
-                    <a href="{{ $formUrl }}" class="btn">Approve</a>
-                </div>
-                <p class="content" style="font-size: 13px; color: #888;">
-                    If the button does not work, copy and paste this URL into your browser:<br>
-                    <span style="word-break: break-all;">{{ $formUrl }}</span>
-                </p>
             @else
                 <p class="content">
                     <strong>{{ $artistName }}</strong> has selected your studio for payouts on {{ config('app.name', 'Inkjin') }}.
                 </p>
                 <p class="content">
-                    Please open the secure link below and connect your studio’s bank account for payouts.
+                    Please review the request and choose Approve or Decline. If your studio bank account is not connected yet, approving will walk you through Stripe setup.
                 </p>
-                <div class="button-row">
-                    <a href="{{ $formUrl }}" class="btn">Connect bank account</a>
+                <div class="btn-row-split">
+                    <a href="{{ $approveUrl ?: $formUrl }}" class="btn">Approve</a>
+                    @if(!empty($declineUrl))
+                        <a href="{{ $declineUrl }}" class="btn btn-decline">Decline</a>
+                    @endif
                 </div>
                 <p class="content" style="font-size: 13px; color: #888;">
-                    If the button does not work, copy and paste this URL into your browser:<br>
-                    <span style="word-break: break-all;">{{ $formUrl }}</span>
+                    If the buttons do not work, copy and paste this URL into your browser:<br>
+                    <span style="word-break: break-all;">{{ $approveUrl ?: $formUrl }}</span>
                 </p>
             @endif
         </div>

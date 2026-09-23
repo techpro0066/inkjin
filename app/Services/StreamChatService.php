@@ -25,7 +25,10 @@ class StreamChatService
         if ($this->client === null) {
             $this->client = new Client(
                 (string) config('stream.api_key'),
-                (string) config('stream.api_secret')
+                (string) config('stream.api_secret'),
+                null,
+                null,
+                (float) config('stream.timeout', 10),
             );
         }
 
@@ -96,6 +99,11 @@ class StreamChatService
                 'inkjin_role' => $user->role,
             ]);
         } catch (StreamException $e) {
+            Log::warning('Stream user upsert failed', [
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+        } catch (\Throwable $e) {
             Log::warning('Stream user upsert failed', [
                 'user_id' => $user->id,
                 'message' => $e->getMessage(),
@@ -397,6 +405,14 @@ class StreamChatService
                 'channels' => $channels,
             ];
         } catch (StreamException $e) {
+            Log::warning('Stream unread counts failed', [
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return $empty;
+        } catch (\Throwable $e) {
+            // Guzzle ConnectException (cURL 28 timeouts) is not a StreamException.
             Log::warning('Stream unread counts failed', [
                 'user_id' => $user->id,
                 'message' => $e->getMessage(),

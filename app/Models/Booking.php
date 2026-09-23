@@ -82,6 +82,8 @@ class Booking extends Model
         'reschedule_requested_by',
         'pay_artist',
         'payment_provider',
+        'payout_payment_type',
+        'payout_artist_percent',
         'viva_order_code',
         'viva_transaction_id',
     ];
@@ -117,10 +119,30 @@ class Booking extends Model
         'pay_artist' => 'boolean',
         'remaining_amount_released' => 'boolean',
         'platform_fee_refunded' => 'boolean',
+        'payout_artist_percent' => 'integer',
         'questions_answers' => 'array',
         'custom_tattoo_details' => 'array',
         'action_history' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Booking $booking) {
+            if ($booking->payout_payment_type !== null && $booking->payout_artist_percent !== null) {
+                return;
+            }
+
+            $snapshot = app(\App\Services\ArtistPayoutService::class)
+                ->payoutSnapshotForArtist((int) $booking->artist_user_id);
+
+            if ($booking->payout_payment_type === null) {
+                $booking->payout_payment_type = $snapshot['payout_payment_type'];
+            }
+            if ($booking->payout_artist_percent === null) {
+                $booking->payout_artist_percent = $snapshot['payout_artist_percent'];
+            }
+        });
+    }
 
     // Relationships
     public function user(): BelongsTo

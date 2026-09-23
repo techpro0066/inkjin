@@ -33,10 +33,6 @@ class ArtistPayoutService
             ->whereIn('status', ['completed'])
             ->where('payment_status', 'paid')
             ->where('pay_artist', false)
-            ->where(function ($query) {
-                $query->whereDoesntHave('artistPayout')
-                    ->orWhereHas('artistPayout', fn ($payout) => $payout->where('status', ArtistPayout::STATUS_FAILED));
-            })
             ->whereNotNull('deposit_amount')
             ->where('deposit_amount', '>', 0)
             ->with(['artist.userDetail.studio', 'artistPayout'])
@@ -44,12 +40,8 @@ class ArtistPayoutService
             ->chunkById(100, function ($bookings) use (&$stats) {
                 foreach ($bookings as $booking) {
                     try {
-                        $userDetail = $booking->artist?->userDetail;
-                        if ($userDetail && $this->isManualPayoutMode($userDetail)) {
-                            $stats['skipped']++;
-                            continue;
-                        }
-
+                        // Manual artist mode still auto-pays the studio share.
+                        // Automatic mode pays artist + studio together.
                         if ($this->processBooking($booking)) {
                             $stats['processed']++;
                         } else {
@@ -87,20 +79,62 @@ class ArtistPayoutService
         }
 
         $userDetail = $booking->artist?->userDetail;
-        if (! $userDetail || ! $this->isArtistPaymentReady($userDetail)) {
+        if (! $userDetail) {
             return false;
         }
 
-        if (! $allowManualRequest && $this->isManualPayoutMode($userDetail)) {
+        $manual = $this->isManualPayoutMode($userDetail);
+
+        // Scheduler / auto: always release studio share; hold artist share when mode is manual.
+        if (! $allowManualRequest && $manual) {
+            return $this->processStudioAutoPayout($booking, $userDetail);
+        }
+
+        if (! $this->isArtistPaymentReady($userDetail, $booking)) {
             return false;
         }
 
         $amount = $this->remainingPayoutAmount($booking, $userDetail);
-        if ($amount <= 0) {
+        if ($amount > 0) {
+            return $this->transferBookingPayout($booking, $userDetail, $amount, $allowManualRequest);
+        }
+
+        // Studio-only remainder (artist already paid, or 0% artist).
+        $studioRemaining = $this->remainingStudioPayoutAmount($booking, $userDetail);
+        if ($studioRemaining > 0) {
+            return $this->transferBookingPayout(
+                $booking,
+                $userDetail,
+                0.0,
+                $allowManualRequest,
+                studioOnly: true,
+            );
+        }
+
+        return false;
+    }
+
+    /**
+     * Auto-release the studio share even when the artist is on manual payout mode.
+     */
+    private function processStudioAutoPayout(Booking $booking, UserDetail $userDetail): bool
+    {
+        $studioRemaining = $this->remainingStudioPayoutAmount($booking, $userDetail);
+        if ($studioRemaining < 0.01) {
             return false;
         }
 
-        return $this->transferBookingPayout($booking, $userDetail, $amount, $allowManualRequest);
+        if (! $this->isStudioSharePayoutReady($userDetail, $booking)) {
+            return false;
+        }
+
+        return $this->transferBookingPayout(
+            $booking,
+            $userDetail,
+            0.0,
+            allowManualRequest: false,
+            studioOnly: true,
+        );
     }
 
     /**
@@ -265,28 +299,36 @@ class ArtistPayoutService
         }
 
         $net = $this->computeArtistPayoutAmount($booking, $userDetail);
-        $released = 0.0;
-        $payout = $booking->relationLoaded('artistPayout')
-            ? $booking->artistPayout
-            : $booking->artistPayout()->first();
+        $released = $this->releasedArtistAmount($booking);
 
-        if ($payout && $payout->isCompleted()) {
-            $released = (float) $payout->amount;
+        return max(0, round($net - $released, 2));
+    }
+
+    public function remainingStudioPayoutAmount(Booking $booking, UserDetail $userDetail): float
+    {
+        if ($booking->pay_artist) {
+            return 0.0;
         }
+
+        $net = $this->computeStudioPayoutAmount($booking, $userDetail);
+        $released = $this->releasedStudioAmount($booking);
 
         return max(0, round($net - $released, 2));
     }
 
     /**
-     * Transfer a specific amount for a booking and record the payout.
+     * Transfer a specific artist-share amount for a booking (and the proportional studio share).
+     * Pass $amount = 0 with $studioOnly = true to release the full remaining studio share only.
      */
     public function transferBookingPayout(
         Booking $booking,
         UserDetail $userDetail,
         float $amount,
         bool $allowManualRequest = true,
+        bool $studioOnly = false,
     ): bool {
         $booking->loadMissing(['artist.userDetail.studio', 'artistPayout']);
+        $userDetail->loadMissing(['studio']);
 
         if ($booking->pay_artist) {
             return false;
@@ -296,33 +338,71 @@ class ArtistPayoutService
             return false;
         }
 
-        if (! $this->isArtistPaymentReady($userDetail)) {
+        if ($studioOnly) {
+            if (! $this->isStudioSharePayoutReady($userDetail, $booking)) {
+                return false;
+            }
+        } elseif (! $this->isArtistPaymentReady($userDetail, $booking)) {
             return false;
         }
 
-        if (! $allowManualRequest && $this->isManualPayoutMode($userDetail)) {
+        // Auto path must not send artist funds when the artist is on manual mode.
+        if (! $studioOnly && ! $allowManualRequest && $this->isManualPayoutMode($userDetail)) {
             return false;
         }
 
         $amount = round($amount, 2);
-        $remaining = $this->remainingPayoutAmount($booking, $userDetail);
-        if ($amount < 0.01 || $amount > $remaining + 0.001) {
+        $artistRemaining = $this->remainingPayoutAmount($booking, $userDetail);
+        $studioRemaining = $this->remainingStudioPayoutAmount($booking, $userDetail);
+
+        if ($studioOnly) {
+            $artistSlice = 0.0;
+            $studioSlice = round($studioRemaining, 2);
+        } else {
+            if ($amount < 0) {
+                return false;
+            }
+
+            if ($amount > $artistRemaining + 0.001) {
+                return false;
+            }
+
+            $artistSlice = min($amount, $artistRemaining);
+            $studioSlice = $this->proportionalStudioSlice(
+                $booking,
+                $userDetail,
+                $artistSlice,
+                $studioRemaining,
+            );
+        }
+
+        if ($artistSlice < 0.01 && $studioSlice < 0.01) {
             return false;
         }
-        $amount = min($amount, $remaining);
 
-        $connectedAccountId = $this->resolveConnectedAccountId($userDetail);
-        if (! $connectedAccountId) {
-            return false;
+        $artistAccountId = null;
+        $studioAccountId = null;
+
+        if ($artistSlice >= 0.01) {
+            $artistAccountId = $this->resolveArtistConnectedAccountId($userDetail);
+            if (! $artistAccountId) {
+                return false;
+            }
+        }
+
+        if ($studioSlice >= 0.01) {
+            $studioAccountId = $this->resolveStudioConnectedAccountId($userDetail);
+            if (! $studioAccountId) {
+                return false;
+            }
         }
 
         $currency = strtoupper((string) ($booking->currency ?: 'EUR'));
-        $amountCents = (int) round($amount * 100);
-        if ($amountCents < 1) {
-            return false;
-        }
+        $artistCents = (int) round($artistSlice * 100);
+        $studioCents = (int) round($studioSlice * 100);
+        $totalTransferAmount = round($artistSlice + $studioSlice, 2);
 
-        $locked = DB::transaction(function () use ($booking, $userDetail, $amount) {
+        $locked = DB::transaction(function () use ($booking, $userDetail, $artistSlice, $studioSlice) {
             $lockedBooking = Booking::query()
                 ->whereKey($booking->id)
                 ->lockForUpdate()
@@ -333,7 +413,10 @@ class ArtistPayoutService
             }
 
             $lockedBooking->load('artistPayout');
-            if ($this->remainingPayoutAmount($lockedBooking, $userDetail) < $amount - 0.001) {
+            if ($artistSlice >= 0.01 && $this->remainingPayoutAmount($lockedBooking, $userDetail) < $artistSlice - 0.001) {
+                return null;
+            }
+            if ($studioSlice >= 0.01 && $this->remainingStudioPayoutAmount($lockedBooking, $userDetail) < $studioSlice - 0.001) {
                 return null;
             }
 
@@ -344,21 +427,25 @@ class ArtistPayoutService
             return false;
         }
 
-        $alreadyReleased = 0.0;
-        $existingPayout = $locked->artistPayout;
-        if ($existingPayout && $existingPayout->isCompleted()) {
-            $alreadyReleased = (float) $existingPayout->amount;
-        }
-        $newReleasedTotal = round($alreadyReleased + $amount, 2);
-        $fullNet = $this->computeArtistPayoutAmount($locked, $userDetail);
-        $fullyPaid = $newReleasedTotal >= round($fullNet, 2) - 0.001;
+        $alreadyReleasedArtist = $this->releasedArtistAmount($locked);
+        $alreadyReleasedStudio = $this->releasedStudioAmount($locked);
+        $newArtistTotal = round($alreadyReleasedArtist + $artistSlice, 2);
+        $newStudioTotal = round($alreadyReleasedStudio + $studioSlice, 2);
+        $fullArtistNet = $this->computeArtistPayoutAmount($locked, $userDetail);
+        $fullStudioNet = $this->computeStudioPayoutAmount($locked, $userDetail);
+        $fullyPaid = $newArtistTotal >= round($fullArtistNet, 2) - 0.001
+            && $newStudioTotal >= round($fullStudioNet, 2) - 0.001;
+
+        $artistTransfer = null;
+        $studioTransfer = null;
 
         try {
             // Full single-booking auto payouts can link to the Stripe charge.
             // Partial / multi-request manual payouts transfer from platform balance.
             $sourceChargeId = null;
             if (
-                $alreadyReleased < 0.01
+                $alreadyReleasedArtist < 0.01
+                && $alreadyReleasedStudio < 0.01
                 && $fullyPaid
                 && ($locked->payment_provider ?? 'stripe') !== 'viva_iris'
             ) {
@@ -366,7 +453,7 @@ class ArtistPayoutService
             }
 
             $this->guardPlatformBalanceForTransfer(
-                amount: $amount,
+                amount: $totalTransferAmount,
                 currency: $currency,
                 sourceChargeId: $sourceChargeId,
                 allowManualRequest: $allowManualRequest,
@@ -374,27 +461,101 @@ class ArtistPayoutService
                 userDetail: $userDetail,
             );
 
-            $transfer = $this->stripeConnect->transferToConnectedAccount(
-                destinationAccountId: $connectedAccountId,
-                amountCents: $amountCents,
-                currency: $currency,
-                sourceChargeId: $sourceChargeId,
-                metadata: [
-                    'booking_id' => (string) $locked->id,
-                    'artist_user_id' => (string) $locked->artist_user_id,
-                    'payment_intent_id' => (string) ($locked->payment_intent_id ?? ''),
-                    'payment_provider' => (string) ($locked->payment_provider ?? 'stripe'),
-                    'payout_slice' => (string) $amount,
-                    'fully_paid' => $fullyPaid ? '1' : '0',
-                ],
-                idempotencyKey: 'artist_payout_booking_'.$locked->id.'_'.$amountCents.'_'.(int) round($newReleasedTotal * 100),
-            );
-        } catch (ApiErrorException $e) {
-            if ($this->isInsufficientStripeBalanceError($e)) {
-                $this->notifyLowPlatformBalance(
-                    amount: $amount,
+            $idempotencyBase = 'payout_booking_'.$locked->id.'_a'.(int) round($newArtistTotal * 100).'_s'.(int) round($newStudioTotal * 100);
+
+            if ($artistCents >= 1 && $artistAccountId) {
+                $artistTransfer = $this->stripeConnect->transferToConnectedAccount(
+                    destinationAccountId: $artistAccountId,
+                    amountCents: $artistCents,
                     currency: $currency,
-                    source: $allowManualRequest ? 'manual_request' : 'automatic_payout',
+                    sourceChargeId: $sourceChargeId,
+                    metadata: [
+                        'booking_id' => (string) $locked->id,
+                        'artist_user_id' => (string) $locked->artist_user_id,
+                        'payment_intent_id' => (string) ($locked->payment_intent_id ?? ''),
+                        'payment_provider' => (string) ($locked->payment_provider ?? 'stripe'),
+                        'payout_role' => 'artist',
+                        'payout_slice' => (string) $artistSlice,
+                        'fully_paid' => $fullyPaid ? '1' : '0',
+                    ],
+                    idempotencyKey: $idempotencyBase.'_artist',
+                );
+            }
+
+            if ($studioCents >= 1 && $studioAccountId) {
+                $studioTransfer = $this->stripeConnect->transferToConnectedAccount(
+                    destinationAccountId: $studioAccountId,
+                    amountCents: $studioCents,
+                    currency: $currency,
+                    sourceChargeId: $sourceChargeId,
+                    metadata: [
+                        'booking_id' => (string) $locked->id,
+                        'artist_user_id' => (string) $locked->artist_user_id,
+                        'payment_intent_id' => (string) ($locked->payment_intent_id ?? ''),
+                        'payment_provider' => (string) ($locked->payment_provider ?? 'stripe'),
+                        'payout_role' => 'studio',
+                        'payout_slice' => (string) $studioSlice,
+                        'fully_paid' => $fullyPaid ? '1' : '0',
+                    ],
+                    idempotencyKey: $idempotencyBase.'_studio',
+                );
+            }
+        } catch (ApiErrorException $e) {
+            $studioFailedAfterArtist = $artistTransfer !== null && $studioCents >= 1;
+
+            // Artist transfer may have already succeeded — persist that slice before failing.
+            if ($artistTransfer) {
+                DB::transaction(function () use (
+                    $locked,
+                    $newArtistTotal,
+                    $alreadyReleasedStudio,
+                    $artistTransfer,
+                    $e,
+                    $studioFailedAfterArtist,
+                ) {
+                    $booking = Booking::query()
+                        ->whereKey($locked->id)
+                        ->lockForUpdate()
+                        ->first();
+                    if (! $booking || $booking->pay_artist) {
+                        return;
+                    }
+
+                    $payout = $booking->artistPayout()->first();
+                    $payload = [
+                        'amount' => $newArtistTotal,
+                        'artist_amount' => $newArtistTotal,
+                        'studio_amount' => $alreadyReleasedStudio,
+                        'stripe_transfer_id' => $artistTransfer['id'],
+                        'stripe_account_id' => $artistTransfer['destination'],
+                        'currency' => $artistTransfer['currency'],
+                        'status' => ArtistPayout::STATUS_COMPLETED,
+                        'failure_reason' => $studioFailedAfterArtist
+                            ? 'Studio transfer failed: '.$e->getMessage()
+                            : null,
+                    ];
+
+                    if ($payout) {
+                        $payout->update($payload);
+                    } else {
+                        ArtistPayout::create([
+                            'booking_id' => $booking->id,
+                            ...$payload,
+                        ]);
+                    }
+                });
+            }
+
+            if ($this->isInsufficientStripeBalanceError($e)) {
+                $notifyAmount = $studioFailedAfterArtist ? $studioSlice : $totalTransferAmount;
+                $notifySource = $allowManualRequest
+                    ? 'manual_request'
+                    : ($studioFailedAfterArtist ? 'automatic_studio_payout' : 'automatic_payout');
+
+                $this->notifyLowPlatformBalance(
+                    amount: $notifyAmount,
+                    currency: $currency,
+                    source: $notifySource,
                     userDetail: $userDetail,
                     booking: $locked,
                 );
@@ -408,14 +569,41 @@ class ArtistPayoutService
                 throw new InsufficientPlatformBalanceException($e->getMessage());
             }
 
-            $this->recordFailedPayout($locked, $connectedAccountId, $amount, $currency, $e->getMessage());
+            // Full failure (no artist transfer completed) — mark payout failed.
+            if (! $artistTransfer) {
+                $failAccount = $artistAccountId ?? $studioAccountId ?? '';
+                $this->recordFailedPayout($locked, $failAccount, $totalTransferAmount, $currency, $e->getMessage());
+
+                if ($studioCents >= 1 && ($artistCents < 1)) {
+                    Log::error('Studio payout transfer failed', [
+                        'booking_id' => $locked->id,
+                        'studio_amount' => $studioSlice,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            } else {
+                Log::error('Studio payout transfer failed after artist transfer succeeded', [
+                    'booking_id' => $locked->id,
+                    'artist_amount' => $artistSlice,
+                    'studio_amount' => $studioSlice,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             throw $e;
         }
 
         $completed = false;
 
-        DB::transaction(function () use ($locked, $newReleasedTotal, $transfer, $fullyPaid, &$completed) {
+        DB::transaction(function () use (
+            $locked,
+            $newArtistTotal,
+            $newStudioTotal,
+            $artistTransfer,
+            $studioTransfer,
+            $fullyPaid,
+            &$completed
+        ) {
             $booking = Booking::query()
                 ->whereKey($locked->id)
                 ->lockForUpdate()
@@ -427,13 +615,27 @@ class ArtistPayoutService
 
             $payout = $booking->artistPayout()->first();
             $payload = [
-                'amount' => $newReleasedTotal,
-                'stripe_transfer_id' => $transfer['id'],
-                'stripe_account_id' => $transfer['destination'],
-                'currency' => $transfer['currency'],
+                'amount' => $newArtistTotal,
+                'artist_amount' => $newArtistTotal,
+                'studio_amount' => $newStudioTotal,
+                'currency' => strtoupper((string) (
+                    $artistTransfer['currency']
+                    ?? $studioTransfer['currency']
+                    ?? ($booking->currency ?: 'EUR')
+                )),
                 'status' => ArtistPayout::STATUS_COMPLETED,
                 'failure_reason' => null,
             ];
+
+            if ($artistTransfer) {
+                $payload['stripe_transfer_id'] = $artistTransfer['id'];
+                $payload['stripe_account_id'] = $artistTransfer['destination'];
+            }
+
+            if ($studioTransfer) {
+                $payload['studio_stripe_transfer_id'] = $studioTransfer['id'];
+                $payload['studio_stripe_account_id'] = $studioTransfer['destination'];
+            }
 
             if ($payout) {
                 $payout->update($payload);
@@ -513,10 +715,158 @@ class ArtistPayoutService
 
     public function computeArtistPayoutAmount(Booking $booking, UserDetail $userDetail): float
     {
+        $platformNet = $this->computePlatformNetPayoutAmount($booking, $userDetail);
+        $artistPercent = $this->resolvePayoutArtistPercent($booking, $userDetail);
+
+        return max(0, round($platformNet * ($artistPercent / 100), 2));
+    }
+
+    public function computeStudioPayoutAmount(Booking $booking, UserDetail $userDetail): float
+    {
+        $platformNet = $this->computePlatformNetPayoutAmount($booking, $userDetail);
+        $artistShare = $this->computeArtistPayoutAmount($booking, $userDetail);
+
+        return max(0, round($platformNet - $artistShare, 2));
+    }
+
+    /**
+     * Full net held by the platform for this booking (gross − artist fee), before revenue split.
+     */
+    public function computePlatformNetPayoutAmount(Booking $booking, UserDetail $userDetail): float
+    {
         $artistFee = app(ArtistReferralFeeWaiverService::class)
             ->artistFeeForBooking($booking, $userDetail);
 
         return max(0, round($this->collectedGrossForArtist($booking) - $artistFee, 2));
+    }
+
+    /**
+     * @return array{payout_payment_type: string, payout_artist_percent: int}
+     */
+    public function payoutSnapshotForArtist(int $artistUserId): array
+    {
+        $userDetail = UserDetail::query()->where('user_id', $artistUserId)->first();
+
+        return $this->payoutSnapshotFromUserDetail($userDetail);
+    }
+
+    /**
+     * @return array{payout_payment_type: string, payout_artist_percent: int}
+     */
+    public function payoutSnapshotFromUserDetail(?UserDetail $userDetail): array
+    {
+        $paymentType = (string) ($userDetail?->payment_type ?? '');
+
+        if ($paymentType === 'studio_account') {
+            $percent = (int) ($userDetail->studio_revenue_artist_percent ?? 50);
+            $percent = max(0, min(100, $percent));
+
+            return [
+                'payout_payment_type' => 'studio_account',
+                'payout_artist_percent' => $percent,
+            ];
+        }
+
+        if ($paymentType === 'artist_account') {
+            return [
+                'payout_payment_type' => 'artist_account',
+                'payout_artist_percent' => 100,
+            ];
+        }
+
+        return [
+            'payout_payment_type' => $paymentType !== '' ? $paymentType : 'artist_account',
+            'payout_artist_percent' => 100,
+        ];
+    }
+
+    public function resolvePayoutPaymentType(Booking $booking, ?UserDetail $userDetail = null): string
+    {
+        $snap = trim((string) ($booking->payout_payment_type ?? ''));
+        if ($snap !== '') {
+            return $snap;
+        }
+
+        return $this->payoutSnapshotFromUserDetail($userDetail)['payout_payment_type'];
+    }
+
+    public function resolvePayoutArtistPercent(Booking $booking, ?UserDetail $userDetail = null): int
+    {
+        if ($booking->payout_artist_percent !== null) {
+            return max(0, min(100, (int) $booking->payout_artist_percent));
+        }
+
+        $type = $this->resolvePayoutPaymentType($booking, $userDetail);
+        if ($type !== 'studio_account') {
+            return 100;
+        }
+
+        return $this->payoutSnapshotFromUserDetail($userDetail)['payout_artist_percent'];
+    }
+
+    private function releasedArtistAmount(Booking $booking): float
+    {
+        $payout = $booking->relationLoaded('artistPayout')
+            ? $booking->artistPayout
+            : $booking->artistPayout()->first();
+
+        if (! $payout || ! $payout->isCompleted()) {
+            return 0.0;
+        }
+
+        if ($payout->artist_amount !== null) {
+            return (float) $payout->artist_amount;
+        }
+
+        return (float) $payout->amount;
+    }
+
+    private function releasedStudioAmount(Booking $booking): float
+    {
+        $payout = $booking->relationLoaded('artistPayout')
+            ? $booking->artistPayout
+            : $booking->artistPayout()->first();
+
+        if (! $payout || ! $payout->isCompleted()) {
+            return 0.0;
+        }
+
+        return (float) ($payout->studio_amount ?? 0);
+    }
+
+    /**
+     * Studio slice that matches the artist slice for this booking's split.
+     * When artist slice is 0, releases the remaining studio share (0% artist cases).
+     */
+    private function proportionalStudioSlice(
+        Booking $booking,
+        UserDetail $userDetail,
+        float $artistSlice,
+        float $studioRemaining,
+    ): float {
+        if ($studioRemaining < 0.01) {
+            return 0.0;
+        }
+
+        $artistPercent = $this->resolvePayoutArtistPercent($booking, $userDetail);
+        if ($artistPercent <= 0) {
+            return round($studioRemaining, 2);
+        }
+
+        if ($artistPercent >= 100 || $artistSlice < 0.01) {
+            return 0.0;
+        }
+
+        $fullArtist = $this->computeArtistPayoutAmount($booking, $userDetail);
+        if ($fullArtist < 0.01) {
+            return round($studioRemaining, 2);
+        }
+
+        $ratio = min(1, $artistSlice / $fullArtist);
+        $fullStudio = $this->computeStudioPayoutAmount($booking, $userDetail);
+        $studioSlice = round($fullStudio * $ratio, 2);
+
+        return min($studioRemaining, max(0, $studioSlice));
     }
 
     /**
@@ -767,9 +1117,20 @@ class ArtistPayoutService
             || str_contains(strtolower($e->getMessage()), 'insufficient balance');
     }
 
-    public function isArtistPaymentReady(UserDetail $userDetail): bool
+    public function isArtistPaymentReady(UserDetail $userDetail, ?Booking $booking = null): bool
     {
-        $paymentType = (string) ($userDetail->payment_type ?? '');
+        $paymentType = $booking
+            ? $this->resolvePayoutPaymentType($booking, $userDetail)
+            : (string) ($userDetail->payment_type ?? '');
+
+        $artistPercent = $booking
+            ? $this->resolvePayoutArtistPercent($booking, $userDetail)
+            : (
+                $paymentType === 'studio_account'
+                    ? max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)))
+                    : 100
+            );
+        $studioPercent = max(0, 100 - $artistPercent);
 
         if ($paymentType === 'artist_account') {
             if (! empty($userDetail->stripe_requirement)) {
@@ -789,14 +1150,57 @@ class ArtistPayoutService
                 return false;
             }
 
-            if (! empty($studio->stripe_requirement) || ! empty($userDetail->stripe_requirement)) {
-                return false;
+            if ($studioPercent > 0) {
+                if (! empty($studio->stripe_requirement)) {
+                    return false;
+                }
+                if (! $this->isStripeAccountPayoutReady($studio->resolveStripeAccountId())) {
+                    return false;
+                }
             }
 
-            return $this->isStripeAccountPayoutReady($studio->resolveStripeAccountId());
+            if ($artistPercent > 0) {
+                if (! empty($userDetail->stripe_requirement)) {
+                    return false;
+                }
+                if (! $this->isStripeAccountPayoutReady($userDetail->stripe_account_id)) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         return false;
+    }
+
+    /**
+     * Whether the studio Connect account can receive its share for this booking.
+     */
+    public function isStudioSharePayoutReady(UserDetail $userDetail, ?Booking $booking = null): bool
+    {
+        $paymentType = $booking
+            ? $this->resolvePayoutPaymentType($booking, $userDetail)
+            : (string) ($userDetail->payment_type ?? '');
+
+        if ($paymentType !== 'studio_account') {
+            return false;
+        }
+
+        if (($userDetail->payment_status ?? '') !== 'approved') {
+            return false;
+        }
+
+        $studio = $userDetail->studio;
+        if (! $studio) {
+            return false;
+        }
+
+        if (! empty($studio->stripe_requirement)) {
+            return false;
+        }
+
+        return $this->isStripeAccountPayoutReady($studio->resolveStripeAccountId());
     }
 
     /**
@@ -927,11 +1331,27 @@ class ArtistPayoutService
                 return true;
             }
 
-            if (! empty($userDetail->stripe_requirement)) {
-                return true;
+            $artistPercent = max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)));
+
+            if ($artistPercent > 0) {
+                if (! empty($userDetail->stripe_requirement)) {
+                    return true;
+                }
+                if (trim((string) ($userDetail->stripe_account_id ?? '')) === '') {
+                    return true;
+                }
             }
 
-            return ! empty($userDetail->studio?->stripe_requirement);
+            if ($artistPercent < 100) {
+                if (! empty($userDetail->studio?->stripe_requirement)) {
+                    return true;
+                }
+                if (! $userDetail->studio?->resolveStripeAccountId()) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         return true;
@@ -950,8 +1370,20 @@ class ArtistPayoutService
             return 'Your studio payout approval is still pending. Complete payout setup in Payment settings before accepting client payments.';
         }
 
-        if ($paymentType === 'studio_account' && (! empty($userDetail->stripe_requirement) || ! empty($userDetail->studio?->stripe_requirement))) {
-            return 'Your studio Stripe account has pending requirements. Ask your studio to complete the required information before accepting client payments.';
+        if ($paymentType === 'studio_account') {
+            $artistPercent = max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)));
+            if ($artistPercent > 0 && trim((string) ($userDetail->stripe_account_id ?? '')) === '') {
+                return 'Connect and complete your Stripe payout setup in settings before accepting client payments.';
+            }
+            if ($artistPercent > 0 && ! empty($userDetail->stripe_requirement)) {
+                return 'Your Stripe account has pending requirements. Complete payout setup in Payment settings before accepting client payments.';
+            }
+            if ($artistPercent < 100 && ! empty($userDetail->studio?->stripe_requirement)) {
+                return 'Your studio Stripe account has pending requirements. Ask your studio to complete the required information before accepting client payments.';
+            }
+            if ($artistPercent < 100 && ! $userDetail->studio?->resolveStripeAccountId()) {
+                return 'Your studio payout approval is still pending. Complete payout setup in Payment settings before accepting client payments.';
+            }
         }
 
         if ($paymentType === 'artist_account' && ($userDetail->payment_status ?? '') !== 'approved') {
@@ -993,10 +1425,33 @@ class ArtistPayoutService
         }
 
         if ($paymentType === 'studio_account') {
+            // Prefer artist account for status banners when they receive a share.
+            $artistPercent = max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)));
+            if ($artistPercent > 0) {
+                $accountId = trim((string) ($userDetail->stripe_account_id ?? ''));
+                if ($accountId !== '') {
+                    return $accountId;
+                }
+            }
+
             return $userDetail->studio?->resolveStripeAccountId();
         }
 
         return null;
+    }
+
+    public function resolveArtistConnectedAccountId(UserDetail $userDetail): ?string
+    {
+        $accountId = trim((string) ($userDetail->stripe_account_id ?? ''));
+
+        return $accountId !== '' ? $accountId : null;
+    }
+
+    public function resolveStudioConnectedAccountId(UserDetail $userDetail): ?string
+    {
+        $userDetail->loadMissing('studio');
+
+        return $userDetail->studio?->resolveStripeAccountId();
     }
 
     public function resolveConnectedAccountId(UserDetail $userDetail): ?string
@@ -1004,13 +1459,20 @@ class ArtistPayoutService
         $paymentType = (string) ($userDetail->payment_type ?? '');
 
         if ($paymentType === 'artist_account') {
-            $accountId = trim((string) ($userDetail->stripe_account_id ?? ''));
-
-            return $accountId !== '' ? $accountId : null;
+            return $this->resolveArtistConnectedAccountId($userDetail);
         }
 
         if ($paymentType === 'studio_account') {
-            return $userDetail->studio?->resolveStripeAccountId();
+            // Generic callers (e.g. referral rewards): artist account when they have a share.
+            $artistPercent = max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)));
+            if ($artistPercent > 0) {
+                $artistAccount = $this->resolveArtistConnectedAccountId($userDetail);
+                if ($artistAccount) {
+                    return $artistAccount;
+                }
+            }
+
+            return $this->resolveStudioConnectedAccountId($userDetail);
         }
 
         return null;

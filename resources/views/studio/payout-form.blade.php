@@ -1,115 +1,135 @@
 @extends('layouts.onboarding_bookpay', ['hideSidebar' => true])
 
-@section('title', $studioAlreadyConnected ? 'Review payout request' : 'Studio Stripe payout setup')
+@section('title', 'Studio invitation')
+
+@php
+  $isApproved = ($paymentStatus ?? '') === 'approved';
+  $isRejected = ($paymentStatus ?? '') === 'rejected';
+  $isPending = ! $isApproved && ! $isRejected;
+  $artistPercent = (int) ($studioRevenueArtistPercent ?? 50);
+  $studioPercent = (int) ($studioRevenueStudioPercent ?? (100 - $artistPercent));
+@endphp
 
 @section('content')
-<div class="flex-1 p-8 md:p-12 max-w-3xl w-full mx-auto">
-  <div class="mb-8">
-    <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">
-      {{ $studioAlreadyConnected ? 'Review payout request' : 'Connect for payouts' }}
-    </h2>
-    <p class="text-on-surface-variant mt-2 text-sm md:text-base">
-      @if ($studioAlreadyConnected)
-        <strong>{{ $artistName }}</strong> selected your studio to receive their booking payouts on {{ config('app.name', 'Inkjin') }}.
-      @else
-        <strong>{{ $studio->name }}</strong> — {{ $artistName }} selected your studio to receive their booking payouts on {{ config('app.name', 'Inkjin') }}.
-      @endif
-    </p>
-  </div>
-
-  @if (request()->query('completed'))
-    <div class="rounded-xl border border-green-200 bg-green-50 text-green-900 px-4 py-4 text-sm mb-6">
-      Stripe payout setup is complete. This artist can now receive payouts through your studio.
+<div class="flex-1 p-6 md:p-10 max-w-xl w-full mx-auto">
+  @if (request()->query('completed') || $isApproved)
+    <div class="rounded-2xl border border-green-200 bg-green-50 text-green-900 px-5 py-4 text-sm mb-6">
+      {{ request()->query('completed') ? 'Stripe payout setup is complete. This artist can now receive payouts through your studio.' : 'You have already approved this artist to receive payouts through your studio.' }}
     </div>
   @endif
 
-  @if ($studioAlreadyConnected)
-    @php
-      $profile = $studioProfile ?? ['name' => $studio->name, 'email' => $studio->email];
-      $isApproved = ($paymentStatus ?? '') === 'approved';
-      $isRejected = ($paymentStatus ?? '') === 'rejected';
-    @endphp
-    <div class="bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 space-y-6">
-      <div>
-        <p class="text-base font-semibold text-on-surface">Your studio information</p>
-        <p class="text-on-surface-variant text-sm mt-1">
-          Your studio already has a bank account connected for payouts. Review the details below, then approve or decline this artist.
-        </p>
+  @if ($isRejected)
+    <div class="rounded-2xl border border-outline-variant/30 bg-surface-container-high text-on-surface-variant px-5 py-4 text-sm mb-6">
+      You have already declined this payout request.
+    </div>
+  @endif
+
+  <div id="studioDecisionPanel" class="bg-white rounded-2xl border border-outline-variant/25 shadow-sm p-6 md:p-8 space-y-6 {{ (request()->query('completed') && ! $isPending) ? 'hidden' : '' }}">
+    <div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-on-surface tracking-tight">Studio invitation</h2>
+      <p class="text-on-surface-variant text-sm md:text-[15px] leading-relaxed mt-3">
+        You’ve been invited for payouts by <span class="font-semibold text-on-surface">{{ $artistName }}</span>. Review the artist details and studio information, then accept to complete the payment setup, so you can get paid automatically for each booking.
+      </p>
+    </div>
+
+    <div class="rounded-2xl border border-outline-variant/25 bg-surface-container-low/40 p-4 md:p-5">
+      <div class="flex items-start gap-4">
+        <div class="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 overflow-hidden shrink-0 flex items-center justify-center text-on-surface-variant font-bold text-lg">
+          @if (!empty($artistAvatarUrl))
+            <img src="{{ $artistAvatarUrl }}" alt="{{ $artistName }}" class="w-full h-full object-cover">
+          @else
+            {{ $artistInitials ?? 'AR' }}
+          @endif
+        </div>
+        <div class="min-w-0 space-y-1.5">
+          <p class="text-base font-bold text-on-surface">{{ $artistName }}</p>
+          @if (!empty($artistLocation))
+            <p class="text-sm text-on-surface-variant flex items-start gap-1.5">
+              <span aria-hidden="true">📍</span>
+              <span>{{ $artistLocation }}</span>
+            </p>
+          @endif
+          @if (!empty($artistTattooingSince))
+            <p class="text-sm text-on-surface-variant flex items-start gap-1.5">
+              <span aria-hidden="true">🗓️</span>
+              <span>Tattooing since {{ $artistTattooingSince }}</span>
+            </p>
+          @endif
+          @if (!empty($artistPrimaryStyle))
+            <p class="text-sm text-on-surface-variant flex items-start gap-1.5">
+              <span aria-hidden="true">🎨</span>
+              <span>{{ $artistPrimaryStyle }}</span>
+            </p>
+          @endif
+        </div>
       </div>
-
-      <dl class="grid gap-4 sm:grid-cols-2 text-sm">
-        <div class="sm:col-span-2">
-          <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Studio name</dt>
-          <dd class="text-on-surface font-semibold mt-1">{{ $profile['name'] ?? $studio->name }}</dd>
-        </div>
-        @if (!empty($profile['email']))
-          <div>
-            <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Email</dt>
-            <dd class="text-on-surface mt-1 break-all">{{ $profile['email'] }}</dd>
-          </div>
-        @endif
-        @if (!empty($profile['business_type_label']))
-          <div>
-            <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Account type</dt>
-            <dd class="text-on-surface mt-1">{{ $profile['business_type_label'] }}</dd>
-          </div>
-        @endif
-        @if (!empty($profile['country_name']) || !empty($profile['country']))
-          <div>
-            <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Country</dt>
-            <dd class="text-on-surface mt-1">{{ $profile['country_name'] ?? $profile['country'] }}</dd>
-          </div>
-        @endif
-        @if (!empty($profile['address']))
-          <div class="sm:col-span-2">
-            <dt class="text-xs uppercase tracking-wider text-on-surface-variant font-medium">Address</dt>
-            <dd class="text-on-surface mt-1">{{ $profile['address'] }}</dd>
-          </div>
-        @endif
-      </dl>
-
-      @if ($isApproved)
-        <div class="rounded-xl border border-green-200 bg-green-50 text-green-900 px-4 py-4 text-sm">
-          You have already approved this artist to receive payouts through your studio.
-        </div>
-      @elseif ($isRejected)
-        <div class="rounded-xl border border-outline-variant/30 bg-surface-container-high text-on-surface-variant px-4 py-4 text-sm">
-          You have already declined this payout request.
-        </div>
-      @else
-        <div class="pt-2 border-t border-outline-variant/20 flex flex-wrap gap-3">
-          <a href="{{ $approveUrl }}" class="inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all text-sm">
-            Approve artist
-          </a>
-          <a href="{{ $declineUrl }}" class="inline-flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-xl border border-error/40 text-error hover:bg-error-container/20 transition-colors text-sm">
-            Decline
-          </a>
-        </div>
-      @endif
     </div>
-  @elseif (!($stripeConnectConfigured ?? false))
-    <div class="rounded-xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
-      Stripe is not configured. Please contact support.
+
+    <div class="rounded-2xl border border-outline-variant/25 px-4 py-4 md:px-5 md:py-5">
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">Revenue split</p>
+      <div class="mt-3 grid grid-cols-2 gap-4">
+        <div>
+          <p class="text-sm text-on-surface-variant">Artist keeps</p>
+          <p class="text-2xl font-extrabold text-on-surface mt-1 tabular-nums">{{ $artistPercent }}%</p>
+        </div>
+        <div>
+          <p class="text-sm text-on-surface-variant">Studio keeps</p>
+          <p class="text-2xl font-extrabold text-on-surface mt-1 tabular-nums">{{ $studioPercent }}%</p>
+        </div>
+      </div>
     </div>
-  @else
-    <div class="bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 space-y-6">
+
+    @if (!empty($studioRelationshipLabel))
+      <div class="rounded-2xl border border-outline-variant/25 px-4 py-4 md:px-5 md:py-5">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">Relationship type</p>
+        <p class="text-base font-semibold text-on-surface mt-2">{{ $studioRelationshipLabel }}</p>
+      </div>
+    @endif
+
+    @if (!empty($studioNameValue))
+      <div class="rounded-2xl border border-outline-variant/25 px-4 py-4 md:px-5 md:py-5">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">Studio name</p>
+        <p class="text-base font-semibold text-on-surface mt-2">{{ $studioNameValue }}</p>
+      </div>
+    @endif
+
+    @if ($isPending)
+      <div class="flex flex-col sm:flex-row gap-3 pt-1">
+        @if ($studioAlreadyConnected)
+          <a href="{{ $approveUrl }}" class="flex-1 inline-flex items-center justify-center bg-on-surface text-white font-bold py-3.5 px-6 rounded-xl hover:opacity-90 transition-opacity text-sm">
+            Accept invitation
+          </a>
+        @else
+          <button type="button" id="studioApproveStartBtn" class="flex-1 inline-flex items-center justify-center bg-on-surface text-white font-bold py-3.5 px-6 rounded-xl hover:opacity-90 transition-opacity text-sm">
+            Accept invitation
+          </button>
+        @endif
+        <a href="{{ $declineUrl }}" class="flex-1 inline-flex items-center justify-center font-semibold py-3.5 px-6 rounded-xl border border-outline-variant/50 text-on-surface bg-white hover:bg-surface-container-high transition-colors text-sm">
+          Decline
+        </a>
+      </div>
+    @endif
+  </div>
+
+  @if (! $studioAlreadyConnected && ($stripeConnectConfigured ?? false) && $isPending)
+    <div id="studioConnectPanel" class="hidden mt-6 bg-white rounded-2xl border border-outline-variant/25 shadow-sm p-6 md:p-8 space-y-6">
       <div id="studioSetupStep" class="space-y-5">
         <div>
-          <p class="text-base font-semibold text-on-surface">Before we connect Stripe</p>
-          <p class="text-on-surface-variant text-sm mt-1">Answer a few questions so we can set up the right payout account for you.</p>
+          <p class="text-base font-semibold text-on-surface">Connect your studio bank account</p>
+          <p class="text-on-surface-variant text-sm mt-1">Answer a few questions so we can set up the right payout account. Completing Stripe will accept this invitation.</p>
         </div>
 
         <div class="space-y-3">
           <label for="studio_business_type" class="block text-sm font-semibold text-on-surface">Account type</label>
-          <div class="rounded-xl border border-outline-variant/20 bg-white/60 px-4 py-3 text-sm text-on-surface-variant space-y-3">
+          <div class="rounded-xl border border-outline-variant/20 bg-surface-container-low/50 px-4 py-3 text-sm text-on-surface-variant space-y-3">
             <p class="leading-relaxed">
-              <span class="font-semibold text-on-surface">Individual</span> — Choose this option if you work under your own name, with no registered company. Payouts go to your personal bank account.
+              <span class="font-semibold text-on-surface">Individual</span> — Choose this if you work under your own name, with no registered company.
             </p>
             <p class="leading-relaxed">
-              <span class="font-semibold text-on-surface">Business</span> — Choose this option if your studio is a registered business or legal entity. Payouts go to your business bank account.
+              <span class="font-semibold text-on-surface">Business</span> — Choose this if your studio is a registered business or legal entity.
             </p>
           </div>
-          <select id="studio_business_type" name="business_type" class="select w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface">
+          <select id="studio_business_type" name="business_type" class="select w-full text-sm border border-outline-variant/40 rounded-xl px-4 py-3 bg-white text-on-surface">
             <option value="" disabled selected>Select type</option>
             <option value="individual">Individual</option>
             <option value="company">Business</option>
@@ -119,7 +139,7 @@
 
         <div class="space-y-2">
           <label for="studio_country" class="block text-sm font-semibold text-on-surface">Country</label>
-          <select id="studio_country" name="country" class="select w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface">
+          <select id="studio_country" name="country" class="select w-full text-sm border border-outline-variant/40 rounded-xl px-4 py-3 bg-white text-on-surface">
             <option value="" disabled selected>Select country</option>
             @foreach ($stripeSupportedCountries as $country)
               <option value="{{ $country['code'] }}">{{ $country['name'] }}</option>
@@ -130,7 +150,7 @@
 
         <div class="space-y-2">
           <label for="studio_industry" class="block text-sm font-semibold text-on-surface">What best describes you?</label>
-          <select id="studio_industry" name="industry" class="select w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface">
+          <select id="studio_industry" name="industry" class="select w-full text-sm border border-outline-variant/40 rounded-xl px-4 py-3 bg-white text-on-surface">
             <option value="" disabled selected>Select option</option>
             <option value="tattoo_studio">Tattoo studio — We do tattoos and body art</option>
             <option value="tattoo_beauty">Tattoo &amp; beauty studio — We also offer beauty, piercing, or barber services</option>
@@ -139,7 +159,7 @@
           <p id="studio_industry_error" class="text-error text-xs hidden"></p>
         </div>
 
-        <button type="button" id="studioSetupContinue" class="inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all text-sm">
+        <button type="button" id="studioSetupContinue" class="inline-flex items-center justify-center gap-2 bg-on-surface text-white font-bold py-3 px-8 rounded-xl hover:opacity-90 transition-opacity text-sm">
           Continue
           <span class="material-symbols-outlined text-lg">arrow_forward</span>
         </button>
@@ -155,15 +175,31 @@
         <div id="studioStripeConnectMount" class="min-h-[420px] bg-white overflow-hidden p-2"></div>
         <p id="studio_stripe_connect_error" class="text-error text-xs hidden"></p>
         <p id="studioStripeConnectHint" class="text-on-surface-variant text-xs">
-          Onboarding will finish automatically when all required steps are complete.
+          Setup finishes automatically when all required steps are complete.
         </p>
       </div>
+    </div>
+  @elseif (! $studioAlreadyConnected && !($stripeConnectConfigured ?? false) && $isPending)
+    <div class="rounded-xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm mt-6">
+      Stripe is not configured. Please contact support.
     </div>
   @endif
 </div>
 @endsection
 
-@if (! $studioAlreadyConnected && ($stripeConnectConfigured ?? false))
+@if ($isPending && ! $studioAlreadyConnected)
+@push('scripts')
+<script>
+document.getElementById('studioApproveStartBtn')?.addEventListener('click', function () {
+  document.getElementById('studioDecisionPanel')?.classList.add('hidden');
+  document.getElementById('studioConnectPanel')?.classList.remove('hidden');
+  document.getElementById('studioConnectPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+</script>
+@endpush
+@endif
+
+@if (! $studioAlreadyConnected && ($stripeConnectConfigured ?? false) && $isPending)
 @push('scripts')
 <script type="module">
 import { loadConnectAndInitialize } from 'https://esm.sh/@stripe/connect-js@3.3.34/pure';
@@ -173,12 +209,12 @@ const sessionUrl = @json($stripeSessionUrl);
 const completeUrl = @json($stripeCompleteUrl);
 const stripeConnectLocale = @json($stripeConnectLocale ?? 'en-US');
 const stripeConnectAppearance = @json(config('services.stripe.connect.appearance', []));
+const studioName = @json($studioNameValue ?? '');
 
 let connectInstance = null;
 let stripeSessionData = null;
 let onboardingMounted = false;
 let completeTriggered = false;
-let studioSetup = null;
 
 function clearStudioSetupErrors() {
   ['studio_business_type_error', 'studio_country_error', 'studio_industry_error', 'studio_stripe_connect_error'].forEach((id) => {
@@ -203,6 +239,7 @@ function readStudioSetup() {
     business_type: document.getElementById('studio_business_type')?.value || '',
     country: document.getElementById('studio_country')?.value || '',
     industry: document.getElementById('studio_industry')?.value || '',
+    studio_name: studioName || '',
   };
 }
 
@@ -358,7 +395,6 @@ document.getElementById('studioSetupContinue')?.addEventListener('click', async 
   const setup = validateStudioSetup();
   if (!setup) return;
 
-  studioSetup = setup;
   updateStripeStepDescription(setup);
 
   const btn = document.getElementById('studioSetupContinue');

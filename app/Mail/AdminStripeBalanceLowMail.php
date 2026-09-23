@@ -26,7 +26,7 @@ class AdminStripeBalanceLowMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Action required: Stripe balance too low for artist payout',
+            subject: 'Action required: Stripe balance too low for payout',
         );
     }
 

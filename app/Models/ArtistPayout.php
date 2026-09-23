@@ -16,8 +16,12 @@ class ArtistPayout extends Model
     protected $fillable = [
         'booking_id',
         'amount',
+        'artist_amount',
+        'studio_amount',
         'stripe_transfer_id',
         'stripe_account_id',
+        'studio_stripe_transfer_id',
+        'studio_stripe_account_id',
         'currency',
         'status',
         'failure_reason',
@@ -25,6 +29,8 @@ class ArtistPayout extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'artist_amount' => 'decimal:2',
+        'studio_amount' => 'decimal:2',
     ];
 
     public function booking(): BelongsTo

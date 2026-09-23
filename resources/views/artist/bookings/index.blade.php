@@ -713,10 +713,10 @@
   <div class="artist-bdm-panel relative w-full max-w-lg max-h-[min(90vh,640px)] overflow-y-auto rounded-2xl bg-white shadow-xl border border-outline-variant/20">
     <div class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm rounded-t-2xl border-b border-outline-variant/15">
       <div class="flex items-center justify-between gap-3 px-5 py-4">
-        <h3 id="abdmTitle" class="text-lg font-bold text-on-surface truncate pr-2">—</h3>
-        <button type="button" class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-bdm aria-label="Close">
-          <span class="material-symbols-outlined text-[22px]">close</span>
-        </button>
+      <h3 id="abdmTitle" class="text-lg font-bold text-on-surface truncate pr-2">—</h3>
+      <button type="button" class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-bdm aria-label="Close">
+        <span class="material-symbols-outlined text-[22px]">close</span>
+      </button>
       </div>
       <div class="flex items-center gap-1 px-5" role="tablist" aria-label="Booking detail sections">
         <button type="button" id="abdmTabDetails" role="tab" aria-selected="true" aria-controls="abdmPanelDetails" data-abdm-tab="details"
@@ -744,64 +744,64 @@
       </div>
 
       <div id="abdmPanelDetails" role="tabpanel" aria-labelledby="abdmTabDetails">
-        <dl class="grid grid-cols-1 gap-3 text-sm">
-          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Client</dt>
-            <dd id="abdmClientName" class="text-on-surface font-semibold text-right">—</dd>
-          </div>
-          <div id="abdmClientEmailRow" class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Email</dt>
-            <dd id="abdmClientEmail" class="text-on-surface text-right break-all">—</dd>
-          </div>
+      <dl class="grid grid-cols-1 gap-3 text-sm">
+        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+          <dt class="text-on-surface-variant font-medium">Client</dt>
+          <dd id="abdmClientName" class="text-on-surface font-semibold text-right">—</dd>
+        </div>
+        <div id="abdmClientEmailRow" class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+          <dt class="text-on-surface-variant font-medium">Email</dt>
+          <dd id="abdmClientEmail" class="text-on-surface text-right break-all">—</dd>
+        </div>
           <div id="abdmClientPhoneRow" class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
             <dt class="text-on-surface-variant font-medium">Mobile</dt>
             <dd id="abdmClientPhone" class="text-on-surface text-right break-all">—</dd>
-          </div>
+        </div>
+        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+          <dt class="text-on-surface-variant font-medium">Service</dt>
+          <dd id="abdmService" class="text-on-surface text-right">—</dd>
+        </div>
+        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+          <dt class="text-on-surface-variant font-medium">Date</dt>
+          <dd id="abdmDate" class="text-on-surface text-right">—</dd>
+        </div>
+        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+          <dt class="text-on-surface-variant font-medium">Time</dt>
+          <dd id="abdmTime" class="text-on-surface text-right">—</dd>
+        </div>
+        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+          <dt class="text-on-surface-variant font-medium">Duration</dt>
+          <dd id="abdmDuration" class="text-on-surface text-right tabular-nums">—</dd>
+        </div>
+        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+          <dt class="text-on-surface-variant font-medium">Timezone</dt>
+          <dd id="abdmTimezone" class="text-on-surface text-right text-xs">—</dd>
+        </div>
+        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
+          <dt class="text-on-surface-variant font-medium">Deposit</dt>
+          <dd id="abdmDeposit" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
+        </div>
           <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Service</dt>
-            <dd id="abdmService" class="text-on-surface text-right">—</dd>
-          </div>
-          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Date</dt>
-            <dd id="abdmDate" class="text-on-surface text-right">—</dd>
-          </div>
-          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Time</dt>
-            <dd id="abdmTime" class="text-on-surface text-right">—</dd>
-          </div>
-          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Duration</dt>
-            <dd id="abdmDuration" class="text-on-surface text-right tabular-nums">—</dd>
-          </div>
-          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Timezone</dt>
-            <dd id="abdmTimezone" class="text-on-surface text-right text-xs">—</dd>
-          </div>
-          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Deposit</dt>
-            <dd id="abdmDeposit" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
-          </div>
-          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Balance (est.)</dt>
-            <dd id="abdmBalance" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
-          </div>
+          <dt class="text-on-surface-variant font-medium">Balance (est.)</dt>
+          <dd id="abdmBalance" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
+        </div>
           <div id="abdmPaidRow" class="hidden flex justify-between gap-4 py-2">
             <dt class="text-on-surface-variant font-medium">Paid</dt>
             <dd id="abdmPaid" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
-          </div>
-        </dl>
+        </div>
+      </dl>
       </div>
 
       <div id="abdmPanelRequest" role="tabpanel" aria-labelledby="abdmTabRequest" class="hidden">
         <div id="abdmQaSection" class="rounded-xl border border-outline-variant/20 bg-surface-container-low/40 p-4">
           <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-3">Intake form answers</p>
-          <div id="abdmQaList" class="space-y-3 text-sm"></div>
+        <div id="abdmQaList" class="space-y-3 text-sm"></div>
           <p id="abdmQaEmpty" class="hidden text-sm text-on-surface-variant">No intake form answers for this booking.</p>
         </div>
       </div>
     </div>
-  </div>
-</div>
+        </div>
+      </div>
 
 <div id="artistCancelBookingModal"
   class="artist-cbm fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4 sm:p-6"
@@ -2803,6 +2803,14 @@
   }
 
   function setOption(value) {
+    // Persist any in-progress amount edit before switching (cash ↔ link).
+    // Otherwise the outstanding line can show the typed value while generate still uses the old amount.
+    if (cashAmountInput && !cashAmountInput.classList.contains('hidden')) {
+      commitCashAmount();
+    } else if (linkSettleAmountInput && !linkSettleAmountInput.classList.contains('hidden')) {
+      commitSettleAmount('link');
+    }
+
     currentOption = value || 'link';
     options.forEach(function (option) {
       option.setAttribute('aria-checked', option.getAttribute('data-rpm-value') === value ? 'true' : 'false');
@@ -2816,6 +2824,7 @@
     if (unsettledFields) unsettledFields.classList.toggle('hidden', !isUnsettled);
     if (!isCash) setCashEditing(false);
     if (!isLink) setLinkSettleAmountEditing(false);
+    updateSettleAmountDisplays();
     var selected = copy[value] || copy.link;
     if (actionBtn) actionBtn.textContent = selected.label;
     if (actionHint) actionHint.textContent = selected.hint;

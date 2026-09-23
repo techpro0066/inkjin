@@ -429,19 +429,24 @@ class OnboardingController extends Controller
                 && $this->studioStripeNeedsAction($userDetail, $studioStripeStatus, $stripeConnect),
             'studioPayoutConnected' => $studioPayoutConnected,
             'studioPayoutCommitted' => $studioPayoutCommitted,
-            'payoutOptionLocked' => $artistStripeConnected || $studioPayoutCommitted,
+            'payoutOptionLocked' => (
+                (($userDetail?->payment_type ?? null) === 'artist_account' && $artistStripeConnected)
+                || $studioPayoutCommitted
+            ),
         ];
     }
 
     protected function hasActiveArtistStripe(?UserDetail $userDetail, ?array $stripeStatus = null): bool
     {
-        if (($userDetail?->payment_type ?? null) !== 'artist_account' || empty($userDetail->stripe_account_id)) {
+        if (empty($userDetail?->stripe_account_id)) {
             return false;
         }
 
-        // Already linked/saved — still "connected" even if Stripe later needs more info.
-        if (! empty($userDetail->stripe_requirement) || ($userDetail->payment_status ?? '') === 'approved') {
-            return true;
+        // Artist payout path: already linked/saved counts as connected.
+        if (($userDetail->payment_type ?? null) === 'artist_account') {
+            if (! empty($userDetail->stripe_requirement) || ($userDetail->payment_status ?? '') === 'approved') {
+                return true;
+            }
         }
 
         if ($stripeStatus !== null) {
@@ -469,7 +474,7 @@ class OnboardingController extends Controller
      */
     protected function artistStripeNeedsAction(?UserDetail $userDetail, ?array $stripeStatus, StripeConnectService $stripeConnect): bool
     {
-        if (($userDetail?->payment_type ?? null) !== 'artist_account' || empty($userDetail->stripe_account_id)) {
+        if (empty($userDetail?->stripe_account_id)) {
             return false;
         }
 
@@ -539,10 +544,18 @@ class OnboardingController extends Controller
 
     protected function disconnectStudioPayout(UserDetail $userDetail): void
     {
-        $userDetail->payment_type = 'artist_account';
+        // Keep current payment_type (usually studio_account) — do not auto-switch to Artist.
         $userDetail->studio_id = null;
-        $userDetail->stripe_account_id = null;
-        $userDetail->payment_status = null;
+        // Keep artist stripe_account_id — studio disconnect should not wipe the artist's bank.
+        if (empty($userDetail->stripe_account_id)) {
+            $userDetail->payment_status = null;
+        } elseif (($userDetail->payment_status ?? '') === 'pending') {
+            // Leave status until Stripe sync decides; pending studio invite should not block artist path.
+            $userDetail->payment_status = null;
+        } elseif (($userDetail->payment_status ?? '') === 'approved') {
+            // Studio was linked; clear approval so invite can be sent again.
+            $userDetail->payment_status = null;
+        }
         $userDetail->save();
     }
 
@@ -586,6 +599,15 @@ class OnboardingController extends Controller
     {
         $currentType = $userDetail?->payment_type;
         if ($currentType === null || $currentType === '' || $currentType === $requestedType) {
+            return;
+        }
+
+        // Studio selected + Stripe connected, but invite email never sent: allow switching to Artist.
+        if (
+            $currentType === 'studio_account'
+            && $requestedType === 'artist_account'
+            && ! $this->hasStudioPayoutCommitted($userDetail)
+        ) {
             return;
         }
 
@@ -756,6 +778,18 @@ class OnboardingController extends Controller
         try {
             $user = $request->user();
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+            $requestedPaymentType = (string) $request->input('payment_type', '');
+            if (in_array($requestedPaymentType, ['artist_account', 'studio_account'], true)) {
+                $currentType = (string) ($userDetail->payment_type ?? '');
+                if ($currentType === '' || $currentType === $requestedPaymentType || ! $this->hasLockedPayoutConnection($userDetail)) {
+                    $userDetail->payment_type = $requestedPaymentType;
+                    if ($requestedPaymentType === 'studio_account' && ($userDetail->payment_status ?? '') === 'approved' && empty($userDetail->studio_id)) {
+                        $userDetail->payment_status = 'pending';
+                    }
+                    $userDetail->save();
+                }
+            }
 
             if (! $userDetail->payout_bank_country || ! StripeConnectCountries::isSupported($userDetail->payout_bank_country)) {
                 return response()->json([
@@ -1411,6 +1445,10 @@ class OnboardingController extends Controller
                 return $this->resendStudioPayoutEmail($request, $user, $userDetail);
             }
 
+            if ((int) $request->input('save_studio_split', 0) === 1) {
+                return $this->saveStudioSplitRelationship($request, $userDetail);
+            }
+
             if ((int) $request->input('disconnect_studio', 0) === 1) {
                 if (! $this->hasStudioPayoutCommitted($userDetail)) {
                     $msg = 'No linked studio payout to disconnect.';
@@ -1423,7 +1461,7 @@ class OnboardingController extends Controller
 
                 $this->disconnectStudioPayout($userDetail);
 
-                $msg = 'Studio payout disconnected. You can now switch payout options or connect again.';
+                $msg = 'Studio payout disconnected. You can invite a studio again or switch payout options.';
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json(['success' => true, 'message' => $msg]);
                 }
@@ -1473,8 +1511,12 @@ class OnboardingController extends Controller
                 $rules['studio_email'] = ['required', 'email', 'max:255'];
                 $messages['studio_email.required'] = 'Studio email is required.';
                 $messages['studio_email.email'] = 'Please enter a valid email address.';
+                // Save & Send (email not sent): require split + relationship with the invite.
+                $rules = array_merge($rules, $this->studioSplitRelationshipRules(required: true));
+                $messages = array_merge($messages, $this->studioSplitRelationshipMessages());
             }
 
+            $this->mergeStudioSplitRelationshipInput($request);
             $validated = $request->validate($rules, $messages);
             $studio = null;
 
@@ -1523,9 +1565,18 @@ class OnboardingController extends Controller
                     ]);
                 }
 
+                $stripeConnect = app(StripeConnectService::class);
+                $accountId = $userDetail->stripe_account_id;
+                if (! is_string($accountId) || $accountId === '' || ! $stripeConnect->isConfigured() || ! $stripeConnect->isOnboardingSubmitted($accountId)) {
+                    throw ValidationException::withMessages([
+                        'stripe_connect' => ['Please connect your bank account before inviting your studio.'],
+                    ]);
+                }
+
                 $userDetail->studio_id = $studio->id;
-                $userDetail->stripe_account_id = null;
+                // Keep the artist's stripe_account_id — studio payout requires both accounts.
                 $userDetail->payment_status = 'pending';
+                $this->applyStudioSplitAndRelationship($userDetail, $validated);
             }
 
             $userDetail->save();
@@ -1831,6 +1882,27 @@ class OnboardingController extends Controller
                 return $this->resendStudioPayoutEmail($request, $user, $userDetail);
             }
 
+            if ((int) $request->input('save_studio_split', 0) === 1) {
+                return $this->saveStudioSplitRelationship($request, $userDetail);
+            }
+
+            if ((int) $request->input('disconnect_stripe', 0) === 1) {
+                if (! $this->hasActiveArtistStripe($userDetail)) {
+                    return response()->json(['success' => false, 'message' => 'No connected Stripe payout to disconnect.'], 422);
+                }
+
+                $userDetail->stripe_account_id = null;
+                $userDetail->payment_status = null;
+                $userDetail->stripe_requirement = false;
+                $userDetail->stripe_requirement_email_sent_at = null;
+                $userDetail->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Stripe payout disconnected. You can now switch payout options or connect again.',
+                ]);
+            }
+
             if ((int) $request->input('disconnect_studio', 0) === 1) {
                 if (! $this->hasStudioPayoutCommitted($userDetail)) {
                     return response()->json(['success' => false, 'message' => 'No linked studio payout to disconnect.'], 422);
@@ -1840,7 +1912,7 @@ class OnboardingController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Studio payout disconnected. You can now switch payout options or connect again.',
+                    'message' => 'Studio payout disconnected. You can invite a studio again or switch payout options.',
                 ]);
             }
 
@@ -1869,8 +1941,11 @@ class OnboardingController extends Controller
                 $rules['studio_email'] = ['required', 'email', 'max:255'];
                 $messages['studio_email.required'] = 'Studio email is required.';
                 $messages['studio_email.email'] = 'Please enter a valid email address.';
+                $rules = array_merge($rules, $this->studioSplitRelationshipRules(required: true));
+                $messages = array_merge($messages, $this->studioSplitRelationshipMessages());
             }
 
+            $this->mergeStudioSplitRelationshipInput($request);
             $validated = $request->validate($rules, $messages);
             $studio = null;
 
@@ -1935,10 +2010,27 @@ class OnboardingController extends Controller
                     ]);
                 }
 
-                // Link artist to studio; studio submits bank details via emailed link
+                $userDetail->refresh();
+                $accountId = $userDetail->stripe_account_id;
+                if (! $accountId) {
+                    try {
+                        $accountId = $stripeConnect->ensureConnectedAccount($user, $userDetail);
+                        $userDetail->refresh();
+                    } catch (\Throwable) {
+                        $accountId = null;
+                    }
+                }
+
+                if (! $accountId || ! $stripeConnect->isOnboardingSubmitted($accountId)) {
+                    throw ValidationException::withMessages([
+                        'stripe_connect' => ['Please connect your bank account before inviting your studio.'],
+                    ]);
+                }
+
+                // Link artist to studio; keep artist stripe_account_id (both must be connected).
                 $userDetail->studio_id = $studio->id;
-                $userDetail->stripe_account_id = null;
                 $userDetail->payment_status = 'pending';
+                $this->applyStudioSplitAndRelationship($userDetail, $validated);
             }
 
             $userDetail->save();
@@ -2074,9 +2166,10 @@ class OnboardingController extends Controller
         }
 
         $artist = $userDetail->user;
-        $artistName = trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''));
-        if ($artistName === '') {
-            $artistName = $userDetail->user_name ?? $artist->email ?? 'Artist';
+        $artistName = $userDetail->publicDisplayName();
+        if ($artistName === '' || $artistName === 'Artist') {
+            $fallback = trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''));
+            $artistName = $fallback !== '' ? $fallback : ($userDetail->user_name ?? $artist->email ?? 'Artist');
         }
 
         $stripeConnect = app(StripeConnectService::class);
@@ -2120,10 +2213,39 @@ class OnboardingController extends Controller
             ['userDetail' => $userDetail->id]
         );
 
+        $styles = is_array($userDetail->tattoo_styles) ? $userDetail->tattoo_styles : [];
+        $tattooingSince = $styles['tattooing_since'] ?? null;
+        $primaryStyle = $styles['primary_style'] ?? null;
+        $relationshipLabels = [
+            'co_owner' => 'Co-owner',
+            'resident' => 'Resident',
+            'collective_member' => 'Collective Member',
+            'apprentice' => 'Apprentice',
+            'other' => 'Other (Contract Artist, Freelancer)',
+        ];
+        $relationshipType = $userDetail->studio_relationship_type ?? null;
+        $artistPercent = (int) ($userDetail->studio_revenue_artist_percent ?? 50);
+        $artistPercent = max(0, min(100, $artistPercent));
+        $locationParts = array_values(array_filter([
+            trim((string) ($userDetail->city ?? '')),
+            trim((string) ($userDetail->country ?? '')),
+        ], fn (string $part) => $part !== ''));
+
+        $avatarPath = trim((string) ($userDetail->avatar ?? ''));
+
         return view('studio.payout-form', [
             'userDetail' => $userDetail,
             'studio' => $studio,
             'artistName' => $artistName,
+            'artistAvatarUrl' => $avatarPath !== '' ? asset($avatarPath) : null,
+            'artistInitials' => $userDetail->publicDisplayInitials(),
+            'artistLocation' => $locationParts !== [] ? implode(', ', $locationParts) : null,
+            'artistTattooingSince' => $tattooingSince ? (string) $tattooingSince : null,
+            'artistPrimaryStyle' => $primaryStyle ? (string) $primaryStyle : null,
+            'studioRevenueArtistPercent' => $artistPercent,
+            'studioRevenueStudioPercent' => 100 - $artistPercent,
+            'studioRelationshipLabel' => $relationshipLabels[$relationshipType] ?? null,
+            'studioNameValue' => old('studio_name', $studio->name ?? $userDetail->studio_name ?? ''),
             'studioAlreadyConnected' => $studioAlreadyConnected,
             'studioProfile' => $studioProfile,
             'paymentStatus' => $paymentStatus,
@@ -2179,6 +2301,7 @@ class OnboardingController extends Controller
             'business_type' => ['required', 'string', Rule::in(['individual', 'company'])],
             'country' => ['required', 'string', 'size:2', Rule::in($supportedCodes)],
             'industry' => ['required', 'string', Rule::in(['tattoo_studio', 'tattoo_beauty', 'other'])],
+            'studio_name' => ['nullable', 'string', 'max:255'],
         ], [
             'business_type.required' => 'Please select whether you are an individual or a business.',
             'business_type.in' => 'Please select a valid account type.',
@@ -2187,6 +2310,15 @@ class OnboardingController extends Controller
             'industry.required' => 'Please select what best describes you.',
             'industry.in' => 'Please select a valid industry.',
         ]);
+
+        $studioName = trim((string) ($validated['studio_name'] ?? ''));
+        if ($studioName === '') {
+            $studioName = trim((string) ($studio->name ?? ''));
+        }
+        if ($studioName !== '' && $studioName !== (string) $studio->name) {
+            $studio->name = $studioName;
+            $studio->save();
+        }
 
         $setup = [
             'business_type' => $validated['business_type'],
@@ -2463,12 +2595,21 @@ class OnboardingController extends Controller
         }
 
         $studio = Studio::find($userDetail->studio_id);
-        if (! $studio || ! $studio->hasStripeConnect()) {
+        if (! $studio) {
             return view('studio.payout-form-result', [
                 'success' => false,
-                'title' => 'Stripe not connected',
-                'message' => 'Your studio has not completed Stripe payout setup yet. Please use the secure link from the latest email to connect Stripe first.',
+                'title' => 'Studio not found',
+                'message' => 'Studio record was not found.',
             ]);
+        }
+
+        // Not connected yet: send them to the review page where Approve starts Stripe setup.
+        if (! $studio->hasStripeConnect()) {
+            return redirect()->to(URL::temporarySignedRoute(
+                'studio.payout-info.show',
+                now()->addDays(30),
+                ['userDetail' => $userDetail->id]
+            ));
         }
 
         if (($userDetail->payment_status ?? '') === 'approved') {
@@ -2487,16 +2628,17 @@ class OnboardingController extends Controller
             ]);
         }
 
-        $accountId = $studio->resolveStripeAccountId();
-        $userDetail->stripe_account_id = $accountId;
-        $userDetail->payment_status = 'approved';
-        $userDetail->stripe_requirement = false;
-
-        $currency = $stripeConnect->resolveCurrencyForAccount($accountId);
-        if ($currency !== null) {
-            $userDetail->currency = $currency;
+        // Keep the artist's own stripe_account_id — studio payout uses both accounts.
+        if ($request->filled('studio_name')) {
+            $name = trim((string) $request->input('studio_name'));
+            if ($name !== '') {
+                $studio->name = $name;
+                $studio->save();
+            }
         }
 
+        $userDetail->payment_status = 'approved';
+        $userDetail->stripe_requirement = (bool) ($studio->stripe_requirement ?? false);
         $userDetail->save();
 
         return view('studio.payout-form-result', [
@@ -2673,6 +2815,17 @@ class OnboardingController extends Controller
             return redirect()->back()->with('error', $msg);
         }
 
+        $this->mergeStudioSplitRelationshipInput($request);
+        // Onboarding reminder sends split fields; settings reminder is email-only.
+        if ($request->filled('studio_revenue_artist_percent') || $request->filled('studio_relationship_type')) {
+            $splitValidated = $request->validate(
+                $this->studioSplitRelationshipRules(required: true),
+                $this->studioSplitRelationshipMessages()
+            );
+            $this->applyStudioSplitAndRelationship($userDetail, $splitValidated);
+            $userDetail->save();
+        }
+
         if (($userDetail->payment_status ?? null) === 'approved') {
             $studio = Studio::find($userDetail->studio_id);
             $needsRequirements = (bool) ($studio?->stripe_requirement || $userDetail->stripe_requirement);
@@ -2754,6 +2907,109 @@ class OnboardingController extends Controller
         return redirect()->back()->with('success', $msg);
     }
 
+    /**
+     * Save only studio revenue split + relationship type.
+     */
+    protected function saveStudioSplitRelationship(Request $request, UserDetail $userDetail)
+    {
+        $this->mergeStudioSplitRelationshipInput($request);
+
+        try {
+            $validated = $request->validate(
+                $this->studioSplitRelationshipRules(required: true),
+                $this->studioSplitRelationshipMessages()
+            );
+        } catch (ValidationException $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please fix the validation errors',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            throw $e;
+        }
+
+        $this->applyStudioSplitAndRelationship($userDetail, $validated);
+        $userDetail->save();
+
+        $msg = 'Revenue split and relationship type saved.';
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'studio_revenue_artist_percent' => (int) $userDetail->studio_revenue_artist_percent,
+                'studio_relationship_type' => $userDetail->studio_relationship_type,
+            ]);
+        }
+
+        return redirect()->back()->with('success', $msg);
+    }
+
+    /**
+     * Map not-connected section aliases onto the canonical studio split fields.
+     */
+    private function mergeStudioSplitRelationshipInput(Request $request): void
+    {
+        $merge = [];
+
+        if (! $request->filled('studio_revenue_artist_percent') && $request->filled('studio_revenue_artist_percent_nc')) {
+            $merge['studio_revenue_artist_percent'] = $request->input('studio_revenue_artist_percent_nc');
+        }
+
+        if (! $request->filled('studio_relationship_type') && $request->filled('studio_relationship_type_nc')) {
+            $merge['studio_relationship_type'] = $request->input('studio_relationship_type_nc');
+        }
+
+        if ($merge !== []) {
+            $request->merge($merge);
+        }
+    }
+
+    /**
+     * @return array<string, list<string|\Illuminate\Validation\Rules\In>>
+     */
+    private function studioSplitRelationshipRules(bool $required): array
+    {
+        $presence = $required ? 'required' : 'nullable';
+
+        return [
+            'studio_revenue_artist_percent' => [$presence, 'integer', 'min:0', 'max:100'],
+            'studio_relationship_type' => [$presence, Rule::in(UserDetail::STUDIO_RELATIONSHIP_TYPES)],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function studioSplitRelationshipMessages(): array
+    {
+        return [
+            'studio_revenue_artist_percent.required' => 'Please enter your revenue split percentage.',
+            'studio_revenue_artist_percent.integer' => 'Revenue split must be a whole number.',
+            'studio_revenue_artist_percent.min' => 'Revenue split must be between 0 and 100.',
+            'studio_revenue_artist_percent.max' => 'Revenue split must be between 0 and 100.',
+            'studio_relationship_type.required' => 'Please select a relationship type.',
+            'studio_relationship_type.in' => 'Invalid relationship type selected.',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function applyStudioSplitAndRelationship(UserDetail $userDetail, array $validated): void
+    {
+        if (array_key_exists('studio_revenue_artist_percent', $validated) && $validated['studio_revenue_artist_percent'] !== null && $validated['studio_revenue_artist_percent'] !== '') {
+            $userDetail->studio_revenue_artist_percent = (int) $validated['studio_revenue_artist_percent'];
+        }
+
+        if (! empty($validated['studio_relationship_type'])) {
+            $userDetail->studio_relationship_type = $validated['studio_relationship_type'];
+        }
+    }
+
     private function sendStudioPayoutDeclinedArtistEmail(User $artistUser, string $studioName): void
     {
         $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
@@ -2789,7 +3045,7 @@ class OnboardingController extends Controller
             $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
         }
 
-        $showApproveDecline = $studio->hasStripeConnect() && ! $requirementsReminder;
+        $showApproveDecline = ! $requirementsReminder;
 
         $formUrl = $requirementsReminder
             ? URL::temporarySignedRoute(
@@ -2805,7 +3061,7 @@ class OnboardingController extends Controller
 
         $approveUrl = $showApproveDecline
             ? URL::temporarySignedRoute(
-                'studio.payout-artist-link.approve',
+                'studio.payout-info.show',
                 now()->addDays(30),
                 ['userDetail' => $userDetail->id]
             )

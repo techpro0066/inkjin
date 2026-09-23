@@ -610,17 +610,14 @@ class StripeConnectService
         $studio->stripe_account_id = $accountId;
         $studio->save();
 
-        $userDetail->stripe_account_id = $accountId;
+        // Keep the artist's own stripe_account_id — studio payout requires both accounts.
         $userDetail->payment_status = 'approved';
-
-        $currency = $this->resolveCurrencyForAccount($accountId);
-        if ($currency !== null) {
-            $userDetail->currency = $currency;
-        }
 
         try {
             app(\App\Services\StripeRequirementSyncService::class)->syncStudio($studio);
-            $userDetail->refresh();
+            $studio->refresh();
+            $userDetail->stripe_requirement = (bool) ($studio->stripe_requirement ?? false);
+            $userDetail->save();
         } catch (\Throwable) {
             $studio->stripe_requirement = true;
             $studio->save();

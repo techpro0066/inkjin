@@ -20,13 +20,20 @@
           </tr>
           <tr>
             <td style="font-size:15px;color:#494552;line-height:1.7;padding-bottom:24px;">
-              An artist payout could not be sent because the platform Stripe available balance is lower than the requested transfer amount.
+              A payout could not be sent because the platform Stripe available balance is lower than the requested transfer amount.
             </td>
           </tr>
           <tr>
             <td style="background:#f8f1fb;border-radius:12px;padding:20px;font-size:14px;color:#1c1b21;line-height:1.8;">
               <strong>Trigger:</strong>
-              {{ $source === 'manual_request' ? 'Manual payout request' : 'Automatic daily payout' }}<br>
+              @if ($source === 'manual_request')
+                Manual payout request
+              @elseif ($source === 'automatic_studio_payout')
+                Automatic studio payout
+              @else
+                Automatic daily payout
+              @endif
+              <br>
               <strong>Requested:</strong> {{ $currency === 'EUR' ? '€' : $currency.' ' }}{{ number_format($requestedAmount, 2) }}<br>
               <strong>Stripe available:</strong> {{ $currency === 'EUR' ? '€' : $currency.' ' }}{{ number_format($availableAmount, 2) }}<br>
               @if ($artistName)
@@ -39,7 +46,7 @@
           </tr>
           <tr>
             <td style="font-size:14px;color:#494552;line-height:1.7;padding-top:24px;padding-bottom:28px;">
-              Top up the platform Stripe balance or review recent payouts, then retry the artist payout if needed.
+              Top up the platform Stripe balance or review recent payouts, then retry the payout if needed.
             </td>
           </tr>
           @if ($dashboardUrl)
