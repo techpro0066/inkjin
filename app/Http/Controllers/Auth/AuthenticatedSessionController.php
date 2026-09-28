@@ -18,7 +18,16 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): View
     {
-        return view('auth.login');
+        $lockedUntil = (int) session('login_locked_until', 0);
+        $loginLocked = $lockedUntil > time();
+
+        if (! $loginLocked && session()->has('login_locked_until')) {
+            session()->forget('login_locked_until');
+        }
+
+        return view('auth.login', [
+            'loginLocked' => $loginLocked,
+        ]);
     }
 
     /**
@@ -52,7 +61,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('verification.notice');
         }
 
-        if ($user->role !== 'admin' && $user->role !== 'artist' && $user->role !== 'user') {
+        if (! in_array($user->role, ['admin', 'artist', 'user', 'studio'], true)) {
             return abort(403, 'Access denied. You are not authorized to access this page.');
         }
 
@@ -74,6 +83,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return $request->input('to') === 'register'
+            ? redirect()->route('register')
+            : redirect('/');
     }
 }

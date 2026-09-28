@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->boolean('must_set_password')->default(false);
-            $table->enum('role', ['admin', 'artist', 'user'])->default('user');
+            $table->enum('role', ['admin', 'artist', 'user', 'studio'])->default('user');
             $table->enum('on_boarding', ['yes', 'no'])->default('no');
             $table->tinyInteger('on_app')->default(0);
             $table->unsignedBigInteger('app_id')->nullable();

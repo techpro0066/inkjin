@@ -1,4 +1,4 @@
-@extends('layouts.inkjin_auth_layout')
+@extends('layouts.new-auth')
 
 @section('title', 'Reset Password | Bookpay by Inkjin')
 @section('meta_description', 'Forgot your Bookpay password? Reset it here to get back to managing your bookings and payments.')
@@ -17,141 +17,259 @@
 @endsection
 
 @section('content')
-  <main class="flex-grow flex items-center justify-center p-6 md:p-12 relative z-10">
-    <div class="w-full max-auto max-w-[440px]">
-      <!-- Logo Section -->
-      <div class="flex flex-col items-center mb-8">
-        <span class="text-4xl font-bold text-on-surface tracking-tighter leading-none mb-1"
-          style="font-family: 'Space Grotesk', sans-serif;">bookpay</span>
-        <span
-          class="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest text-center leading-tight">Tattoo
-          artist platform<br>by Inkjin</span>
-      </div>
-
-      <!-- Card Container -->
-      <div class="bg-surface-container-lowest rounded-xl p-8 md:p-10 shadow-[0_32px_64px_-12px_rgba(49,15,122,0.06)] ring-1 ring-outline-variant/15">
-        <!-- Header -->
-        <div class="text-center mb-8">
-          <h1 class="font-headline text-3xl font-extrabold text-on-surface tracking-tight mb-3">Forgot password?</h1>
-          <p class="text-on-surface-variant">No worries, we'll send you a link to reset your password.</p>
-        </div>
-
-        <!-- Session Status -->
-        @if (session('status'))
-          <div id="forgot-success-server" class="mb-5 rounded-xl bg-primary-container/25 border border-primary-container/40 px-4 py-3 text-sm text-on-surface">
-            {{ session('status') }}
-          </div>
-        @endif
-
-        <div id="forgot-success" class="hidden mb-5 rounded-xl bg-primary-container/25 border border-primary-container/40 px-4 py-3 text-sm text-on-surface"></div>
-        <div id="forgot-error" class="hidden mb-5 rounded-xl bg-error-container/40 border border-error-container/60 px-4 py-3 text-sm text-error"></div>
-
-        <form class="space-y-6" method="POST" action="{{ route('password.email') }}" id="forgot-password-form">
-          @csrf
-
-          <div class="space-y-2">
-            <label class="block text-sm font-semibold text-on-surface mb-2" for="reset-email">Email address</label>
-            <input
-              class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 {{ $errors->has('email') ? 'border border-error' : '' }}"
-              id="reset-email"
-              name="email"
-              placeholder="name@company.com"
-              type="email"
-              value="{{ old('email') }}"
-              autofocus
-            />
-            <p class="text-sm text-error mt-1 hidden" id="reset-email-error"></p>
-            @error('email')
-              <p class="text-sm text-error mt-1">{{ $message }}</p>
-            @enderror
-          </div>
-
-          <!-- CTA Button -->
-          <button
-            class="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]"
-            type="submit"
-            id="forgot-password-submit"
-          >
-            <span>Send Reset Link</span>
-            <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-          </button>
-        </form>
-
-        <!-- Sign in -->
-        <div class="mt-8 text-center">
-          <a
-            class="inline-flex items-center justify-center gap-2 text-primary font-semibold hover:text-primary-container transition-colors group"
-            href="{{ route('login') }}"
-          >
-            <span class="material-symbols-outlined text-lg" data-icon="keyboard_backspace">keyboard_backspace</span>
-            <span>Back to Sign in</span>
-          </a>
-        </div>
-      </div>
-
-        <!-- Secondary Help Text -->
-        <p class="mt-8 text-center text-sm text-on-surface-variant">
-          Having trouble?
-          <a class="text-primary font-medium underline underline-offset-4 decoration-primary/30 hover:decoration-primary" href="mailto:support@inkjin.com">
-            Contact Support
-          </a>
-        </p>
-    </div>
-  </main>
+  <div id="forgot-app"
+    data-action="{{ route('password.email') }}"
+    data-login="{{ route('login') }}"
+    data-csrf="{{ csrf_token() }}"
+    data-initial-email="{{ $initialEmail ?? old('email', '') }}"
+    data-auto-send="{{ ! empty($autoSend) ? '1' : '0' }}"
+    data-initial-status="{{ session('status') ? 'sent' : '' }}"
+    data-status-message="{{ session('status') }}"
+    data-email-error="{{ $errors->first('email') }}">
+  </div>
 @endsection
 
 @push('scripts')
-  <script>
-    $(function () {
-      function clearForgotMessages() {
-        $('#forgot-success, #forgot-error').addClass('hidden').text('');
-        $('#reset-email-error').addClass('hidden').text('');
-        $('#reset-email').removeClass('border-error');
+<script>
+(function () {
+  var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var MAILS = [
+    [/^(gmail|googlemail)\./, 'Gmail', 'https://mail.google.com'],
+    [/^(outlook|hotmail|live|msn)\./, 'Outlook', 'https://outlook.live.com/mail/'],
+    [/^(yahoo|ymail)\./, 'Yahoo Mail', 'https://mail.yahoo.com'],
+    [/^(icloud|me|mac)\.com$/, 'iCloud Mail', 'https://www.icloud.com/mail'],
+    [/^(proton|protonmail|pm)\./, 'Proton Mail', 'https://mail.proton.me']
+  ];
+
+  var root = document.getElementById('forgot-app');
+  if (!root) return;
+
+  var action = root.dataset.action;
+  var loginUrl = root.dataset.login;
+  var csrf = root.dataset.csrf;
+  var mail = (root.dataset.initialEmail || '').trim();
+  var timer = null;
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function inboxButton(email) {
+    var domain = (email.split('@')[1] || '').toLowerCase();
+    for (var i = 0; i < MAILS.length; i++) {
+      if (MAILS[i][0].test(domain)) {
+        return '<a class="btn ghost" href="' + MAILS[i][2] + '" target="_blank" rel="noopener" style="margin-top:0"><span class="ms">mail</span>Open ' + MAILS[i][1] + '</a>';
+      }
+    }
+    return '';
+  }
+
+  function showForm(prefill, errorMessage) {
+    clearInterval(timer);
+    root.innerHTML =
+      '<h1>Forgot password?</h1>' +
+      '<p class="sub">No worries. Enter the email you signed up with and we\'ll send you a link to reset your password.</p>' +
+      (errorMessage
+        ? '<div class="banner bad" role="alert"><span class="ms">error</span><span>' + esc(errorMessage) + '</span></div>'
+        : '') +
+      '<form id="forgot-form" novalidate>' +
+        '<label class="fl" for="reset-email" style="margin-top:0">Email address</label>' +
+        '<div class="in" id="email-wrap"><input id="reset-email" type="email" name="email" autocomplete="email" placeholder="name@company.com" value="' + esc(prefill || '') + '"></div>' +
+        '<div class="err" id="email-error">Enter a valid email address</div>' +
+        '<button class="btn" id="forgot-submit" type="submit">Send reset link<span class="ms">arrow_forward</span></button>' +
+      '</form>' +
+      '<a class="back" href="' + loginUrl + '"><span class="ms">arrow_back</span>Back to sign in</a>';
+
+    var emailInput = document.getElementById('reset-email');
+    var emailWrap = document.getElementById('email-wrap');
+    var emailError = document.getElementById('email-error');
+    var form = document.getElementById('forgot-form');
+    var submitBtn = document.getElementById('forgot-submit');
+    var originalBtnHtml = submitBtn.innerHTML;
+
+    setTimeout(function () { emailInput.focus(); }, 30);
+
+    emailInput.addEventListener('input', function () {
+      emailWrap.classList.remove('bad');
+      emailError.classList.remove('on');
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var value = emailInput.value.trim();
+      if (!EMAIL.test(value)) {
+        emailWrap.classList.add('bad');
+        emailError.classList.add('on');
+        emailError.textContent = 'Enter a valid email address';
+        return;
       }
 
-      $('#forgot-password-form').on('submit', function (e) {
-        e.preventDefault();
-        clearForgotMessages();
+      mail = value;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending…';
 
-        var $form = $(this);
-        var $submitBtn = $('#forgot-password-submit');
-        var originalButtonHtml = $submitBtn.html();
+      var body = new FormData();
+      body.append('_token', csrf);
+      body.append('email', mail);
 
-        $('#forgot-success-server').addClass('hidden');
-        $submitBtn.prop('disabled', true).html('<span>Sending...</span>');
-
-        $.ajax({
-          url: $form.attr('action'),
-          method: 'POST',
-          data: $form.serialize(),
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-          }
-        }).done(function (response) {
-          var successMessage = (response && response.message)
-            ? response.message
-            : 'Reset link sent. Please check your email.';
-
-          $('#forgot-success').removeClass('hidden').text(successMessage);
-        }).fail(function (xhr) {
-          if (xhr.status === 422 && xhr.responseJSON) {
-            var errors = xhr.responseJSON.errors || {};
-            var fallbackMessage = xhr.responseJSON.message || 'Please check your email address and try again.';
-
-            if (errors.email && errors.email.length) {
-              $('#reset-email-error').removeClass('hidden').text(errors.email[0]);
-              $('#reset-email').addClass('border-error');
-            } else {
-              $('#forgot-error').removeClass('hidden').text(fallbackMessage);
-            }
-          } else {
-            $('#forgot-error').removeClass('hidden').text('Something went wrong. Please try again.');
-          }
-        }).always(function () {
-          $submitBtn.prop('disabled', false).html(originalButtonHtml);
+      fetch(action, {
+        method: 'POST',
+        body: body,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        credentials: 'same-origin'
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          return { status: res.status, data: data || {} };
+        }).catch(function () {
+          return { status: res.status, data: {} };
         });
+      }).then(function (result) {
+        if (result.status >= 200 && result.status < 300) {
+          showSent(false);
+          return;
+        }
+
+        var errors = result.data.errors || {};
+        var message = (errors.email && errors.email[0])
+          || result.data.message
+          || 'Please check your email address and try again.';
+
+        emailWrap.classList.add('bad');
+        emailError.classList.add('on');
+        emailError.textContent = message;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
+      }).catch(function () {
+        emailWrap.classList.add('bad');
+        emailError.classList.add('on');
+        emailError.textContent = 'Something went wrong. Please try again.';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
       });
     });
-  </script>
+  }
+
+  function showSent(showResentBanner) {
+    clearInterval(timer);
+    var openMail = inboxButton(mail);
+
+    root.innerHTML =
+      (showResentBanner
+        ? '<div class="banner ok" role="status"><span class="ms">check_circle</span><span>We sent a new link.</span></div>'
+        : '') +
+      '<div class="icon"><span class="ms">mark_email_read</span></div>' +
+      '<h1>Check your email</h1>' +
+      '<p class="sub">If there\'s a Bookpay account for <b>' + esc(mail) + '</b>, we\'ve sent a link to reset your password. The link works for 60 minutes.</p>' +
+      openMail +
+      '<p class="small" style="margin-top:' + (openMail ? '18px' : '0') + '">Can\'t find it? Check your spam folder, or <button type="button" class="link" id="resend-btn" disabled>resend in <span id="countdown">60</span>s</button></p>' +
+      '<p class="small" style="margin-top:6px"><button type="button" class="link" id="other-email">Use a different email</button></p>' +
+      '<a class="back" href="' + loginUrl + '"><span class="ms">arrow_back</span>Back to sign in</a>';
+
+    var seconds = 60;
+    var resendBtn = document.getElementById('resend-btn');
+    var countdown = document.getElementById('countdown');
+
+    timer = setInterval(function () {
+      seconds -= 1;
+      if (seconds <= 0) {
+        clearInterval(timer);
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'resend the link';
+      } else if (countdown) {
+        countdown.textContent = String(seconds);
+      }
+    }, 1000);
+
+    resendBtn.addEventListener('click', function () {
+      if (resendBtn.disabled) return;
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Sending…';
+
+      var body = new FormData();
+      body.append('_token', csrf);
+      body.append('email', mail);
+
+      fetch(action, {
+        method: 'POST',
+        body: body,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        credentials: 'same-origin'
+      }).finally(function () {
+        showSent(true);
+      });
+    });
+
+    document.getElementById('other-email').addEventListener('click', function () {
+      showForm(mail);
+    });
+  }
+
+  function showSending(email) {
+    clearInterval(timer);
+    root.innerHTML =
+      '<div class="icon"><span class="ms">hourglass_top</span></div>' +
+      '<h1>Sending reset link</h1>' +
+      '<p class="sub">One moment — we\'re sending a new link to <b>' + esc(email) + '</b>.</p>';
+  }
+
+  function requestResetLink(email) {
+    var body = new FormData();
+    body.append('_token', csrf);
+    body.append('email', email);
+
+    return fetch(action, {
+      method: 'POST',
+      body: body,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      },
+      credentials: 'same-origin'
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        return { status: res.status, data: data || {} };
+      }).catch(function () {
+        return { status: res.status, data: {} };
+      });
+    });
+  }
+
+  function autoSendLink(email) {
+    mail = email;
+    showSending(email);
+    requestResetLink(email).then(function (result) {
+      if (result.status >= 200 && result.status < 300) {
+        showSent(false);
+        return;
+      }
+
+      var errors = result.data.errors || {};
+      var message = (errors.email && errors.email[0])
+        || result.data.message
+        || 'Please check your email address and try again.';
+      showForm(email, message);
+    }).catch(function () {
+      showForm(email, 'Something went wrong. Please try again.');
+    });
+  }
+
+  if (root.dataset.initialStatus === 'sent' && mail) {
+    showSent(false);
+  } else if (root.dataset.autoSend === '1' && EMAIL.test(mail)) {
+    autoSendLink(mail);
+  } else {
+    showForm(mail, root.dataset.emailError || '');
+  }
+})();
+</script>
 @endpush

@@ -42,14 +42,15 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+            RateLimiter::hit($this->throttleKey(), 60 * 15);
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => 'That email and password don\'t match. Check them and try again.',
             ]);
         }
 
         RateLimiter::clear($this->throttleKey());
+        $this->session()->forget('login_locked_until');
     }
 
     /**
@@ -66,12 +67,11 @@ class LoginRequest extends FormRequest
         event(new Lockout($this));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
+        $this->session()->put('login_locked_until', time() + max(1, $seconds));
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'email' => 'Too many tries. Wait 15 minutes, or reset your password.',
+            'locked' => ['1'],
         ]);
     }
 

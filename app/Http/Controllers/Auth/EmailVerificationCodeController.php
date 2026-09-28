@@ -25,7 +25,7 @@ class EmailVerificationCodeController extends Controller
 
         if (! EmailVerificationOtp::verify($request->user(), $validated['code'])) {
             return back()
-                ->withErrors(['code' => 'That code is invalid or has expired. You can request a new code below.'])
+                ->withErrors(['code' => 'That code isn\'t right. Check the email and try again.'])
                 ->withInput();
         }
 

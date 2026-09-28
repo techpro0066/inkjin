@@ -1,345 +1,298 @@
-@extends('layouts.inkjin_auth_layout')
+@extends('layouts.new-auth')
 
-@section('title', 'Verify Email')
+@section('title', 'Verify Email | Bookpay by Inkjin')
+@section('meta_description', 'Verify your Bookpay email to continue setting up bookings and payments.')
+@section('robots', 'noindex, follow')
+@section('og_title', 'Verify Email | Bookpay by Inkjin')
+@section('og_description', 'Verify your Bookpay email to continue.')
+@section('og_image')
+{{ asset('design/images/bookpay-og.jpeg') }}
+@endsection
+@section('twitter_title', 'Verify Email | Bookpay by Inkjin')
+@section('twitter_description', 'Verify your Bookpay email to continue.')
+@section('twitter_image')
+{{ asset('design/images/bookpay-og.jpeg') }}
+@endsection
+
+@section('help')
+@endsection
+
+@php
+  $userEmail = auth()->user()?->email ?? '';
+  $codeError = $errors->first('code');
+  $sendError = $errors->first('email') ?: session('verification_send_error');
+  $justSent = session('email_sent_on_registration')
+    || session('status') === 'verification-code-sent'
+    || session('status') === 'verification-link-sent';
+@endphp
+
+@push('styles')
+<style>
+  .code {
+    letter-spacing: 10px;
+    font-size: 22px !important;
+    font-weight: 700;
+    text-align: center;
+  }
+  .rs {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #6F6874;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    text-align: center;
+  }
+  .rs a,
+  .rs button {
+    color: #1A1A1A;
+    font-weight: 700;
+  }
+  .banner[hidden] { display: none !important; }
+</style>
+@endpush
 
 @section('content')
-  <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
-    <div class="absolute -top-24 -right-24 w-96 h-96 brand-gradient opacity-[0.03] rounded-full blur-3xl"></div>
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[40rem] font-black text-primary-fixed-dim opacity-[0.05] select-none tracking-tighter">
-      ij
-    </div>
+  <div class="icon"><span class="ms">mark_email_unread</span></div>
+  <h1>Verify your email</h1>
+  <p class="sub">
+    We sent a 4-digit code to <b>{{ $userEmail }}</b>. Check your inbox and your spam folder.
+  </p>
+
+  <div class="banner ok" id="sent-banner" role="status" hidden>
+    <span class="ms">check_circle</span>
+    <span>New code sent.</span>
   </div>
 
-  <main class="flex-grow flex items-center justify-center p-6 md:p-12 relative z-10">
-    <div class="w-full max-auto max-w-[440px]">
-      <div class="flex flex-col items-center mb-8">
-        <span class="text-4xl font-bold text-on-surface tracking-tighter leading-none mb-1" style="font-family: 'Space Grotesk', sans-serif;">
-          bookpay
-        </span>
-        <span class="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest text-center leading-tight">
-          Tattoo artist platform<br>by Inkjin
-        </span>
-      </div>
+  <div class="banner bad" id="bad-banner" role="alert" @if (! $codeError && ! $sendError) hidden @endif>
+    <span class="ms">error</span>
+    <span id="bad-banner-text">{{ $codeError ?: ($sendError ?: 'That code isn\'t right. Check the email and try again.') }}</span>
+  </div>
 
-      <div class="surface-container-lowest glass-panel rounded-xl shadow-[0_32px_64px_-12px_rgba(49,15,122,0.06)] p-8 md:p-10">
-        <div class="w-full max-w-md">
-          <div class="flex flex-col items-center mb-8 text-center">
-            <div class="w-14 h-14 rounded-full bg-primary-container/15 flex items-center justify-center mb-4">
-              <span class="material-symbols-outlined text-primary text-[28px]">mark_email_read</span>
-            </div>
-            <h1 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2" style="font-family: 'Space Grotesk', sans-serif;">
-              Verify your email
-            </h1>
-            <p class="text-on-surface-variant">
-              We are sending a secure 4-digit code to your email—check your inbox (and spam). You can resend below if you need a new code.
-            </p>
-          </div>
-
-          @if (session('verification_send_error'))
-            <div class="mb-5 rounded-xl bg-error-container/40 border border-error/30 px-4 py-3 text-sm text-error" role="alert">
-              {{ session('verification_send_error') }}
-            </div>
-          @endif
-
-          <div id="resendMessage" class="items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3 hidden">
-            <strong>Note:</strong> <span id="resendMessageText"></span>
-          </div>
-
-          <div class="space-y-4">
-            <form method="POST" action="{{ route('verification.verify-code') }}" class="mb-0 space-y-3">
-              @csrf
-              <div>
-                <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="verification_code">{{ __('4-digit code') }}</label>
-                <input
-                  type="text"
-                  name="code"
-                  id="verification_code"
-                  value="{{ old('code') }}"
-                  maxlength="4"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  autocomplete="one-time-code"
-                  placeholder="1234"
-                  class="w-full border bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 {{ $errors->has('code') ? 'border-error ring-1 ring-error/30' : 'border-outline-variant/30' }}"
-                />
-              </div>
-
-              @if ($errors->has('code'))
-                <div class="rounded-xl bg-error-container/40 border border-error/30 px-4 py-3 text-sm text-error" role="alert">
-                  {{ $errors->first('code') }}
-                </div>
-              @endif
-
-              <button
-                type="submit"
-                class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20"
-              >
-                {{ __('Verify email') }}
-              </button>
-            </form>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <form method="POST" action="{{ route('verification.send') }}" id="resendVerificationForm" class="mb-0 min-w-0">
-                @csrf
-                <button
-                  type="submit"
-                  id="resendButton"
-                  class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors"
-                >
-                  <span id="buttonText">{{ __('Resend code') }}</span>
-                  <span id="countdownText" class="hidden"></span>
-                </button>
-              </form>
-
-              <form method="POST" action="{{ route('logout') }}" class="min-w-0">
-                @csrf
-                <button
-                  type="submit"
-                  class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors"
-                >
-                  {{ __('Log Out') }}
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
+  <form id="verify-form" method="POST" action="{{ route('verification.verify-code') }}" novalidate>
+    @csrf
+    <label class="fl" for="verification_code" style="margin-top:4px">4-digit code</label>
+    <div class="in{{ $codeError ? ' bad' : '' }}" id="code-wrap">
+      <input
+        id="verification_code"
+        class="code"
+        name="code"
+        type="text"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="4"
+        aria-label="4-digit code"
+        value="{{ old('code') }}"
+      >
     </div>
-  </main>
+    <button class="btn" id="verify-btn" type="submit" @if (strlen((string) old('code')) !== 4) disabled @endif>
+      Verify email
+    </button>
+  </form>
+
+  <div class="rs" id="resend-row"></div>
+
+  <form id="resend-form" method="POST" action="{{ route('verification.send') }}" hidden>
+    @csrf
+  </form>
+
+  <div class="alt">
+    Wrong email?
+    <form method="POST" action="{{ route('logout') }}" style="display:inline">
+      @csrf
+      <input type="hidden" name="to" value="register">
+      <button type="submit" class="link">Change it</button>
+    </form>
+  </div>
 @endsection
 
 @push('scripts')
-  @include('partials.reddit-pixel', ['event' => 'SignUp'])
-  <script>
-    (function() {
-      const COOLDOWN_DURATION = 60; // 60 seconds
-      const STORAGE_KEY = 'email_verification_cooldown';
-      const MESSAGE_KEY = 'email_verification_message';
+@include('partials.reddit-pixel', ['event' => 'SignUp'])
+<script>
+(function () {
+  var COOLDOWN = 60;
+  var STORAGE_KEY = 'email_verification_cooldown';
+  var form = document.getElementById('verify-form');
+  var resendForm = document.getElementById('resend-form');
+  var codeInput = document.getElementById('verification_code');
+  var codeWrap = document.getElementById('code-wrap');
+  var verifyBtn = document.getElementById('verify-btn');
+  var resendRow = document.getElementById('resend-row');
+  var sentBanner = document.getElementById('sent-banner');
+  var badBanner = document.getElementById('bad-banner');
+  var badBannerText = document.getElementById('bad-banner-text');
+  var originalBtnHtml = verifyBtn ? verifyBtn.innerHTML : 'Verify email';
+  var timer = null;
+  var remaining = 0;
+  var isResending = false;
+  var justSent = @json((bool) $justSent);
+  var clearRegistrationFlagUrl = @json(route('verification.clear-registration-flag'));
 
-      const form = document.getElementById('resendVerificationForm');
-      const resendButton = document.getElementById('resendButton');
-      const buttonText = document.getElementById('buttonText');
-      const countdownText = document.getElementById('countdownText');
-      const resendMessage = document.getElementById('resendMessage');
-      const resendMessageText = document.getElementById('resendMessageText');
+  if (!form || !codeInput || !verifyBtn || !resendRow || !resendForm) return;
 
-      if (!form || !resendButton) return;
+  function showSent() {
+    sentBanner.hidden = false;
+    badBanner.hidden = true;
+  }
 
-      const idleResendClasses = [
-        'bg-surface-container-high',
-        'text-on-surface',
-        'hover:bg-surface-container',
-      ];
-      const cooldownResendClasses = [
-        'bg-surface-container-high',
-        'text-on-surface-variant',
-        'opacity-70',
-      ];
+  function showBad(message) {
+    badBanner.hidden = false;
+    sentBanner.hidden = true;
+    if (message) badBannerText.textContent = message;
+  }
 
-      let countdownInterval = null;
-      let isSubmitting = false;
+  function hideBanners() {
+    sentBanner.hidden = true;
+    badBanner.hidden = true;
+  }
 
-      // Check for existing cooldown in localStorage
-      function checkExistingCooldown() {
-        const storedData = localStorage.getItem(STORAGE_KEY);
-        if (storedData) {
-          const data = JSON.parse(storedData);
-          const now = Date.now();
-          const elapsed = Math.floor((now - data.timestamp) / 1000);
-          const remaining = COOLDOWN_DURATION - elapsed;
+  function csrfToken() {
+    var el = form.querySelector('input[name="_token"]') || resendForm.querySelector('input[name="_token"]');
+    return el ? el.value : '';
+  }
 
-          if (remaining > 0) {
-            startCooldown(remaining, data.timestamp);
+  function renderResend() {
+    if (remaining > 0) {
+      var secs = remaining % 60;
+      var mins = Math.floor(remaining / 60);
+      resendRow.innerHTML = 'Send a new code in ' + mins + ':' + ('0' + secs).slice(-2);
+      return;
+    }
 
-            // Check for stored message
-            const storedMessage = localStorage.getItem(MESSAGE_KEY);
-            if (storedMessage) {
-              resendMessageText.textContent = storedMessage;
-              resendMessage.classList.remove('hidden');
-            }
-            return;
-          } else {
-            // Cooldown expired, clean up
-            localStorage.removeItem(STORAGE_KEY);
-            localStorage.removeItem(MESSAGE_KEY);
-          }
-        }
+    resendRow.innerHTML = 'Didn\u2019t get it? <button type="button" class="link" id="resend-btn">Send a new code</button>';
+    var btn = document.getElementById('resend-btn');
+    if (btn) btn.addEventListener('click', sendNewCode);
+  }
 
-        // Check for stored message
-        const storedMessage = localStorage.getItem(MESSAGE_KEY);
-        if (storedMessage) {
-          resendMessageText.textContent = storedMessage;
-          resendMessage.classList.remove('hidden');
-        }
+  function startCooldown(seconds, startedAt) {
+    remaining = Math.max(0, seconds | 0);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        timestamp: startedAt || Date.now(),
+        duration: COOLDOWN
+      }));
+    } catch (e) { /* ignore */ }
 
-        // Check if email was just sent (either from registration or manual resend)
-        const emailJustSent = @json(session('email_sent_on_registration') || session('status') == 'verification-code-sent' || session('status') == 'verification-link-sent');
-
-        if (emailJustSent && !localStorage.getItem(STORAGE_KEY)) {
-          // Email was just sent (from registration or manual resend), start cooldown
-          startCooldown(COOLDOWN_DURATION);
-
-          if (!storedMessage) {
-            const message = 'Verification code sent! Please check your inbox.';
-            localStorage.setItem(MESSAGE_KEY, message);
-            resendMessageText.textContent = message;
-            resendMessage.classList.remove('hidden');
-          }
-
-          // Clear session flag via AJAX to prevent timer restart on refresh
-          @if(session('email_sent_on_registration'))
-            const csrfToken = document.querySelector('input[name="_token"]')?.value || '';
-            if (csrfToken) {
-              fetch('{{ route('verification.clear-registration-flag') }}', {
-                method: 'POST',
-                headers: {
-                  'X-CSRF-TOKEN': csrfToken,
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json'
-                },
-                body: JSON.stringify({})
-              }).catch(() => {}); // Ignore errors
-            }
-          @endif
-        }
+    if (timer) clearInterval(timer);
+    renderResend();
+    timer = setInterval(function () {
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(timer);
+        timer = null;
+        remaining = 0;
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
       }
+      renderResend();
+    }, 1000);
+  }
 
-      // Start cooldown timer
-      function startCooldown(initialSeconds, startedAt) {
-        let remaining = initialSeconds || COOLDOWN_DURATION;
-
-        // Disable button
-        resendButton.disabled = true;
-        buttonText.classList.add('hidden');
-        countdownText.classList.remove('hidden');
-        resendButton.classList.remove(...idleResendClasses);
-        resendButton.classList.add(...cooldownResendClasses);
-
-        // Keep original timestamp when restoring from localStorage after refresh.
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          timestamp: startedAt || Date.now(),
-          duration: COOLDOWN_DURATION
-        }));
-
-        // Update countdown display
-        function updateCountdown() {
-          countdownText.textContent = `Resend available in ${remaining}s`;
-
-          if (remaining <= 0) {
-            clearInterval(countdownInterval);
-            countdownInterval = null;
-
-            // Enable button
-            resendButton.disabled = false;
-            buttonText.classList.remove('hidden');
-            buttonText.textContent = 'Resend code';
-            countdownText.classList.add('hidden');
-            resendButton.classList.remove(...cooldownResendClasses);
-            resendButton.classList.add(...idleResendClasses);
-
-            // Clear localStorage
-            localStorage.removeItem(STORAGE_KEY);
-
-            // Clear message
-            resendMessage.classList.add('hidden');
-            localStorage.removeItem(MESSAGE_KEY);
-          } else {
-            remaining--;
-          }
-        }
-
-        updateCountdown();
-        countdownInterval = setInterval(updateCountdown, 1000);
+  function restoreCooldown() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      var data = JSON.parse(raw);
+      var elapsed = Math.floor((Date.now() - data.timestamp) / 1000);
+      var left = COOLDOWN - elapsed;
+      if (left > 0) {
+        startCooldown(left, data.timestamp);
+        return true;
       }
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) { /* ignore */ }
+    return false;
+  }
 
-      // Handle form submission without page refresh (AJAX)
-      form.addEventListener('submit', async function(e) {
-        e.preventDefault();
+  function clearRegistrationFlag() {
+    @if (session('email_sent_on_registration'))
+      fetch(clearRegistrationFlagUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': csrfToken(),
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({}),
+        credentials: 'same-origin'
+      }).catch(function () {});
+    @endif
+  }
 
-        // Check if button is disabled (cooldown active)
-        if (resendButton.disabled) {
-          resendMessageText.textContent = 'Email already sent, please wait before retrying.';
-          resendMessage.classList.remove('hidden');
-          localStorage.setItem(MESSAGE_KEY, 'Email already sent, please wait before retrying.');
-          return;
-        }
+  function sendNewCode() {
+    if (isResending || remaining > 0) return;
+    isResending = true;
+    resendRow.innerHTML = 'Sending…';
 
-        if (isSubmitting) return;
-        isSubmitting = true;
+    var body = new FormData(resendForm);
 
-        const originalButtonText = buttonText.textContent;
-        buttonText.textContent = 'Sending...';
-        resendButton.disabled = true;
-
-        try {
-          const csrfToken = form.querySelector('input[name="_token"]')?.value || '';
-          const response = await fetch(form.action, {
-            method: 'POST',
-            headers: {
-              'X-CSRF-TOKEN': csrfToken,
-              'X-Requested-With': 'XMLHttpRequest',
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({})
-          });
-
-          if (response.ok) {
-            const successMessage = 'A new verification code was sent. Please check your inbox.';
-            resendMessageText.textContent = successMessage;
-            resendMessage.classList.remove('hidden');
-            localStorage.setItem(MESSAGE_KEY, successMessage);
-            startCooldown(COOLDOWN_DURATION);
-          } else if (response.status === 429) {
-            const throttleMessage = 'Too many requests. Please wait and try again.';
-            resendMessageText.textContent = throttleMessage;
-            resendMessage.classList.remove('hidden');
-            localStorage.setItem(MESSAGE_KEY, throttleMessage);
-            resendButton.disabled = false;
-            buttonText.textContent = originalButtonText;
-            resendButton.classList.remove(...cooldownResendClasses);
-            resendButton.classList.add(...idleResendClasses);
-          } else {
-            const errorMessage = 'Unable to resend the code right now. Please try again.';
-            resendMessageText.textContent = errorMessage;
-            resendMessage.classList.remove('hidden');
-            localStorage.setItem(MESSAGE_KEY, errorMessage);
-            resendButton.disabled = false;
-            buttonText.textContent = originalButtonText;
-            resendButton.classList.remove(...cooldownResendClasses);
-            resendButton.classList.add(...idleResendClasses);
-          }
-        } catch (error) {
-          resendMessageText.textContent = 'Network error. Please check your connection and try again.';
-          resendMessage.classList.remove('hidden');
-          localStorage.setItem(MESSAGE_KEY, 'Network error. Please check your connection and try again.');
-          resendButton.disabled = false;
-          buttonText.textContent = originalButtonText;
-          resendButton.classList.remove(...cooldownResendClasses);
-          resendButton.classList.add(...idleResendClasses);
-        } finally {
-          isSubmitting = false;
-        }
+    fetch(resendForm.action, {
+      method: 'POST',
+      body: body,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      },
+      credentials: 'same-origin'
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        return { status: res.status, data: data || {} };
+      }).catch(function () {
+        return { status: res.status, data: {} };
       });
-
-      // Initialize on page load
-      checkExistingCooldown();
-
-      // If the resend control is still enabled (no active cooldown / no "just sent" session), trigger resend once
-      if (!resendButton.disabled && !isSubmitting) {
-        if (typeof form.requestSubmit === 'function') {
-          form.requestSubmit(resendButton);
-        } else {
-          resendButton.click();
-        }
+    }).then(function (result) {
+      isResending = false;
+      if (result.status >= 200 && result.status < 300) {
+        showSent();
+        codeWrap.classList.remove('bad');
+        startCooldown(COOLDOWN);
+        return;
       }
+      if (result.status === 429) {
+        showBad('Too many requests. Please wait and try again.');
+      } else {
+        showBad((result.data && result.data.message) || 'Unable to resend the code right now. Please try again.');
+      }
+      renderResend();
+    }).catch(function () {
+      isResending = false;
+      showBad('Network error. Please check your connection and try again.');
+      renderResend();
+    });
+  }
 
-      // Clean up interval on page unload
-      window.addEventListener('beforeunload', function() {
-        if (countdownInterval) {
-          clearInterval(countdownInterval);
-        }
-      });
-    })();
-  </script>
+  codeInput.addEventListener('input', function () {
+    codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 4);
+    verifyBtn.disabled = codeInput.value.length !== 4;
+    codeWrap.classList.remove('bad');
+    if (!badBanner.hidden && badBannerText.textContent.indexOf('code') !== -1) {
+      badBanner.hidden = true;
+    }
+    if (codeInput.value.length === 4) {
+      form.requestSubmit ? form.requestSubmit() : form.submit();
+    }
+  });
+
+  form.addEventListener('submit', function () {
+    if (codeInput.value.length !== 4) return;
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Verifying…';
+  });
+
+  if (restoreCooldown()) {
+    // keep existing timer
+  } else if (justSent) {
+    startCooldown(COOLDOWN);
+    clearRegistrationFlag();
+  } else {
+    remaining = 0;
+    renderResend();
+    sendNewCode();
+  }
+
+  window.addEventListener('beforeunload', function () {
+    if (timer) clearInterval(timer);
+  });
+})();
+</script>
 @endpush

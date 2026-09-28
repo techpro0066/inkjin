@@ -1,4 +1,4 @@
-@extends('layouts.inkjin_auth_layout')
+@extends('layouts.new-auth')
 
 @section('title', 'Log In | Bookpay by Inkjin')
 @section('meta_description', 'Log in to Bookpay to manage your bookings, client intake, and payouts. The booking platform built for tattoo artists.')
@@ -16,228 +16,317 @@
 {{ asset('design/images/bookpay-og.jpeg') }}
 @endsection
 
+{{-- Login prototype hides the contact-help line --}}
+@section('help')
+@endsection
+
+@php
+  $loginLocked = $loginLocked ?? false;
+  $loginBanner = ($errors->has('email') && ! $errors->has('password')) ? $errors->first('email') : '';
+  $loginLocked = $loginLocked
+    || $errors->has('locked')
+    || ($loginBanner !== '' && str_contains(strtolower($loginBanner), 'too many tries'));
+@endphp
+
 @section('content')
-  <!-- Background Decoration: The "ij" Watermark -->
-  <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
-    <div class="absolute -top-24 -right-24 w-96 h-96 brand-gradient opacity-[0.03] rounded-full blur-3xl"></div>
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[40rem] font-black text-primary-fixed-dim opacity-[0.05] select-none tracking-tighter">
-      ij
+  <h1 id="login-title">Welcome back!</h1>
+  <p class="sub" id="login-sub">Continue to your bookings and payments.</p>
+
+  @if (session('status') === 'email-changed')
+    <div class="banner bad" role="alert">
+      <span class="ms">error</span>
+      <span>{{ session('message', 'Your email address has been updated. Please verify your new email address before logging in again.') }}</span>
     </div>
+  @elseif ($loginLocked)
+    <div class="banner bad" role="alert" id="login-alert-server">
+      <span class="ms">lock_clock</span>
+      <span>
+        Too many tries. Wait 15 minutes, or
+        <a href="{{ route('password.request') }}" style="color:inherit;font-weight:700">reset your password</a>.
+      </span>
+    </div>
+  @elseif ($loginBanner !== '')
+    <div class="banner bad" role="alert" id="login-alert-server">
+      <span class="ms">error</span>
+      <span>{{ $loginBanner }}</span>
+    </div>
+  @endif
+
+  <div id="login-alert" class="banner bad" role="alert" style="display:none"></div>
+
+  <form action="{{ route('login') }}" method="POST" id="login-form" novalidate>
+    @csrf
+
+    <label class="fl" for="login-email" style="margin-top:4px">Email address</label>
+    <div class="in" id="email-wrap">
+      <input
+        id="login-email"
+        name="email"
+        type="email"
+        autocomplete="email"
+        placeholder="you@example.com"
+        value="{{ old('email') }}"
+        autofocus
+      >
+    </div>
+    <div class="err" id="email-error">Enter a valid email address</div>
+
+    <div class="fl">
+      <label for="login-password">Password</label>
+      @if (Route::has('password.request'))
+        <a href="{{ route('password.request') }}">Forgot password?</a>
+      @endif
+    </div>
+    <div class="in{{ $errors->has('password') ? ' bad' : '' }}" id="password-wrap">
+      <input
+        id="login-password"
+        name="password"
+        type="password"
+        autocomplete="current-password"
+      >
+      <button type="button" class="eye" aria-label="Show password">
+        <span class="ms">visibility</span>
+      </button>
+    </div>
+    <div class="err{{ $errors->has('password') ? ' on' : '' }}" id="password-error">{{ $errors->first('password') ?: 'Enter your password' }}</div>
+
+    <label class="ck">
+      <input type="checkbox" id="remember" name="remember" value="1" {{ old('remember') ? 'checked' : '' }}>
+      Keep me signed in on this device
+    </label>
+
+    <button class="btn" type="submit" id="login-submit-btn" @if ($loginLocked) disabled @endif>
+      Sign in<span class="ms">arrow_forward</span>
+    </button>
+  </form>
+
+  <div class="alt">
+    Don't have an account?
+    <a href="{{ route('register') }}">Sign up for free</a>
   </div>
-
-  <main class="flex-grow flex items-center justify-center p-6 md:p-12 relative z-10">
-    
-    <div class="w-full max-auto max-w-[440px]">
-      <div class="flex flex-col items-center mb-8">
-        <span class="text-4xl font-bold text-on-surface tracking-tighter leading-none mb-1"
-          style="font-family: 'Space Grotesk', sans-serif;">bookpay</span>
-        <span
-          class="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest text-center leading-tight">Tattoo
-          artist platform<br>by Inkjin</span>
-      </div>
-
-      <!-- Auth Card -->
-      <div class="surface-container-lowest glass-panel rounded-xl shadow-[0_32px_64px_-12px_rgba(49,15,122,0.06)] p-8 md:p-10">
-        <div class="w-full max-w-md">
-          <!-- Brand Header -->
-          
-          <div class="flex flex-col items-center mb-10 text-center">
-            <h1 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2"
-              style="font-family: 'Space Grotesk', sans-serif;">Welcome back!</h1>
-            <p class="text-on-surface-variant">Continue to your booking and payments.</p>
-          </div>
-
-          @if (session('status') === 'email-changed')
-            <div class="mb-4 rounded-xl bg-error-container/40 border border-error-container/60 px-4 py-3 text-sm text-error">
-              {{ session('message', 'Your email address has been updated. Please verify your new email address before logging in again.') }}
-            </div>
-          {{-- @elseif (session('status'))
-            <div class="mb-4 rounded-xl bg-amber-50 border border-amber-200/80 px-4 py-3 text-sm text-amber-950" role="status">
-              {{ session('status') }}
-            </div> --}}
-          @endif
-
-          <!-- Form -->
-          <form action="{{ route('login') }}" class="space-y-6" method="POST" id="login-form">
-            <div id="login-alert" class="hidden rounded-xl bg-error-container/40 border border-error-container/60 px-4 py-3 text-sm text-error"></div>
-
-            <!-- Email Input -->
-            <div class="space-y-2">
-              <label class="text-sm font-semibold text-on-surface-variant ml-1" for="login-email">Email Address</label>
-              <div class="relative group">
-                <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                <input
-                  class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 @error('email') border-error @enderror"
-                  id="login-email"
-                  name="email"
-                  placeholder="name@company.com"
-                  type="email"
-                  value="{{ old('email') }}"
-                  autofocus
-                />
-              </div>
-              <p class="text-sm text-error mt-1 hidden" id="email-error"></p>
-              @error('email')
-                <p class="text-sm text-error mt-1">{{ $message }}</p>
-              @enderror
-            </div>
-
-            <!-- Password Input -->
-            <div class="space-y-2">
-              <div class="flex justify-between items-center ml-1">
-                <label class="text-sm font-semibold text-on-surface-variant ml-1" for="login-password">Password</label>
-                @if (Route::has('password.request'))
-                  <a class="text-xs font-bold text-primary hover:opacity-80 transition-opacity" href="{{ route('password.request') }}">
-                    Forgot Password?
-                  </a>
-                @endif
-              </div>
-
-              <div class="relative group">
-                <input
-                  class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 @error('password') border-error @enderror"
-                  id="login-password"
-                  name="password"
-                  placeholder="••••••••"
-                  type="password"
-                />
-
-                <button
-                  class="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-on-surface-variant eye-toggle"
-                  data-target="#login-password"
-                  type="button"
-                  aria-label="Toggle password visibility"
-                >
-                  <span class="material-symbols-outlined text-[20px]">visibility</span>
-                </button>
-              </div>
-
-              <p class="text-sm text-error mt-1 hidden" id="password-error"></p>
-              @error('password')
-                <p class="text-sm text-error mt-1">{{ $message }}</p>
-              @enderror
-            </div>
-
-            <!-- Remember Me -->
-            <div class="flex items-center space-x-3 ml-1">
-              <input
-                class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary bg-surface-container-highest"
-                id="remember"
-                name="remember"
-                type="checkbox"
-                {{ old('remember') ? 'checked' : '' }}
-              />
-              <label class="text-sm text-on-surface-variant cursor-pointer select-none" for="remember">
-                Remember this device
-              </label>
-            </div>
-
-            <!-- Submit Button -->
-            <button
-              class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-4 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98] flex justify-center items-center gap-2"
-              type="submit"
-              id="login-submit-btn"
-            >
-              Sign In
-              <span class="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </button>
-          </form>
-
-          <!-- Divider -->
-          <div class="relative my-10">
-            <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-outline-variant/20"></div>
-            </div>
-          </div>
-
-          <!-- Footer Link -->
-          <p class="mt-8 text-center text-sm text-on-surface-variant">
-            Don't have an account?
-            <a class="text-primary font-bold hover:underline" href="{{ route('register') }}">Sign up for free</a>
-          </p>
-        </div>
-      </div>
-    </div>
-  </main>
 @endsection
 
 @push('scripts')
-  <script>
-    $(function () {
-      function clearErrors() {
-        $('#login-alert').addClass('hidden').text('');
-        $('#email-error').addClass('hidden').text('');
-        $('#password-error').addClass('hidden').text('');
-        $('#login-email, #login-password').removeClass('border-error');
+<script>
+(function () {
+  var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var RETURNING_KEY = 'bp-signed-in-before';
+  var form = document.getElementById('login-form');
+  var alertEl = document.getElementById('login-alert');
+  var titleEl = document.getElementById('login-title');
+  var subEl = document.getElementById('login-sub');
+  var emailInput = document.getElementById('login-email');
+  var passwordInput = document.getElementById('login-password');
+  var emailWrap = document.getElementById('email-wrap');
+  var passwordWrap = document.getElementById('password-wrap');
+  var emailError = document.getElementById('email-error');
+  var passwordError = document.getElementById('password-error');
+  var forgotUrl = @json(route('password.request'));
+  var submitBtn = document.getElementById('login-submit-btn');
+  var originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+  var isLocked = @json($loginLocked);
+
+  function setLocked(locked) {
+    isLocked = !!locked;
+    if (submitBtn) {
+      submitBtn.disabled = isLocked;
+      if (isLocked) submitBtn.innerHTML = originalBtnHtml;
+    }
+  }
+
+  function isReturningUser() {
+    try {
+      return localStorage.getItem(RETURNING_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function markReturningUser() {
+    try {
+      localStorage.setItem(RETURNING_KEY, '1');
+    } catch (e) { /* ignore */ }
+  }
+
+  function applyHeadingCopy() {
+    if (!titleEl || !subEl) return;
+    if (isReturningUser()) {
+      titleEl.textContent = 'Welcome back!';
+      subEl.textContent = 'Continue to your bookings and payments.';
+    } else {
+      titleEl.textContent = 'Sign in to Bookpay';
+      subEl.textContent = 'Manage your bookings and payments.';
+    }
+  }
+
+  applyHeadingCopy();
+
+  function showAlert(message, options) {
+    options = options || {};
+    if (!alertEl) return;
+    var serverBanner = document.getElementById('login-alert-server');
+    if (serverBanner) serverBanner.style.display = 'none';
+
+    alertEl.style.display = 'flex';
+    if (options.locked) {
+      alertEl.innerHTML =
+        '<span class="ms">lock_clock</span>' +
+        '<span>Too many tries. Wait 15 minutes, or <a href="' + forgotUrl + '" style="color:inherit;font-weight:700">reset your password</a>.</span>';
+      setLocked(true);
+      return;
+    }
+
+    alertEl.innerHTML = '<span class="ms">error</span><span></span>';
+    alertEl.querySelector('span:last-child').textContent = message || 'That email and password don\'t match. Check them and try again.';
+  }
+
+  function hideAlert() {
+    if (isLocked) return;
+    if (!alertEl) return;
+    alertEl.style.display = 'none';
+    alertEl.innerHTML = '';
+  }
+
+  function setFieldError(wrap, err, on, message) {
+    if (wrap) wrap.classList.toggle('bad', on);
+    if (err) {
+      err.classList.toggle('on', on);
+      if (on && message) err.textContent = message;
+    }
+  }
+
+  function clearErrors() {
+    if (isLocked) return;
+    hideAlert();
+    var serverBanner = document.getElementById('login-alert-server');
+    if (serverBanner) serverBanner.style.display = 'none';
+    setFieldError(emailWrap, emailError, false);
+    setFieldError(passwordWrap, passwordError, false);
+    if (submitBtn) submitBtn.disabled = false;
+  }
+
+  if (emailInput) {
+    emailInput.addEventListener('input', function () {
+      if (isLocked) return;
+      setFieldError(emailWrap, emailError, false);
+      hideAlert();
+      var serverBanner = document.getElementById('login-alert-server');
+      if (serverBanner) serverBanner.style.display = 'none';
+      if (submitBtn) submitBtn.disabled = false;
+    });
+  }
+  if (passwordInput) {
+    passwordInput.addEventListener('input', function () {
+      if (isLocked) return;
+      setFieldError(passwordWrap, passwordError, false);
+      hideAlert();
+      var serverBanner = document.getElementById('login-alert-server');
+      if (serverBanner) serverBanner.style.display = 'none';
+      if (submitBtn) submitBtn.disabled = false;
+    });
+  }
+
+  if (!form) return;
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (isLocked) {
+      showAlert('', { locked: true });
+      return;
+    }
+    clearErrors();
+
+    var email = (emailInput.value || '').trim();
+    var password = passwordInput.value || '';
+    var ok = true;
+
+    if (!EMAIL.test(email)) {
+      setFieldError(emailWrap, emailError, true, 'Enter a valid email address');
+      ok = false;
+    }
+    if (!password) {
+      setFieldError(passwordWrap, passwordError, true, 'Enter your password');
+      ok = false;
+    }
+    if (!ok) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in…';
+
+    var body = new FormData(form);
+
+    fetch(form.action, {
+      method: 'POST',
+      body: body,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      },
+      credentials: 'same-origin'
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        return { status: res.status, data: data || {} };
+      }).catch(function () {
+        return { status: res.status, data: {} };
+      });
+    }).then(function (result) {
+      if (result.status >= 200 && result.status < 300) {
+        markReturningUser();
+        if (result.data.country_not_available && result.data.redirect) {
+          window.location.href = result.data.redirect;
+          return;
+        }
+        window.location.href = @json(authenticated_home_url());
+        return;
       }
 
-      $(document).on('click', '.eye-toggle', function () {
+      if (result.status === 422) {
+        var errors = result.data.errors || {};
+        var emailMsg = errors.email && errors.email.length ? errors.email[0] : '';
+        var locked = !!(errors.locked && errors.locked.length) || /too many tries/i.test(emailMsg);
 
-        console.log('...');
-        var targetSelector = $(this).data('target');
-        var $input = targetSelector ? $(targetSelector) : $();
-        if (!$input.length) return;
+        if (locked) {
+          showAlert(emailMsg, { locked: true });
+          return;
+        }
 
-        var $icon = $(this).find('.material-symbols-outlined');
-        var isPassword = $input.attr('type') === 'password';
-        $input.attr('type', isPassword ? 'text' : 'password');
-        $icon.text(isPassword ? 'visibility_off' : 'visibility');
-      });
+        if (emailMsg && /don'?t match|credentials/i.test(emailMsg)) {
+          showAlert(emailMsg);
+        } else if (emailMsg) {
+          setFieldError(emailWrap, emailError, true, emailMsg);
+        }
 
-      $('#login-form').on('submit', function (e) {
-        e.preventDefault();
-        clearErrors();
+        if (errors.password && errors.password.length) {
+          setFieldError(passwordWrap, passwordError, true, errors.password[0]);
+        }
 
-        var $form = $(this);
-        var $submitBtn = $('#login-submit-btn');
-        var originalBtnHtml = $submitBtn.html();
+        if (!emailMsg && !(errors.password && errors.password.length)) {
+          showAlert(result.data.message || 'That email and password don\'t match. Check them and try again.');
+        }
+      } else if (result.status === 429) {
+        showAlert('', { locked: true });
+        return;
+      } else {
+        showAlert('Something went wrong while signing in. Please try again.');
+      }
 
-        $submitBtn.prop('disabled', true).html('Signing in...');
+      if (isLocked) {
+        setLocked(true);
+        return;
+      }
 
-        $.ajax({
-          url: $form.attr('action'),
-          method: 'POST',
-          data: $form.serialize(),
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-          },
-          success: function(response) {
-            if (response && response.country_not_available && response.redirect) {
-              window.location.href = response.redirect;
-              return;
-            }
-
-            window.location.href = '{{ authenticated_home_url() }}';
-          },
-          error: function(xhr) {
-            if (xhr.status === 422 && xhr.responseJSON) {
-              var errors = xhr.responseJSON.errors || {};
-
-              if (errors.email && errors.email.length) {
-                $('#email-error').removeClass('hidden').text(errors.email[0]);
-                $('#login-email').addClass('border-error');
-              }
-
-              if (errors.password && errors.password.length) {
-                $('#password-error').removeClass('hidden').text(errors.password[0]);
-                $('#login-password').addClass('border-error');
-              }
-
-              if (!errors.email && !errors.password) {
-                var fallbackMessage = xhr.responseJSON.message || 'Login failed. Please check your credentials.';
-                $('#login-alert').removeClass('hidden').text(fallbackMessage);
-              }
-            } else {
-              $('#login-alert')
-                .removeClass('hidden')
-                .text('Something went wrong while signing in. Please try again.');
-            }
-
-            $submitBtn.prop('disabled', false).html(originalBtnHtml);
-          }
-        })
-      });
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
+    }).catch(function () {
+      showAlert('Something went wrong while signing in. Please try again.');
+      if (isLocked) {
+        setLocked(true);
+        return;
+      }
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
     });
-  </script>
+  });
+})();
+</script>
 @endpush

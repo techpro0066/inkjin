@@ -644,9 +644,9 @@
                 <div class="min-w-0">
                   <p class="text-base font-bold text-on-surface">Smart Pricing</p>
                   <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">Set rates by size once, pricing fills in automatically.</p>
-                </div>
+          </div>
                 <span class="pricing-choice-radio" aria-hidden="true"></span>
-              </div>
+          </div>
             </button>
 
             <button
@@ -664,7 +664,7 @@
                 <span class="pricing-choice-radio" aria-hidden="true"></span>
               </div>
             </button>
-          </div>
+        </div>
 
           <p class="mt-3 text-xs text-on-surface-variant flex items-start gap-1.5">
             <span class="material-symbols-outlined text-[16px] mt-px text-on-surface-variant/80">info</span>
@@ -698,7 +698,7 @@
             <div class="mt-4 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
               <button type="button" id="btnAddSmartSizeRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
                 <span class="material-symbols-outlined text-[18px]">add</span> Size range
-              </button>
+          </button>
               <button type="button" id="btnAddSmartMoreThanRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
                 <span class="material-symbols-outlined text-[18px]">add</span> Size larger than
               </button>
@@ -723,12 +723,12 @@
               <p class="mt-3 text-xs text-on-surface-variant leading-relaxed">
                 Example: If the price for a 20+ {{ $pricingUnit }} black &amp; grey design is {{ $pricingCurrencySymbol }}450–{{ $pricingCurrencySymbol }}750, a color design at the same size would be {{ $pricingCurrencySymbol }}540–{{ $pricingCurrencySymbol }}900 (20% more).
               </p>
-            </div>
+          </div>
 
             <div class="mt-6 pt-5 border-t border-outline-variant/20 flex flex-col sm:flex-row sm:items-center gap-3">
               <button type="button" id="btnSaveSmartPricing" class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
-                <span class="material-symbols-outlined text-lg">save</span> Save
-              </button>
+              <span class="material-symbols-outlined text-lg">save</span> Save
+            </button>
               <p id="smartPricingSaveStatus" class="hidden text-sm font-medium"></p>
             </div>
           </div>
@@ -902,31 +902,31 @@
           <!-- Left: Image Upload -->
           <div class="lg:w-2/5 space-y-5">
             <div class="design-field-section scroll-mt-6" data-design-field="image">
-              <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Image</label>
-              <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1350 px</strong> · aspect <strong class="text-on-surface">4:5</strong></p>
-              <div id="designImageUpload" class="design-image-upload-slot relative border-2 border-dashed border-outline-variant/40 rounded-2xl mx-auto cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-[aspect-ratio,max-height] duration-200 overflow-hidden">
-                <div id="designImageUploadEmpty" class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 py-6">
-                  <span class="material-symbols-outlined text-outline/40 text-5xl">cloud_upload</span>
-                  <div class="text-center">
-                    <p class="text-sm font-semibold text-on-surface">Drop image here</p>
-                    <p class="text-xs text-on-surface-variant mt-1">or click to browse</p>
-                    <p class="text-xs text-outline mt-2">PNG, JPG up to 10MB</p>
-                  </div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Image</label>
+            <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1350 px</strong> · aspect <strong class="text-on-surface">4:5</strong></p>
+            <div id="designImageUpload" class="design-image-upload-slot relative border-2 border-dashed border-outline-variant/40 rounded-2xl mx-auto cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-[aspect-ratio,max-height] duration-200 overflow-hidden">
+              <div id="designImageUploadEmpty" class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 py-6">
+                <span class="material-symbols-outlined text-outline/40 text-5xl">cloud_upload</span>
+                <div class="text-center">
+                  <p class="text-sm font-semibold text-on-surface">Drop image here</p>
+                  <p class="text-xs text-on-surface-variant mt-1">or click to browse</p>
+                  <p class="text-xs text-outline mt-2">PNG, JPG up to 10MB</p>
                 </div>
-                <div id="designImageUploadPreview" class="hidden absolute inset-0 bg-transparent">
-                  <img id="designImagePreviewImg" src="" alt="Design preview" class="w-full h-full object-contain">
-                  <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-2 px-3">
-                    <p class="text-[11px] text-white/90 text-center font-medium">Tap to replace image</p>
-                  </div>
+              </div>
+              <div id="designImageUploadPreview" class="hidden absolute inset-0 bg-transparent">
+                <img id="designImagePreviewImg" src="" alt="Design preview" class="w-full h-full object-contain">
+                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-2 px-3">
+                  <p class="text-[11px] text-white/90 text-center font-medium">Tap to replace image</p>
                 </div>
+              </div>
                 <div class="design-ai-overlay" aria-live="polite">
                   <span class="material-symbols-outlined">auto_awesome</span>
                   <p class="text-xs font-semibold leading-snug">Filling empty fields with AI…</p>
                 </div>
-              </div>
-              <input type="file" id="designImage" name="designImage" accept="image/*" class="hidden">
-              <input type="hidden" id="designImageData" name="designImageData" value="">
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
+            </div>
+            <input type="file" id="designImage" name="designImage" accept="image/*" class="hidden">
+            <input type="hidden" id="designImageData" name="designImageData" value="">
+            <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
             </div>
             <!-- Size (min) -->
             <div class="design-field-section scroll-mt-6" data-design-field="min_size">
@@ -3084,7 +3084,7 @@
             return (parseInt($b.attr('data-max-price'), 10) || 0) - (parseInt($a.attr('data-max-price'), 10) || 0);
           }
           if (sort === 'newest') {
-            return (parseInt($b.attr('data-created'), 10) || 0) - (parseInt($a.attr('data-created'), 10) || 0);
+          return (parseInt($b.attr('data-created'), 10) || 0) - (parseInt($a.attr('data-created'), 10) || 0);
           }
           return (parseInt($a.attr('data-sort-order'), 10) || 0) - (parseInt($b.attr('data-sort-order'), 10) || 0);
         });
@@ -3172,8 +3172,8 @@
       $('#designFilterPills').on('click', '.filter-pill', function () {
         var $btn = $(this);
         if ($btn.hasClass('active')) {
-          return;
-        }
+            return;
+          }
         $('#designFilterPills .filter-pill').removeClass('active');
         $btn.addClass('active');
         applyDesignFilters();

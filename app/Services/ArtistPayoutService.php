@@ -111,8 +111,8 @@ class ArtistPayoutService
             );
         }
 
-        return false;
-    }
+            return false;
+        }
 
     /**
      * Auto-release the studio share even when the artist is on manual payout mode.
@@ -469,10 +469,10 @@ class ArtistPayoutService
                     amountCents: $artistCents,
                     currency: $currency,
                     sourceChargeId: $sourceChargeId,
-                    metadata: [
-                        'booking_id' => (string) $locked->id,
-                        'artist_user_id' => (string) $locked->artist_user_id,
-                        'payment_intent_id' => (string) ($locked->payment_intent_id ?? ''),
+                metadata: [
+                    'booking_id' => (string) $locked->id,
+                    'artist_user_id' => (string) $locked->artist_user_id,
+                    'payment_intent_id' => (string) ($locked->payment_intent_id ?? ''),
                         'payment_provider' => (string) ($locked->payment_provider ?? 'stripe'),
                         'payout_role' => 'artist',
                         'payout_slice' => (string) $artistSlice,
@@ -647,11 +647,11 @@ class ArtistPayoutService
             }
 
             if ($fullyPaid) {
-                $booking->update([
-                    'pay_artist' => true,
-                    'deposit_released' => true,
-                    'deposit_released_at' => now(),
-                ]);
+            $booking->update([
+                'pay_artist' => true,
+                'deposit_released' => true,
+                'deposit_released_at' => now(),
+            ]);
             }
 
             $completed = true;
@@ -1197,11 +1197,11 @@ class ArtistPayoutService
         }
 
         if (! empty($studio->stripe_requirement)) {
-            return false;
-        }
+                return false;
+            }
 
-        return $this->isStripeAccountPayoutReady($studio->resolveStripeAccountId());
-    }
+            return $this->isStripeAccountPayoutReady($studio->resolveStripeAccountId());
+        }
 
     /**
      * Whether the artist can accept online payments from clients (bookings, payment links, quotes).
@@ -1276,8 +1276,8 @@ class ArtistPayoutService
     private function needsStripeRestrictedNotice(?UserDetail $userDetail): bool
     {
         if (! $userDetail) {
-            return false;
-        }
+        return false;
+    }
 
         $paymentType = (string) ($userDetail->payment_type ?? '');
 

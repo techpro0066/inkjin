@@ -73,6 +73,7 @@ class RegisteredUserController extends Controller
         $isUnlisted = $request->input('payout_bank_country') === '__not_listed__';
 
         $rules = [
+            'role' => ['required', 'string', Rule::in(['artist', 'studio'])],
             'email' => [
                 'required',
                 'string',
@@ -82,10 +83,11 @@ class RegisteredUserController extends Controller
                 'unique:'.User::class,
                 new NotBotGmailPattern,
             ],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => ['required', Rules\Password::defaults()],
             'payout_bank_country' => ['required', 'string', Rule::in(array_merge($registrationCodes, ['__not_listed__']))],
             'referral_source' => ['nullable', 'string', 'max:255'],
             'referrer_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'terms' => ['accepted'],
         ];
 
         if ($isUnlisted) {
@@ -93,10 +95,13 @@ class RegisteredUserController extends Controller
         }
 
         $validated = $request->validate($rules, [
+            'role.required' => 'Please choose how you are signing up.',
+            'role.in' => 'Please choose a valid account type.',
             'payout_bank_country.required' => 'Please select your country.',
             'payout_bank_country.in' => 'Please select a valid country.',
             'unlisted_country.required' => 'Please select your country.',
             'unlisted_country.in' => 'Please select a valid country.',
+            'terms.accepted' => 'Tick the box to continue.',
         ]);
 
         if ($isUnlisted) {
@@ -129,7 +134,7 @@ class RegisteredUserController extends Controller
             'last_name' => '',
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'role' => 'artist',
+            'role' => $validated['role'],
             'on_boarding' => 'no',
             'on_app' => 1,
             'app_id' => null,

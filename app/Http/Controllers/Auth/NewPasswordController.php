@@ -21,7 +21,31 @@ class NewPasswordController extends Controller
      */
     public function create(Request $request): View
     {
-        return view('auth.reset-password', ['request' => $request]);
+        return view('auth.reset-password', [
+            'request' => $request,
+            'linkExpired' => $this->isResetLinkExpired($request),
+        ]);
+    }
+
+    /**
+     * Whether the reset link token is missing, invalid, or past expiry.
+     */
+    protected function isResetLinkExpired(Request $request): bool
+    {
+        $email = trim((string) $request->query('email', $request->input('email', '')));
+        $token = (string) $request->route('token');
+
+        if ($email === '' || $token === '') {
+            return true;
+        }
+
+        $user = User::query()->whereRaw('LOWER(email) = ?', [mb_strtolower($email)])->first();
+
+        if (! $user) {
+            return true;
+        }
+
+        return ! Password::broker()->tokenExists($user, $token);
     }
 
     /**

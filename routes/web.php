@@ -51,6 +51,9 @@ Route::get('/', function () {
 
 // Onboarding routes (must be before other auth routes)
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/studio/coming-soon', \App\Http\Controllers\Studio\ComingSoonController::class)
+        ->name('studio.coming-soon');
+
     Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
     Route::get('/onboarding/profile', [OnboardingController::class, 'profile'])->name('onboarding.profile');
     Route::get('/onboarding/styles-social', [OnboardingController::class, 'stylesSocial'])->name('onboarding.styles-social');
