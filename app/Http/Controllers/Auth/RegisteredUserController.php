@@ -83,7 +83,7 @@ class RegisteredUserController extends Controller
                 'unique:'.User::class,
                 new NotBotGmailPattern,
             ],
-            'password' => ['required', Rules\Password::defaults()],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'payout_bank_country' => ['required', 'string', Rule::in(array_merge($registrationCodes, ['__not_listed__']))],
             'referral_source' => ['nullable', 'string', 'max:255'],
             'referrer_user_id' => ['nullable', 'integer', 'exists:users,id'],

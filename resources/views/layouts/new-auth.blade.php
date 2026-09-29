@@ -355,12 +355,126 @@
     @media (max-width: 480px) {
       .card { padding: 26px 20px 22px; }
       h1 { font-size: 23px; }
-      body { padding-top: 32px; padding-bottom: 48px; }
+      body { padding-top: 64px; padding-bottom: 48px; }
+      body > a.logo,
+      body > .logo { margin-bottom: 32px; }
+    }
+
+    /* Registration side panel (desktop) */
+    .sp { display: none; }
+    @media (min-width: 1000px) {
+      body.has-auth-side {
+        display: grid;
+        grid-template-columns: min(50vw, 860px) 1fr;
+        grid-template-rows: 1fr auto;
+        align-items: start;
+        justify-items: center;
+        column-gap: 40px;
+        padding: 10px 40px 24px 10px;
+        min-height: 100vh;
+      }
+      body.has-auth-side > a.logo {
+        display: none;
+      }
+      body.has-auth-side > .sp {
+        display: flex;
+        flex-direction: column;
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        align-self: stretch;
+        justify-self: stretch;
+        background: #1A1A1A;
+        color: #fff;
+        border-radius: 18px;
+        padding: 52px 56px;
+      }
+      body.has-auth-side > main.card {
+        grid-column: 2;
+        grid-row: 1;
+        margin-top: 34px;
+        max-width: 600px;
+        padding: 40px 48px 34px;
+      }
+      body.has-auth-side > .help {
+        grid-column: 2;
+      }
+      body.has-auth-side > footer {
+        width: 100%;
+        max-width: 600px;
+        grid-column: 2;
+        grid-row: 2;
+      }
+      .sp .logo {
+        text-align: left;
+        margin: 0;
+        color: #fff;
+      }
+      .sp .logo span {
+        font-size: 9px;
+        color: #BDB5C2;
+        letter-spacing: 1.4px;
+      }
+      .sp-main {
+        margin: 64px 0 0;
+        padding: 0 0 48px;
+      }
+      .sp h2 {
+        font-family: 'Space Grotesk', system-ui, sans-serif;
+        font-weight: 700;
+        font-size: clamp(34px, 3.4vw, 46px);
+        line-height: 1.12;
+        letter-spacing: -.035em;
+        margin: 0 0 24px;
+        color: #fff;
+      }
+      .sp p {
+        color: #C9B0EC;
+        font-size: 16.5px;
+        line-height: 1.6;
+        margin: 0 0 26px;
+        max-width: 470px;
+      }
+      .sp-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 0 0 34px;
+        max-width: 480px;
+        list-style: none;
+        padding: 0;
+      }
+      .sp-pills li {
+        background: #2E2E30;
+        color: #fff;
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+      .sp-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: #fff;
+        color: #1A1A1A;
+        border-radius: 10px;
+        padding: 14px 18px;
+        font-weight: 700;
+        font-size: 14.5px;
+        text-decoration: none;
+        align-self: flex-start;
+      }
+      .sp-btn .ms { font-size: 19px; }
+      .sp-btn:hover { background: #F3E8FF; }
     }
   </style>
   @stack('styles')
 </head>
-<body>
+<body @class(['has-auth-side' => $__env->hasSection('auth_side')])>
+  @hasSection('auth_side')
+    @yield('auth_side')
+  @endif
+
   <a class="logo" href="{{ url('/') }}" title="Bookpay by Inkjin">
     <b>bookpay</b>
     <span>FOR TATTOO ARTISTS AND STUDIOS<br>BY INKJIN</span>
