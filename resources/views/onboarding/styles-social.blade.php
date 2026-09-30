@@ -1,6 +1,6 @@
-@extends('layouts.onboarding_bookpay')
+@extends('layouts.artist-onboarding-layout')
 
-@section('title', 'Styles & Social')
+@section('title', 'Styles & social — Artist onboarding')
 
 @php
   $ts = $userDetail->tattoo_styles ?? null;
@@ -22,111 +22,138 @@
       $styleOptions[$otherStyle] = ucwords(str_replace('-', ' ', $otherStyle));
     }
   }
+  $otherMax = 2;
 @endphp
 
+@push('styles')
+<style>
+  .field-err{color:#C62828;font-size:12px;margin-top:6px}
+  .field-err.hidden{display:none}
+  select.in,input.in{font:inherit;font-size:13.5px;color:var(--ink);width:100%;outline:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 13px;min-height:40px;display:block;box-sizing:border-box}
+  select.in{appearance:auto;cursor:pointer}
+  select.in.is-err,input.in.is-err{border-color:#C62828}
+  .chip{cursor:pointer;user-select:none;transition:background .15s,border-color .15s,color .15s}
+  .chip.dim{opacity:.45;pointer-events:none}
+  .chip-more{
+    border:1px dashed var(--line);background:transparent;border-radius:20px;padding:6px 13px;
+    font-size:12.5px;font-weight:700;color:var(--pri);cursor:pointer;font:inherit;
+  }
+  .chip-more:hover{background:var(--pril);border-color:#D4C0EA}
+  .chip-more[hidden]{display:none!important}
+  .social-in{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:0 13px;min-height:40px}
+  .social-in.is-err{border-color:#C62828}
+  .social-in .ms{font-size:20px;flex-shrink:0}
+  .social-in input{border:0;outline:none;background:transparent;font:inherit;font-size:13.5px;color:var(--ink);width:100%;min-width:0;padding:10px 0}
+  .social-in input::placeholder{color:var(--faint)}
+  button.btn{border:0;cursor:pointer;font:inherit;text-decoration:none}
+  button.btn:disabled{opacity:.6;cursor:not-allowed}
+  a.btn{text-decoration:none}
+  #wrap_other_styles.is-err{outline:2px solid #C62828;outline-offset:2px;border-radius:16px}
+  @media (max-width:700px){
+    .styles-grid{grid-template-columns:1fr!important}
+    .social-grid{grid-template-columns:1fr!important}
+  }
+</style>
+@endpush
+
 @section('content')
-<form id="stylesForm" class="contents">
+<form id="stylesForm">
   @csrf
-  <div class="flex-1 p-8 md:p-12 max-w-4xl">
-    <div class="mb-10">
-      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Styles & Social</h2>
-      <p class="text-on-surface-variant mt-2 max-w-lg">Define your artistic identity and digital footprint. This information helps clients find your unique work in the marketplace.</p>
-    </div>
+  <div class="wrap">
+    <h1 style="margin-top:6px">Styles & social<a class="help-q" href="https://help.inkjin.com/en/articles/17200633-setup-step-2-styles-social" target="_blank" rel="noopener" data-help-article="O2-styles-social" title="Help with this page" aria-label="Help with this page"><span class="ms">help</span></a></h1>
+    <div class="sub" style="max-width:640px;margin-bottom:24px">Your styles help clients find you in the marketplace. Your links show on your booking page.</div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <div class="bg-surface-container-low rounded-2xl p-6 space-y-6">
-        <div>
-          <label for="tattooing_since" class="block text-sm font-semibold text-on-surface mb-2">Tattooing Since <span class="text-error">*</span></label>
-          <select id="tattooing_since" name="tattooing_since" class="select w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface">
-            <option value="" {{ !$since ? 'selected' : '' }} disabled>Select year</option>
-            @for ($y = (int) date('Y'); $y >= 1970; $y--)
-              <option value="{{ $y }}" {{ (int) $since === $y ? 'selected' : '' }}>{{ $y }}</option>
-            @endfor
-          </select>
-          <p id="tattooing_since_error" class="text-error text-xs mt-1.5 hidden" role="alert"></p>
-        </div>
-        <div>
-          <label for="primary_style" class="block text-sm font-semibold text-on-surface mb-2">Primary Style <span class="text-error">*</span></label>
-          <select id="primary_style" name="primary_style" class="select w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface">
-            <option value="" disabled {{ !$primary ? 'selected' : '' }}>Select style</option>
-            @foreach ($styleOptions as $val => $lab)
-              <option value="{{ $val }}" {{ ($primary ?? '') === $val ? 'selected' : '' }}>{{ $lab }}</option>
-            @endforeach
-          </select>
-          <p id="primary_style_error" class="text-error text-xs mt-1.5 hidden" role="alert"></p>
-        </div>
-      </div>
-
-      <div class="bg-surface-container-low rounded-2xl p-6" id="wrap_other_styles">
-        <label class="block text-sm font-semibold text-on-surface mb-2">Other Styles</label>
-        <div class="relative" id="stylesDropdown">
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-            <input type="text" id="style_search" placeholder="Search styles..." autocomplete="off"
-              class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 pl-10"
-              onclick="toggleStylesDropdown(true)" oninput="filterStyles()">
-          </div>
-          <div id="stylesDropdownList" class="hidden absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg shadow-primary/5 border border-outline-variant/20 max-h-48 overflow-y-auto z-20">
-            @foreach ($styleOptions as $val => $lab)
-              <div class="style-option" data-value="{{ $val }}" onclick="toggleStyle(this)">{{ $lab }} <span class="material-symbols-outlined text-lg text-outline-variant">check_box_outline_blank</span></div>
-            @endforeach
-          </div>
-        </div>
-        <div id="selectedTags" class="flex flex-wrap gap-2 mt-4"></div>
-        <input type="hidden" id="other_styles" name="other_styles" value="{{ implode(',', $otherList) }}">
-        <p id="other_styles_error" class="text-error text-xs mt-1.5 hidden" role="alert"></p>
-        <p class="text-on-surface-variant text-xs mt-3">Tip: Search through styles to better define your craft.</p>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-surface-container-low rounded-2xl p-6">
-        <label for="instagram" class="block text-sm font-semibold text-on-surface mb-2">Instagram <span class="text-on-surface-variant font-normal">(optional)</span></label>
-        <div class="relative">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" viewBox="0 0 24 24" fill="#E4405F"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-          <input type="url" id="instagram" name="social_links[instagram]" value="{{ $sl['instagram'] ?? '' }}" placeholder="https://www.instagram.com/yourhandle"
-            class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 pl-10">
-          <p id="instagram_error" class="text-error text-xs mt-1.5 hidden" role="alert"></p>
-        </div>
-      </div>
-      <div class="bg-surface-container-low rounded-2xl p-6">
-        <label class="block text-sm font-semibold text-on-surface mb-4">Social Media <span class="text-on-surface-variant font-normal">(optional)</span></label>
-        <div class="space-y-3">
-          <div class="relative">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" viewBox="0 0 24 24" fill="#000000"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.73a8.19 8.19 0 004.76 1.52v-3.4a4.85 4.85 0 01-1-.16z"/></svg>
-            <input type="url" id="tiktok" name="social_links[tiktok]" value="{{ $sl['tiktok'] ?? '' }}" placeholder="https://www.tiktok.com/@yourhandle" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 pl-10">
-            <p id="tiktok_error" class="text-error text-xs mt-1.5 hidden" role="alert"></p>
-          </div>
-          <div class="relative">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-            <input type="url" id="youtube" name="social_links[youtube]" value="{{ $sl['youtube'] ?? '' }}" placeholder="https://www.youtube.com/@yourchannel" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 pl-10">
-            <p id="youtube_error" class="text-error text-xs mt-1.5 hidden" role="alert"></p>
-          </div>
-          <div class="relative">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            <input type="url" id="facebook" name="social_links[facebook]" value="{{ $sl['facebook'] ?? '' }}" placeholder="https://www.facebook.com/yourpage" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 pl-10">
-            <p id="facebook_error" class="text-error text-xs mt-1.5 hidden" role="alert"></p>
+    <div class="grid styles-grid" style="grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+      <div class="card pad">
+        <div class="grid" style="gap:14px">
+          <div>
+            <label class="fl" for="tattooing_since">Tattooing since <span style="color:#C62828">*</span></label>
+            <select class="in js-select2" id="tattooing_since" name="tattooing_since" data-placeholder="Select year" data-searchable="true">
+              <option value="" {{ !$since ? 'selected' : '' }}></option>
+              @for ($y = (int) date('Y'); $y >= 1970; $y--)
+                <option value="{{ $y }}" {{ (int) $since === $y ? 'selected' : '' }}>{{ $y }}</option>
+              @endfor
+            </select>
+            <p id="tattooing_since_error" class="field-err hidden" role="alert"></p>
           </div>
           <div>
-            <label for="website" class="block text-xs font-medium text-on-surface-variant mb-1.5">Other links</label>
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">language</span>
-              <input type="url" id="website" name="social_links[website]" value="{{ $sl['website'] ?? '' }}" placeholder="https://yourportfolio.com" class="w-full px-4 py-3 rounded-xl border border-outline-variant/30 bg-white focus:ring-2 focus:ring-primary/40 transition-all text-on-surface placeholder:text-outline/50 pl-10">
-              <p id="website_error" class="text-error text-xs mt-1.5 hidden" role="alert"></p>
+            <label class="fl" for="primary_style">Primary style <span style="color:#C62828">*</span></label>
+            <select class="in js-select2" id="primary_style" name="primary_style" data-placeholder="Select style" data-searchable="true">
+              <option value="" {{ !$primary ? 'selected' : '' }}></option>
+              @foreach ($styleOptions as $val => $lab)
+                <option value="{{ $val }}" {{ ($primary ?? '') === $val ? 'selected' : '' }}>{{ $lab }}</option>
+              @endforeach
+            </select>
+            <p id="primary_style_error" class="field-err hidden" role="alert"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card pad" id="wrap_other_styles">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <span class="fl" style="margin:0">Other styles <span class="faint" style="font-weight:500">(optional)</span></span>
+          <span class="pill nd k" id="otherStylesCount">0 / {{ $otherMax }}</span>
+        </div>
+        <div class="in" style="margin-top:8px;display:flex;align-items:center;gap:8px;padding:0 13px">
+          <span class="ms" style="color:var(--faint);flex-shrink:0">search</span>
+          <input type="text" id="style_search" placeholder="Search styles" autocomplete="off" style="border:0;outline:none;background:transparent;font:inherit;font-size:13.5px;width:100%;padding:10px 0;min-width:0">
+        </div>
+        <div class="chips" id="styleChips" style="margin-top:10px">
+          @foreach ($styleOptions as $val => $lab)
+            <span class="chip" role="button" tabindex="0" data-value="{{ $val }}">{{ $lab }}</span>
+          @endforeach
+          <button type="button" class="chip-more" id="stylesLoadMore" hidden>Load more</button>
+        </div>
+        <input type="hidden" id="other_styles" name="other_styles" value="{{ implode(',', $otherList) }}">
+        <p id="other_styles_error" class="field-err hidden" role="alert"></p>
+      </div>
+
+      <div class="card pad" style="grid-column:1/-1">
+        <span class="fl">Social links <span class="faint" style="font-weight:500">(optional)</span></span>
+        <div class="grid social-grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:6px">
+          <div>
+            <div class="social-in">
+              <span class="ms" style="color:#C13584">photo_camera</span>
+              <input type="url" id="instagram" name="social_links[instagram]" value="{{ $sl['instagram'] ?? '' }}" placeholder="instagram.com/yourhandle" autocomplete="off">
             </div>
+            <p id="instagram_error" class="field-err hidden" role="alert"></p>
+          </div>
+          <div>
+            <div class="social-in">
+              <span class="ms">music_note</span>
+              <input type="url" id="tiktok" name="social_links[tiktok]" value="{{ $sl['tiktok'] ?? '' }}" placeholder="tiktok.com/@yourhandle" autocomplete="off">
+            </div>
+            <p id="tiktok_error" class="field-err hidden" role="alert"></p>
+          </div>
+          <div>
+            <div class="social-in">
+              <span class="ms" style="color:#E00">smart_display</span>
+              <input type="url" id="youtube" name="social_links[youtube]" value="{{ $sl['youtube'] ?? '' }}" placeholder="youtube.com/@yourchannel" autocomplete="off">
+            </div>
+            <p id="youtube_error" class="field-err hidden" role="alert"></p>
+          </div>
+          <div>
+            <div class="social-in">
+              <span class="ms" style="color:#1877F2">thumb_up</span>
+              <input type="url" id="facebook" name="social_links[facebook]" value="{{ $sl['facebook'] ?? '' }}" placeholder="facebook.com/yourpage" autocomplete="off">
+            </div>
+            <p id="facebook_error" class="field-err hidden" role="alert"></p>
+          </div>
+          <div style="grid-column:1/-1">
+            <div class="social-in">
+              <span class="ms">add</span>
+              <input type="url" id="website" name="social_links[website]" value="{{ $sl['website'] ?? '' }}" placeholder="Other link" autocomplete="off">
+            </div>
+            <p id="website_error" class="field-err hidden" role="alert"></p>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="sticky bottom-0 bg-surface border-t border-outline-variant/10 px-8 md:px-12 py-5 flex items-center justify-between mt-auto">
-    <a href="{{ route('onboarding.profile') }}" class="inline-flex items-center gap-1 text-on-surface font-semibold hover:text-primary transition-colors">
-      <span class="material-symbols-outlined text-lg">arrow_back</span> Back
-    </a>
-    <button type="submit" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
-      Next Step <span class="material-symbols-outlined text-lg">arrow_forward</span>
-    </button>
+    <div class="obfoot">
+      <a href="{{ route('onboarding.profile') }}" class="btn ghost"><span class="ms">arrow_back</span>Back</a>
+      <button type="submit" class="btn" id="stylesNext">Next step<span class="ms">arrow_forward</span></button>
+    </div>
   </div>
 </form>
 @endsection
@@ -135,7 +162,10 @@
 @include('partials.reddit-pixel', ['event' => 'Step_2'])
 @include('partials.social-links-validation')
 <script>
-var selectedStyles = new Set(@json($otherList));
+var OTHER_MAX = {{ (int) $otherMax }};
+var CHIP_PAGE = 8;
+var chipVisible = CHIP_PAGE;
+var selectedStyles = new Set(@json(array_values($otherList)));
 
 function serverKeyToErrorId(key) {
   var map = {
@@ -151,33 +181,30 @@ function serverKeyToErrorId(key) {
 
 function clearStylesErrors() {
   $('#stylesForm').find('[id$="_error"]').text('').addClass('hidden');
-  $.each(['tattooing_since', 'primary_style', 'website', 'instagram', 'tiktok', 'youtube', 'facebook'], function (_, id) {
-    setFieldOutlineError(id, false);
-  });
-  setFieldOutlineError('wrap_other_styles', false);
+  $('#stylesForm').find('select.in, input.in').removeClass('is-err');
+  $('#stylesForm').find('.select2-container, .social-in').removeClass('is-err');
+  $('#wrap_other_styles').removeClass('is-err');
 }
 
-function setFieldOutlineError(idOrEl, hasError) {
-  var $el = typeof idOrEl === 'string' ? $('#' + idOrEl) : $(idOrEl);
+function setFieldOutlineError(id, hasError) {
+  var $el = $('#' + id);
   if (!$el.length) return;
-  var el = $el[0];
-  if (window.jQuery && el.tagName === 'SELECT' && el.classList.contains('select2-hidden-accessible')) {
-    window.jQuery(el).next('.select2-container').toggleClass('ring-2 ring-error/40 rounded-xl', !!hasError);
+  if (id === 'wrap_other_styles') {
+    $el.toggleClass('is-err', !!hasError);
     return;
   }
-  if (el.classList && el.classList.contains('bg-surface-container-low')) {
-    $el.toggleClass('ring-2', !!hasError).toggleClass('ring-error/40', !!hasError);
-    return;
+  $el.toggleClass('is-err', !!hasError);
+  if ($el.hasClass('select2-hidden-accessible')) {
+    $el.next('.select2-container').toggleClass('is-err', !!hasError);
   }
-  $el.toggleClass('border-error', !!hasError).toggleClass('ring-2', !!hasError).toggleClass('ring-error/40', !!hasError);
+  var $social = $el.closest('.social-in');
+  if ($social.length) $social.toggleClass('is-err', !!hasError);
 }
 
 function showErrorByServerKey(key, message) {
   var id = serverKeyToErrorId(key);
   var $err = $('#' + id);
-  if ($err.length) {
-    $err.text(message).removeClass('hidden');
-  }
+  if ($err.length) $err.text(message).removeClass('hidden');
   if (key === 'tattooing_since') setFieldOutlineError('tattooing_since', true);
   else if (key === 'primary_style') setFieldOutlineError('primary_style', true);
   else if (key === 'other_styles') setFieldOutlineError('wrap_other_styles', true);
@@ -186,10 +213,6 @@ function showErrorByServerKey(key, message) {
   else if (key === 'social_links.tiktok') setFieldOutlineError('tiktok', true);
   else if (key === 'social_links.youtube') setFieldOutlineError('youtube', true);
   else if (key === 'social_links.facebook') setFieldOutlineError('facebook', true);
-}
-
-function isValidUrlWithScheme(val) {
-  return window.SocialLinkValidation.validateWebsite(val).ok;
 }
 
 function validateStylesFormClient() {
@@ -216,11 +239,9 @@ function validateStylesFormClient() {
       ['facebook', 'facebook'],
     ],
     function (_, pair) {
-      var fieldId = pair[0];
-      var platform = pair[1];
-      var result = window.SocialLinkValidation.validatePlatform(platform, $.trim($('#' + fieldId).val()));
+      var result = window.SocialLinkValidation.validatePlatform(pair[1], $.trim($('#' + pair[0]).val()));
       if (!result.ok) {
-        showErrorByServerKey('social_links.' + platform, result.message);
+        showErrorByServerKey('social_links.' + pair[1], result.message);
         ok = false;
       }
     }
@@ -231,68 +252,112 @@ function validateStylesFormClient() {
   return ok;
 }
 
-function toggleStylesDropdown(show) {
-  $('#stylesDropdownList').toggleClass('hidden', !show);
-}
-function filterStyles() {
-  var q = $('#style_search').val().toLowerCase();
-  $('.style-option').each(function () {
-    $(this).css('display', $(this).text().toLowerCase().indexOf(q) !== -1 ? '' : 'none');
+function matchingChips() {
+  var q = $.trim($('#style_search').val()).toLowerCase();
+  return $('#styleChips .chip').filter(function () {
+    return !q || $(this).text().toLowerCase().indexOf(q) !== -1;
   });
-  toggleStylesDropdown(true);
 }
-function toggleStyle(el) {
-  var value = el.getAttribute('data-value');
-  var $el = $(el);
-  var $icon = $el.find('.material-symbols-outlined').first();
-  if (selectedStyles.has(value)) {
-    selectedStyles.delete(value);
-    $el.removeClass('selected');
-    $icon.text('check_box_outline_blank').removeClass('text-primary').addClass('text-outline-variant');
+
+function renderChipVisibility() {
+  var $all = $('#styleChips .chip');
+  var $match = matchingChips();
+  var visibleLimit = chipVisible;
+
+  // Keep selected chips visible even if they fall past the current page
+  $match.each(function (i) {
+    if (selectedStyles.has(this.getAttribute('data-value')) && i >= visibleLimit) {
+      visibleLimit = i + 1;
+    }
+  });
+
+  $all.each(function () {
+    $(this).hide();
+  });
+
+  $match.each(function (i) {
+    var force = selectedStyles.has(this.getAttribute('data-value'));
+    var show = i < visibleLimit || force;
+    $(this).toggle(!!show);
+  });
+
+  var remaining = $match.length - Math.min(visibleLimit, $match.length);
+  var $more = $('#stylesLoadMore');
+  if (remaining > 0) {
+    $more.prop('hidden', false).text('Load more');
   } else {
-    selectedStyles.add(value);
-    $el.addClass('selected');
-    $icon.text('check_box').addClass('text-primary').removeClass('text-outline-variant');
+    $more.prop('hidden', true);
   }
-  renderTags();
-  updateHiddenInput();
-  if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('other_styles');
 }
-function removeStyle(value) {
-  selectedStyles.delete(value);
-  var $opt = $('.style-option[data-value="' + value + '"]');
-  if ($opt.length) {
-    $opt.removeClass('selected');
-    var $icon = $opt.find('.material-symbols-outlined').first();
-    $icon.text('check_box_outline_blank').removeClass('text-primary').addClass('text-outline-variant');
-  }
-  renderTags();
-  updateHiddenInput();
-  if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('other_styles');
-}
-function renderTags() {
-  var $container = $('#selectedTags');
-  $container.empty();
-  selectedStyles.forEach(function (value) {
-    var $opt = $('.style-option[data-value="' + value + '"]');
-    var label = $.trim($opt.text().replace(/check_box.*/, ''));
-    var $tag = $('<span class="style-tag"></span>');
-    $tag.html(label + ' <button type="button">&times;</button>');
-    $tag.find('button').on('click', function () { removeStyle(value); });
-    $container.append($tag);
-  });
-}
+
 function updateHiddenInput() {
   $('#other_styles').val(Array.from(selectedStyles).join(','));
 }
 
+function updateOtherCount() {
+  $('#otherStylesCount').text(selectedStyles.size + ' / ' + OTHER_MAX);
+}
+
+function syncChipStates() {
+  var atMax = selectedStyles.size >= OTHER_MAX;
+  $('#styleChips .chip').each(function () {
+    var val = this.getAttribute('data-value');
+    var on = selectedStyles.has(val);
+    $(this).toggleClass('on', on);
+    $(this).toggleClass('dim', !on && atMax);
+  });
+  updateOtherCount();
+  updateHiddenInput();
+  renderChipVisibility();
+}
+
+function toggleStyle(value) {
+  if (selectedStyles.has(value)) {
+    selectedStyles.delete(value);
+  } else {
+    if (selectedStyles.size >= OTHER_MAX) return;
+    selectedStyles.add(value);
+  }
+  syncChipStates();
+  if (typeof window.clearOnboardingFieldError === 'function') {
+    window.clearOnboardingFieldError('other_styles');
+  }
+}
+
+function filterStyles() {
+  chipVisible = CHIP_PAGE;
+  renderChipVisibility();
+}
+
 $(function () {
+  // Keep at most OTHER_MAX if legacy data has more
+  if (selectedStyles.size > OTHER_MAX) {
+    selectedStyles = new Set(Array.from(selectedStyles).slice(0, OTHER_MAX));
+  }
+  syncChipStates();
+
+  $('#styleChips').on('click', '.chip', function () {
+    toggleStyle(this.getAttribute('data-value'));
+  });
+  $('#styleChips').on('keydown', '.chip', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleStyle(this.getAttribute('data-value'));
+    }
+  });
+  $('#stylesLoadMore').on('click', function () {
+    chipVisible += CHIP_PAGE;
+    renderChipVisibility();
+  });
+  $('#style_search').on('input', filterStyles);
+
   $.each(
     [
       ['instagram', 'social_links.instagram'],
       ['tiktok', 'social_links.tiktok'],
       ['youtube', 'social_links.youtube'],
       ['facebook', 'social_links.facebook'],
+      ['website', 'social_links.website'],
     ],
     function (_, pair) {
       $('#' + pair[0]).on('input', function () {
@@ -302,21 +367,6 @@ $(function () {
     }
   );
 
-  $(document).on('click', function (e) {
-    if (!$(e.target).closest('#stylesDropdown').length) toggleStylesDropdown(false);
-  });
-
-  $('.style-option').each(function () {
-    var el = this;
-    if (selectedStyles.has(el.getAttribute('data-value'))) {
-      $(el).addClass('selected');
-      var $icon = $(el).find('.material-symbols-outlined').first();
-      $icon.text('check_box').addClass('text-primary').removeClass('text-outline-variant');
-    }
-  });
-  renderTags();
-  updateHiddenInput();
-
   $('#tattooing_since').on('change', function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('tattooing_since');
     else setFieldOutlineError('tattooing_since', false);
@@ -325,19 +375,14 @@ $(function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('primary_style');
     else setFieldOutlineError('primary_style', false);
   });
-  $('#website').on('input', function () {
-    if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('social_links.website');
-    else setFieldOutlineError('website', false);
-  });
 
   $('#stylesForm').on('submit', function (e) {
     e.preventDefault();
     if (!validateStylesFormClient()) return;
     clearStylesErrors();
-    var $btn = $(this).find('button[type="submit"]');
+    var $btn = $('#stylesNext');
     var originalBtnHtml = $btn.html();
-    $btn.prop('disabled', true);
-    $btn.text('Saving...');
+    $btn.prop('disabled', true).text('Saving...');
     var fd = new FormData(this);
     $.ajax({
       url: @json(route('onboarding.styles-social.save')),
@@ -357,8 +402,7 @@ $(function () {
         }
         if (data.errors && typeof data.errors === 'object') {
           $.each(data.errors, function (key, msgs) {
-            var msg = $.isArray(msgs) ? msgs[0] : msgs;
-            showErrorByServerKey(key, msg);
+            showErrorByServerKey(key, $.isArray(msgs) ? msgs[0] : msgs);
           });
           if (typeof window.scrollToFirstOnboardingError === 'function') {
             window.scrollToFirstOnboardingError(document.getElementById('stylesForm'));
@@ -370,8 +414,7 @@ $(function () {
       .fail(function (xhr) {
         if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
           $.each(xhr.responseJSON.errors, function (key, msgs) {
-            var msg = $.isArray(msgs) ? msgs[0] : msgs;
-            showErrorByServerKey(key, msg);
+            showErrorByServerKey(key, $.isArray(msgs) ? msgs[0] : msgs);
           });
           if (typeof window.scrollToFirstOnboardingError === 'function') {
             window.scrollToFirstOnboardingError(document.getElementById('stylesForm'));
@@ -381,8 +424,7 @@ $(function () {
         }
       })
       .always(function () {
-        $btn.prop('disabled', false);
-        $btn.html(originalBtnHtml);
+        $btn.prop('disabled', false).html(originalBtnHtml);
       });
   });
 });

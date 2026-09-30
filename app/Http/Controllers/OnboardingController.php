@@ -168,7 +168,7 @@ class OnboardingController extends Controller
         }
 
         return view('onboarding.styles-social', $this->onboardingViewData($request) + [
-            'activeNav' => 'styles-social',
+            'activeNav' => 'styles',
             'styleOptions' => $this->activeStyleOptions(),
         ]);
     }
@@ -188,7 +188,7 @@ class OnboardingController extends Controller
             return $redirect;
         }
 
-        return view('onboarding.preferences', $this->onboardingViewData($request) + ['activeNav' => 'preferences']);
+        return view('onboarding.preferences', $this->onboardingViewData($request) + ['activeNav' => 'payments']);
     }
 
     public function calendar(Request $request)
@@ -221,7 +221,9 @@ class OnboardingController extends Controller
             }
         }
 
-        return view('onboarding.payment', $this->onboardingViewData($request) + $this->paymentStripeViewData($userDetail, $stripeConnect, $stripeStatus));
+        return view('onboarding.payment', $this->onboardingViewData($request) + $this->paymentStripeViewData($userDetail, $stripeConnect, $stripeStatus) + [
+            'activeNav' => 'payouts',
+        ]);
     }
 
     public function paymentSettings(Request $request, StripeConnectService $stripeConnect, StripeRequirementSyncService $stripeRequirementSync)
@@ -1155,11 +1157,13 @@ class OnboardingController extends Controller
                 'country' => ['required', 'string', 'max:255'],
                 'google_maps_link' => ['nullable', 'url', 'max:500'],
                 'workspace_type' => ['required', 'string', Rule::in(['private', 'shop', 'home'])],
+                'studio_relationship_type' => ['nullable', 'string', Rule::in(UserDetail::STUDIO_RELATIONSHIP_TYPES)],
                 'latitude' => ['nullable', 'numeric', 'between:-90,90'],
                 'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             ], [
                 'workspace_type.required' => 'Please select a workspace type.',
                 'workspace_type.in' => 'Please select a valid workspace type.',
+                'studio_relationship_type.in' => 'Please select a valid relationship type.',
             ]);
 
             $user = $request->user();
@@ -1179,6 +1183,12 @@ class OnboardingController extends Controller
                 'current_step' => 4,
                 'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [3])),
             ];
+
+            if (! empty($validated['studio_relationship_type'])) {
+                $studioData['studio_relationship_type'] = $validated['studio_relationship_type'];
+            } elseif ($request->input('studio_path') === 'own_space') {
+                $studioData['studio_relationship_type'] = null;
+            }
 
             $userDetail->update(array_merge(
                 $studioData,
@@ -2977,7 +2987,8 @@ class OnboardingController extends Controller
 
         return [
             'studio_revenue_artist_percent' => [$presence, 'integer', 'min:0', 'max:100'],
-            'studio_relationship_type' => [$presence, Rule::in(UserDetail::STUDIO_RELATIONSHIP_TYPES)],
+            // Collected on studio step; keep nullable here so payouts can omit it.
+            'studio_relationship_type' => ['nullable', Rule::in(UserDetail::STUDIO_RELATIONSHIP_TYPES)],
         ];
     }
 
