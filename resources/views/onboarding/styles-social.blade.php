@@ -32,14 +32,6 @@
   select.in,input.in{font:inherit;font-size:13.5px;color:var(--ink);width:100%;outline:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 13px;min-height:40px;display:block;box-sizing:border-box}
   select.in{appearance:auto;cursor:pointer}
   select.in.is-err,input.in.is-err{border-color:#C62828}
-  .chip{cursor:pointer;user-select:none;transition:background .15s,border-color .15s,color .15s}
-  .chip.dim{opacity:.45;pointer-events:none}
-  .chip-more{
-    border:1px dashed var(--line);background:transparent;border-radius:20px;padding:6px 13px;
-    font-size:12.5px;font-weight:700;color:var(--pri);cursor:pointer;font:inherit;
-  }
-  .chip-more:hover{background:var(--pril);border-color:#D4C0EA}
-  .chip-more[hidden]{display:none!important}
   .social-in{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:0 13px;min-height:40px}
   .social-in.is-err{border-color:#C62828}
   .social-in .ms{font-size:20px;flex-shrink:0}
@@ -49,6 +41,22 @@
   button.btn:disabled{opacity:.6;cursor:not-allowed}
   a.btn{text-decoration:none}
   #wrap_other_styles.is-err{outline:2px solid #C62828;outline-offset:2px;border-radius:16px}
+  .style-search-wrap{position:relative}
+  .style-search-wrap .ms.search-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:20px;pointer-events:none}
+  .style-search-wrap input{width:100%;padding:10px 13px 10px 40px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:13.5px;background:#fff;outline:none;box-sizing:border-box;min-height:40px}
+  .style-search-wrap input:focus{border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF}
+  #stylesDropdownList{display:none;position:absolute;top:100%;left:0;right:0;margin-top:4px;background:#fff;border:1px solid var(--line);border-radius:12px;max-height:192px;overflow-y:auto;z-index:20;box-shadow:0 8px 24px rgba(62,0,124,.08)}
+  #stylesDropdownList.open{display:block}
+  .style-option{padding:10px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;transition:background .15s;font-size:13.5px}
+  .style-option:hover{background:#F8F1FB}
+  .style-option.selected{background:#F0EAFF}
+  .style-option .ms{font-size:20px;color:var(--faint);flex-shrink:0}
+  .style-option.selected .ms{color:var(--pri);font-variation-settings:'FILL' 1}
+  .style-option.dim{opacity:.45;pointer-events:none}
+  #selectedTags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .style-tag{display:inline-flex;align-items:center;gap:6px;background:#310F7A;color:#fff;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500}
+  .style-tag button{background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;opacity:.8;padding:0;font:inherit}
+  .style-tag button:hover{opacity:1}
   @media (max-width:700px){
     .styles-grid{grid-template-columns:1fr!important}
     .social-grid{grid-template-columns:1fr!important}
@@ -90,22 +98,28 @@
       </div>
 
       <div class="card pad" id="wrap_other_styles">
-        <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
           <span class="fl" style="margin:0">Other styles <span class="faint" style="font-weight:500">(optional)</span></span>
           <span class="pill nd k" id="otherStylesCount">0 / {{ $otherMax }}</span>
         </div>
-        <div class="in" style="margin-top:8px;display:flex;align-items:center;gap:8px;padding:0 13px">
-          <span class="ms" style="color:var(--faint);flex-shrink:0">search</span>
-          <input type="text" id="style_search" placeholder="Search styles" autocomplete="off" style="border:0;outline:none;background:transparent;font:inherit;font-size:13.5px;width:100%;padding:10px 0;min-width:0">
+        <div class="relative" id="stylesDropdown" style="position:relative">
+          <div class="style-search-wrap">
+            <span class="ms search-ic">search</span>
+            <input type="text" id="style_search" placeholder="Search styles…" autocomplete="off">
+          </div>
+          <div id="stylesDropdownList">
+            @foreach ($styleOptions as $val => $lab)
+              <div class="style-option" data-value="{{ $val }}" role="option" tabindex="0">
+                <span class="style-option-label">{{ $lab }}</span>
+                <span class="ms">check_box_outline_blank</span>
+              </div>
+            @endforeach
+          </div>
         </div>
-        <div class="chips" id="styleChips" style="margin-top:10px">
-          @foreach ($styleOptions as $val => $lab)
-            <span class="chip" role="button" tabindex="0" data-value="{{ $val }}">{{ $lab }}</span>
-          @endforeach
-          <button type="button" class="chip-more" id="stylesLoadMore" hidden>Load more</button>
-        </div>
+        <div id="selectedTags"></div>
         <input type="hidden" id="other_styles" name="other_styles" value="{{ implode(',', $otherList) }}">
         <p id="other_styles_error" class="field-err hidden" role="alert"></p>
+        <p class="help">Tip: Search through styles to better define your craft.</p>
       </div>
 
       <div class="card pad" style="grid-column:1/-1">
@@ -163,8 +177,6 @@
 @include('partials.social-links-validation')
 <script>
 var OTHER_MAX = {{ (int) $otherMax }};
-var CHIP_PAGE = 8;
-var chipVisible = CHIP_PAGE;
 var selectedStyles = new Set(@json(array_values($otherList)));
 
 function serverKeyToErrorId(key) {
@@ -252,42 +264,17 @@ function validateStylesFormClient() {
   return ok;
 }
 
-function matchingChips() {
-  var q = $.trim($('#style_search').val()).toLowerCase();
-  return $('#styleChips .chip').filter(function () {
-    return !q || $(this).text().toLowerCase().indexOf(q) !== -1;
-  });
+function toggleStylesDropdown(show) {
+  $('#stylesDropdownList').toggleClass('open', !!show);
 }
 
-function renderChipVisibility() {
-  var $all = $('#styleChips .chip');
-  var $match = matchingChips();
-  var visibleLimit = chipVisible;
-
-  // Keep selected chips visible even if they fall past the current page
-  $match.each(function (i) {
-    if (selectedStyles.has(this.getAttribute('data-value')) && i >= visibleLimit) {
-      visibleLimit = i + 1;
-    }
+function filterStyles() {
+  var q = $.trim($('#style_search').val()).toLowerCase();
+  $('.style-option').each(function () {
+    var label = $.trim($(this).find('.style-option-label').text()).toLowerCase();
+    $(this).toggle(!q || label.indexOf(q) !== -1);
   });
-
-  $all.each(function () {
-    $(this).hide();
-  });
-
-  $match.each(function (i) {
-    var force = selectedStyles.has(this.getAttribute('data-value'));
-    var show = i < visibleLimit || force;
-    $(this).toggle(!!show);
-  });
-
-  var remaining = $match.length - Math.min(visibleLimit, $match.length);
-  var $more = $('#stylesLoadMore');
-  if (remaining > 0) {
-    $more.prop('hidden', false).text('Load more');
-  } else {
-    $more.prop('hidden', true);
-  }
+  toggleStylesDropdown(true);
 }
 
 function updateHiddenInput() {
@@ -298,17 +285,36 @@ function updateOtherCount() {
   $('#otherStylesCount').text(selectedStyles.size + ' / ' + OTHER_MAX);
 }
 
-function syncChipStates() {
+function syncOptionStates() {
   var atMax = selectedStyles.size >= OTHER_MAX;
-  $('#styleChips .chip').each(function () {
+  $('.style-option').each(function () {
     var val = this.getAttribute('data-value');
     var on = selectedStyles.has(val);
-    $(this).toggleClass('on', on);
-    $(this).toggleClass('dim', !on && atMax);
+    var $el = $(this);
+    var $icon = $el.find('.ms').first();
+    $el.toggleClass('selected', on);
+    $el.toggleClass('dim', !on && atMax);
+    $icon.text(on ? 'check_box' : 'check_box_outline_blank');
   });
   updateOtherCount();
   updateHiddenInput();
-  renderChipVisibility();
+}
+
+function renderTags() {
+  var $container = $('#selectedTags');
+  $container.empty();
+  selectedStyles.forEach(function (value) {
+    var $opt = $('.style-option[data-value="' + value + '"]');
+    var label = $opt.length
+      ? $.trim($opt.find('.style-option-label').text())
+      : value;
+    var $tag = $('<span class="style-tag"></span>');
+    $tag.append(document.createTextNode(label + ' '));
+    var $btn = $('<button type="button" aria-label="Remove">&times;</button>');
+    $btn.on('click', function () { removeStyle(value); });
+    $tag.append($btn);
+    $container.append($tag);
+  });
 }
 
 function toggleStyle(value) {
@@ -318,38 +324,53 @@ function toggleStyle(value) {
     if (selectedStyles.size >= OTHER_MAX) return;
     selectedStyles.add(value);
   }
-  syncChipStates();
+  syncOptionStates();
+  renderTags();
   if (typeof window.clearOnboardingFieldError === 'function') {
     window.clearOnboardingFieldError('other_styles');
+  } else {
+    setFieldOutlineError('wrap_other_styles', false);
   }
 }
 
-function filterStyles() {
-  chipVisible = CHIP_PAGE;
-  renderChipVisibility();
+function removeStyle(value) {
+  selectedStyles.delete(value);
+  syncOptionStates();
+  renderTags();
+  if (typeof window.clearOnboardingFieldError === 'function') {
+    window.clearOnboardingFieldError('other_styles');
+  } else {
+    setFieldOutlineError('wrap_other_styles', false);
+  }
 }
 
 $(function () {
-  // Keep at most OTHER_MAX if legacy data has more
   if (selectedStyles.size > OTHER_MAX) {
     selectedStyles = new Set(Array.from(selectedStyles).slice(0, OTHER_MAX));
   }
-  syncChipStates();
+  syncOptionStates();
+  renderTags();
 
-  $('#styleChips').on('click', '.chip', function () {
+  $('#style_search').on('focus click', function () {
+    toggleStylesDropdown(true);
+  });
+  $('#style_search').on('input', filterStyles);
+
+  $('#stylesDropdownList').on('click', '.style-option', function () {
     toggleStyle(this.getAttribute('data-value'));
   });
-  $('#styleChips').on('keydown', '.chip', function (e) {
+  $('#stylesDropdownList').on('keydown', '.style-option', function (e) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       toggleStyle(this.getAttribute('data-value'));
     }
   });
-  $('#stylesLoadMore').on('click', function () {
-    chipVisible += CHIP_PAGE;
-    renderChipVisibility();
+
+  $(document).on('click', function (e) {
+    if (!$(e.target).closest('#stylesDropdown').length) {
+      toggleStylesDropdown(false);
+    }
   });
-  $('#style_search').on('input', filterStyles);
 
   $.each(
     [
