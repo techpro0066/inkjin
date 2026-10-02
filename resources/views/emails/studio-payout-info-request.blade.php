@@ -1,107 +1,96 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Studio payout setup</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333333;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .email-header {
-            background: #482e92;
-            padding: 20px 30px;
-            text-align: center;
-        }
-        .logo-text { color: #ffffff; font-size: 24px; font-weight: 600; }
-        .email-body { padding: 40px 30px; }
-        .greeting { font-size: 18px; color: #333333; margin-bottom: 20px; font-weight: 500; }
-        .content { font-size: 16px; color: #666666; margin-bottom: 18px; line-height: 1.8; }
-        .button-row { text-align: center; margin: 30px 0 16px; }
-        .btn {
-            display: inline-block;
-            padding: 14px 28px;
-            color: #ffffff !important;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            background: linear-gradient(135deg, #310f7a 0%, #482d91 100%);
-        }
-        .btn-decline {
-            background: #ffffff;
-            color: #b42318 !important;
-            border: 2px solid #b42318;
-            margin-left: 12px;
-        }
-        .btn-row-split { text-align: center; margin: 30px 0 16px; }
-        .btn-row-split .btn { margin: 6px 8px; }
-        .email-footer {
-            background-color: #f8f8f8;
-            padding: 1rem;
-            text-align: center;
-            border-top: 1px solid #e0e0e0;
-            font-size: 12px;
-            color: #aaaaaa;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ !empty($requirementsReminder) ? 'Complete Stripe requirements' : 'Studio invitation' }} — Bookpay</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    body { margin: 0; padding: 0; width: 100% !important; }
+  </style>
 </head>
-<body>
-    <div class="email-container">
-        <div class="email-header">
-            <span class="logo-text">{{ config('app.name', 'Inkjin') }}</span>
-        </div>
-        <div class="email-body">
-            <p class="greeting">Hello {{ $studioName }},</p>
-            @if(!empty($requirementsReminder))
-                <p class="content">
-                    <strong>{{ $artistName }}</strong> needs your studio to complete additional Stripe information for payouts on {{ config('app.name', 'Inkjin') }}.
-                </p>
-                <p class="content">
-                    Please open the secure link below and submit the required details.
-                </p>
-                <div class="button-row">
-                    <a href="{{ $formUrl }}" class="btn">Complete required information</a>
-                </div>
-                <p class="content" style="font-size: 13px; color: #888;">
-                    If the button does not work, copy and paste this URL into your browser:<br>
-                    <span style="word-break: break-all;">{{ $formUrl }}</span>
-                </p>
-            @else
-                <p class="content">
-                    <strong>{{ $artistName }}</strong> has selected your studio for payouts on {{ config('app.name', 'Inkjin') }}.
-                </p>
-                <p class="content">
-                    Please review the request and choose Approve or Decline. If your studio bank account is not connected yet, approving will walk you through Stripe setup.
-                </p>
-                <div class="btn-row-split">
-                    <a href="{{ $approveUrl ?: $formUrl }}" class="btn">Approve</a>
-                    @if(!empty($declineUrl))
-                        <a href="{{ $declineUrl }}" class="btn btn-decline">Decline</a>
-                    @endif
-                </div>
-                <p class="content" style="font-size: 13px; color: #888;">
-                    If the buttons do not work, copy and paste this URL into your browser:<br>
-                    <span style="word-break: break-all;">{{ $approveUrl ?: $formUrl }}</span>
-                </p>
-            @endif
-        </div>
-        <div class="email-footer">
-            © {{ date('Y') }} {{ config('app.name', 'Inkjin') }}. All rights reserved.
-        </div>
-    </div>
+<body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    @if(!empty($requirementsReminder))
+      {{ $artistName }} needs your studio to complete Stripe information on Bookpay.
+    @else
+      {{ $artistName }} invited your studio to Bookpay as their {{ $relationshipPhrase }}.
+    @endif
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf7ff;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+          <tr>
+            <td align="center" style="padding:0 0 32px 0;font-size:28px;font-weight:800;color:#310f7a;">bookpay</td>
+          </tr>
+          <tr>
+            <td style="background-color:#ffffff;border-radius:16px;padding:48px 40px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                @if(!empty($requirementsReminder))
+                  <tr>
+                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
+                      Hi {{ $studioName }},
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
+                      <strong>{{ $artistName }}</strong> needs your studio to complete additional Stripe information for payouts on Bookpay.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 28px 0;">
+                      Please open the secure link below and submit the required details.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="padding:0 0 16px 0;">
+                      <a href="{{ $formUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(135deg,#310f7a 0%,#482d91 100%);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:12px;">Complete required information</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:13px;color:#7a7583;line-height:1.5;word-break:break-all;">
+                      If the button does not work, copy and paste this URL into your browser:<br>{{ $formUrl }}
+                    </td>
+                  </tr>
+                @else
+                  <tr>
+                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
+                      Hi {{ $studioName }},
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
+                      <strong>{{ $artistName }}</strong> invited your studio to Bookpay as their {{ $relationshipPhrase }}.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 28px 0;">
+                      Your share of each booking is paid to you automatically. Free for studios.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="padding:0 0 16px 0;">
+                      <a href="{{ $approveUrl ?: $formUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(135deg,#310f7a 0%,#482d91 100%);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:12px;">See the invitation</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:13px;color:#7a7583;line-height:1.5;word-break:break-all;">
+                      If the button does not work, copy and paste this URL into your browser:<br>{{ $approveUrl ?: $formUrl }}
+                    </td>
+                  </tr>
+                @endif
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:24px 0 0 0;font-size:12px;color:#494552;">© {{ date('Y') }} Bookpay by Inkjin</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>

@@ -33,6 +33,10 @@
                       Hi {{ $artistName }},<br><br>
                     @endif
                     <strong>{{ $studioName }}</strong> declined your request to receive payouts through their studio account.
+                    @if(!empty($message))
+                      <br><br>
+                      <em style="color:#1c1b21;">“{{ $message }}”</em>
+                    @endif
                   </td>
                 </tr>
                 <tr>

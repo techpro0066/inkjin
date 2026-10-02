@@ -2217,6 +2217,11 @@ class OnboardingController extends Controller
             now()->addDays(30),
             ['userDetail' => $userDetail->id]
         );
+        $acceptUrl = URL::temporarySignedRoute(
+            'studio.payout-info.accept',
+            now()->addDays(30),
+            ['userDetail' => $userDetail->id]
+        );
         $declineUrl = URL::temporarySignedRoute(
             'studio.payout-artist-link.decline',
             now()->addDays(30),
@@ -2226,6 +2231,14 @@ class OnboardingController extends Controller
         $styles = is_array($userDetail->tattoo_styles) ? $userDetail->tattoo_styles : [];
         $tattooingSince = $styles['tattooing_since'] ?? null;
         $primaryStyle = $styles['primary_style'] ?? null;
+        $otherStyles = [];
+        if (isset($styles['other_styles']) && is_array($styles['other_styles'])) {
+            $otherStyles = array_values(array_filter($styles['other_styles']));
+        }
+        $styleLabels = array_values(array_filter(array_merge(
+            $primaryStyle ? [(string) $primaryStyle] : [],
+            array_map(fn ($s) => (string) $s, $otherStyles)
+        )));
         $relationshipLabels = [
             'co_owner' => 'Co-owner',
             'resident' => 'Resident',
@@ -2242,24 +2255,29 @@ class OnboardingController extends Controller
         ], fn (string $part) => $part !== ''));
 
         $avatarPath = trim((string) ($userDetail->avatar ?? ''));
+        $artistHandle = trim((string) ($userDetail->user_name ?? ''));
 
         return view('studio.payout-form', [
             'userDetail' => $userDetail,
             'studio' => $studio,
             'artistName' => $artistName,
+            'artistHandle' => $artistHandle !== '' ? $artistHandle : null,
             'artistAvatarUrl' => $avatarPath !== '' ? asset($avatarPath) : null,
             'artistInitials' => $userDetail->publicDisplayInitials(),
             'artistLocation' => $locationParts !== [] ? implode(', ', $locationParts) : null,
             'artistTattooingSince' => $tattooingSince ? (string) $tattooingSince : null,
             'artistPrimaryStyle' => $primaryStyle ? (string) $primaryStyle : null,
+            'artistStyleLabels' => $styleLabels,
             'studioRevenueArtistPercent' => $artistPercent,
             'studioRevenueStudioPercent' => 100 - $artistPercent,
             'studioRelationshipLabel' => $relationshipLabels[$relationshipType] ?? null,
             'studioNameValue' => old('studio_name', $studio->name ?? $userDetail->studio_name ?? ''),
+            'studioEmail' => old('email', $studio->email ?? ''),
             'studioAlreadyConnected' => $studioAlreadyConnected,
             'studioProfile' => $studioProfile,
             'paymentStatus' => $paymentStatus,
             'approveUrl' => $approveUrl,
+            'acceptUrl' => $acceptUrl,
             'declineUrl' => $declineUrl,
             'stripeConnectConfigured' => $stripeConnect->isConfigured(),
             'stripePublishableKey' => config('services.stripe.key'),
@@ -2311,7 +2329,6 @@ class OnboardingController extends Controller
             'business_type' => ['required', 'string', Rule::in(['individual', 'company'])],
             'country' => ['required', 'string', 'size:2', Rule::in($supportedCodes)],
             'industry' => ['required', 'string', Rule::in(['tattoo_studio', 'tattoo_beauty', 'other'])],
-            'studio_name' => ['nullable', 'string', 'max:255'],
         ], [
             'business_type.required' => 'Please select whether you are an individual or a business.',
             'business_type.in' => 'Please select a valid account type.',
@@ -2320,15 +2337,6 @@ class OnboardingController extends Controller
             'industry.required' => 'Please select what best describes you.',
             'industry.in' => 'Please select a valid industry.',
         ]);
-
-        $studioName = trim((string) ($validated['studio_name'] ?? ''));
-        if ($studioName === '') {
-            $studioName = trim((string) ($studio->name ?? ''));
-        }
-        if ($studioName !== '' && $studioName !== (string) $studio->name) {
-            $studio->name = $studioName;
-            $studio->save();
-        }
 
         $setup = [
             'business_type' => $validated['business_type'],
@@ -2584,6 +2592,184 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Signed invite accept: create/link studio user account, then approve or continue to Stripe.
+     */
+    public function acceptStudioInvitation(Request $request, UserDetail $userDetail, StripeConnectService $stripeConnect)
+    {
+        if (! $request->hasValidSignature()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This link is invalid or has expired. Ask the artist to resend the invite.',
+            ], 403);
+        }
+
+        if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This payout request is no longer active.',
+            ], 422);
+        }
+
+        $studio = Studio::find($userDetail->studio_id);
+        if (! $studio) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Studio record was not found.',
+            ], 404);
+        }
+
+        if (($userDetail->payment_status ?? '') === 'approved') {
+            return response()->json([
+                'success' => true,
+                'redirect' => URL::temporarySignedRoute(
+                    'studio.payout-info.show',
+                    now()->addDays(14),
+                    ['userDetail' => $userDetail->id, 'completed' => 1]
+                ),
+            ]);
+        }
+
+        if (($userDetail->payment_status ?? '') === 'rejected') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This payout request was already declined.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'max:255'],
+            'terms' => ['accepted'],
+        ], [
+            'password.required' => 'Create a password.',
+            'password.min' => 'Use at least 8 characters',
+            'terms.accepted' => 'Tick the box to continue',
+        ]);
+
+        try {
+            $studioUser = $this->registerOrUpdateStudioUserFromInvite($studio, (string) $validated['password']);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('Failed to register studio user from invite', [
+                'studio_id' => $studio->id,
+                'user_detail_id' => $userDetail->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not create your studio account. Please try again.',
+            ], 500);
+        }
+
+        Auth::login($studioUser);
+
+        if ($studio->hasStripeConnect()) {
+            $userDetail->payment_status = 'approved';
+            $userDetail->stripe_requirement = (bool) ($studio->stripe_requirement ?? false);
+            $userDetail->save();
+
+            return response()->json([
+                'success' => true,
+                'redirect' => URL::temporarySignedRoute(
+                    'studio.payout-info.show',
+                    now()->addDays(14),
+                    ['userDetail' => $userDetail->id, 'completed' => 1]
+                ),
+            ]);
+        }
+
+        if (! $stripeConnect->isConfigured()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe is not configured. Please contact support.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'next' => 'stripe',
+            'message' => 'Account created. Split confirmed',
+        ]);
+    }
+
+    /**
+     * Create or update a users.role=studio account for the invited studio email.
+     */
+    protected function registerOrUpdateStudioUserFromInvite(Studio $studio, string $password): User
+    {
+        $email = strtolower(trim((string) ($studio->email ?? '')));
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw ValidationException::withMessages([
+                'email' => 'This invite does not have a valid studio email.',
+            ]);
+        }
+
+        $existing = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+
+        if ($existing) {
+            if ($existing->role !== 'studio') {
+                throw ValidationException::withMessages([
+                    'email' => 'This email is already registered with a different Bookpay account. Sign in or ask the artist to use another studio email.',
+                ]);
+            }
+
+            $existing->password = $password;
+            $existing->must_set_password = false;
+            if (empty($existing->email_verified_at)) {
+                $existing->email_verified_at = now();
+            }
+            $existing->on_app = 1;
+            $existing->save();
+
+            if (! $existing->userDetail) {
+                UserDetail::create(['user_id' => $existing->id]);
+            }
+
+            if ((int) ($studio->user_id ?? 0) !== (int) $existing->id) {
+                $studio->user_id = $existing->id;
+                $studio->save();
+            }
+
+            app(\App\Services\MailcoachSubscriberService::class)
+                ->queueSubscribeUser($existing, \App\Services\MailcoachSubscriberService::TAG_STUDIO);
+
+            return $existing->fresh();
+        }
+
+        $nameParts = preg_split('/\s+/', trim((string) ($studio->name ?? '')), 2) ?: [];
+        $firstName = trim((string) ($nameParts[0] ?? ''));
+        $lastName = trim((string) ($nameParts[1] ?? ''));
+
+        $user = User::create([
+            'first_name' => $firstName !== '' ? $firstName : 'Studio',
+            'last_name' => $lastName,
+            'email' => $email,
+            'password' => $password,
+            'must_set_password' => false,
+            'role' => 'studio',
+            'on_boarding' => 'no',
+            'on_app' => 1,
+            'app_id' => null,
+            'email_verified_at' => now(),
+        ]);
+
+        UserDetail::create([
+            'user_id' => $user->id,
+            'studio_name' => $studio->name,
+        ]);
+
+        $studio->user_id = $user->id;
+        $studio->save();
+
+        app(\App\Services\MailcoachSubscriberService::class)
+            ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_STUDIO);
+        app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
+
+        return $user;
+    }
+
+    /**
      * Signed link: studio approves this artist receiving payouts through the studio (no artist user_bank_details changes).
      */
     public function approveStudioArtistBankLink(Request $request, UserDetail $userDetail, StripeConnectService $stripeConnect)
@@ -2639,14 +2825,6 @@ class OnboardingController extends Controller
         }
 
         // Keep the artist's own stripe_account_id — studio payout uses both accounts.
-        if ($request->filled('studio_name')) {
-            $name = trim((string) $request->input('studio_name'));
-            if ($name !== '') {
-                $studio->name = $name;
-                $studio->save();
-            }
-        }
-
         $userDetail->payment_status = 'approved';
         $userDetail->stripe_requirement = (bool) ($studio->stripe_requirement ?? false);
         $userDetail->save();
@@ -2663,7 +2841,16 @@ class OnboardingController extends Controller
      */
     public function declineStudioArtistBankLink(Request $request, UserDetail $userDetail)
     {
+        $wantsJson = $request->expectsJson() || $request->ajax() || $request->isMethod('post');
+
         if (! $request->hasValidSignature()) {
+            if ($wantsJson) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This link is invalid or has expired. Ask the artist to resend the payout email.',
+                ], 403);
+            }
+
             return view('studio.payout-form-result', [
                 'success' => false,
                 'title' => 'Invalid link',
@@ -2672,6 +2859,13 @@ class OnboardingController extends Controller
         }
 
         if ($userDetail->payment_type !== 'studio_account' || empty($userDetail->studio_id)) {
+            if ($wantsJson) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This payout request is no longer active.',
+                ], 422);
+            }
+
             return view('studio.payout-form-result', [
                 'success' => false,
                 'title' => 'Request inactive',
@@ -2680,6 +2874,18 @@ class OnboardingController extends Controller
         }
 
         if (($userDetail->payment_status ?? '') === 'approved') {
+            if ($wantsJson) {
+                return response()->json([
+                    'success' => true,
+                    'redirect' => URL::temporarySignedRoute(
+                        'studio.payout-info.show',
+                        now()->addDays(14),
+                        ['userDetail' => $userDetail->id]
+                    ),
+                    'message' => 'This artist was already approved to use your studio’s payout details. Nothing was changed.',
+                ]);
+            }
+
             return view('studio.payout-form-result', [
                 'success' => true,
                 'title' => 'Already linked',
@@ -2688,12 +2894,24 @@ class OnboardingController extends Controller
         }
 
         if (($userDetail->payment_status ?? '') === 'rejected') {
+            if ($wantsJson) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'You have already declined this request.',
+                ]);
+            }
+
             return view('studio.payout-form-result', [
                 'success' => true,
                 'title' => 'Already declined',
                 'message' => 'You have already declined this request.',
             ]);
         }
+
+        $validated = $request->validate([
+            'message' => ['nullable', 'string', 'max:500'],
+        ]);
+        $declineMessage = trim((string) ($validated['message'] ?? ''));
 
         $artistUser = $userDetail->user;
         $studio = Studio::find($userDetail->studio_id);
@@ -2704,7 +2922,19 @@ class OnboardingController extends Controller
         $userDetail->save();
 
         if ($artistUser) {
-            $this->sendStudioPayoutDeclinedArtistEmail($artistUser, $studioName);
+            $this->sendStudioPayoutDeclinedArtistEmail(
+                $artistUser,
+                $studioName,
+                $declineMessage !== '' ? $declineMessage : null,
+            );
+        }
+
+        if ($wantsJson) {
+            return response()->json([
+                'success' => true,
+                'title' => 'Invitation declined',
+                'message' => 'We let the artist know. They keep being paid directly. If you change your mind, ask them to send a new invite.',
+            ]);
         }
 
         return view('studio.payout-form-result', [
@@ -3021,8 +3251,11 @@ class OnboardingController extends Controller
         }
     }
 
-    private function sendStudioPayoutDeclinedArtistEmail(User $artistUser, string $studioName): void
-    {
+    private function sendStudioPayoutDeclinedArtistEmail(
+        User $artistUser,
+        string $studioName,
+        ?string $message = null,
+    ): void {
         $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
         if ($artistName === '') {
             $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
@@ -3033,6 +3266,7 @@ class OnboardingController extends Controller
                 $artistName,
                 $studioName,
                 route('settings.payment'),
+                $message,
             ));
         } catch (\Throwable $e) {
             Log::error('Failed to send studio payout declined email to artist', [
@@ -3095,6 +3329,7 @@ class OnboardingController extends Controller
                 $approveUrl,
                 $declineUrl,
                 $requirementsReminder,
+                $this->studioRelationshipEmailPhrase($userDetail->studio_relationship_type),
             ));
         } catch (\Throwable $e) {
             Log::error('Failed to send studio payout info request email', [
@@ -3104,6 +3339,18 @@ class OnboardingController extends Controller
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function studioRelationshipEmailPhrase(?string $relationshipType): string
+    {
+        return match ($relationshipType) {
+            'co_owner' => 'co-owned studio',
+            'resident' => 'resident studio',
+            'collective_member' => 'collective studio',
+            'apprentice' => 'apprentice studio',
+            'other' => 'partner studio',
+            default => 'studio',
+        };
     }
 
     /**

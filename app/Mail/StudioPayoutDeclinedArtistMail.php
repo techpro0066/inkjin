@@ -16,6 +16,7 @@ class StudioPayoutDeclinedArtistMail extends Mailable
         public string $artistName,
         public string $studioName,
         public string $paymentSettingsUrl,
+        public ?string $message = null,
     ) {}
 
     public function envelope(): Envelope

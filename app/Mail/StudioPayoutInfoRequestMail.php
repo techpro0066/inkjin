@@ -20,15 +20,15 @@ class StudioPayoutInfoRequestMail extends Mailable
         public ?string $approveUrl = null,
         public ?string $declineUrl = null,
         public bool $requirementsReminder = false,
+        public string $relationshipPhrase = 'studio',
     ) {
     }
 
     public function envelope(): Envelope
     {
-        $appName = config('app.name', 'Inkjin');
         $subject = match (true) {
-            $this->requirementsReminder => 'Complete Stripe requirements — '.$this->artistName.' on '.$appName,
-            default => 'Payout approval requested — '.$this->artistName.' on '.$appName,
+            $this->requirementsReminder => 'Complete Stripe requirements — '.$this->artistName.' on Bookpay',
+            default => $this->artistName.' invited you to Bookpay',
         };
 
         return new Envelope(

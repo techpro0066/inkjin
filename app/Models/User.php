@@ -122,6 +122,14 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(UserDetail::class);
     }
 
+    /**
+     * Studio owned by this user (role = studio).
+     */
+    public function ownedStudio()
+    {
+        return $this->hasOne(Studio::class);
+    }
+
     public function consentFormSetting()
     {
         return $this->hasOne(ConsentFormSetting::class);

@@ -23,7 +23,7 @@ class CheckOnboarding
         $user = auth()->user();
 
         if ($user->role === 'studio') {
-            return redirect()->route('studio.coming-soon');
+            return redirect()->route('studio.dashboard');
         }
 
         // If user has not completed onboarding and is not already on the onboarding page

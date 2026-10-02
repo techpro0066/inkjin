@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'onboarding' => \App\Http\Middleware\CheckOnboarding::class,
             'artist' => \App\Http\Middleware\CheckArtist::class,
+            'studio' => \App\Http\Middleware\CheckStudio::class,
             'admin' => \App\Http\Middleware\CheckAdmin::class,
             'user' => \App\Http\Middleware\CheckUser::class,
             'client_password' => \App\Http\Middleware\RequireClientPasswordComplete::class,

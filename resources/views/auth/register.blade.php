@@ -75,7 +75,7 @@
 @endsection
 
 @push('styles')
-<style>
+  <style>
   .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .role {
     display: flex; gap: 10px; align-items: flex-start;
@@ -173,8 +173,8 @@
 
   @media (max-width: 480px) {
     .roles { grid-template-columns: 1fr; }
-  }
-</style>
+    }
+  </style>
 @endpush
 
 @section('content')
@@ -198,25 +198,25 @@
       <button type="button" class="role" data-role="artist" role="radio" aria-checked="{{ $initialRole === 'artist' ? 'true' : 'false' }}">
         <span class="ms">{{ $initialRole === 'artist' ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
         <span><b>An artist</b><small>I tattoo and take my own bookings.</small></span>
-      </button>
+  </button>
       <button type="button" class="role" data-role="studio" role="radio" aria-checked="{{ $initialRole === 'studio' ? 'true' : 'false' }}">
         <span class="ms">{{ $initialRole === 'studio' ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
         <span><b>A studio</b><small>I run a studio with one or more artists.</small></span>
-      </button>
-    </div>
+  </button>
+  </div>
     <div class="err" id="role-error">Please choose how you are signing up</div>
 
     <label class="fl" for="signup-email">Email address</label>
     <div class="in" id="email-wrap">
       <input id="signup-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" value="{{ old('email') }}">
-    </div>
+  </div>
     <div class="err" id="email-error">Enter a valid email address</div>
 
     <label class="fl" for="signup-password">Password</label>
     <div class="in" id="password-wrap">
       <input id="signup-password" name="password" type="password" autocomplete="new-password">
       <button type="button" class="eye" aria-label="Show password"><span class="ms">visibility</span></button>
-    </div>
+  </div>
     <div class="hint">At least 8 characters.</div>
     <div class="err" id="password-error">Use at least 8 characters</div>
 
@@ -224,7 +224,7 @@
     <div class="in" id="password-confirm-wrap">
       <input id="signup-password-confirmation" name="password_confirmation" type="password" autocomplete="new-password">
       <button type="button" class="eye" aria-label="Show password"><span class="ms">visibility</span></button>
-    </div>
+  </div>
     <div class="err" id="password-confirm-error">Passwords don't match</div>
 
     <div class="cs" id="cs1">
@@ -232,12 +232,12 @@
       <button type="button" class="cs-b" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="cs1-l">
         <span class="cs-v cs-ph">Select country</span>
         <span class="ms" style="margin-left:auto;color:#9A929E">expand_more</span>
-      </button>
+  </button>
       <div class="cs-p" hidden>
         <input class="cs-q" type="text" placeholder="Search" aria-label="Search countries" autocomplete="off">
         <div class="cs-l" role="listbox"></div>
-      </div>
-    </div>
+  </div>
+  </div>
     <div class="err" id="country-error">Choose where you are based</div>
 
     <div class="cs" id="cs2" hidden>
@@ -249,8 +249,8 @@
       <div class="cs-p" hidden>
         <input class="cs-q" type="text" placeholder="Search" aria-label="Search countries" autocomplete="off">
         <div class="cs-l" role="listbox"></div>
-      </div>
-    </div>
+  </div>
+  </div>
     <div class="err" id="unlisted-error">Choose your country</div>
     <div class="hint">Sets your country, currency and time zone. You can change them later.</div>
 
@@ -298,7 +298,7 @@
 
 @push('scripts')
 @include('partials.reddit-pixel', ['event' => 'PageVisit'])
-<script>
+  <script>
 (function () {
   var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   var NL = '__not_listed__';
@@ -373,7 +373,7 @@
     }
   }
 
-  function clearErrors() {
+      function clearErrors() {
     hideAlert();
     setErr('email-wrap', 'email-error', false);
     setErr('password-wrap', 'password-error', false);
@@ -625,8 +625,8 @@
   @endif
 
   form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    clearErrors();
+        e.preventDefault();
+        clearErrors();
 
     var role = roleInput.value;
     var email = (emailInput.value || '').trim();
@@ -674,11 +674,11 @@
     var body = new FormData(form);
 
     fetch(form.action, {
-      method: 'POST',
+          method: 'POST',
       body: body,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json'
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
       },
       credentials: 'same-origin'
     }).then(function (res) {
@@ -694,8 +694,8 @@
           return;
         }
         window.location.href = @json(route('verification.notice'));
-        return;
-      }
+            return;
+          }
 
       if (result.status === 429) {
         showAlert('Too many signup attempts. Please wait a bit and try again.');
@@ -710,8 +710,8 @@
         if (errors.terms) setErr(null, 'terms-error', true, errors.terms[0]);
         if (!errors.role && !errors.email && !errors.password && !errors.password_confirmation && !errors.payout_bank_country && !errors.unlisted_country && !errors.terms) {
           showAlert(result.data.message || 'Registration failed. Please check your details.');
-        }
-      } else {
+            }
+          } else {
         showAlert('Something went wrong while signing up. Please try again.');
       }
 
@@ -724,7 +724,7 @@
     });
   });
 })();
-</script>
+  </script>
 
 <div id="country-not-available-modal" class="cna" hidden role="dialog" aria-modal="true" aria-labelledby="country-na-title">
   <div class="cna-b">

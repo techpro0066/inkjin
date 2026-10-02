@@ -51,8 +51,35 @@ Route::get('/', function () {
 
 // Onboarding routes (must be before other auth routes)
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/studio/coming-soon', \App\Http\Controllers\Studio\ComingSoonController::class)
-        ->name('studio.coming-soon');
+    Route::get('/studio', \App\Http\Controllers\Studio\DashboardController::class)
+        ->middleware('studio')
+        ->name('studio.dashboard');
+    Route::middleware('studio')->prefix('studio/onboarding')->name('studio.onboarding.')->group(function () {
+        Route::get('/', fn () => redirect()->route('studio.onboarding.profile'));
+        Route::get('/profile', [\App\Http\Controllers\Studio\OnboardingController::class, 'profile'])->name('profile');
+        Route::post('/profile', [\App\Http\Controllers\Studio\OnboardingController::class, 'updateProfile'])->name('profile.update');
+        Route::get('/owner', [\App\Http\Controllers\Studio\OnboardingController::class, 'owner'])->name('owner');
+        Route::post('/owner', [\App\Http\Controllers\Studio\OnboardingController::class, 'updateOwner'])->name('owner.update');
+        Route::get('/location', [\App\Http\Controllers\Studio\OnboardingController::class, 'location'])->name('location');
+        Route::post('/location', [\App\Http\Controllers\Studio\OnboardingController::class, 'updateLocation'])->name('location.update');
+        Route::get('/terms', [\App\Http\Controllers\Studio\OnboardingController::class, 'terms'])->name('terms');
+        Route::post('/terms', [\App\Http\Controllers\Studio\OnboardingController::class, 'updateTerms'])->name('terms.update');
+        Route::get('/payouts', [\App\Http\Controllers\Studio\OnboardingController::class, 'payouts'])->name('payouts');
+        Route::post('/payouts', [\App\Http\Controllers\Studio\OnboardingController::class, 'updatePayouts'])->name('payouts.update');
+        Route::post('/payouts/stripe/session', [\App\Http\Controllers\Studio\OnboardingController::class, 'createStripeSession'])->name('payouts.stripe.session');
+        Route::get('/payouts/stripe/status', [\App\Http\Controllers\Studio\OnboardingController::class, 'stripeStatus'])->name('payouts.stripe.status');
+        Route::post('/payouts/stripe/complete', [\App\Http\Controllers\Studio\OnboardingController::class, 'completeStripe'])->name('payouts.stripe.complete');
+    });
+    Route::middleware('studio')->prefix('studio/account')->name('studio.account.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Studio\AccountController::class, 'profile'])->name('profile');
+        Route::post('/', [\App\Http\Controllers\Studio\AccountController::class, 'updateProfile'])->name('profile.update');
+        Route::get('/password', [\App\Http\Controllers\Studio\AccountController::class, 'password'])->name('password');
+        Route::get('/studio', [\App\Http\Controllers\Studio\AccountController::class, 'studio'])->name('studio');
+        Route::post('/studio', [\App\Http\Controllers\Studio\AccountController::class, 'updateStudio'])->name('studio.update');
+        Route::get('/regional', [\App\Http\Controllers\Studio\AccountController::class, 'regional'])->name('regional');
+        Route::post('/regional', [\App\Http\Controllers\Studio\AccountController::class, 'updateRegional'])->name('regional.update');
+    });
+    Route::redirect('/studio/coming-soon', '/studio')->name('studio.coming-soon');
 
     Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
     Route::get('/onboarding/profile', [OnboardingController::class, 'profile'])->name('onboarding.profile');
@@ -103,6 +130,9 @@ Route::post('/stripe/delete-account', [StripeConnectDevController::class, 'delet
 Route::get('/studio/payout-info/{userDetail}', [OnboardingController::class, 'showStudioPayoutForm'])
     ->middleware('signed')
     ->name('studio.payout-info.show');
+Route::post('/studio/payout-info/{userDetail}/accept', [OnboardingController::class, 'acceptStudioInvitation'])
+    ->middleware('signed')
+    ->name('studio.payout-info.accept');
 Route::post('/studio/payout-info/{userDetail}/stripe/session', [OnboardingController::class, 'createStudioStripeSession'])
     ->middleware('signed')
     ->name('studio.payout-info.stripe.session');
@@ -122,7 +152,7 @@ Route::post('/studio/payout-info/{userDetail}/stripe/requirements/session', [Onb
 Route::match(['get', 'post'], '/studio/payout-link/{userDetail}/approve', [OnboardingController::class, 'approveStudioArtistBankLink'])
     ->middleware('signed')
     ->name('studio.payout-artist-link.approve');
-Route::get('/studio/payout-link/{userDetail}/decline', [OnboardingController::class, 'declineStudioArtistBankLink'])
+Route::match(['get', 'post'], '/studio/payout-link/{userDetail}/decline', [OnboardingController::class, 'declineStudioArtistBankLink'])
     ->middleware('signed')
     ->name('studio.payout-artist-link.decline');
 

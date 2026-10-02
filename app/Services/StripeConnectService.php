@@ -335,8 +335,42 @@ class StripeConnectService
     {
         $this->initialize();
 
-        $accountId = $this->ensureStudioConnectedAccount($studio, $userDetail, $setup);
+        $accountId = $this->ensureStudioConnectedAccount($studio, $setup, $userDetail);
         $this->ensureAccountCapabilitiesRequested($accountId);
+
+        $session = AccountSession::create([
+            'account' => $accountId,
+            'components' => [
+                'account_onboarding' => $this->accountOnboardingComponents(),
+            ],
+        ]);
+
+        return [
+            'account_id' => $accountId,
+            'client_secret' => $session->client_secret,
+            'collection_options' => $this->embeddedCollectionOptionsForStudio($setup['business_type']),
+        ];
+    }
+
+    /**
+     * Studio-owner onboarding (no artist invite UserDetail required).
+     *
+     * @param  array{business_type: string, country: string, industry?: string}  $setup
+     * @return array{account_id: string, client_secret: string, collection_options: array<string, mixed>}
+     */
+    public function createStudioOwnerOnboardingSession(Studio $studio, array $setup): array
+    {
+        $setup['industry'] = $setup['industry'] ?? 'tattoo_studio';
+
+        $this->initialize();
+
+        $accountId = $this->ensureStudioConnectedAccount($studio, $setup, null);
+        $this->ensureAccountCapabilitiesRequested($accountId);
+
+        if ($studio->stripe_account_id !== $accountId) {
+            $studio->stripe_account_id = $accountId;
+            $studio->save();
+        }
 
         $session = AccountSession::create([
             'account' => $accountId,
@@ -390,7 +424,7 @@ class StripeConnectService
     /**
      * @param  array{business_type: string, country: string, industry: string}  $setup
      */
-    public function ensureStudioConnectedAccount(Studio $studio, UserDetail $userDetail, array $setup): string
+    public function ensureStudioConnectedAccount(Studio $studio, array $setup, ?UserDetail $userDetail = null): string
     {
         $this->initialize();
 
@@ -400,6 +434,7 @@ class StripeConnectService
         }
 
         $businessType = $setup['business_type'] === 'individual' ? 'individual' : 'company';
+        $setup['industry'] = $setup['industry'] ?? 'tattoo_studio';
 
         $existingId = $this->resolveStudioStripeAccountId($studio);
         if ($existingId !== null && $existingId !== '') {
@@ -414,7 +449,7 @@ class StripeConnectService
                     ]);
                 } else {
                     $this->ensureAccountCapabilitiesRequested($existingId);
-                    $this->syncStudioProfileToAccount($existingId, $studio, $userDetail, $setup);
+                    $this->syncStudioProfileToAccount($existingId, $studio, $setup);
 
                     return $existingId;
                 }
@@ -439,6 +474,9 @@ class StripeConnectService
         );
 
         $account = Account::create(array_filter($payload, fn ($value) => $value !== null));
+
+        $studio->stripe_account_id = $account->id;
+        $studio->save();
 
         return $account->id;
     }
@@ -599,9 +637,9 @@ class StripeConnectService
     }
 
     /**
-     * Mark the artist as approved after the studio finishes Stripe embedded onboarding.
+     * Persist Stripe account on studio after owner finishes embedded onboarding.
      */
-    public function finalizeStudioOnboarding(Studio $studio, UserDetail $userDetail, string $accountId): void
+    public function finalizeStudioOwnerOnboarding(Studio $studio, string $accountId): void
     {
         if (! $this->isOnboardingSubmitted($accountId)) {
             throw new \RuntimeException('Stripe onboarding is not complete yet.');
@@ -610,22 +648,28 @@ class StripeConnectService
         $studio->stripe_account_id = $accountId;
         $studio->save();
 
-        // Keep the artist's own stripe_account_id — studio payout requires both accounts.
-        $userDetail->payment_status = 'approved';
-
         try {
             app(\App\Services\StripeRequirementSyncService::class)->syncStudio($studio);
-            $studio->refresh();
-            $userDetail->stripe_requirement = (bool) ($studio->stripe_requirement ?? false);
-            $userDetail->save();
         } catch (\Throwable) {
             $studio->stripe_requirement = true;
             $studio->save();
-            $userDetail->stripe_requirement = true;
-            $userDetail->save();
         }
 
         app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
+    }
+
+    /**
+     * Mark the artist as approved after the studio finishes Stripe embedded onboarding.
+     */
+    public function finalizeStudioOnboarding(Studio $studio, UserDetail $userDetail, string $accountId): void
+    {
+        $this->finalizeStudioOwnerOnboarding($studio, $accountId);
+
+        // Keep the artist's own stripe_account_id — studio payout requires both accounts.
+        $userDetail->payment_status = 'approved';
+        $studio->refresh();
+        $userDetail->stripe_requirement = (bool) ($studio->stripe_requirement ?? false);
+        $userDetail->save();
     }
 
     /**
@@ -689,7 +733,7 @@ class StripeConnectService
     /**
      * @param  array{business_type: string, country: string, industry: string}  $setup
      */
-    private function syncStudioProfileToAccount(string $accountId, Studio $studio, UserDetail $userDetail, array $setup): void
+    private function syncStudioProfileToAccount(string $accountId, Studio $studio, array $setup): void
     {
         $updates = array_filter([
             'business_profile' => $this->buildStudioBusinessProfile($studio, $setup),
