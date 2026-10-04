@@ -17,8 +17,20 @@ class CheckStudio
             return redirect()->route('login');
         }
 
-        if (auth()->user()->role !== 'studio') {
+        $user = auth()->user();
+
+        if ($user->role !== 'studio') {
             abort(403, 'Access denied. Studio role required.');
+        }
+
+        // Signup studios must finish onboarding before dashboard/account access.
+        // Invite studios can use the dashboard and complete onboarding later.
+        if (
+            $user->mustCompleteStudioOnboarding()
+            && ! $request->routeIs('studio.onboarding.*')
+            && ! $request->routeIs('logout')
+        ) {
+            return redirect()->route('studio.onboarding.profile');
         }
 
         return $next($request);

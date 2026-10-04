@@ -2720,6 +2720,9 @@ class OnboardingController extends Controller
                 $existing->email_verified_at = now();
             }
             $existing->on_app = 1;
+            if (empty($existing->studio_registration_source)) {
+                $existing->studio_registration_source = 'invite';
+            }
             $existing->save();
 
             if (! $existing->userDetail) {
@@ -2748,6 +2751,7 @@ class OnboardingController extends Controller
             'password' => $password,
             'must_set_password' => false,
             'role' => 'studio',
+            'studio_registration_source' => 'invite',
             'on_boarding' => 'no',
             'on_app' => 1,
             'app_id' => null,

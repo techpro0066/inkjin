@@ -25,6 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'must_set_password',
         'role',
+        'studio_registration_source',
         'on_boarding',
         'on_app',
         'app_id',
@@ -107,6 +108,17 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         $this->forceFill(['hear_about_us' => $source])->save();
+    }
+
+    /**
+     * Signup studios must finish onboarding before using the dashboard.
+     * Invite studios may access the dashboard and complete onboarding later.
+     */
+    public function mustCompleteStudioOnboarding(): bool
+    {
+        return $this->role === 'studio'
+            && $this->studio_registration_source === 'signup'
+            && $this->on_boarding !== 'yes';
     }
 
     public function getNameAttribute(): string

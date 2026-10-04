@@ -142,6 +142,10 @@ class RegisteredUserController extends Controller
             'hear_about_us' => trim((string) ($validated['referral_source'] ?? '')) ?: null,
         ];
 
+        if ($validated['role'] === 'studio') {
+            $userData['studio_registration_source'] = 'signup';
+        }
+
         $user = User::create($userData);
 
         $userDetail = UserDetail::create([

@@ -52,7 +52,9 @@ function authenticated_home_url(?User $user = null): string
     return match ($user->role) {
         'admin' => route('admin.dashboard', absolute: false),
         'artist' => route('artist.dashboard', absolute: false),
-        'studio' => route('studio.dashboard', absolute: false),
+        'studio' => $user->mustCompleteStudioOnboarding()
+            ? route('studio.onboarding.profile', absolute: false)
+            : route('studio.dashboard', absolute: false),
         'user' => route('user.dashboard', absolute: false),
         default => abort(403, 'Access denied. You are not authorized to access this page.'),
     };

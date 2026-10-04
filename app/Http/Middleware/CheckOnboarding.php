@@ -23,6 +23,10 @@ class CheckOnboarding
         $user = auth()->user();
 
         if ($user->role === 'studio') {
+            if ($user->mustCompleteStudioOnboarding()) {
+                return redirect()->route('studio.onboarding.profile');
+            }
+
             return redirect()->route('studio.dashboard');
         }
 
