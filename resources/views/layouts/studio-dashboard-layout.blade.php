@@ -329,7 +329,7 @@
       openLitePrompt();
     });
 
-    if (location.hash === '#prompt') {
+    if (location.hash === '#prompt' || @json(! $profileComplete)) {
       setTimeout(function () { openLitePrompt(); }, 200);
     }
   })();

@@ -482,13 +482,13 @@
 
     /* New design upload: placeholder ratio; after crop, frame matches output image */
     .design-image-upload-slot {
-      aspect-ratio: 4 / 5;
+      aspect-ratio: 3 / 4;
       max-height: 20rem;
       width: 100%;
       position: relative;
     }
     .design-image-upload-slot.has-preview {
-      aspect-ratio: var(--design-preview-ar, 4 / 5);
+      aspect-ratio: var(--design-preview-ar, 3 / 4);
       max-height: min(20rem, min(70vw, 85vh));
     }
     .design-ai-overlay {
@@ -806,7 +806,7 @@
           data-search="{{ e($searchBlob) }}"
         >
           <div class="design-card bg-white rounded-2xl border border-outline-variant/20 overflow-hidden shadow-sm">
-          <div class="design-image-wrap aspect-[4/5] bg-surface-container-high rounded-t-2xl">
+          <div class="design-image-wrap aspect-[3/4] bg-surface-container-high rounded-t-2xl">
             <button type="button" class="design-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
               <span class="material-symbols-outlined">drag_indicator</span>
             </button>
@@ -903,7 +903,7 @@
           <div class="lg:w-2/5 space-y-5">
             <div class="design-field-section scroll-mt-6" data-design-field="image">
             <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Image</label>
-            <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1350 px</strong> · aspect <strong class="text-on-surface">4:5</strong></p>
+            <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1440 px</strong> · aspect <strong class="text-on-surface">3:4</strong></p>
             <div id="designImageUpload" class="design-image-upload-slot relative border-2 border-dashed border-outline-variant/40 rounded-2xl mx-auto cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-[aspect-ratio,max-height] duration-200 overflow-hidden">
               <div id="designImageUploadEmpty" class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 py-6">
                 <span class="material-symbols-outlined text-outline/40 text-5xl">cloud_upload</span>
@@ -1105,13 +1105,13 @@
     </div>
   </div>
 
-  <!-- Crop design image (4:5 → 1080×1350) -->
+  <!-- Crop design image (3:4 → 1080×1440) -->
   <div id="designCropModal" class="crop-modal-backdrop" aria-hidden="true">
     <div class="crop-modal-inner bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
       <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/15 flex-shrink-0">
         <div>
           <h3 class="text-lg font-bold text-on-surface">Crop image</h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Output <span class="font-semibold text-on-surface">1080 × 1350 px</span> · ratio 4:5</p>
+          <p class="text-xs text-on-surface-variant mt-0.5">Output <span class="font-semibold text-on-surface">1080 × 1440 px</span> · ratio 3:4</p>
         </div>
         <button type="button" id="btnDesignCropClose" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-container-low transition-colors" aria-label="Close cropper">
           <span class="material-symbols-outlined text-on-surface-variant">close</span>
@@ -1210,8 +1210,8 @@
       var designCropper = null;
       var pendingOriginalImageFile = null;
       var CROP_OUT_W = 1080;
-      var CROP_OUT_H = 1350;
-      var CROP_RATIO = 4 / 5;
+      var CROP_OUT_H = 1440;
+      var CROP_RATIO = 3 / 4;
       var MAX_FILE_BYTES = 10 * 1024 * 1024;
 
       // Pricing type cards + dynamic size-range rows

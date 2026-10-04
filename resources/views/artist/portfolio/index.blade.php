@@ -594,7 +594,7 @@
         <!-- Image Upload -->
         <div class="work-field-section scroll-mt-6" data-work-field="image">
           <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Image</label>
-          <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1350 px</strong> · aspect <strong class="text-on-surface">4:5</strong></p>
+          <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1440 px</strong> · aspect <strong class="text-on-surface">3:4</strong></p>
           <div id="workImageUpload" class="work-image-upload work-image-upload--empty relative border-2 border-dashed border-outline-variant/40 rounded-2xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 overflow-hidden">
             <div id="workImageUploadEmpty" class="flex flex-col items-center justify-center gap-2 px-4 py-10 min-h-[220px]">
               <span class="material-symbols-outlined text-outline/40 text-4xl">cloud_upload</span>
@@ -731,13 +731,13 @@
     </div>
   </div>
 
-  <!-- Crop image (4:5 → 1080×1350) -->
+  <!-- Crop image (3:4 → 1080×1440) -->
   <div id="workCropModal" class="crop-modal-backdrop" aria-hidden="true">
     <div class="crop-modal-inner bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
       <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/15 flex-shrink-0">
         <div>
           <h3 class="text-lg font-bold text-on-surface">Crop image</h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Output <span class="font-semibold text-on-surface">1080 × 1350 px</span> · ratio 4:5</p>
+          <p class="text-xs text-on-surface-variant mt-0.5">Output <span class="font-semibold text-on-surface">1080 × 1440 px</span> · ratio 3:4</p>
         </div>
         <button type="button" id="btnCropClose" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-container-low transition-colors" aria-label="Close cropper">
           <span class="material-symbols-outlined text-on-surface-variant">close</span>
@@ -841,8 +841,8 @@
       var $workCropperImg = $('#workCropperImg');
       var workCropper = null;
       var CROP_OUT_W = 1080;
-      var CROP_OUT_H = 1350;
-      var CROP_RATIO = 4 / 5;
+      var CROP_OUT_H = 1440;
+      var CROP_RATIO = 3 / 4;
       var MAX_FILE_BYTES = 10 * 1024 * 1024;
 
       function destroyWorkCropper() {
