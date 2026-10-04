@@ -2621,6 +2621,7 @@ class OnboardingController extends Controller
         if (($userDetail->payment_status ?? '') === 'approved') {
             return response()->json([
                 'success' => true,
+                'csrf_token' => csrf_token(),
                 'redirect' => URL::temporarySignedRoute(
                     'studio.payout-info.show',
                     now()->addDays(14),
@@ -2671,6 +2672,7 @@ class OnboardingController extends Controller
 
             return response()->json([
                 'success' => true,
+                'csrf_token' => csrf_token(),
                 'redirect' => URL::temporarySignedRoute(
                     'studio.payout-info.show',
                     now()->addDays(14),
@@ -2689,6 +2691,7 @@ class OnboardingController extends Controller
         return response()->json([
             'success' => true,
             'next' => 'stripe',
+            'csrf_token' => csrf_token(),
             'message' => 'Account created. Split confirmed',
         ]);
     }

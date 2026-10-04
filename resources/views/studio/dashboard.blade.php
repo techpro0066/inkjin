@@ -49,7 +49,7 @@
             @endif
           </div>
         </div>
-        <button type="button" class="btn" data-locked="Money">Connect Stripe</button>
+        <a class="btn" href="{{ route('studio.onboarding.payouts') }}">Connect Stripe</a>
       </div>
     </div>
   @endunless

@@ -370,23 +370,58 @@
 
 @if ($stripeConnectConfigured && ! $stripeConnected)
 <script type="module">
-import { loadConnectAndInitialize } from 'https://esm.sh/@stripe/connect-js@3.3.34/pure';
-
 const publishableKey = @json($stripePublishableKey ?? '');
 const sessionUrl = @json(route('studio.onboarding.payouts.stripe.session'));
 const completeUrl = @json(route('studio.onboarding.payouts.stripe.complete'));
 const stripeConnectLocale = @json($stripeConnectLocale ?? 'en-US');
 const stripeConnectAppearance = @json(config('services.stripe.connect.appearance', []));
-const helpers = window.__studioPayoutSetup || {};
-const csrf = helpers.csrf || document.querySelector('meta[name="csrf-token"]')?.content || '';
 
 let connectInstance = null;
 let stripeSessionData = null;
 let onboardingMounted = false;
 let completeTriggered = false;
+let loadConnectAndInitialize = null;
+
+function helpers() {
+  return window.__studioPayoutSetup || {};
+}
+
+function csrfToken() {
+  return helpers().csrf || document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
+
+async function ensureStripeConnectLoader() {
+  if (typeof loadConnectAndInitialize === 'function') return loadConnectAndInitialize;
+
+  const urls = [
+    'https://esm.sh/@stripe/connect-js@3.3.34/pure',
+    'https://cdn.jsdelivr.net/npm/@stripe/connect-js@3.3.34/+esm',
+  ];
+  let lastError = null;
+  for (const url of urls) {
+    try {
+      const mod = await import(url);
+      if (typeof mod.loadConnectAndInitialize === 'function') {
+        loadConnectAndInitialize = mod.loadConnectAndInitialize;
+        return loadConnectAndInitialize;
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('Could not load Stripe Connect.');
+}
 
 function showStripeError(message) {
   const el = document.getElementById('studio_stripe_connect_error');
+  if (el) {
+    el.textContent = message || '';
+    el.classList.toggle('on', !!message);
+  }
+}
+
+function showSetupError(id, message) {
+  const el = document.getElementById(id);
   if (el) {
     el.textContent = message || '';
     el.classList.toggle('on', !!message);
@@ -398,16 +433,16 @@ async function createSession(setup) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-CSRF-TOKEN': csrf,
+      'X-CSRF-TOKEN': csrfToken(),
       Accept: 'application/json'
     },
     body: JSON.stringify(setup)
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (res.status === 422 && data.errors) {
-    if (data.errors.currency?.[0]) document.getElementById('currency_error') && (document.getElementById('currency_error').textContent = data.errors.currency[0], document.getElementById('currency_error').classList.add('on'));
-    if (data.errors.country?.[0]) document.getElementById('country_error') && (document.getElementById('country_error').textContent = data.errors.country[0], document.getElementById('country_error').classList.add('on'));
-    if (data.errors.business_type?.[0]) document.getElementById('business_type_error') && (document.getElementById('business_type_error').textContent = data.errors.business_type[0], document.getElementById('business_type_error').classList.add('on'));
+    if (data.errors.currency?.[0]) showSetupError('currency_error', data.errors.currency[0]);
+    if (data.errors.country?.[0]) showSetupError('country_error', data.errors.country[0]);
+    if (data.errors.business_type?.[0]) showSetupError('business_type_error', data.errors.business_type[0]);
     throw new Error(data.message || 'Please check your answers and try again.');
   }
   if (!res.ok || !data.client_secret) throw new Error(data.message || 'Could not start Stripe onboarding.');
@@ -422,89 +457,98 @@ async function finalize() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-CSRF-TOKEN': csrf,
+      'X-CSRF-TOKEN': csrfToken(),
       Accept: 'application/json'
     },
     body: JSON.stringify({ account_id: stripeSessionData.account_id })
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.success) {
     completeTriggered = false;
     throw new Error(data.message || 'Could not save Stripe payout setup.');
   }
-  if (typeof helpers.showConnected === 'function') helpers.showConnected();
+  if (typeof helpers().showConnected === 'function') helpers().showConnected();
   if (window.bpToast) window.bpToast('Stripe connected');
 }
 
-async function mountOnboarding(setup) {
+async function mountOnboarding() {
   const container = document.getElementById('studioStripeConnectMount');
-  if (!publishableKey || !container) return;
+  if (!publishableKey || !container || !stripeSessionData?.client_secret) {
+    throw new Error('Stripe is not ready. Please try again.');
+  }
 
   if (onboardingMounted) {
     container.innerHTML = '';
     onboardingMounted = false;
     connectInstance = null;
-    stripeSessionData = null;
-    completeTriggered = false;
   }
 
   container.innerHTML = '<p class="help" style="padding:24px">Loading Stripe onboarding…</p>';
-  try {
-    await createSession(setup);
-    connectInstance = loadConnectAndInitialize({
-      publishableKey,
-      fetchClientSecret: async () => stripeSessionData.client_secret,
-      locale: stripeConnectLocale || 'en-US',
-      appearance: stripeConnectAppearance
-    });
-    connectInstance.update({ locale: stripeConnectLocale || 'en-US' });
-    const accountOnboarding = connectInstance.create('account-onboarding');
-    const collectionOptions = stripeSessionData.collection_options || {};
-    accountOnboarding.setCollectionOptions({
-      fields: collectionOptions.fields || 'eventually_due',
-      futureRequirements: collectionOptions.futureRequirements || 'include',
-      ...(collectionOptions.requirements ? { requirements: collectionOptions.requirements } : {})
-    });
-    accountOnboarding.setOnExit(async () => {
-      document.getElementById('studioStripeConnectHint')?.classList.add('hidden');
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      try {
-        await finalize();
-      } catch (err) {
-        completeTriggered = false;
-        showStripeError(err.message || 'Could not complete payout setup.');
-      }
-    });
-    container.innerHTML = '';
-    container.appendChild(accountOnboarding);
-    onboardingMounted = true;
-  } catch (err) {
-    container.innerHTML = '';
-    showStripeError(err.message || 'Could not load Stripe onboarding.');
-    document.getElementById('studioStripeStep').hidden = true;
-    document.getElementById('stripeConnectIntro').hidden = false;
-    document.getElementById('studioSetupFields').hidden = false;
-  }
+  const loadConnect = await ensureStripeConnectLoader();
+  connectInstance = loadConnect({
+    publishableKey,
+    fetchClientSecret: async () => stripeSessionData.client_secret,
+    locale: stripeConnectLocale || 'en-US',
+    appearance: stripeConnectAppearance
+  });
+  connectInstance.update({ locale: stripeConnectLocale || 'en-US' });
+  const accountOnboarding = connectInstance.create('account-onboarding');
+  const collectionOptions = stripeSessionData.collection_options || {};
+  accountOnboarding.setCollectionOptions({
+    fields: collectionOptions.fields || 'eventually_due',
+    futureRequirements: collectionOptions.futureRequirements || 'include',
+    ...(collectionOptions.requirements ? { requirements: collectionOptions.requirements } : {})
+  });
+  accountOnboarding.setOnExit(async () => {
+    document.getElementById('studioStripeConnectHint')?.classList.add('hidden');
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      await finalize();
+    } catch (err) {
+      completeTriggered = false;
+      showStripeError(err.message || 'Could not complete payout setup.');
+    }
+  });
+  container.innerHTML = '';
+  container.appendChild(accountOnboarding);
+  onboardingMounted = true;
+}
+
+function resetStripeStepUi() {
+  const container = document.getElementById('studioStripeConnectMount');
+  if (container) container.innerHTML = '';
+  const step = document.getElementById('studioStripeStep');
+  const intro = document.getElementById('stripeConnectIntro');
+  const fields = document.getElementById('studioSetupFields');
+  if (step) step.hidden = true;
+  if (intro) intro.hidden = false;
+  if (fields) fields.hidden = false;
 }
 
 document.getElementById('stripeConnectBtn')?.addEventListener('click', async () => {
-  const setup = typeof helpers.validateSetup === 'function' ? helpers.validateSetup() : null;
+  const api = helpers();
+  const setup = typeof api.validateSetup === 'function' ? api.validateSetup() : null;
   if (!setup) return;
-  if (typeof helpers.updateStripeDescription === 'function') helpers.updateStripeDescription(setup);
+  if (typeof api.updateStripeDescription === 'function') api.updateStripeDescription(setup);
 
   const btn = document.getElementById('stripeConnectBtn');
   const original = btn?.innerHTML;
   if (btn) { btn.disabled = true; btn.innerHTML = 'Loading…'; }
 
-  document.getElementById('stripeConnectIntro').hidden = true;
-  document.getElementById('studioSetupFields').hidden = true;
-  document.getElementById('studioStripeStep').hidden = false;
   showStripeError('');
+  completeTriggered = false;
 
   try {
-    await mountOnboarding(setup);
+    await createSession(setup);
+    document.getElementById('stripeConnectIntro').hidden = true;
+    document.getElementById('studioSetupFields').hidden = true;
+    document.getElementById('studioStripeStep').hidden = false;
+    await mountOnboarding();
+  } catch (err) {
+    resetStripeStepUi();
+    showStripeError(err.message || 'Could not load Stripe onboarding.');
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = original; }
+    if (btn) { btn.disabled = false; btn.innerHTML = original || 'Connect'; }
   }
 });
 </script>

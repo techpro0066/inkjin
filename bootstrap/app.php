@@ -44,6 +44,11 @@ return Application::configure(basePath: dirname(__DIR__))
             // Public pages may be reverse-proxied from inkjin.com while APIs hit bookpay.inkjin.com.
             // Session cookies are not shared across that hop, so CSRF tokens cannot be validated.
             'api/public/*',
+            // Signed studio invite / payout links are opened from email. Accept logs the user in and
+            // regenerates the session, which invalidates the page CSRF token before Stripe continue.
+            // These routes are already protected by the signed URL middleware.
+            'studio/payout-info/*',
+            'studio/payout-link/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
