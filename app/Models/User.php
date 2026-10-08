@@ -127,11 +127,38 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * True when this email belongs to a login that cannot receive a studio invite
+     * (artist, admin, or any role other than studio).
+     */
+    public static function emailBlockedForStudioInvite(string $email): bool
+    {
+        $email = strtolower(trim($email));
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        $existing = static::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+        if (! $existing) {
+            return false;
+        }
+
+        return ($existing->role ?? '') !== 'studio';
+    }
+
+    /**
      * Get the user detail associated with the user.
      */
     public function userDetail()
     {
         return $this->hasOne(UserDetail::class);
+    }
+
+    /**
+     * Studio memberships / workplaces for this artist.
+     */
+    public function userStudios()
+    {
+        return $this->hasMany(UserStudio::class);
     }
 
     /**

@@ -82,7 +82,7 @@ class StripeConnectedAccountsController extends Controller
                     ownerUsername: (string) ($userDetail->user_name ?? ''),
                     paymentType: (string) ($userDetail->payment_type ?? ''),
                     paymentStatus: (string) ($userDetail->payment_status ?? ''),
-                    studioName: (string) ($userDetail->studio?->name ?? $userDetail->studio_name ?? ''),
+                    studioName: $userDetail->resolvedStudioName(),
                 ));
             });
 

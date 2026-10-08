@@ -1563,7 +1563,11 @@
           method: 'POST',
           credentials: 'include',
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': mbCsrfToken },
-          body: JSON.stringify({ email: email })
+          body: JSON.stringify({
+            email: email,
+            name: String(document.getElementById('bdName')?.value || '').trim(),
+            artist_username: bookingArtistUsername
+          })
         });
         const data = await res.json();
         if (!res.ok) {

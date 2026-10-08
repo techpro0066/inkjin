@@ -22,6 +22,7 @@ class ProfileController extends Controller
         return view('profile.edit', [
             'user' => $request->user(),
             'userDetail' => $request->user()->userDetail,
+            'activeNav' => 'account',
         ]);
     }
 
@@ -32,6 +33,7 @@ class ProfileController extends Controller
     {
         return view('profile.password', [
             'user' => $request->user(),
+            'activeNav' => 'account',
         ]);
     }
 
@@ -66,15 +68,26 @@ class ProfileController extends Controller
         $user->last_name = $validated['last_name'];
         $user->save();
 
-        // Update user detail fields
-        $userDetail->update([
-            'avatar' => $avatarPath,
+        // Account > Profile only requires core fields; don't wipe My Page content when omitted.
+        $detailData = [
             'user_name' => $validated['user_name'],
-            'display_name' => trim((string) ($validated['display_name'] ?? '')) ?: null,
-            'personal_page_tagline' => trim((string) ($validated['personal_page_tagline'] ?? '')) ?: null,
-            'personal_page_description' => trim((string) ($validated['personal_page_description'] ?? '')) ?: null,
             'mobile_number' => $validated['mobile_number'],
-        ]);
+        ];
+
+        if ($request->hasFile('avatar') || $avatarPath !== $userDetail->avatar) {
+            $detailData['avatar'] = $avatarPath;
+        }
+        if (array_key_exists('display_name', $validated)) {
+            $detailData['display_name'] = trim((string) $validated['display_name']) ?: null;
+        }
+        if (array_key_exists('personal_page_tagline', $validated)) {
+            $detailData['personal_page_tagline'] = trim((string) $validated['personal_page_tagline']) ?: null;
+        }
+        if (array_key_exists('personal_page_description', $validated)) {
+            $detailData['personal_page_description'] = trim((string) $validated['personal_page_description']) ?: null;
+        }
+
+        $userDetail->update($detailData);
 
         if ($request->expectsJson()) {
             return response()->json([

@@ -158,6 +158,11 @@ class RegisteredUserController extends Controller
         $this->createArtistReferralIfValid($user, $validated['referrer_user_id'] ?? null);
         $request->session()->forget('artist_referral_referrer_user_id');
 
+        if ($validated['role'] === 'studio') {
+            app(\App\Services\MailcoachSubscriberService::class)
+                ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_STUDIO);
+        }
+
         // Login user temporarily so they can access verification page
         Auth::login($user);
 

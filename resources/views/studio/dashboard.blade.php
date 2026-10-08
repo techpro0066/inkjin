@@ -49,7 +49,7 @@
             @endif
           </div>
         </div>
-        <a class="btn" href="{{ route('studio.onboarding.payouts') }}">Connect Stripe</a>
+        <a class="btn" href="{{ $stripeConnectUrl ?? route('studio.onboarding.profile') }}">Connect Stripe</a>
       </div>
     </div>
   @endunless
@@ -85,16 +85,20 @@
         <a href="#" data-locked="Artists" style="font-size:13px;font-weight:700;color:var(--pri);text-decoration:none">View</a>
       </div>
       <div style="padding:14px 22px 18px">
-        @forelse ($artists as $artistDetail)
+        @forelse ($artists as $link)
           @php
-            $name = $artistDetail->publicDisplayName();
+            $artistDetail = $link->user?->userDetail;
+            $artistUser = $link->user;
+            $name = $artistDetail ? $artistDetail->publicDisplayName() : '';
             if ($name === '' || $name === 'Artist') {
-              $fallback = trim(($artistDetail->user?->first_name ?? '').' '.($artistDetail->user?->last_name ?? ''));
-              $name = $fallback !== '' ? $fallback : ($artistDetail->user_name ?? 'Artist');
+              $fallback = trim(($artistUser?->first_name ?? '').' '.($artistUser?->last_name ?? ''));
+              $name = $fallback !== '' ? $fallback : ($artistDetail?->user_name ?? $artistUser?->user_name ?? 'Artist');
             }
-            $handle = trim((string) ($artistDetail->user_name ?? ''));
-            $avatar = trim((string) ($artistDetail->avatar ?? ''));
-            $initials = $artistDetail->publicDisplayInitials();
+            $handle = trim((string) ($artistDetail?->user_name ?? $artistUser?->user_name ?? ''));
+            $avatar = trim((string) ($artistDetail?->avatar ?? ''));
+            $initials = $artistDetail
+              ? $artistDetail->publicDisplayInitials()
+              : strtoupper(substr(preg_replace('/\s+/', '', $name) ?: 'AR', 0, 2));
             $relationshipLabels = [
               'co_owner' => 'Co-owner',
               'resident' => 'Resident',
@@ -102,8 +106,8 @@
               'apprentice' => 'Apprentice',
               'other' => 'Other',
             ];
-            $rel = $relationshipLabels[$artistDetail->studio_relationship_type ?? ''] ?? null;
-            $artistPct = (int) ($artistDetail->studio_revenue_artist_percent ?? 50);
+            $rel = $relationshipLabels[$link->relationship ?? ''] ?? null;
+            $artistPct = (int) ($link->revenue_split ?? 50);
             $artistPct = max(0, min(100, $artistPct));
             $studioPct = 100 - $artistPct;
           @endphp

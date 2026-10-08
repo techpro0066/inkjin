@@ -758,8 +758,7 @@ class ArtistPayoutService
         $paymentType = (string) ($userDetail?->payment_type ?? '');
 
         if ($paymentType === 'studio_account') {
-            $percent = (int) ($userDetail->studio_revenue_artist_percent ?? 50);
-            $percent = max(0, min(100, $percent));
+            $percent = $userDetail->resolvedStudioRevenueArtistPercent(50);
 
             return [
                 'payout_payment_type' => 'studio_account',
@@ -1127,7 +1126,7 @@ class ArtistPayoutService
             ? $this->resolvePayoutArtistPercent($booking, $userDetail)
             : (
                 $paymentType === 'studio_account'
-                    ? max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)))
+                    ? $userDetail->resolvedStudioRevenueArtistPercent(50)
                     : 100
             );
         $studioPercent = max(0, 100 - $artistPercent);
@@ -1331,7 +1330,7 @@ class ArtistPayoutService
                 return true;
             }
 
-            $artistPercent = max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)));
+            $artistPercent = $userDetail->resolvedStudioRevenueArtistPercent(50);
 
             if ($artistPercent > 0) {
                 if (! empty($userDetail->stripe_requirement)) {
@@ -1371,7 +1370,7 @@ class ArtistPayoutService
         }
 
         if ($paymentType === 'studio_account') {
-            $artistPercent = max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)));
+            $artistPercent = $userDetail->resolvedStudioRevenueArtistPercent(50);
             if ($artistPercent > 0 && trim((string) ($userDetail->stripe_account_id ?? '')) === '') {
                 return 'Connect and complete your Stripe payout setup in settings before accepting client payments.';
             }
@@ -1426,7 +1425,7 @@ class ArtistPayoutService
 
         if ($paymentType === 'studio_account') {
             // Prefer artist account for status banners when they receive a share.
-            $artistPercent = max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)));
+            $artistPercent = $userDetail->resolvedStudioRevenueArtistPercent(50);
             if ($artistPercent > 0) {
                 $accountId = trim((string) ($userDetail->stripe_account_id ?? ''));
                 if ($accountId !== '') {
@@ -1464,7 +1463,7 @@ class ArtistPayoutService
 
         if ($paymentType === 'studio_account') {
             // Generic callers (e.g. referral rewards): artist account when they have a share.
-            $artistPercent = max(0, min(100, (int) ($userDetail->studio_revenue_artist_percent ?? 50)));
+            $artistPercent = $userDetail->resolvedStudioRevenueArtistPercent(50);
             if ($artistPercent > 0) {
                 $artistAccount = $this->resolveArtistConnectedAccountId($userDetail);
                 if ($artistAccount) {

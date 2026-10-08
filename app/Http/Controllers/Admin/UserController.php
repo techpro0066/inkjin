@@ -43,7 +43,7 @@ class UserController extends Controller
 
         $paginator->setCollection(
             $paginator->getCollection()
-                ->map(fn (User $user) => $this->mapUserForAdminList($user, $styleLabels, $bookingStats))
+            ->map(fn (User $user) => $this->mapUserForAdminList($user, $styleLabels, $bookingStats))
                 ->values()
         );
 
@@ -218,7 +218,10 @@ class UserController extends Controller
                         $detailQuery->where('user_name', 'like', "%{$search}%")
                             ->orWhere('studio_name', 'like', "%{$search}%")
                             ->orWhere('city', 'like', "%{$search}%")
-                            ->orWhere('country', 'like', "%{$search}%");
+                            ->orWhere('country', 'like', "%{$search}%")
+                            ->orWhereHas('studio', function ($studioQuery) use ($search) {
+                                $studioQuery->where('name', 'like', "%{$search}%");
+                            });
                     });
             });
         }
@@ -398,7 +401,7 @@ class UserController extends Controller
             'phone' => $user->phone_number ?: ($detail?->mobile_number ?: '—'),
             'role' => $user->role,
             'username' => $detail?->user_name,
-            'studio' => $detail?->studio_name ?: '—',
+            'studio' => ($detail?->resolvedStudioName() ?: '—'),
             'location' => $location,
             'styles' => $isArtist ? $this->resolveStyleLabels($detail?->tattoo_styles, $styleLabels) : [],
             'social' => $isArtist ? $this->resolveSocialLinks($detail) : [],

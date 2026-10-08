@@ -296,6 +296,9 @@ class InkJinController extends Controller
     {
         $validated = $request->validate([
             'email' => ['required', 'email'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'artist_username' => ['nullable', 'string', 'max:100'],
+            'artist_name' => ['nullable', 'string', 'max:255'],
         ]);
 
         $email = mb_strtolower(trim($validated['email']));
@@ -312,11 +315,27 @@ class InkJinController extends Controller
         $otpCode = (string) random_int(1000, 9999);
         $cooldownSeconds = $emailVerification->storeOtp($email, $otpCode);
 
+        $artistName = trim((string) ($validated['artist_name'] ?? ''));
+        $artistUsername = trim((string) ($validated['artist_username'] ?? ''));
+        if ($artistName === '' && $artistUsername !== '') {
+            $detail = UserDetail::query()
+                ->where('user_name', $artistUsername)
+                ->first();
+            if ($detail) {
+                $artistName = $detail->publicDisplayName();
+            }
+        }
+
+        $clientName = trim((string) ($validated['name'] ?? ''));
+        $expiresInMinutes = 10;
+
         Mail::send('emails.booking-otp', [
             'otpCode' => $otpCode,
-            'expiresInMinutes' => 10,
-        ], function ($message) use ($email) {
-            $message->to($email)->subject('Inkjin verification code');
+            'expiresInMinutes' => $expiresInMinutes,
+            'clientName' => $clientName,
+            'artistName' => $artistName,
+        ], function ($message) use ($email, $otpCode) {
+            $message->to($email)->subject('Your Bookpay code: '.$otpCode);
         });
 
         return response()->json([
@@ -697,11 +716,15 @@ class InkJinController extends Controller
                 $q->whereRaw('LOWER(user_name) LIKE ?', [$needle])
                     ->orWhereRaw('LOWER(studio_name) LIKE ?', [$needle])
                     ->orWhereRaw('LOWER(city) LIKE ?', [$needle])
-                    ->orWhereRaw('LOWER(country) LIKE ?', [$needle]);
+                    ->orWhereRaw('LOWER(country) LIKE ?', [$needle])
+                    ->orWhereHas('studio', function ($studioQuery) use ($needle) {
+                        $studioQuery->whereRaw('LOWER(name) LIKE ?', [$needle]);
+                    });
             });
         }
 
         $artists = $artistsQuery
+            ->with('studio')
             ->orderByDesc('id')
             ->get()
             ->map(function (UserDetail $detail) {
@@ -713,7 +736,7 @@ class InkJinController extends Controller
                 return [
                     'username' => (string) $detail->user_name,
                     'display_name' => $displayName,
-                    'studio_name' => (string) ($detail->studio_name ?? ''),
+                    'studio_name' => $detail->resolvedStudioName(),
                     'city' => (string) ($detail->city ?? ''),
                     'country' => (string) ($detail->country ?? ''),
                     'avatar' => (string) ($detail->avatar ?? ''),

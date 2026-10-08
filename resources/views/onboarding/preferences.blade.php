@@ -6,7 +6,11 @@
   $ud = $userDetail;
   $depositType = ($ud->minimum_deposit_type ?? 'amount') === 'percentage' ? 'percentage' : 'amount';
   $feeType = $ud->booking_fee_type ?? 'client';
-  $currency = $ud->currency ?? '';
+  $locked = $lockedCurrency ?? ['code' => 'EUR', 'symbol' => '€', 'country_name' => 'your country', 'label' => 'EUR (€)'];
+  $currency = $locked['code'] ?? 'EUR';
+  $currencySymbol = $locked['symbol'] ?? '€';
+  $currencyLabel = $locked['label'] ?? ($currency.' ('.$currencySymbol.')');
+  $currencyCountry = $locked['country_name'] ?? 'your country';
   $fmtRate = function ($v) {
     if ($v === null || $v === '') return '';
     return rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
@@ -29,6 +33,7 @@
   .dep-in{display:flex;align-items:center;gap:4px;padding:0 13px}
   .dep-in input{border:0;outline:0;font:inherit;flex:1;padding:10px 6px;background:none;min-width:0}
   .dep-affix{color:#6F6874;font-weight:600;flex-shrink:0}
+  .cur-lock{display:flex;align-items:center;gap:10px;background:#F6F3F8;cursor:default}
   @media (max-width:700px){
     .pay-grid-2,.pay-grid-3{grid-template-columns:1fr!important}
   }
@@ -42,10 +47,11 @@
   <input type="hidden" id="date_time_format" name="date_time_format" value="{{ $ud->date_time_format ?: 'DD/MM/YYYY' }}">
   <input type="hidden" id="size_unit" name="size_unit" value="{{ $ud->size_unit ?: 'cm' }}">
   <input type="hidden" name="minimum_deposit_type" id="minimum_deposit_type" value="{{ $depositType }}">
+  <input type="hidden" id="currency" name="currency" value="{{ $currency }}">
 
   <div class="wrap">
     <h1 style="margin-top:6px">Set up your payments<a class="help-q" href="https://help.inkjin.com/en/articles/17200694-setup-step-4-payments" target="_blank" rel="noopener" data-help-article="O4-payments" title="Help with this page" aria-label="Help with this page"><span class="ms">help</span></a></h1>
-    <div class="sub" style="max-width:640px;margin-bottom:24px">Choose your currency, the deposit clients pay to book, and your reference rates.</div>
+    <div class="sub" style="max-width:640px;margin-bottom:24px">Set the deposit clients pay to book and your reference rates.</div>
 
     <div class="card" style="margin-bottom:14px">
       <div class="ch">
@@ -57,11 +63,13 @@
       <div style="padding:18px 22px">
         <div class="grid pay-grid-2" style="grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <label class="fl" for="currency">Currency <span style="color:#C62828">*</span></label>
-            <select class="in" id="currency" name="currency" data-placeholder="Select currency" data-selected="{{ $currency }}">
-              <option value=""></option>
-            </select>
-            <div class="help">Should match the bank account you connect in Payouts.</div>
+            <span class="fl">Currency <span style="color:#C62828">*</span></span>
+            <div class="in cur-lock" aria-readonly="true">
+              <b style="font-size:13.5px">{{ $currencyLabel }}</b>
+              <span class="faint" style="font-size:12.5px;flex:1">Set from your country ({{ $currencyCountry }})</span>
+              <span class="ms" style="font-size:18px;color:var(--muted)">lock</span>
+            </div>
+            <div class="help">Clients pay in this currency. Connect a bank account in {{ $currency }} when you set up payouts. After that, your currency follows your payout account.</div>
             <p id="currency_error" class="field-err hidden" role="alert"></p>
           </div>
         </div>
@@ -78,11 +86,11 @@
           <div>
             <label class="fl" for="minimum_deposit_amount"><span id="deplbl">{{ $depositType === 'percentage' ? 'Minimum deposit percentage' : 'Minimum deposit amount' }}</span> <span style="color:#C62828">*</span></label>
             <div class="in dep-in" id="depInputWrap">
-              <span class="dep-affix" id="depun" @if($depositType === 'percentage') hidden @endif>€</span>
+              <span class="dep-affix" id="depun" @if($depositType === 'percentage') hidden @endif>{{ $currencySymbol }}</span>
               <input type="text" inputmode="decimal" id="minimum_deposit_amount" name="minimum_deposit_amount" value="{{ $ud->minimum_deposit_amount ?? '' }}" autocomplete="off">
               <span class="dep-affix" id="depsuf" @if($depositType !== 'percentage') hidden @endif>%</span>
             </div>
-            <div class="help" id="dephelp">{{ $depositType === 'percentage' ? 'Percentage of the total booking price taken as deposit.' : 'The smallest deposit a client pays to book.' }}</div>
+            <div class="help" id="dephelp">{{ $depositType === 'percentage' ? 'Percentage of the total price the client pays to book.' : 'The smallest deposit a client pays to book.' }}</div>
             <p id="minimum_deposit_amount_error" class="field-err hidden" role="alert"></p>
           </div>
         </div>
@@ -130,7 +138,7 @@
       <div style="padding:18px 22px">
         <div class="grid pay-grid-3" style="grid-template-columns:1fr 1fr 1fr;gap:10px" id="feeCards">
           @foreach ([
-            'client' => ['Client pays', 'The fee is added to the client\'s total'],
+            'client' => ['Client pays', 'The '.$currencySymbol.'10 fee is added to the client\'s total'],
             'artist' => ['Artist pays', 'The fee is taken from your payout'],
             'split' => ['Split', 'Shared between client and artist'],
           ] as $val => $meta)
@@ -157,25 +165,44 @@
 
 @push('scripts')
 @include('partials.reddit-pixel', ['event' => 'Step_4'])
-<script src="{{ asset('design/js/currencies.js') }}"></script>
+<script>
+try { sessionStorage.setItem('bp-country', @json($currencyCountry !== 'your country' ? $currencyCountry : 'Greece')); } catch (e) {}
+window.BPCountryOnSave = function (countryName, currencyCode, currencySymbol) {
+  var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  return fetch(@json(route('onboarding.preferences.country')), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-TOKEN': csrf,
+    },
+    body: JSON.stringify({ country_name: countryName }),
+  }).then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+    .then(function (result) {
+      if (!result.ok || !result.data || !result.data.success) {
+        alert((result.data && result.data.message) || 'Could not update country.');
+        return false;
+      }
+      var d = result.data;
+      var cur = document.getElementById('currency');
+      if (cur) cur.value = d.currency || currencyCode;
+      if (d.timezone) document.getElementById('timezone').value = d.timezone;
+      if (d.date_time_format) document.getElementById('date_time_format').value = d.date_time_format;
+      if (d.size_unit) document.getElementById('size_unit').value = d.size_unit;
+      if (d.currency_symbol) window.bpCurSym = d.currency_symbol;
+      return true;
+    })
+    .catch(function () {
+      alert('Could not update country. Please try again.');
+      return false;
+    });
+};
+</script>
+<script src="{{ asset('new-ui-design-assets/country.js') }}"></script>
 <script>
 (function ($) {
-  var SYMBOLS = {
-    EUR: '€', GBP: '£', USD: '$', CHF: 'CHF', SEK: 'kr', DKK: 'kr', NOK: 'kr',
-    PLN: 'zł', CZK: 'Kč', HUF: 'Ft', RON: 'lei', BGN: 'лв', CAD: 'C$', AUD: 'A$',
-  };
-
-  function currencySymbol(code) {
-    if (!code) return '€';
-    if (SYMBOLS[code]) return SYMBOLS[code];
-    try {
-      var parts = new Intl.NumberFormat(undefined, { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(0);
-      var sym = parts.find(function (p) { return p.type === 'currency'; });
-      return sym ? sym.value : code;
-    } catch (e) {
-      return code;
-    }
-  }
+  var CURRENCY_SYMBOL = @json($currencySymbol);
 
   function setDepositType(type) {
     var pct = type === 'percentage';
@@ -185,24 +212,16 @@
       $(this).toggleClass('on', on).attr('aria-pressed', on ? 'true' : 'false');
     });
     $('#deplbl').text(pct ? 'Minimum deposit percentage' : 'Minimum deposit amount');
-    $('#depun').prop('hidden', pct);
+    $('#depun').prop('hidden', pct).text(CURRENCY_SYMBOL);
     $('#depsuf').prop('hidden', !pct);
     $('#dephelp').text(pct
-      ? 'Percentage of the total booking price taken as deposit.'
+      ? 'Percentage of the total price the client pays to book.'
       : 'The smallest deposit a client pays to book.');
-    if (!pct) syncCurrencyAffix();
-  }
-
-  function syncCurrencyAffix() {
-    if ($('#minimum_deposit_type').val() === 'percentage') return;
-    var code = $('#currency').val() || '';
-    $('#depun').text(currencySymbol(code));
   }
 
   function clearErrors() {
     $('#prefForm').find('[id$="_error"]').addClass('hidden').text('');
     $('#prefForm').find('.is-err').removeClass('is-err');
-    $('#currency').next('.select2-container').removeClass('is-err');
   }
 
   function setErr(id, msg) {
@@ -211,7 +230,6 @@
     var $f = $('#' + id);
     if ($f.length) {
       $f.addClass('is-err');
-      if ($f.hasClass('select2-hidden-accessible')) $f.next('.select2-container').addClass('is-err');
       if ($f.closest('.in').length) $f.closest('.in').addClass('is-err');
     }
   }
@@ -220,7 +238,7 @@
     clearErrors();
     var ok = true;
     if (!$('#currency').val()) {
-      setErr('currency', 'Please select a currency.');
+      setErr('currency', 'Currency could not be determined from your country.');
       ok = false;
     }
     var dep = $.trim($('#minimum_deposit_amount').val() || '');
@@ -271,31 +289,6 @@
       $('#size_unit').val(['US', 'LR', 'MM'].includes(region) ? 'in' : 'cm');
     }
 
-    var sel = document.getElementById('currency');
-    var selected = sel.getAttribute('data-selected') || '';
-    if (sel && typeof fillCurrencySelect === 'function') {
-      fillCurrencySelect(sel, selected || 'EUR');
-    }
-    // Always (re)init after options exist — do not rely on layout auto-init of empty select
-    if (window.jQuery && window.jQuery.fn.select2) {
-      var $currency = $('#currency');
-      if ($currency.hasClass('select2-hidden-accessible')) {
-        try { $currency.select2('destroy'); } catch (e) {}
-      }
-      if (typeof window.initOnboardingSelect2 === 'function') {
-        window.initOnboardingSelect2('#currency', { placeholder: 'Select currency', searchable: true });
-      } else {
-        $currency.select2({ width: '100%', placeholder: 'Select currency', dropdownParent: $currency.closest('.card, main') });
-      }
-    }
-    syncCurrencyAffix();
-
-    $('#currency').on('change', function () {
-      syncCurrencyAffix();
-      if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('currency');
-      $(this).next('.select2-container').removeClass('is-err');
-    });
-
     $('#depositTypeSwitch').on('click', 'button', function () {
       setDepositType(this.getAttribute('data-t'));
     });
@@ -314,7 +307,6 @@
       });
     });
 
-    // Rates + deposit: text fields, digits and one decimal point only
     $(document).on('input', '#minimum_deposit_amount, .js-rate', function () {
       var v = this.value.replace(/[^0-9.]/g, '');
       var parts = v.split('.');

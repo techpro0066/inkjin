@@ -412,7 +412,7 @@ class AccountController extends Controller
         $user = $request->user();
         $studio = $this->resolveStudio($user);
 
-        $studioName = trim((string) ($studio?->name ?? $user->userDetail?->studio_name ?? ''));
+        $studioName = trim((string) ($studio?->name ?? $user->userDetail?->resolvedStudioName() ?? ''));
         if ($studioName === '') {
             $studioName = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
         }

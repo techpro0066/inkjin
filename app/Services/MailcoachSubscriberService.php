@@ -24,7 +24,7 @@ class MailcoachSubscriberService
 
     /**
      * Resolve which Mailcoach email-list UUID to use for a tag.
-     * Clients (user) can target a separate list; others use the default list.
+     * Clients (user) and studios can target separate lists; others use the default list.
      */
     public function listUuidForTag(?string $tag): ?string
     {
@@ -34,6 +34,13 @@ class MailcoachSubscriberService
             $userList = trim((string) config('services.mailcoach.user_list_uuid'));
             if ($userList !== '') {
                 return $userList;
+            }
+        }
+
+        if ($tag === self::TAG_STUDIO) {
+            $studioList = trim((string) config('services.mailcoach.studio_list_uuid'));
+            if ($studioList !== '') {
+                return $studioList;
             }
         }
 
@@ -97,6 +104,7 @@ class MailcoachSubscriberService
                 'list_uuid' => $this->listUuidForTag($tag),
                 'has_default_list_uuid' => filled(config('services.mailcoach.list_uuid')),
                 'has_user_list_uuid' => filled(config('services.mailcoach.user_list_uuid')),
+                'has_studio_list_uuid' => filled(config('services.mailcoach.studio_list_uuid')),
                 'has_token' => filled(config('services.mailcoach.api_token')),
                 'api_base' => $this->apiBaseUrl(),
             ]);

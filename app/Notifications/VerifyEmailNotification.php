@@ -20,7 +20,7 @@ class VerifyEmailNotification extends VerifyEmail
         $expiresMinutes = (int) config('auth.verification.expire', 60);
 
         return (new MailMessage)
-            ->subject('Verify Your Email Address')
+            ->subject('Your Bookpay code: '.$code)
             ->view('emails.verify-email', [
                 'code' => $code,
                 'expiresMinutes' => max(1, $expiresMinutes),

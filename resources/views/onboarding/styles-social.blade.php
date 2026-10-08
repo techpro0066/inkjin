@@ -13,6 +13,9 @@
     $otherList = $ts;
   }
   $sl = $userDetail->social_links ?? [];
+  $extraServices = is_array($userDetail->extra_services ?? null) ? $userDetail->extra_services : [];
+  $extraServiceList = is_array($extraServices['services'] ?? null) ? $extraServices['services'] : [];
+  $extraServiceOther = trim((string) ($extraServices['other'] ?? ''));
   $styleOptions = $styleOptions ?? [];
   if ($primary && !array_key_exists($primary, $styleOptions)) {
     $styleOptions[$primary] = ucwords(str_replace('-', ' ', $primary));
@@ -57,6 +60,11 @@
   .style-tag{display:inline-flex;align-items:center;gap:6px;background:#310F7A;color:#fff;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500}
   .style-tag button{background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;opacity:.8;padding:0;font:inherit}
   .style-tag button:hover{opacity:1}
+  .svcs{display:flex;flex-wrap:wrap;gap:8px}
+  .svc{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:9px 13px;font-size:13.5px;font-weight:600;cursor:pointer;background:#fff;margin:0}
+  .svc input{accent-color:#3E007C;width:17px;height:17px;margin:0}
+  .svc:has(input:checked){border-color:#3E007C;background:#FBF5FF}
+  .svc:focus-within{outline:2px solid #3E007C;outline-offset:2px}
   @media (max-width:700px){
     .styles-grid{grid-template-columns:1fr!important}
     .social-grid{grid-template-columns:1fr!important}
@@ -120,6 +128,29 @@
         <input type="hidden" id="other_styles" name="other_styles" value="{{ implode(',', $otherList) }}">
         <p id="other_styles_error" class="field-err hidden" role="alert"></p>
         <p class="help">Tip: Search through styles to better define your craft.</p>
+      </div>
+
+      <div class="card pad" style="grid-column:1/-1">
+        <span class="fl">Services you also offer <span class="faint" style="font-weight:500">(optional)</span></span>
+        <div class="svcs" id="svcs" style="margin-top:6px">
+          @foreach (['Touch-ups', 'Cover-ups', 'Blackout', 'Other'] as $svc)
+            <label class="svc">
+              <input
+                type="checkbox"
+                name="extra_services[]"
+                value="{{ $svc }}"
+                @if ($svc === 'Other') id="svco" @endif
+                @checked(in_array($svc, $extraServiceList, true))
+              >
+              <span>{{ $svc }}</span>
+            </label>
+          @endforeach
+        </div>
+        <div id="svcow" @if (! in_array('Other', $extraServiceList, true)) hidden @endif style="margin-top:10px;max-width:360px">
+          <label class="fl" for="svcot">Other service</label>
+          <input class="in" type="text" id="svcot" name="extra_service_other" maxlength="40" placeholder="e.g. Scar cover-ups" autocomplete="off" value="{{ $extraServiceOther }}">
+        </div>
+        <div class="help">Shown on your page under your styles. You can change these later in My Page &gt; About.</div>
       </div>
 
       <div class="card pad" style="grid-column:1/-1">
@@ -350,6 +381,16 @@ $(function () {
   }
   syncOptionStates();
   renderTags();
+
+  var $svcOtherWrap = $('#svcow');
+  var $svcOther = $('#svco');
+  function syncSvcOther(focusOther) {
+    var on = $svcOther.is(':checked');
+    $svcOtherWrap.prop('hidden', !on);
+    if (on && focusOther) $('#svcot').trigger('focus');
+  }
+  $('#svcs').on('change', function () { syncSvcOther(true); });
+  syncSvcOther(false);
 
   $('#style_search').on('focus click', function () {
     toggleStylesDropdown(true);

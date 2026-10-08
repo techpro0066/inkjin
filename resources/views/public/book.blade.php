@@ -3089,7 +3089,11 @@
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken
           },
-          body: JSON.stringify({ email: email })
+          body: JSON.stringify({
+            email: email,
+            name: String($('#bdName').val() || '').trim(),
+            artist_username: bookingArtistUsername
+          })
         });
         var data = await res.json();
         if (!res.ok) {

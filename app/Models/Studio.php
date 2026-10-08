@@ -67,6 +67,14 @@ class Studio extends Model
     }
 
     /**
+     * Artist ↔ studio membership rows.
+     */
+    public function userStudios(): HasMany
+    {
+        return $this->hasMany(UserStudio::class);
+    }
+
+    /**
      * Stripe Connect account id for this studio (stored on studios.stripe_account_id only).
      * Do not fall back to linked artists — those hold the artist's own payout account.
      */

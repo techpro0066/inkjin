@@ -700,32 +700,32 @@ async function mountStudioStripeOnboarding() {
   container.innerHTML = '<p class="hint" style="padding:24px">Loading Stripe onboarding…</p>';
   const loadConnect = await ensureStripeConnectLoader();
   connectInstance = loadConnect({
-    publishableKey,
-    fetchClientSecret: async () => stripeSessionData.client_secret,
-    locale: stripeConnectLocale || 'en-US',
-    appearance: stripeConnectAppearance,
-  });
-  connectInstance.update({ locale: stripeConnectLocale || 'en-US' });
-  const accountOnboarding = connectInstance.create('account-onboarding');
-  const collectionOptions = stripeSessionData.collection_options || {};
-  accountOnboarding.setCollectionOptions({
-    fields: collectionOptions.fields || 'eventually_due',
-    futureRequirements: collectionOptions.futureRequirements || 'include',
-    ...(collectionOptions.requirements ? { requirements: collectionOptions.requirements } : {}),
-  });
-  accountOnboarding.setOnExit(async () => {
-    document.getElementById('studioStripeConnectHint')?.classList.add('hidden');
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    try {
-      await finalizeStudioOnboarding();
-    } catch (err) {
-      completeTriggered = false;
+      publishableKey,
+      fetchClientSecret: async () => stripeSessionData.client_secret,
+      locale: stripeConnectLocale || 'en-US',
+      appearance: stripeConnectAppearance,
+    });
+    connectInstance.update({ locale: stripeConnectLocale || 'en-US' });
+    const accountOnboarding = connectInstance.create('account-onboarding');
+    const collectionOptions = stripeSessionData.collection_options || {};
+    accountOnboarding.setCollectionOptions({
+      fields: collectionOptions.fields || 'eventually_due',
+      futureRequirements: collectionOptions.futureRequirements || 'include',
+      ...(collectionOptions.requirements ? { requirements: collectionOptions.requirements } : {}),
+    });
+    accountOnboarding.setOnExit(async () => {
+      document.getElementById('studioStripeConnectHint')?.classList.add('hidden');
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      try {
+        await finalizeStudioOnboarding();
+      } catch (err) {
+        completeTriggered = false;
       showStripeError(err.message || 'Could not complete payout setup.');
     }
   });
-  container.innerHTML = '';
-  container.appendChild(accountOnboarding);
-  onboardingMounted = true;
+    container.innerHTML = '';
+    container.appendChild(accountOnboarding);
+    onboardingMounted = true;
 }
 
 document.getElementById('studioSetupContinue')?.addEventListener('click', async () => {

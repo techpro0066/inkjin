@@ -32,7 +32,7 @@
     && \App\Support\StripeConnectCountries::isSupported($payoutBankCountry);
   $studioRevenueArtistPercent = (int) old('studio_revenue_artist_percent', $ud->studio_revenue_artist_percent ?? 50);
   $studioRevenueArtistPercent = max(0, min(100, $studioRevenueArtistPercent));
-  $studioDisplayName = $ud->studio->name ?? $ud->studio_name ?? null;
+  $studioDisplayName = $ud->resolvedStudioName() !== '' ? $ud->resolvedStudioName() : null;
 @endphp
 
 @push('styles')
@@ -164,7 +164,7 @@
                       <input class="in" type="email" id="studio_email" name="studio_email" value="{{ $studioEmail }}" placeholder="studio@example.com" autocomplete="email">
             </div>
                   </div>
-                  <div class="help">They get an email to join Bookpay and set up their Stripe account. The invite is sent when you finish setup.</div>
+                  <div class="help">They get an email to join Bookpay and set up their Stripe account when you click Save &amp; Send.</div>
                 </div>
             </div>
 
@@ -234,7 +234,7 @@
             @if ($studioPayoutCommitted)
               <div id="studioPayoutDisconnectWrap" style="padding-top:16px;margin-top:14px;border-top:1px solid #E4D6F5">
                 <button type="button" id="disconnectStudioBtn" class="btn ghost" style="color:var(--red);border-color:#F5C2C2">Disconnect studio payout</button>
-                <p class="help">Cancel this studio request. You stay on Studio and can invite again or switch to Artist anytime.</p>
+                <p class="help">Cancel this studio request to invite again. Artist payout stays locked until you disconnect.</p>
             </div>
           @endif
 
@@ -349,7 +349,7 @@
 <div id="disconnectStudioModal" class="modal-ov" role="dialog" aria-modal="true">
   <div class="modal-box">
     <h5 style="font-size:17px;font-weight:800;margin-bottom:8px">Disconnect studio payout?</h5>
-    <p class="muted" style="font-size:13.5px;margin-bottom:18px">This cancels the request to your studio. You stay on Studio payout and can invite again or switch to Artist anytime.</p>
+    <p class="muted" style="font-size:13.5px;margin-bottom:18px">This cancels the request to your studio. You stay on Studio payout and can invite again. Switching to Artist is only available after you disconnect.</p>
     <div class="row" style="justify-content:flex-end;gap:10px">
       <button type="button" id="cancelDisconnectStudio" class="btn ghost">Cancel</button>
       <button type="button" id="confirmDisconnectStudioBtn" class="btn" style="background:var(--red)">Disconnect</button>
@@ -907,7 +907,9 @@ $(function () {
 
   async function validateArtistStripeSetupAsync() {
     var paymentType = $('#payment_type').val();
-    if (paymentType !== 'artist_account' && paymentType !== 'studio_account') return true;
+    // Studio invite can be sent without the artist connecting Stripe first.
+    if (paymentType === 'studio_account') return true;
+    if (paymentType !== 'artist_account') return true;
     if (artistStripeConnected || window.stripeOnboardingComplete) return true;
     if (!@json($stripeConnectConfigured ?? false)) return true;
     if (!window.payoutBankCountrySelected) {
@@ -924,9 +926,7 @@ $(function () {
       await window.refreshStripeOnboardingStatus();
     }
     if (!window.stripeOnboardingComplete && !artistStripeConnected) {
-      var stripeMessage = paymentType === 'studio_account'
-        ? 'Please connect your bank account before inviting your studio.'
-        : 'Please complete Stripe payout setup before continuing.';
+      var stripeMessage = 'Please complete Stripe payout setup before continuing.';
       $('#stripe_connect_error').text(stripeMessage).removeClass('hidden');
       showPaymentAlert(stripeMessage, 'error');
       if (typeof window.scrollToFirstOnboardingError === 'function') {
@@ -998,9 +998,13 @@ $(function () {
           if (typeof window.lockPayoutOptions === 'function') {
             if (paymentType === 'artist_account') {
               window.lockPayoutOptions('artist');
-            } else if (paymentType === 'studio_account') {
+            } else if (paymentType === 'studio_account' || data.studio_payout_committed) {
               window.lockPayoutOptions('studio');
+              window.studioPayoutCommitted = true;
             }
+          }
+          if (data.studio_invite_sent || data.studio_payout_committed) {
+            try { sessionStorage.setItem('bp-pay-toast', data.message || 'Invite sent to your studio.'); } catch (e) {}
           }
                 resolve(data);
           window.location.href = data.redirect;
@@ -1059,6 +1063,17 @@ $(function () {
   var canAutoFinishArtist = (artistStripeConnected || window.stripeOnboardingComplete)
     && paymentTypeOnLoad === 'artist_account'
     && !window.studioDraftWithStripe;
+  var canAutoFinishStudio = (artistStripeConnected || window.stripeOnboardingComplete)
+    && paymentTypeOnLoad === 'studio_account'
+    && !!window.studioPayoutCommitted;
+
+  try {
+    var payToast = sessionStorage.getItem('bp-pay-toast');
+    if (payToast) {
+      sessionStorage.removeItem('bp-pay-toast');
+      showPaymentAlert(payToast, 'ok');
+    }
+  } catch (e) {}
 
   if (artistStripeConnected || window.stripeOnboardingComplete) {
     if (typeof window.updatePaymentSkipUi === 'function') {
@@ -1066,7 +1081,7 @@ $(function () {
     }
   }
 
-  if (canAutoFinishArtist) {
+  if (canAutoFinishArtist || canAutoFinishStudio) {
     setTimeout(function () {
       if (typeof window.tryAutoFinishOnboarding === 'function') {
         window.tryAutoFinishOnboarding().catch(function () {});

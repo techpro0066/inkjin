@@ -73,8 +73,9 @@
     }
     aside nav a,aside nav button.navlink{
       display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px;
-      font-weight:500;font-size:14.5px;color:#DEDEDE;text-decoration:none;
-      border:0;background:none;font:inherit;cursor:pointer;width:100%;text-align:left
+      font-family:inherit;font-weight:500;font-size:14.5px;line-height:normal;
+      color:#DEDEDE;text-decoration:none;
+      border:0;background:none;cursor:pointer;width:100%;text-align:left
     }
     aside nav a .ms,aside nav button.navlink .ms{font-size:21px;color:#DEDEDE}
     aside nav a.on,aside nav button.navlink.on{background:#fff;color:var(--pri);font-weight:600}
@@ -87,10 +88,11 @@
     .foot{margin-top:auto;flex-shrink:0}
     .foot > nav{margin:0}
     .foot .logout-btn{
-      display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:0;border-radius:12px;
-      background:none;color:#a8a8a8;font:inherit;font-weight:500;cursor:pointer
+      display:flex;align-items:center;gap:12px;width:100%;padding:9px 12px;border:0;border-radius:12px;
+      background:none;color:#a8a8a8;font-family:inherit;font-weight:500;font-size:14.5px;line-height:normal;
+      cursor:pointer;text-align:left
     }
-    .foot .logout-btn .ms{color:#a8a8a8}
+    .foot .logout-btn .ms{font-size:21px;color:#a8a8a8}
     .user{
       display:flex;gap:10px;align-items:center;padding:14px 8px 0;border-top:1px solid #333;margin-top:10px;
       text-decoration:none;color:inherit
@@ -103,8 +105,8 @@
     .av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2}
     .av .ini{position:relative;z-index:1}
     .av.has-img .ini{display:none}
-    .user b{font-size:13px;color:#fff;display:block}
-    .user span{font-size:11.5px;color:#9a9a9a;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+    .user b{font-size:13px;font-weight:700;color:#fff;display:block}
+    .user span{font-size:11.5px;font-weight:400;color:#9a9a9a;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
 
     main{
       flex:1;min-width:0;min-height:0;height:100%;
@@ -119,7 +121,8 @@
     .btn{
       display:inline-flex;align-items:center;justify-content:center;gap:8px;
       background:var(--ink);color:#fff;border:0;border-radius:10px;padding:10px 16px;
-      font:inherit;font-weight:600;font-size:13.5px;white-space:nowrap;cursor:pointer;text-decoration:none
+      font-family:inherit;font-weight:600;font-size:13.5px;line-height:normal;
+      white-space:nowrap;cursor:pointer;text-decoration:none
     }
     .btn .ms{font-size:18px}
     .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
@@ -137,6 +140,12 @@
     .tint{background:var(--tint);border:1px solid var(--tintline);border-radius:16px}
     .ch{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line)}
     .ch h3,h3{font-size:16px;font-weight:700;margin:0}
+    .ch .l{font-weight:600;font-size:13px;display:inline-flex;gap:4px;align-items:center;color:var(--pri);text-decoration:none}
+    .ch .l:hover{text-decoration:underline}
+    .btn.disabled,.btn[aria-disabled="true"]{opacity:.45;pointer-events:none;cursor:not-allowed}
+    .bpw-toast{position:fixed;bottom:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:2000;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;max-width:calc(100% - 32px);opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s,transform .2s}
+    .bpw-toast.on{opacity:1;transform:translateY(0);pointer-events:auto}
+    .bpw-toast .ms{color:#3DD68C}
     .muted{color:var(--muted)}.faint{color:var(--faint)}
     .pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;font-size:11.5px;font-weight:600;padding:3px 9px;white-space:nowrap}
     .pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
@@ -149,7 +158,12 @@
     .lbl{font-size:11px;letter-spacing:.8px;font-weight:700;color:var(--muted);text-transform:uppercase}
     .fl{font-size:13px;font-weight:700;margin-bottom:6px;display:block}
     .help{font-size:12px;color:var(--faint);margin-top:6px}
-    .in{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:13.5px;display:flex;align-items:center;gap:8px;min-height:40px;width:100%;font:inherit;color:var(--ink);outline:none}
+    .in{
+      background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 13px;
+      font-family:inherit;font-size:13.5px;font-weight:400;line-height:normal;
+      display:flex;align-items:center;gap:8px;min-height:40px;width:100%;color:var(--ink);outline:none
+    }
+    input.in{display:block}
     .in.ph{color:var(--faint)}
     input.in:focus,.in:focus-within{border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF}
     .in .ms{font-size:18px;color:var(--faint)}
@@ -166,6 +180,7 @@
     .note .ms{font-size:18px}
     .help-q{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-left:8px;border-radius:50%;color:#9A929E;vertical-align:middle;text-decoration:none;position:relative;top:-2px}
     .help-q .ms{font-size:22px}.help-q:hover{color:#3E007C;background:#F3E8FF}
+    .help-q:focus-visible{outline:2px solid #3E007C;outline-offset:2px}
 
     @media (max-width:900px){
       body{flex-direction:column;height:auto;min-height:100vh;min-height:100dvh;overflow:auto}
@@ -232,6 +247,10 @@
       <a href="https://help.inkjin.com" target="_blank" rel="noopener" data-intercom-get-help>
         <span class="ms">help</span>Get Help
       </a>
+      <a href="https://www.instagram.com/direct/t/17845585272021190/" target="_blank" rel="noopener" class="reqf" aria-label="Request feature (opens in a new tab)">
+        <span class="ms">lightbulb</span>Request feature
+        <span class="ms" aria-hidden="true" style="font-size:15px;margin-left:auto;opacity:.55">open_in_new</span>
+      </a>
     </nav>
 
     <div class="foot">
@@ -267,5 +286,17 @@
   @stack('scripts')
   @yield('scripts')
   @include('layouts.partials.intercom-messenger')
+  <script src="{{ asset('js/chat-unread-badge.js') }}?v=1" defer data-api-base="{{ url('/api/chat') }}"></script>
+  <script>
+    (function () {
+      var dot = document.getElementById('inboxUnreadDot');
+      if (!dot) return;
+      var obs = new MutationObserver(function () {
+        var has = !dot.classList.contains('hidden') && (dot.textContent || '').trim() !== '';
+        dot.style.display = has ? '' : 'none';
+      });
+      obs.observe(dot, { attributes: true, childList: true, characterData: true, subtree: true });
+    })();
+  </script>
 </body>
 </html>

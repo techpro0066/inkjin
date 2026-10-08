@@ -35,6 +35,7 @@ class OtherSettingsController extends Controller
             'registrationCountries' => $registrationCountries,
             'currentCountry' => $currentCountry,
             'countryDefaults' => $this->locationPreferences->preferencesMapForCountries($countryCodes),
+            'activeNav' => 'account',
         ]);
     }
 

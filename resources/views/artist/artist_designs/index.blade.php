@@ -922,7 +922,7 @@
                 <div class="design-ai-overlay" aria-live="polite">
                   <span class="material-symbols-outlined">auto_awesome</span>
                   <p class="text-xs font-semibold leading-snug">Filling empty fields with AI…</p>
-                </div>
+              </div>
             </div>
             <input type="file" id="designImage" name="designImage" accept="image/*" class="hidden">
             <input type="hidden" id="designImageData" name="designImageData" value="">

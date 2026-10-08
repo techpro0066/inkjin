@@ -1835,7 +1835,11 @@
           method: 'POST',
           credentials: 'include',
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': rcCsrfToken },
-          body: JSON.stringify({ email: email })
+          body: JSON.stringify({
+            email: email,
+            name: String(document.getElementById('tfName')?.value || '').trim(),
+            artist_username: rcArtistUsername || artistUsername || ''
+          })
         });
         var payload = await res.json();
         if (!res.ok) {

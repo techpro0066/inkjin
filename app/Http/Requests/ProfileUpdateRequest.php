@@ -22,7 +22,7 @@ class ProfileUpdateRequest extends FormRequest
         $userDetail = $user ? $user->userDetail : null;
 
         return [
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,heif,heic', 'max:2048'],
+            'avatar' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,heif,heic', 'max:2048'],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'user_name' => [
@@ -34,9 +34,9 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(UserDetail::class, 'user_name')->ignore($userDetail?->id),
                 new ReservedArtistUsername($user->email),
             ],
-            'display_name' => ['nullable', 'string', 'max:100'],
-            'personal_page_tagline' => ['nullable', 'string', 'max:255'],
-            'personal_page_description' => ['nullable', 'string', 'max:500'],
+            'display_name' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'personal_page_tagline' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'personal_page_description' => ['sometimes', 'nullable', 'string', 'max:500'],
             'mobile_number' => [
                 'required',
                 'string',

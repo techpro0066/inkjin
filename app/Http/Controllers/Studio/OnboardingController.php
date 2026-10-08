@@ -22,7 +22,7 @@ class OnboardingController extends Controller
         $user = $request->user();
         $studio = $this->resolveStudio($user);
 
-        $studioName = trim((string) ($studio?->name ?? $user->userDetail?->studio_name ?? ''));
+        $studioName = trim((string) ($studio?->name ?? $user->userDetail?->resolvedStudioName() ?? ''));
         if ($studioName === '') {
             $studioName = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
         }
@@ -499,10 +499,16 @@ class OnboardingController extends Controller
             ->with('status', 'onboarding-terms-saved');
     }
 
-    public function payouts(Request $request, StripeConnectService $stripeConnect): View
+    public function payouts(Request $request, StripeConnectService $stripeConnect): View|RedirectResponse
     {
         $user = $request->user();
         $studio = $this->resolveStudio($user);
+
+        // Don't skip ahead — finish earlier onboarding steps first.
+        $next = self::nextIncompleteStepRoute($user, $studio);
+        if ($next !== route('studio.onboarding.payouts')) {
+            return redirect()->to($next);
+        }
 
         $offersSplit = $studio?->offers_revenue_split;
         if ($offersSplit === null) {
@@ -601,6 +607,9 @@ class OnboardingController extends Controller
         if ($request->boolean('complete_onboarding') && $user) {
             $user->on_boarding = 'yes';
             $user->save();
+            app(\App\Services\MailcoachSubscriberService::class)
+                ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_STUDIO);
+            app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
         }
 
         if ($request->expectsJson()) {
@@ -825,5 +834,79 @@ class OnboardingController extends Controller
             'contact_email' => $user->email,
             'business_phone' => $user->phone_number,
         ]);
+    }
+
+    /**
+     * First unfinished studio onboarding step route (profile → owner → location → terms → payouts).
+     */
+    public static function nextIncompleteStepRoute($user, ?Studio $studio): string
+    {
+        if (! self::isProfileStepComplete($studio)) {
+            return route('studio.onboarding.profile');
+        }
+        if (! self::isOwnerStepComplete($user, $studio)) {
+            return route('studio.onboarding.owner');
+        }
+        if (! self::isLocationStepComplete($studio)) {
+            return route('studio.onboarding.location');
+        }
+        if (! self::isTermsStepComplete($studio)) {
+            return route('studio.onboarding.terms');
+        }
+
+        return route('studio.onboarding.payouts');
+    }
+
+    private static function isProfileStepComplete(?Studio $studio): bool
+    {
+        if (! $studio) {
+            return false;
+        }
+
+        return trim((string) ($studio->name ?? '')) !== ''
+            && trim((string) ($studio->username ?? '')) !== ''
+            && trim((string) ($studio->business_phone ?? '')) !== ''
+            && trim((string) ($studio->logo_url ?? '')) !== '';
+    }
+
+    private static function isOwnerStepComplete($user, ?Studio $studio): bool
+    {
+        if (! $user || ! $studio) {
+            return false;
+        }
+
+        $first = trim((string) ($user->first_name ?? ''));
+        $last = trim((string) ($user->last_name ?? ''));
+        $phone = trim((string) ($user->phone_number ?? ''));
+
+        return $first !== ''
+            && strcasecmp($first, 'Studio') !== 0
+            && $last !== ''
+            && $phone !== ''
+            && $studio->owner_is_artist !== null
+            && trim((string) ($studio->image_url ?? '')) !== '';
+    }
+
+    private static function isLocationStepComplete(?Studio $studio): bool
+    {
+        if (! $studio) {
+            return false;
+        }
+
+        return trim((string) ($studio->studio_type ?? '')) !== ''
+            && trim((string) ($studio->street_name ?? '')) !== ''
+            && trim((string) ($studio->city ?? '')) !== ''
+            && trim((string) ($studio->country ?? '')) !== '';
+    }
+
+    private static function isTermsStepComplete(?Studio $studio): bool
+    {
+        if (! $studio) {
+            return false;
+        }
+
+        // Both stay null until the terms step is saved.
+        return $studio->offers_revenue_split !== null
+            || $studio->offers_workstation_rent !== null;
     }
 }

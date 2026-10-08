@@ -1,6 +1,6 @@
 @php
   $authUser = auth()->user();
-  $studioName = $studioName ?? ($authUser?->userDetail?->studio_name ?? 'Studio');
+  $studioName = $studioName ?? ($authUser?->userDetail?->resolvedStudioName() ?: 'Studio');
   $studioEmail = $studioEmail ?? ($authUser?->email ?? '');
   $studioInitials = $studioInitials ?? strtoupper(substr(preg_replace('/\s+/', '', (string) $studioName) ?: 'ST', 0, 2));
   $activeNav = $activeNav ?? 'home';

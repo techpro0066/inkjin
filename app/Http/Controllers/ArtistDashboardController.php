@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\GoogleCalendarEventRequiredException;
+use App\Models\ArtistDesign;
+use App\Models\ArtistFaq;
 use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\CustomRequest;
 use App\Models\PaymentLink;
 use App\Models\Placement;
+use App\Models\Portfolio;
 use App\Models\QuestionSorting;
 use App\Models\Style;
 use App\Models\User;
@@ -59,16 +62,65 @@ class ArtistDashboardController extends Controller
         $canCreatePaymentLinks = $userDetail
             ? $this->payoutService->canAcceptClientPayments($userDetail)
             : false;
+        $schedulingType = $userDetail?->scheduling_type ?? '';
+        $isAutoScheduling = $schedulingType === 'auto';
+        $paymentLinksBlockedMessage = $canCreatePaymentLinks || ! $userDetail
+            ? null
+            : $this->payoutService->clientPaymentsBlockedMessage($userDetail);
+
+        $artistId = (int) Auth::id();
+        $hasPortfolio = Portfolio::query()->where('user_id', $artistId)->exists();
+        $hasFlashDesign = ArtistDesign::query()->where('user_id', $artistId)->exists();
+        $hasFaq = ArtistFaq::query()->where('user_id', $artistId)->exists();
+        $hasTaglineAndBio = $userDetail
+            && trim((string) ($userDetail->personal_page_tagline ?? '')) !== ''
+            && trim((string) ($userDetail->personal_page_description ?? '')) !== '';
+        $hasBanner = $userDetail
+            && trim((string) ($userDetail->personal_page_background_image ?? '')) !== '';
 
         return view('artist.dashboard', [
             'needsWeeklyAvailabilitySetup' => $needsWeeklyAvailabilitySetup,
             'showCustomizePageNotice' => $showCustomizePageNotice,
+            'showWelcomePopup' => $userDetail && $userDetail->welcome_seen_at === null,
             'canCreatePaymentLinks' => $canCreatePaymentLinks,
+            'isAutoScheduling' => $isAutoScheduling,
+            'paymentLinksBlockedMessage' => $paymentLinksBlockedMessage,
             'recentCustomRequests' => $recentCustomRequests,
             'pendingCustomRequestsCount' => $pendingCustomRequestsCount,
             'dashboardStats' => $dashboard['stats'],
             'recentBookings' => $dashboard['recent_bookings'],
+            'profileChecklist' => [
+                'stripe' => $canCreatePaymentLinks,
+                'hours' => ! $needsWeeklyAvailabilitySetup,
+                'books_open' => ! ($userDetail && ($userDetail->availability_status ?? '') === 'closed'),
+                'portfolio' => $hasPortfolio,
+                'flash' => $hasFlashDesign,
+                'tagline_bio' => (bool) $hasTaglineAndBio,
+                'faq' => $hasFaq,
+                'banner' => (bool) $hasBanner,
+                'instagram_bio' => (bool) ($userDetail?->instagram_bio_added_at),
+            ],
         ]);
+    }
+
+    public function markWelcomeSeen(Request $request): JsonResponse
+    {
+        $userDetail = $request->user()?->userDetail;
+        if ($userDetail && $userDetail->welcome_seen_at === null) {
+            $userDetail->forceFill(['welcome_seen_at' => now()])->save();
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function markInstagramBioAdded(Request $request): JsonResponse
+    {
+        $userDetail = $request->user()?->userDetail;
+        if ($userDetail && $userDetail->instagram_bio_added_at === null) {
+            $userDetail->forceFill(['instagram_bio_added_at' => now()])->save();
+        }
+
+        return response()->json(['success' => true]);
     }
 
     private function rejectIfCannotCreatePaymentLinks(): ?JsonResponse
@@ -359,6 +411,12 @@ class ArtistDashboardController extends Controller
             'payer_phone' => trim((string) $request->input('phone')) ?: $paymentLink->payer_phone,
             'slot_ymd' => $request->input('slot_ymd') ?: $paymentLink->slot_ymd,
             'slot_time' => $request->input('slot_time') ?: $paymentLink->slot_time,
+        ]);
+
+        $artistDetail = UserDetail::query()->where('user_id', $paymentLink->artist_id)->first();
+        $request->merge([
+            'artist_name' => $artistDetail?->publicDisplayName() ?: '',
+            'artist_username' => $artistDetail?->user_name ?: '',
         ]);
 
         $otpResponse = app(InkJinController::class)->sendBookingOtp(
@@ -1067,7 +1125,7 @@ class ArtistDashboardController extends Controller
 
         $username = trim((string) ($userDetail->user_name ?? ''));
         $studioParts = array_filter([
-            trim((string) ($userDetail->studio_name ?? '')),
+            $userDetail->resolvedStudioName(),
             trim((string) ($userDetail->city ?? '')),
         ]);
 

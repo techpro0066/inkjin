@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Schema;
 
 class UserDetail extends Model
 {
@@ -13,6 +15,7 @@ class UserDetail extends Model
         'display_name',
         'mobile_number',
         'tattoo_styles',
+        'extra_services',
         'social_links',
         'country',
         'city',
@@ -83,6 +86,8 @@ class UserDetail extends Model
         'display_guest_spots',
         'display_faq',
         'customize_page_notice_dismissed',
+        'welcome_seen_at',
+        'instagram_bio_added_at',
         'design_whats_included',
         'design_whats_included_is_active',
         'aftercare_send_automatically',
@@ -93,6 +98,7 @@ class UserDetail extends Model
     protected $casts = [
         'completed_steps' => 'array',
         'tattoo_styles' => 'array',
+        'extra_services' => 'array',
         'social_links' => 'array',
         'google_calendar_token' => 'array',
         'instagram_access_token' => 'encrypted',
@@ -106,6 +112,8 @@ class UserDetail extends Model
         'stripe_requirement' => 'boolean',
         'color_percent' => 'float',
         'customize_page_notice_dismissed' => 'boolean',
+        'welcome_seen_at' => 'datetime',
+        'instagram_bio_added_at' => 'datetime',
         'display_policies' => 'boolean',
         'display_tagline' => 'boolean',
         'display_bio' => 'boolean',
@@ -141,20 +149,163 @@ class UserDetail extends Model
     }
 
     /**
+     * Active workplace / membership row (user_studios), when the table exists.
+     */
+    public function activeUserStudio(): ?UserStudio
+    {
+        if (! $this->user_id || ! UserStudio::tableReady()) {
+            return null;
+        }
+
+        return UserStudio::activeForUser((int) $this->user_id);
+    }
+
+    /**
+     * Studio membership used for payout (payout=true + studio_id).
+     */
+    public function payoutUserStudio(): ?UserStudio
+    {
+        if (! $this->user_id || ! UserStudio::tableReady()) {
+            return null;
+        }
+
+        return UserStudio::payoutLinkForUser((int) $this->user_id);
+    }
+
+    /**
+     * Resolved linked studio id: payout user_studios row, else legacy user_details.studio_id.
+     */
+    public function resolvedStudioId(): ?int
+    {
+        $link = $this->payoutUserStudio() ?? $this->activeUserStudio();
+        if ($link?->studio_id) {
+            return (int) $link->studio_id;
+        }
+
+        if (Schema::hasColumn($this->getTable(), 'studio_id') && ! empty($this->attributes['studio_id'] ?? null)) {
+            return (int) $this->attributes['studio_id'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Prefer user_studios.studio_id when the legacy column is empty / removed.
+     */
+    protected function studioId(): Attribute
+    {
+        return Attribute::make(
+            get: function (mixed $value) {
+                if ($value !== null && $value !== '') {
+                    return (int) $value;
+                }
+
+                $link = $this->payoutUserStudio() ?? $this->activeUserStudio();
+
+                return $link?->studio_id ? (int) $link->studio_id : null;
+            },
+            set: fn (mixed $value) => $value,
+        );
+    }
+
+    /**
+     * Prefer user_studios.revenue_split when legacy column is empty / removed.
+     */
+    protected function studioRevenueArtistPercent(): Attribute
+    {
+        return Attribute::make(
+            get: function (mixed $value) {
+                if ($value !== null && $value !== '') {
+                    return (int) $value;
+                }
+
+                $link = $this->payoutUserStudio() ?? $this->activeUserStudio();
+
+                return $link?->revenue_split !== null ? (int) $link->revenue_split : null;
+            },
+            set: fn (mixed $value) => $value,
+        );
+    }
+
+    /**
+     * Canonical studio display name: studios.name when linked, else user_studios / user_details name.
+     */
+    public function resolvedStudioName(): string
+    {
+        $studioId = $this->resolvedStudioId();
+        if ($studioId) {
+            $studio = $this->relationLoaded('studio') && (int) ($this->studio?->id ?? 0) === $studioId
+                ? $this->studio
+                : Studio::query()->find($studioId);
+            $fromStudio = trim((string) ($studio?->name ?? ''));
+            if ($fromStudio !== '') {
+                return $fromStudio;
+            }
+        }
+
+        $link = $this->activeUserStudio();
+        $fromLink = trim((string) ($link?->studio_name ?? ''));
+        if ($fromLink !== '') {
+            return $fromLink;
+        }
+
+        if (Schema::hasColumn($this->getTable(), 'studio_name')) {
+            return trim((string) ($this->attributes['studio_name'] ?? ''));
+        }
+
+        return '';
+    }
+
+    /**
+     * Prefer studios.name for linked artists; keep user_details.studio_name as fallback / denormalized copy.
+     * Writes still persist user_details.studio_name when the column exists.
+     */
+    protected function studioName(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $this->resolvedStudioName() !== ''
+                ? $this->resolvedStudioName()
+                : $value,
+            set: function (?string $value) {
+                $name = is_string($value) ? trim($value) : '';
+                $stored = $name !== '' ? $name : null;
+
+                $studioId = $this->resolvedStudioId();
+                if ($this->exists && $studioId && $stored !== null) {
+                    $studio = Studio::query()->find($studioId);
+
+                    if ($studio && (int) ($studio->user_id ?? 0) === (int) ($this->user_id ?? 0)
+                        && trim((string) ($studio->name ?? '')) !== $stored) {
+                        $studio->forceFill(['name' => $stored])->save();
+                    }
+                }
+
+                return $stored;
+            },
+        );
+    }
+
+    /**
      * Studio location as separate lines for checkout summaries.
      *
      * @return list<string>
      */
     public function studioLocationLines(): array
     {
+        $link = $this->activeUserStudio();
         $studioLine = $this->studioNameWithCityCountry();
 
-        $streetLine = trim(trim((string) ($this->street_number ?? '')).' '.trim((string) ($this->street_name ?? '')));
+        $streetNumber = $link?->street_number ?? ($this->attributes['street_number'] ?? null);
+        $streetName = $link?->street_name ?? ($this->attributes['street_name'] ?? null);
+        $studioAddress = $link?->studio_address ?? ($this->attributes['studio_address'] ?? null);
+        $postalCode = $link?->postal_code ?? ($this->attributes['postal_code'] ?? null);
+
+        $streetLine = trim(trim((string) $streetNumber).' '.trim((string) $streetName));
         if ($streetLine === '') {
-            $streetLine = trim((string) ($this->studio_address ?? ''));
+            $streetLine = trim((string) $studioAddress);
         }
 
-        $postalCode = trim((string) ($this->postal_code ?? ''));
+        $postalCode = trim((string) $postalCode);
 
         return array_values(array_filter([
             $studioLine,
@@ -168,11 +319,32 @@ class UserDetail extends Model
      */
     public function studioNameWithCityCountry(): string
     {
+        $link = $this->activeUserStudio();
+
         return implode(', ', array_values(array_filter([
-            trim((string) ($this->studio_name ?? '')),
-            trim((string) ($this->city ?? '')),
-            trim((string) ($this->country ?? '')),
+            $this->resolvedStudioName(),
+            trim((string) ($link?->city ?? $this->attributes['city'] ?? '')),
+            trim((string) ($link?->country ?? $this->attributes['country'] ?? '')),
         ], fn (string $part) => $part !== '')));
+    }
+
+    /**
+     * Artist % for studio payout: prefer user_studios.revenue_split.
+     */
+    public function resolvedStudioRevenueArtistPercent(int $default = 50): int
+    {
+        $link = $this->payoutUserStudio() ?? $this->activeUserStudio();
+        if ($link && $link->revenue_split !== null) {
+            return max(0, min(100, (int) $link->revenue_split));
+        }
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn($this->getTable(), 'studio_revenue_artist_percent')
+            && isset($this->attributes['studio_revenue_artist_percent'])
+            && $this->attributes['studio_revenue_artist_percent'] !== null) {
+            return max(0, min(100, (int) $this->attributes['studio_revenue_artist_percent']));
+        }
+
+        return max(0, min(100, $default));
     }
 
     /**
