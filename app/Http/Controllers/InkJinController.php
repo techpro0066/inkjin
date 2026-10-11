@@ -660,18 +660,24 @@ class InkJinController extends Controller
             abort(404, 'Artist not found');
         }
 
-        $artistDesigns = $userDetail->user->artistDesigns()
-            ->where('is_active', true)
-            ->withSoldOutState()
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
+        $displayDesigns = (bool) ($userDetail->display_designs ?? true);
+        $artistDesigns = $displayDesigns
+            ? $userDetail->user->artistDesigns()
+                ->where('is_active', true)
+                ->withSoldOutState()
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+            : collect();
 
-        $artistPortfolios = $userDetail->user->portfolios()
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
+        $displayPortfolio = (bool) ($userDetail->display_portfolio ?? true);
+        $artistPortfolios = $displayPortfolio
+            ? $userDetail->user->portfolios()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+            : collect();
 
         $guestSpots = $userDetail->display_guest_spots
             ? $userDetail->user->guestSpots()->orderBy('sort_order')->orderBy('id')->get()

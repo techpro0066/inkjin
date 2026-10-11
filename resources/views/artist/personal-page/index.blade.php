@@ -1,1797 +1,1196 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
-@section('title', 'Personal Page')
+@section('title', 'My Page')
+
+@php
+  $userDetail = $userDetail ?? $user->userDetail;
+  $myPageTab = $myPageTab ?? 'about';
+  $styleOptions = $styleOptions ?? [];
+  $ts = is_array($userDetail->tattoo_styles ?? null) ? $userDetail->tattoo_styles : [];
+  $since = $ts['tattooing_since'] ?? null;
+  $primary = $ts['primary_style'] ?? null;
+  $otherList = [];
+  if (isset($ts['other_styles']) && is_array($ts['other_styles'])) {
+    $otherList = array_values(array_filter(array_map('strval', $ts['other_styles'])));
+  } elseif (array_is_list($ts)) {
+    $otherList = $ts;
+  }
+  if ($primary && ! array_key_exists($primary, $styleOptions)) {
+    $styleOptions[$primary] = ucwords(str_replace('-', ' ', (string) $primary));
+  }
+  foreach ($otherList as $os) {
+    if ($os !== '' && ! array_key_exists($os, $styleOptions)) {
+      $styleOptions[$os] = ucwords(str_replace('-', ' ', (string) $os));
+    }
+  }
+  $extraServices = is_array($userDetail->extra_services ?? null) ? $userDetail->extra_services : [];
+  $extraServiceList = is_array($extraServices['services'] ?? null) ? $extraServices['services'] : [];
+  $extraServiceOther = trim((string) ($extraServices['other'] ?? ''));
+  $sl = is_array($userDetail->social_links ?? null) ? $userDetail->social_links : [];
+  $selectedAlias = in_array($userDetail->personal_page_name_alias, ['username', 'display_name'], true)
+      ? $userDetail->personal_page_name_alias
+      : 'username';
+  $displayTagline = (bool) ($userDetail->display_tagline ?? false);
+  $displayBio = (bool) ($userDetail->display_bio ?? false);
+  $tagline = (string) ($userDetail->personal_page_tagline ?? '');
+  $bio = (string) ($userDetail->personal_page_description ?? '');
+  $username = trim((string) ($userDetail->user_name ?? ''));
+  $displayName = trim((string) ($userDetail->display_name ?? ''));
+  $firstName = (string) ($user->first_name ?? '');
+  $lastName = (string) ($user->last_name ?? '');
+  $avatarPath = trim((string) ($userDetail->avatar ?? ''));
+  $avatarUrl = $avatarPath !== ''
+      ? (str_starts_with($avatarPath, 'http') ? $avatarPath : asset(ltrim($avatarPath, '/')))
+      : null;
+  $publicPageUrl = $username !== '' ? url('/@'.$username) : null;
+  $publicPageHost = 'inkjin.com/@'.($username !== '' ? $username : 'username');
+  $quickLinkRows = $username !== '' ? [
+    ['suffix' => '', 'label' => $publicPageHost],
+    ['suffix' => '#designs', 'label' => $publicPageHost.'#designs'],
+    ['suffix' => '#portfolio', 'label' => $publicPageHost.'#portfolio'],
+    ['suffix' => '#guest-spots', 'label' => $publicPageHost.'#guest-spots'],
+    ['suffix' => '#policies', 'label' => $publicPageHost.'#policies'],
+    ['suffix' => '#faq', 'label' => $publicPageHost.'#faq'],
+  ] : [];
+  $studioName = trim((string) ($userDetail->resolvedStudioName() ?? ''));
+  $city = trim((string) ($userDetail->city ?? ''));
+  $previewMeta = trim(implode(' · ', array_filter([
+    $username !== '' ? '@'.$username : null,
+    $studioName !== '' ? $studioName : null,
+    $city !== '' ? $city : null,
+  ])));
+  $whatsIncluded = $userDetail->activeDesignWhatsIncludedItems();
+  $whatsIncludedText = $whatsIncluded !== []
+      ? implode(' · ', $whatsIncluded)
+      : 'Sizing consultation · Stencil preview · Aftercare';
+  $primaryLabel = $primary && isset($styleOptions[$primary])
+      ? $styleOptions[$primary]
+      : ($primary ? ucwords(str_replace('-', ' ', (string) $primary)) : '');
+  $styleAllJson = collect($styleOptions)->map(fn ($lab, $val) => ['v' => $val, 'l' => $lab])->values()->toJson();
+  $otherJson = json_encode(array_values($otherList));
+@endphp
 
 @section('styles')
-
-<link href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <style>
-    /* Radio card */
-    .radio-card { border: 2px solid #cac4d3; border-radius: 16px; padding: 16px; cursor: pointer; transition: all 0.2s; }
-    .radio-card:hover { border-color: #664db1; }
-    .radio-card.selected { border-color: #310f7a; background: rgba(49,15,122,0.04); }
-    .radio-card.selected .radio-dot { background: #310f7a; border-color: #310f7a; }
-    .radio-card.selected .radio-dot::after { content: ''; display: block; width: 8px; height: 8px; background: white; border-radius: 50%; }
-    .radio-dot { width: 20px; height: 20px; border: 2px solid #7a7583; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
-
-    /* Theme card */
-    .theme-card { border: 2px solid #cac4d3; border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.2s; position: relative; }
-    .theme-card:hover { border-color: #664db1; }
-    .theme-card.selected { border-color: #310f7a; }
-    .theme-card .theme-check { display: none; position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: #310f7a; border-radius: 50%; color: white; align-items: center; justify-content: center; }
-    .theme-card.selected .theme-check { display: flex; }
-    .theme-swatch { height: 40px; width: 100%; }
-    .theme-label { padding: 10px 12px; font-size: 13px; font-weight: 600; color: #1c1b21; }
-
-    /* Upload areas */
-    .banner-upload { border: 2px dashed #cac4d3; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; background: white; }
-    .banner-upload:hover { border-color: #664db1; background: #f8f1fb; }
-    .banner-upload.has-image {
-      height: 220px;
-      padding: 0;
-      border-style: solid;
-      border-color: rgba(49,15,122,0.2);
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      overflow: hidden;
-      position: relative;
-    }
-    .banner-upload .upload-overlay {
-      display: none;
-      position: absolute;
-      inset: 0;
-      background: rgba(20, 20, 20, 0.42);
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: 600;
-      align-items: center;
-      justify-content: center;
-      letter-spacing: 0.02em;
-    }
-    .banner-upload.has-image .upload-prompt { display: none; }
-    .banner-upload.has-image .upload-overlay { display: flex; }
-    .banner-upload.has-image:hover .upload-overlay { background: rgba(20, 20, 20, 0.55); }
-    .banner-remove-btn {
-      font-size: 13px;
-      font-weight: 600;
-      color: #b3261e;
-      padding: 6px 12px;
-      border-radius: 10px;
-      transition: background 0.2s;
-    }
-    .banner-remove-btn:hover { background: rgba(179, 38, 30, 0.08); }
-    .profile-upload { width: 96px; height: 96px; border-radius: 50%; border: 2px dashed #cac4d3; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; background: white; margin-top: -48px; margin-left: 24px; position: relative; z-index: 1; }
-    .profile-upload:hover { border-color: #664db1; background: #f8f1fb; }
-
-    .cropper-backdrop { background: rgba(0, 0, 0, 0.65); }
-    .cropper-wrapper {
-      background: #ffffff;
-      border-radius: 20px;
-      width: min(92vw, 920px);
-      max-height: 90vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-    }
-    .cropper-stage {
-      background: #f5f4f8;
-      min-height: 340px;
-      height: min(58vh, 520px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-    #bannerCropImage {
-      max-width: 100%;
-      max-height: 100%;
-      display: block;
-    }
-
-    .toggle-switch { width: 48px; height: 26px; border-radius: 13px; background: #cac4d3; cursor: pointer; position: relative; transition: background 0.3s; flex-shrink: 0; }
-    .toggle-switch.active { background: #310f7a; }
-    .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: transform 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
-    .toggle-switch.active::after { transform: translateX(22px); }
-
-    /* What's included editor */
-    .included-item-row { display: flex; align-items: center; gap: 0.5rem; }
-    .included-item-row input { flex: 1; min-width: 0; }
-    .included-item-remove {
-      width: 2rem;
-      height: 2rem;
-      border-radius: 0.5rem;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      color: #7a7583;
-      flex-shrink: 0;
-      transition: background 0.15s, color 0.15s;
-    }
-    .included-item-remove:hover { background: #fce8e8; color: #ba1a1a; }
-    .included-item-remove.is-hidden { visibility: hidden; pointer-events: none; }
-    .included-preset-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      padding: 0.375rem 0.75rem;
-      border-radius: 9999px;
-      font-size: 12px;
-      font-weight: 600;
-      border: 1px dashed rgba(122, 117, 131, 0.45);
-      background: #fff;
-      color: #494552;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s, color 0.2s;
-    }
-    .included-preset-chip:hover:not(:disabled) {
-      border-color: #310f7a;
-      background: #f8f1fb;
-      color: #310f7a;
-    }
-    .included-preset-chip:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    /* Mobile overflow fixes */
-    @media (max-width: 1023px) {
-      .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
-      body { overflow-x: hidden; }
+  .mp-page .tog{width:38px;height:22px;border-radius:12px;background:#D9D2DD;position:relative;flex-shrink:0;cursor:pointer}
+  .mp-page .tog:after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s}
+  .mp-page .tog.on{background:var(--pri)}.mp-page .tog.on:after{left:19px}
+  .mp-page .btn.pgsave{opacity:.4;pointer-events:none}
+  .mp-page .btn.pgsave.on{opacity:1;pointer-events:auto}
+  .mp-page select.in,.mp-page select.js-select2{width:100%}
+  .mp-page textarea.in{display:block;resize:vertical;min-height:74px;padding:10px 13px;line-height:1.45}
+  .mp-page .social-in{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:0 13px;min-height:40px}
+  .mp-page .social-in .ms{font-size:20px;flex-shrink:0}
+  .mp-page .social-in input{border:0;outline:none;background:transparent;font:inherit;font-size:13.5px;color:var(--ink);width:100%;min-width:0;padding:10px 0}
+  .mp-page .social-in input::placeholder{color:var(--faint)}
+  .mp-page .social-in:focus-within{border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF}
+  .mp-page .social-in.is-err{border-color:#C62828}
+  .mp-page .field-err{color:#C62828;font-size:12px;margin-top:6px}
+  .mp-page .field-err.hidden{display:none}
+  .mp-page .select2-container{width:100%!important;z-index:1;font-family:inherit}
+  .mp-page .select2-container--open{z-index:10060!important}
+  .mp-page .select2-container--default .select2-selection--single{
+    height:40px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:0 8px 0 4px
+  }
+  .mp-page .select2-container--default .select2-selection--single .select2-selection__rendered{
+    line-height:38px;padding-left:9px;color:var(--ink);font-size:13.5px
+  }
+  .mp-page .select2-container--default .select2-selection--single .select2-selection__placeholder{color:var(--faint)}
+  .mp-page .select2-container--default .select2-selection--single .select2-selection__arrow{height:38px;right:6px}
+  .mp-page .select2-container--default.select2-container--focus .select2-selection--single,
+  .mp-page .select2-container--default.select2-container--open .select2-selection--single{
+    border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF
+  }
+  .select2-dropdown{border:1px solid var(--line);border-radius:12px;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+  .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable{
+    background:#3E007C;color:#fff
+  }
+  .select2-container--default .select2-results__option--selected{background:#F7F3F9;color:#3E007C;font-weight:600}
+  .select2-container--default .select2-search--dropdown .select2-search__field{
+    border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13.5px;outline:none
+  }
+  .select2-container--default .select2-search--dropdown .select2-search__field:focus{
+    border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF
+  }
+  .mp-page .ql{position:relative}
+  .mp-page .ql-b{
+    display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:13.5px;
+    padding:9px 12px 9px 13px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);
+    cursor:pointer;white-space:nowrap
+  }
+  .mp-page .ql-b:hover{background:#F7F3F9}
+  .mp-page .ql-b:focus-visible{outline:2px solid #3E007C;outline-offset:2px}
+  .mp-page .ql-b .ms{font-size:18px}.mp-page .ql-b .cv{font-size:20px}
+  .mp-page .ql-p{
+    position:absolute;right:0;top:calc(100% + 8px);width:min(400px,calc(100vw - 32px));
+    background:#fff;border:1px solid #EAE2EE;border-radius:16px;box-shadow:0 18px 44px rgba(20,0,40,.18);
+    padding:6px;z-index:80
+  }
+  .mp-page .ql-p[hidden]{display:none}
+  .mp-page .ql-r{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:10px}
+  .mp-page .ql-r:hover{background:#F7F3F9}
+  .mp-page .ql-u{flex:1;min-width:0;font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mp-page .ql-u b{font-weight:700}
+  .mp-page .ql-i{
+    width:34px;height:34px;border-radius:9px;border:0;background:none;display:inline-flex;align-items:center;
+    justify-content:center;cursor:pointer;color:var(--ink);flex-shrink:0;text-decoration:none
+  }
+  .mp-page .ql-i:hover{background:#EFE7F3}
+  .mp-page .ql-i:focus-visible{outline:2px solid #3E007C;outline-offset:1px}
+  .mp-page .ql-i .ms{font-size:18px}.mp-page .ql-i.done .ms{color:#1F8A4C}
+  @media (max-width:600px){.mp-page .ql-p{right:auto;left:0}}
+  .mp-page .av-lg{
+    width:84px;height:84px;border-radius:50%;background:var(--pri);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;
+    overflow:hidden;position:relative;flex-shrink:0
+  }
+  .mp-page .av-lg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .mp-page .nmopt{flex:1;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;cursor:pointer}
+  .mp-page .nmopt.on{border:2px solid #3E007C;padding:11px 13px;background:#FDFAFF}
+  .mp-page .svcs{display:flex;flex-wrap:wrap;gap:8px}
+  .mp-page .svc{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:9px 13px;font-size:13.5px;font-weight:600;cursor:pointer;background:#fff;margin:0}
+  .mp-page .svc input{accent-color:#3E007C;width:17px;height:17px;margin:0}
+  .mp-page .svc:has(input:checked){border-color:#3E007C;background:#FBF5FF}
+  .mp-page .stwrap{position:relative}
+  .mp-page .stmenu{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(40,10,60,.16);max-height:240px;overflow-y:auto;z-index:30;padding:6px}
+  .mp-page .sto{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:none;font:inherit;font-size:14px;padding:11px 12px;border-radius:9px;cursor:pointer;text-align:left}
+  .mp-page .sto:hover{background:#F8F2FC}
+  .mp-page .sto .ms{font-size:20px;color:#C8BFCC}
+  .mp-page .sto.on .ms{color:#3E007C;font-variation-settings:'FILL' 1}
+  .mp-page .stchip{display:inline-flex;align-items:center;gap:6px;background:#3E007C;color:#fff;border:0;border-radius:20px;padding:6px 10px 6px 13px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+  .mp-page .stchip .ms{font-size:15px}
+  .mp-page .stempty{padding:12px;color:var(--faint);font-size:13px}
+  .mp-page .slrow{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:0 6px 0 12px;min-height:44px}
+  .mp-page .slrow input{border:0;outline:0;font:inherit;flex:1;min-width:0;background:none;font-size:14px}
+  .mp-page .slrow .slx{border:0;background:none;cursor:pointer;color:var(--muted);padding:6px;border-radius:8px}
+  .mp-page .slrow .slx:hover{background:#F3E8FF}
+  .mp-page .slrow:focus-within{border-color:#3E007C}
+  .mp-page .incadd{display:inline-flex;align-items:center;gap:6px;border:0;background:none;font:inherit;font-weight:700;font-size:14px;cursor:pointer;padding:10px 0;color:#1A1A1A}
+  .mp-page .incadd .ms{font-size:20px}
+  .mp-page .phone-frame{width:300px;margin:0 auto;border:8px solid #1A1A1A;border-radius:34px;overflow:hidden;background:#fff}
+  .mp-page .mp-toast{
+    position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;
+    font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);
+    display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));
+    transition:opacity .25s,transform .35s;pointer-events:none
+  }
+  .mp-page .mp-toast.on{opacity:1;transform:none}
+  .mp-page .mp-toast .ms{color:#3DD68C;font-size:20px}
+  .mp-page .mp-leave{
+    position:fixed;inset:0;background:rgba(20,10,30,.45);display:none;align-items:center;justify-content:center;z-index:500;padding:16px
+  }
+  .mp-page .mp-leave.on{display:flex}
+  .mp-page .mp-leave-box{background:#fff;border-radius:22px;width:420px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;position:relative}
+  .mp-page .mp-leave-x{
+    position:absolute;top:14px;right:14px;width:36px;height:36px;border:0;border-radius:10px;background:none;
+    color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0
+  }
+  .mp-page .mp-leave-x:hover{background:#F7F3F9;color:var(--ink)}
+  .mp-page .mp-leave-x .ms{font-size:22px}
+  .mp-page .mp-leave-x:focus-visible{outline:2px solid #3E007C;outline-offset:2px}
+  .mp-page .theme-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .mp-page .theme-card{
+    border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;cursor:pointer;
+    text-align:left;padding:0;font:inherit;position:relative
+  }
+  .mp-page .theme-card.on{border-color:#3E007C}
+  .mp-page .theme-swatch{display:block;height:40px;width:100%}
+  .mp-page .theme-label{display:block;padding:10px 12px;font-size:13px;font-weight:600}
+  .mp-page .theme-check{display:none;position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;background:#3E007C;color:#fff;font-size:16px;align-items:center;justify-content:center}
+  .mp-page .theme-card.on .theme-check{display:flex}
+  .mp-page .banner-upload{
+    border:2px dashed var(--line);border-radius:16px;padding:32px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;cursor:pointer;background:#fff;min-height:160px;
+    background-size:cover;background-position:center;position:relative;overflow:hidden
+  }
+  .mp-page .banner-upload.has-image{border-style:solid;padding:0;height:200px}
+  .mp-page .banner-upload.has-image .upload-prompt{display:none}
+  .mp-page .banner-upload .upload-overlay{
+    display:none;position:absolute;inset:0;background:rgba(20,20,20,.45);color:#fff;
+    font-weight:600;align-items:center;justify-content:center
+  }
+  .mp-page .banner-upload.has-image .upload-overlay{display:flex}
+  #pvnote[hidden]{display:none!important}
+  .mp-page .crop-ov{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px}
+  .mp-page .crop-ov.open{display:flex}
+  .mp-page .crop-box{width:100%;max-width:560px;background:#fff;border-radius:16px;padding:20px 22px;border:1px solid var(--line)}
+  .mp-page .crop-stage{width:100%;height:360px;background:#F7F2F8;border-radius:12px;overflow:hidden}
+  .mp-page .crop-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+  @media (max-width:1180px){
+    .mp-about-grid{grid-template-columns:minmax(0,1fr)!important}
+    .mp-about-grid > div:last-child{position:static!important}
+  }
+  @media (max-width:900px){
+    .mp-page .mp-toast{left:16px;right:16px;top:74px}
+    .mp-page .theme-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .mp-name-grid{grid-template-columns:1fr!important}
     }
 </style>
 @endsection
 
 @section('content')
-@php
-  $selectedAlias = in_array($userDetail->personal_page_name_alias, ['full', 'username', 'display_name'], true)
-      ? $userDetail->personal_page_name_alias
-      : 'full';
-  $selectedTheme = $userDetail->personal_page_color ?? 'default';
-  $displayPolicies = (bool) ($userDetail->display_policies ?? true);
-  $displayTagline = (bool) ($userDetail->display_tagline ?? true);
-  $displayBio = (bool) ($userDetail->display_bio ?? false);
-  $displayGuestSpots = (bool) ($userDetail->display_guest_spots ?? false);
-  $displayFaq = (bool) ($userDetail->display_faq ?? false);
-  $whatsIncludedIsActive = (bool) ($userDetail->design_whats_included_is_active ?? false);
-  $whatsIncludedItems = is_array($userDetail->design_whats_included ?? null)
-      ? array_values($userDetail->design_whats_included)
-      : [];
-  $policyCopy = \App\Support\ArtistPolicyCopy::for($userDetail);
-  $tagline = $userDetail->personal_page_tagline ?? '';
-  $description = $userDetail->personal_page_description ?? '';
-  $bannerUrl = $userDetail->personal_page_background_image ? asset($userDetail->personal_page_background_image) : '';
-  $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
-  if ($fullName === '') {
-      $fullName = $user->name ?? 'Artist Name';
-  }
-  $username = $userDetail->user_name ?? 'username';
-  $displayName = trim((string) ($userDetail->display_name ?? ''));
+<div class="mp-page">
+  <div class="head">
+          <div>
+      <h1>
+        My Page
+        <a class="help-q" href="https://help.inkjin.com/en/articles/17201253-dashboard-my-page-about" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
+          <span class="ms">help</span>
+        </a>
+      </h1>
+      <div class="sub">Everything clients see on your booking page.</div>
+          </div>
+    <div class="btns">
+      @if ($publicPageUrl)
+        <div class="ql" id="quickLinks">
+          <button type="button" class="ql-b" id="quickLinksBtn" aria-haspopup="true" aria-expanded="false" aria-controls="quickLinksMenu">
+            <span class="ms">link</span>Quick links<span class="ms cv">expand_more</span>
+          </button>
+          <div class="ql-p" id="quickLinksMenu" hidden role="menu" aria-label="Quick links">
+            @foreach ($quickLinkRows as $row)
+              @php
+                $copyUrl = $publicPageUrl.$row['suffix'];
+                $displayBase = $publicPageHost;
+                $displaySuffix = $row['suffix'];
 @endphp
-<main class="main-content flex-1 min-h-screen">
-    <form id="personalPageForm" class="p-6 md:p-10 lg:p-12 max-w-6xl" enctype="multipart/form-data">
-      @csrf
-
-      <!-- Page Header -->
-      @php
-        $bookingPageUrl = !empty($username) ? 'https://inkjin.com/@'.$username : null;
-      @endphp
-      <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Booking Page</h2>
-            <p class="text-on-surface-variant mt-1">Manage your intake forms, available designs, portfolio and the style of your page</p>
+              <div class="ql-r" role="none">
+                <div class="ql-u" title="{{ $row['label'] }}">
+                  {{ $displayBase }}@if($displaySuffix !== '')<b>{{ $displaySuffix }}</b>@endif
           </div>
-          @if ($bookingPageUrl)
-          <a href="{{ $bookingPageUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors shrink-0">
-            <span class="material-symbols-outlined text-lg">open_in_new</span> Open your booking page
-          </a>
-          @endif
+                <button type="button" class="ql-i" data-ql-copy="{{ $copyUrl }}" data-ql-label="{{ $row['label'] }}" role="menuitem" aria-label="Copy {{ $row['label'] }}" title="Copy link">
+                  <span class="ms">content_copy</span>
+                </button>
+                <a class="ql-i" href="{{ $copyUrl }}" target="_blank" rel="noopener" role="menuitem" aria-label="Open {{ $row['label'] }}" title="Open">
+                  <span class="ms">open_in_new</span>
+                </a>
         </div>
+            @endforeach
       </div>
-
-      @include('artist.partials.booking-page-tabs', ['activeTab' => 'style'])
-
-
-      <!-- Section intro -->
-      <div class="mb-8">
-        <p class="text-on-surface-variant">Customize how your booking page looks to clients.</p>
       </div>
-      <div id="personalPageSuccessAlert" class="hidden mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm"></div>
-      <div id="personalPageErrorAlert" class="hidden mb-6 rounded-xl border border-error/30 bg-error/10 text-error px-4 py-3 text-sm"></div>
-
-      <input type="hidden" id="personal_page_name_alias" name="personal_page_name_alias" value="{{ $selectedAlias }}">
-      <input type="hidden" id="personal_page_color" name="personal_page_color" value="{{ $selectedTheme }}">
-
-      <!-- 1. Header & Banner Section -->
-      <div class="bg-surface-container-low rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
-        <div class="flex items-center gap-3 mb-5">
-          <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <span class="material-symbols-outlined text-primary text-lg">image</span>
-          </div>
-          <div>
-            <h3 class="font-bold text-on-surface">Header & Banner</h3>
-            <p class="text-xs text-on-surface-variant">Banner image is optional. Profile photo is managed in Profile Settings.</p>
-          </div>
-        </div>
-
-        <!-- Banner Upload -->
-        <div class="banner-upload mb-0 {{ $bannerUrl ? 'has-image' : '' }}" id="bannerUploadArea" onclick="document.getElementById('bannerInput').click()" @if($bannerUrl) style="background-image: url('{{ $bannerUrl }}')" @endif>
-          <input type="file" id="bannerInput" name="personal_page_background_image" accept="image/*" class="hidden" onchange="handleBannerUpload(this)">
-          <div class="upload-prompt flex flex-col items-center justify-center">
-            <span class="material-symbols-outlined text-outline text-3xl mb-2">photo_camera</span>
-            <p class="text-sm font-semibold text-on-surface">Upload Banner Image <span class="text-on-surface-variant font-normal">(optional)</span></p>
-            <p class="text-xs text-on-surface-variant mt-1">Recommended: 1200×400px</p>
-          </div>
-          <div class="upload-overlay">Click to change banner</div>
-        </div>
-        <div class="flex justify-end mt-2">
-          <button type="button" id="btnRemoveBanner" class="banner-remove-btn inline-flex items-center gap-1.5 {{ $bannerUrl ? '' : 'hidden' }}" onclick="removeBannerImage(event)">
-            <span class="material-symbols-outlined text-[18px]">delete</span> Remove banner
-          </button>
-        </div>
-        <div class="relative z-20 mt-1 text-right pr-2">
-          <p id="personal_page_background_image_error" class="text-error text-xs hidden inline-block"></p>
-        </div>
-
-        <!-- Profile Photo -->
-        <div class="mb-4">
-          <div class="profile-upload cursor-default hover:bg-white hover:border-outline-variant/30" id="profileUploadArea" onclick="">
-            <img src="{{ $userDetail->avatar ? asset($userDetail->avatar) : '' }}" alt="Profile Photo" class="w-full h-full object-cover rounded-full">
-          </div>
-          <p class="text-xs text-on-surface-variant mt-1 ml-6">Change your photo in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.</p>
-        </div>
-
+        <a class="btn" href="{{ $publicPageUrl }}" target="_blank" rel="noopener">
+          <span class="ms">open_in_new</span>Open my page
+        </a>
+      @endif
       </div>
+  </div>
 
-      <!-- 2. Display Name Section -->
-      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
-        <div class="flex items-center gap-3 mb-5">
-          <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <span class="material-symbols-outlined text-primary text-lg">badge</span>
-          </div>
+  @include('artist.partials.my-page-tabs', [
+    'myPageTab' => $myPageTab,
+    'designsCount' => $designsCount ?? 0,
+    'portfolioCount' => $portfolioCount ?? 0,
+    'faqCount' => $faqCount ?? 0,
+  ])
+
+  <form id="aboutForm" enctype="multipart/form-data">
+    @csrf
+    <input type="hidden" name="section" value="about">
+    <input type="hidden" name="personal_page_name_alias" id="nameAlias" value="{{ $selectedAlias }}">
+    <input type="hidden" name="display_tagline" id="displayTagline" value="{{ $displayTagline ? '1' : '0' }}">
+    <input type="hidden" name="display_bio" id="displayBio" value="{{ $displayBio ? '1' : '0' }}">
+    <div id="otherStylesInputs"></div>
+
+    <div class="grid mp-about-grid" style="grid-template-columns:1fr 340px;gap:28px;align-items:start">
           <div>
-            <h3 class="font-bold text-on-surface">How should your name appear? <span class="text-red-600">*</span></h3>
-            <p class="text-xs text-on-surface-variant">Choose how clients see your name on your booking page.</p>
+        {{-- Photo --}}
+        <div class="card" style="margin-bottom:14px">
+          <div class="ch">
+            <div>
+              <h3>Photo</h3>
+              <div class="faint" style="font-size:12.5px;margin-top:2px">Shown at the top of your page</div>
           </div>
         </div>
-
-        <!-- Radio Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-          <div class="radio-card {{ $selectedAlias === 'full' ? 'selected' : '' }}" data-name-option="full" onclick="selectNameOption('full')">
-            <div class="flex items-start gap-3">
-              <div class="radio-dot mt-0.5"><div></div></div>
+          <div style="padding:18px 22px">
+            <div class="row" style="gap:18px">
+              <div class="av-lg" id="photoPreview" @if($avatarUrl) style="background:#fff" @endif>
+                @if ($avatarUrl)
+                  <img src="{{ $avatarUrl }}" alt="">
+                @else
+                  {{ strtoupper(substr(preg_replace('/\s+/', '', $firstName.$lastName) ?: 'AR', 0, 2)) }}
+                @endif
+          </div>
               <div>
-                <p class="text-sm font-bold text-on-surface">Full Name</p>
-                <p class="text-lg font-extrabold text-primary mt-1">{{ $fullName }}</p>
-                <p class="text-xs text-on-surface-variant mt-1">Show your full professional name</p>
+                <button type="button" class="btn sm ghost" id="changePhotoBtn">Change photo</button>
+                <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden>
+                <div class="faint" style="font-size:12px;margin-top:8px">Professional headshots increase booking conversion by 40%</div>
+        </div>
+        </div>
+        </div>
+        </div>
+
+        {{-- Name --}}
+        <div class="card" style="margin-bottom:14px">
+          <div class="ch">
+            <div>
+              <h3>Name</h3>
+              <div class="faint" style="font-size:12.5px;margin-top:2px">Edit your name and pick which one clients see</div>
+      </div>
+          </div>
+          <div style="padding:18px 22px">
+            <div class="grid mp-name-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+          <div>
+                <label class="fl" for="fn">First name</label>
+                <input class="in" id="fn" name="first_name" value="{{ $firstName }}" required>
+          </div>
+              <div>
+                <label class="fl" for="ln">Last name</label>
+                <input class="in" id="ln" name="last_name" value="{{ $lastName }}" required>
+        </div>
+              <div>
+                <label class="fl" for="dn">Display name <span class="faint" style="font-weight:500">(optional)</span></label>
+                <input class="in" id="dn" name="display_name" value="{{ $displayName }}" maxlength="100">
               </div>
             </div>
+            <div class="lbl" style="margin-bottom:8px">Show on my page as</div>
+            <div class="row" style="gap:10px">
+              <div class="nmopt {{ $selectedAlias === 'username' ? 'on' : '' }}" data-k="username">
+                <div class="row" style="gap:8px">
+                  <span class="ms nmico" style="font-size:18px;color:{{ $selectedAlias === 'username' ? '#3E007C' : '#C8BFCC' }};font-variation-settings:'FILL' {{ $selectedAlias === 'username' ? '1' : '0' }}">{{ $selectedAlias === 'username' ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
+                  <span class="faint" style="font-size:12px;font-weight:600">Username</span>
           </div>
-          <div class="radio-card {{ $selectedAlias === 'username' ? 'selected' : '' }}" data-name-option="username" onclick="selectNameOption('username')">
-            <div class="flex items-start gap-3">
-              <div class="radio-dot mt-0.5"><div></div></div>
-              <div>
-                <p class="text-sm font-bold text-on-surface">Username</p>
-                <p class="text-lg font-extrabold text-primary mt-1">{{ $username }}</p>
-                <p class="text-xs text-on-surface-variant mt-1">This is your unique profile URL handle</p>
+                <b class="nmval" style="display:block;margin-top:4px;font-size:14px">{{ '@' . ($username !== '' ? $username : 'username') }}</b>
               </div>
+              <div class="nmopt {{ $selectedAlias === 'display_name' ? 'on' : '' }}" data-k="display_name">
+                <div class="row" style="gap:8px">
+                  <span class="ms nmico" style="font-size:18px;color:{{ $selectedAlias === 'display_name' ? '#3E007C' : '#C8BFCC' }};font-variation-settings:'FILL' {{ $selectedAlias === 'display_name' ? '1' : '0' }}">{{ $selectedAlias === 'display_name' ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
+                  <span class="faint" style="font-size:12px;font-weight:600">Display name</span>
             </div>
+                <b class="nmval" id="dnOptVal" style="display:block;margin-top:4px;font-size:14px">{{ $displayName !== '' ? $displayName : '—' }}</b>
           </div>
-          <div class="radio-card {{ $selectedAlias === 'display_name' ? 'selected' : '' }}" data-name-option="display_name" onclick="selectNameOption('display_name')">
-            <div class="flex items-start gap-3">
-              <div class="radio-dot mt-0.5"><div></div></div>
-              <div>
-                <p class="text-sm font-bold text-on-surface">Display name</p>
-                <p class="text-lg font-extrabold text-primary mt-1">{{ $displayName !== '' ? $displayName : 'Not set' }}</p>
-                <p class="text-xs text-on-surface-variant mt-1">Show your custom display name</p>
               </div>
+            <div class="help" style="margin-top:10px">Your username shows by default. Add a display name to show it instead. First and last name are the same as in Account &gt; Profile and are not shown on your page. Your username is changed in Account &gt; Profile because it is part of your page link.</div>
+          </div>
+        </div>
+
+        {{-- Tagline & bio --}}
+        <div class="card" style="margin-bottom:14px">
+          <div class="ch">
+          <div>
+              <h3>Tagline &amp; bio</h3>
+              <div class="faint" style="font-size:12.5px;margin-top:2px">Edit and show them here, in one place</div>
+          </div>
+          </div>
+          <div style="padding:18px 22px">
+            <div class="row" style="justify-content:space-between;margin-bottom:6px">
+              <span class="fl" style="margin:0">Tagline</span>
+              <div class="row" style="gap:8px">
+                <span class="faint" style="font-size:12.5px;font-weight:600">Show on page</span>
+                <div class="tog {{ $displayTagline ? 'on' : '' }}" id="tgtog" data-own="1" role="switch" aria-checked="{{ $displayTagline ? 'true' : 'false' }}" tabindex="0"></div>
+          </div>
+        </div>
+            <input class="in" id="tgin" name="personal_page_tagline" maxlength="80" value="{{ $tagline }}" style="width:100%">
+
+            <div class="row" style="justify-content:space-between;margin:16px 0 6px">
+              <span class="fl" style="margin:0">Bio</span>
+              <div class="row" style="gap:8px">
+                <span class="faint" style="font-size:12.5px;font-weight:600">Show on page</span>
+                <div class="tog {{ $displayBio ? 'on' : '' }}" id="biotog" data-own="1" role="switch" aria-checked="{{ $displayBio ? 'true' : 'false' }}" tabindex="0"></div>
+          </div>
             </div>
+            <textarea class="in" id="bioin" name="personal_page_description" maxlength="500">{{ $bio }}</textarea>
+            <div class="help" style="text-align:right" id="biocnt">{{ mb_strlen($bio) }} / 500</div>
           </div>
         </div>
 
-        <!-- Name Inputs -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label for="fullName" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Full Name</label>
-            <input type="text" id="fullName" name="fullName" value="{{ $fullName }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-surface-container-highest text-on-surface-variant cursor-not-allowed focus:outline-none focus:ring-0" readonly oninput="updatePreview()">
-            <p class="text-xs text-on-surface-variant mt-1">Edit in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.</p>
-          </div>
-          <div>
-            <label for="username" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Username</label>
-            <input type="text" id="username" name="username" value="{{ $username }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-surface-container-highest text-on-surface-variant cursor-not-allowed focus:outline-none focus:ring-0" readonly oninput="updatePreview()">
-            <p class="text-xs text-on-surface-variant mt-1">Edit in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.</p>
-          </div>
-          <div>
-            <label for="displayName" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Display name</label>
-            <input type="text" id="displayName" name="displayName" value="{{ $displayName }}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-surface-container-highest text-on-surface-variant cursor-not-allowed focus:outline-none focus:ring-0" readonly oninput="updatePreview()">
-            <p class="text-xs text-on-surface-variant mt-1">Edit in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.</p>
-          </div>
-        </div>
-        <p id="personal_page_name_alias_error" class="text-error text-xs mt-3 hidden"></p>
-      </div>
-
-      <!-- 3. Profile Content Section -->
-      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
-        <div class="flex items-center gap-3 mb-5">
-          <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <span class="material-symbols-outlined text-primary text-lg">badge</span>
-          </div>
-          <div>
-            <h3 class="font-bold text-on-surface">Profile Content</h3>
-            <p class="text-xs text-on-surface-variant">Choose which profile details appear on your public booking page.</p>
-          </div>
-        </div>
-
-        <div class="divide-y divide-outline-variant/20">
-          <div class="flex items-center justify-between gap-4 py-4 first:pt-0">
+        {{-- Experience, styles & services --}}
+        <div class="card" style="margin-bottom:14px">
+          <div class="ch">
             <div>
-              <p class="text-sm font-semibold text-on-surface">Tagline</p>
-              <p class="text-xs text-on-surface-variant mt-1">Show your tagline below your name.</p>
+              <h3>Experience, styles &amp; services</h3>
+              <div class="faint" style="font-size:12.5px;margin-top:2px">Helps clients find you by style and by the work you take on</div>
             </div>
-            <div class="flex items-center gap-3 shrink-0">
-              <span class="text-sm font-semibold text-on-surface">Display Tagline</span>
-              <div
-                id="displayTaglineToggle"
-                class="toggle-switch {{ $displayTagline ? 'active' : '' }}"
-                role="switch"
-                aria-checked="{{ $displayTagline ? 'true' : 'false' }}"
-                tabindex="0"
-                title="Show or hide your tagline on your public page"
-                onclick="toggleProfileContentVisibility('display_tagline')"
-                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleProfileContentVisibility('display_tagline');}"
-              ></div>
-              <input type="hidden" id="display_tagline" name="display_tagline" value="{{ $displayTagline ? '1' : '0' }}">
             </div>
+          <div style="padding:18px 22px">
+            <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label class="fl" for="tattooing_since">Tattooing since</label>
+                <select class="in js-select2" id="tattooing_since" name="tattooing_since" data-placeholder="Select year" data-searchable="true">
+                  <option value=""></option>
+                  @for ($y = (int) date('Y'); $y >= 1970; $y--)
+                    <option value="{{ $y }}" @selected((int) $since === $y)>{{ $y }}</option>
+                  @endfor
+                </select>
           </div>
-          <p id="displayTaglineStatus" class="text-xs text-on-surface-variant -mt-2 pb-3 hidden"></p>
-
-          <div class="flex items-center justify-between gap-4 py-4">
             <div>
-              <p class="text-sm font-semibold text-on-surface">Bio</p>
-              <p class="text-xs text-on-surface-variant mt-1">Show the About section containing your bio.</p>
+                <label class="fl" for="primary_style">Primary style</label>
+                <select class="in js-select2" id="primary_style" name="primary_style" data-placeholder="Select style" data-searchable="true">
+                  <option value=""></option>
+                  @foreach ($styleOptions as $val => $lab)
+                    <option value="{{ $val }}" @selected(($primary ?? '') === $val)>{{ $lab }}</option>
+                  @endforeach
+                </select>
             </div>
-            <div class="flex items-center gap-3 shrink-0">
-              <span class="text-sm font-semibold text-on-surface">Display Bio</span>
-              <div
-                id="displayBioToggle"
-                class="toggle-switch {{ $displayBio ? 'active' : '' }}"
-                role="switch"
-                aria-checked="{{ $displayBio ? 'true' : 'false' }}"
-                tabindex="0"
-                title="Show or hide your bio on your public page"
-                onclick="toggleProfileContentVisibility('display_bio')"
-                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleProfileContentVisibility('display_bio');}"
-              ></div>
-              <input type="hidden" id="display_bio" name="display_bio" value="{{ $displayBio ? '1' : '0' }}">
             </div>
-          </div>
-          <p id="displayBioStatus" class="text-xs text-on-surface-variant -mt-2 hidden"></p>
-        </div>
 
-        <div id="profileContentPreviewWrap" class="{{ ($displayTagline || $displayBio) ? '' : 'hidden' }}">
-          <div class="rounded-xl border border-outline-variant/30 bg-surface-container-low p-4 sm:p-5 space-y-3 text-sm text-on-surface-variant leading-relaxed">
-            <p id="taglinePreviewLine" class="{{ $displayTagline ? '' : 'hidden' }}">
-              <span class="font-semibold text-on-surface">Tagline:</span>
-              <span id="taglinePreviewText">{{ trim($tagline) !== '' ? $tagline : 'Tagline not set.' }}</span>
-            </p>
-            <p id="bioPreviewLine" class="{{ $displayBio ? '' : 'hidden' }}">
-              <span class="font-semibold text-on-surface">Bio:</span>
-              <span id="bioPreviewText">{{ trim($description) !== '' ? $description : 'Bio not set.' }}</span>
-            </p>
+            <span class="fl" style="margin-top:14px">Other styles</span>
+            <div class="stwrap">
+              <div class="in stsearch" style="cursor:text">
+                <span class="ms">search</span>
+                <input id="stq" placeholder="Search styles..." autocomplete="off" style="border:0;outline:0;font:inherit;flex:1;background:none">
           </div>
-          <p class="text-xs text-on-surface-variant mt-3">
-            Edit your tagline and bio in <a href="{{ route('profile.edit') }}" class="text-primary hover:underline">Profile Settings</a>.
-          </p>
+              <div class="stmenu" id="stmenu" hidden role="listbox" aria-multiselectable="true"></div>
         </div>
+            <div class="row" id="stsel" style="gap:8px;flex-wrap:wrap;margin-top:10px"></div>
+            <div class="help">Pick all the styles you tattoo. Your primary style is shown first.</div>
+
+            <span class="fl" style="margin-top:18px">Services you also offer <span class="faint" style="font-weight:500">(optional)</span></span>
+            <div class="svcs" id="svcs">
+              @foreach (['Touch-ups', 'Cover-ups', 'Blackout', 'Other'] as $svc)
+                <label class="svc">
+                  <input type="checkbox" name="extra_services[]" value="{{ $svc }}" @checked(in_array($svc, $extraServiceList, true)) @if($svc === 'Other') id="svco" @endif>
+                  <span>{{ $svc }}</span>
+                </label>
+              @endforeach
       </div>
-
-      <!-- 4. Policies Section -->
-      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
-        <div class="flex items-start sm:items-center justify-between gap-4 mb-5">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <span class="material-symbols-outlined text-primary text-lg">gavel</span>
+            <div id="svcow" @if(!in_array('Other', $extraServiceList, true)) hidden @endif style="margin-top:10px;max-width:360px">
+              <label class="fl" for="svcot">Other service</label>
+              <input class="in" id="svcot" name="extra_service_other" maxlength="40" placeholder="e.g. Scar cover-ups" value="{{ $extraServiceOther }}">
+              <div class="help">Up to 40 characters.</div>
             </div>
+            <div class="help">Shown on your page under your styles.</div>
+          </div>
+        </div>
+
+        {{-- Social --}}
+        <div class="card" style="margin-bottom:14px">
+          <div class="ch">
             <div>
-              <h3 class="font-bold text-on-surface">Policies</h3>
-              <p class="text-xs text-on-surface-variant">Control whether clients see your booking policies on your public page.</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <span class="text-sm font-semibold text-on-surface whitespace-nowrap">Display Policies</span>
-            <div
-              id="displayPoliciesToggle"
-              class="toggle-switch {{ $displayPolicies ? 'active' : '' }}"
-              role="switch"
-              aria-checked="{{ $displayPolicies ? 'true' : 'false' }}"
-              tabindex="0"
-              title="Show or hide Policies on your public page"
-              onclick="toggleDisplayPolicies()"
-              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDisplayPolicies();}"
-            ></div>
-            <input type="hidden" id="display_policies" name="display_policies" value="{{ $displayPolicies ? '1' : '0' }}">
+              <h3>Social links</h3>
+              <div class="faint" style="font-size:12.5px;margin-top:2px">Shown as icons under your name</div>
           </div>
         </div>
-
-        <div id="policiesPreviewWrap" class="{{ $displayPolicies ? '' : 'hidden' }}">
-          <div class="rounded-xl border border-outline-variant/30 bg-surface-container-low p-4 sm:p-5 space-y-3 text-sm text-on-surface-variant leading-relaxed">
-            <p><span class="font-semibold text-on-surface">Deposit:</span> {{ $policyCopy['deposit'] }}</p>
-            <p><span class="font-semibold text-on-surface">Rescheduling:</span> {{ $policyCopy['rescheduling'] }}</p>
-            <p><span class="font-semibold text-on-surface">Cancellation:</span> {{ $policyCopy['cancellation'] }}</p>
-            <p><span class="font-semibold text-on-surface">No-show or late cancellation:</span> {{ $policyCopy['no_show'] }}</p>
-          </div>
-          <p class="text-xs text-on-surface-variant mt-3">
-            Edit in <a href="{{ route('settings.preferences') }}" class="text-primary hover:underline">Payment Settings</a>.
-          </p>
-        </div>
-        <p id="displayPoliciesStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>
+          <div style="padding:18px 22px">
+            <div class="grid social-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <div class="social-in">
+                  <span class="ms" style="color:#C13584">photo_camera</span>
+                  <input type="url" id="instagram" name="social_links[instagram]" value="{{ $sl['instagram'] ?? '' }}" placeholder="instagram.com/yourhandle" autocomplete="off">
       </div>
-
-      <!-- Guest Spots Section -->
-      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
-        <div class="flex items-start sm:items-center justify-between gap-4 mb-3">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <span class="material-symbols-outlined text-primary text-lg">travel_explore</span>
-            </div>
-            <div>
-              <h3 class="font-bold text-on-surface">Guest Spots</h3>
-              <p class="text-xs text-on-surface-variant">Control whether clients see your upcoming guest locations on your public page.</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <span class="text-sm font-semibold text-on-surface whitespace-nowrap">Show Guest Spots</span>
-            <div
-              id="displayGuestSpotsToggle"
-              class="toggle-switch {{ $displayGuestSpots ? 'active' : '' }}"
-              role="switch"
-              aria-checked="{{ $displayGuestSpots ? 'true' : 'false' }}"
-              tabindex="0"
-              title="Show or hide Guest Spots on your public page"
-              onclick="toggleDisplayGuestSpots()"
-              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDisplayGuestSpots();}"
-            ></div>
-            <input type="hidden" id="display_guest_spots" name="display_guest_spots" value="{{ $displayGuestSpots ? '1' : '0' }}">
-          </div>
-        </div>
-        <p class="text-xs text-on-surface-variant ml-0 sm:ml-12">
-          Edit your guest locations in <a href="{{ route('guest-spots.index') }}" class="text-primary hover:underline">Guest spots</a>.
-        </p>
-        <p id="displayGuestSpotsStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>
-      </div>
-
-      <!-- FAQ Section -->
-      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
-        <div class="flex items-start sm:items-center justify-between gap-4 mb-3">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <span class="material-symbols-outlined text-primary text-lg">quiz</span>
-            </div>
-            <div>
-              <h3 class="font-bold text-on-surface">FAQ</h3>
-              <p class="text-xs text-on-surface-variant">Control whether clients see your FAQ on your public page.</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <span class="text-sm font-semibold text-on-surface whitespace-nowrap">Show FAQ</span>
-            <div
-              id="displayFaqToggle"
-              class="toggle-switch {{ $displayFaq ? 'active' : '' }}"
-              role="switch"
-              aria-checked="{{ $displayFaq ? 'true' : 'false' }}"
-              tabindex="0"
-              title="Show or hide FAQ on your public page"
-              onclick="toggleDisplayFaq()"
-              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDisplayFaq();}"
-            ></div>
-            <input type="hidden" id="display_faq" name="display_faq" value="{{ $displayFaq ? '1' : '0' }}">
-          </div>
-        </div>
-        <p class="text-xs text-on-surface-variant ml-0 sm:ml-12">
-          Edit your questions in <a href="{{ route('artist.faq.index') }}" class="text-primary hover:underline">FAQ</a>.
-        </p>
-        <p id="displayFaqStatus" class="text-xs text-on-surface-variant mt-2 hidden"></p>
-      </div>
-
-      <!-- What's Included -->
-      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20" id="whatsIncludedPanel">
-        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
-          <div class="flex items-start gap-3 min-w-0 flex-1">
-            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined text-primary text-lg">checklist</span>
-            </div>
-            <div class="min-w-0">
-              <h3 class="font-bold text-on-surface">What's included in the session</h3>
-              <p class="text-xs text-on-surface-variant mt-1 max-w-2xl">Let clients know what's part of your service — sizing, placement, touch-ups, aftercare.</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <span class="text-sm font-semibold text-on-surface-variant">Show on page</span>
-            <div id="toggleWhatsIncluded" class="toggle-switch @if($whatsIncludedIsActive) active @endif" role="switch" aria-checked="{{ $whatsIncludedIsActive ? 'true' : 'false' }}" title="Show or hide What's Included on your public page"></div>
-            <span id="toggleWhatsIncludedLabel" class="text-xs font-semibold {{ $whatsIncludedIsActive ? 'text-primary' : 'text-on-surface-variant' }} min-w-[1.75rem]">{{ $whatsIncludedIsActive ? 'Yes' : 'No' }}</span>
-          </div>
-        </div>
-
-        <div id="whatsIncludedEditor" class="space-y-5 @if(!$whatsIncludedIsActive) hidden @endif">
-          <div id="whatsIncludedList" class="space-y-2.5" aria-label="What's included items"></div>
-
-          <button type="button" id="btnAddIncludedItem" class="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-container transition-colors">
-            <span class="material-symbols-outlined text-[18px]">add</span> Add item
-          </button>
-          <p id="whatsIncludedLimitHint" class="hidden text-xs text-on-surface-variant">You can add up to 8 items. Remove one to add another preset.</p>
-
-          <div>
-            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2.5">Suggestions</p>
-            <div id="whatsIncludedPresets" class="flex flex-wrap gap-2"></div>
-          </div>
-
-          <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 border-t border-outline-variant/15">
-            <button type="button" id="btnSaveWhatsIncluded" class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
-              <span class="material-symbols-outlined text-lg">save</span> Save
-            </button>
-            <p id="whatsIncludedSaveStatus" class="hidden text-sm font-medium text-green-700"></p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 5. Color Scheme Section -->
-      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20">
-        <div class="flex items-center gap-3 mb-2">
-          <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <span class="material-symbols-outlined text-primary text-lg">palette</span>
+                <p id="instagram_error" class="field-err hidden" role="alert"></p>
           </div>
           <div>
-            <h3 class="font-bold text-on-surface">Page Color Scheme <span class="text-red-600">*</span></h3>
+                <div class="social-in">
+                  <span class="ms">music_note</span>
+                  <input type="url" id="tiktok" name="social_links[tiktok]" value="{{ $sl['tiktok'] ?? '' }}" placeholder="tiktok.com/@yourhandle" autocomplete="off">
+          </div>
+                <p id="tiktok_error" class="field-err hidden" role="alert"></p>
+        </div>
+              <div>
+                <div class="social-in">
+                  <span class="ms" style="color:#E00">smart_display</span>
+                  <input type="url" id="youtube" name="social_links[youtube]" value="{{ $sl['youtube'] ?? '' }}" placeholder="youtube.com/@yourchannel" autocomplete="off">
+          </div>
+                <p id="youtube_error" class="field-err hidden" role="alert"></p>
+          </div>
+              <div>
+                <div class="social-in">
+                  <span class="ms" style="color:#1877F2">thumb_up</span>
+                  <input type="url" id="facebook" name="social_links[facebook]" value="{{ $sl['facebook'] ?? '' }}" placeholder="facebook.com/yourpage" autocomplete="off">
+          </div>
+                <p id="facebook_error" class="field-err hidden" role="alert"></p>
+          </div>
+              <div style="grid-column:1/-1">
+                <div class="social-in">
+                  <span class="ms">add</span>
+                  <input type="url" id="website" name="social_links[website]" value="{{ $sl['website'] ?? '' }}" placeholder="Other link" autocomplete="off">
+          </div>
+                <p id="website_error" class="field-err hidden" role="alert"></p>
           </div>
         </div>
-        <p class="text-xs text-on-surface-variant mb-5 ml-12">Choose a color theme for your public booking page.</p>
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="themeGrid">
-          <!-- Default Purple -->
-          <div class="theme-card {{ $selectedTheme === 'default' ? 'selected' : '' }}" data-theme="default" data-primary="#310F7A" data-bg="#F8F1FB" onclick="selectTheme(this)">
-            <div class="theme-check"><span class="material-symbols-outlined text-sm">check</span></div>
-            <div class="theme-swatch" style="background: linear-gradient(135deg, #310F7A, #664db1);"></div>
-            <div class="theme-label">Default Purple</div>
+            <div class="help">Shown as icons under your name on your page.</div>
           </div>
-          <!-- Ocean Blue -->
-          <div class="theme-card {{ $selectedTheme === 'ocean' ? 'selected' : '' }}" data-theme="ocean" data-primary="#1565C0" data-bg="#E3F2FD" onclick="selectTheme(this)">
-            <div class="theme-check"><span class="material-symbols-outlined text-sm">check</span></div>
-            <div class="theme-swatch" style="background: linear-gradient(135deg, #1565C0, #42A5F5);"></div>
-            <div class="theme-label">Ocean Blue</div>
-          </div>
-          <!-- Forest Green -->
-          <div class="theme-card {{ $selectedTheme === 'forest' ? 'selected' : '' }}" data-theme="forest" data-primary="#2E7D32" data-bg="#E8F5E9" onclick="selectTheme(this)">
-            <div class="theme-check"><span class="material-symbols-outlined text-sm">check</span></div>
-            <div class="theme-swatch" style="background: linear-gradient(135deg, #2E7D32, #66BB6A);"></div>
-            <div class="theme-label">Forest Green</div>
-          </div>
-          <!-- Warm Coral -->
-          <div class="theme-card {{ $selectedTheme === 'coral' ? 'selected' : '' }}" data-theme="coral" data-primary="#D84315" data-bg="#FBE9E7" onclick="selectTheme(this)">
-            <div class="theme-check"><span class="material-symbols-outlined text-sm">check</span></div>
-            <div class="theme-swatch" style="background: linear-gradient(135deg, #D84315, #FF7043);"></div>
-            <div class="theme-label">Warm Coral</div>
-          </div>
-          <!-- Midnight -->
-          <div class="theme-card {{ $selectedTheme === 'midnight' ? 'selected' : '' }}" data-theme="midnight" data-primary="#1A1A2E" data-bg="#F5F5F5" onclick="selectTheme(this)">
-            <div class="theme-check"><span class="material-symbols-outlined text-sm">check</span></div>
-            <div class="theme-swatch" style="background: linear-gradient(135deg, #1A1A2E, #3a3a5e);"></div>
-            <div class="theme-label">Midnight</div>
-          </div>
-          <!-- Golden Hour -->
-          <div class="theme-card {{ $selectedTheme === 'golden' ? 'selected' : '' }}" data-theme="golden" data-primary="#F57F17" data-bg="#FFF8E1" onclick="selectTheme(this)">
-            <div class="theme-check"><span class="material-symbols-outlined text-sm">check</span></div>
-            <div class="theme-swatch" style="background: linear-gradient(135deg, #F57F17, #FFB300);"></div>
-            <div class="theme-label">Golden Hour</div>
-          </div>
-        </div>
-        <p id="personal_page_color_error" class="text-error text-xs mt-3 hidden"></p>
       </div>
 
-      <!-- Actions -->
-      <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8">
-        <button type="button" onclick="openModal('previewPersonalPageModal')" class="px-6 py-2.5 border border-outline-variant text-on-surface font-semibold rounded-xl hover:bg-surface-container transition-colors shadow-sm flex items-center gap-2">
-          <span class="material-symbols-outlined align-middle" style="font-size:18px;">visibility</span> Preview Personal Page
+        <div class="row pgsaverow" style="justify-content:flex-start;margin-top:8px">
+          <button type="button" class="btn pgsave" id="aboutSaveBtn" disabled>
+            <span class="ms">save</span>Save changes
         </button>
-        <button type="submit" id="savePersonalPageBtn" class="bg-primary text-white px-8 py-3 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
-          <span class="material-symbols-outlined text-lg">save</span> Save Changes
-        </button>
+        </div>
       </div>
 
-    </form>
-  </main>
-
-  <!-- Preview Modal -->
-  <div id="previewPersonalPageModal" class="fixed inset-0 z-50 hidden">
-    <!-- Backdrop -->
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('previewPersonalPageModal')"></div>
-    <!-- Modal Content -->
-    <div class="absolute inset-4 md:inset-10 bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden max-w-4xl mx-auto">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20">
-        <h3 class="text-lg font-bold text-on-surface">Preview: Public Artist Page</h3>
-        <button onclick="closeModal('previewPersonalPageModal')" class="w-8 h-8 rounded-full hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant">
-          <span class="material-symbols-outlined">close</span>
-        </button>
+      {{-- Live preview --}}
+      <div style="position:sticky;top:20px">
+        <div class="row" style="justify-content:space-between;margin-bottom:10px">
+          <div class="lbl">Live preview</div>
       </div>
-      <!-- Body -->
-      <div class="flex-1 overflow-y-auto bg-surface p-6 md:p-10">
-        <div class="max-w-2xl mx-auto bg-white rounded-3xl shadow-sm border border-outline-variant/20 overflow-hidden" id="previewModalCard">
-          <div class="w-full h-48 bg-gray-200 flex items-center justify-center" id="modalPreviewBanner">
-            @if($bannerUrl)
-            <img src="{{ $bannerUrl }}" alt="Banner" class="w-full h-full object-cover">
+        <div class="phone-frame">
+          <div style="height:92px;background:linear-gradient(135deg,#2a1147,#7a3a8f 60%,#e28b56)"></div>
+          <div style="padding:0 18px 18px;margin-top:-34px">
+            <div class="av-lg" id="pvav" style="width:68px;height:68px;border:4px solid #fff;font-size:20px;@if($avatarUrl) background:#fff @endif">
+              @if ($avatarUrl)
+                <img src="{{ $avatarUrl }}" alt="">
             @else
-              <span class="material-symbols-outlined text-gray-400 text-4xl">panorama</span>
+                {{ strtoupper(substr(preg_replace('/\s+/', '', $firstName.$lastName) ?: 'AR', 0, 2)) }}
             @endif
           </div>
-          <div class="flex flex-col items-center -mt-16 relative z-10 pb-10 px-6">
-            <div class="w-32 h-32 rounded-full bg-surface-container-high border-4 border-white flex items-center justify-center shadow-sm" id="modalPreviewProfilePhoto">
-              @if($userDetail->avatar)
-              <img src="{{ $userDetail->avatar }}" alt="Profile Photo" class="w-full h-full object-cover rounded-full">
+            <b id="pvname" style="display:block;font-size:18px;margin-top:8px">
+              @if ($selectedAlias === 'display_name' && $displayName !== '')
+                {{ $displayName }}
               @else
-                <span class="material-symbols-outlined text-outline text-4xl">person</span>
+                {{ '@' . ($username !== '' ? $username : 'username') }}
+              @endif
+            </b>
+            <div class="faint" style="font-size:12px">{{ $previewMeta !== '' ? $previewMeta : 'Your studio · City' }}</div>
+            <div id="pvtag" @if(!$displayTagline || trim($tagline)==='') hidden @endif style="font-size:12.5px;font-weight:600;margin-top:6px">{{ $tagline }}</div>
+            <div id="pvbio" @if(!$displayBio || trim($bio)==='') hidden @endif style="font-size:12px;color:#555;margin-top:6px;line-height:1.45">{{ $bio }}</div>
+            <div class="row" id="pvstyles" style="gap:6px;margin-top:10px;flex-wrap:wrap">
+              @if ($primaryLabel !== '')
+                <span class="pill nd k">{{ $primaryLabel }}</span>
+              @endif
+              @foreach (array_slice($otherList, 0, 2) as $os)
+                <span class="pill nd k">{{ $styleOptions[$os] ?? ucwords(str_replace('-', ' ', $os)) }}</span>
+              @endforeach
+              @if ($since)
+                <span class="pill nd k">Since {{ $since }}</span>
               @endif
             </div>
-            <h4 class="text-2xl font-extrabold text-on-surface mt-4" id="modalPreviewName">{{ $fullName ?? 'Artist Name' }}</h4>
-            <p class="text-sm text-on-surface-variant mt-1 text-center font-medium {{ $displayTagline ? '' : 'hidden' }}" id="modalPreviewTagline">{{ $tagline ?: 'Add your artist tagline' }}</p>
-            <p class="text-sm text-on-surface mt-4 text-center max-w-lg {{ ($displayBio && trim($description) !== '') ? '' : 'hidden' }}" id="modalPreviewBio">{{ $description ?: 'Add your bio so clients can learn more about your style and journey.' }}</p>
-            <button class="mt-8 px-8 py-3 rounded-2xl text-white font-bold text-sm transition-colors shadow-sm w-full max-w-xs" id="modalPreviewBookBtn" style="background: {{ $userDetail->personal_page_color ?? '#310F7A' }};">
-              Book Now
-            </button>
+            <div id="pvsvc" class="faint" style="font-size:12px;margin-top:6px" @if(empty(array_filter($extraServiceList, fn($s)=>$s!=='Other')) && $extraServiceOther==='') hidden @endif>
+              Also:
+              @php
+                $svcPreview = array_values(array_filter($extraServiceList, fn ($s) => $s !== 'Other'));
+                if ($extraServiceOther !== '') { $svcPreview[] = $extraServiceOther; }
+              @endphp
+              {{ implode(' · ', $svcPreview) }}
           </div>
+            <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
+              <div style="height:74px;border-radius:6px;background:#f2d6c9"></div>
+              <div style="height:74px;border-radius:6px;background:#e6e0ea"></div>
+              <div style="height:74px;border-radius:6px;background:#2b2b2b"></div>
         </div>
+            <div style="margin-top:14px;font-weight:700;font-size:13px">What's included</div>
+            <div class="faint" style="font-size:12px;margin-top:4px">{{ $whatsIncludedText }}</div>
+            <div class="btn" style="width:100%;justify-content:center;margin-top:16px;background:#3E007C;pointer-events:none">Book a tattoo</div>
       </div>
     </div>
+        <div class="note" id="pvnote" style="margin-top:14px" @if($displayTagline && $displayBio) hidden @endif>
+          <span class="ms">visibility_off</span>
+          <span id="pvnotet">
+            @if (!$displayTagline && !$displayBio)
+              Tagline and bio are hidden. Turn them on to show them here.
+            @elseif (!$displayTagline)
+              Tagline is hidden. Turn it on to show it here.
+            @else
+              Bio is hidden. Turn it on to show it here.
+            @endif
+          </span>
   </div>
+      </div>
+    </div>
+  </form>
 
-  <!-- Banner Cropper Modal -->
-  <div id="bannerCropperModal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4">
-    <div class="cropper-backdrop absolute inset-0" onclick="closeBannerCropper()"></div>
-    <div class="cropper-wrapper relative">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/30">
-        <div>
-          <h4 class="text-base font-bold text-on-surface">Crop Banner Image</h4>
-          <p class="text-xs text-on-surface-variant mt-0.5">Use the crop area to keep a consistent 3:1 banner ratio.</p>
+  <div id="cropperModal" class="crop-ov" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
+    <div class="crop-box">
+      <h3 id="cropTitle" style="font-size:17px;font-weight:800;margin-bottom:4px">Crop profile photo</h3>
+      <p class="sub" style="margin-bottom:14px">Adjust your image to a square crop for a uniform profile photo.</p>
+      <div class="crop-stage">
+        <img id="cropImage" src="" alt="">
         </div>
-        <button type="button" onclick="closeBannerCropper()" class="w-8 h-8 rounded-full hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant">
-          <span class="material-symbols-outlined text-lg">close</span>
+      <div class="crop-actions">
+        <button id="cancelCropBtn" type="button" class="btn ghost">Cancel</button>
+        <button id="applyCropBtn" type="button" class="btn">Use photo</button>
+      </div>
+      </div>
+      </div>
+
+  <div class="mp-toast" id="mpToast" role="status"><span class="ms">check_circle</span><span id="mpToastText">Changes saved</span></div>
+  <div class="mp-leave" id="mpLeave" role="dialog" aria-modal="true" aria-labelledby="mpLeaveTitle">
+    <div class="mp-leave-box">
+      <button type="button" class="mp-leave-x" id="mpLeaveClose" aria-label="Close">
+        <span class="ms">close</span>
         </button>
+      <div style="padding:24px 24px 16px">
+        <div style="width:48px;height:48px;border-radius:12px;background:#FFF3DC;color:#B7791F;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <span class="ms">warning</span>
       </div>
-      <div class="cropper-stage">
-        <img id="bannerCropImage" alt="Crop banner preview">
+        <h2 id="mpLeaveTitle" style="font-size:20px;font-weight:800;margin-bottom:8px;padding-right:28px">Your changes are not saved</h2>
+        <p style="color:#3a3a3a;line-height:1.55;margin:0">Save them before you leave, or leave without saving and lose them.</p>
       </div>
-      <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-outline-variant/30">
-        <button type="button" onclick="closeBannerCropper()" class="px-4 py-2 rounded-xl border border-outline-variant text-on-surface text-sm font-semibold hover:bg-surface-container transition-colors">Cancel</button>
-        <button type="button" onclick="applyBannerCrop()" class="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-container transition-colors">Apply Crop</button>
+      <div style="display:flex;gap:10px;padding:16px 24px;background:#FCF6FE;border-top:1px solid #F0E4F5;flex-wrap:wrap">
+        <button type="button" class="btn ghost" id="mpLeaveDiscard" style="flex:1;justify-content:center">Leave without saving</button>
+        <button type="button" class="btn" id="mpLeaveSave" style="flex:1;justify-content:center"><span class="ms">save</span>Save and leave</button>
       </div>
     </div>
   </div>
+</div>
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script>
-    const PROFILE_TAGLINE = @json($tagline);
-    const PROFILE_BIO = @json($description);
-    const THEME_MAP = {
-      default: { primary: '#310F7A', bg: '#F8F1FB' },
-      ocean: { primary: '#1565C0', bg: '#E3F2FD' },
-      forest: { primary: '#2E7D32', bg: '#E8F5E9' },
-      coral: { primary: '#D84315', bg: '#FBE9E7' },
-      midnight: { primary: '#1A1A2E', bg: '#F5F5F5' },
-      golden: { primary: '#F57F17', bg: '#FFF8E1' }
-    };
+(function () {
+  var CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  var UPDATE_URL = @json(route('personal-page.update'));
+  var USERNAME = @json($username !== '' ? $username : 'username');
+  var STYLE_ALL = @json(json_decode($styleAllJson, true) ?: []);
+  var OTHER_INIT = @json(json_decode($otherJson, true) ?: []);
+  var dirty = false;
+  var pendingNav = null;
+  var pendingReload = false;
+  var croppedAvatarBlob = null;
+  var toastEl = document.getElementById('mpToast');
+  var leaveEl = document.getElementById('mpLeave');
 
-    let selectedNameOption = document.getElementById('personal_page_name_alias')?.value || 'full';
-    let selectedThemeKey = document.getElementById('personal_page_color')?.value || 'default';
-    let selectedTheme = THEME_MAP[selectedThemeKey] || THEME_MAP.default;
-    let bannerCropper = null;
-    let activeBannerObjectUrl = null;
-    let croppedBannerBlob = null;
-    let croppedBannerFilename = 'banner.jpg';
-    let bannerSourceMime = '';
-    let bannerRemoved = false;
-
-    function syncBannerRemoveButton() {
-      const btn = document.getElementById('btnRemoveBanner');
-      const bannerArea = document.getElementById('bannerUploadArea');
-      if (!btn || !bannerArea) return;
-      btn.classList.toggle('hidden', !bannerArea.classList.contains('has-image'));
+  function runPendingLeave() {
+    if (pendingReload) {
+      pendingReload = false;
+      window.location.reload();
+      return;
     }
+    var n = pendingNav;
+    pendingNav = null;
+    if (n) n.click();
+  }
 
-    function removeBannerImage(e) {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
+  function showLeaveModal(opts) {
+    opts = opts || {};
+    pendingNav = opts.nav || null;
+    pendingReload = !!opts.reload;
+    if (leaveEl) leaveEl.classList.add('on');
+  }
+
+  function toast(msg) {
+    if (!toastEl) return;
+    document.getElementById('mpToastText').textContent = msg || 'Changes saved';
+    toastEl.classList.add('on');
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(function () { toastEl.classList.remove('on'); }, 2600);
+  }
+
+  function setDirty(v) {
+    dirty = !!v;
+    document.querySelectorAll('.mp-page .btn.pgsave').forEach(function (b) {
+      b.disabled = !dirty;
+      b.classList.toggle('on', dirty);
+    });
+  }
+
+  function markDirty() { setDirty(true); }
+
+  var qlWrap = document.getElementById('quickLinks');
+  var qlBtn = document.getElementById('quickLinksBtn');
+  var qlMenu = document.getElementById('quickLinksMenu');
+  if (qlWrap && qlBtn && qlMenu) {
+    function openQuickLinks(show) {
+      qlMenu.hidden = !show;
+      qlBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
+      var cv = qlBtn.querySelector('.cv');
+      if (cv) cv.textContent = show ? 'expand_less' : 'expand_more';
+    }
+    qlBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openQuickLinks(qlMenu.hidden);
+    });
+    qlMenu.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var c = e.target.closest('[data-ql-copy]');
+      if (!c) return;
+      var u = c.getAttribute('data-ql-copy') || '';
+      var label = c.getAttribute('data-ql-label') || u;
+      try { navigator.clipboard.writeText(u).catch(function () {}); } catch (x) {}
+      c.classList.add('done');
+      var icon = c.querySelector('.ms');
+      if (icon) icon.textContent = 'check';
+      setTimeout(function () {
+        c.classList.remove('done');
+        if (icon) icon.textContent = 'content_copy';
+      }, 1600);
+      toast('Link copied: ' + label);
+    });
+    document.addEventListener('click', function (e) {
+      if (!qlMenu.hidden && !qlWrap.contains(e.target)) openQuickLinks(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !qlMenu.hidden) {
+        openQuickLinks(false);
+        qlBtn.focus();
       }
-
-      bannerRemoved = true;
-      croppedBannerBlob = null;
-      croppedBannerFilename = 'banner.jpg';
-
-      const bannerInput = document.getElementById('bannerInput');
-      if (bannerInput) bannerInput.value = '';
-
-      const bannerArea = document.getElementById('bannerUploadArea');
-      if (bannerArea) {
-        bannerArea.style.backgroundImage = '';
-        bannerArea.classList.remove('has-image');
-      }
-
-      const previewBanner = document.getElementById('modalPreviewBanner');
-      if (previewBanner) {
-        previewBanner.style.backgroundImage = '';
-        previewBanner.style.backgroundSize = '';
-        previewBanner.style.backgroundPosition = '';
-        previewBanner.innerHTML = '<span class="material-symbols-outlined text-gray-400 text-4xl">panorama</span>';
-      }
-
-      syncBannerRemoveButton();
-      clearFieldError('personal_page_background_image');
-    }
-
-    function inferImageMimeFromFilename(name) {
-      if (!name) return '';
-      if (/\.png$/i.test(name)) return 'image/png';
-      if (/\.webp$/i.test(name)) return 'image/webp';
-      if (/\.gif$/i.test(name)) return 'image/gif';
-      if (/\.jpe?g$/i.test(name)) return 'image/jpeg';
-      return '';
-    }
-
-    function bannerCropShouldPreserveAlpha() {
-      const m = (bannerSourceMime || '').toLowerCase();
-      return m === 'image/png' || m === 'image/webp' || m === 'image/gif';
-    }
-
-    function getDisplayName() {
-      const fullName = (document.getElementById('fullName')?.value || '').trim() || 'Artist Name';
-      const username = (document.getElementById('username')?.value || '').trim() || 'username';
-      const displayName = (document.getElementById('displayName')?.value || '').trim();
-
-      if (selectedNameOption === 'username') return username;
-      if (selectedNameOption === 'display_name') return displayName || fullName;
-      return fullName;
-    }
-
-    function refreshPreviewModal() {
-      const modalPreviewName = document.getElementById('modalPreviewName');
-      const modalPreviewTagline = document.getElementById('modalPreviewTagline');
-      const modalPreviewBio = document.getElementById('modalPreviewBio');
-      const modalPreviewBookBtn = document.getElementById('modalPreviewBookBtn');
-      const modalPreviewCard = document.getElementById('previewModalCard');
-
-      if (modalPreviewName) modalPreviewName.textContent = getDisplayName();
-      if (modalPreviewTagline) modalPreviewTagline.textContent = PROFILE_TAGLINE.trim() || 'Add your artist tagline';
-      if (modalPreviewBio) {
-        const bioText = PROFILE_BIO.trim();
-        modalPreviewBio.textContent = bioText || 'Add your bio so clients can learn more about your style and journey.';
-        const bioToggleOn = document.getElementById('displayBioToggle')?.classList.contains('active');
-        modalPreviewBio.classList.toggle('hidden', !bioToggleOn || !bioText);
-      }
-      if (modalPreviewBookBtn) modalPreviewBookBtn.style.background = selectedTheme.primary;
-      if (modalPreviewCard) modalPreviewCard.style.background = selectedTheme.bg;
-    }
-
-    function openModal(id) {
-      const modal = document.getElementById(id);
-      if (!modal) return;
-      if (id === 'previewPersonalPageModal') refreshPreviewModal();
-      modal.classList.remove('hidden');
-    }
-
-    function closeModal(id) {
-      const modal = document.getElementById(id);
-      if (!modal) return;
-      modal.classList.add('hidden');
-    }
-
-    function selectNameOption(option) {
-      selectedNameOption = option;
-      const aliasInput = document.getElementById('personal_page_name_alias');
-      if (aliasInput) aliasInput.value = option;
-      document.querySelectorAll('[data-name-option]').forEach(function (card) {
-        card.classList.toggle('selected', card.dataset.nameOption === option);
-      });
-      clearFieldError('personal_page_name_alias');
-      refreshPreviewModal();
-    }
-
-    const profileContentVisibilitySaving = {
-      display_tagline: false,
-      display_bio: false
-    };
-
-    function profileContentElements(field) {
-      const isTagline = field === 'display_tagline';
-      return {
-        toggle: document.getElementById(isTagline ? 'displayTaglineToggle' : 'displayBioToggle'),
-        input: document.getElementById(field),
-        status: document.getElementById(isTagline ? 'displayTaglineStatus' : 'displayBioStatus'),
-        preview: document.getElementById(isTagline ? 'modalPreviewTagline' : 'modalPreviewBio'),
-        previewLine: document.getElementById(isTagline ? 'taglinePreviewLine' : 'bioPreviewLine'),
-        previewText: document.getElementById(isTagline ? 'taglinePreviewText' : 'bioPreviewText'),
-      };
-    }
-
-    function refreshProfileContentPreview() {
-      const taglineText = (PROFILE_TAGLINE || '').trim();
-      const bioText = (PROFILE_BIO || '').trim();
-      const taglineOn = document.getElementById('displayTaglineToggle')?.classList.contains('active');
-      const bioOn = document.getElementById('displayBioToggle')?.classList.contains('active');
-      const taglinePreviewText = document.getElementById('taglinePreviewText');
-      const bioPreviewText = document.getElementById('bioPreviewText');
-      const taglinePreviewLine = document.getElementById('taglinePreviewLine');
-      const bioPreviewLine = document.getElementById('bioPreviewLine');
-      const profileContentPreviewWrap = document.getElementById('profileContentPreviewWrap');
-
-      if (taglinePreviewText) taglinePreviewText.textContent = taglineText || 'Tagline not set.';
-      if (bioPreviewText) bioPreviewText.textContent = bioText || 'Bio not set.';
-      if (taglinePreviewLine) taglinePreviewLine.classList.toggle('hidden', !taglineOn);
-      if (bioPreviewLine) bioPreviewLine.classList.toggle('hidden', !bioOn);
-      if (profileContentPreviewWrap) profileContentPreviewWrap.classList.toggle('hidden', !taglineOn && !bioOn);
-    }
-
-    function setProfileContentVisibilityUi(field, enabled) {
-      const elements = profileContentElements(field);
-      if (elements.toggle) {
-        elements.toggle.classList.toggle('active', enabled);
-        elements.toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
-      }
-      if (elements.input) elements.input.value = enabled ? '1' : '0';
-      if (elements.preview) {
-        const showBio = field === 'display_bio'
-          ? enabled && !!(PROFILE_BIO || '').trim()
-          : enabled;
-        elements.preview.classList.toggle('hidden', !showBio);
-      }
-      refreshProfileContentPreview();
-    }
-
-    function setProfileContentVisibilityStatus(field, message, isError) {
-      const status = profileContentElements(field).status;
-      if (!status) return;
-      if (!message) {
-        status.textContent = '';
-        status.classList.add('hidden');
-        status.classList.remove('text-error', 'text-emerald-700');
-        return;
-      }
-      status.textContent = message;
-      status.classList.remove('hidden', 'text-error', 'text-emerald-700');
-      status.classList.add(isError ? 'text-error' : 'text-emerald-700');
-    }
-
-    function toggleProfileContentVisibility(field) {
-      const elements = profileContentElements(field);
-      if (!elements.toggle || profileContentVisibilitySaving[field]) return;
-
-      const previous = elements.toggle.classList.contains('active');
-      const next = !previous;
-      setProfileContentVisibilityUi(field, next);
-      setProfileContentVisibilityStatus(field, '');
-      profileContentVisibilitySaving[field] = true;
-      elements.toggle.style.pointerEvents = 'none';
-      elements.toggle.style.opacity = '0.7';
-
-      const body = new FormData();
-      body.append('field', field);
-      body.append('enabled', next ? '1' : '0');
-      body.append('_token', @json(csrf_token()));
-
-      fetch(@json(route('personal-page.profile-content-visibility')), {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: body,
-      })
-        .then(function (res) {
-          return res.json().then(function (data) {
-            return { ok: res.ok, data: data };
-          });
-        })
-        .then(function (result) {
-          if (!result.ok || !result.data || !result.data.success) {
-            throw new Error((result.data && result.data.message) || 'Could not update visibility.');
-          }
-          setProfileContentVisibilityUi(field, !!result.data.enabled);
-          setProfileContentVisibilityStatus(field, result.data.message || 'Visibility updated.', false);
-        })
-        .catch(function (err) {
-          setProfileContentVisibilityUi(field, previous);
-          setProfileContentVisibilityStatus(field, err.message || 'Could not update visibility.', true);
-        })
-        .finally(function () {
-          profileContentVisibilitySaving[field] = false;
-          elements.toggle.style.pointerEvents = '';
-          elements.toggle.style.opacity = '';
-        });
-    }
-
-    let displayPoliciesSaving = false;
-
-    function setDisplayPoliciesUi(enabled) {
-      const toggle = document.getElementById('displayPoliciesToggle');
-      const input = document.getElementById('display_policies');
-      const preview = document.getElementById('policiesPreviewWrap');
-      if (toggle) {
-        toggle.classList.toggle('active', enabled);
-        toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
-      }
-      if (input) input.value = enabled ? '1' : '0';
-      if (preview) preview.classList.toggle('hidden', !enabled);
-    }
-
-    function setDisplayPoliciesStatus(message, isError) {
-      const status = document.getElementById('displayPoliciesStatus');
-      if (!status) return;
-      if (!message) {
-        status.textContent = '';
-        status.classList.add('hidden');
-        status.classList.remove('text-error', 'text-emerald-700');
-        return;
-      }
-      status.textContent = message;
-      status.classList.remove('hidden', 'text-error', 'text-emerald-700');
-      status.classList.add(isError ? 'text-error' : 'text-emerald-700');
-    }
-
-    function toggleDisplayPolicies() {
-      const toggle = document.getElementById('displayPoliciesToggle');
-      if (!toggle || displayPoliciesSaving) return;
-
-      const previous = toggle.classList.contains('active');
-      const next = !previous;
-      setDisplayPoliciesUi(next);
-      setDisplayPoliciesStatus('');
-      displayPoliciesSaving = true;
-      toggle.style.pointerEvents = 'none';
-      toggle.style.opacity = '0.7';
-
-      const body = new FormData();
-      body.append('display_policies', next ? '1' : '0');
-      body.append('_token', @json(csrf_token()));
-
-      fetch(@json(route('personal-page.display-policies')), {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: body,
-      })
-        .then(function (res) {
-          return res.json().then(function (data) {
-            return { ok: res.ok, data: data };
-          });
-        })
-        .then(function (result) {
-          if (!result.ok || !result.data || !result.data.success) {
-            throw new Error((result.data && result.data.message) || 'Could not update policies visibility.');
-          }
-          const enabled = !!result.data.display_policies;
-          setDisplayPoliciesUi(enabled);
-          setDisplayPoliciesStatus(result.data.message || (enabled ? 'Policies will be shown on your public page.' : 'Policies are hidden from your public page.'), false);
-        })
-        .catch(function (err) {
-          setDisplayPoliciesUi(previous);
-          setDisplayPoliciesStatus(err.message || 'Could not update policies visibility.', true);
-        })
-        .finally(function () {
-          displayPoliciesSaving = false;
-          toggle.style.pointerEvents = '';
-          toggle.style.opacity = '';
-        });
-    }
-
-    let displayGuestSpotsSaving = false;
-
-    function setDisplayGuestSpotsUi(enabled) {
-      const toggle = document.getElementById('displayGuestSpotsToggle');
-      const input = document.getElementById('display_guest_spots');
-      if (toggle) {
-        toggle.classList.toggle('active', enabled);
-        toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
-      }
-      if (input) input.value = enabled ? '1' : '0';
-    }
-
-    function setDisplayGuestSpotsStatus(message, isError) {
-      const status = document.getElementById('displayGuestSpotsStatus');
-      if (!status) return;
-      if (!message) {
-        status.textContent = '';
-        status.classList.add('hidden');
-        status.classList.remove('text-error', 'text-emerald-700');
-        return;
-      }
-      status.textContent = message;
-      status.classList.remove('hidden', 'text-error', 'text-emerald-700');
-      status.classList.add(isError ? 'text-error' : 'text-emerald-700');
-    }
-
-    function toggleDisplayGuestSpots() {
-      const toggle = document.getElementById('displayGuestSpotsToggle');
-      if (!toggle || displayGuestSpotsSaving) return;
-
-      const previous = toggle.classList.contains('active');
-      const next = !previous;
-      setDisplayGuestSpotsUi(next);
-      setDisplayGuestSpotsStatus('');
-      displayGuestSpotsSaving = true;
-      toggle.style.pointerEvents = 'none';
-      toggle.style.opacity = '0.7';
-
-      const body = new FormData();
-      body.append('display_guest_spots', next ? '1' : '0');
-      body.append('_token', @json(csrf_token()));
-
-      fetch(@json(route('personal-page.display-guest-spots')), {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: body,
-      })
-        .then(function (res) {
-          return res.json().then(function (data) {
-            return { ok: res.ok, data: data };
-          });
-        })
-        .then(function (result) {
-          if (!result.ok || !result.data || !result.data.success) {
-            throw new Error((result.data && result.data.message) || 'Could not update guest spots visibility.');
-          }
-          const enabled = !!result.data.display_guest_spots;
-          setDisplayGuestSpotsUi(enabled);
-          setDisplayGuestSpotsStatus(result.data.message || (enabled ? 'Guest spots will be shown on your public page.' : 'Guest spots are hidden from your public page.'), false);
-        })
-        .catch(function (err) {
-          setDisplayGuestSpotsUi(previous);
-          setDisplayGuestSpotsStatus(err.message || 'Could not update guest spots visibility.', true);
-        })
-        .finally(function () {
-          displayGuestSpotsSaving = false;
-          toggle.style.pointerEvents = '';
-          toggle.style.opacity = '';
-        });
-    }
-
-    let displayFaqSaving = false;
-
-    function setDisplayFaqUi(enabled) {
-      const toggle = document.getElementById('displayFaqToggle');
-      const input = document.getElementById('display_faq');
-      if (toggle) {
-        toggle.classList.toggle('active', enabled);
-        toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
-      }
-      if (input) input.value = enabled ? '1' : '0';
-    }
-
-    function setDisplayFaqStatus(message, isError) {
-      const status = document.getElementById('displayFaqStatus');
-      if (!status) return;
-      if (!message) {
-        status.textContent = '';
-        status.classList.add('hidden');
-        status.classList.remove('text-error', 'text-emerald-700');
-        return;
-      }
-      status.textContent = message;
-      status.classList.remove('hidden', 'text-error', 'text-emerald-700');
-      status.classList.add(isError ? 'text-error' : 'text-emerald-700');
-    }
-
-    function toggleDisplayFaq() {
-      const toggle = document.getElementById('displayFaqToggle');
-      if (!toggle || displayFaqSaving) return;
-
-      const previous = toggle.classList.contains('active');
-      const next = !previous;
-      setDisplayFaqUi(next);
-      setDisplayFaqStatus('');
-      displayFaqSaving = true;
-      toggle.style.pointerEvents = 'none';
-      toggle.style.opacity = '0.7';
-
-      const body = new FormData();
-      body.append('display_faq', next ? '1' : '0');
-      body.append('_token', @json(csrf_token()));
-
-      fetch(@json(route('personal-page.display-faq')), {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: body,
-      })
-        .then(function (res) {
-          return res.json().then(function (data) {
-            return { ok: res.ok, data: data };
-          });
-        })
-        .then(function (result) {
-          if (!result.ok || !result.data || !result.data.success) {
-            throw new Error((result.data && result.data.message) || 'Could not update FAQ visibility.');
-          }
-          const enabled = !!result.data.display_faq;
-          setDisplayFaqUi(enabled);
-          setDisplayFaqStatus(result.data.message || (enabled ? 'FAQ will be shown on your public page.' : 'FAQ is hidden from your public page.'), false);
-        })
-        .catch(function (err) {
-          setDisplayFaqUi(previous);
-          setDisplayFaqStatus(err.message || 'Could not update FAQ visibility.', true);
-        })
-        .finally(function () {
-          displayFaqSaving = false;
-          toggle.style.pointerEvents = '';
-          toggle.style.opacity = '';
-        });
-    }
-
-    function selectTheme(card) {
-      if (!card) return;
-      selectedThemeKey = card.dataset.theme || 'default';
-      selectedTheme = {
-        primary: card.dataset.primary || '#310F7A',
-        bg: card.dataset.bg || '#F8F1FB'
-      };
-      const colorInput = document.getElementById('personal_page_color');
-      if (colorInput) colorInput.value = selectedThemeKey;
-      clearFieldError('personal_page_color');
-      document.querySelectorAll('.theme-card').forEach(function (themeCard) {
-        themeCard.classList.remove('selected');
-      });
-      card.classList.add('selected');
-      refreshPreviewModal();
-    }
-
-    function updatePreview() {
-      refreshPreviewModal();
-    }
-
-    function clearAlerts() {
-      const successAlert = document.getElementById('personalPageSuccessAlert');
-      const errorAlert = document.getElementById('personalPageErrorAlert');
-      if (successAlert) {
-        successAlert.classList.add('hidden');
-        successAlert.textContent = '';
-      }
-      if (errorAlert) {
-        errorAlert.classList.add('hidden');
-        errorAlert.textContent = '';
-      }
-    }
-
-    function clearFieldError(fieldName) {
-      const field = document.getElementById(fieldName);
-      const error = document.getElementById(fieldName + '_error');
-      if (field) field.classList.remove('border-error', 'ring-2', 'ring-error/40');
-      if (fieldName === 'personal_page_color') {
-        const themeGrid = document.getElementById('themeGrid');
-        if (themeGrid) themeGrid.classList.remove('ring-2', 'ring-error/40', 'rounded-2xl', 'p-2');
-      }
-      if (error) {
-        error.textContent = '';
-        error.classList.add('hidden');
-      }
-    }
-
-    function setFieldError(fieldName, message) {
-      const field = document.getElementById(fieldName);
-      const error = document.getElementById(fieldName + '_error');
-      if (field) field.classList.add('border-error', 'ring-2', 'ring-error/40');
-      if (error) {
-        error.textContent = message;
-        error.classList.remove('hidden');
-      }
-      if (fieldName === 'personal_page_color') {
-        const themeGrid = document.getElementById('themeGrid');
-        if (themeGrid) themeGrid.classList.add('ring-2', 'ring-error/40', 'rounded-2xl', 'p-2');
-      }
-    }
-
-    function scrollToFirstPersonalPageError() {
-      const firstError = document.querySelector('p[id$="_error"]:not(.hidden)');
-      if (firstError && firstError.textContent.trim() !== '') {
-        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
-      const globalError = document.getElementById('personalPageErrorAlert');
-      if (globalError && !globalError.classList.contains('hidden')) {
-        globalError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-
-    function validatePersonalPageForm() {
-      let ok = true;
-      const alias = (document.getElementById('personal_page_name_alias')?.value || '').trim();
-      const color = (document.getElementById('personal_page_color')?.value || '').trim();
-
-      if (!alias) {
-        setFieldError('personal_page_name_alias', 'Please select how your name should appear.');
-        ok = false;
-      }
-      if (!color) {
-        setFieldError('personal_page_color', 'Please select a color scheme.');
-        ok = false;
-      }
-      return ok;
-    }
-
-    function handleBannerUpload(input) {
-      if (!input || !input.files || !input.files[0]) return;
-      const file = input.files[0];
-      bannerSourceMime = ((file.type || inferImageMimeFromFilename(file.name) || '') + '').toLowerCase();
-      const isImageMime = !!file.type && file.type.startsWith('image/');
-      const isImageByName = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name || '');
-      if (!isImageMime && !isImageByName) {
-        input.value = '';
-        alert('Please select a valid image file.');
-        return;
-      }
-
-      if (activeBannerObjectUrl) URL.revokeObjectURL(activeBannerObjectUrl);
-      activeBannerObjectUrl = URL.createObjectURL(file);
-
-      const cropImage = document.getElementById('bannerCropImage');
-      if (!cropImage) return;
-
-      cropImage.onload = null;
-      cropImage.onerror = null;
-
-      const modal = document.getElementById('bannerCropperModal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      if (bannerCropper) {
-        bannerCropper.destroy();
-        bannerCropper = null;
-      }
-
-      const initCropper = function () {
-        bannerCropper = new Cropper(cropImage, {
-          aspectRatio: 3,
-          viewMode: 1,
-          dragMode: 'move',
-          autoCropArea: 1,
-          responsive: true,
-          background: false,
-          guides: false,
-          checkCrossOrigin: false
-        });
-      };
-
-      cropImage.onload = initCropper;
-      cropImage.onerror = function () {
-        closeBannerCropper();
-        alert('This image format is not supported by your browser. Please use JPG or PNG.');
-      };
-      cropImage.src = activeBannerObjectUrl;
-    }
-
-    function closeBannerCropper() {
-      const modal = document.getElementById('bannerCropperModal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-
-      if (bannerCropper) {
-        bannerCropper.destroy();
-        bannerCropper = null;
-      }
-
-      if (activeBannerObjectUrl) {
-        URL.revokeObjectURL(activeBannerObjectUrl);
-        activeBannerObjectUrl = null;
-      }
-
-      const bannerInput = document.getElementById('bannerInput');
-      if (bannerInput) bannerInput.value = '';
-    }
-
-    function applyBannerCrop() {
-      if (!bannerCropper) return;
-
-      const preserveAlpha = bannerCropShouldPreserveAlpha();
-      const canvasOpts = {
-        width: 1200,
-        height: 400,
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high'
-      };
-      if (!preserveAlpha) {
-        canvasOpts.fillColor = '#ffffff';
-      }
-
-      const canvas = bannerCropper.getCroppedCanvas(canvasOpts);
-
-      if (!canvas) return;
-
-      const outMime = preserveAlpha ? 'image/png' : 'image/jpeg';
-      const outQuality = preserveAlpha ? undefined : 0.92;
-      croppedBannerFilename = preserveAlpha ? 'banner.png' : 'banner.jpg';
-
-      canvas.toBlob(function (blob) {
-        if (!blob) return;
-        croppedBannerBlob = blob;
-        bannerRemoved = false;
-        const croppedBannerDataUrl = preserveAlpha
-          ? canvas.toDataURL('image/png')
-          : canvas.toDataURL('image/jpeg', 0.92);
-
-        const bannerArea = document.getElementById('bannerUploadArea');
-        bannerArea.style.backgroundImage = "url('" + croppedBannerDataUrl + "')";
+    });
+  }
+
+  /* ---------- Appearance tab ---------- */
+  var appearanceForm = document.getElementById('appearanceForm');
+  if (appearanceForm) {
+    var bannerArea = document.getElementById('bannerUploadArea');
+    var bannerInput = document.getElementById('bannerInput');
+    var bannerRemove = document.getElementById('bannerRemoveBtn');
+    var removeFlag = document.getElementById('remove_banner');
+    var colorInput = document.getElementById('personal_page_color');
+    var guestTog = document.getElementById('guestSpotsTog');
+    var guestHidden = document.getElementById('display_guest_spots');
+
+    if (bannerArea && bannerInput) {
+      bannerArea.addEventListener('click', function () { bannerInput.click(); });
+      bannerInput.addEventListener('change', function () {
+        var f = bannerInput.files && bannerInput.files[0];
+        if (!f) return;
+        removeFlag.value = '0';
+        var url = URL.createObjectURL(f);
         bannerArea.classList.add('has-image');
-        clearFieldError('personal_page_background_image');
-
-        const previewBanner = document.getElementById('modalPreviewBanner');
-        if (previewBanner) {
-          previewBanner.style.backgroundImage = "url('" + croppedBannerDataUrl + "')";
-          previewBanner.style.backgroundSize = 'cover';
-          previewBanner.style.backgroundPosition = 'center';
-          previewBanner.innerHTML = '';
-        }
-
-        syncBannerRemoveButton();
-        closeBannerCropper();
-      }, outMime, outQuality);
+        bannerArea.style.backgroundImage = 'url(' + url + ')';
+        if (bannerRemove) bannerRemove.hidden = false;
+        markDirty();
+      });
     }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      const form = document.getElementById('personalPageForm');
-      const saveBtn = document.getElementById('savePersonalPageBtn');
-
-      const bannerInput = document.getElementById('bannerInput');
-      if (bannerInput) {
-        bannerInput.addEventListener('change', function () {
-          clearFieldError('personal_page_background_image');
-        });
-      }
-
-      const selectedThemeCard = document.querySelector('.theme-card.selected');
-      if (selectedThemeCard) {
-        selectTheme(selectedThemeCard);
-      }
-
-      const selectedNameCard = document.querySelector('[data-name-option].selected');
-      if (selectedNameCard) selectNameOption(selectedNameCard.dataset.nameOption || 'full');
-
-      refreshPreviewModal();
-
-      if (!form || !saveBtn) return;
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        clearAlerts();
-        ['personal_page_background_image', 'personal_page_name_alias', 'personal_page_color'].forEach(clearFieldError);
-
-        if (!validatePersonalPageForm()) {
-          scrollToFirstPersonalPageError();
-          return;
-        }
-
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = '<span class="material-symbols-outlined text-lg">hourglass_top</span> Saving...';
-
-        const formData = new FormData(form);
-        if (croppedBannerBlob) {
-          formData.delete('personal_page_background_image');
-          formData.append('personal_page_background_image', croppedBannerBlob, croppedBannerFilename || 'banner.jpg');
-        } else if (bannerRemoved) {
-          formData.delete('personal_page_background_image');
-          formData.append('remove_personal_page_background_image', '1');
-        }
-
-        function reportPersonalPageClientError(payload) {
-          try {
-            fetch(@json(route('personal-page.client-error')), {
-              method: 'POST',
-              headers: {
-                'X-CSRF-TOKEN': @json(csrf_token()),
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(Object.assign({
-                url: window.location.href,
-                user_agent: navigator.userAgent,
-                banner_blob_size: croppedBannerBlob ? croppedBannerBlob.size : null,
-                banner_blob_type: croppedBannerBlob ? croppedBannerBlob.type : null
-              }, payload || {}))
-            }).catch(function () {});
-          } catch (e) {}
-        }
-
-        fetch(@json(route('personal-page.update')), {
-          method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': @json(csrf_token()),
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-          },
-          body: formData
-        }).then(function (response) {
-          return response.text().then(function (raw) {
-            var data = null;
-            var parseError = null;
-            if (raw) {
-              try {
-                data = JSON.parse(raw);
-              } catch (e) {
-                parseError = e && e.message ? e.message : 'JSON parse failed';
-              }
-            }
-            return {
-              ok: response.ok,
-              status: response.status,
-              data: data,
-              raw: raw,
-              parseError: parseError
-            };
-          });
-        }).then(function (result) {
-          if (result.parseError) {
-            reportPersonalPageClientError({
-              stage: 'response_parse',
-              status: result.status,
-              message: result.parseError,
-              response_snippet: (result.raw || '').slice(0, 1500)
-            });
-            const errorAlert = document.getElementById('personalPageErrorAlert');
-            if (result.status === 413) {
-              errorAlert.textContent = 'Upload is too large for the server. Please use an image under 4 MB.';
-            } else if (result.status === 419) {
-              errorAlert.textContent = 'Your session expired. Please refresh the page and try again.';
-            } else {
-              errorAlert.textContent = 'Could not save personal page (server returned an unexpected response).';
-            }
-            errorAlert.classList.remove('hidden');
-            scrollToFirstPersonalPageError();
-            return;
-          }
-
-          if (result.ok && result.data && result.data.success) {
-            const successAlert = document.getElementById('personalPageSuccessAlert');
-            successAlert.textContent = result.data.message || 'Personal page updated successfully.';
-            successAlert.classList.remove('hidden');
-            if (result.data.banner) {
-              const bannerArea = document.getElementById('bannerUploadArea');
-              bannerArea.style.backgroundImage = "url('" + result.data.banner + "')";
-              bannerArea.classList.add('has-image');
-            } else {
-              removeBannerImage();
-            }
-            bannerRemoved = false;
-            croppedBannerBlob = null;
-            syncBannerRemoveButton();
-            showSaveToast();
-            return;
-          }
-          if (result.status === 422 && result.data && result.data.errors) {
-            reportPersonalPageClientError({
-              stage: 'validation',
-              status: result.status,
-              message: (result.data && result.data.message) || 'Validation failed',
-              response_snippet: JSON.stringify(result.data.errors).slice(0, 1500)
-            });
-            Object.keys(result.data.errors).forEach(function (key) {
-              setFieldError(key, result.data.errors[key][0]);
-            });
-            scrollToFirstPersonalPageError();
-            return;
-          }
-
-          reportPersonalPageClientError({
-            stage: 'server_error',
-            status: result.status,
-            message: (result.data && result.data.message) || 'Could not save personal page.',
-            response_snippet: JSON.stringify(result.data || {}).slice(0, 1500)
-          });
-          const errorAlert = document.getElementById('personalPageErrorAlert');
-          errorAlert.textContent = (result.data && result.data.message) ? result.data.message : 'Could not save personal page.';
-          errorAlert.classList.remove('hidden');
-          scrollToFirstPersonalPageError();
-        }).catch(function (err) {
-          reportPersonalPageClientError({
-            stage: 'network',
-            message: (err && err.message) ? err.message : 'Network error'
-          });
-          const errorAlert = document.getElementById('personalPageErrorAlert');
-          errorAlert.textContent = 'Network error. Please try again.';
-          errorAlert.classList.remove('hidden');
-          scrollToFirstPersonalPageError();
-        }).finally(function () {
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = '<span class="material-symbols-outlined text-lg">save</span> Save Changes';
-        });
+    if (bannerRemove) {
+      bannerRemove.addEventListener('click', function () {
+      if (bannerInput) bannerInput.value = '';
+        removeFlag.value = '1';
+        bannerArea.classList.remove('has-image');
+        bannerArea.style.backgroundImage = '';
+        bannerRemove.hidden = true;
+        markDirty();
+      });
+    }
+    appearanceForm.querySelectorAll('.theme-card').forEach(function (card) {
+      card.addEventListener('click', function () {
+        appearanceForm.querySelectorAll('.theme-card').forEach(function (c) { c.classList.remove('on'); });
+        card.classList.add('on');
+        colorInput.value = card.dataset.theme;
+        markDirty();
       });
     });
+    if (guestTog) {
+      guestTog.addEventListener('click', function () {
+        guestTog.classList.toggle('on');
+        guestTog.setAttribute('aria-checked', guestTog.classList.contains('on'));
+        guestHidden.value = guestTog.classList.contains('on') ? '1' : '0';
+        markDirty();
+      });
+    }
 
-    (function initWhatsIncludedUi() {
-      var WHATS_INCLUDED_UPDATE_URL = @json(route('artist-designs.whats-included.update'));
-      var WHATS_INCLUDED_INITIAL = @json(['is_active' => $whatsIncludedIsActive, 'items' => $whatsIncludedItems]);
-      var MAX_ITEMS = 8;
-      var DEFAULT_PLACEHOLDERS = [
-        'e.g. Custom sizing consultation',
-        'e.g. Design placement guidance',
-        'e.g. Touch-up session within 3 months',
-        'e.g. Aftercare instructions'
-      ];
-      var PRESETS = [
-        'Sizing consultation',
-        'Placement guidance',
-        'Color matching consultation',
-        'Custom adjustments',
-        'Stencil preview',
-        'Breaks as needed',
-        'Reference photos provided',
-        'Aftercare instructions',
-        'Aftercare product recommendations',
-        'Healing check-in (photo review)'
-      ];
-      var $list = $('#whatsIncludedList');
-      var $editor = $('#whatsIncludedEditor');
-      var $presets = $('#whatsIncludedPresets');
-      var $addBtn = $('#btnAddIncludedItem');
-      var $limitHint = $('#whatsIncludedLimitHint');
-      var $toggle = $('#toggleWhatsIncluded');
-      var $toggleLabel = $('#toggleWhatsIncludedLabel');
-      var $saveStatus = $('#whatsIncludedSaveStatus');
+    document.getElementById('appearanceSaveBtn')?.addEventListener('click', function () {
+      saveAppearance(false);
+    });
 
-      if (!$list.length) return;
+    window.__mpSave = function (andLeave) { return saveAppearance(andLeave); };
 
-      function syncToggleUi() {
-        var on = $toggle.hasClass('active');
-        $toggle.attr('aria-checked', on ? 'true' : 'false');
-        $toggleLabel.text(on ? 'Yes' : 'No').toggleClass('text-primary', on).toggleClass('text-on-surface-variant', !on);
-        $editor.toggleClass('hidden', !on);
-      }
-
-      function rowCount() {
-        return $list.find('.included-item-row').length;
-      }
-
-      function rowValues() {
-        var values = [];
-        $list.find('.included-item-input').each(function () {
-          var v = $.trim($(this).val());
-          if (v) values.push(v.toLowerCase());
+    function saveAppearance(andLeave) {
+      var btn = document.getElementById('appearanceSaveBtn');
+      if (btn) { btn.disabled = true; btn.classList.remove('on'); }
+      var fd = new FormData(appearanceForm);
+      return fetch(UPDATE_URL, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok || !res.j.success) throw new Error(res.j.message || 'Could not save');
+          setDirty(false);
+          toast(res.j.message || 'Changes saved');
+          if (andLeave) runPendingLeave();
+        })
+        .catch(function (e) {
+          toast(e.message || 'Could not save');
+          setDirty(true);
         });
-        return values;
-      }
+    }
+  }
 
-      function syncRemoveButtons() {
-        $list.find('.included-item-row').each(function () {
-          var hasText = $.trim($(this).find('.included-item-input').val()) !== '';
-          $(this).find('.included-item-remove').toggleClass('is-hidden', !hasText);
-        });
-      }
+  /* ---------- About tab ---------- */
+  var aboutForm = document.getElementById('aboutForm');
+  if (aboutForm) {
+    var aliasInput = document.getElementById('nameAlias');
+    var fn = document.getElementById('fn');
+    var ln = document.getElementById('ln');
+    var dn = document.getElementById('dn');
+    var pvname = document.getElementById('pvname');
+    var opts = [].slice.call(document.querySelectorAll('.nmopt'));
+    var sel = aliasInput.value || 'username';
 
-      function syncAddButton() {
-        var atMax = rowCount() >= MAX_ITEMS;
-        $addBtn.prop('disabled', atMax).toggleClass('opacity-40 cursor-not-allowed', atMax);
-        $limitHint.toggleClass('hidden', !atMax);
-      }
-
-      function syncPresetButtons() {
-        var existing = rowValues();
-        $presets.find('.included-preset-chip').each(function () {
-          var label = String($(this).data('preset') || '').trim().toLowerCase();
-          var used = existing.indexOf(label) !== -1;
-          $(this).prop('disabled', used || rowCount() >= MAX_ITEMS);
-        });
-      }
-
-      function buildRow(placeholder, value) {
-        var $row = $('<div class="included-item-row"></div>');
-        var $input = $('<input type="text" class="included-item-input w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" maxlength="255">');
-        $input.attr('placeholder', placeholder || 'e.g. Add a service detail');
-        if (value) $input.val(value);
-        var $remove = $('<button type="button" class="included-item-remove is-hidden" title="Remove item" aria-label="Remove item"><span class="material-symbols-outlined text-[18px]">close</span></button>');
-        $row.append($input, $remove);
-        return $row;
-      }
-
-      function appendRow(placeholder, value) {
-        if (rowCount() >= MAX_ITEMS) return false;
-        $list.append(buildRow(placeholder, value || ''));
-        syncRemoveButtons();
-        syncAddButton();
-        syncPresetButtons();
-        return true;
-      }
-
-      function firstEmptyInput() {
-        var $empty = null;
-        $list.find('.included-item-input').each(function () {
-          if (!$empty && $.trim($(this).val()) === '') {
-            $empty = $(this);
-          }
-        });
-        return $empty;
-      }
-
-      function insertPreset(text) {
-        var label = String(text || '').trim();
-        if (!label || rowCount() >= MAX_ITEMS) return;
-        var lower = label.toLowerCase();
-        if (rowValues().indexOf(lower) !== -1) return;
-        var $empty = firstEmptyInput();
-        if ($empty && $empty.length) {
-          $empty.val(label);
-        } else {
-          appendRow('e.g. Add a service detail', label);
+    function aliasVal(k) {
+      if (k === 'display_name') return (dn.value || '').trim() || ('@' + USERNAME);
+      return '@' + USERNAME;
+    }
+    function drawAlias() {
+      opts.forEach(function (o) {
+        var k = o.dataset.k;
+        var on = k === sel;
+        o.classList.toggle('on', on);
+        var r = o.querySelector('.nmico');
+        if (r) {
+          r.textContent = on ? 'radio_button_checked' : 'radio_button_unchecked';
+          r.style.color = on ? '#3E007C' : '#C8BFCC';
+          r.style.fontVariationSettings = on ? "'FILL' 1" : "'FILL' 0";
         }
-        syncRemoveButtons();
-        syncPresetButtons();
+        var nv = o.querySelector('.nmval');
+        if (nv && k === 'display_name') nv.textContent = (dn.value || '').trim() || '—';
+      });
+      if (pvname) pvname.textContent = aliasVal(sel);
+      aliasInput.value = sel;
+    }
+    opts.forEach(function (o) {
+      o.addEventListener('click', function () { sel = o.dataset.k; drawAlias(); markDirty(); });
+    });
+    [fn, ln, dn].forEach(function (el) {
+      el?.addEventListener('input', function () { drawAlias(); markDirty(); });
+    });
+    drawAlias();
+
+    // Photo cropper
+    var avatarInput = document.getElementById('avatarInput');
+    var changePhotoBtn = document.getElementById('changePhotoBtn');
+    var cropperModal = document.getElementById('cropperModal');
+    var cropImage = document.getElementById('cropImage');
+    var cropper = null;
+    var cropObjectUrl = '';
+
+    function setAvatarPreview(url) {
+      ['photoPreview', 'pvav'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.background = '#fff';
+        el.innerHTML = '<img src="' + url + '" alt="">';
+      });
+    }
+
+    function closeCropperModal() {
+      if (!cropperModal) return;
+      cropperModal.classList.remove('open');
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
       }
-
-      function loadInitialRows() {
-        $list.empty();
-        var savedItems = (WHATS_INCLUDED_INITIAL && WHATS_INCLUDED_INITIAL.items) || [];
-        if (savedItems.length) {
-          savedItems.forEach(function (item, idx) {
-            appendRow(DEFAULT_PLACEHOLDERS[idx] || 'e.g. Add a service detail', item);
-          });
-        } else {
-          DEFAULT_PLACEHOLDERS.forEach(function (ph) {
-            appendRow(ph, '');
-          });
-        }
+      if (cropImage) cropImage.src = '';
+      if (avatarInput) avatarInput.value = '';
+      if (cropObjectUrl) {
+        URL.revokeObjectURL(cropObjectUrl);
+        cropObjectUrl = '';
       }
+    }
 
-      loadInitialRows();
-
-      PRESETS.forEach(function (label) {
-        $presets.append(
-          $('<button type="button" class="included-preset-chip"></button>')
-            .attr('data-preset', label)
-            .html('<span class="material-symbols-outlined text-[16px]">add</span> ' + label)
-        );
+    function openCropper(file) {
+      if (!file || typeof Cropper === 'undefined' || !cropperModal || !cropImage) return;
+      if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
+      cropObjectUrl = URL.createObjectURL(file);
+      cropImage.src = cropObjectUrl;
+      cropperModal.classList.add('open');
+      if (cropper) cropper.destroy();
+      cropper = new Cropper(cropImage, {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: 'move',
+        background: false,
+        autoCropArea: 1,
+        responsive: true,
       });
+    }
 
-      $addBtn.on('click', function () {
-        appendRow('e.g. Add a service detail', '');
-        $list.find('.included-item-row:last .included-item-input').trigger('focus');
-      });
+    changePhotoBtn?.addEventListener('click', function () { avatarInput?.click(); });
+    document.getElementById('photoPreview')?.addEventListener('click', function () { avatarInput?.click(); });
+    document.getElementById('photoPreview') && (document.getElementById('photoPreview').style.cursor = 'pointer');
 
-      $list.on('input', '.included-item-input', function () {
-        syncRemoveButtons();
-        syncPresetButtons();
-      });
+    avatarInput?.addEventListener('change', function () {
+      var f = avatarInput.files && avatarInput.files[0];
+      if (!f) return;
+      openCropper(f);
+    });
 
-      $list.on('click', '.included-item-remove', function () {
-        var $row = $(this).closest('.included-item-row');
-        if (rowCount() <= 1) {
-          $row.find('.included-item-input').val('');
-          syncRemoveButtons();
-          syncPresetButtons();
+    document.getElementById('cancelCropBtn')?.addEventListener('click', closeCropperModal);
+    cropperModal?.addEventListener('click', function (e) {
+      if (e.target === cropperModal) closeCropperModal();
+    });
+    document.getElementById('applyCropBtn')?.addEventListener('click', function () {
+      if (!cropper) return;
+      var canvas = cropper.getCroppedCanvas({ width: 512, height: 512, imageSmoothingQuality: 'high' });
+      if (!canvas) {
+        toast('Could not crop this image. Try another photo.');
+        return;
+      }
+      canvas.toBlob(function (blob) {
+        if (!blob) {
+          toast('Could not crop this image. Try another photo.');
           return;
         }
-        $row.remove();
-        syncRemoveButtons();
-        syncAddButton();
-        syncPresetButtons();
-      });
+        croppedAvatarBlob = blob;
+        setAvatarPreview(URL.createObjectURL(blob));
+        closeCropperModal();
+        markDirty();
+      }, 'image/jpeg', 0.92);
+    });
 
-      $presets.on('click', '.included-preset-chip', function () {
-        if ($(this).prop('disabled')) return;
-        insertPreset($(this).data('preset'));
-      });
-
-      function collectItems() {
-        var items = [];
-        $list.find('.included-item-input').each(function () {
-          var v = $.trim($(this).val());
-          if (v) items.push(v);
-        });
-        return items;
+    // Tagline / bio
+    var tt = document.getElementById('tgtog');
+    var bt = document.getElementById('biotog');
+    var ti = document.getElementById('tgin');
+    var bi = document.getElementById('bioin');
+    function updTagBio() {
+      var ts = tt.classList.contains('on');
+      var bs = bt.classList.contains('on');
+      tt.setAttribute('aria-checked', ts);
+      bt.setAttribute('aria-checked', bs);
+      document.getElementById('displayTagline').value = ts ? '1' : '0';
+      document.getElementById('displayBio').value = bs ? '1' : '0';
+      var pt = document.getElementById('pvtag');
+      var pb = document.getElementById('pvbio');
+      pt.textContent = ti.value;
+      pb.textContent = bi.value;
+      pt.hidden = !ts || !ti.value.trim();
+      pb.hidden = !bs || !bi.value.trim();
+      document.getElementById('biocnt').textContent = bi.value.length + ' / 500';
+      var n = document.getElementById('pvnote');
+      var m = document.getElementById('pvnotet');
+      if (ts && bs) { n.hidden = true; }
+      else {
+        n.hidden = false;
+        m.textContent = (!ts && !bs)
+          ? 'Tagline and bio are hidden. Turn them on to show them here.'
+          : (!ts ? 'Tagline is hidden. Turn it on to show it here.' : 'Bio is hidden. Turn it on to show it here.');
       }
+    }
+    [tt, bt].forEach(function (t) {
+      t.addEventListener('click', function () { t.classList.toggle('on'); updTagBio(); markDirty(); });
+      t.addEventListener('keydown', function (e) {
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); t.classList.toggle('on'); updTagBio(); markDirty(); }
+      });
+    });
+    ti.addEventListener('input', function () { updTagBio(); markDirty(); });
+    bi.addEventListener('input', function () { updTagBio(); markDirty(); });
+    updTagBio();
 
-      function showWhatsIncludedStatus(message, isError) {
-        $saveStatus.removeClass('hidden text-green-700 text-error')
-          .addClass(isError ? 'text-error' : 'text-green-700')
-          .text(message || '');
-        clearTimeout($saveStatus.data('timer'));
-        if (message) {
-          var t = setTimeout(function () { $saveStatus.addClass('hidden').text(''); }, 4000);
-          $saveStatus.data('timer', t);
+    // Other styles
+    var otherSel = OTHER_INIT.slice();
+    var stq = document.getElementById('stq');
+    var stmenu = document.getElementById('stmenu');
+    var stsel = document.getElementById('stsel');
+    var otherBox = document.getElementById('otherStylesInputs');
+    function esc(x) {
+      return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    }
+    function syncOtherInputs() {
+      otherBox.innerHTML = otherSel.map(function (v) {
+        return '<input type="hidden" name="other_styles[]" value="' + esc(v) + '">';
+      }).join('');
+    }
+    function styleMenu() {
+      var f = (stq.value || '').trim().toLowerCase();
+      var primary = document.getElementById('primary_style')?.value || '';
+      var L = STYLE_ALL.filter(function (x) {
+        if (x.v === primary) return false;
+        return !f || x.l.toLowerCase().indexOf(f) > -1 || x.v.toLowerCase().indexOf(f) > -1;
+      });
+      stmenu.innerHTML = L.length
+        ? L.map(function (x) {
+            var on = otherSel.indexOf(x.v) > -1;
+            return '<button type="button" class="sto' + (on ? ' on' : '') + '" data-s="' + esc(x.v) + '">' + esc(x.l) +
+              '<span class="ms">' + (on ? 'check_box' : 'check_box_outline_blank') + '</span></button>';
+          }).join('')
+        : '<div class="stempty">No styles match</div>';
+    }
+    function styleChips() {
+      stsel.innerHTML = otherSel.map(function (v) {
+        var lab = (STYLE_ALL.find(function (x) { return x.v === v; }) || {}).l || v;
+        return '<button type="button" class="stchip" data-s="' + esc(v) + '">' + esc(lab) + '<span class="ms">close</span></button>';
+      }).join('');
+      syncOtherInputs();
+      updatePvStyles();
+    }
+    function openStyleMenu() {
+      styleMenu();
+      stmenu.hidden = false;
+    }
+    stq.addEventListener('focus', openStyleMenu);
+    stq.addEventListener('click', openStyleMenu);
+    stq.addEventListener('input', openStyleMenu);
+    document.querySelector('.stsearch')?.addEventListener('click', function () {
+      openStyleMenu();
+      stq.focus();
+    });
+    stmenu.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    stmenu.addEventListener('click', function (e) {
+      var o = e.target.closest('.sto'); if (!o) return;
+      var v = o.dataset.s; var i = otherSel.indexOf(v);
+      if (i > -1) otherSel.splice(i, 1); else otherSel.push(v);
+      openStyleMenu(); styleChips(); markDirty();
+    });
+    stsel.addEventListener('click', function (e) {
+      var c = e.target.closest('.stchip'); if (!c) return;
+      otherSel.splice(otherSel.indexOf(c.dataset.s), 1);
+      styleChips(); openStyleMenu(); markDirty();
+    });
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.stwrap')) stmenu.hidden = true;
+    });
+    function updatePvStyles() {
+      var box = document.getElementById('pvstyles');
+      if (!box) return;
+      var primary = document.getElementById('primary_style');
+      var since = document.getElementById('tattooing_since');
+      var pills = [];
+      if (primary && primary.value) {
+        var pl = primary.options[primary.selectedIndex]?.text || primary.value;
+        pills.push(pl);
+      }
+      otherSel.slice(0, 2).forEach(function (v) {
+        var lab = (STYLE_ALL.find(function (x) { return x.v === v; }) || {}).l || v;
+        pills.push(lab);
+      });
+      if (since && since.value) pills.push('Since ' + since.value);
+      box.innerHTML = pills.map(function (p) {
+        return '<span class="pill nd k">' + esc(p) + '</span>';
+      }).join('');
+    }
+
+    function onPrimaryStyleChange() {
+      var p = document.getElementById('primary_style')?.value || '';
+      otherSel = otherSel.filter(function (v) { return v !== p; });
+      styleChips();
+      styleMenu();
+      markDirty();
+      updatePvStyles();
+    }
+
+    function onTattooingSinceChange() {
+      markDirty();
+      updatePvStyles();
+    }
+
+    styleChips();
+
+    // Services
+    var svcs = document.getElementById('svcs');
+    var svcow = document.getElementById('svcow');
+    var svcot = document.getElementById('svcot');
+    function updatePvSvc() {
+      var l = document.getElementById('pvsvc');
+      if (!l) return;
+      var v = [].filter.call(svcs.querySelectorAll('input'), function (i) {
+        return i.checked && i.value !== 'Other';
+      }).map(function (i) { return i.value; });
+      if (document.getElementById('svco')?.checked && (svcot.value || '').trim()) {
+        v.push(svcot.value.trim());
+      }
+      l.textContent = v.length ? 'Also: ' + v.join(' · ') : '';
+      l.hidden = !v.length;
+    }
+    svcs.addEventListener('change', function () {
+      svcow.hidden = !document.getElementById('svco').checked;
+      updatePvSvc(); markDirty();
+    });
+    svcot?.addEventListener('input', function () { updatePvSvc(); markDirty(); });
+    updatePvSvc();
+
+    aboutForm.addEventListener('input', function (e) {
+      if (!e.target.closest('#aboutForm')) return;
+      markDirty();
+    });
+    aboutForm.addEventListener('change', function () { markDirty(); });
+
+    // Select2 for year / primary style (use jQuery change — Select2 does not always hit native listeners)
+    if (window.jQuery && jQuery.fn.select2) {
+      jQuery('#aboutForm select.js-select2').each(function () {
+        var $el = jQuery(this);
+        if ($el.hasClass('select2-hidden-accessible')) return;
+        var placeholder = $el.data('placeholder') || 'Select';
+        var searchable = $el.data('searchable');
+        var cfg = {
+          width: '100%',
+          placeholder: placeholder,
+          allowClear: false,
+          dropdownParent: $el.closest('.card').length ? $el.closest('.card') : jQuery('.mp-page')
+        };
+        if (searchable === false || searchable === 0 || searchable === 'false') {
+          cfg.minimumResultsForSearch = Infinity;
         }
-      }
-
-      function saveWhatsIncluded(payload) {
-        return fetch(WHATS_INCLUDED_UPDATE_URL, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: JSON.stringify(payload),
-          credentials: 'same-origin'
-        }).then(function (res) {
-          var ct = res.headers.get('content-type') || '';
-          if (ct.indexOf('application/json') !== -1) {
-            return res.json().then(function (data) {
-              return { ok: res.ok, status: res.status, data: data };
-            });
-          }
-          return res.text().then(function () {
-            return { ok: false, status: res.status, data: {} };
-          });
-        });
-      }
-
-      $toggle.on('click', function () {
-        var $t = $(this);
-        var wasActive = $t.hasClass('active');
-        $t.toggleClass('active');
-        syncToggleUi();
-        var isActive = $t.hasClass('active');
-        $t.addClass('opacity-60 pointer-events-none');
-
-        saveWhatsIncluded({ is_active: isActive }).then(function (result) {
-          if (result.ok && result.data && result.data.success) {
-            if (typeof showSaveToast === 'function') {
-              showSaveToast();
-            }
-          } else {
-            if (wasActive) {
-              $t.addClass('active');
-            } else {
-              $t.removeClass('active');
-            }
-            syncToggleUi();
-            showWhatsIncludedStatus(
-              (result.data && result.data.message) || 'Could not update visibility. Please try again.',
-              true
-            );
-          }
-        }).catch(function () {
-          if (wasActive) {
-            $t.addClass('active');
-          } else {
-            $t.removeClass('active');
-          }
-          syncToggleUi();
-          showWhatsIncludedStatus('Could not update visibility. Please try again.', true);
-        }).finally(function () {
-          $t.removeClass('opacity-60 pointer-events-none');
+        $el.select2(cfg);
+        $el.on('change.select2preview', function () {
+          if (this.id === 'primary_style') onPrimaryStyleChange();
+          else if (this.id === 'tattooing_since') onTattooingSinceChange();
+          else markDirty();
         });
       });
+    } else {
+      document.getElementById('primary_style')?.addEventListener('change', onPrimaryStyleChange);
+      document.getElementById('tattooing_since')?.addEventListener('change', onTattooingSinceChange);
+    }
 
-      $('#btnSaveWhatsIncluded').on('click', function () {
-        var items = collectItems();
-        var isActive = $toggle.hasClass('active');
-        var $btn = $(this);
-        var btnHtml = $btn.html();
-        $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-[16px] animate-pulse">hourglass_empty</span> Saving…');
-
-        saveWhatsIncluded({ is_active: isActive, items: items }).then(function (result) {
-          if (result.ok && result.data && result.data.success) {
-            showWhatsIncludedStatus(result.data.message || 'Saved.', false);
-            if (typeof showSaveToast === 'function') {
-              showSaveToast();
-            }
-          } else {
-            showWhatsIncludedStatus(
-              (result.data && result.data.message) || 'Could not save. Please try again.',
-              true
-            );
+    function saveAbout(andLeave) {
+      var btn = document.getElementById('aboutSaveBtn');
+      if (btn) { btn.disabled = true; btn.classList.remove('on'); }
+      syncOtherInputs();
+      var fd = new FormData(aboutForm);
+      if (croppedAvatarBlob) {
+        fd.delete('avatar');
+        fd.append('avatar', croppedAvatarBlob, 'avatar.jpg');
+      }
+      return fetch(UPDATE_URL, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+      }).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; });
+      }).then(function (res) {
+        if (!res.ok || !res.j.success) {
+          var msg = res.j.message || 'Could not save';
+          if (res.j.errors) {
+            var first = Object.values(res.j.errors)[0];
+            if (first && first[0]) msg = first[0];
           }
-        }).catch(function () {
-          showWhatsIncludedStatus('Could not save. Please try again.', true);
-        }).finally(function () {
-          $btn.prop('disabled', false).html(btnHtml);
-        });
+          throw new Error(msg);
+        }
+        croppedAvatarBlob = null;
+        setDirty(false);
+        toast(res.j.message || 'Changes saved');
+        if (andLeave) runPendingLeave();
+      }).catch(function (e) {
+        toast(e.message || 'Could not save');
+        setDirty(true);
       });
+    }
 
-      syncAddButton();
-      syncPresetButtons();
-      syncToggleUi();
-    })();
+    document.getElementById('aboutSaveBtn')?.addEventListener('click', function () {
+      saveAbout(false);
+    });
+    window.__mpSave = function (andLeave) { return saveAbout(andLeave); };
+  }
+
+  /* Dirty leave / refresh guard — same modal (no browser alert) */
+  function dismissLeaveModal() {
+    if (leaveEl) leaveEl.classList.remove('on');
+    pendingNav = null;
+    pendingReload = false;
+  }
+  document.getElementById('mpLeaveClose')?.addEventListener('click', dismissLeaveModal);
+  leaveEl?.addEventListener('click', function (e) {
+    if (e.target === leaveEl) dismissLeaveModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && leaveEl?.classList.contains('on')) {
+      e.preventDefault();
+      dismissLeaveModal();
+    }
+  });
+  document.getElementById('mpLeaveDiscard')?.addEventListener('click', function () {
+    leaveEl.classList.remove('on');
+    setDirty(false);
+    runPendingLeave();
+  });
+  document.getElementById('mpLeaveSave')?.addEventListener('click', function () {
+    leaveEl.classList.remove('on');
+    if (typeof window.__mpSave === 'function') window.__mpSave(true);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!dirty) return;
+    var n = e.target.closest('aside a[href], .tabs a[href], a[href]:not([href="#"])');
+    if (!n || n.closest('.pgsaverow') || n.closest('#mpLeave') || n.closest('#quickLinks')) return;
+    if (n.getAttribute('target') === '_blank') return;
+    if (n.closest('.head')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    showLeaveModal({ nav: n });
+  }, true);
+
+  document.addEventListener('keydown', function (e) {
+    if (!dirty) return;
+    var isReloadKey = e.key === 'F5' || ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R'));
+    if (!isReloadKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    showLeaveModal({ reload: true });
+  }, true);
+})();
   </script>
 @endsection

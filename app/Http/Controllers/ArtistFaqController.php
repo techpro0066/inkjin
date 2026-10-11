@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ArtistDesign;
 use App\Models\ArtistFaq;
+use App\Models\Portfolio;
+use App\Models\UserDetail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,12 +16,20 @@ class ArtistFaqController extends Controller
 {
     public function index(): View
     {
-        $faqs = Auth::user()
-            ->artistFaqs()
-            ->ordered()
-            ->get();
+        $user = Auth::user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+        $faqs = $user->artistFaqs()->ordered()->get();
 
-        return view('artist.faq.index', compact('faqs'));
+        return view('artist.faq.index', [
+            'user' => $user,
+            'userDetail' => $userDetail,
+            'faqs' => $faqs,
+            'activeNav' => 'my-page',
+            'myPageTab' => 'faq',
+            'designsCount' => ArtistDesign::query()->where('user_id', $user->id)->count(),
+            'portfolioCount' => Portfolio::query()->where('user_id', $user->id)->count(),
+            'faqCount' => $faqs->count(),
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -124,7 +135,7 @@ class ArtistFaqController extends Controller
     private function validatedPayload(Request $request, bool $partial = false): array
     {
         if ($partial) {
-            $validated = $request->validate([
+            $request->validate([
                 'is_active' => ['required', 'boolean'],
             ]);
 

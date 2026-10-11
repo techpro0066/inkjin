@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ArtistDesign;
+use App\Models\ArtistFaq;
+use App\Models\Portfolio;
 use App\Models\SmartPricingSize;
 use App\Models\UserDetail;
 use App\Http\Controllers\Concerns\SuggestsTattooImageFieldsWithAi;
@@ -32,7 +34,7 @@ class ArtistDesignsController extends Controller
 
     private function sessionDurations(): array
     {
-        return ['30min', '1h', '2h', '3h', '4h', '6h', '8h'];
+        return ['30min', '1h', '2h', '3h', '4h', '5h', '6h', '7h', '8h', 'half-day', 'full-day'];
     }
 
     /**
@@ -192,9 +194,10 @@ class ArtistDesignsController extends Controller
 
     public function index()
     {
-        $userDetail = Auth::user()->userDetail;
+        $user = Auth::user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
-        $artistDesigns = Auth::user()->artistDesigns()
+        $artistDesigns = $user->artistDesigns()
             ->withCount(['bookingRequests', 'bookings'])
             ->withSoldOutState()
             ->orderBy('sort_order')
@@ -204,7 +207,7 @@ class ArtistDesignsController extends Controller
         $styles = $this->styles();
         $placements = $this->placements();
 
-        $smartPricingRanges = Auth::user()->smartPricingSizes()
+        $smartPricingRanges = $user->smartPricingSizes()
             ->get(['kind', 'size_min', 'size_max', 'min_price', 'max_price', 'sessions', 'duration', 'sort_order'])
             ->map(fn (SmartPricingSize $row) => [
                 'kind' => $row->kind,
@@ -222,14 +225,21 @@ class ArtistDesignsController extends Controller
             'artistDesigns' => $artistDesigns,
             'styles' => $styles,
             'placements' => $placements,
-            'sizeUnit' => in_array(($userDetail?->size_unit ?? 'cm'), ['cm', 'in'], true)
+            'userDetail' => $userDetail,
+            'displayDesigns' => (bool) ($userDetail->display_designs ?? true),
+            'activeNav' => 'my-page',
+            'myPageTab' => 'designs',
+            'designsCount' => $artistDesigns->count(),
+            'portfolioCount' => Portfolio::query()->where('user_id', $user->id)->count(),
+            'faqCount' => ArtistFaq::query()->where('user_id', $user->id)->count(),
+            'sizeUnit' => in_array(($userDetail->size_unit ?? 'cm'), ['cm', 'in'], true)
                 ? ($userDetail->size_unit ?? 'cm')
                 : 'cm',
-            'currencyCode' => strtoupper((string) ($userDetail?->currency ?? 'EUR')),
-            'pricingType' => in_array(($userDetail?->pricing_type ?? 'manual'), ['manual', 'smart'], true)
+            'currencyCode' => strtoupper((string) ($userDetail->currency ?? 'EUR')),
+            'pricingType' => in_array(($userDetail->pricing_type ?? 'manual'), ['manual', 'smart'], true)
                 ? ($userDetail->pricing_type ?? 'manual')
                 : 'manual',
-            'smartPricingColorPercent' => $userDetail?->color_percent !== null
+            'smartPricingColorPercent' => $userDetail->color_percent !== null
                 ? (float) $userDetail->color_percent
                 : 20.0,
             'smartPricingRanges' => $smartPricingRanges,
@@ -385,9 +395,11 @@ class ArtistDesignsController extends Controller
             'pricing_type' => $validated['pricing_type'],
         ]);
 
+        $typeLabel = $userDetail->pricing_type === 'smart' ? 'Smart pricing' : 'Manual pricing';
+
         return response()->json([
             'success' => true,
-            'message' => 'Pricing type updated.',
+            'message' => 'Switched to '.$typeLabel,
             'pricing_type' => $userDetail->pricing_type,
         ]);
     }
@@ -501,6 +513,7 @@ class ArtistDesignsController extends Controller
         $user = Auth::user();
         $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
         $ranges = array_values($validated['ranges'] ?? []);
+        $wasSmart = ($userDetail->pricing_type ?? 'manual') === 'smart';
 
         DB::transaction(function () use ($user, $userDetail, $validated, $ranges) {
             $userDetail->update([
@@ -545,7 +558,7 @@ class ArtistDesignsController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Smart pricing saved.',
+            'message' => $wasSmart ? 'Smart pricing saved.' : 'Switched to Smart pricing',
             'pricing_type' => $userDetail->pricing_type,
             'color_percent' => (float) $userDetail->color_percent,
             'ranges' => $user->smartPricingSizes()

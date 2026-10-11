@@ -73,7 +73,7 @@
   .acc-leave-f .btn{flex:1;justify-content:center}
   @media (max-width:900px){
     .acc-toast{left:16px;right:16px;top:74px}
-  }
+    }
 </style>
 @endsection
 
@@ -106,7 +106,7 @@
           </a>
         </h1>
         <div class="sub">Your login, contact details, studio and region. Set once, rarely changed.</div>
-      </div>
+    </div>
     </div>
 
     @include('artist.partials.profile-settings-tabs', ['activeProfileTab' => 'profile'])
@@ -124,7 +124,7 @@
                 <div class="faint" style="font-size:12.5px;margin-top:2px">
                   Used for your account and receipts. You can also show your full name on your page
                   (<a href="{{ route('personal-page.index') }}" style="color:#3E007C;font-weight:600;text-decoration:none">My Page → About</a>).
-                </div>
+              </div>
               </div>
             </div>
             <div style="padding:18px 22px">
@@ -134,7 +134,7 @@
                   <input class="in" id="first_name" name="first_name" type="text" value="{{ old('first_name', $user->first_name) }}" autocomplete="given-name">
                   <div class="acc-err" id="first_name_error" hidden></div>
                 </div>
-                <div>
+            <div>
                   <span class="fl">Last name</span>
                   <input class="in" id="last_name" name="last_name" type="text" value="{{ old('last_name', $user->last_name) }}" autocomplete="family-name">
                   <div class="acc-err" id="last_name_error" hidden></div>
@@ -154,27 +154,27 @@
                   inkjin.com/@yourname.
                 @endif
                 Letters, numbers, periods and underscores, max 30.
-              </div>
+            </div>
               <div class="acc-err" id="user_name_error" hidden></div>
             </div>
-          </div>
+            </div>
 
           <div class="card" style="margin-bottom:14px">
             <div class="ch">
-              <div>
+            <div>
                 <h3>Contact</h3>
                 <div class="faint" style="font-size:12.5px;margin-top:2px">How Bookpay and your clients reach you</div>
               </div>
             </div>
             <div style="padding:18px 22px">
               <div class="grid" style="grid-template-columns:1fr 1fr">
-                <div>
+            <div>
                   <span class="fl">Mobile number</span>
                   <input class="in" id="mobile_number" name="mobile_number" type="tel" value="{{ old('mobile_number', $ud->mobile_number ?? '') }}" autocomplete="tel">
                   <div class="help">International format, starting with +</div>
                   <div class="acc-err" id="mobile_number_error" hidden></div>
-                </div>
-                <div>
+            </div>
+            <div>
                   <span class="fl">Email</span>
                   <div class="in ro">
                     {{ $user->email }}
@@ -249,12 +249,12 @@
 @endsection
 
 @section('scripts')
-<script>
-(function () {
-  var USERNAME_PATTERN = /^[A-Za-z0-9._]{1,30}$/;
-  var E164_PATTERN = /^\+[1-9]\d{1,14}$/;
+  <script>
+    (function () {
+      var USERNAME_PATTERN = /^[A-Za-z0-9._]{1,30}$/;
+      var E164_PATTERN = /^\+[1-9]\d{1,14}$/;
   var form = document.getElementById('profileForm');
-  var saveBtn = document.getElementById('saveProfileBtn');
+      var saveBtn = document.getElementById('saveProfileBtn');
   var saveLabel = document.getElementById('saveProfileLabel');
   var toast = document.getElementById('profileToast');
   var toastMsg = document.getElementById('profileToastMsg');
@@ -300,30 +300,30 @@
   }
 
   function validate() {
-    var ok = true;
+        var ok = true;
     var first = (document.getElementById('first_name').value || '').trim();
     var last = (document.getElementById('last_name').value || '').trim();
-    var userName = (document.getElementById('user_name').value || '').trim();
-    var mobile = (document.getElementById('mobile_number').value || '').trim();
+        var userName = (document.getElementById('user_name').value || '').trim();
+        var mobile = (document.getElementById('mobile_number').value || '').trim();
 
     if (!first) { setError('first_name', 'First name is required.'); ok = false; }
     if (!last) { setError('last_name', 'Last name is required.'); ok = false; }
-    if (!userName) {
+        if (!userName) {
       setError('user_name', 'Username is required.');
-      ok = false;
-    } else if (!USERNAME_PATTERN.test(userName)) {
+          ok = false;
+        } else if (!USERNAME_PATTERN.test(userName)) {
       setError('user_name', 'Username can only include letters, numbers, periods (.) and underscores (_), max 30.');
-      ok = false;
-    }
-    if (!mobile) {
+          ok = false;
+        }
+        if (!mobile) {
       setError('mobile_number', 'Mobile number is required.');
-      ok = false;
-    } else if (!E164_PATTERN.test(mobile)) {
+          ok = false;
+        } else if (!E164_PATTERN.test(mobile)) {
       setError('mobile_number', 'Use E.164 format, e.g. +306947791680 (no spaces).');
-      ok = false;
-    }
-    return ok;
-  }
+          ok = false;
+        }
+        return ok;
+      }
 
   function closeLeave() {
     if (!leave) return;
@@ -344,8 +344,8 @@
     if (!n) return;
     if (n.tagName === 'A' && n.href) {
       window.location.href = n.href;
-      return;
-    }
+          return;
+        }
     n.click();
   }
 
@@ -361,10 +361,10 @@
     if (saveLabel) saveLabel.textContent = 'Saving…';
 
     return fetch(@json(route('profile.update')), {
-      method: 'POST',
-      headers: {
+          method: 'POST',
+          headers: {
         'Accept': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
+            'X-Requested-With': 'XMLHttpRequest',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
       },
       body: new FormData(form),
@@ -372,32 +372,32 @@
       .then(function (res) {
         return res.json().then(function (data) {
           return { status: res.status, ok: res.ok, data: data };
-        });
-      })
-      .then(function (result) {
+            });
+          })
+          .then(function (result) {
         if (result.ok && result.data && result.data.success) {
           setDirty(false);
           showToast(result.data.message || 'Profile updated');
           if (thenLeave) followPending();
           return true;
-        }
-        if (result.status === 422 && result.data && result.data.errors) {
-          Object.keys(result.data.errors).forEach(function (field) {
+            }
+            if (result.status === 422 && result.data && result.data.errors) {
+              Object.keys(result.data.errors).forEach(function (field) {
             setError(field, result.data.errors[field][0]);
-          });
+              });
           var firstErr = form.querySelector('.acc-err:not([hidden])');
           if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return false;
-        }
+            }
         showToast((result.data && result.data.message) || 'Could not save. Try again.');
         return false;
-      })
-      .catch(function () {
+          })
+          .catch(function () {
         showToast('Network error. Try again.');
         return false;
-      })
-      .finally(function () {
-        saveBtn.disabled = false;
+          })
+          .finally(function () {
+            saveBtn.disabled = false;
         if (saveLabel) saveLabel.textContent = 'Save changes';
       });
   }
@@ -460,6 +460,6 @@
   @if (session('status') === 'profile-updated')
     showToast('Profile updated');
   @endif
-})();
-</script>
+    })();
+  </script>
 @endsection

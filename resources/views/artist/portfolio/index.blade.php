@@ -1,15 +1,33 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
-@section('title', 'Portfolio')
+@section('title', 'My Page')
 
-@section('styles')
 @php
   $showInstagramUi = true;
+  $userDetail = $userDetail ?? auth()->user()?->userDetail;
+  $username = trim((string) ($userDetail?->user_name ?? ''));
+  $publicPageUrl = $username !== '' ? url('/@'.$username) : null;
+  $publicPageHost = 'inkjin.com/@'.($username !== '' ? $username : 'username');
+  $quickLinkRows = $username !== '' ? [
+    ['suffix' => '', 'label' => $publicPageHost],
+    ['suffix' => '#designs', 'label' => $publicPageHost.'#designs'],
+    ['suffix' => '#portfolio', 'label' => $publicPageHost.'#portfolio'],
+    ['suffix' => '#guest-spots', 'label' => $publicPageHost.'#guest-spots'],
+    ['suffix' => '#policies', 'label' => $publicPageHost.'#policies'],
+    ['suffix' => '#faq', 'label' => $publicPageHost.'#faq'],
+  ] : [];
+  $displayPortfolio = (bool) ($displayPortfolio ?? ($userDetail?->display_portfolio ?? true));
+  $igIconPath = 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266.057 1.645.069 4.849.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z';
+  $instagramImportedCount = $instagramImportedCount ?? 0;
 @endphp
+
+@section('styles')
 <meta name="csrf-token" content="{{ csrf_token() }}">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <style>
+
     /* Modal */
     .modal-backdrop {
       display: none;
@@ -171,8 +189,8 @@
 
     body.ig-import-lock #mobileSidebar,
     body.ig-import-lock #mobileMenuBtn,
-    body.ig-import-lock .booking-page-tabs,
-    body.ig-import-lock .booking-page-tabs a,
+    body.ig-import-lock .tabs,
+    body.ig-import-lock .tabs a,
     body.ig-import-lock #btnAddWork,
     body.ig-import-lock #btnConnectInstagram,
     body.ig-import-lock #btnInstagramRefresh,
@@ -309,19 +327,39 @@
       body { overflow-x: hidden; }
     }
 
-    /* Image crop modal (above Add Work z-index 200) */
+    /* Image crop modal must sit above Add Work (z-index 500) */
     .crop-modal-backdrop {
       display: none;
       position: fixed;
       inset: 0;
-      z-index: 300;
+      z-index: 600;
       background: rgba(0, 0, 0, 0.78);
       align-items: center;
       justify-content: center;
       padding: 16px;
     }
     .crop-modal-backdrop.is-open { display: flex; }
-    .crop-modal-inner { width: 100%; max-width: 560px; max-height: min(92vh, 900px); display: flex; flex-direction: column; }
+    .crop-modal-inner {
+      width: 100%; max-width: 560px; max-height: min(92vh, 900px);
+      display: flex; flex-direction: column;
+      background: #fff; border-radius: 22px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25); overflow: hidden;
+    }
+    #workCropModal .mh{
+      padding:22px 24px 14px;border-bottom:1px solid #F0EAF2;
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0
+    }
+    #workCropModal .mh h2{font-size:18px;font-weight:800;margin:0}
+    #workCropModal .mx{
+      border:0;background:none;cursor:pointer;color:var(--muted);
+      width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center
+    }
+    #workCropModal .mx:hover{background:#F7F3F9;color:var(--ink)}
+    #workCropModal .mf{
+      display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;
+      background:#FCF6FE;border-top:1px solid #F0E4F5;flex-shrink:0
+    }
+    #workCropModal .mf .btn{min-width:120px;justify-content:center}
     .cropper-stage-wrap {
       flex: 1;
       min-height: 200px;
@@ -329,6 +367,7 @@
       background: #1a1a1a;
       border-radius: 12px;
       overflow: hidden;
+      margin: 12px 16px;
     }
     .cropper-stage-wrap img { max-height: min(58vh, 520px); display: block; }
     .cropper-stage-wrap .cropper-container,
@@ -423,137 +462,292 @@
       0%, 100% { opacity: 0.55; transform: scale(0.96); }
       50% { opacity: 1; transform: scale(1); }
     }
+
+    /* My Page portfolio chrome */
+    .mp-pf .tog{width:38px;height:22px;border-radius:12px;background:#D9D2DD;position:relative;flex-shrink:0;cursor:pointer;border:0}
+    .mp-pf .tog:after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s}
+    .mp-pf .tog.on{background:var(--pri)}.mp-pf .tog.on:after{left:19px}
+    .mp-pf .tog:disabled{opacity:.55;cursor:not-allowed}
+    .mp-pf .ql{position:relative}
+    .mp-pf .ql-b{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:13.5px;padding:9px 12px 9px 13px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+    .mp-pf .ql-b:hover{background:#F7F3F9}
+    .mp-pf .ql-b .ms{font-size:18px}.mp-pf .ql-b .cv{font-size:20px}
+    .mp-pf .ql-p{position:absolute;right:0;top:calc(100% + 8px);width:min(400px,calc(100vw - 32px));background:#fff;border:1px solid #EAE2EE;border-radius:16px;box-shadow:0 18px 44px rgba(20,0,40,.18);padding:6px;z-index:80}
+    .mp-pf .ql-p[hidden]{display:none}
+    .mp-pf .ql-r{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:10px}
+    .mp-pf .ql-r:hover{background:#F7F3F9}
+    .mp-pf .ql-u{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mp-pf .ql-u b{font-weight:700}
+    .mp-pf .ql-i{width:34px;height:34px;border-radius:9px;border:0;background:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);flex-shrink:0;text-decoration:none}
+    .mp-pf .ql-i:hover{background:#EFE7F3}
+    .mp-pf .ql-i .ms{font-size:18px}.mp-pf .ql-i.done .ms{color:#1F8A4C}
+    .mp-pf .mp-toast{position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));transition:opacity .25s,transform .35s;pointer-events:none}
+    .mp-pf .mp-toast.on{opacity:1;transform:none}
+    .mp-pf .mp-toast .ms{color:#3DD68C;font-size:20px}
+    .mp-pf .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .mp-pf .pcard{overflow:hidden;cursor:grab;transition:opacity .15s,box-shadow .15s}
+    .mp-pf .pcard.dragging,.mp-pf .pcard.sortable-ghost{opacity:.4}
+    .mp-pf .pcard.sortable-chosen{cursor:grabbing;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+    .mp-pf .pimg{height:220px;background:#EEE center/cover;position:relative}
+    .mp-pf .igb{position:absolute;top:10px;left:10px;width:24px;height:24px;border-radius:7px;background:linear-gradient(45deg,#F58529,#DD2A7B,#8134AF);display:flex;align-items:center;justify-content:center;z-index:2}
+    .mp-pf .phd{position:absolute;top:10px;right:10px;background:#fff;border-radius:7px;padding:3px;border:0;cursor:grab;z-index:3;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+    .mp-pf .phd .ms{font-size:18px}
+    .mp-pf .phd:active{cursor:grabbing}
+    .mp-pf .pcard.off .pimg{filter:grayscale(1);opacity:.55}
+    .mp-pf .ptags{display:flex;flex-wrap:wrap;gap:5px}
+    .mp-pf .pst{background:#EDE7F1;color:#1A1A1A;border-radius:6px;padding:3px 8px;font-size:11.5px;font-weight:600}
+    .mp-pf .ptg{background:#F6F2F8;color:#5A5360;border-radius:6px;padding:2px 7px;font-size:11px}
+    .mp-pf .pic{border:0;background:none;cursor:pointer;padding:2px;color:#5A5360;display:inline-flex}
+    .mp-pf .pic .ms{font-size:18px}
+    .mp-pf .igcard{display:flex;align-items:center;gap:14px;padding:14px 18px;margin-bottom:14px}
+    .mp-pf .igav{width:40px;height:40px;border-radius:50%;background:#1A1A1A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;position:relative;flex-shrink:0;overflow:hidden}
+    .mp-pf .igav img{width:100%;height:100%;object-fit:cover}
+    .mp-pf .igav .igb{top:auto;left:auto;right:-4px;bottom:-4px;width:18px;height:18px;border-radius:5px}
+    .mp-pf .igbtn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 13px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center;text-decoration:none;color:var(--ink)}
+    .mp-pf .igbtn .ms{font-size:17px}
+    .mp-pf .igbtn.red{color:#C62828;border-color:#F3C9C9}
+    .mp-pf .igconn{background:linear-gradient(90deg,#F58529,#DD2A7B,#8134AF);color:#fff;border:0;padding:9px 14px}
+    .mp-pf .igconn:hover{color:#fff;filter:brightness(1.05)}
+    .mp-pf .ignote{display:flex;gap:10px;align-items:flex-start;background:#F4EEFB;border:1px solid #E4D6F5;border-radius:12px;padding:11px 14px;font-size:13px;line-height:1.5;color:#3a3a3a;margin:0 0 16px}
+    .mp-pf .ignote .ms{font-size:18px;color:#5B2A94;margin-top:1px}
+    .mp-pf .pff{display:inline-flex;background:#F1ECF3;border-radius:10px;padding:3px}
+    .mp-pf .pff button{font:inherit;font-weight:600;font-size:12.5px;border:0;background:none;padding:6px 11px;border-radius:8px;cursor:pointer;color:#6F6874}
+    .mp-pf .pff button.on{background:#fff;color:#1A1A1A;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+    .mp-pf .pff span{color:#9A93A0;font-weight:600;margin-left:4px}
+    .mp-pf .secsw .ic{width:38px;height:38px;border-radius:10px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .mp-pf .secsw .ic .ms{font-size:20px}
+    @media(max-width:1000px){.mp-pf .pgrid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:600px){.mp-pf .pgrid{grid-template-columns:1fr}.mp-pf .igcard{flex-wrap:wrap}.mp-pf .pfhead{flex-direction:column;align-items:flex-start!important;gap:12px}.mp-pf .mp-toast{left:16px;right:16px;top:74px}.mp-pf .ql-p{right:auto;left:0}}
+
+
+    /* Add work modal (C03) */
+    #addWorkModal.aw-ov{z-index:500;background:rgba(20,10,30,.45);padding:16px;align-items:center}
+    #addWorkModal .modal.xl{
+      width:min(1040px,100%);max-width:100%;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+      background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);
+      display:flex;flex-direction:column;overflow:hidden;opacity:1;transform:none
+    }
+    #addWorkModal .mh{padding:22px 24px 14px;border-bottom:1px solid #F0EAF2;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0}
+    #addWorkModal .mh h2{font-size:18px;font-weight:800;margin:0}
+    #addWorkModal .mx{border:0;background:none;cursor:pointer;color:var(--muted);width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+    #addWorkModal .mx:hover{background:#F7F3F9;color:var(--ink)}
+    #addWorkModal .mb{padding:18px 24px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+    #addWorkModal .mf{display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;background:#FCF6FE;border-top:1px solid #F0E4F5;flex-shrink:0}
+    #addWorkModal .mf .btn{min-width:120px;justify-content:center}
+    #addWorkModal .aw-grid{grid-template-columns:300px 1fr;gap:26px;align-items:start}
+    #addWorkModal .aw-half{grid-template-columns:1fr 1fr;gap:12px}
+    #addWorkModal .ai{display:inline-flex;align-items:center;gap:3px;background:#F3E8FF;color:#6A2BB8;border-radius:6px;font-size:10.5px;font-weight:700;padding:1px 6px;margin-left:6px;vertical-align:middle}
+    #addWorkModal .ai .ms{font-size:12px}
+    #addWorkModal .cnt2{margin-left:auto;background:#F0EDF2;border-radius:6px;font-size:10.5px;font-weight:700;padding:2px 7px;color:#6F6874}
+    #addWorkModal .chip.style-chip{cursor:pointer;font:inherit}
+    #addWorkModal .chip.style-chip.is-selected,#addWorkModal .chip.style-chip.sel{background:#F3E8FF;border-color:#3E007C;color:#3E007C}
+    #addWorkModal .chip.style-chip:disabled{opacity:.42;cursor:not-allowed}
+    #addWorkModal .chip.style-chip .style-chip-check{display:none}
+    #addWorkModal .aw-banner{border:1px solid #F3C9C9;background:#FDECEC;color:#C62828;border-radius:12px;padding:10px 12px;font-size:12.5px;margin-bottom:14px}
+    #addWorkModal .work-field-error{color:#C62828;font-size:12px;margin-top:6px}
+    #addWorkModal .aw-img{border-radius:14px;overflow:hidden;position:relative;cursor:pointer}
+    #addWorkModal .aw-img.work-image-upload--empty{border:1.5px dashed var(--line);background:#FAF7FB;aspect-ratio:4/5;display:flex;align-items:center;justify-content:center}
+    #addWorkModal .aw-img.work-image-upload--has-image{border:1px solid var(--line);aspect-ratio:auto;width:100%;max-width:300px}
+    #addWorkModal .aw-img-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;text-align:center}
+    #addWorkModal .aw-img-empty .ms{font-size:36px;color:var(--faint)}
+    #addWorkModal .aw-img-empty b{font-size:14px}
+    #addWorkModal .aw-img-frame{aspect-ratio:4/5;background:#EEE;position:relative;overflow:hidden;border-radius:14px}
+    #addWorkModal .aw-img-frame img{width:100%;height:100%;object-fit:cover;display:block}
+    #addWorkModal .aw-ai-pill{position:absolute;left:10px;bottom:10px;background:#fff;color:#6A2BB8;z-index:2}
+    #addWorkModal .aw-ai-pill .ms{font-size:14px}
+    #addWorkModal .aw-img-meta{justify-content:space-between;margin-top:10px}
+    #addWorkModal .aw-replace{border:0;background:none;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;padding:0}
+    #addWorkModal .aw-replace:hover{color:var(--pri)}
+    #addWorkModal .hidden{display:none!important}
+    #addWorkModal .tog.toggle-switch{width:38px;height:22px;border-radius:12px;background:#D9D2DD;position:relative;flex-shrink:0;cursor:pointer}
+    #addWorkModal .tog.toggle-switch::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s;transform:none}
+    #addWorkModal .tog.toggle-switch.active,#addWorkModal .tog.toggle-switch.on{background:var(--pri)}
+    #addWorkModal .tog.toggle-switch.active::after,#addWorkModal .tog.toggle-switch.on::after{left:19px;transform:none}
+    #addWorkModal select.in{appearance:auto;-webkit-appearance:menulist}
+    #addWorkModal textarea.in{display:block;line-height:1.45;padding:10px 13px}
+    #addWorkModal .select2-container--default .select2-selection--single{
+      min-height:40px;padding:4px 8px;border-radius:10px;border:1px solid var(--line)!important;background:#fff!important
+    }
+    #addWorkModal .select2-container--default .select2-selection--single .select2-selection__rendered{line-height:30px;padding-left:4px;font-size:13.5px;color:var(--ink)}
+    #addWorkModal .select2-container--default .select2-selection--single .select2-selection__arrow{height:38px}
+    @media (max-width:900px){
+      #addWorkModal .aw-grid{grid-template-columns:1fr!important}
+      #addWorkModal .aw-img.work-image-upload--empty,#addWorkModal .aw-img.work-image-upload--has-image{max-width:200px;margin:0 auto}
+      #addWorkModal .aw-half{grid-template-columns:1fr!important}
+      #addWorkModal .mf{flex-wrap:wrap}
+      #addWorkModal .mf .btn{flex:1}
+    }
+
 </style>
 @endsection
 
 @section('content')
-    <!-- Main Content -->
-  <main class="main-content flex-1 min-h-screen">
-    <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
-
-      <!-- Page Header -->
-      @php
-        $bookingPageUsername = Auth::user()->userDetail->user_name ?? null;
-        $bookingPageUrl = $bookingPageUsername ? 'https://inkjin.com/@'.$bookingPageUsername.'#portfolio' : null;
-      @endphp
-      <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+<div class="mp-pf">
+  <div class="head">
           <div>
-            <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Booking Page</h2>
-            <p class="text-on-surface-variant mt-1">Manage your intake forms, available designs, portfolio and the style of your page</p>
+      <h1>
+        My Page
+        <a class="help-q" href="https://help.inkjin.com/en/articles/17201295-dashboard-my-page-portfolio" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
+          <span class="ms">help</span>
+        </a>
+      </h1>
+      <div class="sub">Everything clients see on your booking page.</div>
           </div>
-          @if ($bookingPageUrl)
-          <a href="{{ $bookingPageUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors shrink-0">
-            <span class="material-symbols-outlined text-lg">open_in_new</span> Open your booking page
+    <div class="btns">
+      @if ($publicPageUrl)
+        <div class="ql" id="quickLinks">
+          <button type="button" class="ql-b" id="quickLinksBtn" aria-haspopup="true" aria-expanded="false" aria-controls="quickLinksMenu">
+            <span class="ms">link</span>Quick links<span class="ms cv">expand_more</span>
+          </button>
+          <div class="ql-p" id="quickLinksMenu" hidden role="menu" aria-label="Quick links">
+            @foreach ($quickLinkRows as $row)
+              <div class="ql-r" role="none">
+                <div class="ql-u" title="{{ $row['label'] }}">
+                  {{ $publicPageHost }}@if($row['suffix'] !== '')<b>{{ $row['suffix'] }}</b>@endif
+                </div>
+                <button type="button" class="ql-i" data-ql-copy="{{ $publicPageUrl.$row['suffix'] }}" data-ql-label="{{ $row['label'] }}" role="menuitem" title="Copy link">
+                  <span class="ms">content_copy</span>
+                </button>
+                <a class="ql-i" href="{{ $publicPageUrl.$row['suffix'] }}" target="_blank" rel="noopener" role="menuitem" title="Open">
+                  <span class="ms">open_in_new</span>
+                </a>
+              </div>
+            @endforeach
+          </div>
+        </div>
+        <a class="btn" href="{{ $publicPageUrl }}#portfolio" target="_blank" rel="noopener">
+          <span class="ms">open_in_new</span>Open my page
           </a>
           @endif
         </div>
       </div>
 
-      @include('artist.partials.booking-page-tabs', ['activeTab' => 'portfolio'])
+  @include('artist.partials.my-page-tabs', [
+    'myPageTab' => 'portfolio',
+    'designsCount' => $designsCount ?? 0,
+    'portfolioCount' => $portfolioCount ?? $portfolios->count(),
+    'faqCount' => $faqCount ?? 0,
+  ])
 
-      @if (session('success'))
-        <div class="mb-4 rounded-xl px-4 py-3 text-sm bg-emerald-50 text-emerald-800 border border-emerald-200">{{ session('success') }}</div>
-      @endif
-      @if (session('error'))
-        <div class="mb-4 rounded-xl px-4 py-3 text-sm bg-red-50 text-red-800 border border-red-200">{{ session('error') }}</div>
-      @endif
+  @if (session('success'))
+    <div class="note" style="margin-bottom:14px">{{ session('success') }}</div>
+  @endif
+  @if (session('error'))
+    <div class="note" style="margin-bottom:14px;border-color:#F3C9C9;background:#FDECEC;color:#C62828">{{ session('error') }}</div>
+  @endif
 
-      <!-- Section intro -->
-      @php
-        $igIconPath = 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z';
-        $instagramImportedCount = $instagramImportedCount ?? 0;
-      @endphp
-      <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 {{ ($showInstagramUi && !empty($instagramConnected)) ? 'mb-4' : '' }}">
-          <div class="min-w-0">
-            <p class="text-on-surface-variant">Showcase your best work to attract new clients.</p>
-            @if ($showInstagramUi && !empty($instagramConnected))
-              <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload images yourself · Refresh to pull in the latest work from IG</p>
-            @elseif ($showInstagramUi)
-              <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload an image yourself. Connect Instagram to import posts (requires an Instagram Business or Creator account).</p>
-            @else
-              <p class="text-xs text-on-surface-variant/70 mt-1">Add Work to upload an image yourself.</p>
-            @endif
-          </div>
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
-            @if ($showInstagramUi && empty($instagramConnected))
-              <a href="{{ route('instagram.connect') }}" id="btnConnectInstagram" class="btn-connect-instagram">
-                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="{{ $igIconPath }}"/></svg>
-                Connect Instagram
-              </a>
-            @endif
-            <button type="button" id="btnAddWork" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center justify-center gap-2">
-              <span class="material-symbols-outlined text-lg">add</span> Add Work
-            </button>
-          </div>
+  <div class="card secsw" style="display:flex;align-items:center;gap:14px;padding:14px 18px;margin-bottom:16px">
+    <div class="ic"><span class="ms">visibility</span></div>
+    <div style="flex:1">
+      <b style="font-size:14.5px">Show Portfolio on my page</b>
+      <div class="faint secsub" id="displayPortfolioSub" style="font-size:12.5px;margin-top:2px">
+        {{ $displayPortfolio
+          ? 'Clients see the Portfolio tab on your booking page.'
+          : 'Hidden. Clients don’t see the Portfolio tab. Your portfolio stays saved here.' }}
         </div>
-
-        @if ($showInstagramUi && !empty($instagramConnected))
-        <div class="instagram-status-card">
-          @if (!empty($instagramProfilePictureUrl))
-            <div class="instagram-status-avatar">
-              <img src="{{ $instagramProfilePictureUrl }}" alt="{{ !empty($instagramUsername) ? '@'.ltrim((string) $instagramUsername, '@') : 'Instagram profile' }}" width="48" height="48" loading="lazy" referrerpolicy="no-referrer">
-              <span class="instagram-status-avatar-badge" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="{{ $igIconPath }}"/></svg>
-              </span>
-            </div>
-          @else
-            <div class="instagram-status-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="{{ $igIconPath }}"/></svg>
-            </div>
-          @endif
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="font-semibold text-on-surface text-sm">Instagram</span>
-              <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
-                Connected
-              </span>
-            </div>
-            <p class="text-xs text-on-surface-variant mt-0.5" id="instagramImportedMeta">
-              <span id="instagramImportedCountLabel">{{ $instagramImportedCount }} {{ $instagramImportedCount === 1 ? 'post' : 'posts' }} imported</span>
-              @if (!empty($instagramUsername))
-                · Connected account: {{ '@'.ltrim((string) $instagramUsername, '@') }}
-              @endif
-            </p>
-          </div>
-          <div class="instagram-status-actions">
-            <button type="button" id="btnInstagramRefresh" class="btn-ig-refresh"
-              data-start-url="{{ route('instagram.import-portfolio.start') }}"
-              data-next-url="{{ route('instagram.import-portfolio.next') }}">
-              <span class="material-symbols-outlined text-base">refresh</span>
-              Refresh
-            </button>
-            <form method="POST" action="{{ route('instagram.disconnect') }}" id="formInstagramDisconnect">
-              @csrf
-              <button type="button" id="btnInstagramDisconnect" class="btn-ig-disconnect">Disconnect</button>
-            </form>
-          </div>
-        </div>
-        @endif
       </div>
+    <button type="button" class="tog {{ $displayPortfolio ? 'on' : '' }}" id="displayPortfolioTog" data-own="1" role="switch" aria-checked="{{ $displayPortfolio ? 'true' : 'false' }}" aria-label="Show Portfolio on my page"></button>
+          </div>
 
-      <!-- Portfolio Grid -->
-      @if ($portfolios->isNotEmpty())
-        <p class="text-xs text-on-surface-variant mb-3 flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-base text-outline">drag_indicator</span>
-          Drag pieces to change the order they appear on your booking page.
-        </p>
+  <div class="row pfhead" style="justify-content:space-between;margin-bottom:14px">
+    <div>
+      <b style="font-size:15px">Show your best work to attract new clients</b>
+      <div class="faint" id="pfsub" style="font-size:12.5px;margin-top:2px">
+        @if ($showInstagramUi && !empty($instagramConnected))
+          Add work to upload images yourself. Refresh to pull in your latest posts from Instagram.
+        @elseif ($showInstagramUi)
+          Add work to upload images yourself. Connect Instagram to import posts (needs an Instagram Business or Creator account).
+              @else
+          Add work to upload an image yourself.
+              @endif
+            </div>
+    </div>
+    <div class="btns">
+      @if ($showInstagramUi && empty($instagramConnected))
+        <a href="{{ route('instagram.connect') }}" id="btnConnectInstagram" class="igbtn igconn">
+          <span class="ms">photo_camera</span>Connect Instagram
+        </a>
       @endif
-      <div id="portfolioGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        @forelse ($portfolios as $portfolio)
+      <button type="button" id="btnAddWork" class="btn"><span class="ms">add</span>Add work</button>
+    </div>
+  </div>
+
+  @if ($showInstagramUi && !empty($instagramConnected))
+  <div class="card igcard" id="igcard">
+    @if (!empty($instagramProfilePictureUrl))
+      <div class="igav">
+        <img src="{{ $instagramProfilePictureUrl }}" alt="{{ !empty($instagramUsername) ? '@'.ltrim((string) $instagramUsername, '@') : 'Instagram profile' }}" loading="lazy" referrerpolicy="no-referrer">
+        <span class="igb" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#fff" stroke="none"/></svg>
+              </span>
+            </div>
+    @else
+      <div class="igav" aria-hidden="true">IG
+        <span class="igb">
+          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#fff" stroke="none"/></svg>
+        </span>
+            </div>
+            @endif
+    <div style="flex:1;min-width:180px">
+      <div class="row" style="gap:8px">
+        <b>Instagram</b>
+        <span class="pill g">Connected</span>
+            </div>
+      <div class="faint" style="font-size:12.5px;margin-top:2px" id="instagramImportedMeta">
+        <span id="instagramImportedCountLabel">{{ $instagramImportedCount }} {{ $instagramImportedCount === 1 ? 'post' : 'posts' }} imported</span>
+        @if (!empty($instagramUsername))
+          · Connected account: {{ '@'.ltrim((string) $instagramUsername, '@') }}
+        @endif
+          </div>
+        </div>
+    <div class="row" style="gap:8px">
+      <button type="button" class="igbtn" id="btnInstagramRefresh"
+        data-start-url="{{ route('instagram.import-portfolio.start') }}"
+        data-next-url="{{ route('instagram.import-portfolio.next') }}">
+        <span class="ms">refresh</span>Refresh
+      </button>
+      <form method="POST" action="{{ route('instagram.disconnect') }}" id="formInstagramDisconnect" style="margin:0">
+        @csrf
+        <button type="button" id="btnInstagramDisconnect" class="igbtn red">Disconnect</button>
+      </form>
+    </div>
+  </div>
+  <div class="ignote" id="ignote">
+    <span class="ms">info</span>
+    <span><b>Refresh brings in your new Instagram posts.</b> To keep a post off your page, turn off <b>Visible</b>. Hidden posts stay hidden after a refresh. Instagram posts can’t be deleted here, because a refresh would bring them back.</span>
+  </div>
+  @endif
+
+  <div id="pflist">
+    @if ($portfolios->isNotEmpty())
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+      <div class="faint" style="font-size:12.5px">
+        <span class="ms" style="font-size:16px;vertical-align:-3px">drag_indicator</span>
+        Drag pieces to change the order they appear on your page.
+      </div>
+      <div class="pff" id="pfFilter" role="radiogroup" aria-label="Show">
+        <button type="button" role="radio" data-f="all" class="on" aria-checked="true">All <span id="pfFilterAllCnt"></span></button>
+        <button type="button" role="radio" data-f="vis" aria-checked="false">Visible <span id="pfFilterVisCnt"></span></button>
+        <button type="button" role="radio" data-f="hid" aria-checked="false">Hidden <span id="pfFilterHidCnt"></span></button>
+      </div>
+    </div>
+    @endif
+
+    <div id="portfolioGrid" class="pgrid">
+      @forelse ($portfolios as $portfolio)
         @include('artist.portfolio._card', ['portfolio' => $portfolio])
         @empty
-        <div class="col-span-full rounded-2xl border border-dashed border-outline-variant/40 bg-white/60 px-6 py-14 text-center" id="portfolioEmptyState">
-          <span class="material-symbols-outlined text-outline/40 text-4xl mb-2 inline-block">photo_library</span>
-          <p class="text-sm font-semibold text-on-surface">No portfolio pieces yet</p>
-          <p class="text-xs text-on-surface-variant mt-1 max-w-sm mx-auto">Add your first work with the button above. It will appear here after you save.</p>
+        <div class="col-span-full" id="portfolioEmptyState" style="grid-column:1/-1;padding:48px 22px;text-align:center;border:1px dashed var(--line);border-radius:16px;background:#fff">
+          <span class="ms" style="font-size:36px;color:var(--faint)">photo_library</span>
+          <div style="font-weight:700;margin-top:10px">No portfolio pieces yet</div>
+          <div class="faint" style="font-size:12.5px;margin-top:4px">Add your first work with the button above.</div>
         </div>
         @endforelse
       </div>
     </div>
-  </main>
+
+  <div class="mp-toast" id="mpToast" role="status"><span class="ms">check_circle</span><span id="mpToastText">Saved</span></div>
+</div>
 
   <!-- Instagram Import Progress Modal -->
   <div class="modal-backdrop" id="instagramImportModal" aria-hidden="true">
@@ -578,99 +772,96 @@
   </div>
 
   <!-- Add Work Modal -->
-  <div class="modal-backdrop" id="addWorkModal" aria-hidden="true">
-    <div class="add-work-modal-inner bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15">
-        <h3 id="addWorkModalTitle" class="text-lg font-bold text-on-surface">Add Work</h3>
-        <button type="button" id="btnCloseAddWork" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors">
-          <span class="material-symbols-outlined text-on-surface-variant">close</span>
-        </button>
+  <div class="modal-backdrop aw-ov" id="addWorkModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="addWorkModalTitle">
+    <div class="modal xl add-work-modal-inner">
+      <div class="mh">
+        <div>
+          <h2 id="addWorkModalTitle">Add work</h2>
+          <div class="muted" id="addWorkModalSubtitle" style="font-size:13.5px;margin-top:4px">Upload a photo of a finished tattoo. AI fills in what it can.</div>
       </div>
-      <div class="p-6 space-y-5">
+        <button type="button" class="mx" id="btnCloseAddWork" aria-label="Close"><span class="ms">close</span></button>
+      </div>
+      <div class="mb">
         <input type="hidden" id="workPortfolioId" value="">
         <input type="hidden" id="workPortfolioUpdateUrl" value="">
-        <div id="workFormBanner" class="hidden rounded-xl border border-error/30 bg-error-container/40 px-3 py-2 text-xs text-on-error-container space-y-1"></div>
-        <p class="text-on-surface-variant leading-relaxed">Upload the image first. We'll use AI to analyze your uploaded image and automatically fill in some fields. You can always edit these.</p>
-        <!-- Image Upload -->
-        <div class="work-field-section scroll-mt-6" data-work-field="image">
-          <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Image</label>
-          <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1440 px</strong> · aspect <strong class="text-on-surface">3:4</strong></p>
-          <div id="workImageUpload" class="work-image-upload work-image-upload--empty relative border-2 border-dashed border-outline-variant/40 rounded-2xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 overflow-hidden">
-            <div id="workImageUploadEmpty" class="flex flex-col items-center justify-center gap-2 px-4 py-10 min-h-[220px]">
-              <span class="material-symbols-outlined text-outline/40 text-4xl">cloud_upload</span>
-              <div class="text-center">
-                <p class="text-sm font-semibold text-on-surface">Drop image here</p>
-                <p class="text-xs text-on-surface-variant mt-1">or click to browse</p>
-                <p class="text-xs text-outline mt-2">PNG, JPG up to 10MB</p>
+        <div id="workFormBanner" class="hidden aw-banner"></div>
+
+        <div class="grid aw-grid">
+          <div class="work-field-section" data-work-field="image">
+            <div id="workImageUpload" class="aw-img work-image-upload work-image-upload--empty" role="button" tabindex="0">
+              <div id="workImageUploadEmpty" class="aw-img-empty">
+                <span class="ms">cloud_upload</span>
+                <b>Drop image here</b>
+                <span class="faint">or click to browse · PNG, JPG up to 10MB</span>
               </div>
+              <div id="workImageUploadPreview" class="hidden aw-img-preview">
+                <div class="aw-img-frame">
+                  <img id="workImagePreviewImg" src="" alt="Selected work preview">
+                  <span id="workAiFilledPill" class="pill nd aw-ai-pill" hidden>
+                    <span class="ms">auto_awesome</span><span id="workAiFilledText">AI filled</span>
+                  </span>
             </div>
-            <div id="workImageUploadPreview" class="hidden work-image-upload-preview-wrap rounded-2xl">
-              <img id="workImagePreviewImg" src="" alt="Selected work preview" class="work-image-preview-img">
-              <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-2 px-3 pointer-events-none">
-                <p class="text-[11px] text-white/90 text-center font-medium">Tap to replace image</p>
               </div>
-            </div>
-            <div class="work-ai-overlay" aria-live="polite">
-              <span class="material-symbols-outlined">auto_awesome</span>
-              <p class="text-xs font-semibold leading-snug">Filling empty fields with AI…</p>
+              <div class="work-ai-overlay" aria-live="polite">
+                <span class="ms">auto_awesome</span>
+                <p>Filling empty fields with AI…</p>
             </div>
           </div>
+            <div class="row aw-img-meta">
+              <span class="faint" style="font-size:12px">1080 × 1350 · 4:5</span>
+              <button type="button" class="aw-replace" id="btnReplaceWorkImage">Upload image</button>
+            </div>
           <input type="file" id="workImage" name="workImage" accept="image/*" class="hidden">
           <input type="hidden" id="workImageData" name="workImageData" value="">
-          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
+            <p class="hidden work-field-error" data-error-for="image"></p>
         </div>
-        <!-- Title -->
-        <div class="work-field-section scroll-mt-6" data-work-field="title">
-          <label for="workTitle" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Title</label>
-          <input type="text" id="workTitle" name="workTitle" placeholder="e.g., Koi Fish Half Sleeve" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="title"></p>
+
+          <div class="aw-fields">
+            <div class="work-field-section" data-work-field="is_active">
+              <div class="row" style="gap:8px">
+                <div id="workToggleVisibility" class="tog toggle-switch active on" role="switch" aria-checked="true"></div>
+                <span style="font-size:13.5px;font-weight:600">Visible on my page</span>
         </div>
-        <!-- Description -->
-        <div class="work-field-section scroll-mt-6" data-work-field="description">
-          <label for="workDescription" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Description <span class="font-normal text-on-surface-variant/70">(optional)</span></label>
-          <textarea id="workDescription" name="workDescription" rows="3" placeholder="Describe this piece…" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
-          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="description"></p>
+              <p class="hidden work-field-error" data-error-for="is_active"></p>
         </div>
-        <!-- Toggle Switches -->
-        <div class="work-field-section scroll-mt-6" data-work-field="is_active">
-          <label class="block text-xs font-semibold text-on-surface-variant mb-2">Settings</label>
-          <div class="flex flex-wrap gap-4">
-            <div class="flex items-center gap-2">
-              <div id="workToggleVisibility" class="toggle-switch active"></div>
-              <span class="text-sm text-on-surface">Visibility</span>
+
+            <div class="work-field-section" data-work-field="title" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <label class="fl" for="workTitle" style="margin:0">Title<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
             </div>
-            <!-- <div class="flex items-center gap-2">
-              <div id="workToggleSensitive" class="toggle-switch"></div>
-              <span class="text-sm text-on-surface">Sensitive</span>
-            </div> -->
+              <input class="in" type="text" id="workTitle" name="workTitle" placeholder="e.g., Koi Fish Half Sleeve" autocomplete="off">
+              <p class="hidden work-field-error" data-error-for="title"></p>
           </div>
-          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="is_active"></p>
+
+            <div class="work-field-section" data-work-field="description" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <label class="fl" for="workDescription" style="margin:0">Description <span class="faint" style="font-weight:500">(optional)</span><span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
         </div>
-        <!-- Primary Style -->
-        <div class="work-field-section scroll-mt-6" data-work-field="primary_style">
-          <label for="workPrimaryStyle" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Primary Style</label>
-          <select id="workPrimaryStyle" name="workPrimaryStyle" class="js-portfolio-modal-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <textarea class="in" id="workDescription" name="workDescription" rows="3" placeholder="Describe this piece…" style="min-height:58px;align-items:flex-start;resize:vertical"></textarea>
+              <p class="hidden work-field-error" data-error-for="description"></p>
+            </div>
+
+            <div class="work-field-section" data-work-field="primary_style" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <label class="fl" for="workPrimaryStyle" style="margin:0">Primary style<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
+              </div>
+              <select id="workPrimaryStyle" name="workPrimaryStyle" class="in js-portfolio-modal-select2">
             <option value="">Select style…</option>
             @foreach ($styles as $style)
             <option value="{{ $style }}">{{ $style }}</option>
             @endforeach
           </select>
-          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="primary_style"></p>
+              <p class="hidden work-field-error" data-error-for="primary_style"></p>
         </div>
-        <!-- Other Styles (max 2) -->
-        <div class="work-field-section scroll-mt-6" data-work-field="other_styles">
-          <div class="flex items-center justify-between gap-2 mb-1.5">
-            <span class="text-xs font-semibold text-on-surface-variant">Other styles</span>
-            <span class="shrink-0 inline-flex items-center gap-1 rounded-lg bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Max 2</span>
+
+            <div class="work-field-section" data-work-field="other_styles" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <span class="fl" style="margin:0">Other styles<span class="ai"><span class="ms">auto_awesome</span>AI</span></span>
+                <span class="cnt2"><span id="workOtherStylesCount">0</span> / 2</span>
           </div>
-          <p class="text-[11px] text-on-surface-variant leading-relaxed mb-3">Add up to two secondary styles. They should differ from your primary style when possible.</p>
-          <div class="flex items-center justify-between mb-2.5 rounded-xl bg-surface-container-low/80 px-3 py-2 border border-outline-variant/15">
-            <span class="text-xs text-on-surface-variant">Selected</span>
-            <span class="text-sm font-bold tabular-nums text-on-surface"><span id="workOtherStylesCount">0</span><span class="text-on-surface-variant font-semibold"> / 2</span></span>
-          </div>
-          <div id="workOtherStylesChips" class="flex flex-wrap gap-2" role="group" aria-label="Other tattoo styles">
+              <div class="chips" id="workOtherStylesChips" role="group" aria-label="Other tattoo styles">
             @foreach ($styles as $style)
-            <button type="button" class="style-chip" data-value="{{ $style }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $style }}</button>
+                <button type="button" class="chip style-chip" data-value="{{ $style }}" aria-pressed="false">{{ $style }}</button>
             @endforeach
           </div>
           <select id="workOtherStyles" name="workOtherStyles" multiple class="hidden" tabindex="-1" aria-hidden="true">
@@ -678,79 +869,75 @@
             <option value="{{ $style }}">{{ $style }}</option>
             @endforeach
           </select>
-          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="other_styles"></p>
+              <p class="hidden work-field-error" data-error-for="other_styles"></p>
         </div>
-        <!-- Placement (max 1) -->
-        <div class="work-field-section scroll-mt-6" data-work-field="placement">
-          <div class="flex items-center justify-between gap-2 mb-1.5">
-            <span class="text-xs font-semibold text-on-surface-variant">Placement</span>
-            <span class="shrink-0 inline-flex items-center gap-1 rounded-lg bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Max 1</span>
-          </div>
-          <p class="text-[11px] text-on-surface-variant leading-relaxed mb-3">Where on the body is this piece placed.</p>
-          <div class="flex items-center justify-between mb-2.5 rounded-xl bg-surface-container-low/80 px-3 py-2 border border-outline-variant/15">
-            <span class="text-xs text-on-surface-variant">Selected</span>
-            <span class="text-sm font-bold tabular-nums text-on-surface"><span id="workPlacementsCount">0</span><span class="text-on-surface-variant font-semibold"> / 1</span></span>
-          </div>
-          <div id="workPlacementsChips" class="flex flex-wrap gap-2" role="group" aria-label="Placement">
-            @foreach (($placements ?? []) as $placement)
-            <button type="button" class="style-chip" data-value="{{ $placement }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $placement }}</button>
-            @endforeach
-          </div>
-          <select id="workPlacement" name="workPlacement" class="hidden" tabindex="-1" aria-hidden="true">
-            <option value=""></option>
-            @foreach (($placements ?? []) as $placement)
-            <option value="{{ $placement }}">{{ $placement }}</option>
-            @endforeach
-          </select>
-          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="placement"></p>
-        </div>
-        <!-- Colors -->
-        <div class="work-field-section scroll-mt-6" data-work-field="color">
-          <label for="workColors" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Colors</label>
-          <select id="workColors" name="workColors" class="js-portfolio-modal-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+
+            <div class="work-field-section" data-work-field="placement" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <span class="fl" style="margin:0">Placement</span>
+                <span class="cnt2"><span id="workPlacementsCount">0</span> / 1</span>
+              </div>
+              <div class="chips" id="workPlacementsChips" role="group" aria-label="Placement">
+                @foreach (($placements ?? []) as $placement)
+                <button type="button" class="chip style-chip" data-value="{{ $placement }}" aria-pressed="false">{{ $placement }}</button>
+                @endforeach
+              </div>
+              <select id="workPlacement" name="workPlacement" class="hidden" tabindex="-1" aria-hidden="true">
+                <option value=""></option>
+                @foreach (($placements ?? []) as $placement)
+                <option value="{{ $placement }}">{{ $placement }}</option>
+                @endforeach
+              </select>
+              <p class="hidden work-field-error" data-error-for="placement"></p>
+            </div>
+
+            <div class="grid aw-half" style="margin-top:4px">
+              <div class="work-field-section" data-work-field="color">
+                <div class="row" style="margin-top:12px;margin-bottom:6px">
+                  <label class="fl" for="workColors" style="margin:0">Colors<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
+                </div>
+                <select id="workColors" name="workColors" class="in js-portfolio-modal-select2">
             <option value="">Select…</option>
             <option value="color">Color</option>
             <option value="black-grey">Black & Grey</option>
             <option value="both">Both</option>
           </select>
-          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="color"></p>
+                <p class="hidden work-field-error" data-error-for="color"></p>
         </div>
-        <!-- Tags -->
-        <div class="work-field-section scroll-mt-6" data-work-field="tags">
-          <label for="workTags" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Tags <span class="text-outline font-normal">(comma separated)</span></label>
-          <input type="text" id="workTags" name="workTags" placeholder="e.g., koi, sleeve, water" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p class="hidden work-field-error mt-1.5 text-xs text-error" data-error-for="tags"></p>
+              <div class="work-field-section" data-work-field="tags">
+                <div class="row" style="margin-top:12px;margin-bottom:6px">
+                  <label class="fl" for="workTags" style="margin:0">Tags<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
+        </div>
+                <input class="in" type="text" id="workTags" name="workTags" placeholder="e.g., dragon, rose, traditional" autocomplete="off">
+                <p class="hidden work-field-error" data-error-for="tags"></p>
+      </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-end gap-3">
-        <button type="button" id="btnCancelAddWork" class="text-sm font-semibold text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-xl transition-colors">Cancel</button>
-        <button type="button" id="btnSaveWork" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
-          <span class="material-symbols-outlined text-lg">save</span> <span class="save-btn-label">Save</span>
-        </button>
+      <div class="mf">
+        <button type="button" class="btn ghost" id="btnCancelAddWork">Cancel</button>
+        <button type="button" class="btn" id="btnSaveWork"><span class="ms">save</span><span class="save-btn-label">Save</span></button>
       </div>
     </div>
   </div>
 
-  <!-- Crop image (3:4 → 1080×1440) -->
+  <!-- Crop image (4:5 → 1080×1350) -->
   <div id="workCropModal" class="crop-modal-backdrop" aria-hidden="true">
-    <div class="crop-modal-inner bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/15 flex-shrink-0">
+    <div class="crop-modal-inner">
+      <div class="mh">
         <div>
-          <h3 class="text-lg font-bold text-on-surface">Crop image</h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Output <span class="font-semibold text-on-surface">1080 × 1440 px</span> · ratio 3:4</p>
+          <h2>Crop image</h2>
+          <div class="muted" style="font-size:13px;margin-top:4px">Output <b style="color:var(--ink);font-weight:700">1080 × 1350 px</b> · ratio 4:5</div>
         </div>
-        <button type="button" id="btnCropClose" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-container-low transition-colors" aria-label="Close cropper">
-          <span class="material-symbols-outlined text-on-surface-variant">close</span>
-        </button>
+        <button type="button" class="mx" id="btnCropClose" aria-label="Close cropper"><span class="ms">close</span></button>
       </div>
-      <div class="cropper-stage-wrap mx-4 my-3 flex-shrink-0">
+      <div class="cropper-stage-wrap">
         <img id="workCropperImg" src="" alt="" class="max-w-full">
       </div>
-      <div class="px-5 py-4 border-t border-outline-variant/15 flex items-center justify-end gap-3 flex-shrink-0 bg-surface-container-low/30">
-        <button type="button" id="btnCropCancel" class="text-sm font-semibold text-on-surface-variant hover:text-on-surface px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
-        <button type="button" id="btnCropApply" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
-          <span class="material-symbols-outlined text-lg">check</span> Apply crop
-        </button>
+      <div class="mf">
+        <button type="button" class="btn ghost" id="btnCropCancel">Cancel</button>
+        <button type="button" class="btn" id="btnCropApply"><span class="ms">check</span>Apply crop</button>
       </div>
     </div>
   </div>
@@ -805,6 +992,7 @@
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 
 @php
     $portfolioEditorData = $portfolios->mapWithKeys(function ($p) {
@@ -834,6 +1022,77 @@
     var INSTAGRAM_AUTO_IMPORT = @json(!empty($instagramAutoImport) && !empty($showInstagramUi));
     $(function () {
       var MODAL_MS = 350;
+      var DISPLAY_PORTFOLIO_URL = @json(route('personal-page.display-portfolio'));
+
+      function mpToast(msg) {
+        var $t = $('#mpToast');
+        if (!$t.length) {
+          showToastMessage(msg);
+          return;
+        }
+        $('#mpToastText').text(msg);
+        $t.addClass('on');
+        clearTimeout($t.data('t'));
+        $t.data('t', setTimeout(function () { $t.removeClass('on'); }, 2400));
+      }
+
+      // Quick links
+      var $ql = $('#quickLinks'), $qlBtn = $('#quickLinksBtn'), $qlMenu = $('#quickLinksMenu');
+      if ($ql.length) {
+        function openQl(show) {
+          $qlMenu.prop('hidden', !show);
+          $qlBtn.attr('aria-expanded', show ? 'true' : 'false');
+          $qlBtn.find('.cv').text(show ? 'expand_less' : 'expand_more');
+        }
+        $qlBtn.on('click', function (e) { e.stopPropagation(); openQl($qlMenu.prop('hidden')); });
+        $qlMenu.on('click', function (e) {
+          e.stopPropagation();
+          var $c = $(e.target).closest('[data-ql-copy]');
+          if (!$c.length) return;
+          var u = $c.attr('data-ql-copy') || '';
+          try { navigator.clipboard.writeText(u); } catch (x) {}
+          $c.addClass('done').find('.ms').text('check');
+          setTimeout(function () { $c.removeClass('done').find('.ms').text('content_copy'); }, 1600);
+          mpToast('Link copied');
+        });
+        $(document).on('click', function (e) {
+          if (!$qlMenu.prop('hidden') && !$(e.target).closest('#quickLinks').length) openQl(false);
+        });
+      }
+
+      $('#displayPortfolioTog').on('click', function () {
+        var $t = $(this);
+        if ($t.prop('disabled')) return;
+        var on = !$t.hasClass('on');
+        $t.toggleClass('on', on).attr('aria-checked', on ? 'true' : 'false').prop('disabled', true);
+        $('#displayPortfolioSub').text(on
+          ? 'Clients see the Portfolio tab on your booking page.'
+          : 'Hidden. Clients don’t see the Portfolio tab. Your portfolio stays saved here.');
+        $.ajax({
+          url: DISPLAY_PORTFOLIO_URL,
+          method: 'POST',
+          headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '', Accept: 'application/json' },
+          data: { display_portfolio: on ? 1 : 0 },
+          success: function (res) { mpToast(res.message || (on ? 'Portfolio shown on your page' : 'Portfolio hidden from your page')); },
+          error: function () {
+            $t.toggleClass('on', !on).attr('aria-checked', !on ? 'true' : 'false');
+            $('#displayPortfolioSub').text(!on
+              ? 'Clients see the Portfolio tab on your booking page.'
+              : 'Hidden. Clients don’t see the Portfolio tab. Your portfolio stays saved here.');
+            mpToast('Could not update portfolio visibility');
+          },
+          complete: function () { $t.prop('disabled', false); }
+        });
+      });
+
+      $('#pfFilter').on('click', 'button[data-f]', function () {
+        var $b = $(this);
+        $('#pfFilter button').removeClass('on').attr('aria-checked', 'false');
+        $b.addClass('on').attr('aria-checked', 'true');
+        applyPortfolioFilter();
+      });
+      updatePortfolioFilterCounts();
+
       var $deletePortfolioModal = $('#deletePortfolioModal');
       var $disconnectInstagramModal = $('#disconnectInstagramModal');
       var $addWorkModal = $('#addWorkModal');
@@ -841,8 +1100,8 @@
       var $workCropperImg = $('#workCropperImg');
       var workCropper = null;
       var CROP_OUT_W = 1080;
-      var CROP_OUT_H = 1440;
-      var CROP_RATIO = 3 / 4;
+      var CROP_OUT_H = 1350;
+      var CROP_RATIO = 4 / 5;
       var MAX_FILE_BYTES = 10 * 1024 * 1024;
 
       function destroyWorkCropper() {
@@ -876,14 +1135,19 @@
           alert('Image must be 10MB or smaller.');
           return;
         }
+        if (typeof Cropper === 'undefined') {
+          alert('Cropper failed to load. Refresh the page and try again.');
+          return;
+        }
         destroyWorkCropper();
         revokeWorkCropBlob();
         var url = URL.createObjectURL(file);
         $workCropperImg.data('blob-url', url);
         $workCropModal.addClass('is-open').attr('aria-hidden', 'false');
-        $workCropperImg.off('load.workcrop').on('load.workcrop', function () {
-          var img = this;
-          $workCropperImg.off('load.workcrop');
+
+        function initCropperOnImg() {
+          var img = $workCropperImg[0];
+          if (!img) return;
           destroyWorkCropper();
           workCropper = new Cropper(img, {
             aspectRatio: CROP_RATIO,
@@ -897,8 +1161,28 @@
             highlight: true,
             background: false
           });
+        }
+
+        var cropInitDone = false;
+        function startCropperOnce() {
+          if (cropInitDone) return;
+          cropInitDone = true;
+          $workCropperImg.off('load.workcrop error.workcrop');
+          initCropperOnImg();
+        }
+
+        $workCropperImg.off('load.workcrop error.workcrop');
+        $workCropperImg.on('load.workcrop', startCropperOnce);
+        $workCropperImg.on('error.workcrop', function () {
+          $workCropperImg.off('load.workcrop error.workcrop');
+          closeWorkCropModal();
+          alert('Could not open that image. Try another file.');
         });
         $workCropperImg.attr('src', url);
+        var imgEl = $workCropperImg[0];
+        if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
+          startCropperOnce();
+        }
       }
 
       function setWorkImageUploadHasPreview(hasPreview) {
@@ -930,6 +1214,8 @@
         $('#workImageUploadEmpty').addClass('hidden');
         $('#workImageUploadPreview').removeClass('hidden');
         setWorkImageUploadHasPreview(true);
+        $('#btnReplaceWorkImage').text('Replace image');
+        $('#workAiFilledPill').prop('hidden', true);
         closeWorkCropModal();
         $('#workImage').val('');
         requestPortfolioAiSuggestions(dataUrl);
@@ -1007,6 +1293,19 @@
         }
         if (emptyAtRequest.tags && emptyNow.tags && Array.isArray(suggestions.tags) && suggestions.tags.length) {
           $('#workTags').val(suggestions.tags.join(', '));
+        }
+
+        var filled = 0;
+        if (emptyAtRequest.title && suggestions.title) filled++;
+        if (emptyAtRequest.description && suggestions.description) filled++;
+        if (emptyAtRequest.primary_style && suggestions.primary_style) filled++;
+        if (emptyAtRequest.other_styles && Array.isArray(suggestions.other_styles) && suggestions.other_styles.length) filled++;
+        if (emptyAtRequest.placement && Array.isArray(suggestions.suggested_placements) && suggestions.suggested_placements.length) filled++;
+        if (emptyAtRequest.color && suggestions.color) filled++;
+        if (emptyAtRequest.tags && Array.isArray(suggestions.tags) && suggestions.tags.length) filled++;
+        if (filled > 0) {
+          $('#workAiFilledText').text('AI filled ' + filled + ' field' + (filled === 1 ? '' : 's'));
+          $('#workAiFilledPill').prop('hidden', false);
         }
       }
 
@@ -1307,6 +1606,10 @@
             tags: editor.tags || [],
             image_url: editor.image_url
           };
+        }
+        if (typeof updatePortfolioFilterCounts === 'function') {
+          updatePortfolioFilterCounts();
+          applyPortfolioFilter();
         }
       }
 
@@ -1624,7 +1927,8 @@
       function resetAddWorkFormFields() {
         $('#workPortfolioId').val('');
         $('#workPortfolioUpdateUrl').val('');
-        $('#addWorkModalTitle').text('Add Work');
+        $('#addWorkModalTitle').text('Add work');
+        $('#addWorkModalSubtitle').text('Upload a photo of a finished tattoo. AI fills in what it can.');
         $('#btnSaveWork .save-btn-label').text('Save');
         $('#workTitle').val('');
         $('#workDescription').val('');
@@ -1637,7 +1941,9 @@
         $('#workPlacement').val('');
         $('#workPlacementsChips .style-chip').removeClass('is-selected').prop('disabled', false);
         updateWorkPlacementsChipsUI();
-        $('#workToggleVisibility').addClass('active');
+        $('#workToggleVisibility').addClass('active on').attr('aria-checked', 'true');
+        $('#workAiFilledPill').prop('hidden', true);
+        $('#btnReplaceWorkImage').text('Upload image');
         resetWorkImageState();
       }
 
@@ -1657,7 +1963,9 @@
         syncOtherStylesChipsFromSelect();
         $('#workPlacement').val(p.placement || '');
         syncWorkPlacementsChipsFromSelect();
-        $('#workToggleVisibility').toggleClass('active', !!p.is_active);
+        $('#workToggleVisibility').toggleClass('active', !!p.is_active).toggleClass('on', !!p.is_active).attr('aria-checked', p.is_active ? 'true' : 'false');
+        $('#workAiFilledPill').prop('hidden', true);
+        $('#btnReplaceWorkImage').text('Replace image');
         $('#workImageData').val('');
         var $prevImg = $('#workImagePreviewImg');
         $prevImg.off('load.portfoliofit').on('load.portfoliofit', function () {
@@ -1670,7 +1978,8 @@
         }
         $('#workImageUploadEmpty').addClass('hidden');
         $('#workImageUploadPreview').removeClass('hidden');
-        $('#btnSaveWork .save-btn-label').text('Update');
+        $('#btnSaveWork .save-btn-label').text('Save changes');
+        $('#addWorkModalSubtitle').text('Update this piece. AI can still fill empty fields.');
       }
 
       function saveWork() {
@@ -1771,13 +2080,34 @@
       function updatePortfolioCardVisibility($card, isActive) {
         if (!$card || !$card.length) return;
         $card.attr('data-is-active', isActive ? '1' : '0');
+        $card.toggleClass('off', !isActive);
         $card.find('.btn-toggle-portfolio-visibility')
           .toggleClass('active', !!isActive)
+          .toggleClass('on', !!isActive)
           .attr('aria-checked', isActive ? 'true' : 'false');
         $card.find('.portfolio-visibility-label')
-          .text(isActive ? 'Visible' : 'Hidden')
-          .toggleClass('text-primary', !!isActive)
-          .toggleClass('text-on-surface-variant', !isActive);
+          .text(isActive ? 'Visible' : 'Hidden');
+        updatePortfolioFilterCounts();
+        applyPortfolioFilter();
+      }
+
+      function updatePortfolioFilterCounts() {
+        var $cards = $('#portfolioGrid .portfolio-card');
+        var all = $cards.length;
+        var vis = $cards.filter('[data-is-active="1"]').length;
+        var hid = all - vis;
+        $('#pfFilterAllCnt').text(all ? all : '');
+        $('#pfFilterVisCnt').text(vis ? vis : '');
+        $('#pfFilterHidCnt').text(hid ? hid : '');
+      }
+
+      function applyPortfolioFilter() {
+        var f = ($('#pfFilter .on').data('f') || 'all');
+        $('#portfolioGrid .portfolio-card').each(function () {
+          var active = String($(this).attr('data-is-active')) === '1';
+          var show = f === 'all' || (f === 'vis' && active) || (f === 'hid' && !active);
+          $(this).toggle(show);
+        });
       }
 
       function persistPortfolioOrder() {
@@ -1885,7 +2215,7 @@
         resetAddWorkFormFields();
         $('#workPortfolioId').val(String(id));
         $('#workPortfolioUpdateUrl').val(updateUrl || '');
-        $('#addWorkModalTitle').text('Edit Work');
+        $('#addWorkModalTitle').text('Edit work');
         populateEditPortfolioForm(id);
         openAddWorkModal();
       });
@@ -2038,10 +2368,20 @@
         e.stopPropagation();
       });
 
-      $('#workImageUpload').on('click', function (e) {
-        e.preventDefault();
+      function triggerWorkImagePicker() {
         var input = document.getElementById('workImage');
         if (input) input.click();
+      }
+
+      $('#btnReplaceWorkImage').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerWorkImagePicker();
+      });
+
+      $('#workImageUpload').on('click', function (e) {
+        e.preventDefault();
+        triggerWorkImagePicker();
       });
 
       $('#workImage').on('change', function () {
@@ -2111,7 +2451,8 @@
       });
 
       $('#workToggleVisibility, #workToggleSensitive').on('click', function () {
-        $(this).toggleClass('active');
+        var on = !$(this).hasClass('active');
+        $(this).toggleClass('active', on).toggleClass('on', on).attr('aria-checked', on ? 'true' : 'false');
       });
 
       $(document).on('keydown', function (e) {

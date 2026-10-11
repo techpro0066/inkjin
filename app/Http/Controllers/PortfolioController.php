@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\SuggestsTattooImageFieldsWithAi;
+use App\Models\ArtistDesign;
+use App\Models\ArtistFaq;
 use App\Models\Placement;
 use App\Models\Portfolio;
 use App\Models\Style;
+use App\Models\UserDetail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -120,17 +123,27 @@ class PortfolioController extends Controller
             ->whereNotNull('instagram_media_id')
             ->count();
         $instagramAutoImport = (bool) session()->pull('instagram_auto_import', false);
+        $user = Auth::user();
+        $userDetail = $userDetail ?? UserDetail::create(['user_id' => $user->id]);
+        $displayPortfolio = (bool) ($userDetail->display_portfolio ?? true);
 
-        return view('artist.portfolio.index', compact(
-            'portfolios',
-            'styles',
-            'placements',
-            'instagramConnected',
-            'instagramUsername',
-            'instagramProfilePictureUrl',
-            'instagramImportedCount',
-            'instagramAutoImport'
-        ));
+        return view('artist.portfolio.index', [
+            'portfolios' => $portfolios,
+            'styles' => $styles,
+            'placements' => $placements,
+            'instagramConnected' => $instagramConnected,
+            'instagramUsername' => $instagramUsername,
+            'instagramProfilePictureUrl' => $instagramProfilePictureUrl,
+            'instagramImportedCount' => $instagramImportedCount,
+            'instagramAutoImport' => $instagramAutoImport,
+            'userDetail' => $userDetail,
+            'displayPortfolio' => $displayPortfolio,
+            'activeNav' => 'my-page',
+            'myPageTab' => 'portfolio',
+            'designsCount' => ArtistDesign::query()->where('user_id', $user->id)->count(),
+            'portfolioCount' => $portfolios->count(),
+            'faqCount' => ArtistFaq::query()->where('user_id', $user->id)->count(),
+        ]);
     }
 
     private function resolveInstagramProfilePictureUrl(?string $path): ?string

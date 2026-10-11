@@ -805,11 +805,11 @@ class OnboardingController extends Controller
         UserStudio::clearStudioPayout((int) $userDetail->user_id);
 
         if (Schema::hasColumn($userDetail->getTable(), 'studio_id')) {
-            $userDetail->studio_id = null;
+        $userDetail->studio_id = null;
         }
         // Keep artist stripe_account_id — studio disconnect should not wipe the artist's bank.
         if (empty($userDetail->stripe_account_id)) {
-            $userDetail->payment_status = null;
+        $userDetail->payment_status = null;
         } elseif (($userDetail->payment_status ?? '') === 'pending') {
             // Leave status until Stripe sync decides; pending studio invite should not block artist path.
             $userDetail->payment_status = null;
@@ -2382,11 +2382,11 @@ class OnboardingController extends Controller
                 ]));
                 $userDetail->payment_status = 'pending';
                 $this->applyStudioSplitAndRelationship($userDetail, $validated);
-                $userDetail->save();
+            $userDetail->save();
 
                 if (! $alreadyInvited) {
-                    $this->sendStudioPayoutInfoRequestEmail($user, $userDetail, $studio);
-                }
+                $this->sendStudioPayoutInfoRequestEmail($user, $userDetail, $studio);
+            }
 
                 // Stay on payouts until the artist connects Stripe or chooses Set up later.
                 $artistStripeReady = $this->hasActiveArtistStripe($userDetail->fresh(), $stripeStatus)
@@ -3449,13 +3449,13 @@ class OnboardingController extends Controller
             $needsRequirements = (bool) ($studio?->stripe_requirement || $userDetail->stripe_requirement);
 
             if (! $needsRequirements && ! (int) $request->input('requirements_reminder', 0)) {
-                $msg = 'Your studio payout is already connected.';
+            $msg = 'Your studio payout is already connected.';
 
-                if ($request->expectsJson() || $request->ajax()) {
-                    return response()->json(['success' => false, 'message' => $msg], 422);
-                }
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
 
-                return redirect()->back()->with('error', $msg);
+            return redirect()->back()->with('error', $msg);
             }
         }
 
@@ -3712,10 +3712,10 @@ class OnboardingController extends Controller
                 ['userDetail' => $userDetail->id]
             )
             : URL::temporarySignedRoute(
-                'studio.payout-info.show',
-                now()->addDays(30),
-                ['userDetail' => $userDetail->id]
-            );
+            'studio.payout-info.show',
+            now()->addDays(30),
+            ['userDetail' => $userDetail->id]
+        );
 
         $approveUrl = $showApproveDecline
             ? URL::temporarySignedRoute(

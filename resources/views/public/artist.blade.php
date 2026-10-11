@@ -23,9 +23,16 @@
     ];
     $selectedThemeKey = $userDetail->personal_page_color ?? 'default';
     $selectedTheme = $themeMap[$selectedThemeKey] ?? $themeMap['default'];
-    $showAvailableDesigns = in_array($userDetail->availability_status, ['design_custom', 'design_only'], true);
+    if (filled($userDetail->page_look_scheme)) {
+      $selectedTheme = \App\Support\PageLook::themeColors($userDetail);
+    }
+    $lookState = \App\Support\PageLook::stateFromUserDetail($userDetail);
+    $isLookPreview = request()->boolean('preview');
+    $displayDesigns = (bool) ($userDetail->display_designs ?? true);
+    $showAvailableDesigns = $displayDesigns && in_array($userDetail->availability_status, ['design_custom', 'design_only'], true);
     $hasVisibleDesigns = $showAvailableDesigns && $artistDesigns->count() > 0;
-    $hasPortfolio = $artistPortfolios->count() > 0;
+    $displayPortfolio = (bool) ($userDetail->display_portfolio ?? true);
+    $hasPortfolio = $displayPortfolio && $artistPortfolios->count() > 0;
     $displayPolicies = (bool) ($userDetail->display_policies ?? true);
     $displayGuestSpots = (bool) ($userDetail->display_guest_spots ?? false);
     $displayFaq = (bool) ($userDetail->display_faq ?? false);
@@ -280,28 +287,30 @@
 
   </style>
 </head>
-<body class="bg-surface text-on-surface min-h-screen">
+<body class="bg-surface text-on-surface min-h-screen{{ $isLookPreview ? ' bp-prev' : '' }}" data-look-who="artist">
 
   
 
   <!-- ═══════════════════════════════════════════════ -->
   <!-- HEADER / HERO                                   -->
   <!-- ═══════════════════════════════════════════════ -->
-  <header class="relative">
+  <header class="relative" id="artistLookHeader">
     <!-- Banner -->
-    <div class="w-full h-[300px] relative overflow-hidden">
+    <div id="artistLookBanner" class="w-full h-[300px] relative overflow-hidden" data-look-std>
       @if($userDetail->personal_page_background_image && $userDetail->personal_page_background_image != '')
-        <img src="{{ asset($userDetail->personal_page_background_image) }}" alt="Tattoo Header" class="w-full h-full object-cover object-center absolute inset-0">
+        <img id="artistLookBannerImg" src="{{ asset($userDetail->personal_page_background_image) }}" alt="Tattoo Header" class="w-full h-full object-cover object-center absolute inset-0">
+        <div id="artistLookBannerFallback" class="absolute inset-0 hidden" style="background-color: {{ $selectedTheme['bg'] }};"></div>
       @else
-        <div class="absolute inset-0" style="background-color: {{ $selectedTheme['bg'] }};"></div> <!-- Subtle dark overlay to ensure avatar/text stands out -->
+        <img id="artistLookBannerImg" src="" alt="Tattoo Header" class="w-full h-full object-cover object-center absolute inset-0 hidden">
+        <div id="artistLookBannerFallback" class="absolute inset-0" style="background-color: {{ $selectedTheme['bg'] }};"></div>
       @endif
     </div>
 
     <!-- Profile Info -->
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 relative">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 relative" id="artistLookProfile" data-look-std>
       <!-- Avatar -->
       <div class="absolute -top-12 left-4 sm:left-6">
-        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary-container border-4 border-surface shadow-lg flex items-center justify-center">
+        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary-container border-4 border-surface shadow-lg flex items-center justify-center overflow-hidden">
           <span class="text-white text-3xl font-bold">
             {{-- image --}}
             @if($userDetail->avatar && $userDetail->avatar != '')
@@ -315,7 +324,7 @@
         </div>
       </div>
 
-      <div class="pt-16 pb-6">
+      <div class="pt-16 pb-6" id="artistLookProfileBody">
         @php
           $stylesPayload = is_array($userDetail->tattoo_styles ?? null) ? $userDetail->tattoo_styles : [];
           $primaryStyleRaw = trim((string) ($stylesPayload['primary_style'] ?? ''));
@@ -744,6 +753,10 @@
           <p><span class="font-semibold text-on-surface">Rescheduling:</span> {{ $reschedulePolicyText }}</p>
           <p><span class="font-semibold text-on-surface">Cancellation:</span> {{ $cancellationPolicyText }}</p>
           <p><span class="font-semibold text-on-surface">No-show or late cancellation:</span> {{ $noShowPolicyText }}</p>
+          @php $policiesExtraNote = trim((string) ($userDetail->policies_extra_note ?? '')); @endphp
+          @if ($policiesExtraNote !== '')
+            <p><span class="font-semibold text-on-surface">Also:</span> {{ $policiesExtraNote }}</p>
+          @endif
         </div>
       </div>
     </div>
@@ -1374,6 +1387,149 @@
         applyBookingStatus(statusParam);
       }
     })();
+  </script>
+
+  <script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+  <script>
+  (function () {
+    if (!window.BPLook) return;
+
+    var dbLook = @json($lookState);
+    var isPreview = @json($isLookPreview);
+    var state = dbLook;
+
+    if (isPreview) {
+      try {
+        var preview = JSON.parse(sessionStorage.getItem('bp-look-artist-preview') || 'null');
+        if (preview && typeof preview === 'object') state = preview;
+      } catch (e) {}
+    }
+
+    function schemeParts(S) {
+      var g = String((S && S.scheme) || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+      return {
+        primary: g[0] || '#310F7A',
+        mid: g[1] || g[0] || '#531BC9',
+        tint: g[2] || '#F3E8FF'
+      };
+    }
+
+    function ensureRuntimeStyle() {
+      var el = document.getElementById('look-runtime-style');
+      if (!el) {
+        el = document.createElement('style');
+        el.id = 'look-runtime-style';
+        document.head.appendChild(el);
+      }
+      return el;
+    }
+
+    function applyTheme(S) {
+      var c = schemeParts(S);
+      var st = ensureRuntimeStyle();
+      st.textContent = [
+        ':root{--look-primary:' + c.primary + ';--look-mid:' + c.mid + ';--look-tint:' + c.tint + '}',
+        '.bg-primary,#btnBrowseDesigns,.get-this-tattoo-btn{background-color:var(--look-primary)!important}',
+        '.hover\\:bg-primary-container:hover,#btnBrowseDesigns:hover,.get-this-tattoo-btn:hover{background-color:var(--look-mid)!important}',
+        '.text-primary,.price-color,.studio-name-color,.border-tab-btn{color:var(--look-primary)!important}',
+        '.border-primary,.border-tab-btn,#btnRequestCustom{border-color:var(--look-primary)!important}',
+        '#btnRequestCustom{color:var(--look-primary)!important}',
+        '#btnRequestCustom:hover{background-color:var(--look-primary)!important;color:#fff!important}',
+        '.tab-btn.border-tab-btn,.tab-btn[class*="border-tab-btn"]{border-color:var(--look-primary)!important;color:var(--look-primary)!important}',
+        'body.cst{background:var(--look-page-bg,#111)}',
+        'body.cst #artistLookBanner{display:none!important}',
+        'body.cst #artistLookCustomBg{display:block}',
+        '#artistLookCustomBg{display:none;position:fixed;inset:0;z-index:0;background-position:center top;background-size:cover;background-repeat:no-repeat;pointer-events:none;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}',
+        'body.cst #artistLookHeader,body.cst #artistLookProfile,body.cst #artistDesignsSection,body.cst main,body.cst .max-w-4xl{position:relative;z-index:1}',
+        'body.cst #artistLookProfile{background:var(--bx,#fff);backdrop-filter:var(--bxf,none);-webkit-backdrop-filter:var(--bxf,none);border:1px solid var(--bxb,transparent);border-radius:var(--bxr,18px);color:var(--bxt,#111);box-shadow:0 20px 50px rgba(0,0,0,.18);padding:24px 22px 20px;margin-top:120px}',
+        'body.cst #artistLookProfile h1,body.cst #artistLookProfile .text-on-surface{color:var(--bxtt,inherit)!important}',
+        'body.cst #artistLookProfile .text-on-surface-variant,body.cst #artistLookProfile .studio-name-color{color:var(--bxs,inherit)!important}',
+        'body.bp-prev .mk,body.bp-prev .lkm,body.bp-prev .ckbox,body.bp-prev .ckfab{display:none!important}'
+      ].join('\n');
+
+      var fallback = document.getElementById('artistLookBannerFallback');
+      if (fallback) fallback.style.backgroundColor = c.mid;
+    }
+
+    function applyBanner(S) {
+      var img = document.getElementById('artistLookBannerImg');
+      var fallback = document.getElementById('artistLookBannerFallback');
+      if (!img || !fallback) return;
+      var url = S && S.banner ? S.banner : '';
+      if (url) {
+        img.src = url;
+        img.classList.remove('hidden');
+        fallback.classList.add('hidden');
+      } else {
+        img.removeAttribute('src');
+        img.classList.add('hidden');
+        fallback.classList.remove('hidden');
+      }
+    }
+
+    function ensureCustomBg() {
+      var el = document.getElementById('artistLookCustomBg');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'artistLookCustomBg';
+        el.setAttribute('aria-hidden', 'true');
+        document.body.insertBefore(el, document.body.firstChild);
+      }
+      return el;
+    }
+
+    function applyCustom(S) {
+      var c = (S && S.c) || {};
+      var colors = schemeParts(S);
+      var styled = BPLook.style(S);
+      var root = document.documentElement.style;
+      root.setProperty('--bx', styled.bg);
+      root.setProperty('--bxf', styled.blur);
+      root.setProperty('--bxr', styled.radius);
+      root.setProperty('--bxb', styled.border);
+      root.setProperty('--bxt', styled.text);
+      root.setProperty('--bxtt', styled.title);
+      root.setProperty('--bxs', styled.sub);
+      root.setProperty('--look-page-bg', c.bgAvg || colors.primary);
+
+      var bg = ensureCustomBg();
+      var desk = c.bgD || c.bgM;
+      var phone = c.bgM || c.bgD;
+      if (desk) {
+        bg.style.backgroundImage = 'url("' + desk + '")';
+      } else {
+        bg.style.backgroundImage = 'linear-gradient(160deg,' + colors.primary + ',' + colors.mid + ')';
+      }
+      var mq = window.matchMedia('(max-width: 780px)');
+      function syncBg() {
+        var u = mq.matches ? (phone || desk) : (desk || phone);
+        if (u) bg.style.backgroundImage = 'url("' + u + '")';
+      }
+      syncBg();
+      if (!applyCustom._boundMq) {
+        applyCustom._boundMq = true;
+        mq.addEventListener('change', syncBg);
+      }
+      document.body.classList.add('cst');
+    }
+
+    function applyStandard() {
+      document.body.classList.remove('cst');
+    }
+
+    function applyLook(S) {
+      if (!S) return;
+      applyTheme(S);
+      if (S.mode === 'custom') {
+        applyCustom(S);
+      } else {
+        applyStandard();
+        applyBanner(S);
+      }
+    }
+
+    applyLook(state);
+  })();
   </script>
 
 </body>

@@ -73,7 +73,7 @@
           <b><span class="ms" style="vertical-align:-4px">edit_calendar</span> Managed scheduling</b>
           <div class="d">Review every request before it reaches your books. Ideal for detailed custom work.
             <div class="lbl" style="margin-top:10px">Most control</div>
-          </div>
+    </div>
         </div>
       </label>
     </div>
@@ -100,7 +100,7 @@
           <button type="button" class="btn" id="connectCalendarBtn"><span class="ms">link</span>Connect Google Calendar</button>
         @endif
       </div>
-    </div>
+        </div>
 
     <div class="card" style="margin-bottom:14px">
       <div class="ch">
@@ -131,7 +131,7 @@
             </div>
             <div class="help">Time blocked between sessions.</div>
             <p id="session_buffer_period_error" class="field-err hidden" role="alert"></p>
-          </div>
+      </div>
 
           <div>
             <span class="fl">Reschedule policy <span style="color:#C62828">*</span></span>
@@ -211,7 +211,7 @@
           </div>
         </div>
       </div>
-    </div>
+  </div>
 
     <div class="obfoot">
       <a href="{{ route('onboarding.preferences') }}" class="btn ghost"><span class="ms">arrow_back</span>Back</a>
@@ -249,7 +249,7 @@
   }
 
   function selectSchedule(type) {
-    $('#scheduling_type').val(type);
+  $('#scheduling_type').val(type);
     $('input[name=sched_ui]').each(function () { this.checked = this.value === type; });
     syncPo($('#schedCards'));
     $('#gcal').prop('hidden', type !== 'auto');
@@ -257,9 +257,9 @@
     $('#calAlert').addClass('hidden').text('');
   }
 
-  function requireConsultationEnabled() {
-    return $('#require_consultation').val() === '1';
-  }
+function requireConsultationEnabled() {
+  return $('#require_consultation').val() === '1';
+}
 
   function initVisibleConsultationSelect2() {
     var $st = $('#session_type');
@@ -271,61 +271,61 @@
     }
   }
 
-  function toggleSessionFields() {
-    var show = requireConsultationEnabled();
+function toggleSessionFields() {
+  var show = requireConsultationEnabled();
     $('#consultationFields').prop('hidden', !show);
-    if (show) {
-      initVisibleConsultationSelect2();
-    } else {
+  if (show) {
+    initVisibleConsultationSelect2();
+  } else {
       $('#session_type').val('').trigger('change');
-      $('#session_duration_minutes').val('');
-      $('input[name="consultation_timing"]').prop('checked', false);
+    $('#session_duration_minutes').val('');
+    $('input[name="consultation_timing"]').prop('checked', false);
       syncPo($('#consultation_timing_group'));
-      clearFieldError('session_type');
-      clearFieldError('session_duration_minutes');
-      clearFieldError('consultation_timing');
+    clearFieldError('session_type');
+    clearFieldError('session_duration_minutes');
+    clearFieldError('consultation_timing');
     }
     toggleGapFields();
   }
 
-  function toggleGapFields() {
-    var ct = $('input[name="consultation_timing"]:checked').val() || '';
+function toggleGapFields() {
+  var ct = $('input[name="consultation_timing"]:checked').val() || '';
     var show = requireConsultationEnabled() && ct === 'separate';
     $('#gap_fields_container').prop('hidden', !show);
     $('#require_gap_between_consultation_tattoo').val(show ? '1' : '0');
     if (!show) {
-      $('#consultation_tattoo_gap_value').val('');
-      clearFieldError('consultation_tattoo_gap_value');
-    }
+    $('#consultation_tattoo_gap_value').val('');
+    clearFieldError('consultation_tattoo_gap_value');
   }
+}
 
-  function toggleConsultation() {
+function toggleConsultation() {
     var $tog = $('#consultation_toggle');
     $tog.toggleClass('on');
     var on = $tog.hasClass('on');
     $('#require_consultation').val(on ? '1' : '0');
     $tog.attr('aria-checked', on ? 'true' : 'false');
-    clearFieldError('require_consultation');
-    toggleSessionFields();
-  }
+  clearFieldError('require_consultation');
+  toggleSessionFields();
+}
 
-  function showCalFieldErrors(errors) {
-    $.each(errors, function (k, messages) {
-      var $err = $('#' + k + '_error');
-      if ($err.length) $err.text(messages[0]).removeClass('hidden');
+function showCalFieldErrors(errors) {
+  $.each(errors, function (k, messages) {
+    var $err = $('#' + k + '_error');
+    if ($err.length) $err.text(messages[0]).removeClass('hidden');
       var $f = $('#' + k);
       if ($f.length) {
         $f.addClass('is-err');
         if ($f.hasClass('select2-hidden-accessible')) $f.next('.select2-container').addClass('is-err');
       }
-      if (k === 'consultation_timing') {
+    if (k === 'consultation_timing') {
         $('#consultation_timing_group').css({ outline: '2px solid #C62828', outlineOffset: '2px', borderRadius: '12px' });
-      }
-    });
-    if (typeof window.scrollToFirstOnboardingError === 'function') {
-      window.scrollToFirstOnboardingError(document.getElementById('calendarForm'));
     }
+  });
+  if (typeof window.scrollToFirstOnboardingError === 'function') {
+    window.scrollToFirstOnboardingError(document.getElementById('calendarForm'));
   }
+}
 
   function showCalAlert(msg) {
     $('#calAlert').text(msg).removeClass('hidden');
@@ -369,101 +369,101 @@
       toggleGapFields();
     });
 
-    $.each(['cancellation_window', 'session_type', 'session_duration_minutes', 'consultation_tattoo_gap_value'], function (_, id) {
-      $('#' + id).on('change input', function () { clearFieldError(id); });
-    });
+  $.each(['cancellation_window', 'session_type', 'session_duration_minutes', 'consultation_tattoo_gap_value'], function (_, id) {
+    $('#' + id).on('change input', function () { clearFieldError(id); });
+  });
 
     $(document).on('input', '#session_duration_minutes, #consultation_tattoo_gap_value', function () {
       var v = this.value.replace(/[^0-9]/g, '');
       if (this.value !== v) this.value = v;
-    });
+  });
 
-    $('#connectCalendarBtn').on('click', function () {
-      window.location.href = @json(route('google.calendar.redirect'));
-    });
+  $('#connectCalendarBtn').on('click', function () {
+    window.location.href = @json(route('google.calendar.redirect'));
+  });
 
     function openCalModal() { $('#disconnectCalendarModal').addClass('open'); }
     function closeCalModal() { $('#disconnectCalendarModal').removeClass('open'); }
-    $('#disconnectCalendarBtn').on('click', openCalModal);
-    $('#cancelDisconnectCal').on('click', closeCalModal);
-    $('#disconnectCalendarModal').on('click', function (e) {
-      if (e.target === this) closeCalModal();
-    });
-    $('#confirmDisconnectBtn').on('click', function () {
-      closeCalModal();
-      $.ajax({
-        url: @json(route('google.calendar.disconnect')),
-        type: 'POST',
-        headers: {
-          'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-          Accept: 'application/json',
-        },
-      }).done(function (data) {
-        if (data.success) window.location.reload();
-      });
-    });
-
-    $('#calendarForm').on('submit', function (e) {
-      e.preventDefault();
-      var st = $('#scheduling_type').val();
-      $('#calendarForm [id$="_error"]').text('').addClass('hidden');
-      $('#consultation_timing_group').css({ outline: '', outlineOffset: '', borderRadius: '' });
-      $('#calAlert').addClass('hidden').text('');
-      if (!st) {
-        $('#scheduling_type_error').text('Choose a scheduling model.').removeClass('hidden');
-        if (typeof window.scrollToFirstOnboardingError === 'function') {
-          window.scrollToFirstOnboardingError(document.getElementById('calendarForm'));
-        }
-        return;
-      }
-      var $btn = $('#calSubmit');
-      var original = $btn.html();
-      $btn.prop('disabled', true).text('Saving...');
-      var fd = new FormData(this);
-      if ($('#require_consultation').val() !== '1') {
-        fd.delete('session_type');
-        fd.delete('session_duration_minutes');
-        fd.delete('consultation_timing');
-        fd.delete('require_gap_between_consultation_tattoo');
-        fd.delete('consultation_tattoo_gap_value');
-      } else if (($('input[name="consultation_timing"]:checked').val() || '') !== 'separate') {
-        fd.set('require_gap_between_consultation_tattoo', '0');
-        fd.delete('consultation_tattoo_gap_value');
-      }
-      $.ajax({
-        url: @json(route('onboarding.calendar.save')),
-        type: 'POST',
-        data: fd,
-        processData: false,
-        contentType: false,
-        headers: {
-          'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-          Accept: 'application/json',
-        },
-      })
-        .done(function (data) {
-          if (data.success && data.redirect) {
-            window.location.href = data.redirect;
-            return;
-          }
-          if (data.errors) {
-            showCalFieldErrors(data.errors);
-            return;
-          }
-          showCalAlert(data.message || 'Could not save');
-        })
-        .fail(function (xhr) {
-          if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-            showCalFieldErrors(xhr.responseJSON.errors);
-            return;
-          }
-          showCalAlert((xhr.responseJSON && xhr.responseJSON.message) || 'Network error');
-        })
-        .always(function () {
-          $btn.prop('disabled', false).html(original);
-        });
+  $('#disconnectCalendarBtn').on('click', openCalModal);
+  $('#cancelDisconnectCal').on('click', closeCalModal);
+  $('#disconnectCalendarModal').on('click', function (e) {
+    if (e.target === this) closeCalModal();
+  });
+  $('#confirmDisconnectBtn').on('click', function () {
+    closeCalModal();
+    $.ajax({
+      url: @json(route('google.calendar.disconnect')),
+      type: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+        Accept: 'application/json',
+      },
+    }).done(function (data) {
+      if (data.success) window.location.reload();
     });
   });
+
+  $('#calendarForm').on('submit', function (e) {
+    e.preventDefault();
+    var st = $('#scheduling_type').val();
+    $('#calendarForm [id$="_error"]').text('').addClass('hidden');
+      $('#consultation_timing_group').css({ outline: '', outlineOffset: '', borderRadius: '' });
+      $('#calAlert').addClass('hidden').text('');
+    if (!st) {
+        $('#scheduling_type_error').text('Choose a scheduling model.').removeClass('hidden');
+      if (typeof window.scrollToFirstOnboardingError === 'function') {
+        window.scrollToFirstOnboardingError(document.getElementById('calendarForm'));
+      }
+      return;
+    }
+    var $btn = $('#calSubmit');
+      var original = $btn.html();
+      $btn.prop('disabled', true).text('Saving...');
+    var fd = new FormData(this);
+    if ($('#require_consultation').val() !== '1') {
+      fd.delete('session_type');
+      fd.delete('session_duration_minutes');
+      fd.delete('consultation_timing');
+      fd.delete('require_gap_between_consultation_tattoo');
+      fd.delete('consultation_tattoo_gap_value');
+    } else if (($('input[name="consultation_timing"]:checked').val() || '') !== 'separate') {
+      fd.set('require_gap_between_consultation_tattoo', '0');
+      fd.delete('consultation_tattoo_gap_value');
+    }
+    $.ajax({
+      url: @json(route('onboarding.calendar.save')),
+      type: 'POST',
+      data: fd,
+      processData: false,
+      contentType: false,
+      headers: {
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+        Accept: 'application/json',
+      },
+    })
+      .done(function (data) {
+        if (data.success && data.redirect) {
+          window.location.href = data.redirect;
+          return;
+        }
+        if (data.errors) {
+          showCalFieldErrors(data.errors);
+          return;
+        }
+        showCalAlert(data.message || 'Could not save');
+      })
+      .fail(function (xhr) {
+        if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+          showCalFieldErrors(xhr.responseJSON.errors);
+          return;
+        }
+        showCalAlert((xhr.responseJSON && xhr.responseJSON.message) || 'Network error');
+      })
+      .always(function () {
+          $btn.prop('disabled', false).html(original);
+      });
+  });
+});
 })(window.jQuery);
 </script>
 @endpush

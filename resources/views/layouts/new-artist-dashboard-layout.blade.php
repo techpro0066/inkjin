@@ -134,7 +134,9 @@
     .tabs a,.tabs div{padding:0 2px 12px;font-weight:600;color:var(--muted);font-size:14.5px;display:flex;gap:7px;align-items:center;white-space:nowrap;flex-shrink:0;cursor:pointer}
     .tabs a.on,.tabs div.on{color:var(--ink);box-shadow:inset 0 -2.5px 0 var(--ink)}
     .tabs .n{background:var(--chip);color:var(--muted);border-radius:10px;font-size:11px;padding:1px 7px}
+    .tabs .n.zero{background:#FFF3DE;color:#B86E00}
     .tabs a.on .n,.tabs div.on .n{background:var(--ink);color:#fff}
+    .tabs a.on .n.zero,.tabs div.on .n.zero{background:#FFF3DE;color:#B86E00}
     .card{background:var(--card);border:1px solid var(--line);border-radius:16px}
     .pad{padding:20px 22px}
     .tint{background:var(--tint);border:1px solid var(--tintline);border-radius:16px}
@@ -198,6 +200,11 @@
   </style>
   @stack('styles')
   @yield('styles')
+  {{-- Re-assert after Tailwind CDN preflight (resets heading weight to inherit) --}}
+  <style>
+    .head h1{font-size:30px;font-weight:800;letter-spacing:-.6px;margin:0;color:var(--ink)}
+    @media(max-width:900px){.head h1{font-size:25px}}
+  </style>
 </head>
 <body>
   <aside>
@@ -229,7 +236,7 @@
       <a href="{{ route('artist.payments.index') }}" class="{{ $activeNav === 'money' || request()->routeIs('artist.payments.*') ? 'on' : '' }}">
         <span class="ms">payments</span>Money
       </a>
-      <a href="{{ route('personal-page.index') }}" class="{{ $activeNav === 'my-page' || request()->routeIs('personal-page.*') || request()->routeIs('portfolio.*') || request()->routeIs('artist-designs.*') ? 'on' : '' }}">
+      <a href="{{ route('personal-page.index') }}" class="{{ $activeNav === 'my-page' || request()->routeIs('personal-page.*') || request()->routeIs('portfolio.*') || request()->routeIs('artist-designs.*') || request()->routeIs('artist.faq.*') ? 'on' : '' }}">
         <span class="ms">folder_open</span>My Page
       </a>
       <a href="{{ route('artist.forms.index') }}" class="{{ $activeNav === 'client-flow' || request()->routeIs('artist.forms.*') || request()->routeIs('artist.requests.*') || request()->routeIs('artist.custom-requests.*') || request()->routeIs('artist.guest-requests.*') ? 'on' : '' }}">

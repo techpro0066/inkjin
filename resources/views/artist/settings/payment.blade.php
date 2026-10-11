@@ -539,9 +539,9 @@
               Complete required information
             </a>
             <div>
-              <button type="button" id="disconnectStripeBtn" class="text-sm font-semibold text-error hover:text-on-error-container border border-error/20 px-4 py-2 rounded-xl hover:bg-error-container/30 transition-colors">
+            <button type="button" id="disconnectStripeBtn" class="text-sm font-semibold text-error hover:text-on-error-container border border-error/20 px-4 py-2 rounded-xl hover:bg-error-container/30 transition-colors">
                 Disconnect Stripe
-              </button>
+            </button>
             </div>
             <p id="artistStripeSavingMessage" class="hidden text-sm text-on-surface-variant">Saving your payout connection…</p>
           </div>
@@ -585,11 +585,11 @@
         tabindex="0"
       >
         <span class="payout-mode-radio" aria-hidden="true"></span>
-        <div>
+          <div>
           <p class="text-base font-bold text-on-surface">Automatic</p>
           <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">Your balance is sent to your bank account automatically when it becomes available.</p>
+            </div>
         </div>
-      </div>
 
       <div
         class="payout-mode-option {{ $payoutMode === 'manual' ? 'selected' : '' }}"
@@ -600,12 +600,12 @@
         tabindex="0"
       >
         <span class="payout-mode-radio" aria-hidden="true"></span>
-        <div>
+            <div>
           <p class="text-base font-bold text-on-surface">Manual</p>
           <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">You choose when to get paid. Request a payout anytime once your balance is available.</p>
+            </div>
         </div>
-      </div>
-    </div>
+          </div>
 
   </div>
 
@@ -933,17 +933,17 @@ window.showPayoutStep = function (step) {
 document.getElementById('connectBankAccountBtn')?.addEventListener('click', async () => {
   if (!window.payoutBankCountrySelected) {
     const errEl = document.getElementById('stripe_connect_error');
-    if (errEl) {
+  if (errEl) {
       errEl.textContent = 'Your signup country is required before connecting Stripe.';
       errEl.classList.remove('hidden');
-    }
-    return;
   }
+    return;
+}
 
   const setup = document.getElementById('artistStripeSetupSection');
   if (setup) setup.classList.remove('hidden');
-  window.showPayoutStep('stripe');
-  await mountStripeOnboarding();
+    window.showPayoutStep('stripe');
+    await mountStripeOnboarding();
 });
 
 window.artistStripeConnected = @json($artistStripeConnected);

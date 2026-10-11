@@ -294,7 +294,7 @@
     document.querySelectorAll('[data-address-search]').forEach(function (input) {
       var form = input.closest('form');
       var ac = new google.maps.places.Autocomplete(input, { types: ['address'], fields: ['address_components', 'formatted_address', 'geometry'] });
-      ac.addListener('place_changed', function () {
+    ac.addListener('place_changed', function () {
         fillFromPlace(form, ac.getPlace());
       });
   });
@@ -420,8 +420,8 @@
       }).catch(function () {
         showStudioToast('Could not resend the email.', true);
       });
-      return;
-    }
+          return;
+        }
 
     var cancel = e.target.closest('.js-studio-cancel-join');
     if (cancel) {
@@ -473,8 +473,8 @@
           window.location.reload();
         }).catch(function () {
           showStudioToast('Could not leave the studio.', true);
-        });
-      });
+  });
+});
     }
   });
 })();

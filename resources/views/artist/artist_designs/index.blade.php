@@ -1,8 +1,9 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
-@section('title', 'Artist Designs')
+@section('title', 'My Page')
 
 @section('styles')
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
@@ -98,11 +99,11 @@
       background: #fbf8ff;
     }
     .pricing-accordion-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: #eee8f8;
-      color: #310f7a;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: #F3E8FF;
+      color: #3E007C;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -126,25 +127,23 @@
       line-height: 1.2;
     }
     .pricing-accordion-badge {
-      display: none;
+      display: inline-flex;
       align-items: center;
-      padding: 0.2rem 0.55rem;
-      border-radius: 999px;
-      background: #e8ddff;
-      color: #310f7a;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 20px;
+      background: var(--pril, #F3E8FF);
+      color: #7A1FC4;
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
       line-height: 1.2;
     }
-    .pricing-accordion:not(.is-open) .pricing-accordion-badge {
-      display: inline-flex;
-    }
+    .pricing-accordion-badge:before { display: none; }
     .pricing-accordion-subtitle {
-      margin-top: 0.35rem;
-      font-size: 0.875rem;
-      color: #7a7583;
+      margin-top: 0.15rem;
+      font-size: 12.5px;
+      color: var(--faint, #9A929E);
       line-height: 1.4;
     }
     .pricing-accordion-chevron {
@@ -375,12 +374,23 @@
       color: #b3261e;
       background: #fceeed;
     }
-    .smart-pricing-empty {
-      padding: 1.5rem 0.75rem;
-      text-align: center;
-      color: #7a7583;
-      font-size: 0.875rem;
+    .smart-pricing-empty { display: none !important; }
+    .prcadd-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 0;
+      background: none;
+      font: inherit;
+      font-weight: 700;
+      font-size: 13px;
+      color: #3E007C;
+      cursor: pointer;
+      padding: 6px 0;
     }
+    .prcadd-btn .ms { font-size: 18px; }
+    .prcadd-btn:hover { opacity: .85; }
+    #btnSaveSmartPricing.btn .ms { font-size: 18px; }
     .smart-pricing-input.is-invalid,
     .smart-pricing-input.is-invalid:hover,
     .smart-pricing-input.is-invalid:focus,
@@ -395,19 +405,39 @@
       color: #b3261e;
     }
 
-    /* Image crop modal */
+    /* Image crop modal must sit above New design (z-index 500) */
     .crop-modal-backdrop {
       display: none;
       position: fixed;
       inset: 0;
-      z-index: 300;
+      z-index: 600;
       background: rgba(0, 0, 0, 0.78);
       align-items: center;
       justify-content: center;
       padding: 16px;
     }
     .crop-modal-backdrop.is-open { display: flex; }
-    .crop-modal-inner { width: 100%; max-width: 560px; max-height: min(92vh, 900px); display: flex; flex-direction: column; }
+    .crop-modal-inner {
+      width: 100%; max-width: 560px; max-height: min(92vh, 900px);
+      display: flex; flex-direction: column;
+      background: #fff; border-radius: 22px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25); overflow: hidden;
+    }
+    #designCropModal .mh{
+      padding:22px 24px 14px;border-bottom:1px solid #F0EAF2;
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0
+    }
+    #designCropModal .mh h2{font-size:18px;font-weight:800;margin:0}
+    #designCropModal .mx{
+      border:0;background:none;cursor:pointer;color:var(--muted);
+      width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center
+    }
+    #designCropModal .mx:hover{background:#F7F3F9;color:var(--ink)}
+    #designCropModal .mf{
+      display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;
+      background:#FCF6FE;border-top:1px solid #F0E4F5;flex-shrink:0
+    }
+    #designCropModal .mf .btn{min-width:120px;justify-content:center}
     .cropper-stage-wrap {
       flex: 1;
       min-height: 200px;
@@ -415,6 +445,7 @@
       background: #1a1a1a;
       border-radius: 12px;
       overflow: hidden;
+      margin: 12px 16px;
     }
     .cropper-stage-wrap img { max-height: min(58vh, 520px); display: block; }
     .cropper-stage-wrap .cropper-container,
@@ -436,40 +467,178 @@
     /* Info tag */
     .info-tag { background: #e8ddff; color: #310f7a; }
 
-    /* Filter pill */
-    .filter-pill { padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1.5px solid transparent; }
-    .filter-pill.active { background: #310f7a; color: white; }
-    .filter-pill:not(.active) { background: white; color: #494552; border-color: #cac4d3; }
-    .filter-pill:not(.active):hover { background: #f8f1fb; border-color: #310f7a; }
-
-    /* Design card */
-    .design-card { transition: all 0.15s ease; }
-    .design-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
-    .design-card-wrap .design-image-wrap { position: relative; overflow: hidden; }
-    .design-drag-handle {
+    /* Design cards (07b dcard) */
+    .mp-dg .chip { cursor: pointer; user-select: none; font: inherit; }
+    .mp-dg .chip b { font-weight: 700; margin-left: 4px; opacity: .7; }
+    .mp-dg .chip.on b { opacity: .85; }
+    .mp-dg .dcard { cursor: grab; transition: opacity .15s, box-shadow .15s; overflow: hidden; }
+    .mp-dg .dcard.sortable-ghost { opacity: .4; }
+    .mp-dg .dcard.sortable-chosen { box-shadow: 0 0 0 2px var(--pri, #3E007C); }
+    .mp-dg #designsGrid.sorted .dcard { cursor: default; }
+    .mp-dg .dcard-img {
+      position: relative;
+      height: 210px;
+      background: #EEE center/cover no-repeat;
+    }
+    .mp-dg .dcard-img .pill {
       position: absolute;
-      top: 0.75rem;
-      right: 0.75rem;
+      top: 10px;
+      left: 10px;
+      background: #fff;
+      z-index: 2;
+    }
+    .mp-dg .design-drag-handle {
+      position: absolute;
+      top: 10px;
+      right: 10px;
       z-index: 3;
-      width: 2rem;
-      height: 2rem;
-      border-radius: 0.625rem;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: #1c1b1f;
-      background: rgba(255, 255, 255, 0.92);
+      padding: 3px;
+      border-radius: 8px;
       border: 0;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+      background: #fff;
+      color: var(--ink, #1A1A1A);
       cursor: grab;
+      line-height: 1;
     }
-    .design-drag-handle:active { cursor: grabbing; }
-    .design-drag-handle .material-symbols-outlined { font-size: 1.125rem; }
-    .design-card-wrap.sortable-ghost { opacity: 0.45; }
-    .design-card-wrap.sortable-chosen .design-card { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-    body.design-sort-locked .design-drag-handle {
+    .mp-dg .design-drag-handle:active { cursor: grabbing; }
+    .mp-dg .design-drag-handle .ms { font-size: 18px; }
+    body.design-sort-locked .mp-dg .design-drag-handle {
       opacity: 0.45;
       cursor: not-allowed;
+    }
+    .mp-dg .dcard-body { padding: 14px 16px; }
+    .mp-dg .dcard-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .mp-dg .dcard-meta > b { font-size: 13.5px; }
+    .mp-dg .dcard-meta .muted { font-size: 12.5px; white-space: nowrap; }
+    .mp-dg .dcard-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #F3EEF4;
+    }
+    .mp-dg .dcard-foot .pic {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      border: 0;
+      background: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--faint, #9A929E);
+      padding: 0;
+    }
+    .mp-dg .dcard-foot .pic:hover { background: #F7F3F9; color: var(--ink, #1A1A1A); }
+    .mp-dg .dcard-foot .pic .ms { font-size: 20px; }
+    .mp-dg .dcard-foot .pic.pdel:hover { background: #FDECEC; color: #C62828; }
+    .mp-dg .dg-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .mp-dg .dg-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .mp-dg .dg-search { width: 220px; max-width: 100%; position: relative; }
+    .mp-dg .dg-search .ms {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px;
+      color: var(--faint, #9A929E);
+      pointer-events: none;
+      z-index: 1;
+    }
+    /* Override Tailwind forms plugin so .in matches Bookpay template */
+    .mp-dg input.in:not([type="number"]),
+    .mp-dg select.in,
+    #searchDesigns.in,
+    #sortDesigns.in {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+    }
+    .mp-dg input.in,
+    .mp-dg select.in,
+    #smartColorPercent.in,
+    #searchDesigns.in,
+    #sortDesigns.in {
+      background-color: #fff !important;
+      border: 1px solid var(--line, #E8DFEA) !important;
+      border-radius: 10px !important;
+      padding: 10px 13px !important;
+      font-family: inherit !important;
+      font-size: 13.5px !important;
+      font-weight: 400 !important;
+      line-height: normal !important;
+      min-height: 40px !important;
+      height: 40px !important;
+      color: var(--ink, #1A1A1A) !important;
+      box-shadow: none !important;
+      outline: none !important;
+      margin: 0 !important;
+    }
+    .mp-dg input.in:focus,
+    .mp-dg select.in:focus,
+    #smartColorPercent.in:focus,
+    #searchDesigns.in:focus,
+    #sortDesigns.in:focus {
+      border-color: #3E007C !important;
+      box-shadow: 0 0 0 3px #F3E8FF !important;
+    }
+    #smartColorPercent.in {
+      width: 80px !important;
+      max-width: 80px !important;
+      text-align: center !important;
+      padding: 6px 8px !important;
+    }
+    #searchDesigns.in {
+      width: 100% !important;
+      padding-left: 40px !important;
+    }
+    #searchDesigns.in::placeholder {
+      color: var(--faint, #9A929E) !important;
+      opacity: 1 !important;
+      font-weight: 400 !important;
+    }
+    .mp-dg .ordwrap { position: relative; width: 170px; }
+    .mp-dg .ordwrap select.in {
+      width: 100% !important;
+      cursor: pointer;
+      padding-right: 36px !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%239A929E' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 10px center !important;
+      background-color: #fff !important;
+    }
+    .mp-dg #designsGrid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    @media (max-width: 1100px) {
+      .mp-dg #designsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 800px) {
+      .mp-dg #designsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .mp-dg #designsGrid { grid-template-columns: minmax(0, 1fr); }
+      .mp-dg .dg-search { width: 100%; }
+      .mp-dg .ordwrap { width: 100%; }
     }
 
     /* Mobile overflow fixes */
@@ -480,15 +649,15 @@
 
     .design-field-section.scroll-mt-6 { scroll-margin-top: 1.5rem; }
 
-    /* New design upload: placeholder ratio; after crop, frame matches output image */
+    /* New design upload: template ratio 4:5 */
     .design-image-upload-slot {
-      aspect-ratio: 3 / 4;
+      aspect-ratio: 4 / 5;
       max-height: 20rem;
       width: 100%;
       position: relative;
     }
     .design-image-upload-slot.has-preview {
-      aspect-ratio: var(--design-preview-ar, 3 / 4);
+      aspect-ratio: var(--design-preview-ar, 4 / 5);
       max-height: min(20rem, min(70vw, 85vh));
     }
     .design-ai-overlay {
@@ -517,73 +686,227 @@
       50% { opacity: 1; transform: scale(1); }
     }
 
-    /* Select2 (New Design modal — dropdown on body so it is not clipped by overflow) */
-    #newDesignModal .select2-container { width: 100% !important; z-index: 1; }
-    .select2-container--open { z-index: 10060 !important; }
-    #newDesignModal .select2-container--default .select2-selection--single {
-      min-height: 46px;
-      padding: 4px 10px;
-      border-radius: 0.75rem;
-      border: 1px solid rgba(202,196,211,0.5) !important;
-      background: #fff !important;
+    /* New design modal (C01 / C02) */
+    #newDesignModal.nd-ov{z-index:500;background:rgba(20,10,30,.45);padding:16px;align-items:center}
+    #newDesignModal .modal.xl{
+      width:min(1040px,100%);max-width:100%;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+      background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);
+      display:flex;flex-direction:column;overflow:hidden
     }
-    #newDesignModal .select2-container--default .select2-selection--single .select2-selection__rendered {
-      line-height: 2.15rem;
-      padding-left: 2px;
-      color: #1c1b21;
-      font-size: 0.875rem;
+    #newDesignModal .mh{padding:22px 24px 14px;border-bottom:1px solid #F0EAF2;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0}
+    #newDesignModal .mh h2{font-size:18px;font-weight:800;margin:0}
+    #newDesignModal .mx{border:0;background:none;cursor:pointer;color:var(--muted);width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+    #newDesignModal .mx:hover{background:#F7F3F9;color:var(--ink)}
+    #newDesignModal .mb{padding:18px 24px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+    #newDesignModal .mf{display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;background:#FCF6FE;border-top:1px solid #F0E4F5;flex-shrink:0}
+    #newDesignModal .mf .btn{min-width:120px;justify-content:center}
+    #newDesignModal .nd-grid{grid-template-columns:300px 1fr;gap:26px;align-items:start}
+    #newDesignModal .nd-half{grid-template-columns:1fr 1fr;gap:12px}
+    #newDesignModal .ai{display:inline-flex;align-items:center;gap:3px;background:#F3E8FF;color:#6A2BB8;border-radius:6px;font-size:10.5px;font-weight:700;padding:1px 6px;margin-left:6px;vertical-align:middle}
+    #newDesignModal .ai .ms{font-size:12px}
+    #newDesignModal .cnt2{margin-left:auto;background:#F0EDF2;border-radius:6px;font-size:10.5px;font-weight:700;padding:2px 7px;color:#6F6874}
+    #newDesignModal .chip.style-chip{cursor:pointer;font:inherit}
+    #newDesignModal .chip.style-chip.is-selected,#newDesignModal .chip.style-chip.sel{background:#F3E8FF;border-color:#3E007C;color:#3E007C}
+    #newDesignModal .chip.style-chip:disabled{opacity:.42;cursor:not-allowed}
+    #newDesignModal .chip.style-chip .style-chip-check{display:none}
+    #newDesignModal .nd-banner{border:1px solid #F3C9C9;background:#FDECEC;color:#C62828;border-radius:12px;padding:10px 12px;font-size:12.5px;margin-bottom:14px}
+    #newDesignModal .design-field-error{color:#C62828;font-size:12px;margin-top:6px}
+    #newDesignModal .nd-img{border-radius:14px;overflow:hidden;position:relative;cursor:pointer}
+    #newDesignModal .nd-img.design-image-upload--empty{border:1.5px dashed var(--line);background:#FAF7FB;aspect-ratio:4/5;display:flex;align-items:center;justify-content:center}
+    #newDesignModal .nd-img.design-image-upload--has-image{border:1px solid var(--line);aspect-ratio:auto;width:100%;max-width:300px}
+    #newDesignModal .nd-img-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;text-align:center}
+    #newDesignModal .nd-img-empty .ms{font-size:36px;color:var(--faint)}
+    #newDesignModal .nd-img-empty b{font-size:14px}
+    #newDesignModal .nd-img-frame{aspect-ratio:4/5;background:#EEE;position:relative;overflow:hidden;border-radius:14px}
+    #newDesignModal .nd-img-frame img{width:100%;height:100%;object-fit:cover;display:block}
+    #newDesignModal .nd-ai-pill{position:absolute;left:10px;bottom:10px;background:#fff;color:#6A2BB8;z-index:2}
+    #newDesignModal .nd-ai-pill .ms{font-size:14px}
+    #newDesignModal .nd-img-meta{justify-content:space-between;margin-top:10px}
+    #newDesignModal .nd-replace{border:0;background:none;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;padding:0}
+    #newDesignModal .nd-replace:hover{color:var(--pri)}
+    #newDesignModal .sect{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:#fff}
+    #newDesignModal .sect.smart{border-color:#D9C4F2;background:#FBF7FF}
+    #newDesignModal .sect .lnk{font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;border:0;background:none;padding:0;font:inherit}
+    #newDesignModal .sect .lnk:hover{color:var(--pri)}
+    #newDesignModal .smart-price-lock{background:#F5F2F6;font-weight:700}
+    #newDesignModal .smart-price-lock .ms{margin-left:auto;font-size:18px;color:var(--faint)}
+    #newDesignModal .hidden{display:none!important}
+    #newDesignModal .tog.toggle-switch{width:38px;height:22px;border-radius:12px;background:#D9D2DD;position:relative;flex-shrink:0;cursor:pointer}
+    #newDesignModal .tog.toggle-switch::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s;transform:none}
+    #newDesignModal .tog.toggle-switch.active,#newDesignModal .tog.toggle-switch.on{background:var(--pri)}
+    #newDesignModal .tog.toggle-switch.active::after,#newDesignModal .tog.toggle-switch.on::after{left:19px;transform:none}
+    /* Match Bookpay .in chrome inside modal (outside .mp-dg; Tailwind forms flattens radius) */
+    #newDesignModal .in,
+    #newDesignModal input.in,
+    #newDesignModal select.in,
+    #newDesignModal textarea.in{
+      background-color:#fff!important;
+      border:1px solid var(--line,#E8DFEA)!important;
+      border-radius:10px!important;
+      box-shadow:none!important;
+      outline:none!important
     }
-    #newDesignModal .select2-container--default .select2-selection--single .select2-selection__arrow { height: 44px; }
-    #newDesignModal .select2-container--default.select2-container--focus .select2-selection--single,
-    #newDesignModal .select2-container--default.select2-container--open .select2-selection--single {
-      border-color: rgba(26, 26, 26, 0.35) !important;
-      box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.12);
+    #newDesignModal input.in,
+    #newDesignModal select.in{
+      display:block;min-height:40px;height:40px;padding:10px 13px!important;
+      font-family:inherit!important;font-size:13.5px!important;font-weight:400!important;
+      line-height:normal!important;color:var(--ink,#1A1A1A)!important;margin:0!important;
+      -webkit-appearance:none!important;appearance:none!important
     }
-    .select2-dropdown { border-radius: 0.75rem; border-color: rgba(202,196,211,0.5); overflow: hidden; }
-    .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #1a1a1a !important; }
-    .select2-container--default .select2-search--dropdown .select2-search__field {
-      border-radius: 0.5rem;
-      border-color: rgba(202,196,211,0.5);
+    #newDesignModal select.in{appearance:auto!important;-webkit-appearance:menulist!important}
+    #newDesignModal textarea.in{display:block;min-height:58px;height:auto;line-height:1.45;padding:10px 13px!important}
+    #newDesignModal input.in:focus,
+    #newDesignModal select.in:focus,
+    #newDesignModal textarea.in:focus,
+    #newDesignModal .in:focus-within{
+      border-color:#3E007C!important;
+      box-shadow:0 0 0 3px #F3E8FF!important
     }
+    /* Nested inputs inside .in wrappers (price range / size) — kill Tailwind forms chrome */
+    #newDesignModal .in > input,
+    #newDesignModal .in > input[type="number"],
+    #newDesignModal .in > input[type="text"]{
+      border:0!important;outline:none!important;box-shadow:none!important;
+      background:transparent!important;padding:0!important;margin:0!important;
+      min-height:0!important;height:auto!important;width:100%;min-width:0;
+      font:inherit;font-size:inherit;font-weight:inherit;line-height:inherit;color:inherit;
+      border-radius:0!important;-webkit-appearance:none!important;appearance:textfield!important
+    }
+    #newDesignModal .in > input:focus,
+    #newDesignModal .in > input:focus-visible{
+      border:0!important;outline:none!important;box-shadow:none!important
+    }
+    #newDesignModal .in > input[type="number"]::-webkit-inner-spin-button,
+    #newDesignModal .in > input[type="number"]::-webkit-outer-spin-button{
+      -webkit-appearance:none!important;margin:0
+    }
+    #newDesignModal .nd-price-row{align-items:center;gap:6px}
+    #newDesignModal .nd-price-row > .faint{flex-shrink:0;line-height:1;padding:0 2px}
+    #newDesignModal .select2-container{width:100%!important;z-index:1}
+    .select2-container--open{z-index:10060!important}
+    #newDesignModal .select2-container--default .select2-selection--single{
+      min-height:40px;padding:4px 8px;border-radius:10px;border:1px solid var(--line)!important;background:#fff!important
+    }
+    #newDesignModal .select2-container--default .select2-selection--single .select2-selection__rendered{line-height:30px;padding-left:4px;font-size:13.5px;color:var(--ink)}
+    #newDesignModal .select2-container--default .select2-selection--single .select2-selection__arrow{height:38px}
+    @media (max-width:900px){
+      #newDesignModal .nd-grid{grid-template-columns:1fr!important}
+      #newDesignModal .nd-img.design-image-upload--empty,#newDesignModal .nd-img.design-image-upload--has-image{max-width:200px;margin:0 auto}
+      #newDesignModal .nd-half{grid-template-columns:1fr!important}
+      #newDesignModal .mf{flex-wrap:wrap}
+      #newDesignModal .mf .btn{flex:1}
+    }
+
+    /* My Page designs chrome */
+    .mp-dg .tog{width:38px;height:22px;border-radius:12px;background:#D9D2DD;position:relative;flex-shrink:0;cursor:pointer;border:0}
+    .mp-dg .tog:after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s}
+    .mp-dg .tog.on{background:var(--pri)}.mp-dg .tog.on:after{left:19px}
+    .mp-dg .tog:disabled{opacity:.55;cursor:not-allowed}
+    .mp-dg .ql{position:relative}
+    .mp-dg .ql-b{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:13.5px;padding:9px 12px 9px 13px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+    .mp-dg .ql-b:hover{background:#F7F3F9}
+    .mp-dg .ql-b .ms{font-size:18px}.mp-dg .ql-b .cv{font-size:20px}
+    .mp-dg .ql-p{position:absolute;right:0;top:calc(100% + 8px);width:min(400px,calc(100vw - 32px));background:#fff;border:1px solid #EAE2EE;border-radius:16px;box-shadow:0 18px 44px rgba(20,0,40,.18);padding:6px;z-index:80}
+    .mp-dg .ql-p[hidden]{display:none}
+    .mp-dg .ql-r{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:10px}
+    .mp-dg .ql-r:hover{background:#F7F3F9}
+    .mp-dg .ql-u{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mp-dg .ql-u b{font-weight:700}
+    .mp-dg .ql-i{width:34px;height:34px;border-radius:9px;border:0;background:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);flex-shrink:0;text-decoration:none}
+    .mp-dg .ql-i:hover{background:#EFE7F3}
+    .mp-dg .ql-i .ms{font-size:18px}.mp-dg .ql-i.done .ms{color:#1F8A4C}
+    .mp-dg .mp-toast{position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));transition:opacity .25s,transform .35s;pointer-events:none}
+    .mp-dg .mp-toast.on{opacity:1;transform:none}
+    .mp-dg .mp-toast .ms{color:#3DD68C;font-size:20px}
+    .mp-dg .secsw .ic{width:38px;height:38px;border-radius:10px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .mp-dg .secsw .ic .ms{font-size:20px}
+    @media(max-width:600px){.mp-dg .mp-toast{left:16px;right:16px;top:74px}.mp-dg .ql-p{right:auto;left:0}}
+
 </style>
 @endsection
 
 @section('content')
-  <!-- Main Content -->
-  <main class="main-content flex-1 min-h-screen">
-    <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
-
-      <!-- Page Header -->
-      @php
-        $bookingPageUsername = Auth::user()->userDetail->user_name ?? null;
-        $bookingPageUrl = $bookingPageUsername ? 'https://inkjin.com/@'.$bookingPageUsername.'#designs' : null;
+@php
+  $userDetail = $userDetail ?? auth()->user()?->userDetail;
+  $username = trim((string) ($userDetail?->user_name ?? ''));
+  $publicPageUrl = $username !== '' ? url('/@'.$username) : null;
+  $publicPageHost = 'inkjin.com/@'.($username !== '' ? $username : 'username');
+  $quickLinkRows = $username !== '' ? [
+    ['suffix' => '', 'label' => $publicPageHost],
+    ['suffix' => '#designs', 'label' => $publicPageHost.'#designs'],
+    ['suffix' => '#portfolio', 'label' => $publicPageHost.'#portfolio'],
+    ['suffix' => '#guest-spots', 'label' => $publicPageHost.'#guest-spots'],
+    ['suffix' => '#policies', 'label' => $publicPageHost.'#policies'],
+    ['suffix' => '#faq', 'label' => $publicPageHost.'#faq'],
+  ] : [];
+  $displayDesigns = (bool) ($displayDesigns ?? ($userDetail?->display_designs ?? true));
       @endphp
-      <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+<div class="mp-dg">
+  <div class="head">
           <div>
-            <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Booking Page</h2>
-            <p class="text-on-surface-variant mt-1">Manage your intake forms, available designs, portfolio and the style of your page</p>
+      <h1>
+        My Page
+        <a class="help-q" href="https://help.inkjin.com/en/articles/17201266-dashboard-my-page-designs" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
+          <span class="ms">help</span>
+        </a>
+      </h1>
+      <div class="sub">Everything clients see on your booking page.</div>
           </div>
-          @if ($bookingPageUrl)
-          <a href="{{ $bookingPageUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors shrink-0">
-            <span class="material-symbols-outlined text-lg">open_in_new</span> Open your booking page
+    <div class="btns">
+      @if ($publicPageUrl)
+        <div class="ql" id="quickLinks">
+          <button type="button" class="ql-b" id="quickLinksBtn" aria-haspopup="true" aria-expanded="false" aria-controls="quickLinksMenu">
+            <span class="ms">link</span>Quick links<span class="ms cv">expand_more</span>
+          </button>
+          <div class="ql-p" id="quickLinksMenu" hidden role="menu" aria-label="Quick links">
+            @foreach ($quickLinkRows as $row)
+              <div class="ql-r" role="none">
+                <div class="ql-u" title="{{ $row['label'] }}">
+                  {{ $publicPageHost }}@if($row['suffix'] !== '')<b>{{ $row['suffix'] }}</b>@endif
+                </div>
+                <button type="button" class="ql-i" data-ql-copy="{{ $publicPageUrl.$row['suffix'] }}" data-ql-label="{{ $row['label'] }}" role="menuitem" title="Copy link">
+                  <span class="ms">content_copy</span>
+                </button>
+                <a class="ql-i" href="{{ $publicPageUrl.$row['suffix'] }}" target="_blank" rel="noopener" role="menuitem" title="Open">
+                  <span class="ms">open_in_new</span>
+                </a>
+              </div>
+            @endforeach
+          </div>
+        </div>
+        <a class="btn" href="{{ $publicPageUrl }}#designs" target="_blank" rel="noopener">
+          <span class="ms">open_in_new</span>Open my page
           </a>
           @endif
         </div>
       </div>
 
-      @include('artist.partials.booking-page-tabs', ['activeTab' => 'designs'])
+  @include('artist.partials.my-page-tabs', [
+    'myPageTab' => 'designs',
+    'designsCount' => $designsCount ?? $artistDesigns->count(),
+    'portfolioCount' => $portfolioCount ?? 0,
+    'faqCount' => $faqCount ?? 0,
+  ])
 
+  @if (session('success'))
+    <div class="note" style="margin-bottom:14px">{{ session('success') }}</div>
+  @endif
+  @if (session('error'))
+    <div class="note" style="margin-bottom:14px;border-color:#F3C9C9;background:#FDECEC;color:#C62828">{{ session('error') }}</div>
+  @endif
 
-      <!-- Section intro -->
-      <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <p class="text-on-surface-variant">Upload and manage designs clients can book directly.</p>
-          <button type="button" id="btnOpenNewDesign" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2 flex-shrink-0">
-            <span class="material-symbols-outlined text-lg">add</span> New Design
-          </button>
-        </div>
+  <div class="card secsw" style="display:flex;align-items:center;gap:14px;padding:14px 18px;margin-bottom:16px">
+    <div class="ic"><span class="ms">visibility</span></div>
+    <div style="flex:1">
+      <b style="font-size:14.5px">Show Available designs on my page</b>
+      <div class="faint secsub" id="displayDesignsSub" style="font-size:12.5px;margin-top:2px">
+        {{ $displayDesigns
+          ? 'Clients see the Available designs tab on your booking page.'
+          : 'Hidden. Clients don’t see the Available designs tab. Your designs stay saved here.' }}
       </div>
+    </div>
+    <button type="button" class="tog {{ $displayDesigns ? 'on' : '' }}" id="displayDesignsTog" data-own="1" role="switch" aria-checked="{{ $displayDesigns ? 'true' : 'false' }}" aria-label="Show Available designs on my page"></button>
+  </div>
 
       <!-- Pricing Settings -->
       @php
@@ -598,18 +921,16 @@
             'GBP' => '£',
             default => $pricingCurrencyCode.' ',
         };
-        $smartRangesCount = is_array($smartPricingRanges ?? null) ? count($smartPricingRanges) : 0;
         $smartColorPercentLabel = rtrim(rtrim(number_format((float) ($smartPricingColorPercent ?? 20), 2, '.', ''), '0'), '.');
-        $pricingClosedSummary = $currentPricingType === 'smart'
-          ? ($smartRangesCount.' size range'.($smartRangesCount === 1 ? '' : 's').' · +'.$smartColorPercentLabel.'% for color designs')
-          : 'Set the price for each design manually';
-        $pricingClosedBadge = $currentPricingType === 'smart' ? 'Smart Pricing' : 'Manual Pricing';
+        $pricingClosedSummary = 'Choose how price, sessions and duration are set for new designs.';
+        $pricingClosedBadge = $currentPricingType === 'smart' ? 'Smart pricing' : 'Manual pricing';
       @endphp
       <div
-        class="mb-8 pricing-accordion"
+        class="card pricing-accordion"
         id="pricingSettingsPanel"
         data-pricing-type="{{ $currentPricingType }}"
         data-open="false"
+        style="margin-bottom:16px"
       >
         <button
           type="button"
@@ -619,17 +940,17 @@
           aria-controls="pricingAccordionBody"
         >
           <span class="pricing-accordion-icon" aria-hidden="true">
-            <span class="material-symbols-outlined text-[22px]">bolt</span>
+            <span class="ms">bolt</span>
           </span>
           <span class="pricing-accordion-copy">
             <span class="pricing-accordion-title-row">
-              <span class="pricing-accordion-title">Pricing</span>
+              <span class="pricing-accordion-title" style="font-size:15px">Pricing</span>
               <span id="pricingAccordionBadge" class="pricing-accordion-badge">{{ $pricingClosedBadge }}</span>
             </span>
             <span id="pricingAccordionSubtitle" class="pricing-accordion-subtitle">{{ $pricingClosedSummary }}</span>
           </span>
-          <span class="material-symbols-outlined pricing-accordion-chevron text-[22px]" aria-hidden="true">expand_more</span>
-        </button>
+          <span class="ms pricing-accordion-chevron" aria-hidden="true">expand_more</span>
+          </button>
 
         <div id="pricingAccordionBody" class="pricing-accordion-body" hidden>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4" role="radiogroup" aria-label="Pricing mode">
@@ -644,9 +965,9 @@
                 <div class="min-w-0">
                   <p class="text-base font-bold text-on-surface">Smart Pricing</p>
                   <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">Set rates by size once, pricing fills in automatically.</p>
-          </div>
+        </div>
                 <span class="pricing-choice-radio" aria-hidden="true"></span>
-          </div>
+      </div>
             </button>
 
             <button
@@ -659,25 +980,23 @@
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <p class="text-base font-bold text-on-surface">Manual Pricing</p>
-                  <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">Set price, sessions, and duration yourself per design.</p>
-                </div>
+                  <p class="text-sm text-on-surface-variant mt-1 leading-relaxed">Set price, sessions and duration yourself per design.</p>
+          </div>
                 <span class="pricing-choice-radio" aria-hidden="true"></span>
-              </div>
+          </div>
             </button>
         </div>
 
           <p class="mt-3 text-xs text-on-surface-variant flex items-start gap-1.5">
             <span class="material-symbols-outlined text-[16px] mt-px text-on-surface-variant/80">info</span>
-            <span>Switch anytime. Designs you've already uploaded keep their existing price, sessions, and duration.</span>
+            <span>Switch anytime. Designs you've already uploaded keep their existing price, sessions and duration.</span>
           </p>
 
-          <div id="smartPricingPanel" class="mt-5 bg-[#fbf8ff] rounded-2xl border border-outline-variant/20 p-5 md:p-6 {{ $currentPricingType === 'smart' ? '' : 'hidden' }}">
-            <div class="mb-5">
-              <h4 class="text-base font-bold text-on-surface">Size ranges</h4>
-              <p class="text-sm text-on-surface-variant mt-1">Longest dimension, in {{ $pricingUnit }} · edit the boundaries or the values</p>
-            </div>
+          <div id="smartPricingPanel" class="mt-5 tint {{ $currentPricingType === 'smart' ? '' : 'hidden' }}" style="padding:18px">
+            <b style="font-size:14.5px;display:block">Size ranges</b>
+            <div class="faint" style="font-size:12.5px;margin-top:2px">Longest dimension, in {{ $pricingUnit }}. Edit the boundaries or the values.</div>
 
-            <div class="smart-pricing-table-wrap">
+            <div class="smart-pricing-table-wrap" style="margin-top:12px">
               <table class="smart-pricing-table">
                 <thead>
                   <tr>
@@ -691,43 +1010,38 @@
                 </thead>
                 <tbody id="smartPricingRows"></tbody>
               </table>
-              <p id="smartPricingEmpty" class="smart-pricing-empty">No size ranges yet. Add a size range to get started.</p>
+              <p id="smartPricingEmpty" class="smart-pricing-empty" hidden>No size ranges yet. Add a size range to get started.</p>
               <p id="smartPricingRangesError" class="hidden mt-2 text-xs font-semibold text-[#b3261e]"></p>
             </div>
 
-            <div class="mt-4 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
-              <button type="button" id="btnAddSmartSizeRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
-                <span class="material-symbols-outlined text-[18px]">add</span> Size range
+            <div class="row" style="gap:16px;margin-top:10px">
+              <button type="button" id="btnAddSmartSizeRange" class="prcadd-btn">
+                <span class="ms">add</span>Size range
           </button>
-              <button type="button" id="btnAddSmartMoreThanRange" class="inline-flex items-center gap-1 text-sm font-semibold text-[#310f7a] hover:opacity-80 transition-opacity">
-                <span class="material-symbols-outlined text-[18px]">add</span> Size larger than
+              <button type="button" id="btnAddSmartMoreThanRange" class="prcadd-btn">
+                <span class="ms">add</span>Size larger than
               </button>
             </div>
-            <p class="mt-3 text-xs text-on-surface-variant leading-relaxed">
-              Example: a 5 {{ $pricingUnit }} design belongs to &ldquo;5–10,&rdquo; not &ldquo;0–5&rdquo;; a 10 {{ $pricingUnit }} design belongs to &ldquo;10–15,&rdquo; not &ldquo;5–10&rdquo;; a 15 {{ $pricingUnit }} design belongs to &ldquo;15–20,&rdquo; not &ldquo;10–15&rdquo;.
+            <div class="help" style="margin-top:8px">
+              Example: a 5 {{ $pricingUnit }} design belongs to &ldquo;5–10,&rdquo; not &ldquo;0–5&rdquo;; a 10 {{ $pricingUnit }} design belongs to &ldquo;10–20,&rdquo; not &ldquo;5–10&rdquo;.
+            </div>
+
+            <div style="border-top:1px solid #EFE6F3;margin:16px 0"></div>
+
+            <b style="font-size:14.5px;display:block">Color adjustment</b>
+            <div class="faint" style="font-size:12.5px;margin-top:2px">Added on top of the table price for color designs</div>
+            <div id="smartColorPercentField" class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+              <span style="font-size:13.5px">Color designs</span>
+              <input type="text" inputmode="decimal" id="smartColorPercent" class="in" value="{{ $smartColorPercentLabel }}" aria-label="Color percent more" placeholder="10">
+              <span class="faint">% more</span>
+          </div>
+            <p id="smartPricingColorExample" class="help" style="margin-top:8px">
+              Example: If the price for a 20+ {{ $pricingUnit }} black &amp; grey design is {{ $pricingCurrencySymbol }}450–{{ $pricingCurrencySymbol }}750, a color design at the same size would be {{ $pricingCurrencySymbol }}540–{{ $pricingCurrencySymbol }}900 (20% more).
             </p>
 
-            <div class="mt-6 pt-5 border-t border-outline-variant/20">
-              <h4 class="text-base font-bold text-on-surface">Color adjustment</h4>
-              <p class="text-sm text-on-surface-variant mt-1">Added on top of the table price for color designs</p>
-              <div id="smartColorPercentField" class="mt-4">
-                <div class="flex flex-wrap items-center gap-2 text-sm text-on-surface">
-                  <span>Color designs</span>
-                  <div class="smart-pricing-color-input-wrap">
-                    <input type="text" inputmode="decimal" id="smartColorPercent" class="smart-pricing-input smart-pricing-input--sm" value="{{ $smartColorPercentLabel }}" aria-label="Color percent more" placeholder="20">
-                  </div>
-                  <span class="smart-pricing-affix">%</span>
-                  <span class="text-on-surface-variant">more</span>
-                </div>
-              </div>
-              <p class="mt-3 text-xs text-on-surface-variant leading-relaxed">
-                Example: If the price for a 20+ {{ $pricingUnit }} black &amp; grey design is {{ $pricingCurrencySymbol }}450–{{ $pricingCurrencySymbol }}750, a color design at the same size would be {{ $pricingCurrencySymbol }}540–{{ $pricingCurrencySymbol }}900 (20% more).
-              </p>
-          </div>
-
-            <div class="mt-6 pt-5 border-t border-outline-variant/20 flex flex-col sm:flex-row sm:items-center gap-3">
-              <button type="button" id="btnSaveSmartPricing" class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
-              <span class="material-symbols-outlined text-lg">save</span> Save
+            <div class="row" style="gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid #EFE6F3">
+              <button type="button" id="btnSaveSmartPricing" class="btn">
+                <span class="ms">save</span>Save changes
             </button>
               <p id="smartPricingSaveStatus" class="hidden text-sm font-medium"></p>
             </div>
@@ -735,68 +1049,77 @@
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
-        <div class="flex items-center gap-2 flex-wrap" id="designFilterPills" role="tablist" aria-label="Filter designs">
-          <button type="button" class="filter-pill active" data-filter="all">All</button>
-          <button type="button" class="filter-pill" data-filter="available">Available</button>
-          <button type="button" class="filter-pill" data-filter="sold-out">Sold Out</button>
+      @php
+        $designFilterAll = $artistDesigns->count();
+        $designFilterSold = $artistDesigns->filter(fn ($d) => $d->isSoldOut())->count();
+        $designFilterAvailable = $artistDesigns->filter(fn ($d) => $d->is_active && ! $d->isSoldOut())->count();
+        $designFilterUnavailable = $artistDesigns->filter(fn ($d) => ! $d->is_active && ! $d->isSoldOut())->count();
+      @endphp
+
+      <div class="dg-toolbar">
+        <div class="chips" id="designFilterPills" role="tablist" aria-label="Filter designs">
+          <button type="button" class="chip on" data-filter="all">All <b id="filterCountAll">{{ $designFilterAll }}</b></button>
+          <button type="button" class="chip" data-filter="available">Available <b id="filterCountAvailable">{{ $designFilterAvailable }}</b></button>
+          <button type="button" class="chip" data-filter="sold">Sold <b id="filterCountSold">{{ $designFilterSold }}</b></button>
+          <button type="button" class="chip" data-filter="unavailable">Unavailable <b id="filterCountUnavailable">{{ $designFilterUnavailable }}</b></button>
         </div>
-        <div class="flex items-center gap-3 sm:ml-auto">
-          <select id="sortDesigns" name="sortDesigns" class="text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-            <option value="custom" selected>Your order</option>
+        <div class="dg-tools">
+          <div class="dg-search">
+            <span class="ms">search</span>
+            <input type="text" id="searchDesigns" name="searchDesigns" class="in" placeholder="Search designs" autocomplete="off">
+          </div>
+          <div class="ordwrap">
+            <select id="sortDesigns" name="sortDesigns" class="in" aria-label="Sort designs">
+              <option value="custom" selected>Your order</option>
             <option value="newest">Newest</option>
             <option value="price-high">Price High–Low</option>
           </select>
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
-            <input type="text" id="searchDesigns" name="searchDesigns" placeholder="Search designs…" class="text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 w-48">
           </div>
+          <button type="button" id="btnOpenNewDesign" class="btn"><span class="ms">add</span>New design</button>
         </div>
       </div>
 
-      <!-- Designs Grid -->
-      @if ($artistDesigns->isNotEmpty())
-        <p class="text-xs text-on-surface-variant mb-3 flex items-center gap-1.5" id="designsDragHint">
-          <span class="material-symbols-outlined text-base text-outline">drag_indicator</span>
-          Drag designs to change the order they appear on your booking page (when “Your order” is selected).
-        </p>
-      @endif
-      <div id="designsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div id="designsGrid" class="grid">
         @forelse ($artistDesigns as $design)
         @php
-          $sessionLabel = match ($design->session_duration) {
-              '30min' => '30 min',
-              '1h' => '1 hour',
-              '2h' => '2 hours',
-              '3h' => '3 hours',
-              '4h' => '4 hours',
-              '6h' => '6 hours',
-              '8h' => '8 hours',
-              default => $design->session_duration,
-          };
-          $sessionsLabel = (int) $design->max_sessions > 1
-              ? 'Up to '.$design->max_sessions.' sessions'
-              : '1 session';
+          $sessionsCount = max(1, (int) ($design->max_sessions ?? 1));
+          $sessionsFoot = $sessionsCount === 1 ? '1 session' : $sessionsCount.' sessions';
           $colorLabel = match ($design->color) {
-              'color' => 'color',
-              'black-grey' => 'black grey',
-              'both' => 'both',
+              'color' => 'Color',
+              'black-grey' => 'Black & Grey',
+              'both' => 'Both',
               default => (string) $design->color,
           };
+          $styleLabel = ucwords(str_replace('-', ' ', (string) $design->primary_style));
+          $sizeUnitLabel = in_array(($sizeUnit ?? 'cm'), ['cm', 'in'], true) ? ($sizeUnit ?? 'cm') : 'cm';
+          $sizeNum = (int) ($design->min_size ?? 0);
+          if ($sizeNum <= 0) {
+              $sizeNum = (int) ($design->max_size ?? 0);
+          }
+          $sizeFoot = $sizeNum > 0 ? 'min '.$sizeNum.' '.$sizeUnitLabel : '—';
           $tagsForSearch = is_array($design->tags) ? implode(' ', $design->tags) : '';
           $searchBlob = strtolower(
               $design->title.' '.
               $design->description.' '.
               $tagsForSearch.' '.
-              str_replace('-', ' ', $design->primary_style).' '.
+              $styleLabel.' '.
               $colorLabel
           );
           $canDeleteDesign = ($design->booking_requests_count ?? 0) === 0 && ($design->bookings_count ?? 0) === 0;
           $isSoldOut = $design->isSoldOut();
+          if ($isSoldOut) {
+              $statusLabel = 'Sold';
+              $statusPill = 'r';
+          } elseif ($design->is_active) {
+              $statusLabel = 'Available';
+              $statusPill = 'g';
+          } else {
+              $statusLabel = 'Unavailable';
+              $statusPill = 'k';
+          }
         @endphp
         <div
-          class="design-card-wrap"
+          class="card dcard design-card-wrap"
           data-design-id="{{ $design->id }}"
           data-is-active="{{ $design->is_active ? '1' : '0' }}"
           data-is-sold-out="{{ $isSoldOut ? '1' : '0' }}"
@@ -805,326 +1128,349 @@
           data-max-price="{{ (int) $design->max_price }}"
           data-search="{{ e($searchBlob) }}"
         >
-          <div class="design-card bg-white rounded-2xl border border-outline-variant/20 overflow-hidden shadow-sm">
-          <div class="design-image-wrap aspect-[3/4] bg-surface-container-high rounded-t-2xl">
+          <div class="dcard-img" style="background-image:url('{{ asset($design->image) }}')">
+            <span class="pill {{ $statusPill }} design-status-pill">{{ $statusLabel }}</span>
             <button type="button" class="design-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
-              <span class="material-symbols-outlined">drag_indicator</span>
+              <span class="ms">drag_indicator</span>
             </button>
-            <img src="{{ asset($design->image) }}" alt="" class="w-full h-full object-cover pointer-events-none">
           </div>
-          <div class="p-4">
-            <div class="flex flex-wrap gap-1.5 mb-3">
-              @if ($isSoldOut)
-              <span class="toggle-badge off">Sold Out</span>
-              @endif
-              <span class="design-availability-badge toggle-badge {{ $design->is_active ? 'on' : 'off' }}">
-                <span class="design-availability-label">{{ $design->is_active ? 'Available' : 'Unavailable' }}</span>
-              </span>
-              <span class="toggle-badge {{ $design->is_visible ? 'on' : 'off' }} hidden">Visibility</span>
-              <span class="toggle-badge {{ $design->is_repeatable ? 'on' : 'off' }}">
-                @if ($design->is_repeatable && $design->repeat_limit)
-                  Repeatable ×{{ $design->repeat_limit }}
-                @else
-                  Repeatable
-                @endif
-              </span>
-              <span class="toggle-badge {{ $design->is_sensitive ? 'on' : 'off' }}">Sensitive</span>
+          <div class="dcard-body">
+            <b style="display:block;font-size:14.5px">{{ $design->title }}</b>
+            <div class="faint" style="font-size:12px;margin-top:2px">{{ $styleLabel }} · {{ $colorLabel }}</div>
+            <div class="dcard-meta">
+              <b>{{ $pricingCurrencySymbol }}{{ (int) $design->min_price }} – {{ $pricingCurrencySymbol }}{{ (int) $design->max_price }}</b>
+              <span class="muted">{{ $sizeFoot }} · {{ $sessionsFoot }}</span>
             </div>
-            <h4 class="font-bold text-on-surface text-sm mb-1.5">{{ $design->title }}</h4>
-            <div class="flex flex-wrap items-center gap-2 mb-2">
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary">{{ ucwords(str_replace('-', ' ', $design->primary_style)) }}</span>
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-container-high text-on-surface-variant">
-                @if ($design->color === 'color') Color @elseif ($design->color === 'black-grey') Black & Grey @elseif ($design->color === 'both') Both @else {{ $design->color }} @endif
-              </span>
-            </div>
-            @if (!empty($design->tags))
-            <div class="flex flex-wrap gap-1 mb-2">
-              @foreach ($design->tags as $tag)
-              <span class="inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">{{ $tag }}</span>
-              @endforeach
-            </div>
+            <div class="dcard-foot">
+              <div class="row" style="gap:4px">
+                <button type="button" class="pic btn-edit-design" title="Edit" aria-label="Edit" data-design-id="{{ $design->id }}">
+                  <span class="ms">edit</span>
+                </button>
+                @if ($canDeleteDesign)
+                  <button
+                    type="button"
+                    class="pic pdel btn-delete-design"
+                    title="Delete"
+                    aria-label="Delete"
+                    data-delete-url="{{ route('artist-designs.destroy', $design) }}"
+                    data-design-id="{{ $design->id }}"
+                  ><span class="ms">delete</span></button>
             @endif
-            <div class="text-xs text-on-surface-variant space-y-0.5 mb-3">
-              <p><span class="font-semibold text-on-surface">Price:</span> €{{ $design->min_price }} — €{{ $design->max_price }}</p>
-              <p><span class="font-semibold text-on-surface">Size (min):</span> {{ $design->sizeLabel($sizeUnit ?? null) }}</p>
-              <p><span class="font-semibold text-on-surface">Sessions:</span> {{ $sessionsLabel }}, {{ $sessionLabel }} each</p>
             </div>
-            <div class="flex items-center gap-1 pt-2 mt-1 border-t border-outline-variant/10">
-              <button type="button" class="btn-edit-design w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors" title="Edit" data-design-id="{{ $design->id }}"><span class="material-symbols-outlined text-on-surface-variant text-lg">edit</span></button>
-              @if ($canDeleteDesign)
-              <button type="button" class="btn-delete-design w-8 h-8 rounded-lg flex items-center justify-center hover:bg-error-container transition-colors" title="Delete" data-delete-url="{{ route('artist-designs.destroy', $design) }}" data-design-id="{{ $design->id }}"><span class="material-symbols-outlined text-error text-lg">delete</span></button>
-              @else
-              <div class="ml-auto flex items-center gap-2 pl-2" title="Has bookings or requests — set unavailable instead of delete">
-                <span class="text-[11px] font-semibold text-on-surface-variant">Available</span>
+              <div class="row" style="gap:8px">
+                <span class="faint" style="font-size:12.5px;font-weight:600">Bookable</span>
                 <div
-                  class="btn-toggle-design-availability toggle-switch {{ $design->is_active ? 'active' : '' }}"
+                  class="tog btn-toggle-design-availability {{ $design->is_active ? 'on active' : '' }}"
                   role="switch"
                   aria-checked="{{ $design->is_active ? 'true' : 'false' }}"
-                  title="Toggle availability"
+                  title="Toggle bookable"
+                  data-own="1"
                   data-toggle-url="{{ route('artist-designs.toggle-availability', $design) }}"
                   data-design-id="{{ $design->id }}"
+                  style="cursor:pointer"
                 ></div>
-              </div>
-              @endif
             </div>
           </div>
         </div>
         </div>
         @empty
-        <div id="designsNoDesigns" class="col-span-full rounded-2xl border border-dashed border-outline-variant/40 bg-white/60 px-6 py-14 text-center">
-          <span class="material-symbols-outlined text-outline/40 text-4xl mb-2 inline-block">palette</span>
-          <p class="text-sm font-semibold text-on-surface">No designs yet</p>
-          <p class="text-xs text-on-surface-variant mt-1 max-w-sm mx-auto">Create a design with <strong class="text-on-surface">New Design</strong> — it will show up here after you save.</p>
+        <div id="designsNoDesigns" class="card" style="grid-column:1/-1;padding:56px 24px;text-align:center">
+          <span class="ms" style="font-size:40px;color:var(--faint)">palette</span>
+          <p style="font-weight:700;margin-top:8px">No designs yet</p>
+          <p class="faint" style="font-size:12.5px;margin-top:4px;max-width:320px;margin-left:auto;margin-right:auto">Create a design with <b>New design</b> — it will show up here after you save.</p>
         </div>
         @endforelse
-        <div id="designsFilterEmpty" class="hidden col-span-full rounded-2xl border border-dashed border-outline-variant/40 bg-white/60 px-6 py-14 text-center">
-          <span class="material-symbols-outlined text-outline/40 text-4xl mb-2 inline-block">search_off</span>
-          <p class="text-sm font-semibold text-on-surface">No designs match</p>
-          <p class="text-xs text-on-surface-variant mt-1 max-w-sm mx-auto">Try a different search, filter, or sort option.</p>
+        <div id="designsFilterEmpty" class="card hidden" style="grid-column:1/-1;padding:56px 24px;text-align:center">
+          <span class="ms" style="font-size:40px;color:var(--faint)">search_off</span>
+          <p style="font-weight:700;margin-top:8px">No designs match</p>
+          <p class="faint" style="font-size:12.5px;margin-top:4px">Try a different search, filter, or sort option.</p>
         </div>
       </div>
-    </div>
-  </main>
 
-  <!-- New Design Modal -->
-  <div class="modal-backdrop" id="newDesignModal" aria-hidden="true">
-    <div class="new-design-modal-inner bg-white rounded-2xl w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15 sticky top-0 bg-white z-10 rounded-t-2xl">
-        <h3 id="designModalTitle" class="text-lg font-bold text-on-surface">New Design</h3>
-        <button type="button" id="btnCloseNewDesign" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors">
-          <span class="material-symbols-outlined text-on-surface-variant">close</span>
-        </button>
+      @if ($artistDesigns->isNotEmpty())
+        <div class="faint" id="designsDragHint" style="font-size:12.5px;margin-top:12px">
+          <span class="ms" style="font-size:16px;vertical-align:-3px">drag_indicator</span>
+          Drag designs to change the order they appear on your page
+    </div>
+      @endif
+
+  <div class="mp-toast" id="mpToast" role="status"><span class="ms">check_circle</span><span id="mpToastText">Saved</span></div>
+</div>
+
+  @php
+    $modalPricingType = in_array(($pricingType ?? 'manual'), ['manual', 'smart'], true) ? ($pricingType ?? 'manual') : 'manual';
+    $modalSizeUnit = in_array(($sizeUnit ?? 'cm'), ['cm', 'in'], true) ? ($sizeUnit ?? 'cm') : 'cm';
+    $modalCurrency = $pricingCurrencySymbol ?? '€';
+  @endphp
+
+  <!-- New Design Modal (C01 / C02) -->
+  <div class="modal-backdrop nd-ov" id="newDesignModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="designModalTitle">
+    <div class="modal xl new-design-modal-inner">
+      <div class="mh">
+        <div>
+          <h2 id="designModalTitle">New design</h2>
+          <div class="muted" style="font-size:13.5px;margin-top:4px">Upload the image first. AI fills in what it can. You can edit everything.</div>
+        </div>
+        <button type="button" class="mx" id="btnCloseNewDesign" aria-label="Close"><span class="ms">close</span></button>
       </div>
-      <div class="p-6">
-        <div id="designFormBanner" class="hidden mb-5 rounded-xl border border-error/30 bg-error-container/40 px-3 py-2 text-xs text-on-error-container font-medium whitespace-pre-line"></div>
-        <p class="text-on-surface-variant mb-6 leading-relaxed">Upload the image first. We'll use AI to analyze your uploaded image and automatically fill in some fields. You can always edit these. You'll still need to enter values for the remaining fields manually (pricing, minimum size, sessions etc).</p>
-        <div class="flex flex-col lg:flex-row gap-6">
-          <!-- Left: Image Upload -->
-          <div class="lg:w-2/5 space-y-5">
-            <div class="design-field-section scroll-mt-6" data-design-field="image">
-            <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Image</label>
-            <p class="text-[11px] text-on-surface-variant mb-2">Cropped to <strong class="text-on-surface">1080 × 1440 px</strong> · aspect <strong class="text-on-surface">3:4</strong></p>
-            <div id="designImageUpload" class="design-image-upload-slot relative border-2 border-dashed border-outline-variant/40 rounded-2xl mx-auto cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-[aspect-ratio,max-height] duration-200 overflow-hidden">
-              <div id="designImageUploadEmpty" class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 py-6">
-                <span class="material-symbols-outlined text-outline/40 text-5xl">cloud_upload</span>
-                <div class="text-center">
-                  <p class="text-sm font-semibold text-on-surface">Drop image here</p>
-                  <p class="text-xs text-on-surface-variant mt-1">or click to browse</p>
-                  <p class="text-xs text-outline mt-2">PNG, JPG up to 10MB</p>
+      <div class="mb">
+        <div id="designFormBanner" class="hidden nd-banner"></div>
+        <div class="grid nd-grid">
+          <div class="design-field-section" data-design-field="image">
+            <div id="designImageUpload" class="nd-img design-image-upload-slot design-image-upload--empty" role="button" tabindex="0">
+              <div id="designImageUploadEmpty" class="nd-img-empty">
+                <span class="ms">cloud_upload</span>
+                <b>Drop image here</b>
+                <span class="faint">or click to browse · PNG, JPG up to 10MB</span>
+              </div>
+              <div id="designImageUploadPreview" class="hidden">
+                <div class="nd-img-frame">
+                  <img id="designImagePreviewImg" src="" alt="Design preview">
+                  <span id="designAiFilledPill" class="pill nd nd-ai-pill" hidden>
+                    <span class="ms">auto_awesome</span><span id="designAiFilledText">AI filled</span>
+                  </span>
                 </div>
               </div>
-              <div id="designImageUploadPreview" class="hidden absolute inset-0 bg-transparent">
-                <img id="designImagePreviewImg" src="" alt="Design preview" class="w-full h-full object-contain">
-                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-2 px-3">
-                  <p class="text-[11px] text-white/90 text-center font-medium">Tap to replace image</p>
-                </div>
+              <div class="design-ai-overlay" aria-live="polite">
+                <span class="ms">auto_awesome</span>
+                <p>Filling empty fields with AI…</p>
               </div>
-                <div class="design-ai-overlay" aria-live="polite">
-                  <span class="material-symbols-outlined">auto_awesome</span>
-                  <p class="text-xs font-semibold leading-snug">Filling empty fields with AI…</p>
-              </div>
+            </div>
+            <div class="row nd-img-meta">
+              <span class="faint" style="font-size:12px">1080 × 1350 · 4:5</span>
+              <button type="button" class="nd-replace" id="btnReplaceDesignImage">Upload image</button>
             </div>
             <input type="file" id="designImage" name="designImage" accept="image/*" class="hidden">
             <input type="hidden" id="designImageData" name="designImageData" value="">
-            <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="image"></p>
-            </div>
-            <!-- Size (min) -->
-            <div class="design-field-section scroll-mt-6" data-design-field="min_size">
-              <label for="size_min" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Size (min)</label>
-              <div class="flex items-center gap-3">
-                <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" class="w-full min-w-0 flex-1 text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 text-center">
-                <span class="text-sm font-semibold text-on-surface shrink-0" id="sizeUnitLabel">{{ $sizeUnit ?? 'cm' }}</span>
-              </div>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_size"></p>
-            </div>
+            <p class="hidden design-field-error" data-error-for="image"></p>
           </div>
-          <!-- Right: Form Fields -->
-          <div class="lg:w-3/5 space-y-5">
-            <!-- Title -->
-            <div class="design-field-section scroll-mt-6" data-design-field="title">
-              <label for="designTitle" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Title</label>
-              <input type="text" id="designTitle" name="designTitle" placeholder="e.g., Japanese Dragon Sleeve" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="title"></p>
-            </div>
-            <!-- Description -->
-            <div class="design-field-section scroll-mt-6" data-design-field="description">
-              <label for="designDescription" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Description <span class="text-outline font-normal">(optional)</span></label>
-              <textarea id="designDescription" name="designDescription" rows="3" placeholder="Describe this design…" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="description"></p>
-            </div>
-            <!-- Toggle Switches Row -->
-            <div class="design-field-section scroll-mt-6" data-design-field="settings">
-              <label class="block text-xs font-semibold text-on-surface-variant mb-2">Settings</label>
-              <div class="flex flex-wrap gap-4">
+
+          <div>
+            <div class="design-field-section" data-design-field="settings">
+              <div class="row" style="gap:22px;flex-wrap:wrap">
                 <div class="hidden">
-                  <div id="toggleVisibility" class="toggle-switch active"></div>
-                  <span class="text-sm text-on-surface">Visibility</span>
+                  <div id="toggleVisibility" class="tog toggle-switch active on"></div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <div id="toggleAvailable" class="toggle-switch active"></div>
-                  <span class="text-sm text-on-surface">Available</span>
+                <div class="row" style="gap:8px">
+                  <div id="toggleAvailable" class="tog toggle-switch active on" role="switch" aria-checked="true"></div>
+                  <span style="font-size:13.5px;font-weight:600">Available</span>
                 </div>
-                <div class="flex items-center gap-2">
-                  <div id="toggleRepeatable" class="toggle-switch"></div>
-                  <span class="text-sm text-on-surface">Repeatable</span>
+                <div class="row" style="gap:8px">
+                  <div id="toggleRepeatable" class="tog toggle-switch" role="switch" aria-checked="false"></div>
+                  <span style="font-size:13.5px;font-weight:600">Repeatable</span>
                 </div>
-                <div class="flex items-center gap-2">
-                  <div id="toggleSensitive" class="toggle-switch"></div>
-                  <span class="text-sm text-on-surface">Sensitive</span>
+                <div class="row" style="gap:8px">
+                  <div id="toggleSensitive" class="tog toggle-switch" role="switch" aria-checked="false"></div>
+                  <span style="font-size:13.5px;font-weight:600">Sensitive</span>
                 </div>
               </div>
-              <div id="repeatLimitField" class="design-field-section hidden mt-4 scroll-mt-6" data-design-field="repeat_limit">
-                <label for="designRepeatLimit" class="block text-xs font-semibold text-on-surface-variant mb-1.5">How many times can this be booked? <span class="text-red-600">*</span></label>
-                <input type="number" id="designRepeatLimit" name="designRepeatLimit" min="1" max="999" step="1" placeholder="e.g. 3" class="w-full max-w-[160px] text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                <p class="text-xs text-on-surface-variant mt-1.5">Total number of clients who can book this design before it shows as sold out.</p>
-                <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="repeat_limit"></p>
+              <div id="repeatLimitField" class="design-field-section hidden" data-design-field="repeat_limit" style="margin-top:14px">
+                <label class="fl" for="designRepeatLimit">How many times can this be booked? <span style="color:#C62828">*</span></label>
+                <input class="in" type="number" id="designRepeatLimit" name="designRepeatLimit" min="1" max="999" step="1" placeholder="e.g. 3" style="max-width:160px">
+                <div class="help">Total number of clients who can book this design before it shows as sold out.</div>
+                <p class="hidden design-field-error" data-error-for="repeat_limit"></p>
               </div>
             </div>
-            <!-- Primary Style -->
-            <div class="design-field-section scroll-mt-6" data-design-field="primary_style">
-              <label for="designPrimaryStyle" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Primary Style</label>
-              <select id="designPrimaryStyle" name="designPrimaryStyle" class="js-design-modal-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+
+            {{-- Manual pricing (C01) --}}
+            <div id="designPricingManual" class="sect design-field-section {{ $modalPricingType === 'smart' ? 'hidden' : '' }}" data-design-field="min_price" style="margin-top:16px">
+              <div class="row" style="justify-content:space-between">
+                <div class="row" style="gap:8px"><span class="ms">edit</span><b>Manual pricing</b></div>
+                <button type="button" class="lnk" id="btnChangePricingManual">Change in Pricing</button>
+              </div>
+              <div class="grid nd-half" style="margin-top:10px">
+                <div>
+                  <span class="fl">Price range</span>
+                  <div class="row nd-price-row">
+                    <div class="in" style="flex:1;min-width:0">
+                      <span class="faint">{{ $modalCurrency }}</span>
+                      <input type="number" id="designPriceMin" name="designPriceMin" placeholder="Min" min="0" inputmode="decimal">
+                    </div>
+                    <span class="faint" aria-hidden="true">–</span>
+                    <div class="in" style="flex:1;min-width:0">
+                      <span class="faint">{{ $modalCurrency }}</span>
+                      <input type="number" id="designPriceMax" name="designPriceMax" placeholder="Max" min="0" inputmode="decimal">
+                    </div>
+                  </div>
+                  <p class="hidden design-field-error" data-error-for="min_price"></p>
+                  <p class="hidden design-field-error" data-error-for="max_price"></p>
+                </div>
+                <div id="designManualSizeSlot">
+                  <div id="designSizeFieldWrap" class="design-field-section" data-design-field="min_size">
+                    <span class="fl" id="designSizeLabel">Minimum size</span>
+                    <div class="in">
+                      <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" inputmode="decimal">
+                      <span class="faint" id="sizeUnitLabel" style="margin-left:auto">{{ $modalSizeUnit }}</span>
+                    </div>
+                    <div class="help hidden" id="designSizeHelp">Required: the price comes from the size</div>
+                    <p class="hidden design-field-error" data-error-for="min_size"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {{-- Smart pricing (C02) --}}
+            <div id="designPricingSmart" class="sect smart design-field-section {{ $modalPricingType === 'smart' ? '' : 'hidden' }}" style="margin-top:16px">
+              <div class="row" style="justify-content:space-between">
+                <div class="row" style="gap:8px"><span class="ms" style="color:#3E007C">bolt</span><b>Smart pricing</b></div>
+                <button type="button" class="lnk" id="btnChangePricingSmart">Change in Pricing</button>
+              </div>
+              <div class="grid nd-half" style="margin-top:10px">
+                <div id="designSmartSizeSlot"></div>
+                <div>
+                  <span class="fl">Price</span>
+                  <div class="in smart-price-lock" id="designSmartPriceDisplay" aria-live="polite">
+                    <span id="designSmartPriceText">—</span>
+                    <span class="ms">lock</span>
+                  </div>
+                  <div class="help">Calculated automatically</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid nd-half">
+              <div class="design-field-section" data-design-field="max_sessions">
+                <div class="row" style="margin-top:16px;margin-bottom:6px">
+                  <span class="fl" style="margin:0">Max sessions</span>
+                </div>
+                <input class="in" type="number" id="designSessionsMax" name="designSessionsMax" min="1" placeholder="1">
+                <div class="help">Leave blank if it's done in one session</div>
+                <p class="hidden design-field-error" data-error-for="max_sessions"></p>
+              </div>
+              <div class="design-field-section" data-design-field="session_duration">
+                <div class="row" style="margin-top:16px;margin-bottom:6px">
+                  <span class="fl" style="margin:0">Duration</span>
+                </div>
+                <select class="in" id="designSessionTime" name="designSessionTime">
+                  <option value="">Select…</option>
+                  <option value="30min">30 min</option>
+                  <option value="1h">1 hour</option>
+                  <option value="2h">2 hours</option>
+                  <option value="3h">3 hours</option>
+                  <option value="4h">4 hours</option>
+                  <option value="5h">5 hours</option>
+                  <option value="6h">6 hours</option>
+                  <option value="7h">7 hours</option>
+                  <option value="8h">8 hours</option>
+                  <option value="half-day">Half day</option>
+                  <option value="full-day">Full day</option>
+                </select>
+                <p class="hidden design-field-error" data-error-for="session_duration"></p>
+              </div>
+            </div>
+
+            <div class="design-field-section" data-design-field="title" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <label class="fl" for="designTitle" style="margin:0">Title<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
+              </div>
+              <input class="in" type="text" id="designTitle" name="designTitle" placeholder="e.g. Baby dragon with rose" autocomplete="off">
+              <p class="hidden design-field-error" data-error-for="title"></p>
+            </div>
+
+            <div class="design-field-section" data-design-field="description" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <label class="fl" for="designDescription" style="margin:0">Description <span class="faint" style="font-weight:500">(optional)</span><span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
+              </div>
+              <textarea class="in" id="designDescription" name="designDescription" rows="3" placeholder="Describe this design…" style="min-height:58px;align-items:flex-start;resize:vertical"></textarea>
+              <p class="hidden design-field-error" data-error-for="description"></p>
+            </div>
+
+            <div class="design-field-section" data-design-field="primary_style" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <label class="fl" for="designPrimaryStyle" style="margin:0">Primary style<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
+              </div>
+              <select id="designPrimaryStyle" name="designPrimaryStyle" class="in js-design-modal-select2">
                 <option value="">Select style…</option>
                 @foreach ($styles as $style)
-                <option value="{{ $style }}">{{ $style }}</option>
+                  <option value="{{ $style }}">{{ $style }}</option>
                 @endforeach
               </select>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="primary_style"></p>
+              <p class="hidden design-field-error" data-error-for="primary_style"></p>
             </div>
-            <!-- Other styles (max 2) -->
-            <div class="design-field-section scroll-mt-6" data-design-field="other_styles">
-              <div class="flex items-center justify-between gap-2 mb-1.5">
-                <span class="text-xs font-semibold text-on-surface-variant">Other styles</span>
-                <span class="shrink-0 inline-flex items-center gap-1 rounded-lg bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Max 2</span>
+
+            <div class="design-field-section" data-design-field="other_styles" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <span class="fl" style="margin:0">Other styles<span class="ai"><span class="ms">auto_awesome</span>AI</span></span>
+                <span class="cnt2"><span id="designOtherStylesCount">0</span> / 2</span>
               </div>
-              <p class="text-[11px] text-on-surface-variant leading-relaxed mb-3">Add up to two secondary styles. They should differ from your primary style when possible.</p>
-              <div class="flex items-center justify-between mb-2.5 rounded-xl bg-surface-container-low/80 px-3 py-2 border border-outline-variant/15">
-                <span class="text-xs text-on-surface-variant">Selected</span>
-                <span class="text-sm font-bold tabular-nums text-on-surface"><span id="designOtherStylesCount">0</span><span class="text-on-surface-variant font-semibold"> / 2</span></span>
-              </div>
-              <div id="designOtherStylesChips" class="flex flex-wrap gap-2" role="group" aria-label="Other tattoo styles">
+              <div id="designOtherStylesChips" class="chips" role="group" aria-label="Other tattoo styles">
                 @foreach ($styles as $style)
-                <button type="button" class="style-chip" data-value="{{ $style }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $style }}</button>
+                  <button type="button" class="chip style-chip" data-value="{{ $style }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $style }}</button>
                 @endforeach
               </div>
               <select id="designOtherStyles" name="designOtherStyles" multiple class="hidden" tabindex="-1" aria-hidden="true">
                 @foreach ($styles as $style)
-                <option value="{{ $style }}">{{ $style }}</option>
+                  <option value="{{ $style }}">{{ $style }}</option>
                 @endforeach
               </select>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="other_styles"></p>
+              <p class="hidden design-field-error" data-error-for="other_styles"></p>
             </div>
-            <!-- Suggested placement (max 3) -->
-            <div class="design-field-section scroll-mt-6" data-design-field="suggested_placements">
-              <div class="flex items-center justify-between gap-2 mb-1.5">
-                <span class="text-xs font-semibold text-on-surface-variant">Suggested placement</span>
-                <span class="shrink-0 inline-flex items-center gap-1 rounded-lg bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Max 3</span>
+
+            <div class="design-field-section" data-design-field="suggested_placements" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <span class="fl" style="margin:0">Placement</span>
+                <span class="cnt2"><span id="designPlacementsCount">0</span> / 3</span>
               </div>
-              <p class="text-[11px] text-on-surface-variant leading-relaxed mb-3">Choose up to three body areas. If you leave this empty, clients will see “Anywhere”.</p>
-              <div class="flex items-center justify-between mb-2.5 rounded-xl bg-surface-container-low/80 px-3 py-2 border border-outline-variant/15">
-                <span class="text-xs text-on-surface-variant">Selected</span>
-                <span class="text-sm font-bold tabular-nums text-on-surface"><span id="designPlacementsCount">0</span><span class="text-on-surface-variant font-semibold"> / 3</span></span>
-              </div>
-              <div id="designPlacementsChips" class="flex flex-wrap gap-2" role="group" aria-label="Suggested placements">
+              <div id="designPlacementsChips" class="chips" role="group" aria-label="Suggested placements">
                 @foreach (($placements ?? []) as $placement)
-                <button type="button" class="style-chip" data-value="{{ $placement }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $placement }}</button>
+                  <button type="button" class="chip style-chip" data-value="{{ $placement }}" aria-pressed="false"><span class="material-symbols-outlined style-chip-check">check</span>{{ $placement }}</button>
                 @endforeach
               </div>
               <select id="designSuggestedPlacements" name="designSuggestedPlacements" multiple class="hidden" tabindex="-1" aria-hidden="true">
                 @foreach (($placements ?? []) as $placement)
-                <option value="{{ $placement }}">{{ $placement }}</option>
+                  <option value="{{ $placement }}">{{ $placement }}</option>
                 @endforeach
               </select>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="suggested_placements"></p>
+              <p class="hidden design-field-error" data-error-for="suggested_placements"></p>
             </div>
-            <!-- Colors -->
-            <div class="design-field-section scroll-mt-6" data-design-field="color">
-              <label for="designColors" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Colors</label>
-              <select id="designColors" name="designColors" class="js-design-modal-select2 w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                <option value="">Select…</option>
-                <option value="color">Color</option>
-                <option value="black-grey">Black & Grey</option>
-                <option value="both">Both</option>
-              </select>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="color"></p>
-            </div>
-            <!-- Tags -->
-            <div class="design-field-section scroll-mt-6" data-design-field="tags">
-              <label for="designTags" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Tags <span class="text-outline font-normal">(comma separated)</span></label>
-              <input type="text" id="designTags" name="designTags" placeholder="e.g., dragon, sleeve, oriental" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="tags"></p>
-            </div>
-            <!-- Price Range -->
-            <div class="design-field-section scroll-mt-6" data-design-field="min_price">
-              <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Price Range</label>
-              <div class="flex items-center gap-3">
-                <div class="relative flex-1">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">€</span>
-                  <input type="number" id="designPriceMin" name="designPriceMin" placeholder="Min" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-7 pr-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+
+            <div class="grid nd-half">
+              <div class="design-field-section" data-design-field="color">
+                <div class="row" style="margin-top:16px;margin-bottom:6px">
+                  <label class="fl" for="designColors" style="margin:0">Colors<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
                 </div>
-                <span class="text-on-surface-variant font-medium">—</span>
-                <div class="relative flex-1">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">€</span>
-                  <input type="number" id="designPriceMax" name="designPriceMax" placeholder="Max" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-7 pr-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                </div>
+                <select id="designColors" name="designColors" class="in js-design-modal-select2">
+                  <option value="">Select…</option>
+                  <option value="color">Color</option>
+                  <option value="black-grey">Black & grey</option>
+                  <option value="both">Both</option>
+                </select>
+                <p class="hidden design-field-error" data-error-for="color"></p>
               </div>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="min_price"></p>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="max_price"></p>
-            </div>
-            <!-- Max sessions -->
-            <div class="design-field-section scroll-mt-6" data-design-field="max_sessions">
-              <label for="designSessionsMax" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Max sessions</label>
-              <input type="number" id="designSessionsMax" name="designSessionsMax" placeholder="" min="1" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-              <p class="text-xs text-on-surface-variant mt-1.5 italic">Leave blank if this design will be completed in one session</p>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="max_sessions"></p>
-            </div>
-            <!-- Duration -->
-            <div class="design-field-section scroll-mt-6" data-design-field="session_duration">
-              <label for="designSessionTime" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Duration</label>
-              <select id="designSessionTime" name="designSessionTime" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                <option value="">Select…</option>
-                <option value="30min">30 min</option>
-                <option value="1h">1 hour</option>
-                <option value="2h">2 hours</option>
-                <option value="3h">3 hours</option>
-                <option value="4h">4 hours</option>
-                <option value="6h">6 hours</option>
-                <option value="8h">8 hours</option>
-              </select>
-              <p class="hidden design-field-error mt-1.5 text-xs text-error" data-error-for="session_duration"></p>
+              <div class="design-field-section" data-design-field="tags">
+                <div class="row" style="margin-top:16px;margin-bottom:6px">
+                  <label class="fl" for="designTags" style="margin:0">Tags<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
+                </div>
+                <input class="in" type="text" id="designTags" name="designTags" placeholder="dragon, rose, traditional" style="font-size:13px">
+                <p class="hidden design-field-error" data-error-for="tags"></p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-end gap-3 sticky bottom-0 bg-white rounded-b-2xl">
-        <button type="button" id="btnCancelNewDesign" class="text-sm font-semibold text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-xl transition-colors">Cancel</button>
-        <button type="button" id="btnSaveDesign" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
-          <span class="material-symbols-outlined text-lg">save</span> Save Design
-        </button>
+      <div class="mf">
+        <button type="button" id="btnCancelNewDesign" class="btn ghost">Cancel</button>
+        <button type="button" id="btnSaveDesign" class="btn"><span class="ms">save</span>Save design</button>
       </div>
     </div>
   </div>
 
-  <!-- Crop design image (3:4 → 1080×1440) -->
+  <!-- Crop design image (4:5 → 1080×1350) -->
   <div id="designCropModal" class="crop-modal-backdrop" aria-hidden="true">
-    <div class="crop-modal-inner bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/15 flex-shrink-0">
+    <div class="crop-modal-inner">
+      <div class="mh">
         <div>
-          <h3 class="text-lg font-bold text-on-surface">Crop image</h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Output <span class="font-semibold text-on-surface">1080 × 1440 px</span> · ratio 3:4</p>
+          <h2>Crop image</h2>
+          <div class="muted" style="font-size:13px;margin-top:4px">Output <b style="color:var(--ink);font-weight:700">1080 × 1350 px</b> · ratio 4:5</div>
         </div>
-        <button type="button" id="btnDesignCropClose" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-container-low transition-colors" aria-label="Close cropper">
-          <span class="material-symbols-outlined text-on-surface-variant">close</span>
-        </button>
+        <button type="button" class="mx" id="btnDesignCropClose" aria-label="Close cropper"><span class="ms">close</span></button>
       </div>
-      <div class="cropper-stage-wrap mx-4 my-3 flex-shrink-0">
+      <div class="cropper-stage-wrap">
         <img id="designCropperImg" src="" alt="" class="max-w-full">
       </div>
-      <div class="px-5 py-4 border-t border-outline-variant/15 flex items-center justify-end gap-3 flex-shrink-0 bg-surface-container-low/30">
-        <button type="button" id="btnDesignCropCancel" class="text-sm font-semibold text-on-surface-variant hover:text-on-surface px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
-        <button type="button" id="btnDesignCropApply" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
-          <span class="material-symbols-outlined text-lg">check</span> Apply crop
-        </button>
+      <div class="mf">
+        <button type="button" class="btn ghost" id="btnDesignCropCancel">Cancel</button>
+        <button type="button" class="btn" id="btnDesignCropApply"><span class="ms">check</span>Apply crop</button>
       </div>
     </div>
   </div>
@@ -1156,6 +1502,7 @@
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 @php
     $designsForEdit = $artistDesigns->keyBy('id')->map(function ($d) {
         return [
@@ -1202,6 +1549,65 @@
     var ARTIST_DESIGN_PLACEMENT_OPTIONS = @json($placements ?? []);
     var ARTIST_DESIGN_SIZE_UNIT = @json($sizeUnit ?? 'cm');
     $(function () {
+      var DISPLAY_DESIGNS_URL = @json(route('personal-page.display-designs'));
+
+      function mpToast(msg) {
+        var $t = $('#mpToast');
+        if (!$t.length) return;
+        $('#mpToastText').text(msg);
+        $t.addClass('on');
+        clearTimeout($t.data('t'));
+        $t.data('t', setTimeout(function () { $t.removeClass('on'); }, 2400));
+      }
+
+      var $ql = $('#quickLinks'), $qlBtn = $('#quickLinksBtn'), $qlMenu = $('#quickLinksMenu');
+      if ($ql.length) {
+        function openQl(show) {
+          $qlMenu.prop('hidden', !show);
+          $qlBtn.attr('aria-expanded', show ? 'true' : 'false');
+          $qlBtn.find('.cv').text(show ? 'expand_less' : 'expand_more');
+        }
+        $qlBtn.on('click', function (e) { e.stopPropagation(); openQl($qlMenu.prop('hidden')); });
+        $qlMenu.on('click', function (e) {
+          e.stopPropagation();
+          var $c = $(e.target).closest('[data-ql-copy]');
+          if (!$c.length) return;
+          var u = $c.attr('data-ql-copy') || '';
+          try { navigator.clipboard.writeText(u); } catch (x) {}
+          $c.addClass('done').find('.ms').text('check');
+          setTimeout(function () { $c.removeClass('done').find('.ms').text('content_copy'); }, 1600);
+          mpToast('Link copied');
+        });
+        $(document).on('click', function (e) {
+          if (!$qlMenu.prop('hidden') && !$(e.target).closest('#quickLinks').length) openQl(false);
+        });
+      }
+
+      $('#displayDesignsTog').on('click', function () {
+        var $t = $(this);
+        if ($t.prop('disabled')) return;
+        var on = !$t.hasClass('on');
+        $t.toggleClass('on', on).attr('aria-checked', on ? 'true' : 'false').prop('disabled', true);
+        $('#displayDesignsSub').text(on
+          ? 'Clients see the Available designs tab on your booking page.'
+          : 'Hidden. Clients don’t see the Available designs tab. Your designs stay saved here.');
+        $.ajax({
+          url: DISPLAY_DESIGNS_URL,
+          method: 'POST',
+          headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '', Accept: 'application/json' },
+          data: { display_designs: on ? 1 : 0 },
+          success: function (res) { mpToast(res.message || (on ? 'Designs shown on your page' : 'Designs hidden from your page')); },
+          error: function () {
+            $t.toggleClass('on', !on).attr('aria-checked', !on ? 'true' : 'false');
+            $('#displayDesignsSub').text(!on
+              ? 'Clients see the Available designs tab on your booking page.'
+              : 'Hidden. Clients don’t see the Available designs tab. Your designs stay saved here.');
+            mpToast('Could not update designs visibility');
+          },
+          complete: function () { $t.prop('disabled', false); }
+        });
+      });
+
       var MODAL_MS = 350;
       var $newDesignModal = $('#newDesignModal');
       var $designCropModal = $('#designCropModal');
@@ -1210,8 +1616,8 @@
       var designCropper = null;
       var pendingOriginalImageFile = null;
       var CROP_OUT_W = 1080;
-      var CROP_OUT_H = 1440;
-      var CROP_RATIO = 3 / 4;
+      var CROP_OUT_H = 1350;
+      var CROP_RATIO = 4 / 5;
       var MAX_FILE_BYTES = 10 * 1024 * 1024;
 
       // Pricing type cards + dynamic size-range rows
@@ -1231,35 +1637,13 @@
 
       function syncPricingAccordionHeader() {
         var $panel = $('#pricingSettingsPanel');
-        var isOpen = $panel.hasClass('is-open');
         var isSmartStored = String(storedPricingType || '') === 'smart';
         var $subtitle = $('#pricingAccordionSubtitle');
         var $badge = $('#pricingAccordionBadge');
 
         $panel.attr('data-pricing-type', isSmartStored ? 'smart' : 'manual');
-        $badge.text(isSmartStored ? 'Smart Pricing' : 'Manual Pricing');
-
-        if (isOpen) {
-          $subtitle.text('Choose how price, sessions, and duration are set for new designs.');
-          return;
-        }
-
-        if (!isSmartStored) {
-          $subtitle.text('Set the price for each design manually');
-          return;
-        }
-
-        var rangeCount = $('#smartPricingRows .smart-pricing-row').length;
-        if (!rangeCount && Array.isArray(SMART_PRICING_INITIAL_RANGES)) {
-          rangeCount = SMART_PRICING_INITIAL_RANGES.length;
-        }
-        var percent = formatSmartSummaryPercent(
-          $.trim($('#smartColorPercent').val() || '') !== ''
-            ? $('#smartColorPercent').val()
-            : SMART_PRICING_COLOR_PERCENT
-        );
-        var rangeLabel = rangeCount + ' size range' + (rangeCount === 1 ? '' : 's');
-        $subtitle.text(rangeLabel + ' · +' + percent + '% for color designs');
+        $badge.text(isSmartStored ? 'Smart pricing' : 'Manual pricing');
+        $subtitle.text('Choose how price, sessions and duration are set for new designs.');
       }
 
       function setPricingAccordionOpen(open) {
@@ -1281,6 +1665,9 @@
         $('#smartPricingPanel').toggleClass('hidden', !isSmart);
         currentPricingType = mode;
         syncPricingAccordionHeader();
+        if (typeof syncDesignModalPricingMode === 'function') {
+          syncDesignModalPricingMode();
+        }
 
         // Smart is only persisted after a successful size-chart Save with ≥1 range.
         if (options.persist === false || isSmart) {
@@ -1311,9 +1698,16 @@
             $('#pricingSettingsPanel').data('pricing-type', res.pricing_type);
           }
           syncPricingAccordionHeader();
-        }).fail(function () {
+          var typeLabel = String(storedPricingType) === 'smart' ? 'Smart pricing' : 'Manual pricing';
+          mpToast((res && res.message) || ('Switched to ' + typeLabel));
+        }).fail(function (xhr) {
           var previous = String($('#pricingSettingsPanel').attr('data-previous-pricing-type') || storedPricingType || 'manual');
           setPricingMode(previous, { persist: false });
+          var data = (xhr && xhr.responseJSON) || {};
+          var errMsg = (data.errors && data.errors.pricing_type && data.errors.pricing_type[0])
+            || data.message
+            || 'Could not update pricing type';
+          mpToast(errMsg);
         }).always(function () {
           pricingTypeSaving = false;
           $('#pricingSettingsPanel .pricing-choice-card').prop('disabled', false);
@@ -1325,9 +1719,9 @@
       });
 
       function syncSmartPricingEmptyState() {
-        var hasRows = $('#smartPricingRows .smart-pricing-row').length > 0;
-        $('#smartPricingEmpty').toggleClass('hidden', hasRows);
-        $('.smart-pricing-table thead').toggleClass('hidden', !hasRows);
+        // Template always shows column headers; empty copy is unused.
+        $('#smartPricingEmpty').addClass('hidden').prop('hidden', true);
+        $('.smart-pricing-table thead').removeClass('hidden');
         syncPricingAccordionHeader();
       }
 
@@ -1653,8 +2047,8 @@
         }
 
         var $btn = $(this);
-        var original = $btn.html();
-        $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Saving…');
+        var original = '<span class="ms">save</span>Save changes';
+        $btn.prop('disabled', true).html('<span class="ms">progress_activity</span>Saving…');
 
         $.ajax({
           url: SMART_PRICING_VALIDATE_URL,
@@ -1684,9 +2078,7 @@
           }
           setPricingMode('smart', { persist: false });
           syncPricingAccordionHeader();
-          if (typeof showSaveToast === 'function') {
-            showSaveToast();
-          }
+          mpToast((res && res.message) || 'Switched to Smart pricing');
         }).fail(function (xhr) {
           var data = xhr.responseJSON || {};
           if (xhr.status === 422 && data.errors) {
@@ -1698,6 +2090,7 @@
               .addClass('text-red-700')
               .text((data && data.message) || 'Unable to save smart pricing.');
             scrollToFirstSmartPricingError();
+            mpToast((data && data.message) || 'Unable to save smart pricing.');
           }
         }).always(function () {
           $btn.prop('disabled', false).html(original);
@@ -1772,7 +2165,9 @@
           { value: '2h', hours: 2 },
           { value: '3h', hours: 3 },
           { value: '4h', hours: 4 },
+          { value: '5h', hours: 5 },
           { value: '6h', hours: 6 },
+          { value: '7h', hours: 7 },
           { value: '8h', hours: 8 }
         ];
         for (var i = 0; i < map.length; i++) {
@@ -1804,6 +2199,50 @@
         $('#designPriceMax').val('');
         $('#designSessionsMax').val('');
         $('#designSessionTime').val('');
+        $('#designSmartPriceText').text('—');
+      }
+
+      function syncDesignSmartPriceDisplay() {
+        var minP = $.trim(String($('#designPriceMin').val() || ''));
+        var maxP = $.trim(String($('#designPriceMax').val() || ''));
+        if (minP === '' && maxP === '') {
+          $('#designSmartPriceText').text('—');
+          return;
+        }
+        $('#designSmartPriceText').text(SMART_PRICING_CURRENCY + minP + ' – ' + SMART_PRICING_CURRENCY + maxP);
+      }
+
+      function syncDesignModalPricingMode() {
+        var smart = String(storedPricingType || '') === 'smart';
+        $('#designPricingManual').toggleClass('hidden', smart);
+        $('#designPricingSmart').toggleClass('hidden', !smart);
+        var $wrap = $('#designSizeFieldWrap');
+        if (smart) {
+          $('#designSmartSizeSlot').append($wrap);
+          $('#designSizeLabel').html('Size <span style="color:#C62828">*</span>');
+          $('#designSizeHelp').removeClass('hidden');
+          $('#size_min').closest('.in').css('border', '2px solid #3E007C');
+        } else {
+          $('#designManualSizeSlot').append($wrap);
+          $('#designSizeLabel').text('Minimum size');
+          $('#designSizeHelp').addClass('hidden');
+          $('#size_min').closest('.in').css('border', '');
+        }
+        if (smart) {
+          applySmartPricingToDesignForm();
+        } else {
+          setSmartPricingNoRangeError(false);
+          syncDesignSmartPriceDisplay();
+        }
+      }
+
+      function goToPricingSettingsFromDesignModal() {
+        closeNewDesignModal();
+        setPricingAccordionOpen(true);
+        var el = document.getElementById('pricingSettingsPanel');
+        if (el && el.scrollIntoView) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
 
       var SMART_PRICING_NO_RANGE_ERROR = 'We cannot set the price for this design because there is no size range for this size. Please add a range that covers this size, then come back to finish this upload';
@@ -1869,6 +2308,7 @@
 
         $('#designPriceMin').val(minPrice);
         $('#designPriceMax').val(maxPrice);
+        syncDesignSmartPriceDisplay();
 
         var maxSessions = parseSmartSessionsToMaxSessions(match.sessions);
         if (maxSessions !== '' && parseInt(maxSessions, 10) > 1) {
@@ -1893,6 +2333,11 @@
       loadSmartPricingInitialRows();
       syncSmartPricingEmptyState();
       setPricingAccordionOpen(false);
+      syncDesignModalPricingMode();
+      $('#btnChangePricingManual, #btnChangePricingSmart').on('click', function (e) {
+        e.preventDefault();
+        goToPricingSettingsFromDesignModal();
+      });
       $('#smartColorPercent').on('input change', function () {
         syncPricingAccordionHeader();
       });
@@ -1928,15 +2373,20 @@
           alert('Image must be 10MB or smaller.');
           return;
         }
+        if (typeof Cropper === 'undefined') {
+          alert('Cropper failed to load. Refresh the page and try again.');
+          return;
+        }
         pendingOriginalImageFile = file;
         destroyDesignCropper();
         revokeDesignCropBlob();
         var url = URL.createObjectURL(file);
         $designCropperImg.data('blob-url', url);
         $designCropModal.addClass('is-open').attr('aria-hidden', 'false');
-        $designCropperImg.off('load.designcrop').on('load.designcrop', function () {
-          var img = this;
-          $designCropperImg.off('load.designcrop');
+
+        function initCropperOnImg() {
+          var img = $designCropperImg[0];
+          if (!img) return;
           destroyDesignCropper();
           designCropper = new Cropper(img, {
             aspectRatio: CROP_RATIO,
@@ -1950,8 +2400,28 @@
             highlight: true,
             background: false
           });
+        }
+
+        var cropInitDone = false;
+        function startCropperOnce() {
+          if (cropInitDone) return;
+          cropInitDone = true;
+          $designCropperImg.off('load.designcrop error.designcrop');
+          initCropperOnImg();
+        }
+
+        $designCropperImg.off('load.designcrop error.designcrop');
+        $designCropperImg.on('load.designcrop', startCropperOnce);
+        $designCropperImg.on('error.designcrop', function () {
+          $designCropperImg.off('load.designcrop error.designcrop');
+          closeDesignCropModal();
+          alert('Could not open that image. Try another file.');
         });
         $designCropperImg.attr('src', url);
+        var imgEl = $designCropperImg[0];
+        if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
+          startCropperOnce();
+        }
       }
 
       function applyDesignCrop() {
@@ -1979,6 +2449,9 @@
         $('#designImagePreviewImg').attr('src', dataUrl);
         $('#designImageUploadEmpty').addClass('hidden');
         $('#designImageUploadPreview').removeClass('hidden');
+        $slot.removeClass('design-image-upload--empty').addClass('design-image-upload--has-image');
+        $('#btnReplaceDesignImage').text('Replace image');
+        $('#designAiFilledPill').prop('hidden', true);
         closeDesignCropModal();
         $('#designImage').val('');
         requestDesignAiSuggestions(dataUrl);
@@ -2060,6 +2533,19 @@
         if (emptyAtRequest.tags && emptyNow.tags && Array.isArray(suggestions.tags) && suggestions.tags.length) {
           $('#designTags').val(suggestions.tags.join(', '));
         }
+
+        var filled = 0;
+        if (emptyAtRequest.title && suggestions.title) filled++;
+        if (emptyAtRequest.description && suggestions.description) filled++;
+        if (emptyAtRequest.primary_style && suggestions.primary_style) filled++;
+        if (emptyAtRequest.other_styles && Array.isArray(suggestions.other_styles) && suggestions.other_styles.length) filled++;
+        if (emptyAtRequest.suggested_placements && Array.isArray(suggestions.suggested_placements) && suggestions.suggested_placements.length) filled++;
+        if (emptyAtRequest.color && suggestions.color) filled++;
+        if (emptyAtRequest.tags && Array.isArray(suggestions.tags) && suggestions.tags.length) filled++;
+        if (filled > 0) {
+          $('#designAiFilledText').text('AI filled ' + filled + ' field' + (filled === 1 ? '' : 's'));
+          $('#designAiFilledPill').prop('hidden', false);
+        }
       }
 
       function requestDesignAiSuggestions(dataUrl) {
@@ -2126,11 +2612,14 @@
         $('#designImagePreviewImg').attr('src', '');
         var slot = document.getElementById('designImageUpload');
         if (slot) {
-          slot.classList.remove('has-preview');
+          slot.classList.remove('has-preview', 'design-image-upload--has-image');
+          slot.classList.add('design-image-upload--empty');
           slot.style.removeProperty('--design-preview-ar');
         }
         $('#designImageUploadEmpty').removeClass('hidden');
         $('#designImageUploadPreview').addClass('hidden');
+        $('#btnReplaceDesignImage').text('Upload image');
+        $('#designAiFilledPill').prop('hidden', true);
         $('#designImage').val('');
       }
 
@@ -2309,12 +2798,12 @@
         $('#size_min').val(d.min_size != null ? d.min_size : '');
         $('#designSessionsMax').val((d.max_sessions != null && parseInt(d.max_sessions, 10) > 1) ? d.max_sessions : '');
         $('#designSessionTime').val(d.session_duration || '');
-        $('#toggleVisibility').toggleClass('active', !!d.is_visible);
-        $('#toggleAvailable').toggleClass('active', !!d.is_active);
-        $('#toggleRepeatable').toggleClass('active', !!d.is_repeatable);
+        setDesignToggleState($('#toggleVisibility'), !!d.is_visible);
+        setDesignToggleState($('#toggleAvailable'), !!d.is_active);
+        setDesignToggleState($('#toggleRepeatable'), !!d.is_repeatable);
         $('#designRepeatLimit').val(d.is_repeatable && d.repeat_limit != null ? d.repeat_limit : '');
         syncRepeatLimitFieldVisibility();
-        $('#toggleSensitive').toggleClass('active', !!d.is_sensitive);
+        setDesignToggleState($('#toggleSensitive'), !!d.is_sensitive);
         $('#designOtherStyles option').prop('selected', false);
         (d.other_styles || []).forEach(function (styleValue) {
           designOtherStyleOptionByValue(styleValue).prop('selected', true);
@@ -2348,6 +2837,9 @@
         $img.attr('src', url || '');
         $('#designImageUploadEmpty').addClass('hidden');
         $('#designImageUploadPreview').removeClass('hidden');
+        $slot.removeClass('design-image-upload--empty').addClass('design-image-upload--has-image');
+        $('#btnReplaceDesignImage').text('Replace image');
+        $('#designAiFilledPill').prop('hidden', true);
         $('#designImage').val('');
       }
 
@@ -2358,8 +2850,8 @@
         clearDesignFormErrors();
         resetDesignImageState();
         $newDesignModal.data('editingDesignId', d.id);
-        $('#designModalTitle').text('Edit Design');
-        $('#btnSaveDesign').html('<span class="material-symbols-outlined text-lg">save</span> Update Design');
+        $('#designModalTitle').text('Edit design');
+        $('#btnSaveDesign').html('<span class="ms">save</span>Save design');
         populateDesignFormFromPayload(d);
         applyExistingDesignImagePreview(d.image_url);
         openNewDesignModal();
@@ -2524,11 +3016,15 @@
         return new Blob([arr], { type: mime });
       }
 
+      function setDesignToggleState($el, on) {
+        $el.toggleClass('active', !!on).toggleClass('on', !!on).attr('aria-checked', on ? 'true' : 'false');
+      }
+
       function resetNewDesignFormFields() {
         clearDesignFormErrors();
         $newDesignModal.data('editingDesignId', null);
-        $('#designModalTitle').text('New Design');
-        $('#btnSaveDesign').html('<span class="material-symbols-outlined text-lg">save</span> Save Design');
+        $('#designModalTitle').text('New design');
+        $('#btnSaveDesign').html('<span class="ms">save</span>Save design');
         resetDesignImageState();
         suppressSmartPricingAutofill = true;
         $('#designTitle').val('');
@@ -2541,8 +3037,10 @@
         $('#size_min').val('');
         $('#designSessionsMax').val('');
         $('#designSessionTime').val('');
-        $('#toggleVisibility, #toggleAvailable').addClass('active');
-        $('#toggleRepeatable, #toggleSensitive').removeClass('active');
+        setDesignToggleState($('#toggleVisibility'), true);
+        setDesignToggleState($('#toggleAvailable'), true);
+        setDesignToggleState($('#toggleRepeatable'), false);
+        setDesignToggleState($('#toggleSensitive'), false);
         $('#designRepeatLimit').val('');
         syncRepeatLimitFieldVisibility();
         $('#designOtherStyles option').prop('selected', false);
@@ -2550,6 +3048,8 @@
         $('#designSuggestedPlacements option').prop('selected', false);
         syncDesignPlacementsChipsFromSelect();
         suppressSmartPricingAutofill = false;
+        syncDesignModalPricingMode();
+        syncDesignSmartPriceDisplay();
       }
 
       function updateDesignOtherStylesChipsUI() {
@@ -2630,6 +3130,7 @@
 
       function openNewDesignModal() {
         clearTimeout($newDesignModal.data('closeTimer'));
+        syncDesignModalPricingMode();
         $newDesignModal.addClass('modal-visible').attr('aria-hidden', 'false');
         $('body').css('overflow', 'hidden');
         syncDesignOtherStylesChipsFromSelect();
@@ -2841,15 +3342,49 @@
         openDeleteDesignModal(delUrl);
       });
 
+      function designStatusFromCard($card) {
+        var isSoldOut = String($card.attr('data-is-sold-out')) === '1';
+        var isActive = String($card.attr('data-is-active')) === '1';
+        if (isSoldOut) {
+          return { label: 'Sold', pill: 'r' };
+        }
+        if (isActive) {
+          return { label: 'Available', pill: 'g' };
+        }
+        return { label: 'Unavailable', pill: 'k' };
+      }
+
+      function updateDesignFilterCounts() {
+        var all = 0, available = 0, sold = 0, unavailable = 0;
+        $('#designsGrid .design-card-wrap').each(function () {
+          var $c = $(this);
+          var isSoldOut = String($c.attr('data-is-sold-out')) === '1';
+          var isActive = String($c.attr('data-is-active')) === '1';
+          all += 1;
+          if (isSoldOut) {
+            sold += 1;
+          } else if (isActive) {
+            available += 1;
+          } else {
+            unavailable += 1;
+          }
+        });
+        $('#filterCountAll').text(all);
+        $('#filterCountAvailable').text(available);
+        $('#filterCountSold').text(sold);
+        $('#filterCountUnavailable').text(unavailable);
+      }
+
       function updateDesignCardAvailability($card, isActive) {
-        var $badge = $card.find('.design-availability-badge');
-        var $label = $card.find('.design-availability-label');
-        $badge.toggleClass('on', !!isActive).toggleClass('off', !isActive);
-        $label.text(isActive ? 'Available' : 'Unavailable');
+        $card.attr('data-is-active', isActive ? '1' : '0');
         $card.find('.btn-toggle-design-availability')
           .toggleClass('active', !!isActive)
+          .toggleClass('on', !!isActive)
           .attr('aria-checked', isActive ? 'true' : 'false');
-        $card.attr('data-is-active', isActive ? '1' : '0');
+        var status = designStatusFromCard($card);
+        var $pill = $card.find('.design-status-pill');
+        $pill.removeClass('g r k').addClass(status.pill).text(status.label);
+        updateDesignFilterCounts();
       }
 
       $(document).on('click', '.btn-toggle-design-availability', function () {
@@ -2861,7 +3396,7 @@
         if (!toggleUrl) {
           return;
         }
-        var willBeActive = !$toggle.hasClass('active');
+        var willBeActive = !($toggle.hasClass('active') || $toggle.hasClass('on'));
         $toggle.data('loading', true);
         fetch(toggleUrl, {
           method: 'PATCH',
@@ -2882,13 +3417,13 @@
             throw new Error((result.data && result.data.message) || 'Could not update availability.');
           }
           var isActive = !!result.data.is_active;
-          $toggle.toggleClass('active', isActive).attr('aria-checked', isActive ? 'true' : 'false');
           var designId = $toggle.data('design-id');
           var $card = $toggle.closest('.design-card-wrap');
           updateDesignCardAvailability($card, isActive);
           if (designId && ARTIST_DESIGNS_BY_ID[designId]) {
             ARTIST_DESIGNS_BY_ID[designId].is_active = isActive;
           }
+          applyDesignFilters();
         }).catch(function (e) {
           window.alert(e.message || 'Could not update availability.');
         }).finally(function () {
@@ -2945,16 +3480,32 @@
       });
 
       $('#newDesignModal .toggle-switch').on('click', function () {
-        $(this).toggleClass('active');
+        var on = !$(this).hasClass('active');
+        setDesignToggleState($(this), on);
         if (this.id === 'toggleRepeatable') {
           syncRepeatLimitFieldVisibility();
         }
       });
 
-      $('#designImageUpload').on('click', function (e) {
-        e.preventDefault();
+      function triggerDesignImagePicker() {
         var input = document.getElementById('designImage');
         if (input) input.click();
+      }
+
+      $('#btnReplaceDesignImage').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerDesignImagePicker();
+      });
+
+      $('#designImageUpload').on('click', function (e) {
+        e.preventDefault();
+        triggerDesignImagePicker();
+      }).on('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          triggerDesignImagePicker();
+        }
       });
 
       $('#designImage').on('change', function () {
@@ -3052,12 +3603,13 @@
         var $wraps = $grid.find('.design-card-wrap');
         var $filterEmpty = $('#designsFilterEmpty');
         var $noDesigns = $('#designsNoDesigns');
+        var $hint = $('#designsDragHint');
         if (!$wraps.length) {
           $filterEmpty.addClass('hidden');
           syncDesignDragLock();
           return;
         }
-        var filter = $('#designFilterPills .filter-pill.active').data('filter') || 'all';
+        var filter = $('#designFilterPills .chip.on').data('filter') || 'all';
         var q = ($('#searchDesigns').val() || '').trim().toLowerCase();
         var sort = $('#sortDesigns').val() || 'custom';
         var matched = [];
@@ -3068,7 +3620,10 @@
           if (filter === 'available' && (!isActive || isSoldOut)) {
             return;
           }
-          if (filter === 'sold-out' && !isSoldOut) {
+          if (filter === 'sold' && !isSoldOut) {
+            return;
+          }
+          if (filter === 'unavailable' && (isActive || isSoldOut)) {
             return;
           }
           var hay = String($w.attr('data-search') || '').toLowerCase();
@@ -3103,14 +3658,22 @@
           $filterEmpty.addClass('hidden');
         }
         syncDesignDragLock();
+        if ($hint.length) {
+          if (sort === 'custom') {
+            $hint.html('<span class="ms" style="font-size:16px;vertical-align:-3px">drag_indicator</span> Drag designs to change the order they appear on your page');
+          } else {
+            $hint.html('<span class="ms" style="font-size:16px;vertical-align:-3px">info</span> Sorted by ' + (sort === 'newest' ? 'newest' : 'price') + '. Switch to <b>Your order</b> to drag designs.');
+          }
+        }
       }
 
       function syncDesignDragLock() {
         var sort = $('#sortDesigns').val() || 'custom';
-        var filter = $('#designFilterPills .filter-pill.active').data('filter') || 'all';
+        var filter = $('#designFilterPills .chip.on').data('filter') || 'all';
         var q = ($('#searchDesigns').val() || '').trim();
         var canDrag = sort === 'custom' && filter === 'all' && !q;
         $('body').toggleClass('design-sort-locked', !canDrag);
+        $('#designsGrid').toggleClass('sorted', !canDrag);
         if (window.designsSortable) {
           window.designsSortable.option('disabled', !canDrag);
         }
@@ -3165,17 +3728,17 @@
               if (($('#sortDesigns').val() || 'custom') !== 'custom') return;
               persistDesignOrder();
             }
-          });
+            });
+          }
         }
-      }
 
-      $('#designFilterPills').on('click', '.filter-pill', function () {
+      $('#designFilterPills').on('click', '.chip', function () {
         var $btn = $(this);
-        if ($btn.hasClass('active')) {
+        if ($btn.hasClass('on')) {
             return;
           }
-        $('#designFilterPills .filter-pill').removeClass('active');
-        $btn.addClass('active');
+        $('#designFilterPills .chip').removeClass('on');
+        $btn.addClass('on');
         applyDesignFilters();
       });
 
