@@ -4,8 +4,14 @@
 
 @php
   $ud = $userDetail;
+  $activePayout = $ud->activePayout();
   $studioEmail = old('studio_email', $ud->studio->email ?? '');
-  $pt = in_array($ud->payment_type ?? '', ['artist_account', 'studio_account'], true) ? $ud->payment_type : 'artist_account';
+  $hasStudioPayoutLink = \App\Models\UserStudio::tableReady()
+    && (
+      \App\Models\UserStudio::payoutLinkForUser((int) $ud->user_id)
+      || \App\Models\UserStudio::pendingJoinForUser((int) $ud->user_id)
+    );
+  $pt = $hasStudioPayoutLink ? 'studio_account' : 'artist_account';
   $payoutKey = match ($pt) {
     'studio_account' => 'studio',
     default => 'artist',
@@ -21,16 +27,19 @@
   };
   $payoutOptionLocked = (bool) ($payoutOptionLocked ?? ($artistStripeConnected || $studioPayoutCommitted));
   $studioDraftWithStripe = $artistStripeConnected
-    && ($ud->payment_type ?? null) === 'studio_account'
+    && $pt === 'studio_account'
     && ! $studioPayoutCommitted;
   $stripeConnectLocale = $stripeConnectLocale ?? config('services.stripe.connect.locale', 'en-US');
-  $payoutBankCountry = $payoutBankCountry ?? $ud->payout_bank_country ?? null;
-  $payoutWaitingListCountry = $payoutWaitingListCountry ?? $ud->payout_waiting_list_country ?? null;
+  $payoutBankCountry = $payoutBankCountry ?? $activePayout?->payout_bank_country ?? null;
+  $payoutWaitingListCountry = $payoutWaitingListCountry ?? $activePayout?->payout_waiting_list_country ?? null;
   $payoutRegistrationCountries = $payoutRegistrationCountries ?? [];
   $payoutBankCountryName = $payoutBankCountryName ?? ($payoutBankCountry ? \App\Support\StripeConnectCountries::nameFor($payoutBankCountry) : null);
   $hasSignupPayoutCountry = $payoutBankCountry
     && \App\Support\StripeConnectCountries::isSupported($payoutBankCountry);
-  $studioRevenueArtistPercent = (int) old('studio_revenue_artist_percent', $ud->studio_revenue_artist_percent ?? 50);
+  $studioRevenueArtistPercent = (int) old(
+    'studio_revenue_artist_percent',
+    $ud->resolvedStudioRevenueArtistPercent(50)
+  );
   $studioRevenueArtistPercent = max(0, min(100, $studioRevenueArtistPercent));
   $studioDisplayName = $ud->resolvedStudioName() !== '' ? $ud->resolvedStudioName() : null;
 @endphp
@@ -127,7 +136,7 @@
             @else
               Choose how bookings are paid.
             @endif
-        </div>
+    </div>
       </div>
         </div>
       <div style="padding:18px 22px">
@@ -144,7 +153,7 @@
           <div style="flex:1">
             <b>Invite the studio and set a revenue split</b>
             <div class="d">Your studio will get an invite to join Bookpay. They will need to set up their Stripe account. Once they join and confirm, each payment is split between you.</div>
-    </div>
+        </div>
         </label>
 
         <div class="splitbox" id="splitbox" @if($payoutKey !== 'studio') hidden @endif>
@@ -166,7 +175,7 @@
                   </div>
                   <div class="help">They get an email to join Bookpay and set up their Stripe account when you click Save &amp; Send.</div>
                 </div>
-            </div>
+      </div>
 
               <div style="margin-top:16px">
                 @include('onboarding.partials.studio-split-relationship-new', [
@@ -181,12 +190,12 @@
                     : "You're paid directly until your studio joins Bookpay and confirms this split. Then it starts, for new bookings.",
                   'studioRevenueArtistPercent' => $studioRevenueArtistPercent,
                 ])
-              </div>
+        </div>
 
               <div style="margin-top:16px">
                 <button type="button" id="payStudioSend" class="btn pri">Save &amp; Send</button>
-              </div>
-            </div>
+      </div>
+    </div>
 
             <div id="studioPayoutNotConnected" class="{{ $studioPayoutStatus !== 'not_connected' ? 'hidden' : '' }}">
               <span class="status-pill a" style="margin-bottom:12px">Not connected</span>
@@ -231,12 +240,10 @@
               @endif
             </div>
 
-            @if ($studioPayoutCommitted)
-              <div id="studioPayoutDisconnectWrap" style="padding-top:16px;margin-top:14px;border-top:1px solid #E4D6F5">
-                <button type="button" id="disconnectStudioBtn" class="btn ghost" style="color:var(--red);border-color:#F5C2C2">Disconnect studio payout</button>
-                <p class="help">Cancel this studio request to invite again. Artist payout stays locked until you disconnect.</p>
+            <div id="studioPayoutDisconnectWrap" class="{{ $studioPayoutCommitted ? '' : 'hidden' }}" style="padding-top:16px;margin-top:14px;border-top:1px solid #E4D6F5">
+              <button type="button" id="disconnectStudioBtn" class="btn ghost" style="color:var(--red);border-color:#F5C2C2">Disconnect studio payout</button>
+              <p class="help">Cancel this studio request to invite again. Artist payout stays locked until you disconnect.</p>
             </div>
-          @endif
 
             <p id="studio_email_error" class="field-err hidden" role="alert"></p>
             <p id="studio_revenue_artist_percent_error" class="field-err hidden" role="alert"></p>
@@ -254,18 +261,18 @@
             </div>
           </div>
         <div style="padding:18px 22px">
-          @if ($artistStripeConnected)
+        @if ($artistStripeConnected)
             <div style="display:flex;flex-direction:column;gap:14px">
               <div class="ok-box">
                 <p style="font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:6px">
                   <span class="ms" style="font-variation-settings:'FILL' 1">check_circle</span>
-                  Stripe account connected
-                </p>
+              Stripe account connected
+            </p>
                 <p style="margin:0">Your bank account is connected through Stripe.</p>
-                @if ($payoutBankCountry && ($payoutBankCountryName ?? null))
+            @if ($payoutBankCountry && ($payoutBankCountryName ?? null))
                   <p style="margin:8px 0 0">Bank account country: <strong>{{ $payoutBankCountryName }}</strong></p>
-                @endif
-        </div>
+            @endif
+          </div>
             <div>
                 <button type="button" id="disconnectStripeBtn" class="btn ghost" style="color:var(--red);border-color:#F5C2C2">Disconnect Stripe</button>
                 <p class="help">Disconnect to reconnect a different account or switch payout options.</p>
@@ -292,7 +299,7 @@
                 </div>
                 <button type="button" id="connectBankAccountBtn" class="btn"><span class="ms">link</span>Connect</button>
               </div>
-        </div>
+            </div>
 
             <div id="payoutStripeStep" class="hidden">
               <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)">
@@ -300,12 +307,12 @@
                 <p id="payoutStripeStepDescription" class="muted" style="font-size:13.5px;margin-top:6px">
                   Add your personal details, upload an identity document (passport or ID).
                 </p>
-          </div>
+              </div>
 
               @if (!($stripeConnectConfigured ?? false))
                 <div class="err-box">
                   Stripe is not configured. You can skip this step for now and finish payout setup later in settings.
-      </div>
+                </div>
               @else
                 <div class="stripe-connect-shell">
                   <div id="stripeConnectMount"></div>
@@ -316,10 +323,10 @@
                 </p>
               @endif
             </div>
-          @endif
-        </div>
+        @endif
       </div>
-  </div>
+    </div>
+        </div>
 
     <p id="payment_type_error" class="field-err hidden" role="alert"></p>
     <div id="payAlert" class="pay-alert err hidden" role="alert"></div>
@@ -330,9 +337,9 @@
       <div class="btns">
         <button type="button" id="payGoDashboard" class="btn pri hidden">Go to dashboard</button>
         <button type="button" id="paySkip" class="btn ghost">Set up later</button>
-      </div>
-    </div>
-  </div>
+            </div>
+        </div>
+          </div>
 </form>
 
 <div id="disconnectStripeModal" class="modal-ov" role="dialog" aria-modal="true">
@@ -342,9 +349,9 @@
     <div class="row" style="justify-content:flex-end;gap:10px">
       <button type="button" id="cancelDisconnectStripe" class="btn ghost">Cancel</button>
       <button type="button" id="confirmDisconnectStripeBtn" class="btn" style="background:var(--red)">Disconnect</button>
+      </div>
     </div>
   </div>
-</div>
 
 <div id="disconnectStudioModal" class="modal-ov" role="dialog" aria-modal="true">
   <div class="modal-box">
@@ -355,7 +362,7 @@
       <button type="button" id="confirmDisconnectStudioBtn" class="btn" style="background:var(--red)">Disconnect</button>
     </div>
   </div>
-</div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -696,7 +703,7 @@ window.placePayoutBankSection = function (type) {
 
 if (!window.artistStripeConnected && !initialWaitingListCountry) {
   window.showPayoutStep('intro');
-} else {
+    } else {
   window.updatePaymentSkipUi('intro');
 }
 window.placePayoutBankSection(@json($payoutKey));
@@ -803,6 +810,40 @@ $(function () {
   }
   syncStudioPayoutSectionInputs();
 
+  window.showStudioInviteSentUi = function (data) {
+    data = data || {};
+    var email = (data.studio_email || $('#studio_email').val() || '').trim();
+    var percent = data.studio_revenue_artist_percent;
+    if (percent === undefined || percent === null || percent === '') {
+      percent = $('#studio_revenue_you_get').val();
+    }
+
+    $('#studioPayoutEmailNotSent').addClass('hidden');
+    $('#studioPayoutConnected').addClass('hidden');
+    $('#studioPayoutNotConnected').removeClass('hidden');
+    $('#studioPayoutDisconnectWrap').removeClass('hidden');
+
+    if (email) {
+      $('#studio_email_not_connected').val(email);
+      $('#studio_email').val(email);
+    }
+    var $ncSplit = $('#studio_revenue_you_get_nc');
+    if ($ncSplit.length && percent !== undefined && percent !== null && String(percent).trim() !== '') {
+      $ncSplit.val(String(percent));
+      syncStudioRevenueSplit($ncSplit);
+    }
+
+    syncStudioPayoutSectionInputs();
+    try {
+      if (typeof studioEmailOriginal !== 'undefined') {
+        studioEmailOriginal = email;
+      }
+    } catch (e) {}
+    if (typeof updateStudioReminderButtonLabel === 'function') {
+      updateStudioReminderButtonLabel();
+    }
+  };
+
   function collectStudioSplitPayload($panel) {
     var $splitInput = $panel.find('.js-studio-revenue-you-get').first();
     if ($splitInput.length && String($splitInput.val() || '').trim() === '') {
@@ -840,8 +881,8 @@ $(function () {
       .fail(function (xhr) {
         if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
           showPaymentErrors(xhr.responseJSON.errors);
-          return;
-        }
+    return;
+  }
         $alertEl.attr('class', alertClass('error')).text((xhr.responseJSON && xhr.responseJSON.message) || 'Could not save.').removeClass('hidden');
       })
       .always(function () {
@@ -945,10 +986,27 @@ $(function () {
     var $studioSend = $('#payStudioSend');
     var originalStudioSendHtml = $studioSend.length ? $studioSend.html() : '';
     var originalGoDashboardHtml = $goDashboard.length ? $goDashboard.html() : '';
+    var paymentType = ($('#payment_type').val() || '');
+    // Studio invite does not need a live Stripe status check — skip the slow round-trip.
+    var skipStripePrefetch = !!options.auto || paymentType === 'studio_account';
     $('#paymentForm').find('[id$="_error"]').addClass('hidden').text('');
 
+    // Show loading immediately so the UI doesn't wait on Stripe status.
+    $alertEl.addClass('hidden').text('');
+    $skip.prop('disabled', true);
+    if ($goDashboard.length) {
+      $goDashboard.prop('disabled', true);
+      if (!$goDashboard.hasClass('hidden')) {
+        $goDashboard.text(options.auto ? 'Finishing onboarding…' : 'Saving...');
+      }
+    }
+    if ($studioSend.length) {
+      $studioSend.prop('disabled', true);
+      $studioSend.text(options.auto ? 'Finishing onboarding…' : 'Saving...');
+    }
+
     return (async function () {
-    if (!options.auto) {
+    if (!skipStripePrefetch) {
         if (typeof window.refreshStripeOnboardingStatus === 'function') {
           await window.refreshStripeOnboardingStatus();
         }
@@ -957,27 +1015,21 @@ $(function () {
         }
       }
 
-      $alertEl.addClass('hidden').text('');
-
-    $skip.prop('disabled', true);
-      if ($goDashboard.length) {
-        $goDashboard.prop('disabled', true);
-        if (!$goDashboard.hasClass('hidden')) {
-          $goDashboard.text(options.auto ? 'Finishing onboarding…' : 'Saving...');
-        }
-      }
-    if ($studioSend.length) {
-      $studioSend.prop('disabled', true);
-        $studioSend.text(options.auto ? 'Finishing onboarding…' : 'Saving...');
-    }
-
       const runAjax = function (attemptOptions) {
         return new Promise(function (resolve, reject) {
     var fd = new FormData(document.getElementById('paymentForm'));
           if (($('#payment_type').val() || '') === 'studio_account') {
-            var $sendPanel = $('#studioPayoutEmailNotSent').find('.studio-split-relationship-panel').first();
-            if ($sendPanel.length) {
-              var splitPayload = collectStudioSplitPayload($sendPanel);
+            // After invite, #studio_email is disabled/hidden — FormData omits it. Reuse the shown email.
+            var studioEmail = ($('#studio_email').val() || $('#studio_email_not_connected').val() || '').trim();
+            if (studioEmail) {
+              fd.set('studio_email', studioEmail);
+            }
+            var $splitPanel = $('#studioPayoutNotConnected:not(.hidden) .studio-split-relationship-panel').first();
+            if (!$splitPanel.length) {
+              $splitPanel = $('#studioPayoutEmailNotSent .studio-split-relationship-panel').first();
+            }
+            if ($splitPanel.length) {
+              var splitPayload = collectStudioSplitPayload($splitPanel);
               fd.set('studio_revenue_artist_percent', splitPayload.studio_revenue_artist_percent);
             }
           }
@@ -993,6 +1045,25 @@ $(function () {
       },
     })
       .done(function (data) {
+        if (data.success && (data.stay_on_page || (data.studio_payout_committed && !data.redirect))) {
+          const paymentType = $('#payment_type').val();
+          if (typeof window.lockPayoutOptions === 'function') {
+            if (paymentType === 'studio_account' || data.studio_payout_committed) {
+              window.lockPayoutOptions('studio');
+            }
+          }
+          window.studioPayoutCommitted = true;
+          if (typeof window.showStudioInviteSentUi === 'function') {
+            window.showStudioInviteSentUi(data);
+          }
+          showPaymentAlert(data.message || 'Invite sent to your studio.', 'ok');
+          if (typeof window.updatePaymentSkipUi === 'function') {
+            window.updatePaymentSkipUi('intro');
+          }
+          resolve(data);
+          return;
+        }
+
         if (data.success && data.redirect) {
           const paymentType = $('#payment_type').val();
           if (typeof window.lockPayoutOptions === 'function') {
@@ -1006,7 +1077,7 @@ $(function () {
           if (data.studio_invite_sent || data.studio_payout_committed) {
             try { sessionStorage.setItem('bp-pay-toast', data.message || 'Invite sent to your studio.'); } catch (e) {}
           }
-                resolve(data);
+          resolve(data);
           window.location.href = data.redirect;
           return;
         }

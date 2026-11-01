@@ -136,7 +136,10 @@ class QuestionsController extends Controller
 
         $formContext = $request->input('form_context');
         if ($formContext === null || $formContext === '') {
-            $formContext = $user->role === 'artist' ? 'custom' : 'default';
+            $formContext = match ((string) ($user->role ?? '')) {
+                'artist', 'studio' => 'custom',
+                default => 'default',
+            };
         }
 
         $isActive = $request->has('is_active')

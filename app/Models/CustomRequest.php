@@ -13,6 +13,8 @@ class CustomRequest extends Model
         'user_id',
         'artist_id',
         'is_guest',
+        'from_waitlist',
+        'waitlist_released_at',
         'guest_id',
         'guest_spot_held',
         'guest_hold_expires_at',
@@ -39,6 +41,8 @@ class CustomRequest extends Model
 
     protected $casts = [
         'is_guest' => 'boolean',
+        'from_waitlist' => 'boolean',
+        'waitlist_released_at' => 'datetime',
         'guest_spot_held' => 'boolean',
         'guest_hold_expires_at' => 'datetime',
         'questions_answers' => 'array',
@@ -54,6 +58,33 @@ class CustomRequest extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function waitlistEntry(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Waitlist::class, 'custom_request_id');
+    }
+
+    public function isHeldOnWaitlist(): bool
+    {
+        return (bool) $this->from_waitlist && $this->waitlist_released_at === null;
+    }
+
+    public function releaseFromWaitlist(): void
+    {
+        if (! $this->from_waitlist || $this->waitlist_released_at !== null) {
+            return;
+        }
+
+        $this->forceFill(['waitlist_released_at' => now()])->save();
+    }
+
+    public function scopeVisibleInArtistRequests($query)
+    {
+        return $query->where(function ($inner) {
+            $inner->where('from_waitlist', false)
+                ->orWhereNotNull('waitlist_released_at');
+        });
     }
 
     public function chatChannel(): \Illuminate\Database\Eloquent\Relations\HasOne

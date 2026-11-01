@@ -24,7 +24,10 @@ class CancellationService
             return;
         }
 
-        $guestId = (int) ($details['guest_id'] ?? 0);
+        $guestId = (int) ($booking->guest_spot_id ?? 0);
+        if ($guestId <= 0) {
+            $guestId = (int) ($details['guest_id'] ?? 0);
+        }
         if ($guestId <= 0) {
             $customRequestId = (int) ($details['custom_request_id'] ?? 0);
             if ($customRequestId > 0) {

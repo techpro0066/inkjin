@@ -88,7 +88,7 @@ class CustomRequestBookingService
         if ($this->managedBooking->artistLocalDateIsBlocked(
             (int) $customRequest->artist_id,
             $sessionUtc['date'],
-            $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
+            $this->exceptGuestSpotIdForCustomRequest($customRequest, $sessionUtc['date'])
         )) {
             throw new \RuntimeException('The selected session date is no longer available.');
         }
@@ -111,7 +111,7 @@ class CustomRequestBookingService
             if ($this->managedBooking->artistLocalDateIsBlocked(
                 (int) $customRequest->artist_id,
                 $consultUtc['date'],
-                $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
+                $this->exceptGuestSpotIdForCustomRequest($customRequest, $consultUtc['date'])
             )) {
                 throw new \RuntimeException('The selected consultation date is no longer available.');
             }
@@ -217,7 +217,7 @@ class CustomRequestBookingService
         if ($this->managedBooking->artistLocalDateIsBlocked(
             (int) $customRequest->artist_id,
             $sessionUtc['date'],
-            $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
+            $this->exceptGuestSpotIdForCustomRequest($customRequest, $sessionUtc['date'])
         )) {
             throw new \RuntimeException('The selected session date is no longer available.');
         }
@@ -240,7 +240,7 @@ class CustomRequestBookingService
             if ($this->managedBooking->artistLocalDateIsBlocked(
                 (int) $customRequest->artist_id,
                 $consultUtc['date'],
-                $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null
+                $this->exceptGuestSpotIdForCustomRequest($customRequest, $consultUtc['date'])
             )) {
                 throw new \RuntimeException('The selected consultation date is no longer available.');
             }
@@ -308,6 +308,19 @@ class CustomRequestBookingService
         $this->sendConfirmationEmails($booking);
 
         return $booking;
+    }
+
+    private function exceptGuestSpotIdForCustomRequest(CustomRequest $customRequest, string $ymd): ?int
+    {
+        if ($customRequest->isGuestRequest() && $customRequest->guest_id) {
+            return (int) $customRequest->guest_id;
+        }
+
+        return $this->managedBooking->guestSpotIdCoveringBookableDate(
+            (int) $customRequest->artist_id,
+            $ymd,
+            null
+        );
     }
 
     private function linkCustomRequestToBooking(CustomRequest $customRequest, Booking $booking): void

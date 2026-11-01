@@ -810,7 +810,7 @@
             <div class="row aw-img-meta">
               <span class="faint" style="font-size:12px">1080 × 1350 · 4:5</span>
               <button type="button" class="aw-replace" id="btnReplaceWorkImage">Upload image</button>
-            </div>
+          </div>
           <input type="file" id="workImage" name="workImage" accept="image/*" class="hidden">
           <input type="hidden" id="workImageData" name="workImageData" value="">
             <p class="hidden work-field-error" data-error-for="image"></p>

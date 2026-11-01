@@ -505,28 +505,63 @@ class ArtistReferralRewardService
     }
 
     /**
+     * Public UI status key for referring artists (hides internal admin workflow).
+     */
+    public static function artistDashboardStatusKeyForReferral(ArtistReferral $referral): string
+    {
+        if ($referral->isRejected()) {
+            return 'rejected';
+        }
+
+        if ($referral->isRewarded()) {
+            return 'earned';
+        }
+
+        if ($referral->isSentToAdmin() || $referral->fee_waived || $referral->qualified_booking_id) {
+            return 'waiting_for_payout';
+        }
+
+        return 'signed_up';
+    }
+
+    /**
      * Status label shown to referring artists (hides internal admin workflow).
      */
-    public static function artistDashboardStatusLabel(?string $status): string
+    public static function artistDashboardStatusLabelForReferral(ArtistReferral $referral): string
     {
-        return match ($status) {
-            ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED => 'Signup - not completed',
-            ArtistReferral::STATUS_REWARDED => 'Rewarded',
-            ArtistReferral::STATUS_REJECTED => 'Rejected',
-            default => 'Pending',
+        return match (self::artistDashboardStatusKeyForReferral($referral)) {
+            'rejected' => 'Rejected',
+            'earned' => '€'.number_format((float) ($referral->reward_amount ?: 20), 0).' earned',
+            'waiting_for_payout' => 'Waiting for payout',
+            default => 'Signed up',
         };
     }
 
     /**
-     * Status key for artist dashboard styling.
+     * @deprecated Prefer artistDashboardStatusLabelForReferral()
+     */
+    public static function artistDashboardStatusLabel(?string $status): string
+    {
+        return match ($status) {
+            ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED => 'Signed up',
+            ArtistReferral::STATUS_REWARDED => '€20 earned',
+            ArtistReferral::STATUS_REJECTED => 'Rejected',
+            ArtistReferral::STATUS_SENT_TO_ADMIN => 'Waiting for payout',
+            default => 'Signed up',
+        };
+    }
+
+    /**
+     * @deprecated Prefer artistDashboardStatusKeyForReferral()
      */
     public static function artistDashboardStatusKey(?string $status): string
     {
         return match ($status) {
-            ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED => ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED,
-            ArtistReferral::STATUS_REWARDED => ArtistReferral::STATUS_REWARDED,
-            ArtistReferral::STATUS_REJECTED => ArtistReferral::STATUS_REJECTED,
-            default => ArtistReferral::STATUS_PENDING,
+            ArtistReferral::STATUS_SIGNUP_NOT_COMPLETED => 'signed_up',
+            ArtistReferral::STATUS_REWARDED => 'earned',
+            ArtistReferral::STATUS_REJECTED => 'rejected',
+            ArtistReferral::STATUS_SENT_TO_ADMIN => 'waiting_for_payout',
+            default => 'signed_up',
         };
     }
 

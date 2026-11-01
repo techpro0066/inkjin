@@ -93,9 +93,32 @@ class ArtistPaymentsService
             ? $this->payoutService->isArtistPaymentReady($userDetail)
             : false;
 
-        $payoutMode = in_array(($userDetail?->payout_mode ?? 'manual'), ['manual', 'automatic'], true)
-            ? (string) ($userDetail?->payout_mode ?? 'manual')
-            : 'manual';
+        $payoutModeRaw = $userDetail?->activePayout()?->payout_mode ?? 'automatic';
+        $payoutMode = in_array($payoutModeRaw, ['manual', 'automatic'], true)
+            ? (string) $payoutModeRaw
+            : 'automatic';
+
+        $paymentType = $userDetail
+            ? $userDetail->resolvedPayoutPaymentType()
+            : 'artist_account';
+        $payoutTypeLabel = $paymentType === 'studio_account'
+            ? 'Studio payouts'
+            : 'Artist payouts';
+
+        $nextPayoutMeta = $payoutMode === 'automatic'
+            ? 'Paid automatically to your bank'
+            : ($availableBalance > 0.009
+                ? 'Ready to withdraw to your bank'
+                : 'No balance ready to withdraw yet');
+
+        $nextArrivalLabel = null;
+        if ($availableBalance > 0.009) {
+            $nextArrivalLabel = $payoutMode === 'automatic'
+                ? 'Paid out automatically when funds become available'
+                : 'Available now · request a payout when you want';
+        } elseif ($pendingSchedule !== []) {
+            $nextArrivalLabel = $pendingSchedule[0]['available_label'] ?? null;
+        }
 
         return [
             'payments' => $payments,
@@ -109,6 +132,9 @@ class ArtistPaymentsService
                 'currency_symbol' => '€',
                 'payout_account_connected' => $payoutAccountConnected,
                 'payout_mode' => $payoutMode,
+                'payout_type_label' => $payoutTypeLabel,
+                'next_payout_meta' => $nextPayoutMeta,
+                'next_arrival_label' => $nextArrivalLabel,
             ],
         ];
     }
@@ -153,6 +179,39 @@ class ArtistPaymentsService
         $status = $this->resolvePaymentStatus($booking, $payout, $userDetail, $remaining);
         $paidAt = $booking->created_at?->format('Y-m-d') ?? '';
 
+        $artistPercent = 100;
+        $paymentType = 'artist_account';
+        $studioGets = 0.0;
+        if ($userDetail) {
+            $artistPercent = $this->payoutService->resolvePayoutArtistPercent($booking, $userDetail);
+            $paymentType = $this->payoutService->resolvePayoutPaymentType($booking, $userDetail);
+            $studioGets = $this->payoutService->computeStudioPayoutAmount($booking, $userDetail);
+        }
+        $hasSplit = $paymentType === 'studio_account' && $artistPercent < 100 && $studioGets > 0.009;
+
+        $statusLabel = match ($status) {
+            'Available' => 'On the way',
+            'Completed' => 'Paid out',
+            default => $status,
+        };
+
+        $collectedKind = $this->collectedKindLabel($breakdown);
+        $balanceDue = max(0, round((float) ($breakdown['balance_pending'] ?? 0), 2));
+        if ($balanceDue > 0.009) {
+            $collectedKind .= ' · €'.number_format($balanceDue, 2).' due';
+        }
+
+        $studioName = trim((string) ($userDetail?->resolvedStudioName() ?? ''));
+        $breakdownRows = $this->buildBreakdownRows(
+            amount: round($amount, 2),
+            fee: round($fee, 2),
+            net: round($net, 2),
+            studioGets: round($studioGets, 2),
+            hasSplit: $hasSplit,
+            artistPercent: $artistPercent,
+            studioName: $studioName,
+        );
+
         return [
             'id' => $booking->id,
             'client' => $name !== '' ? $name : 'Unknown client',
@@ -162,14 +221,76 @@ class ArtistPaymentsService
             'date' => $paidAt,
             'amount' => round($amount, 2),
             'fee' => round($fee, 2),
-            'net' => $net,
+            'studio_gets' => round($studioGets, 2),
+            'net' => round($net, 2),
             'remaining' => round($remaining, 2),
             'status' => $status,
+            'status_label' => $statusLabel,
+            'collected_kind' => $collectedKind,
+            'has_split' => $hasSplit,
+            'artist_percent' => $artistPercent,
             'deposit' => $breakdown['deposit'],
             'balance_platform' => $breakdown['balance_platform'],
             'balance_cash' => $breakdown['balance_cash'],
             'balance_pending' => $breakdown['balance_pending'],
+            'breakdown_title' => $booking->displayTitle().' · '.$booking->referenceLabel(),
+            'breakdown_rows' => $breakdownRows,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $breakdown
+     */
+    private function collectedKindLabel(array $breakdown): string
+    {
+        $deposit = (float) ($breakdown['deposit'] ?? 0);
+        $balancePlatform = (float) ($breakdown['balance_platform'] ?? 0);
+        $balanceCash = (float) ($breakdown['balance_cash'] ?? 0);
+
+        if ($deposit > 0.009 && ($balancePlatform > 0.009 || $balanceCash > 0.009)) {
+            return 'Deposit + balance';
+        }
+        if ($balancePlatform > 0.009 || $balanceCash > 0.009) {
+            return 'Balance';
+        }
+        if ($deposit > 0.009) {
+            return 'Deposit';
+        }
+
+        return 'Payment';
+    }
+
+    /**
+     * @return list<array{0: string, 1: string|float}>
+     */
+    private function buildBreakdownRows(
+        float $amount,
+        float $fee,
+        float $net,
+        float $studioGets,
+        bool $hasSplit,
+        int $artistPercent,
+        string $studioName,
+    ): array {
+        $rows = [
+            ['Client paid', $amount],
+        ];
+
+        if ($fee > 0.009) {
+            $rows[] = ['Booking fee (deducted from your share)', -$fee];
+        }
+
+        if ($hasSplit) {
+            $studioLabel = $studioName !== '' ? $studioName : 'studio';
+            $rows[] = ['Split with '.$studioLabel, 'You '.$artistPercent.'% · Studio '.(100 - $artistPercent).'%'];
+            $rows[] = [$studioLabel.' gets', $studioGets];
+        } else {
+            $rows[] = ['Split', 'None · booked at your own place'];
+        }
+
+        $rows[] = ['You get', $net];
+
+        return $rows;
     }
 
     private function resolvePaymentStatus(

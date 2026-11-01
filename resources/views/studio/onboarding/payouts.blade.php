@@ -174,10 +174,13 @@
 
   <div class="note"><span class="ms">info</span>Money from a booking is held until its cancellation window ends. Then your share and the artist's share are sent at the same time.</div>
 
+  <p class="help" id="setupLaterHint" @if($stripeConnected) hidden @endif style="max-width:640px;margin-top:8px">You can finish payout setup now, or come back later — Stripe must be connected before you can collect and split payments.</p>
+
   <div class="obfoot">
-    <a class="btn ghost" href="{{ route('studio.onboarding.terms') }}"><span class="ms">arrow_back</span>Back</a>
+    <a class="btn ghost" href="{{ route('studio.onboarding.terms') }}" id="onboardingBackBtn"><span class="ms">arrow_back</span>Back</a>
     <div class="row" style="gap:0">
-      <a class="btn" id="goDashboardBtn" href="{{ route('studio.dashboard') }}" @if($offersRevenueSplit && ! $stripeConnected) hidden @endif>Go to dashboard<span class="ms">arrow_forward</span></a>
+      <button type="button" class="btn ghost" id="setupLaterBtn" @if($stripeConnected) hidden @endif>Set up later</button>
+      <button type="button" class="btn" id="goDashboardBtn" @unless($stripeConnected) hidden @endunless>Go to dashboard<span class="ms">arrow_forward</span></button>
     </div>
   </div>
 @endsection
@@ -194,9 +197,19 @@
   var stripeConfigured = @json((bool) $stripeConnectConfigured);
   var dashboardUrl = @json(route('studio.dashboard'));
   var $ = window.jQuery;
+  var setupLaterBtn = document.getElementById('setupLaterBtn');
+  var setupLaterHint = document.getElementById('setupLaterHint');
   var goDashboardBtn = document.getElementById('goDashboardBtn');
+  var onboardingBackBtn = document.getElementById('onboardingBackBtn');
   var currencyHelp = document.getElementById('currencyHelp');
   var csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  function setConnectingUi(connecting) {
+    if (setupLaterBtn) setupLaterBtn.hidden = !!connecting || connected;
+    if (setupLaterHint) setupLaterHint.hidden = !!connecting || connected;
+    if (onboardingBackBtn) onboardingBackBtn.hidden = !!connecting;
+    if (goDashboardBtn) goDashboardBtn.hidden = !!connecting || !connected;
+  }
 
   function initSelect2(selector, options) {
     if (!$ || !$.fn.select2) return;
@@ -261,20 +274,88 @@
     });
   }
 
-  function syncNext() {
-    if (!goDashboardBtn) return;
-    var ok = !needsStripe || connected;
-    goDashboardBtn.hidden = !ok;
-  }
-
   function showConnected() {
     connected = true;
     var off = document.querySelector('.stripe-off');
     var on = document.querySelector('.stripe-on');
     if (off) off.hidden = true;
     if (on) on.hidden = false;
-    syncNext();
+    setConnectingUi(false);
   }
+
+  function goToDashboard(message) {
+    try {
+      if (message) sessionStorage.setItem('bp-toast', message);
+    } catch (e) {}
+    window.location.href = dashboardUrl;
+  }
+
+  function completeOnboardingAndGo(message) {
+    var setup = connected ? readSetup() : validateSetup();
+    if (!setup) return;
+
+    var btn = goDashboardBtn || setupLaterBtn;
+    var defaultHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('disabled');
+      btn.setAttribute('aria-disabled', 'true');
+      btn.innerHTML = '<span class="ms">hourglass_top</span>Opening…';
+    }
+    if (setupLaterBtn && setupLaterBtn !== btn) {
+      setupLaterBtn.disabled = true;
+      setupLaterBtn.classList.add('disabled');
+    }
+
+    fetch(@json(route('studio.onboarding.payouts.update')), {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': csrf,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(Object.assign({}, setup, { complete_onboarding: 1 }))
+    })
+      .then(function (res) {
+        return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+      })
+      .then(function (result) {
+        if (result.ok && result.data && result.data.success) {
+          goToDashboard(message || result.data.message || 'Welcome to your studio dashboard');
+          return;
+        }
+        if (window.bpToast) window.bpToast((result.data && result.data.message) || 'Could not finish onboarding.', true);
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('disabled');
+          btn.setAttribute('aria-disabled', 'false');
+          btn.innerHTML = defaultHtml;
+        }
+        if (setupLaterBtn && setupLaterBtn !== btn) {
+          setupLaterBtn.disabled = false;
+          setupLaterBtn.classList.remove('disabled');
+        }
+      })
+      .catch(function () {
+        if (window.bpToast) window.bpToast('Something went wrong. Please try again.', true);
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('disabled');
+          btn.setAttribute('aria-disabled', 'false');
+          btn.innerHTML = defaultHtml;
+        }
+        if (setupLaterBtn && setupLaterBtn !== btn) {
+          setupLaterBtn.disabled = false;
+          setupLaterBtn.classList.remove('disabled');
+        }
+      });
+  }
+
+  goDashboardBtn?.addEventListener('click', function () {
+    if (!goDashboardBtn || goDashboardBtn.disabled) return;
+    completeOnboardingAndGo();
+  });
 
   function readSetup() {
     return {
@@ -306,24 +387,22 @@
     document.getElementById('studioStripeStep').hidden = true;
     document.getElementById('stripeConnectIntro').hidden = false;
     document.getElementById('studioSetupFields').hidden = false;
+    setConnectingUi(false);
   });
 
-  document.getElementById('goDashboardBtn')?.addEventListener('click', function (e) {
-    e.preventDefault();
-    if (goDashboardBtn.hidden) return;
+  setupLaterBtn?.addEventListener('click', function () {
+    if (!setupLaterBtn || setupLaterBtn.disabled) return;
 
-    var setup = null;
-    if (!connected) {
-      setup = validateSetup();
-      if (!setup) return;
-    } else {
-      setup = readSetup();
-    }
+    // Allow finishing without Stripe (same as artist “Set up later”).
+    // Still require currency / country / business type when not connected yet.
+    var setup = connected ? readSetup() : validateSetup();
+    if (!setup) return;
 
-    var defaultHtml = goDashboardBtn.innerHTML;
-    goDashboardBtn.classList.add('disabled');
-    goDashboardBtn.setAttribute('aria-disabled', 'true');
-    goDashboardBtn.innerHTML = '<span class="ms">hourglass_top</span>Saving…';
+    var defaultHtml = setupLaterBtn.innerHTML;
+    setupLaterBtn.disabled = true;
+    setupLaterBtn.classList.add('disabled');
+    setupLaterBtn.setAttribute('aria-disabled', 'true');
+    setupLaterBtn.innerHTML = '<span class="ms">hourglass_top</span>Skipping…';
 
     fetch(@json(route('studio.onboarding.payouts.update')), {
       method: 'POST',
@@ -344,27 +423,34 @@
           return;
         }
         if (window.bpToast) window.bpToast((result.data && result.data.message) || 'Could not save.', true);
-        goDashboardBtn.classList.remove('disabled');
-        goDashboardBtn.setAttribute('aria-disabled', 'false');
-        goDashboardBtn.innerHTML = defaultHtml;
+        setupLaterBtn.disabled = false;
+        setupLaterBtn.classList.remove('disabled');
+        setupLaterBtn.setAttribute('aria-disabled', 'false');
+        setupLaterBtn.innerHTML = defaultHtml;
       })
       .catch(function () {
         if (window.bpToast) window.bpToast('Something went wrong. Please try again.', true);
-        goDashboardBtn.classList.remove('disabled');
-        goDashboardBtn.setAttribute('aria-disabled', 'false');
-        goDashboardBtn.innerHTML = defaultHtml;
+        setupLaterBtn.disabled = false;
+        setupLaterBtn.classList.remove('disabled');
+        setupLaterBtn.setAttribute('aria-disabled', 'false');
+        setupLaterBtn.innerHTML = defaultHtml;
       });
   });
+
+  if (connected) {
+    showConnected();
+  }
 
   window.__studioPayoutSetup = {
     validateSetup: validateSetup,
     updateStripeDescription: updateStripeDescription,
     showConnected: showConnected,
+    setConnectingUi: setConnectingUi,
+    goToDashboard: goToDashboard,
     stripeConfigured: stripeConfigured,
-    csrf: csrf
+    csrf: csrf,
+    dashboardUrl: dashboardUrl
   };
-
-  syncNext();
 })();
 </script>
 
@@ -468,7 +554,14 @@ async function finalize() {
     throw new Error(data.message || 'Could not save Stripe payout setup.');
   }
   if (typeof helpers().showConnected === 'function') helpers().showConnected();
-  if (window.bpToast) window.bpToast('Stripe connected');
+  const redirect = data.redirect || helpers().dashboardUrl;
+  const message = data.message || 'Stripe connected';
+  if (redirect && typeof helpers().goToDashboard === 'function') {
+    helpers().goToDashboard(message);
+    return;
+  }
+  try { if (message) sessionStorage.setItem('bp-toast', message); } catch (e) {}
+  if (redirect) window.location.href = redirect;
 }
 
 async function mountOnboarding() {
@@ -523,6 +616,7 @@ function resetStripeStepUi() {
   if (step) step.hidden = true;
   if (intro) intro.hidden = false;
   if (fields) fields.hidden = false;
+  if (typeof helpers().setConnectingUi === 'function') helpers().setConnectingUi(false);
 }
 
 document.getElementById('stripeConnectBtn')?.addEventListener('click', async () => {
@@ -543,6 +637,7 @@ document.getElementById('stripeConnectBtn')?.addEventListener('click', async () 
     document.getElementById('stripeConnectIntro').hidden = true;
     document.getElementById('studioSetupFields').hidden = true;
     document.getElementById('studioStripeStep').hidden = false;
+    if (typeof api.setConnectingUi === 'function') api.setConnectingUi(true);
     await mountOnboarding();
   } catch (err) {
     resetStripeStepUi();

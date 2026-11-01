@@ -136,28 +136,6 @@ class ArtistDashboardController extends Controller
         ], 422);
     }
 
-    public function paymentLink(Request $request): View
-    {
-        $userDetail = $request->user()?->userDetail;
-        $schedulingType = $userDetail?->scheduling_type ?? '';
-        $isAutoScheduling = $schedulingType === 'auto';
-        $isManagedScheduling = $schedulingType === 'managed';
-        $canCreatePaymentLinks = $userDetail
-            ? $this->payoutService->canAcceptClientPayments($userDetail)
-            : false;
-        $paymentLinksBlockedMessage = $canCreatePaymentLinks || ! $userDetail
-            ? null
-            : $this->payoutService->clientPaymentsBlockedMessage($userDetail);
-
-        return view('artist.payment-link', [
-            'schedulingType' => $schedulingType,
-            'isAutoScheduling' => $isAutoScheduling,
-            'isManagedScheduling' => $isManagedScheduling,
-            'canCreatePaymentLinks' => $canCreatePaymentLinks,
-            'paymentLinksBlockedMessage' => $paymentLinksBlockedMessage,
-        ]);
-    }
-
     public function validatePaymentLink(Request $request): JsonResponse
     {
         if ($response = $this->rejectIfCannotCreatePaymentLinks()) {
@@ -957,7 +935,7 @@ class ArtistDashboardController extends Controller
 
         return view('public.payment-link', [
             'paymentLink' => $paymentLink,
-            'isExpired' => false,
+            'isExpired' => $collection->isPaymentLinkExpired(),
             'isPaid' => $isPaid,
             'isAutoScheduling' => false,
             'isBalanceCollection' => true,

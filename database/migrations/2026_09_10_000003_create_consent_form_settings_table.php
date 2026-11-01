@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('consent_form_settings')) {
+            return;
+        }
+
         Schema::create('consent_form_settings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
@@ -19,6 +23,8 @@ return new class extends Migration
             $table->string('form_language', 8)->default('en');
             $table->string('other_language', 8)->nullable();
             $table->boolean('ask_photo')->default(true);
+            $table->boolean('health_split_consent')->default(true);
+            $table->boolean('retention_notice_enabled')->default(true);
             $table->timestamps();
 
             $table->unique('user_id');

@@ -52,12 +52,24 @@ class StripeConnectDevController extends Controller
 
             $clearedUsers = 0;
             if ($request->boolean('clear_local')) {
-                $clearedUsers = UserDetail::query()
+                $clearedUsers = \App\Models\UserPayout::query()
                     ->where('stripe_account_id', $accountId)
                     ->update([
                         'stripe_account_id' => null,
                         'payout_bank_country' => null,
+                        'status' => 'disconnected',
+                        'disconnected_at' => now(),
                     ]);
+
+                $clearedStudios = \App\Models\StudioPayout::query()
+                    ->where('stripe_account_id', $accountId)
+                    ->update([
+                        'stripe_account_id' => null,
+                        'is_active' => false,
+                        'status' => 'disconnected',
+                        'disconnected_at' => now(),
+                    ]);
+                $clearedUsers += $clearedStudios;
             }
 
             Log::info('Stripe connected account deleted via dev tool', [
@@ -69,7 +81,7 @@ class StripeConnectDevController extends Controller
             return back()->with('success', sprintf(
                 'Deleted Stripe account %s.%s',
                 $result['id'],
-                $clearedUsers > 0 ? " Cleared local link for {$clearedUsers} user(s)." : ''
+                $clearedUsers > 0 ? " Cleared local link for {$clearedUsers} record(s)." : ''
             ));
         } catch (ApiErrorException $e) {
             return back()

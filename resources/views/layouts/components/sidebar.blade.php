@@ -45,8 +45,8 @@
                   <div data-i18n="Studio Information">Studio Information</div>
                 </a>
               </li>
-              <li class="menu-item {{ request()->routeIs('settings.calendar') ? 'active' : '' }}">
-                <a href="{{ route('settings.calendar') }}" class="menu-link">
+              <li class="menu-item {{ request()->routeIs('schedule.calendar-sync') || request()->routeIs('settings.calendar') ? 'active' : '' }}">
+                <a href="{{ route('schedule.calendar-sync') }}" class="menu-link">
                   <i class="menu-icon tf-icons ti ti-calendar me-2"></i>
                   <div data-i18n="Calendar">Calendar</div>
                 </a>

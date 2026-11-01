@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Studio;
+use App\Models\StudioPayout;
 use App\Models\UserDetail;
 use App\Services\StripeConnectService;
 use App\Support\AdminListPagination;
@@ -58,56 +58,61 @@ class StripeConnectedAccountsController extends Controller
         $rows = collect();
         $seenAccountIds = [];
 
-        UserDetail::query()
+        \App\Models\UserPayout::query()
             ->whereNotNull('stripe_account_id')
             ->where('stripe_account_id', '!=', '')
-            ->with(['user', 'studio'])
+            ->where('is_active', true)
+            ->with(['user.userDetail.studio'])
             ->orderBy('id')
             ->get()
-            ->each(function (UserDetail $userDetail) use (&$rows, &$seenAccountIds) {
-                $accountId = trim((string) $userDetail->stripe_account_id);
+            ->each(function (\App\Models\UserPayout $payout) use (&$rows, &$seenAccountIds) {
+                $accountId = trim((string) $payout->stripe_account_id);
                 if ($accountId === '' || isset($seenAccountIds[$accountId])) {
                     return;
                 }
 
                 $seenAccountIds[$accountId] = true;
-                $user = $userDetail->user;
-                $ownerName = trim((string) ($userDetail->publicDisplayName() ?: ($user?->first_name.' '.$user?->last_name)));
+                $user = $payout->user;
+                $userDetail = $user?->userDetail;
+                $ownerName = trim((string) ($userDetail?->publicDisplayName() ?: ($user?->first_name.' '.$user?->last_name)));
 
                 $rows->push($this->formatAccountRow(
                     accountId: $accountId,
                     ownerType: 'Artist',
-                    ownerName: $ownerName !== '' ? $ownerName : 'Artist #'.$userDetail->user_id,
+                    ownerName: $ownerName !== '' ? $ownerName : 'Artist #'.$payout->user_id,
                     ownerEmail: (string) ($user?->email ?? ''),
-                    ownerUsername: (string) ($userDetail->user_name ?? ''),
-                    paymentType: (string) ($userDetail->payment_type ?? ''),
-                    paymentStatus: (string) ($userDetail->payment_status ?? ''),
-                    studioName: $userDetail->resolvedStudioName(),
+                    ownerUsername: (string) ($userDetail?->user_name ?? ''),
+                    paymentType: (string) ($payout->type ?? ''),
+                    paymentStatus: (string) ($payout->status ?? ''),
+                    studioName: $userDetail?->resolvedStudioName() ?? '',
                 ));
             });
 
-        Studio::query()
+        StudioPayout::query()
+            ->where('is_active', true)
             ->whereNotNull('stripe_account_id')
             ->where('stripe_account_id', '!=', '')
-            ->orderBy('name')
+            ->with('studio')
+            ->orderBy('id')
             ->get()
-            ->each(function (Studio $studio) use (&$rows, &$seenAccountIds) {
-                $accountId = trim((string) $studio->stripe_account_id);
+            ->each(function (StudioPayout $payout) use (&$rows, &$seenAccountIds) {
+                $accountId = trim((string) ($payout->stripe_account_id ?? ''));
                 if ($accountId === '' || isset($seenAccountIds[$accountId])) {
                     return;
                 }
 
                 $seenAccountIds[$accountId] = true;
+                $studio = $payout->studio;
 
                 $rows->push($this->formatAccountRow(
                     accountId: $accountId,
                     ownerType: 'Studio',
-                    ownerName: (string) ($studio->name ?: 'Studio #'.$studio->id),
-                    ownerEmail: (string) ($studio->email ?? ''),
+                    ownerName: (string) ($studio?->name ?: 'Studio #'.($studio?->id ?? $payout->studio_id)),
+                    ownerEmail: (string) ($studio?->email ?? ''),
                     ownerUsername: '',
                     paymentType: 'studio_account',
-                    paymentStatus: '',
-                    studioName: (string) ($studio->name ?? ''),
+                    paymentStatus: (string) ($payout->status ?? ''),
+                    studioName: (string) ($studio?->name ?? ''),
                 ));
             });
 

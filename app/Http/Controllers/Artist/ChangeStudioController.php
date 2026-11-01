@@ -340,9 +340,12 @@ class ChangeStudioController extends Controller
             if ($row) {
                 $row->fill([
                     'studio_id' => $studio->id,
-                    'connection_type' => ! empty($studio->user_id)
-                        ? UserStudio::CONNECTION_ON_BOOKPAY
-                        : UserStudio::CONNECTION_NOT_CONNECTED,
+                    // Split invite waits for accept; workplace-only can show On Bookpay if studio has an account.
+                    'connection_type' => $payoutMode === 'split'
+                        ? UserStudio::CONNECTION_NOT_CONNECTED
+                        : (! empty($studio->user_id)
+                            ? UserStudio::CONNECTION_ON_BOOKPAY
+                            : UserStudio::CONNECTION_NOT_CONNECTED),
                     'studio_name' => $studio->name,
                     'studio_address' => $studio->address,
                     'street_name' => $studio->street_name,
@@ -585,18 +588,12 @@ class ChangeStudioController extends Controller
      */
     private static function applyStudioPayoutFields(UserStudio $row, Studio $studio, array $validated): void
     {
-        UserStudio::query()
-            ->where('user_id', $row->user_id)
-            ->where('payout', true)
-            ->where('id', '!=', $row->id)
-            ->update(['payout' => false]);
-
         $row->studio_id = $studio->id;
         $row->payout = true;
         $row->status = UserStudio::STATUS_ACTIVE;
-        $row->connection_type = ! empty($studio->user_id)
-            ? UserStudio::CONNECTION_ON_BOOKPAY
-            : UserStudio::CONNECTION_NOT_CONNECTED;
+        // Stay not_connected until the studio accepts the invite.
+        // Other studios keep their own payout setup.
+        $row->connection_type = UserStudio::CONNECTION_NOT_CONNECTED;
 
         if (array_key_exists('revenue_split', $validated) && $validated['revenue_split'] !== null && $validated['revenue_split'] !== '') {
             $row->revenue_split = (int) $validated['revenue_split'];

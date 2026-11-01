@@ -62,6 +62,7 @@ class ArtistDashboardService
         }
 
         $waitlistCount = Waitlist::query()
+            ->booksOnly()
             ->where('user_id', $artistUserId)
             ->where('status', Waitlist::STATUS_PENDING)
             ->count();

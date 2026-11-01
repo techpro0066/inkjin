@@ -44,13 +44,13 @@
         Too many tries. Wait 15 minutes, or
         <a href="{{ route('password.request') }}" style="color:inherit;font-weight:700">reset your password</a>.
       </span>
-    </div>
+  </div>
   @elseif ($loginBanner !== '')
     <div class="banner bad" role="alert" id="login-alert-server">
       <span class="ms">error</span>
       <span>{{ $loginBanner }}</span>
-    </div>
-  @endif
+            </div>
+          @endif
 
   <div id="login-alert" class="banner bad" role="alert" style="display:none"></div>
 
@@ -59,55 +59,55 @@
 
     <label class="fl" for="login-email" style="margin-top:4px">Email address</label>
     <div class="in" id="email-wrap">
-      <input
-        id="login-email"
-        name="email"
-        type="email"
+                <input
+                  id="login-email"
+                  name="email"
+                  type="email"
         autocomplete="email"
         placeholder="you@example.com"
-        value="{{ old('email') }}"
-        autofocus
+                  value="{{ old('email') }}"
+                  autofocus
       >
-    </div>
+              </div>
     <div class="err" id="email-error">Enter a valid email address</div>
 
     <div class="fl">
       <label for="login-password">Password</label>
-      @if (Route::has('password.request'))
+                @if (Route::has('password.request'))
         <a href="{{ route('password.request') }}">Forgot password?</a>
-      @endif
-    </div>
+                @endif
+              </div>
     <div class="in{{ $errors->has('password') ? ' bad' : '' }}" id="password-wrap">
-      <input
-        id="login-password"
-        name="password"
-        type="password"
+                <input
+                  id="login-password"
+                  name="password"
+                  type="password"
         autocomplete="current-password"
       >
       <button type="button" class="eye" aria-label="Show password">
         <span class="ms">visibility</span>
-      </button>
-    </div>
+                </button>
+              </div>
     <div class="err{{ $errors->has('password') ? ' on' : '' }}" id="password-error">{{ $errors->first('password') ?: 'Enter your password' }}</div>
 
     <label class="ck">
       <input type="checkbox" id="remember" name="remember" value="1" {{ old('remember') ? 'checked' : '' }}>
       Keep me signed in on this device
-    </label>
+              </label>
 
     <button class="btn" type="submit" id="login-submit-btn" @if ($loginLocked) disabled @endif>
       Sign in<span class="ms">arrow_forward</span>
-    </button>
-  </form>
+            </button>
+          </form>
 
   <div class="alt">
-    Don't have an account?
+            Don't have an account?
     <a href="{{ route('register') }}">Sign up for free</a>
-  </div>
+    </div>
 @endsection
 
 @push('scripts')
-<script>
+  <script>
 (function () {
   var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   var RETURNING_KEY = 'bp-signed-in-before';
@@ -195,7 +195,7 @@
     }
   }
 
-  function clearErrors() {
+      function clearErrors() {
     if (isLocked) return;
     hideAlert();
     var serverBanner = document.getElementById('login-alert-server');
@@ -229,12 +229,12 @@
   if (!form) return;
 
   form.addEventListener('submit', function (e) {
-    e.preventDefault();
+        e.preventDefault();
     if (isLocked) {
       showAlert('', { locked: true });
       return;
     }
-    clearErrors();
+        clearErrors();
 
     var email = (emailInput.value || '').trim();
     var password = passwordInput.value || '';
@@ -256,12 +256,12 @@
     var body = new FormData(form);
 
     fetch(form.action, {
-      method: 'POST',
+          method: 'POST',
       body: body,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json'
-      },
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
       credentials: 'same-origin'
     }).then(function (res) {
       return res.json().then(function (data) {
@@ -277,8 +277,8 @@
           return;
         }
         window.location.href = @json(authenticated_home_url());
-        return;
-      }
+              return;
+            }
 
       if (result.status === 422) {
         var errors = result.data.errors || {};
@@ -294,19 +294,19 @@
           showAlert(emailMsg);
         } else if (emailMsg) {
           setFieldError(emailWrap, emailError, true, emailMsg);
-        }
+              }
 
-        if (errors.password && errors.password.length) {
+              if (errors.password && errors.password.length) {
           setFieldError(passwordWrap, passwordError, true, errors.password[0]);
-        }
+              }
 
         if (!emailMsg && !(errors.password && errors.password.length)) {
           showAlert(result.data.message || 'That email and password don\'t match. Check them and try again.');
-        }
+              }
       } else if (result.status === 429) {
         showAlert('', { locked: true });
         return;
-      } else {
+            } else {
         showAlert('Something went wrong while signing in. Please try again.');
       }
 
@@ -328,5 +328,5 @@
     });
   });
 })();
-</script>
+  </script>
 @endpush

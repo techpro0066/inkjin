@@ -1,483 +1,475 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
-@section('title', 'Consent form')
+@section('title', 'Client Flow')
+
+@php
+  $studioName = trim((string) ($studioName ?? Auth::user()->userDetail?->studio_name ?? ''));
+  $s = $consentSettings ?? [];
+  $market = strtoupper((string) ($s['studio_market'] ?? $defaultMarketCountry ?? 'GR'));
+  $consentStudios = $consentStudios ?? [];
+  $previewUrl = route('public.consent.preview', ['artist' => Auth::id()]);
+  $otherLang = strtolower((string) ($s['other_language'] ?? ''));
+@endphp
 
 @section('styles')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <style>
-  .q-row.consent-lang-highlight {
-    outline: 2px solid #310f7a;
-    outline-offset: -2px;
-    background: #f8f1fb !important;
-    transition: background 0.2s ease, outline-color 0.2s ease;
+  /* —— Bookpay consent page —— */
+  .cs-page{max-width:800px}
+  .cs-page .sec{margin-bottom:14px}
+  .cs-page .sec.card{overflow:hidden}
+  .cs-page .srow{
+    display:flex;gap:16px;align-items:flex-start;justify-content:space-between;
+    padding:16px 20px;border-bottom:1px solid #F3EEF4
   }
-  .q-drag-handle {
-    cursor: grab;
-    touch-action: none;
-    flex-shrink: 0;
-    user-select: none;
-    -webkit-user-select: none;
+  .cs-page .srow:last-child{border-bottom:0}
+  .cs-page .srow b{font-size:14px;display:block}
+  .cs-page .srow .faint{font-size:12.5px;line-height:1.5;margin-top:2px}
+  .cs-page .sech{
+    display:flex;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid #F0E9F2
   }
-  .q-drag-handle:active { cursor: grabbing; }
-  .q-row.sortable-chosen { opacity: 0.4; }
-  .toggle-switch {
-    position: relative;
-    width: 40px;
-    height: 22px;
-    background: #cac4d3;
-    border-radius: 11px;
-    cursor: pointer;
-    transition: background 0.2s;
-    flex-shrink: 0;
-    border: none;
+  .cs-page .sech .ic{width:36px;height:36px;border-radius:10px}
+  .cs-page .sech h3{font-size:15px;font-weight:700;margin:0}
+  .cs-page .sech .faint{font-size:12.5px}
+  .cs-page .lbl2{
+    font-size:12px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;margin-bottom:8px;color:var(--muted)
   }
-  .toggle-switch.active { background: #310f7a; }
-  .toggle-switch::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 18px;
-    height: 18px;
-    background: white;
-    border-radius: 50%;
-    transition: transform 0.2s;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  .cs-page .lock{display:flex;gap:6px;align-items:center;font-size:13px;white-space:nowrap;color:var(--pri);font-weight:600}
+  .cs-page .gfield{
+    border:1px dashed #E1D5E6;background:#fff;border-radius:10px;padding:9px 13px;font-size:13px;margin-top:8px;color:#3a3a3a
   }
-  .toggle-switch.active::after { transform: translateX(18px); }
-  .q-row {
-    transition: all 0.15s ease;
-    border-bottom: 1px solid rgba(202, 196, 211, 0.15);
-    align-items: flex-start;
+  .cs-page .tint-box{background:var(--tint);border:1px solid var(--tintline);border-radius:12px;padding:16px}
+  .cs-page .warn-box{
+    display:flex;align-items:flex-start;gap:8px;border-radius:10px;padding:10px 12px;
+    background:#FFF3DE;color:#7A5210;font-size:12.5px;line-height:1.5;margin-top:12px
   }
-  .q-row:hover { background: #f8f1fb; }
-  .q-row:last-child { border-bottom: none; }
-  .q-row > .material-symbols-outlined:not(.q-drag-handle) {
-    flex-shrink: 0;
-    margin-top: 2px;
+  .cs-page .warn-box .ms{color:#B86E00;font-size:18px;flex-shrink:0}
+  .cs-page .info-box{
+    display:flex;align-items:flex-start;gap:8px;border-radius:10px;padding:10px 12px;
+    background:#FFF3DE;color:#7A5210;font-size:12.5px;line-height:1.5
   }
-  .q-text {
-    flex: 0 1 auto;
-    min-width: 0;
-    max-width: 90ch;
+  .cs-page .ok-box{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--pri)}
+  .cs-page .lang{
+    flex:1;border:1px solid #E8DFEA;border-radius:12px;padding:12px 14px;background:#fff;cursor:pointer;text-align:left
   }
-  .q-text p {
-    white-space: pre-line;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    line-height: 1.4;
+  .cs-page .lang.sel,.cs-page .lang.border-primary{border:1.5px solid #1A1A1A;background:#FDFAFF}
+  .cs-page .bar{height:5px;border-radius:3px;background:#EDE6F0;flex:1;overflow:hidden}
+  .cs-page .bar > span,.cs-page .consent-lang-bar > span{display:block;height:100%;background:#3E007C;width:0;border-radius:3px}
+  .cs-page .consent-lang-bar{height:5px;border-radius:3px;background:#EDE6F0;overflow:hidden;flex:1}
+  .cs-page .foot{display:flex;justify-content:space-between;gap:10px;margin-top:6px;flex-wrap:wrap;align-items:center}
+  .cs-page select.in,.cs-page input.in,.cs-page textarea.in{
+    width:100%;font:inherit;font-size:14px;color:var(--ink)
   }
-  .q-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-shrink: 0;
-    white-space: nowrap;
-    margin-top: 2px;
-    margin-left: 0;
+  .cs-page select.in{appearance:auto;cursor:pointer}
+  .cs-page textarea.in{min-height:72px;resize:vertical}
+
+  /* toggles (JS uses .toggle-switch.active) — also outside .cs-page for modals */
+  .toggle-switch,.cs-page .tog{
+    width:38px;height:22px;border-radius:12px;background:#D9D2DD;position:relative;flex-shrink:0;
+    cursor:pointer;border:0;padding:0;display:inline-block
   }
-  .q-row .badge,
-  .q-row .toggle-switch,
-  .q-row .js-artist-consent-edit,
-  .q-row .js-artist-consent-delete {
-    flex-shrink: 0;
+  .toggle-switch:after,.cs-page .tog:after{
+    content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s
   }
-  .questions-list-scroll {
-    overflow-x: auto;
-    overflow-y: visible;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    touch-action: pan-x pan-y;
+  .toggle-switch.active,.cs-page .tog.on,.cs-page .tog.active{background:var(--pri)}
+  .toggle-switch.active:after,.cs-page .tog.on:after,.cs-page .tog.active:after{left:19px}
+  .cf-icon-btn{
+    width:28px;height:28px;border:0;background:none;border-radius:8px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;color:var(--faint);padding:0
   }
-  .questions-list { min-width: 0; }
-  .q-row .q-drag-handle {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    background: #ffffff;
-    padding-right: 2px;
-    margin-top: 2px;
+  .cf-icon-btn .ms{font-size:18px}
+  .cf-icon-btn:hover{background:#F7F3F9;color:var(--ink)}
+  .cf-icon-btn.del:hover{background:#FDECEC;color:#C62828}
+  .field-err{color:#C62828;font-size:12px;margin-top:6px}
+  .field-err.hidden,.hidden{display:none!important}
+
+  /* question rows */
+  .cs-page .q-row,.cs-page .js-artist-consent-row{
+    display:flex;gap:12px;align-items:center;padding:12px 20px;border-bottom:1px solid #F3EEF4
   }
-  .q-row:hover .q-drag-handle { background: #f8f1fb; }
-  @media (max-width: 639px) {
-    .q-text {
-      max-width: min(90ch, calc(100vw - 11rem));
-      flex: 1 1 auto;
-    }
-    .q-meta { flex: 0 0 auto; }
-    .questions-list, .q-row { min-width: max-content; }
+  .cs-page .q-row:hover{background:#FBF7FC}
+  .cs-page .q-row.disabled,.cs-page .q-row.off{opacity:.55}
+  .cs-page .q-drag-handle{cursor:grab;flex-shrink:0;color:var(--faint)}
+  .cs-page .q-text{flex:1;min-width:0;font-size:14px}
+  .cs-page .q-text p{margin:0;line-height:1.4;overflow-wrap:anywhere}
+  .cs-page .q-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .cs-page .badge{
+    font-size:11px;font-weight:700;border-radius:6px;padding:3px 8px;white-space:nowrap
   }
-  @media (min-width: 640px) {
-    .q-row { align-items: center; width: 100%; }
-    .q-text { flex: 1 1 auto; max-width: none; min-width: 0; }
-    .q-meta { margin-left: auto; }
-    .q-row > .material-symbols-outlined:not(.q-drag-handle),
-    .q-row .q-drag-handle,
-    .q-meta { margin-top: 0; }
-    .questions-list-scroll { overflow-x: visible; }
-    .questions-list, .q-row { min-width: 0; }
+  .cs-page .badge-toggle{background:#F6E6FA;color:#8E24AA}
+  .cs-page .badge-select{background:var(--bluel);color:var(--blue)}
+  .cs-page .badge-textarea{background:var(--chip);color:var(--muted)}
+  .cs-page .cf-icon-btn{
+    width:28px;height:28px;border:0;background:none;border-radius:8px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;color:var(--faint);padding:0
   }
-  .sortable-ghost { opacity: 0.45; background: #f8f1fb; }
-  .sortable-chosen { cursor: grabbing; }
-  .form-tab {
-    padding: 10px 20px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    color: #494552;
-    transition: all 0.2s;
-    background: none;
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
+  .cs-page .cf-icon-btn .ms{font-size:18px}
+  .cs-page .cf-icon-btn:hover{background:#F7F3F9;color:var(--ink)}
+  .cs-page .cf-icon-btn.del:hover{background:#FDECEC;color:#C62828}
+  .cs-page .js-artist-consent-add{
+    display:flex;justify-content:center;align-items:center;gap:6px;margin:14px 20px 18px;
+    background:#1A1A1A;color:#fff;border:0;border-radius:10px;padding:9px;font-weight:600;font-size:13.5px;cursor:pointer;width:calc(100% - 40px)
   }
-  .form-tab.active { color: #310f7a; border-bottom-color: #310f7a; }
-  .form-tab:hover:not(.active) { color: #1c1b21; }
-  .badge {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 6px;
-    white-space: nowrap;
+  .cs-page .js-artist-consent-reset{
+    display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:#fff;
+    border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted)
   }
-  .badge-select { background: #dbeafe; color: #1d4ed8; }
-  .badge-text { background: #f3f4f6; color: #374151; }
-  .badge-textarea { background: #f3f4f6; color: #374151; }
-  .badge-toggle { background: #f3e8ff; color: #7c3aed; }
-  .badge-system { background: #e5e7eb; color: #6b7280; }
-  .badge-custom { background: #e8ddff; color: #310f7a; }
-  #consent-settings-panel .select2-container { width: 100% !important; z-index: 1; }
-  .select2-container--open { z-index: 10060 !important; }
-  #consent-settings-panel .select2-container--default .select2-selection--single {
-    min-height: 48px;
-    padding: 6px 12px;
-    border-radius: 0.75rem;
-    border: 1px solid rgba(202,196,211,0.5) !important;
-    background: #fff !important;
+  .cs-page .q-row.consent-lang-highlight{
+    outline:2px solid #3E007C;outline-offset:-2px;background:#FBF7FC!important
   }
-  #consent-settings-panel .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: 2.25rem;
-    padding-left: 4px;
-    color: #1c1b21;
+  .cs-page .q-row.consent-lang-missing .q-text{color:#9A929E;font-style:italic}
+  .cs-page .sortable-ghost{opacity:.45;background:#FBF7FC}
+  .cs-page .sortable-chosen{cursor:grabbing}
+
+  /* JS utility compatibility (no Tailwind on this layout) */
+  .cs-page .hidden,.hidden{display:none!important}
+  .cs-page .text-primary,.text-primary{color:#3E007C!important}
+  .cs-page .text-on-surface,.text-on-surface{color:var(--ink)!important}
+  .cs-page .text-on-surface-variant,.text-on-surface-variant{color:var(--muted)!important}
+  .cs-page .text-error,.text-error{color:#C62828!important}
+  .cs-page .italic{font-style:italic}
+  .cs-page .opacity-50{opacity:.5}
+  .cs-page .pointer-events-none{pointer-events:none}
+  .cs-page .bg-primary\/5,.cs-page .lang.bg-primary\/5{background:#F3E8FF!important}
+  .cs-page .border-primary,.cs-page .lang.border-primary{border-color:#3E007C!important}
+  .cs-page .border-outline-variant\/30{border-color:#E8DFEA!important}
+  .cs-page .bg-white{background:#fff!important}
+  .cs-page .bg-stone-200{background:#E7E5E4!important}
+  .cs-page .text-stone-400{color:#A8A29E!important}
+  .cs-page .text-white{color:#fff!important}
+  .cs-page .cursor-not-allowed{cursor:not-allowed!important}
+  .cs-page .field-err{color:#C62828;font-size:12px;margin-top:6px}
+
+  /* Select2 */
+  .cs-page .select2-container{width:100%!important;font-family:inherit}
+  .select2-container--open{z-index:10060!important}
+  .cs-page .select2-container--default .select2-selection--single{
+    height:40px;min-height:40px;border:1px solid var(--line)!important;border-radius:10px!important;
+    background:#fff!important;padding:0 8px 0 4px
   }
-  #consent-settings-panel .select2-container--default .select2-selection--single .select2-selection__arrow { height: 46px; }
-  #consent-settings-panel .select2-container--default.select2-container--focus .select2-selection--single,
-  #consent-settings-panel .select2-container--default.select2-container--open .select2-selection--single {
-    border-color: #310f7a !important;
-    box-shadow: 0 0 0 2px rgba(49,15,122,0.25);
+  .cs-page .select2-container--default .select2-selection--single .select2-selection__rendered{
+    line-height:38px;padding-left:9px;color:var(--ink);font-size:13.5px
   }
-  .select2-dropdown { border-radius: 0.75rem; border-color: rgba(202,196,211,0.5); overflow: hidden; }
-  .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #310f7a !important; }
-  .select2-container--default .select2-search--dropdown .select2-search__field {
-    border-radius: 0.5rem;
-    border-color: rgba(202,196,211,0.5);
+  .cs-page .select2-container--default .select2-selection--single .select2-selection__arrow{height:38px;right:6px}
+  .cs-page .select2-container--default.select2-container--focus .select2-selection--single,
+  .cs-page .select2-container--default.select2-container--open .select2-selection--single{
+    border-color:#3E007C!important;box-shadow:0 0 0 3px #F3E8FF!important
   }
-  .consent-lang-bar {
-    height: 6px;
-    border-radius: 9999px;
-    background: #e7e5e4;
-    overflow: hidden;
+  .select2-dropdown{border:1px solid var(--line);border-radius:12px;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+  .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable{
+    background:#3E007C;color:#fff
   }
-  .consent-lang-bar > span {
-    display: block;
-    height: 100%;
-    border-radius: 9999px;
-    width: 0;
-    background: #310f7a;
+
+  /* Modals */
+  .cs-page .modal-backdrop,#artistConsentQuestionModal,#artistConsentDeleteModal,#consentSaveModal,#consentPreviewModal{
+    position:fixed;inset:0;background:rgba(26,26,26,.45);z-index:300;
+    align-items:center;justify-content:center;padding:24px
+  }
+  #consentSaveModal,#consentPreviewModal{display:none}
+  #consentSaveModal:not(.hidden),#consentPreviewModal:not(.hidden){display:flex!important}
+  .cs-page .pv .lt{display:inline-flex;border:1px solid #E8DFEA;border-radius:10px;padding:3px;gap:2px;margin-bottom:12px}
+  .cs-page .pv .lt span{padding:5px 12px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .cs-page .pv .lt span.on{background:#1A1A1A;color:#fff}
+  .cs-page .pv h4{font-size:14px;font-weight:700;margin:16px 0 8px}
+  .cs-page .pv .ck{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.45;margin:8px 0}
+  .cs-page .pv .ck i{width:16px;height:16px;border:1.5px solid #CFC6D4;border-radius:4px;flex-shrink:0;margin-top:2px;display:block}
+  .cs-page .pv .it{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid #F3EEF4;font-size:13.5px}
+  .cs-page .pv .yn{display:flex;gap:6px;flex-shrink:0}
+  .cs-page .pv .yn span{border:1px solid #E8DFEA;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--muted)}
+  .cs-page .studio-banner .pill.g{background:var(--greenl);color:var(--green)}
+  .cs-page .cfm,.cs-modal-panel{
+    background:#fff;border-radius:16px;border:1px solid var(--line);width:100%;max-width:480px;
+    max-height:calc(100vh - 48px);overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.18)
+  }
+  .cs-page .mp-toast{
+    position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;
+    font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);
+    display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));
+    transition:opacity .25s,transform .35s;pointer-events:none
+  }
+  .cs-page .mp-toast.on{opacity:1;transform:none}
+  .cs-page .mp-toast .ms{color:#3DD68C;font-size:20px}
+
+  @media (max-width:640px){
+    .cs-page .q-row{flex-wrap:wrap;padding:12px 16px;row-gap:8px}
+    .cs-page .srow{flex-wrap:wrap;gap:12px}
+    .cs-page .mp-toast{left:16px;right:16px;top:74px}
   }
 </style>
 @endsection
 
 @section('content')
-@php
-  $bookingPageUsername = Auth::user()->userDetail->user_name ?? null;
-  $bookingPageUrl = $bookingPageUsername ? 'https://inkjin.com/@'.$bookingPageUsername : null;
-  $studioName = trim((string) (Auth::user()->userDetail?->studio_name ?? ''));
-  $s = $consentSettings ?? [];
-  $market = strtoupper((string) ($s['studio_market'] ?? $defaultMarketCountry ?? 'GR'));
-@endphp
-<main class="main-content flex-1 min-h-screen">
-  <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
-    <div class="mb-8">
-      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Booking Page</h2>
-          <p class="text-on-surface-variant mt-1">Manage your intake forms, available designs, portfolio and the style of your page</p>
-        </div>
-        @if ($bookingPageUrl)
-          <a href="{{ $bookingPageUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors shrink-0">
-            <span class="material-symbols-outlined text-lg">open_in_new</span> Open your booking page
-          </a>
-        @endif
-      </div>
-    </div>
-
-    @include('artist.partials.booking-page-tabs', ['activeTab' => 'forms'])
-
-    <div class="mb-8">
-      <p class="text-on-surface-variant">Customize the consent form clients complete before their session.</p>
-    </div>
-
-    <div class="flex border-b border-outline-variant/20 mb-6">
-      <a href="{{ route('artist.forms.index', ['tab' => 'booking']) }}" class="form-tab">Available Design</a>
-      <a href="{{ route('artist.forms.index', ['tab' => 'custom']) }}" class="form-tab">Custom Request</a>
-      <a href="{{ route('artist.forms.consent') }}" class="form-tab active">Consent form</a>
-    </div>
-
-    <div id="consent-settings-panel" class="max-w-3xl">
-      <div class="mb-8">
-        <h1 class="text-2xl font-bold text-on-surface tracking-tight" style="font-family:'Space Grotesk',sans-serif;">Consent form</h1>
-        <p class="mt-1.5 text-sm text-on-surface-variant leading-relaxed">Sections start with sensible defaults - edit them to match your studio. A few structural pieces are set automatically based on your market.</p>
-      </div>
-
-      {{-- Send automatically --}}
-      <div class="mb-4 rounded-xl border border-outline-variant/20 bg-white overflow-hidden">
-        <div class="px-5 py-4 flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <p class="text-sm font-medium text-on-surface">Send automatically</p>
-            <p class="text-xs text-on-surface-variant mt-0.5 leading-relaxed">When turned on, Bookpay will automatically send the consent form to clients before their appointment. If you prefer not to send it automatically, you can display a QR code at the session for the client to scan and sign.</p>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <button type="button" id="consent-send-auto-toggle" class="toggle-switch js-consent-toggle" role="switch" aria-checked="false"></button>
-            <span id="consent-send-auto-label" class="text-xs font-semibold text-on-surface-variant min-w-[1.75rem]">Off</span>
-          </div>
-        </div>
-      </div>
-
-      {{-- Studio market --}}
-      <div class="mb-6 relative">
-        <label class="block text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-1.5" for="consent-studio-market">Studio market</label>
-        <select id="consent-studio-market" class="js-consent-market w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          @foreach(($registrationCountries ?? []) as $country)
-            <option value="{{ $country['code'] }}" @selected(strtoupper((string) $country['code']) === $market)>{{ $country['name'] ?? $country['label'] ?? $country['code'] }}</option>
-          @endforeach
-        </select>
-      </div>
-
-      {{-- Studio details --}}
-      <section class="mb-4 rounded-xl border border-outline-variant/20 bg-white overflow-hidden">
-        <div class="px-5 py-4 border-b border-outline-variant/15">
-          <h2 class="text-sm font-semibold text-on-surface">Studio{{ $studioName !== '' ? ': ' . $studioName : '' }}</h2>
-          <p class="text-xs text-on-surface-variant mt-0.5">Printed on every signed consent record.</p>
-        </div>
-        <div class="px-5 py-4 space-y-3">
-          <div>
-            <label class="block text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-1" for="consent-registration-number">Local registration / licence no. <span class="normal-case tracking-normal font-normal">(optional)</span></label>
-            <input id="consent-registration-number" type="text" value="{{ $s['registration_number'] ?? '' }}" placeholder="Licence registration number, if applicable in your country" class="w-full rounded-lg border border-outline-variant/30 px-3 py-2 text-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-          </div>
-          <div id="consent-governing-law-wrap" class="hidden">
-            <label class="block text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-1" for="consent-governing-law">Governing law</label>
-            <select id="consent-governing-law" class="w-full rounded-lg border border-outline-variant/30 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-              <option>England and Wales</option>
-              <option>Scotland</option>
-              <option>Northern Ireland</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      {{-- Age requirement --}}
-      <section class="mb-4 rounded-xl border border-outline-variant/20 bg-white overflow-hidden">
-        <div class="px-5 py-4 border-b border-outline-variant/15">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary text-[18px]">verified_user</span>
-            <h2 class="text-sm font-semibold text-on-surface">Age requirement</h2>
-          </div>
-        </div>
-        <div class="px-5 py-4 flex items-start justify-between gap-4">
-          <div>
-            <p class="text-sm font-medium text-on-surface">18 years or older</p>
-            <p class="text-xs text-on-surface-variant mt-0.5">Client self-reports date of birth online. You confirm it against valid photo ID in person before the session - this cannot be turned off.</p>
-          </div>
-          <div class="flex items-center gap-1.5 text-xs font-medium text-primary shrink-0 pt-0.5">
-            <span class="material-symbols-outlined text-[14px]">lock</span> Fixed
-          </div>
-        </div>
-        <div class="h-px bg-outline-variant/15 mx-5"></div>
-        <div class="px-5 py-4">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-sm font-medium text-on-surface">Allow younger clients with guardian consent</p>
-              <p class="text-xs text-on-surface-variant mt-0.5 leading-relaxed">You decide whether this applies to your business. Check your local law before turning it on - Bookpay hasn't verified this for your market.</p>
-            </div>
-            <button type="button" id="consent-allow-younger-toggle" class="toggle-switch js-consent-toggle shrink-0" role="switch" aria-checked="false"></button>
-          </div>
-          <div id="consent-age-blocked-note" class="hidden mt-3 flex items-start gap-2 rounded-lg bg-[#FDF6EE] px-3 py-2.5">
-            <span class="material-symbols-outlined text-[#9A5B13] text-[16px] mt-0.5 shrink-0">warning</span>
-            <p class="text-xs text-[#7A5210] leading-relaxed">Tattooing anyone under 18 is a criminal offence in the UK, regardless of guardian consent.</p>
-          </div>
-          <div id="consent-younger-extra" class="hidden mt-3 rounded-lg border border-outline-variant/20 bg-surface-container-low/50 px-4 py-3.5">
-            <div class="mb-3">
-              <label class="block text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-1" for="consent-min-age">Minimum age for this exception</label>
-              <input id="consent-min-age" type="number" min="1" max="17" value="{{ $s['age_allow'] ?? 16 }}" class="w-28 rounded-lg border border-outline-variant/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            </div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-2">Added to your form for clients under <span class="js-consent-min-age-label">{{ (int) ($s['age_allow'] ?? 16) }}</span></p>
-            <div class="space-y-2">
-              <div class="flex items-center gap-2 rounded-md border border-dashed border-outline-variant/40 bg-white px-3 py-2">
-                <span class="text-xs text-on-surface-variant">Guardian full name</span>
-              </div>
-              <div class="flex items-center gap-2 rounded-md border border-dashed border-outline-variant/40 bg-white px-3 py-2">
-                <span class="text-xs text-on-surface-variant">Guardian relationship to client</span>
-              </div>
-              <div class="flex items-center gap-2 rounded-md border border-dashed border-outline-variant/40 bg-white px-3 py-2">
-                <span class="text-xs text-on-surface-variant">Guardian ID reference</span>
-              </div>
-              <div class="flex items-center gap-2 rounded-md border border-dashed border-outline-variant/40 bg-white px-3 py-2">
-                <span class="text-xs text-on-surface-variant">Guardian signature (typed name)</span>
-              </div>
-            </div>
-            <p class="mt-2.5 text-xs text-on-surface-variant leading-relaxed">When a submitted consent is for a client under <span class="js-consent-min-age-label">{{ (int) ($s['age_allow'] ?? 16) }}</span>, guardian fields will appear on the booking, so the guardian can complete and sign in person at the studio.</p>
-            <label class="mt-3 flex items-start gap-3 cursor-pointer">
-              <input id="consent-minor-law-ack" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-outline-variant accent-primary">
-              <span class="text-xs text-on-surface leading-relaxed">I've confirmed my local law allows tattooing minors with guardian consent, and I know the minimum age and requirements that apply in <span id="consent-market-country-label">your market</span>.</span>
-            </label>
-            <p id="consent-minor-ack-error" class="hidden mt-2 text-xs font-medium text-[#c2410c]" role="alert"></p>
-          </div>
-        </div>
-      </section>
-
-      {{-- Form Language --}}
-      <section class="mb-4 rounded-xl border border-outline-variant/20 bg-white overflow-hidden">
-        <div class="px-5 py-4 border-b border-outline-variant/15">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary text-[18px]">language</span>
-            <h2 class="text-sm font-semibold text-on-surface">Form Language: <span id="consent-form-lang-title-langs">English</span></h2>
-          </div>
-          <p id="consent-form-lang-desc" class="text-xs text-on-surface-variant mt-0.5 leading-relaxed">Your fixed boilerplate default is English for this market, so there's no second language to author here yet.</p>
-        </div>
-
-        <div id="consent-languages-dual" class="hidden">
-          <div class="px-5 py-4 border-b border-outline-variant/15 flex items-start justify-between gap-4">
-            <div>
-              <p class="text-sm font-medium text-on-surface">Offer both languages to clients</p>
-              <p class="text-xs text-on-surface-variant mt-0.5">When turned on, clients can choose between the languages below. Make sure both translations are 100% complete before enabling.</p>
-            </div>
-            <button type="button" id="consent-both-languages-toggle" class="toggle-switch js-consent-toggle shrink-0" role="switch" aria-checked="false"></button>
-          </div>
-          <div class="px-5 py-4 flex items-center gap-2">
-            <button type="button" id="consent-lang-chip-en" class="flex-1 rounded-lg border border-primary bg-primary/5 px-3 py-2.5 text-left">
-              <p class="text-sm font-medium text-on-surface">English</p>
-              <div class="mt-1.5 flex items-center gap-2">
-                <div class="consent-lang-bar flex-1"><span id="consent-lang-en-bar"></span></div>
-                <span id="consent-lang-en-pct" class="text-[10px] font-medium text-on-surface-variant">0%</span>
-              </div>
-            </button>
-            <button type="button" id="consent-lang-chip-second" class="flex-1 rounded-lg border border-outline-variant/30 bg-white px-3 py-2.5 text-left">
-              <p class="text-sm font-medium text-on-surface"><span id="consent-second-lang-chip-label">Studio language</span></p>
-              <div class="mt-1.5 flex items-center gap-2">
-                <div class="consent-lang-bar flex-1"><span id="consent-lang-second-bar"></span></div>
-                <span id="consent-lang-second-pct" class="text-[10px] font-medium text-on-surface-variant">0%</span>
-              </div>
-            </button>
-          </div>
-          <div class="px-5 pb-4">
-            <div id="consent-clients-toggle-ready" class="hidden flex items-center gap-1.5 text-xs font-medium text-primary">
-              <span class="material-symbols-outlined text-[14px]">check</span>
-              Clients will see a language toggle on this form.
-            </div>
-            <div id="consent-clients-toggle-pending" class="flex items-start gap-2 rounded-lg bg-[#FDF6EE] px-3 py-2.5">
-              <span class="material-symbols-outlined text-[#9A5B13] text-[16px] mt-0.5 shrink-0">info</span>
-              <p class="text-xs text-[#7A5210] leading-relaxed">Complete every question in <span id="consent-lang-hint-label">the studio language</span> before you unlock the language for clients.</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="px-5 pb-4">
-          <button type="button" id="consent-goto-translation-btn" class="hidden w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white rounded-lg px-3 py-2.5 bg-primary hover:bg-primary-container">
-            Go to question needing translation (<span class="js-missing-count">0</span>)
-          </button>
-          <p id="consent-lang-complete-msg" class="hidden text-xs font-medium text-primary">All enabled questions have a translation.</p>
-        </div>
-      </section>
-    </div>
-
-    @include('artist.forms.partials.consent-questions')
-
-    <div class="max-w-3xl mt-6 space-y-4">
-      {{-- Data & photo consent --}}
-      <section class="rounded-xl border border-outline-variant/20 bg-white overflow-hidden">
-        <div class="px-5 py-4 border-b border-outline-variant/15">
-          <h2 class="text-sm font-semibold text-on-surface">Data &amp; photo consent</h2>
-          <p class="text-xs text-on-surface-variant mt-0.5">Required under GDPR/UK GDPR for this market when applicable - otherwise recommended as good practice.</p>
-        </div>
-        <div class="px-5 py-4 space-y-3">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-sm font-medium text-on-surface">Separate health information consent</p>
-              <p class="text-xs text-on-surface-variant mt-0.5">Risk terms and health-data sharing are agreed as two distinct steps, not one bundled checkbox.</p>
-            </div>
-            <div id="consent-health-split-required" class="hidden flex items-center gap-1.5 text-xs font-medium text-primary shrink-0 pt-0.5">
-              <span class="material-symbols-outlined text-[14px]">lock</span> Required
-            </div>
-            <div id="consent-health-split-toggle-wrap" class="flex flex-col items-end gap-1 shrink-0">
-              <button type="button" id="consent-health-split-toggle" class="toggle-switch js-consent-toggle active" role="switch" aria-checked="true"></button>
-              <span class="text-[10px] text-on-surface-variant">Recommended</span>
-            </div>
-          </div>
-          <div class="h-px bg-outline-variant/15"></div>
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-sm font-medium text-on-surface">Data retention notice + acknowledgment</p>
-              <p class="text-xs text-on-surface-variant mt-0.5">Standard legal wording, plus an active checkbox confirming the client has seen it.</p>
-            </div>
-            <div id="consent-retention-required" class="hidden flex items-center gap-1.5 text-xs font-medium text-primary shrink-0 pt-0.5">
-              <span class="material-symbols-outlined text-[14px]">lock</span> Required
-            </div>
-            <div id="consent-retention-toggle-wrap" class="flex flex-col items-end gap-1 shrink-0">
-              <button type="button" id="consent-retention-toggle" class="toggle-switch js-consent-toggle active" role="switch" aria-checked="true"></button>
-              <span class="text-[10px] text-on-surface-variant">Recommended</span>
-            </div>
-          </div>
-          <div class="h-px bg-outline-variant/15"></div>
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-sm font-medium text-on-surface">Ask to use tattoo photos in your portfolio</p>
-              <p class="text-xs text-on-surface-variant mt-0.5 leading-relaxed">Shown as its own opt-in checkbox, unchecked by default, in every market.</p>
-            </div>
-            <button type="button" id="consent-ask-photo-toggle" class="toggle-switch js-consent-toggle shrink-0" role="switch" aria-checked="false"></button>
-          </div>
-        </div>
-      </section>
-
-      <div class="flex items-center justify-between gap-4">
-        <a href="{{ route('public.consent.preview', ['artist' => Auth::id()]) }}"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center justify-center gap-2 rounded-lg border border-outline-variant/30 bg-white px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low transition-colors">
-          <span class="material-symbols-outlined text-[18px]">visibility</span>
-          Preview
+<div class="cs-page">
+  <div class="head">
+    <div>
+      <h1>
+        Client Flow
+        <a class="help-q" href="https://help.inkjin.com/en/articles/17201393-dashboard-client-flow-consent-form" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
+          <span class="ms">help</span>
         </a>
-        <div class="flex items-center gap-3 ml-auto min-w-0">
-          <p id="consent-save-error" class="hidden text-xs font-medium text-[#c2410c] leading-relaxed max-w-md text-right" role="alert"></p>
-          <button type="button" id="btnSaveConsentSettings" class="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white bg-primary hover:bg-primary-container transition-colors">
-            Save changes
-          </button>
+      </h1>
+      <div class="sub">What clients fill in and receive, from first request to healed tattoo.</div>
+    </div>
+  </div>
+
+  @include('artist.partials.client-flow-tabs', ['clientFlowTab' => 'consent'])
+
+  @if(count($consentStudios) > 0)
+    <div class="card" style="margin-bottom:14px;background:#FBF6FF;border-color:#E3D2F5;overflow:hidden">
+      <div style="padding:14px 18px 12px">
+        <b style="font-size:14px">Consent forms at your studios</b>
+        <div class="faint" style="font-size:12.5px;margin-top:2px">Studios can use their own consent form for sessions there.</div>
+      </div>
+      @foreach($consentStudios as $studioRow)
+        <div class="row" style="gap:12px;padding:12px 18px;border-top:1px solid #EFE3F5;align-items:flex-start">
+          <span class="ms" style="color:#3E007C;margin-top:1px">storefront</span>
+          <div style="flex:1;font-size:13px;line-height:1.5">
+            @if(!empty($studioRow['uses_own_form']))
+              <b>{{ $studioRow['name'] }} uses its own consent form</b>
+              <div class="faint" style="font-size:12.5px">Clients booked with you there sign the studio's form instead of yours.</div>
+            @else
+              <b>{{ $studioRow['name'] }} uses your consent form</b>
+              <div class="faint" style="font-size:12.5px">Clients booked with you there sign your form.</div>
+            @endif
+          </div>
+          @if(!empty($studioRow['uses_own_form']))
+            <a class="btn sm ghost" href="{{ $previewUrl }}" target="_blank" rel="noopener" style="text-decoration:none;flex:none"><span class="ms" style="font-size:16px">visibility</span>Preview</a>
+          @else
+            <span class="pill g" style="flex:none">Your form</span>
+          @endif
+        </div>
+      @endforeach
+      <div style="padding:10px 18px 14px;border-top:1px solid #EFE3F5;font-size:12.5px;color:#5E5763">Your form below is used everywhere else: your own space, other studios and guest spots where the studio has no form.</div>
+    </div>
+  @endif
+
+  <div id="consent-settings-panel">
+    {{-- Send automatically --}}
+    <div class="card sec">
+      <div class="srow">
+        <div>
+          <b>Send automatically</b>
+          <div class="faint">When turned on, Bookpay sends the consent form to clients 48 hours before their appointment. If you prefer not to send it automatically, you can show a QR code at the session for the client to scan and sign.</div>
+        </div>
+        <div class="row" style="gap:8px;align-items:center;flex-shrink:0">
+          <button type="button" id="consent-send-auto-toggle" class="toggle-switch js-consent-toggle" role="switch" aria-checked="false"></button>
+          <span id="consent-send-auto-label" style="font-size:13px;width:28px">Off</span>
         </div>
       </div>
     </div>
-  </div>
-</main>
 
-<div id="consentSaveModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true">
-  <div class="w-full max-w-[380px] rounded-2xl bg-white p-6 shadow-xl" onclick="event.stopPropagation()">
-    <p class="text-sm font-semibold text-on-surface mb-1.5">Before you publish</p>
-    <label class="flex items-start gap-3 cursor-pointer mb-4">
-      <input id="consentSaveAck" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-outline-variant accent-primary">
-      <span class="text-sm leading-relaxed text-on-surface">The health conditions, risk text, and aftercare above are mine to edit. Bookpay hasn't reviewed this content for legal sufficiency in my country, and I'm responsible for making sure it meets local requirements.</span>
-    </label>
-    <div class="flex gap-2">
-      <button type="button" id="consentSaveModalCancel" class="flex-1 rounded-lg border border-outline-variant/30 px-3 py-2.5 text-sm font-medium text-on-surface-variant">Cancel</button>
-      <button type="button" id="consentSaveConfirmBtn" disabled class="flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold bg-stone-200 text-stone-400 cursor-not-allowed">Save</button>
+    {{-- Studio market --}}
+    <div class="sec">
+      <div class="lbl2">Studio market</div>
+      <select id="consent-studio-market" class="in js-consent-market" aria-label="Studio market">
+        @foreach(($registrationCountries ?? []) as $country)
+          <option value="{{ $country['code'] }}" @selected(strtoupper((string) $country['code']) === $market)>{{ $country['name'] ?? $country['label'] ?? $country['code'] }}</option>
+        @endforeach
+      </select>
+      <div class="help" style="margin-top:6px">Sets the legal sections and the languages of your form</div>
+    </div>
+
+    {{-- Studio details --}}
+    <div class="card sec">
+      <div class="srow" style="align-items:center">
+        <div>
+          <b>Studio{{ $studioName !== '' ? ': '.$studioName : '' }}</b>
+          <div class="faint">Printed on every signed consent record.</div>
+        </div>
+        <a href="{{ route('settings.studio') }}" class="btn sm ghost" style="text-decoration:none;flex-shrink:0">Change<span class="ms" style="font-size:16px">chevron_right</span></a>
+      </div>
+      <div style="padding:16px 20px">
+        <div class="lbl2">Local registration / licence no. <span style="text-transform:none;font-weight:500;color:var(--faint)">(optional)</span></div>
+        <input class="in" id="consent-registration-number" type="text" value="{{ $s['registration_number'] ?? '' }}" placeholder="Licence registration number, if applicable in your country">
+        <div id="consent-governing-law-wrap" class="hidden" style="margin-top:14px">
+          <div class="lbl2">Governing law</div>
+          <select id="consent-governing-law" class="in">
+            <option>England and Wales</option>
+            <option>Scotland</option>
+            <option>Northern Ireland</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    {{-- Age requirement --}}
+    <div class="card sec">
+      <div class="sech">
+        <div class="ic"><span class="ms">verified_user</span></div>
+        <div><h3>Age requirement</h3></div>
+      </div>
+      <div class="srow">
+        <div>
+          <b>18 years or older</b>
+          <div class="faint">Clients confirm their date of birth online. You check it against valid photo ID in person before the session. This can't be turned off.</div>
+        </div>
+        <div class="lock"><span class="ms" style="font-size:16px">lock</span> Fixed</div>
+      </div>
+      <div class="srow" style="border-bottom:0;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <b>Allow younger clients with guardian consent</b>
+          <div class="faint">You decide whether this applies to your business. Check your local law before turning it on. Bookpay hasn't verified this for your market.</div>
+        </div>
+        <button type="button" id="consent-allow-younger-toggle" class="toggle-switch js-consent-toggle" role="switch" aria-checked="false"></button>
+      </div>
+      <div id="consent-age-blocked-note" class="hidden" style="padding:0 20px 16px">
+        <div class="warn-box"><span class="ms">warning</span><span>Tattooing anyone under 18 is a criminal offence in the UK, regardless of guardian consent.</span></div>
+      </div>
+      <div id="consent-younger-extra" class="hidden" style="padding:0 20px 18px">
+        <div class="tint-box">
+          <div class="lbl2">Minimum age for this exception</div>
+          <input class="in" id="consent-min-age" type="number" min="1" max="17" value="{{ $s['age_allow'] ?? 16 }}" style="width:110px">
+          <div class="lbl2" style="margin-top:14px">Added to your form for clients under 18</div>
+          <div class="gfield">Guardian full name</div>
+          <div class="gfield">Guardian relationship to client</div>
+          <div class="gfield">Guardian ID reference</div>
+          <div class="gfield">Guardian signature (typed name)</div>
+          <p class="faint" style="margin-top:10px;font-size:12.5px;line-height:1.5">When a consent form is for a client under 18, the guardian fields appear on the booking, so the guardian can complete and sign in person at the studio.</p>
+          <label class="row" style="gap:10px;align-items:flex-start;margin-top:12px;font-size:13px;line-height:1.5;cursor:pointer">
+            <input type="checkbox" id="consent-minor-law-ack" style="margin-top:3px;width:16px;height:16px;accent-color:#3E007C">
+            <span>I've confirmed my local law allows tattooing minors with guardian consent, and I know the minimum age and requirements that apply in <span id="consent-market-country-label">your market</span>.</span>
+          </label>
+          <p id="consent-minor-ack-error" class="field-err hidden" role="alert"></p>
+        </div>
+      </div>
+    </div>
+
+    {{-- Form language --}}
+    <div class="card sec">
+      <div class="sech">
+        <div class="ic"><span class="ms">language</span></div>
+        <div>
+          <h3>Form Language: <span id="consent-form-lang-title-langs">English</span></h3>
+          <div class="faint" id="consent-form-lang-desc">Your fixed boilerplate default is English for this market, so there's no second language to author here yet.</div>
+        </div>
+      </div>
+
+      <div id="consent-languages-dual" class="hidden">
+        <div id="consent-local-lang-wrap" class="srow hidden" style="align-items:center">
+          <div>
+            <b>Local language</b>
+            <div class="faint" id="consent-local-lang-help">This market has more than one official language. Pick the one your clients read.</div>
+          </div>
+          <select class="in" id="consent-local-language" style="width:170px" aria-label="Local language" data-initial="{{ $otherLang }}"></select>
+        </div>
+        <div class="srow">
+          <div>
+            <b>Offer both languages to clients</b>
+            <div class="faint">When turned on, clients can choose between the languages below. Make sure both translations are 100% complete before enabling.</div>
+          </div>
+          <button type="button" id="consent-both-languages-toggle" class="toggle-switch js-consent-toggle" role="switch" aria-checked="false"></button>
+        </div>
+        <div class="row" style="gap:10px;padding:16px 20px;border-bottom:1px solid #F3EEF4">
+          <button type="button" id="consent-lang-chip-en" class="lang sel border-primary bg-primary/5">
+            <b style="font-size:13.5px">English</b>
+            <div class="row" style="gap:8px;margin-top:8px;align-items:center">
+              <div class="consent-lang-bar"><span id="consent-lang-en-bar"></span></div>
+              <span id="consent-lang-en-pct" style="font-size:11px;color:var(--muted);font-weight:600">0%</span>
+            </div>
+          </button>
+          <button type="button" id="consent-lang-chip-second" class="lang border-outline-variant/30 bg-white">
+            <b style="font-size:13.5px"><span id="consent-second-lang-chip-label">Studio language</span></b>
+            <div class="row" style="gap:8px;margin-top:8px;align-items:center">
+              <div class="consent-lang-bar"><span id="consent-lang-second-bar"></span></div>
+              <span id="consent-lang-second-pct" style="font-size:11px;color:var(--muted);font-weight:600">0%</span>
+            </div>
+          </button>
+        </div>
+        <div style="padding:14px 20px">
+          <div id="consent-clients-toggle-ready" class="ok-box hidden"><span class="ms" style="font-size:16px">check</span> Clients will see a language toggle on this form.</div>
+          <div id="consent-clients-toggle-pending" class="info-box">
+            <span class="ms">info</span>
+            <span>Complete every question in <span id="consent-lang-hint-label">the studio language</span> before you unlock the language for clients.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:0 20px 16px">
+        <button type="button" id="consent-goto-translation-btn" class="btn hidden" style="width:100%;justify-content:center">
+          Go to question needing translation (<span class="js-missing-count">0</span>)
+        </button>
+        <p id="consent-lang-complete-msg" class="hidden" style="font-size:12.5px;font-weight:600;color:var(--pri);margin-top:8px">All enabled questions have a translation.</p>
+      </div>
     </div>
   </div>
+
+  @include('artist.forms.partials.consent-questions')
+
+  {{-- Data & photo --}}
+  <div class="card sec" style="margin-top:14px">
+    <div class="sech">
+      <div>
+        <h3>Data &amp; photo consent</h3>
+        <div class="faint" id="consent-data-photo-law">Required under GDPR for this market.</div>
+      </div>
+    </div>
+    <div class="srow">
+      <div>
+        <b>Separate health information consent</b>
+        <div class="faint">Risk terms and health-data sharing are agreed as two distinct steps, not one bundled checkbox.</div>
+      </div>
+      <div class="lock"><span class="ms" style="font-size:16px">lock</span> Required</div>
+    </div>
+    <div class="srow">
+      <div>
+        <b>Data retention notice + acknowledgement</b>
+        <div class="faint">Standard legal wording, plus an active checkbox confirming the client has seen it.</div>
+      </div>
+      <div class="lock"><span class="ms" style="font-size:16px">lock</span> Required</div>
+    </div>
+    <div class="srow">
+      <div>
+        <b>Ask to use tattoo photos in your portfolio</b>
+        <div class="faint">Shown as its own opt-in checkbox, unchecked by default, in every market.</div>
+      </div>
+      <button type="button" id="consent-ask-photo-toggle" class="toggle-switch js-consent-toggle" role="switch" aria-checked="false"></button>
+    </div>
+  </div>
+
+  <div class="foot">
+    <button type="button" class="btn ghost" id="btnPreviewConsentInline"><span class="ms">visibility</span>Preview</button>
+    <div class="row" style="gap:12px;align-items:center;margin-left:auto">
+      <p id="consent-save-error" class="field-err hidden" role="alert" style="margin:0;text-align:right;max-width:280px"></p>
+      <button type="button" class="btn" id="btnSaveConsentSettings"><span class="ms">save</span>Save changes</button>
+    </div>
+  </div>
+
+  {{-- Inline preview modal (08b) --}}
+  <div id="consentPreviewModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="consentPreviewTitle">
+    <div class="cs-modal-panel" style="max-width:560px;padding:0;display:flex;flex-direction:column;max-height:calc(100vh - 48px)" onclick="event.stopPropagation()">
+      <div class="row" style="justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid #F0EAF2;flex-shrink:0">
+        <h3 id="consentPreviewTitle" style="font-size:18px;font-weight:800;margin:0">Preview · Consent form</h3>
+        <button type="button" class="cf-icon-btn" id="btnCloseConsentPreview" aria-label="Close"><span class="ms">close</span></button>
+      </div>
+      <div id="consentPreviewBody" style="padding:16px 22px;overflow-y:auto;min-height:0;flex:1"></div>
+      <div class="row" style="justify-content:space-between;gap:10px;padding:14px 22px;border-top:1px solid #F0E9F2;flex-shrink:0;flex-wrap:wrap">
+        <a href="{{ $previewUrl }}" target="_blank" rel="noopener noreferrer" class="btn ghost" style="text-decoration:none"><span class="ms">open_in_new</span>Open client form</a>
+        <button type="button" class="btn" id="btnCloseConsentPreview2">Close</button>
+      </div>
+    </div>
+  </div>
+
+  {{-- Save ack modal --}}
+  <div id="consentSaveModal" class="hidden" role="dialog" aria-modal="true">
+    <div class="cs-modal-panel" style="padding:22px 24px;max-width:420px" onclick="event.stopPropagation()">
+      <h3 style="font-size:16px;font-weight:800;margin:0 0 10px">Before you publish</h3>
+      <label class="row" style="gap:10px;align-items:flex-start;cursor:pointer;margin-bottom:18px;font-size:13.5px;line-height:1.5">
+        <input id="consentSaveAck" type="checkbox" style="margin-top:3px;width:16px;height:16px;accent-color:#3E007C">
+        <span>The health conditions, risk text, and aftercare above are mine to edit. Bookpay hasn't reviewed this content for legal sufficiency in my country, and I'm responsible for making sure it meets local requirements.</span>
+      </label>
+      <div class="row" style="gap:10px;justify-content:flex-end">
+        <button type="button" class="btn ghost" id="consentSaveModalCancel">Cancel</button>
+        <button type="button" class="btn bg-stone-200 text-stone-400 cursor-not-allowed" id="consentSaveConfirmBtn" disabled>Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mp-toast" id="csToast" role="status"><span class="ms">check_circle</span><span id="csToastText">Saved</span></div>
 </div>
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
@@ -486,7 +478,20 @@
   window.CONSENT_SETTINGS = @json($consentSettings ?? null);
   window.CONSENT_SETTINGS_SAVE_URL = @json(route('artist.forms.consent.settings'));
   window.CONSENT_QUESTIONS_SNAPSHOT = @json(($consentQuestions ?? collect())->values());
+  window.CONSENT_PREVIEW_URL = @json($previewUrl);
+  window.CONSENT_STUDIO_NAME = @json($studioName);
 </script>
 <script src="{{ asset('js/artist-consent-questions.js') }}?v={{ @filemtime(public_path('js/artist-consent-questions.js')) }}"></script>
 <script src="{{ asset('js/artist-consent-settings.js') }}?v={{ @filemtime(public_path('js/artist-consent-settings.js')) }}"></script>
+<script>
+window.showSaveToast = function (msg) {
+  var t = document.getElementById('csToast');
+  var tx = document.getElementById('csToastText');
+  if (!t || !tx) return;
+  tx.textContent = msg || 'Saved';
+  t.classList.add('on');
+  clearTimeout(t._t);
+  t._t = setTimeout(function () { t.classList.remove('on'); }, 2600);
+};
+</script>
 @endsection

@@ -6,9 +6,11 @@ use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Mail\BookingConfirmationMail;
 use App\Models\Booking;
+use App\Models\GuestSpot;
 use App\Models\PendingVivaPayment;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Support\ArtistStudioChoices;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -104,13 +106,44 @@ class PublicVivaBookingService
             }
         }
 
-        if ($this->managedBooking->artistLocalDateIsBlocked((int) $userDetail->user_id, $bookingDate)) {
+        $guestSpot = GuestSpot::resolveReservableForArtist(
+            $payload['guest_spot_id'] ?? null,
+            (int) $userDetail->user_id
+        );
+        if (! empty($payload['guest_spot_id']) && ! $guestSpot) {
+            throw new \RuntimeException('This guest spot is no longer available to book.');
+        }
+
+        $studioId = $guestSpot
+            ? ($guestSpot->studio_id ? (int) $guestSpot->studio_id : null)
+            : ArtistStudioChoices::resolveStudiosTableIdFromPayload((int) $userDetail->user_id, $payload);
+
+        if ($guestSpot && ! $guestSpot->containsBookableDate($bookingDate)) {
+            throw new \RuntimeException('The selected session date is outside this guest spot.');
+        }
+
+        $exceptGuestSpotId = $guestSpot?->id ?: $this->managedBooking->guestSpotIdCoveringBookableDate(
+            (int) $userDetail->user_id,
+            $bookingDate,
+            $studioId
+        );
+
+        if ($this->managedBooking->artistLocalDateIsBlocked((int) $userDetail->user_id, $bookingDate, $exceptGuestSpotId)) {
             throw new \RuntimeException('The selected session date is no longer available.');
         }
 
-        if ($consultationRequired && $consultationTiming === 'separate' && $consultDate !== ''
-            && $this->managedBooking->artistLocalDateIsBlocked((int) $userDetail->user_id, $consultDate)) {
-            throw new \RuntimeException('The selected consultation date is no longer available.');
+        if ($consultationRequired && $consultationTiming === 'separate' && $consultDate !== '') {
+            if ($guestSpot && ! $guestSpot->containsBookableDate($consultDate)) {
+                throw new \RuntimeException('The selected consultation date is outside this guest spot.');
+            }
+            $exceptConsultGuestSpotId = $guestSpot?->id ?: $this->managedBooking->guestSpotIdCoveringBookableDate(
+                (int) $userDetail->user_id,
+                $consultDate,
+                $studioId
+            );
+            if ($this->managedBooking->artistLocalDateIsBlocked((int) $userDetail->user_id, $consultDate, $exceptConsultGuestSpotId)) {
+                throw new \RuntimeException('The selected consultation date is no longer available.');
+            }
         }
 
         $pricing = app(BookingCheckoutPricingService::class);
@@ -123,6 +156,8 @@ class PublicVivaBookingService
         $booking = Booking::create([
             'user_id' => $bookingUser->id,
             'artist_user_id' => $userDetail->user_id,
+            'studio_id' => $studioId,
+            'guest_spot_id' => $guestSpot?->id,
             'tattoo_id' => $design->id,
             'booking_type' => 'flash',
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
@@ -152,6 +187,11 @@ class PublicVivaBookingService
             'questions_answers' => $payload['questions_answers'] ?? [],
             'notes' => trim((string) ($payload['notes'] ?? '')),
         ]);
+
+        if ($guestSpot && ! $booking->consumeGuestSpotCapacity($guestSpot)) {
+            $booking->delete();
+            throw new \RuntimeException('All guest spots are full.');
+        }
 
         if (! $booking->completion_code) {
             do {

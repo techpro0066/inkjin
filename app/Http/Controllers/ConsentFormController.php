@@ -29,6 +29,23 @@ class ConsentFormController extends Controller
         $settings = $this->settingsForArtist((int) $user->id, $defaultMarketCountry);
         $consentQuestions = $this->consentQuestions->listForArtist((int) $user->id);
 
+        $activeStudios = \App\Models\UserStudio::activeLinksForUser((int) $user->id)
+            ->map(function ($link) {
+                $name = trim((string) ($link->studio?->name ?: $link->studio_name ?: ''));
+                $studio = $link->studio;
+                $usesStudioForm = (bool) ($studio?->use_studio_consent_form)
+                    && ! (bool) ($studio?->allow_artist_own_consent);
+
+                return [
+                    'id' => (int) ($link->studio_id ?: $link->id),
+                    'name' => $name !== '' ? $name : 'Studio',
+                    'uses_own_form' => $usesStudioForm,
+                ];
+            })
+            ->filter(fn (array $row) => $row['name'] !== '')
+            ->values()
+            ->all();
+
         return view('artist.forms.consent', [
             'registrationCountries' => StripeConnectCountries::registrationCountriesForSelect(),
             'defaultMarketCountry' => $settings->studio_market ?: $defaultMarketCountry,
@@ -39,6 +56,8 @@ class ConsentFormController extends Controller
                 'risk' => $consentQuestions->where('question_type', 'risk')->values(),
                 'aftercare' => $consentQuestions->where('question_type', 'aftercare')->values(),
             ],
+            'consentStudios' => $activeStudios,
+            'studioName' => trim((string) ($userDetail?->studio_name ?? '')),
         ]);
     }
 
@@ -139,6 +158,9 @@ class ConsentFormController extends Controller
                 'form_language' => $formLanguage,
                 'other_language' => $otherLanguage,
                 'ask_photo' => $request->boolean('ask_photo'),
+                // Locked required items — always persisted as on
+                'health_split_consent' => true,
+                'retention_notice_enabled' => true,
                 'send_automatically' => $request->boolean('send_automatically'),
             ]
         );
@@ -185,6 +207,8 @@ class ConsentFormController extends Controller
             'form_language' => 'en',
             'other_language' => $locale !== 'en' ? $locale : null,
             'ask_photo' => true,
+            'health_split_consent' => true,
+            'retention_notice_enabled' => true,
             'send_automatically' => false,
         ]);
     }

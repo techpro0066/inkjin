@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Studio;
 use App\Http\Controllers\Controller;
 use App\Models\Studio;
 use App\Models\UserStudio;
+use App\Services\GuestSpotStudioInviteService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, GuestSpotStudioInviteService $guestSpotInvites): View
     {
         $user = $request->user();
         $email = strtolower(trim((string) ($user->email ?? '')));
@@ -59,6 +60,40 @@ class DashboardController extends Controller
             $primaryArtistName = $fallback !== '' ? $fallback : null;
         }
 
+        $pendingGuestSpotInvites = collect();
+        if ($studio) {
+            $pendingGuestSpotInvites = $guestSpotInvites->pendingForStudio($studio)->map(function ($spot) use ($guestSpotInvites) {
+                $spot = $guestSpotInvites->prepareInvite($spot);
+                $detail = $spot->user?->userDetail;
+                $name = trim((string) ($detail?->display_name ?? ''));
+                if ($name === '' || $name === 'Artist') {
+                    $fallback = trim(($spot->user?->first_name ?? '').' '.($spot->user?->last_name ?? ''));
+                    $name = $fallback !== '' ? $fallback : 'Artist';
+                }
+                $artistPercent = $spot->artist_percent !== null
+                    ? max(0, min(100, (int) $spot->artist_percent))
+                    : 60;
+                $dates = '';
+                if ($spot->from_date && $spot->to_date) {
+                    $dates = $spot->from_date->format('M j').' – '.$spot->to_date->format('M j, Y');
+                }
+                $avatar = trim((string) ($detail?->avatar ?? ''));
+
+                return [
+                    'id' => $spot->id,
+                    'artist_name' => $name,
+                    'artist_initials' => $detail
+                        ? $detail->publicDisplayInitials()
+                        : strtoupper(substr(preg_replace('/\s+/', '', $name) ?: 'AR', 0, 2)),
+                    'artist_avatar' => $avatar !== '' ? asset(ltrim($avatar, '/')) : null,
+                    'dates' => $dates,
+                    'artist_percent' => $artistPercent,
+                    'studio_percent' => 100 - $artistPercent,
+                    'invite_url' => $guestSpotInvites->inviteUrl($spot),
+                ];
+            });
+        }
+
         $stripeConnected = (bool) ($studio?->hasStripeConnect());
         $profileComplete = (string) ($user->on_boarding ?? '') === 'yes';
         $stripeConnectUrl = OnboardingController::nextIncompleteStepRoute($user, $studio);
@@ -75,6 +110,7 @@ class DashboardController extends Controller
                 : null,
             'artists' => $artists,
             'primaryArtistName' => $primaryArtistName,
+            'pendingGuestSpotInvites' => $pendingGuestSpotInvites,
             'stripeConnected' => $stripeConnected,
             'stripeConnectUrl' => $stripeConnectUrl,
             'profileComplete' => $profileComplete,

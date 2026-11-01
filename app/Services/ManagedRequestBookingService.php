@@ -10,6 +10,7 @@ use App\Models\BookingRequest;
 use App\Models\GuestSpot;
 use App\Models\User;
 use App\Services\CancellationService;
+use App\Support\ArtistStudioChoices;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -28,13 +29,15 @@ class ManagedRequestBookingService
             return false;
         }
 
+        // True blocks only (empty/null studio_ids). Location overrides are studio-scoped, not blocked.
         $overrideBlocked = AvailabilityOverride::query()
             ->where('user_id', $artistUserId)
             ->whereNotNull('start_date')
             ->whereNotNull('end_date')
             ->whereDate('start_date', '<=', $ymd)
             ->whereDate('end_date', '>=', $ymd)
-            ->exists();
+            ->get()
+            ->contains(static fn (AvailabilityOverride $o) => ! $o->isLocationOverride());
 
         if ($overrideBlocked) {
             return true;
@@ -64,14 +67,52 @@ class ManagedRequestBookingService
     }
 
     /**
+     * Guest spot the artist is working at on this local date (bookable window only).
+     * Used so managed/flash payment does not treat guest-spot days as fully blocked.
+     */
+    public function guestSpotIdCoveringBookableDate(int $artistUserId, string $ymd, ?int $preferredStudioId = null): ?int
+    {
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $ymd)) {
+            return null;
+        }
+
+        $spots = GuestSpot::query()
+            ->where('user_id', $artistUserId)
+            ->where('status', 'available')
+            ->whereNotNull('from_date')
+            ->whereNotNull('to_date')
+            ->orderBy('from_date')
+            ->get()
+            ->filter(static fn (GuestSpot $spot) => $spot->containsBookableDate($ymd))
+            ->values();
+
+        if ($spots->isEmpty()) {
+            return null;
+        }
+
+        if ($preferredStudioId) {
+            $match = $spots->first(
+                static fn (GuestSpot $spot) => (int) ($spot->studio_id ?? 0) === (int) $preferredStudioId
+            );
+            if ($match) {
+                return (int) $match->id;
+            }
+        }
+
+        return (int) $spots->first()->id;
+    }
+
+    /**
      * @return list<array{start_date: string, end_date: string}>
      */
     public function artistBlockedPeriods(int $artistUserId, ?int $exceptGuestSpotId = null): array
     {
+        // True blocks only (empty studio_ids). Location overrides are studio-scoped.
         $overridePeriods = AvailabilityOverride::query()
             ->where('user_id', $artistUserId)
             ->orderBy('start_date')
             ->get()
+            ->filter(static fn (AvailabilityOverride $o) => ! $o->isLocationOverride())
             ->map(static function (AvailabilityOverride $o) {
                 return [
                     'start_date' => $o->start_date->format('Y-m-d'),
@@ -91,6 +132,34 @@ class ManagedRequestBookingService
         }
 
         return array_values(array_merge($overridePeriods, $guestPeriods));
+    }
+
+    /**
+     * Date ranges where the artist works only at specific studio(s).
+     *
+     * @return list<array{start_date: string, end_date: string, studio_ids: list<int>}>
+     */
+    public function artistLocationOverrides(int $artistUserId): array
+    {
+        return AvailabilityOverride::query()
+            ->where('user_id', $artistUserId)
+            ->orderBy('start_date')
+            ->get()
+            ->filter(static fn (AvailabilityOverride $o) => $o->isLocationOverride())
+            ->map(static function (AvailabilityOverride $o) {
+                $ids = array_values(array_unique(array_filter(array_map(
+                    static fn ($id) => ((int) $id) > 0 ? (int) $id : null,
+                    is_array($o->studio_ids) ? $o->studio_ids : []
+                ))));
+
+                return [
+                    'start_date' => $o->start_date->format('Y-m-d'),
+                    'end_date' => $o->end_date->format('Y-m-d'),
+                    'studio_ids' => $ids,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -167,8 +236,20 @@ class ManagedRequestBookingService
 
         [$sessionFrom, $sessionTo, $sessionDate] = $sessionRange;
         $sessionUtc = $this->slotRangeToUtc($sessionDate, $sessionFrom, $sessionTo, $artistTimezone);
+        $guestSpot = $this->resolveGuestSpotForRequest($bookingRequest);
+        $studioId = $guestSpot
+            ? ($guestSpot->studio_id ? (int) $guestSpot->studio_id : null)
+            : $this->resolveStudioIdForRequest($bookingRequest);
+        if ($guestSpot && ! $guestSpot->containsBookableDate($sessionUtc['date'])) {
+            throw new \RuntimeException('The selected session date is outside this guest spot.');
+        }
+        $exceptGuestSpotId = $guestSpot?->id ?: $this->guestSpotIdCoveringBookableDate(
+            (int) $bookingRequest->artist_id,
+            $sessionUtc['date'],
+            $studioId
+        );
 
-        if ($this->artistLocalDateIsBlocked((int) $bookingRequest->artist_id, $sessionUtc['date'])) {
+        if ($this->artistLocalDateIsBlocked((int) $bookingRequest->artist_id, $sessionUtc['date'], $exceptGuestSpotId)) {
             throw new \RuntimeException('The selected session date is no longer available.');
         }
 
@@ -185,8 +266,16 @@ class ManagedRequestBookingService
             }
             [$consultFrom, $consultTo, $consultDateYmd] = $consultRange;
             $consultUtc = $this->slotRangeToUtc($consultDateYmd, $consultFrom, $consultTo, $artistTimezone);
+            if ($guestSpot && ! $guestSpot->containsBookableDate($consultUtc['date'])) {
+                throw new \RuntimeException('The selected consultation date is outside this guest spot.');
+            }
+            $exceptConsultGuestSpotId = $guestSpot?->id ?: $this->guestSpotIdCoveringBookableDate(
+                (int) $bookingRequest->artist_id,
+                $consultUtc['date'],
+                $studioId
+            );
 
-            if ($this->artistLocalDateIsBlocked((int) $bookingRequest->artist_id, $consultUtc['date'])) {
+            if ($this->artistLocalDateIsBlocked((int) $bookingRequest->artist_id, $consultUtc['date'], $exceptConsultGuestSpotId)) {
                 throw new \RuntimeException('The selected consultation date is no longer available.');
             }
 
@@ -202,6 +291,8 @@ class ManagedRequestBookingService
         $booking = Booking::create([
             'user_id' => $bookingRequest->user_id,
             'artist_user_id' => $bookingRequest->artist_id,
+            'studio_id' => $studioId,
+            'guest_spot_id' => $guestSpot?->id,
             'tattoo_id' => $tattoo->id,
             'booking_type' => 'flash',
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
@@ -230,6 +321,11 @@ class ManagedRequestBookingService
                 : [],
             'notes' => trim($bookingRequest->additionalNotes()."\n\nManaged request: ".$bookingRequest->referenceLabel()),
         ]);
+
+        if ($guestSpot && ! $booking->consumeGuestSpotCapacity($guestSpot)) {
+            $booking->delete();
+            throw new \RuntimeException('All guest spots are full.');
+        }
 
         if (!$booking->completion_code) {
             do {
@@ -285,8 +381,20 @@ class ManagedRequestBookingService
 
         [$sessionFrom, $sessionTo, $sessionDate] = $sessionRange;
         $sessionUtc = $this->slotRangeToUtc($sessionDate, $sessionFrom, $sessionTo, $artistTimezone);
+        $guestSpot = $this->resolveGuestSpotForRequest($bookingRequest);
+        $studioId = $guestSpot
+            ? ($guestSpot->studio_id ? (int) $guestSpot->studio_id : null)
+            : $this->resolveStudioIdForRequest($bookingRequest);
+        if ($guestSpot && ! $guestSpot->containsBookableDate($sessionUtc['date'])) {
+            throw new \RuntimeException('The selected session date is outside this guest spot.');
+        }
+        $exceptGuestSpotId = $guestSpot?->id ?: $this->guestSpotIdCoveringBookableDate(
+            (int) $bookingRequest->artist_id,
+            $sessionUtc['date'],
+            $studioId
+        );
 
-        if ($this->artistLocalDateIsBlocked((int) $bookingRequest->artist_id, $sessionUtc['date'])) {
+        if ($this->artistLocalDateIsBlocked((int) $bookingRequest->artist_id, $sessionUtc['date'], $exceptGuestSpotId)) {
             throw new \RuntimeException('The selected session date is no longer available.');
         }
 
@@ -303,8 +411,16 @@ class ManagedRequestBookingService
             }
             [$consultFrom, $consultTo, $consultDateYmd] = $consultRange;
             $consultUtc = $this->slotRangeToUtc($consultDateYmd, $consultFrom, $consultTo, $artistTimezone);
+            if ($guestSpot && ! $guestSpot->containsBookableDate($consultUtc['date'])) {
+                throw new \RuntimeException('The selected consultation date is outside this guest spot.');
+            }
+            $exceptConsultGuestSpotId = $guestSpot?->id ?: $this->guestSpotIdCoveringBookableDate(
+                (int) $bookingRequest->artist_id,
+                $consultUtc['date'],
+                $studioId
+            );
 
-            if ($this->artistLocalDateIsBlocked((int) $bookingRequest->artist_id, $consultUtc['date'])) {
+            if ($this->artistLocalDateIsBlocked((int) $bookingRequest->artist_id, $consultUtc['date'], $exceptConsultGuestSpotId)) {
                 throw new \RuntimeException('The selected consultation date is no longer available.');
             }
 
@@ -320,6 +436,8 @@ class ManagedRequestBookingService
         $booking = Booking::create([
             'user_id' => $bookingRequest->user_id,
             'artist_user_id' => $bookingRequest->artist_id,
+            'studio_id' => $studioId,
+            'guest_spot_id' => $guestSpot?->id,
             'tattoo_id' => $tattoo->id,
             'booking_type' => 'flash',
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
@@ -351,6 +469,11 @@ class ManagedRequestBookingService
                 : [],
             'notes' => trim($bookingRequest->additionalNotes()."\n\nManaged request: ".$bookingRequest->referenceLabel()),
         ]);
+
+        if ($guestSpot && ! $booking->consumeGuestSpotCapacity($guestSpot)) {
+            $booking->delete();
+            throw new \RuntimeException('All guest spots are full.');
+        }
 
         if (!$booking->completion_code) {
             do {
@@ -420,5 +543,54 @@ class ManagedRequestBookingService
             $calendarSync->abortFailedCalendarBooking($booking, $e->getMessage());
             throw $e;
         }
+    }
+
+    private function resolveStudioIdForRequest(BookingRequest $bookingRequest): ?int
+    {
+        $details = $this->consultationDetailsArray($bookingRequest);
+
+        $fromDetails = $details['studio_id'] ?? null;
+        if ($fromDetails) {
+            $resolved = ArtistStudioChoices::resolveStudiosTableId((int) $bookingRequest->artist_id, $fromDetails);
+            if ($resolved) {
+                return $resolved;
+            }
+            // Already a studios.id stored at request time
+            if (is_numeric($fromDetails) && (int) $fromDetails > 0) {
+                return (int) $fromDetails;
+            }
+        }
+
+        return ArtistStudioChoices::resolveStudiosTableIdFromPayload((int) $bookingRequest->artist_id, [
+            'questions_answers' => is_array($bookingRequest->questions_answers) ? $bookingRequest->questions_answers : [],
+        ]);
+    }
+
+    private function resolveGuestSpotForRequest(BookingRequest $bookingRequest): ?GuestSpot
+    {
+        $details = $this->consultationDetailsArray($bookingRequest);
+        $id = (int) ($details['guest_spot_id'] ?? 0);
+        if ($id <= 0) {
+            return null;
+        }
+
+        return GuestSpot::query()
+            ->whereKey($id)
+            ->where('user_id', (int) $bookingRequest->artist_id)
+            ->first();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function consultationDetailsArray(BookingRequest $bookingRequest): array
+    {
+        $details = $bookingRequest->consultation_details;
+        if (is_string($details) && $details !== '') {
+            $decoded = json_decode($details, true);
+            $details = is_array($decoded) ? $decoded : [];
+        }
+
+        return is_array($details) ? $details : [];
     }
 }

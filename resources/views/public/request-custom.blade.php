@@ -13,29 +13,36 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link href="{{ asset('design/css/inkjin_bookpay.css') }}" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+  @php
+    $lookState = \App\Support\PageLook::stateFromUserDetail($userDetail);
+    [$schemePrimary, $schemeMid, $schemeTint] = \App\Support\PageLook::schemeParts(
+      (string) ($lookState['scheme'] ?? ''),
+      '#3E007C,#5A238E,#F5ECFB'
+    );
+  @endphp
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            "primary": "#310f7a",
-            "primary-container": "#482d91",
+            "primary": "{{ $schemePrimary }}",
+            "primary-container": "{{ $schemeMid }}",
             "on-primary": "#ffffff",
             "on-primary-container": "#b69fff",
-            "surface": "#fdf7ff",
+            "surface": "#FFF6FF",
             "surface-container": "#f2ecf5",
             "surface-container-high": "#ece6ef",
             "surface-container-highest": "#e6e0ea",
             "surface-container-low": "#f8f1fb",
-            "on-surface": "#1c1b21",
-            "on-surface-variant": "#494552",
-            "outline": "#7a7583",
-            "outline-variant": "#cac4d3",
+            "on-surface": "#1D1A21",
+            "on-surface-variant": "#6E6475",
+            "outline": "#9C92A3",
+            "outline-variant": "#EFE3F2",
             "secondary": "#625881",
             "secondary-container": "#ddd0ff",
             "inverse-surface": "#322f36",
             "inverse-on-surface": "#f5eff8",
-            "error": "#ba1a1a",
+            "error": "#C0262D",
           },
           fontFamily: {
             "sans": ["Plus Jakarta Sans", "system-ui", "sans-serif"],
@@ -45,12 +52,41 @@
     }
   </script>
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    :root{--p:{{ $schemePrimary }};--p2:{{ $schemeMid }};--pl:{{ $schemeTint }};--ink:#1D1A21;--muted:#6E6475;--line:#EFE3F2;--line2:#DCCFE3;--bg:#FFF6FF;--bad:#C0262D}
+    .err-t{color:var(--bad);font-size:12.5px;margin-top:8px;display:flex;gap:5px;align-items:center}
+    .err-t .ms{font-size:15px}
+    .js-question-input.err,.js-select2-question.err{border-color:var(--bad)!important}
+    html,body{margin:0;width:100%}
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 
-    /* Progress bar */
-    .tf-progress { position: fixed; top: 0; left: 0; height: 3px; background: #310f7a; transition: width 0.4s ease; z-index: 100; }
+    /* Full-bleed header — white bar edge-to-edge; inner row 640px (same as client-book .top) */
+    .rc-top{display:block;width:100%;max-width:none;margin:0;padding:0;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;left:0;right:0;z-index:50;box-sizing:border-box}
+    .rc-top .in{width:100%;max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-sizing:border-box}
+    .rc-top .logo{display:flex;align-items:center;gap:6px;font-weight:800;font-size:17px;color:var(--p);letter-spacing:-.3px;font-family:'Space Grotesk',system-ui,sans-serif;text-decoration:none}
+    .rc-top .logo i{width:22px;height:22px;border-radius:50%;background:var(--p);color:#fff;font-style:normal;font-size:11px;display:flex;align-items:center;justify-content:center;letter-spacing:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:700}
+    .rc-top .back{font-size:12.5px;display:inline-flex;align-items:center;gap:4px;color:var(--ink);text-decoration:none;white-space:nowrap}
+    .rc-top .back .ms{font-size:16px}
+    .rc-top .prog{height:2px;background:var(--p);width:0;max-width:100%;transition:width .3s}
+
+    /* Intro card + guest pill — match client-book */
+    .rc-intro{max-width:470px;margin:40px auto 0;text-align:center}
+    .rc-ia{display:inline-flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;text-align:left;margin-bottom:14px}
+    .rc-ia .av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden;font-size:14px}
+    .rc-ia .av img{width:100%;height:100%;object-fit:cover}
+    .rc-ia span{display:block;font-size:12px;color:#3F3A45}.rc-ia b{display:block;font-size:16px;color:var(--ink)}.rc-ia small{font-size:11px;color:#3F3A45}
+    .rc-intro h1{font-size:32px;line-height:1.15;margin:24px 0 12px;letter-spacing:-.6px;font-weight:800;color:var(--ink)}
+    .rc-intro p.lead{font-size:15px;color:#3F3A45;margin:0 0 26px;line-height:1.5}
+    .rc-intro .took{font-size:12px;color:#3F3A45;margin-top:12px}
+    .rc-intro .btn-start{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--p);color:#fff;border:0;border-radius:999px;padding:14px 30px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit}
+    .rc-intro .btn-start:hover{background:var(--p2)}
+    .rc-intro .btn-start .ms{font-size:17px}
+    .rc-gsb{display:flex;align-items:center;gap:10px;width:100%;max-width:404px;margin:0 auto 10px;border:1px solid var(--p);border-radius:999px;padding:10px 18px;text-align:left;color:var(--p);font-weight:600;font-size:12.5px;background:#fff;text-decoration:none;cursor:pointer;box-sizing:border-box;font-family:inherit}
+    .rc-gsb:hover{background:var(--pl)}
+    .rc-gsb i{width:6px;height:6px;border-radius:50%;background:var(--p);flex:none}
+    .rc-gsb span:nth-child(2){flex:1;min-width:0}
+    .rc-gsb .ms{font-size:18px;flex:none}
 
     @keyframes tfSlideIn {
       from { opacity: 0; transform: translateY(40px); }
@@ -61,20 +97,24 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Pill button */
+    /* Availability chips — match client-book .chip */
     .pill-btn {
-      padding: 0.75rem 1.5rem;
+      padding: 9px 18px;
       border-radius: 9999px;
-      border: 2px solid #cac4d3;
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #494552;
+      border: 1px solid var(--line2);
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--ink);
       cursor: pointer;
-      transition: all 0.15s;
-      background: white;
+      transition: border-color .15s, background .15s;
+      background: #fff;
     }
-    .pill-btn:hover { border-color: #310f7a; color: #310f7a; }
-    .pill-btn.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .pill-btn:hover { border-color: var(--p2); }
+    .pill-btn.selected { border-color: var(--p); color: var(--p); background: var(--pl); box-shadow: inset 0 0 0 1px var(--p); }
+    .in{width:100%;border:1px solid var(--line2);border-radius:12px;background:#fff;padding:13px 16px;font-size:14px;outline:none;box-sizing:border-box;color:var(--ink);font:inherit}
+    .in.sm{padding:9px 12px;border-radius:9px;font-size:13px}
+    .in:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(62,0,124,.09)}
+    .bpx-btn.in{width:100%}
 
     /* Big button pair */
     .big-choice {
@@ -107,9 +147,23 @@
     /* Toggle for auth */
     .auth-toggle { color: #310f7a; cursor: pointer; font-weight: 600; text-decoration: underline; }
 
-    /* Review item */
-    .review-row { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #ece6ef; }
-    .review-row:last-child { border-bottom: none; }
+    /* Review — match client-book .rv / .tbl / .rr */
+    .rv{max-width:460px;margin:26px auto 0;text-align:center}
+    .rv .ic{font-size:28px;color:var(--p);display:block;line-height:1;margin:0 auto}
+    .rv h1{font-size:22px;margin:6px 0 4px;letter-spacing:-.3px;font-weight:800;color:var(--ink)}
+    .rv>p{font-size:12.5px;color:#3F3A45;margin:0 0 16px;line-height:1.45}
+    .tbl{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left;font-size:11.5px}
+    .tbl.rr .r{padding:9px 2px;border-bottom:1px solid var(--line);font-size:12px}
+    .tbl.rr .r:last-child{border-bottom:0}
+    .tbl .r{display:flex;justify-content:space-between;gap:14px;padding:3px 0}
+    .tbl .r>span:first-child{color:var(--muted);flex:none;max-width:42%}
+    .tbl .r>span:last-child{text-align:right;font-weight:500;max-width:62%;color:var(--ink);word-break:break-word}
+    .tbl .r .faint{color:#9C92A3;font-weight:400}
+    .btn.full{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:var(--p);color:#fff;border:0;border-radius:10px;padding:12px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit;box-sizing:border-box}
+    .btn.full:hover{background:var(--p2)}
+    .btn.full:disabled{opacity:.65;cursor:not-allowed}
+    .btn.ghost.full{display:flex;align-items:center;justify-content:center;width:100%;background:#fff;color:var(--p);border:1px solid var(--line);border-radius:10px;padding:12px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit;box-sizing:border-box;margin-top:8px}
+    .btn.ghost.full:hover{background:var(--pl)}
 
     /* Checkmark animation */
     @keyframes checkDraw { from { stroke-dashoffset: 48; } to { stroke-dashoffset: 0; } }
@@ -125,12 +179,24 @@
     .question-div { display: none; min-height: 50vh; align-items: center; justify-content: center; padding: 1rem 0 2rem; width: 100%; }
     .question-div.active { display: flex; animation: tfSlideIn 0.4s ease-out; }
     .question-div.active.reverse { animation: tfSlideInReverse 0.4s ease-out; }
-    .single-choice-radio-button { padding: 0.75rem 1.5rem; border-radius: 9999px; border: 2px solid #cac4d3; font-size: 0.95rem; font-weight: 600; color: #494552; cursor: pointer; transition: all 0.15s; background: white; }
-    .single-choice-radio-button:hover { border-color: #310f7a; color: #310f7a; }
-    .single-choice-radio-button.selected { background: #310f7a; color: white; border-color: #310f7a; }
-    .single-choice-radio-button.option-other { background: #f2ecf5; border-color: #b69fff; color: #310f7a; }
-    .single-choice-radio-button.option-other:hover { background: #e8ddff; border-color: #664db1; color: #21005e; }
-    .single-choice-radio-button.option-other.selected { background: #310f7a; border-color: #310f7a; color: #ffffff; }
+    /* Register steps: keep Back → "1 →" tight (no vertical centering gap) */
+    #rcStepRegister .question-div { min-height: 0; align-items: flex-start; justify-content: flex-start; padding: 1rem 0 1.5rem; }
+    #rcStepRegister > .flex.items-center.gap-1 { margin-bottom: 0.5rem; }
+    .single-choice-radio-button { padding: 9px 18px; border-radius: 9999px; border: 1px solid var(--line2); font-size: 13.5px; font-weight: 500; color: var(--ink); cursor: pointer; transition: border-color .15s, background .15s; background: #fff; }
+    .single-choice-radio-button:hover { border-color: var(--p2); }
+    .single-choice-radio-button.selected { background: var(--pl); color: var(--p); border-color: var(--p); box-shadow: inset 0 0 0 1px var(--p); }
+    .single-choice-radio-button.option-other { background: var(--pl); border-color: var(--line2); color: var(--p); }
+    .single-choice-radio-button.option-other:hover { border-color: var(--p); }
+    .single-choice-radio-button.option-other.selected { background: var(--p); border-color: var(--p); color: #fff; box-shadow: none; }
+    /* Studio picker (multi-studio) — matches client-book */
+    .stpick{display:grid;gap:10px}
+    .stc.single-choice-radio-button{display:flex;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line2);background:#fff;border-radius:14px;padding:14px 16px;width:100%;box-shadow:none;font-weight:inherit;color:inherit}
+    .stc.single-choice-radio-button:hover{border-color:var(--p);background:#FBF5FF}
+    .stc.single-choice-radio-button.selected{border-color:var(--p);background:#FBF5FF;color:inherit;box-shadow:none}
+    .stc .stc-ico{color:var(--p);font-size:20px;flex:none}
+    .stc .stc-txt{flex:1;min-width:0}.stc .stc-txt b{display:block;font-size:15px;color:var(--ink)}.stc .stc-txt small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+    .stc .stc-ck{margin-left:auto;color:var(--p);visibility:hidden;font-variation-settings:'FILL' 1;font-size:20px}
+    .stc.single-choice-radio-button.selected .stc-ck{visibility:visible}
     .style-other-modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
     .style-other-modal.hidden { display: none !important; }
     .style-other-modal-backdrop { position: absolute; inset: 0; background: rgba(28, 27, 33, 0.55); backdrop-filter: blur(2px); }
@@ -145,11 +211,11 @@
     .style-other-result-item:hover { background: #f8f1fb; color: #310f7a; border-color: #310f7a; }
     .style-other-result-item.selected { background: #310f7a; color: #ffffff; border-color: #310f7a; }
     .question-kicker {
-      display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.85rem; border-radius: 9999px;
-      border: 1px solid #ddd0ff; background: linear-gradient(135deg, #f8f1fb 0%, #f2ecf5 100%);
-      color: #310f7a; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; margin-bottom: 0.75rem;
+      display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px;
+      border: 1px solid #E6D6F1; background: var(--pl);
+      color: var(--p); font-size: 11.5px; font-weight: 700; margin-bottom: 10px;
     }
-    .question-kicker .dot { width: 0.45rem; height: 0.45rem; border-radius: 9999px; background: #310f7a; opacity: 0.9; }
+    .question-kicker .dot { width: 5px; height: 5px; border-radius: 9999px; background: var(--p); }
     .select2-container--default .select2-selection--single {
       height: 58px; border: 1px solid rgba(122, 117, 131, 0.35); border-radius: 1rem; background: #ffffff;
       display: flex; align-items: center;
@@ -175,15 +241,37 @@
     }
     .social-btn:hover { border-color: #cac4d3; background: #f8f1fb; }
 
-    .pref-block { background: white; border: 1px solid #e6e0ea; border-radius: 1rem; padding: 1.25rem; }
-    .pref-block-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
-    .pref-remove-btn { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; font-weight: 600; color: #ba1a1a; cursor: pointer; background: none; border: none; padding: 0; }
-    .day-pill { padding: 0.5rem 1rem; border-radius: 9999px; border: 1.5px solid #cac4d3; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; background: white; }
-    .day-pill:hover { border-color: #310f7a; color: #310f7a; }
-    .day-pill.selected { background: #310f7a; color: white; border-color: #310f7a; }
-    .time-pref-pill { padding: 0.5rem 1rem; border-radius: 9999px; border: 1.5px solid #cac4d3; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; background: white; }
-    .time-pref-pill:hover { border-color: #310f7a; color: #310f7a; }
-    .time-pref-pill.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .pref-block { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; position: relative; }
+    .pref-block-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 8px; }
+    .pref-block-label { font-size: 10.5px; font-weight: 800; letter-spacing: .4px; color: var(--p); text-transform: uppercase; margin: 0; }
+    .pref-remove-btn { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; gap: 0; font-size: 0; color: #9C92A3; cursor: pointer; background: none; border: none; padding: 0; }
+    .pref-remove-btn .material-symbols-outlined { font-size: 18px; }
+    .pref-remove-btn:hover { color: var(--bad); }
+    .day-pill,.time-pref-pill {
+      padding: 6px 12px; border-radius: 9999px; border: 1px solid var(--line2); font-size: 12px; font-weight: 500;
+      color: var(--ink); cursor: pointer; transition: border-color .15s, background .15s; background: #fff;
+    }
+    .day-pill:hover,.time-pref-pill:hover { border-color: var(--p2); }
+    .day-pill.selected,.time-pref-pill.selected {
+      border-color: var(--p); color: var(--p); background: var(--pl); box-shadow: inset 0 0 0 1px var(--p);
+    }
+    #rcPrefBlocks { display: grid; gap: 10px; }
+    #rcPrefBlocks .space-y-4 { display: contents; }
+    .rc-avail-panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px 16px; margin-bottom: 16px; }
+    .rc-avail-panel h3 { font-size: 18px; margin: 0 0 4px; letter-spacing: -.3px; font-weight: 800; }
+    .rc-avail-panel .rc-avail-sub { font-size: 13px; color: #3F3A45; margin: 0 0 14px; }
+    .rc-avail-add { display: inline-flex; align-items: center; gap: 4px; color: var(--p); font-weight: 700; font-size: 13px; background: none; border: 0; cursor: pointer; padding: 0; margin: 0 0 16px; }
+    .rc-avail-add:hover { text-decoration: underline; }
+    .rc-avail-lbl { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink); margin: 14px 0 8px; }
+    .rc-avail-lbl.f { font-size: 11.5px; font-weight: 600; color: var(--muted); margin: 0 0 6px; }
+    .rc-avail-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .loc{background:var(--pl);border-radius:12px;padding:12px 14px;display:flex;gap:10px;margin:14px 0 16px;font-size:12px;align-items:flex-start}
+    .loc .ms{color:var(--p);font-size:17px;margin-top:1px;flex:none}
+    .loc b{display:block;font-size:12.5px;color:var(--ink);font-weight:700}
+    .loc .loc-addr{display:block;color:#3F3A45;line-height:1.45}
+    .loc a{color:var(--p);font-weight:600;text-decoration:none;display:block;margin-top:3px}
+    .loc a:hover{text-decoration:underline}
+    .loc .loc-guest{display:block;font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--p);margin-bottom:4px}
     .progress-step .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid #cac4d3; color: #cac4d3; transition: all 0.3s; }
     .progress-step.active .step-dot, .progress-step.completed .step-dot { border-color: #310f7a; background: #310f7a; color: white; }
     .progress-step .step-label { font-size: 0.7rem; color: #7a7583; margin-top: 4px; transition: color 0.3s; white-space: nowrap; }
@@ -194,53 +282,31 @@
     .tf-screen { display: none; width: 100%; }
     .tf-screen.active { display: block; animation: fadeUp 0.35s ease-out; }
     .tf-screen.active.reverse { animation: fadeDown 0.35s ease-out; }
-    .tf-screen[data-screen="0"].active { display: flex; min-height: calc(100vh - 64px); align-items: center; justify-content: center; padding: 2rem 1rem; animation: tfSlideIn 0.4s ease-out; }
+    .tf-screen[data-screen="0"].active { display: block; animation: tfSlideIn 0.4s ease-out; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes fadeDown { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Guest spot entry from regular custom flow */
-    .guest-entry-wrap { width: 100%; max-width: 28rem; margin: 0 auto 1.75rem; text-align: left; }
-    .guest-entry-pill {
-      display: inline-flex; align-items: center; gap: 0.55rem; width: 100%;
-      padding: 0.7rem 1rem; border-radius: 9999px; border: 2px solid #310f7a;
-      background: #ffffff; color: #310f7a; font-size: 0.875rem; font-weight: 600;
-      line-height: 1.35; text-decoration: none; cursor: pointer; transition: background 0.15s, box-shadow 0.15s;
-      box-sizing: border-box; text-align: left;
-    }
-    .guest-entry-pill:hover { background: #f8f1fb; }
-    .guest-entry-pill .guest-entry-dot {
-      width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: #310f7a; flex-shrink: 0;
-    }
-    .guest-entry-pill .guest-entry-text { flex: 1; min-width: 0; }
-    .guest-entry-pill .guest-entry-chevron {
-      font-size: 1.125rem; line-height: 1; flex-shrink: 0; transition: transform 0.2s ease;
-    }
-    .guest-entry-pill[aria-expanded="true"] .guest-entry-chevron { transform: rotate(180deg); }
+    /* Guest spot picker (multi) */
+    .guest-entry-wrap { width: 100%; max-width: 404px; margin: 0 auto 10px; text-align: left; }
     .guest-entry-picker {
-      margin-top: 0.65rem; background: #ffffff; border: 1px solid #e6e0ea; border-radius: 1rem;
-      box-shadow: 0 8px 24px rgba(49, 15, 122, 0.08); overflow: hidden;
+      margin-top: 8px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(20,0,40,.08); overflow: hidden;
     }
     .guest-entry-picker.hidden { display: none !important; }
     .guest-entry-row {
-      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-      padding: 0.9rem 1rem; border-bottom: 1px solid #ece6ef; text-decoration: none; color: inherit;
-      transition: background 0.15s;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); text-decoration: none; color: inherit;
     }
     .guest-entry-row:last-child { border-bottom: none; }
-    .guest-entry-row:hover { background: #f8f1fb; }
-    .guest-entry-row-main { display: flex; align-items: flex-start; gap: 0.55rem; min-width: 0; }
-    .guest-entry-row-dot {
-      width: 0.45rem; height: 0.45rem; border-radius: 9999px; background: #310f7a;
-      margin-top: 0.4rem; flex-shrink: 0;
-    }
-    .guest-entry-row-city { font-size: 0.9rem; font-weight: 700; color: #1c1b21; }
-    .guest-entry-row-dates { font-size: 0.8rem; color: #494552; margin-top: 0.15rem; }
-    .guest-entry-row-cta {
-      flex-shrink: 0; font-size: 0.8rem; font-weight: 700; color: #310f7a; white-space: nowrap;
-    }
+    .guest-entry-row:hover { background: var(--pl); }
+    .guest-entry-row-main { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+    .guest-entry-row-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--p); margin-top: 6px; flex-shrink: 0; }
+    .guest-entry-row-city { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+    .guest-entry-row-dates { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .guest-entry-row-cta { flex-shrink: 0; font-size: 12.5px; font-weight: 700; color: var(--p); white-space: nowrap; }
   </style>
 </head>
-<body class="bg-surface text-on-surface min-h-screen">
+<body style="background:var(--bg);color:var(--ink);min-height:100vh">
 
   <!-- CUSTOM CLOSED OVERLAY (hidden by default) -->
   <div id="customClosedOverlay" class="hidden">
@@ -256,28 +322,20 @@
     </div>
   </div>
 
-  <!-- Progress bar -->
-  <div class="tf-progress" id="progressBar" style="width: 0%"></div>
-
-  <!-- Header -->
-  <header class="border-b border-outline-variant/20 bg-white/70 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      <a href="{{ $artistProfileUrl }}" class="flex items-center gap-2 text-primary font-extrabold text-xl tracking-tight">
-        <img src="{{ asset('design/images/logo-blue.png') }}" alt="inkjin" class="h-7">
-      </a>
-      <div class="flex items-center gap-3 flex-wrap justify-end">
-        <a href="{{ $artistProfileUrl }}" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to {{ $artistName }}
-        </a>
+  <!-- Header: full-bleed white bar, 640px inner (same as client-book .top) -->
+  <header class="rc-top">
+    <div class="in">
+      <a class="logo" href="{{ $artistProfileUrl }}"><i>ij</i>inkjin</a>
+      <a class="back" href="{{ $artistProfileUrl }}"><span class="material-symbols-outlined ms">arrow_back</span>Back to {{ $artistName }}</a>
       </div>
-    </div>
+    <div class="prog" id="progressBar"></div>
   </header>
 
   @php
     $rcArtistInitials = $userDetail->publicDisplayInitials();
   @endphp
 
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8" id="rcMainContent">
+  <main id="rcMainContent" style="max-width:640px;width:100%;margin:0 auto;padding:22px 16px;box-sizing:border-box">
 
     <div id="rcBookingChrome" class="hidden">
       <div class="flex items-start justify-center mb-10" id="progressDots">
@@ -320,7 +378,13 @@
             }
           @endphp
           <h2 class="text-base sm:text-lg font-bold text-on-surface mb-1">
-            {{ $isGuestRequestForm ? 'Guest Spot Request' : 'Custom Tattoo Request' }}
+            @if(!empty($isWaitlistJoin))
+              Join the waitlist
+            @elseif($isGuestRequestForm)
+              Guest Spot Request
+            @else
+              Custom Tattoo Request
+            @endif
           </h2>
           <div class="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-on-surface-variant">
             @if($isGuestRequestForm)
@@ -332,8 +396,8 @@
                 <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_month</span> {{ $guestSpotDateLabel }}</span>
               @endif
             @else
-              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> Custom design</span>
-              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> Artist will review &amp; reply</span>
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> Custom design</span>
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> Artist will review &amp; reply</span>
             @endif
           </div>
           <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
@@ -354,27 +418,54 @@
       $activeGuestSpots = $activeGuestSpots ?? collect();
       $activeGuestSpotCount = $activeGuestSpots->count();
       $showGuestEntry = empty($guestSpotId) && $activeGuestSpotCount > 0;
+      $studioChoices = $studioChoices ?? [];
+      $introAtLine = '';
+      if (! empty($guestSpotId) && ! empty($guestSpot)) {
+          $introAtLine = trim((string) ($studioLabel ?? ''));
+      } elseif (count($studioChoices) > 1) {
+          $names = array_values(array_filter(array_map(
+              static fn ($c) => trim((string) ($c['name'] ?? '')),
+              $studioChoices
+          )));
+          if (count($names) === 2) {
+              $joined = $names[0].' and '.$names[1];
+          } elseif (count($names) > 2) {
+              $last = array_pop($names);
+              $joined = implode(', ', $names).' and '.$last;
+          } else {
+              $joined = $names[0] ?? '';
+          }
+          $locBits = array_filter([
+              trim((string) ($userDetail->city ?? '')),
+              trim((string) ($userDetail->country ?? '')),
+          ]);
+          $introAtLine = trim($joined.($locBits ? ', '.implode(', ', $locBits) : ''));
+      } else {
+          $introAtLine = trim((string) ($studioLabel ?? ''));
+      }
     @endphp
-    <div class="w-full max-w-xl mx-auto text-center">
-      <div class="inline-flex items-center gap-3 bg-white rounded-2xl border border-outline-variant/30 px-5 py-4 shadow-sm {{ $showGuestEntry ? 'mb-4' : 'mb-8' }}">
-        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
+    <div class="rc-intro">
+      <div class="rc-ia">
+        <div class="av">
           @if($userDetail->avatar && $userDetail->avatar != '')
-            <img src="{{ asset($userDetail->avatar) }}" alt="Avatar" class="w-full h-full object-cover rounded-full">
+            <img src="{{ asset($userDetail->avatar) }}" alt="">
           @else
-            <span class="text-white text-lg font-bold">{{ $userDetail->publicDisplayInitials() }}</span>
+            {{ $userDetail->publicDisplayInitials() }}
           @endif
         </div>
-        <div class="text-left">
-          <p class="text-sm text-on-surface-variant">
-            @if(!empty($guestSpotId) && !empty($guestSpot))
+        <div>
+          <span>
+            @if(!empty($isWaitlistJoin))
+              You're joining the waitlist with
+            @elseif(!empty($guestSpotId) && !empty($guestSpot))
               You're requesting a guest spot tattoo from
             @else
               You're requesting a custom tattoo from
             @endif
-          </p>
-          <p class="font-bold text-on-surface text-lg" id="artistNameDisplay">{{$artistName}}</p>
-          @if(!empty($studioLabel))
-            <p class="text-xs text-on-surface-variant mt-0.5">at {{ $studioLabel }}</p>
+          </span>
+          <b id="artistNameDisplay">{{ $artistName }}</b>
+          @if($introAtLine !== '')
+            <small>at {{ $introAtLine }}</small>
           @endif
         </div>
       </div>
@@ -385,29 +476,29 @@
             @php
               $spot = $activeGuestSpots->first();
               $pillDates = $spot->from_date->isSameMonth($spot->to_date)
-                ? $spot->from_date->format('M j').'–'.$spot->to_date->format('j')
-                : $spot->from_date->format('M j').' – '.$spot->to_date->format('M j');
+                ? $spot->from_date->format('M j').' to '.$spot->to_date->format('j')
+                : $spot->from_date->format('M j').' to '.$spot->to_date->format('M j');
             @endphp
             <a
               href="{{ route('public.request-custom', ['user_name' => $artistUsername, 'guest_spot' => $spot->id]) }}"
-              class="guest-entry-pill"
+              class="rc-gsb"
             >
-              <span class="guest-entry-dot" aria-hidden="true"></span>
-              <span class="guest-entry-text">{{ $artistName }} has a guest spot in {{ $spot->city }} · {{ $pillDates }}</span>
-              <span class="guest-entry-chevron material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+              <i aria-hidden="true"></i>
+              <span>{{ $artistName }} has a guest spot in {{ $spot->city }} · {{ $pillDates }}</span>
+              <span class="material-symbols-outlined ms" aria-hidden="true">arrow_forward</span>
             </a>
           @else
             <button
               type="button"
-              class="guest-entry-pill"
+              class="rc-gsb"
               id="guestEntryToggle"
               aria-expanded="false"
               aria-controls="guestEntryPicker"
             >
-              <span class="guest-entry-dot" aria-hidden="true"></span>
-              <span class="guest-entry-text">{{ $artistName }} has {{ $activeGuestSpotCount }} upcoming guest spots</span>
-              <span class="guest-entry-chevron material-symbols-outlined" aria-hidden="true">expand_more</span>
-            </button>
+              <i aria-hidden="true"></i>
+              <span>{{ $artistName }} has {{ $activeGuestSpotCount }} upcoming guest spots</span>
+              <span class="material-symbols-outlined ms" aria-hidden="true">expand_more</span>
+      </button>
             <div class="guest-entry-picker hidden" id="guestEntryPicker" role="list">
               @foreach($activeGuestSpots as $spot)
                 @php
@@ -435,13 +526,24 @@
         </div>
       @endif
 
-      <h1 class="text-3xl sm:text-4xl font-extrabold text-on-surface mb-4">Let's bring your<br>vision to life ✨</h1>
-      <p class="text-on-surface-variant text-lg mb-8">We'll ask a few questions to help the artist understand exactly what you want.@if(!empty($isManagedScheduling)) You'll also share your preferred dates so {{ $artistName }} can confirm a time that works for both of you.@endif</p>
-      <button onclick="nextScreen()" class="inline-flex items-center gap-2 px-8 py-4 bg-primary text-on-primary rounded-full font-bold text-base hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">
-        Get Started
-        <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+      <h1>
+        @if(!empty($isWaitlistJoin))
+          Join the waitlist<br>with your request
+        @else
+          Let's bring your<br>vision to life ✨
+        @endif
+      </h1>
+      <p class="lead">
+        @if(!empty($isWaitlistJoin))
+          Fill in {{ $artistName }}'s request form to join the waitlist. When books open, they'll notify you and can pick up your request from there.
+        @else
+          We'll ask a few questions to help {{ $artistName }} understand exactly what you want. {{ $artistName }} reviews your request, then sends you a quote or lets you know it isn't a fit.
+        @endif
+      </p>
+      <button type="button" onclick="nextScreen()" class="btn-start">
+        Get started <span class="material-symbols-outlined ms">arrow_forward</span>
       </button>
-      <p class="text-sm text-on-surface-variant mt-4">Takes about 2-3 minutes</p>
+      <div class="took">Takes about 2 to 3 minutes</div>
     </div>
   </div>
 
@@ -488,50 +590,44 @@
       ])));
       $rcStudioMapsLink = trim((string) ($guestSpot->google_maps_link ?? ''));
     } else {
-      $rcStudioName = trim((string) ($userDetail->studio_name ?? '')) ?: 'Studio';
-      $rcStudioAddressLine = trim(implode(', ', array_filter([
-        $userDetail->studio_address ?? '',
-        $userDetail->city ?? '',
-        $userDetail->country ?? '',
-      ])));
-      $rcStudioMapsLink = trim((string) ($userDetail->google_maps_link ?? ''));
+      $rcStudioName = trim((string) ($userDetail->resolvedStudioName() ?: ($userDetail->studio_name ?? ''))) ?: 'Studio';
+      $rcStudioAddressLine = $userDetail->publicStudioAddressLine();
+      $rcStudioMapsLink = $userDetail->publicStudioMapsLink();
     }
   @endphp
   <!-- Screen 9: Availability (managed scheduling) -->
   <div class="tf-screen" data-screen="9">
     <div class="w-full">
-      <button type="button" onclick="prevScreen()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors">
+      <button type="button" id="rcBackToQuestions" onclick="prevScreen()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors">
         <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to Questions
       </button>
 
-      <div class="bg-white rounded-2xl border border-outline-variant/20 p-6 mb-6">
-        <div class="mb-6">
-          <h3 class="text-xl font-bold text-on-surface mb-1">When are you available?</h3>
-          <p class="text-sm text-on-surface-variant"><span id="rcManagedArtistHint">{{ $artistName }}</span> will confirm a time that works for both of you.</p>
-          @if($isGuestAvailability && $guestPrefDateMin && $guestPrefDateMax)
-            <p class="text-xs text-on-surface-variant mt-2">Preferred dates must fall within this guest spot: {{ \Carbon\Carbon::parse($guestSpot->from_date)->format('M j, Y') }} – {{ \Carbon\Carbon::parse($guestSpot->to_date)->format('M j, Y') }}.</p>
-          @endif
-        </div>
+      <div class="rc-avail-panel">
+        <h3>When are you available?</h3>
+        <p class="rc-avail-sub"><span id="rcManagedArtistHint">{{ $artistName }}</span> will confirm a time that works for both of you.</p>
+        @if($isGuestAvailability && $guestPrefDateMin && $guestPrefDateMax)
+          <p class="rc-avail-sub" style="margin-top:-8px">Preferred dates must fall within this guest spot: {{ \Carbon\Carbon::parse($guestSpot->from_date)->format('M j, Y') }} – {{ \Carbon\Carbon::parse($guestSpot->to_date)->format('M j, Y') }}.</p>
+        @endif
 
-        <div id="rcPrefBlocks" class="space-y-4 mb-6">
+        <div id="rcPrefBlocks">
           <div class="pref-block" data-pref="0">
             <div class="pref-block-header">
-              <p class="text-xs font-bold text-primary uppercase tracking-wider pref-block-label">Preference 1 <span class="text-error">*</span></p>
+              <p class="pref-block-label">Preference 1 <span class="text-error">*</span></p>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
               <div>
-                <label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label>
+                <label class="rc-avail-lbl f">Date</label>
                 <input
                   type="date"
-                  class="rc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  class="in sm rc-pref-date"
                   @if($guestPrefDateMin) min="{{ $guestPrefDateMin }}" @endif
                   @if($guestPrefDateMax) max="{{ $guestPrefDateMax }}" @endif
                 >
-                <p id="rcManagedPrefDateError" class="hidden text-sm text-error mt-2">Please choose a date within the guest spot dates.</p>
+                <p id="rcManagedPrefDateError" class="hidden err-t" style="margin-top:8px"><span class="material-symbols-outlined ms">error</span><span>Please choose a date within the guest spot dates.</span></p>
               </div>
               <div>
-                <label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label>
-                <div class="flex flex-wrap gap-1.5">
+                <label class="rc-avail-lbl f">Time of day</label>
+                <div class="rc-avail-chips">
                   <button type="button" class="time-pref-pill" data-value="Morning" onclick="rcToggleTimePref(this)">Morning</button>
                   <button type="button" class="time-pref-pill" data-value="Afternoon" onclick="rcToggleTimePref(this)">Afternoon</button>
                   <button type="button" class="time-pref-pill" data-value="Evening" onclick="rcToggleTimePref(this)">Evening</button>
@@ -540,63 +636,65 @@
             </div>
           </div>
         </div>
-        <button type="button" id="rcAddPrefBtn" onclick="rcAddPreference()" class="text-sm text-primary font-semibold flex items-center gap-1 hover:underline mb-6">
-          <span class="material-symbols-outlined text-[18px]">add</span> Add another preference
+        <button type="button" id="rcAddPrefBtn" onclick="rcAddPreference()" class="rc-avail-add">
+          <span class="material-symbols-outlined" style="font-size:15px">add</span> Add another preference
         </button>
 
-        <div class="space-y-4">
           <div data-rc-field="days">
-            <label class="text-xs font-semibold text-on-surface-variant mb-2 block">Preferred days of the week <span class="text-error">*</span></label>
-            <div class="flex flex-wrap gap-1.5" id="rcDayPills">
+          <label class="rc-avail-lbl">Preferred days of the week <span class="text-error">*</span></label>
+          <div class="rc-avail-chips" id="rcDayPills">
               @foreach(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as $day)
               <button type="button" class="day-pill" data-value="{{ $day }}" onclick="rcToggleDayPref(this)">{{ $day }}</button>
               @endforeach
             </div>
-            <p id="rcManagedDayError" class="hidden text-sm text-error mt-2">Please select at least one preferred day.</p>
+          <p id="rcManagedDayError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span>Pick at least one day.</span></p>
           </div>
           <div>
-            <label class="text-xs font-semibold text-on-surface-variant mb-1 block">Any dates to avoid?</label>
-            <input type="text" id="rcManagedAvoid" placeholder="e.g., April 10-15, May 1st" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <label class="rc-avail-lbl">Any dates to avoid?</label>
+          <input type="text" id="rcManagedAvoid" class="in sm" placeholder="e.g. April 10 to 15, May 1st">
           </div>
           <div data-rc-field="flex">
-            <label class="text-xs font-semibold text-on-surface-variant mb-2 block">How flexible are you? <span class="text-error">*</span></label>
-            <div class="flex flex-wrap gap-2" id="rcFlexPills">
-              <button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Very flexible" onclick="rcSelectPill(this,'rcFlexPills')">Very flexible</button>
-              <button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Somewhat flexible" onclick="rcSelectPill(this,'rcFlexPills')">Somewhat flexible</button>
-              <button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="These are my only options" onclick="rcSelectPill(this,'rcFlexPills')">These are my only options</button>
+          <label class="rc-avail-lbl">How flexible are you? <span class="text-error">*</span></label>
+          <div class="rc-avail-chips" id="rcFlexPills">
+            <button type="button" class="pill-btn" data-value="Very flexible" onclick="rcSelectPill(this,'rcFlexPills')">Very flexible</button>
+            <button type="button" class="pill-btn" data-value="Somewhat flexible" onclick="rcSelectPill(this,'rcFlexPills')">Somewhat flexible</button>
+            <button type="button" class="pill-btn" data-value="These are my only options" onclick="rcSelectPill(this,'rcFlexPills')">These are my only options</button>
             </div>
-            <p id="rcManagedFlexError" class="hidden text-sm text-error mt-2">Please select how flexible you are.</p>
+          <p id="rcManagedFlexError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span>Pick one.</span></p>
           </div>
           <div data-rc-field="urgency">
-            <label class="text-xs font-semibold text-on-surface-variant mb-2 block">Urgency <span class="text-error">*</span></label>
-            <div class="flex flex-wrap gap-2" id="rcUrgencyPills">
-              <button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="No rush" onclick="rcSelectPill(this,'rcUrgencyPills')">No rush</button>
-              <button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Within 2 weeks" onclick="rcSelectPill(this,'rcUrgencyPills')">Within 2 weeks</button>
-              <button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Within a month" onclick="rcSelectPill(this,'rcUrgencyPills')">Within a month</button>
-              <button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="ASAP" onclick="rcSelectPill(this,'rcUrgencyPills')">ASAP</button>
+          <label class="rc-avail-lbl">Urgency <span class="text-error">*</span></label>
+          <div class="rc-avail-chips" id="rcUrgencyPills">
+            <button type="button" class="pill-btn" data-value="No rush" onclick="rcSelectPill(this,'rcUrgencyPills')">No rush</button>
+            <button type="button" class="pill-btn" data-value="Within 2 weeks" onclick="rcSelectPill(this,'rcUrgencyPills')">Within 2 weeks</button>
+            <button type="button" class="pill-btn" data-value="Within a month" onclick="rcSelectPill(this,'rcUrgencyPills')">Within a month</button>
+            <button type="button" class="pill-btn" data-value="ASAP" onclick="rcSelectPill(this,'rcUrgencyPills')">ASAP</button>
             </div>
-            <p id="rcManagedUrgencyError" class="hidden text-sm text-error mt-2">Please select your urgency.</p>
+          <p id="rcManagedUrgencyError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span>Pick one.</span></p>
           </div>
-        </div>
       </div>
 
-      <div class="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl mb-6">
-        <span class="material-symbols-outlined text-primary mt-0.5">{{ $isGuestAvailability ? 'luggage' : 'location_on' }}</span>
+      <div class="loc" id="rcAvailLoc" data-guest="{{ $isGuestAvailability ? '1' : '0' }}">
+        <span class="material-symbols-outlined ms" id="rcAvailLocIcon">{{ $isGuestAvailability ? 'luggage' : 'location_on' }}</span>
         <div>
           @if($isGuestAvailability)
-            <p class="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Guest location</p>
+            <span class="loc-guest">Guest location</span>
           @endif
-          <p class="text-sm font-semibold text-on-surface">{{ $rcStudioName }}</p>
-          <p class="text-xs text-on-surface-variant">{{ $rcStudioAddressLine ?: '—' }}</p>
-          @if($rcStudioMapsLink !== '')
-          <a href="{{ $rcStudioMapsLink }}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
-          @endif
+          <b id="rcAvailLocName">{{ $rcStudioName }}</b>
+          <span class="loc-addr" id="rcAvailLocAddr">{{ $rcStudioAddressLine !== '' ? $rcStudioAddressLine : '' }}</span>
+          <a
+            id="rcAvailLocDirections"
+            href="{{ $rcStudioMapsLink !== '' ? $rcStudioMapsLink : '#' }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            @if($rcStudioMapsLink === '') style="display:none" @endif
+          >Get directions →</a>
         </div>
       </div>
 
       <button type="button" onclick="nextScreen()" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm flex items-center justify-center gap-2">
         Continue to Your Details <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-      </button>
+        </button>
     </div>
   </div>
   @endif
@@ -604,126 +702,126 @@
   <!-- Screen 10: Register (name, email, phone, verify — same layout as browse design booking) -->
   <div class="tf-screen" data-screen="10">
     <div id="rcStepRegister" class="w-full">
-      <button type="button" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors" onclick="rcLeaveRegisterStep()"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
+      <button type="button" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-2 transition-colors" onclick="rcLeaveRegisterStep()"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
       <!-- Name -->
       <div class="question-div active" data-reg="0" id="rc-reg-0">
         <div class="w-full max-w-xl mx-auto">
           <p class="text-sm font-semibold text-primary mb-2">1 →</p>
-          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your name?</h2>
-          <p class="text-on-surface-variant mb-6">So the artist knows who they're working with.</p>
-          <input type="text" id="tfName" placeholder="Your full name"
-            class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="tfNameError" class="text-sm text-error mt-2 hidden">This field is required.</p>
-          <div class="flex items-center justify-between mt-6">
+      <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your name?</h2>
+      <p class="text-on-surface-variant mb-6">So the artist knows who they're working with.</p>
+      <input type="text" id="tfName" placeholder="Your full name"
+        class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+      <p id="tfNameError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+      <div class="flex items-center justify-between mt-6">
             <button type="button" onclick="nextRcReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
-              Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </button>
-            <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
-          </div>
-        </div>
+          Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </button>
+        <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
       </div>
+    </div>
+  </div>
       <!-- Email -->
       <div class="question-div" data-reg="1" id="rc-reg-1">
         <div class="w-full max-w-xl mx-auto">
           <button type="button" onclick="prevRcReg()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
           <p class="text-sm font-semibold text-primary mb-2">2 →</p>
-          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your email?</h2>
-          <p class="text-on-surface-variant mb-6">We'll send request updates and artist replies here.</p>
-          <input type="email" id="tfEmail" placeholder="you@example.com"
-            class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="tfEmailError" class="text-sm text-error mt-2 hidden">This field is required.</p>
-          <div class="flex items-center justify-between mt-6">
+      <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your email?</h2>
+      <p class="text-on-surface-variant mb-6">We'll send request updates and artist replies here.</p>
+      <input type="email" id="tfEmail" placeholder="you@example.com"
+        class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+      <p id="tfEmailError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+      <div class="flex items-center justify-between mt-6">
             <button type="button" onclick="nextRcReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
-              Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </button>
-            <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
-          </div>
-        </div>
+          Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </button>
+        <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
       </div>
+    </div>
+  </div>
       <!-- Phone -->
       <div class="question-div" data-reg="2" id="rc-reg-2">
         <div class="w-full max-w-xl mx-auto">
           <button type="button" onclick="prevRcReg()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>
           <p class="text-sm font-semibold text-primary mb-2">3 →</p>
           <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Your phone number?</h2>
-          <p class="text-on-surface-variant mb-6">In case the artist needs to reach you quickly.</p>
-          @include('partials.phone-country-input', ['idPrefix' => 'tf'])
-          <div class="flex items-center justify-between mt-6">
+      <p class="text-on-surface-variant mb-6">In case the artist needs to reach you quickly.</p>
+      @include('partials.phone-country-input', ['idPrefix' => 'tf'])
+      <div class="flex items-center justify-between mt-6">
             <button type="button" onclick="nextRcReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">
-              Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </button>
-            <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
-          </div>
-        </div>
+          Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </button>
+        <span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span>
       </div>
+    </div>
+  </div>
       <!-- Verify email -->
       <div class="question-div" data-reg="3" id="rc-reg-3">
-        <div class="w-full max-w-md mx-auto">
-          <button type="button" onclick="editRcContactDetails()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to edit email or phone</button>
-          <div id="rcAuthCreate">
-            <div class="text-center mb-6">
-              <span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span>
-              <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2>
-              <p class="text-on-surface-variant">We sent a secure 4-digit code to <strong id="rcOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p>
-            </div>
-            <div class="mb-4 hidden">
-              <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpEmail">Email</label>
-              <input type="email" id="rcOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
-            </div>
-            <div class="mb-4" id="rcOtpCodeWrap">
-              <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpCode">4-digit code</label>
-              <input type="text" id="rcOtpCode" maxlength="4" inputmode="numeric" placeholder="1234" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-              <p id="rcOtpError" class="text-sm text-error mt-2 hidden">Please enter a valid 4-digit code.</p>
-            </div>
-            <p id="rcOtpStatus" class="hidden items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3"></p>
-            <div class="mb-5">
-              <label class="text-sm font-semibold text-on-surface-variant ml-1" for="rc_referral_source">How did you hear about us? <span class="text-xs text-on-surface-variant font-normal">(optional)</span></label>
-              <select id="rc_referral_source" name="referral_source" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1.5">
-                <option value="">Select...</option>
-                <option value="instagram">Instagram</option>
-                <option value="tiktok">TikTok</option>
-                <option value="google">Google Search</option>
+    <div class="w-full max-w-md mx-auto">
+      <button type="button" onclick="editRcContactDetails()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to edit email or phone</button>
+      <div id="rcAuthCreate">
+        <div class="text-center mb-6">
+          <span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2>
+          <p class="text-on-surface-variant">We sent a secure 4-digit code to <strong id="rcOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p>
+        </div>
+        <div class="mb-4 hidden">
+          <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpEmail">Email</label>
+          <input type="email" id="rcOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
+        </div>
+        <div class="mb-4" id="rcOtpCodeWrap">
+          <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpCode">4-digit code</label>
+          <input type="text" id="rcOtpCode" maxlength="4" inputmode="numeric" placeholder="1234" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="rcOtpError" class="text-sm text-error mt-2 hidden">Please enter a valid 4-digit code.</p>
+        </div>
+        <p id="rcOtpStatus" class="hidden items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3"></p>
+        <div class="mb-5">
+          <label class="text-sm font-semibold text-on-surface-variant ml-1" for="rc_referral_source">How did you hear about us? <span class="text-xs text-on-surface-variant font-normal">(optional)</span></label>
+          <select id="rc_referral_source" name="referral_source" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 mt-1.5">
+            <option value="">Select...</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="google">Google Search</option>
                 <option value="ai">AI (ChatGPT, Claude, Gemini, other)</option>
-                <option value="friend">Friend / Referral</option>
-                <option value="convention">Tattoo Convention</option>
-                <option value="blog">Blog / Article</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              <button id="rcSendOtpBtn" type="button" onclick="sendRcOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Resend code</button>
-              <button id="rcVerifyOtpBtn" type="button" onclick="verifyRcOtp()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Verify & Continue</button>
-            </div>
-            <p class="text-center text-sm text-on-surface-variant mb-4"><button type="button" onclick="editRcContactDetails()" class="text-primary font-medium hover:underline">Wrong email or phone? Go back and edit</button></p>
-            <p id="rcConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
-            <p class="text-center text-sm text-on-surface-variant">Email verified once will stay connected for this request session.</p>
-          </div>
-          <div id="rcAuthLogin" class="hidden">
-            <div class="text-center mb-6">
-              <span class="material-symbols-outlined text-primary text-4xl mb-2">waving_hand</span>
-              <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Welcome back!</h2>
-              <p class="text-on-surface-variant">Log in to continue with your request.</p>
-            </div>
-            <div class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-3 mb-5">
-              <span class="material-symbols-outlined text-primary text-[18px]">mail</span>
-              <span class="text-sm text-on-surface" id="rcAuthLoginEmail">you@example.com</span>
-              <span class="material-symbols-outlined text-green-500 text-[16px] ml-auto">check_circle</span>
-            </div>
-            <div class="mb-5">
-              <input type="password" id="rcLoginPassword" placeholder="Enter your password" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-            </div>
-            <button type="button" onclick="finishRcAuth()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">Log In & Continue</button>
-            <p class="text-center text-sm text-primary font-medium cursor-pointer mb-5">Forgot password?</p>
-            <div class="flex items-center gap-3 mb-4">
-              <div class="flex-1 h-px bg-outline-variant/30"></div>
-              <span class="text-sm text-on-surface-variant">or</span>
-              <div class="flex-1 h-px bg-outline-variant/30"></div>
-            </div>
-            <div class="space-y-2 mb-5">
-              <button type="button" class="social-btn" onclick="finishRcAuth()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google</button>
-              <button type="button" class="social-btn" onclick="finishRcAuth()"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Continue with Apple</button>
-            </div>
-            <p class="text-center text-sm text-on-surface-variant">Don't have an account? <span class="auth-toggle" onclick="toggleRcAuth()">Sign up</span></p>
+            <option value="friend">Friend / Referral</option>
+            <option value="convention">Tattoo Convention</option>
+            <option value="blog">Blog / Article</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <button id="rcSendOtpBtn" type="button" onclick="sendRcOtp()" class="w-full py-3.5 bg-surface-container-high text-on-surface rounded-full font-bold text-sm hover:bg-surface-container transition-colors">Resend code</button>
+          <button id="rcVerifyOtpBtn" type="button" onclick="verifyRcOtp()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">Verify & Continue</button>
+        </div>
+        <p class="text-center text-sm text-on-surface-variant mb-4"><button type="button" onclick="editRcContactDetails()" class="text-primary font-medium hover:underline">Wrong email or phone? Go back and edit</button></p>
+        <p id="rcConnectedUser" class="hidden text-center text-sm text-green-600 mb-4">Already connected user.</p>
+        <p class="text-center text-sm text-on-surface-variant">Email verified once will stay connected for this request session.</p>
+      </div>
+      <div id="rcAuthLogin" class="hidden">
+        <div class="text-center mb-6">
+          <span class="material-symbols-outlined text-primary text-4xl mb-2">waving_hand</span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Welcome back!</h2>
+          <p class="text-on-surface-variant">Log in to continue with your request.</p>
+        </div>
+        <div class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-3 mb-5">
+          <span class="material-symbols-outlined text-primary text-[18px]">mail</span>
+          <span class="text-sm text-on-surface" id="rcAuthLoginEmail">you@example.com</span>
+          <span class="material-symbols-outlined text-green-500 text-[16px] ml-auto">check_circle</span>
+        </div>
+        <div class="mb-5">
+          <input type="password" id="rcLoginPassword" placeholder="Enter your password" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+        </div>
+        <button type="button" onclick="finishRcAuth()" class="w-full py-3.5 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">Log In & Continue</button>
+        <p class="text-center text-sm text-primary font-medium cursor-pointer mb-5">Forgot password?</p>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex-1 h-px bg-outline-variant/30"></div>
+          <span class="text-sm text-on-surface-variant">or</span>
+          <div class="flex-1 h-px bg-outline-variant/30"></div>
+        </div>
+        <div class="space-y-2 mb-5">
+          <button type="button" class="social-btn" onclick="finishRcAuth()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google</button>
+          <button type="button" class="social-btn" onclick="finishRcAuth()"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Continue with Apple</button>
+        </div>
+        <p class="text-center text-sm text-on-surface-variant">Don't have an account? <span class="auth-toggle" onclick="toggleRcAuth()">Sign up</span></p>
           </div>
         </div>
       </div>
@@ -749,29 +847,18 @@
     </div>
   </div>
 
-  <!-- Screen 15: Review -->
+  <!-- Screen 15: Review (match client-book vReqReview) -->
   <div class="tf-screen" data-screen="15">
-    <button type="button" onclick="prevScreen()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-6 transition-colors">
-      <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back
-    </button>
-    <div class="w-full max-w-xl mx-auto">
-      <div class="text-center mb-6">
-        <span class="material-symbols-outlined text-primary text-4xl mb-2">fact_check</span>
-        <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Review your request</h2>
-        <p class="text-on-surface-variant">Make sure everything looks good before submitting.</p>
-      </div>
-      <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 mb-6">
-        <div id="reviewContent">
+    <div class="rv">
+      <span class="material-symbols-outlined ms ic">fact_check</span>
+      <h1>Review your request</h1>
+      <p>Make sure everything looks good before submitting. No payment is needed now.</p>
+      <div class="tbl rr" id="reviewContent">
           <!-- Populated by JS -->
         </div>
-      </div>
-      <p id="customSubmitError" class="hidden text-sm text-error mb-3 text-center"></p>
-      <button type="button" onclick="submitRequest()" id="btnSubmit" class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold text-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/20 mb-3">
-        Submit Request
-      </button>
-      <button type="button" onclick="editRcAnswers()" class="w-full py-3 rounded-xl font-semibold text-sm text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container transition-colors">
-        Back to edit your answers
-      </button>
+      <p id="customSubmitError" class="hidden err-t" style="justify-content:center;margin:12px 0 0"><span class="material-symbols-outlined ms">error</span><span class="js-custom-submit-error-text"></span></p>
+      <button type="button" onclick="submitRequest()" id="btnSubmit" class="btn full" style="margin-top:14px">Submit request</button>
+      <button type="button" id="rcBackToEditAnswers" onclick="editRcAnswers()" class="btn ghost full">Back to edit your answers</button>
     </div>
   </div>
 
@@ -791,18 +878,29 @@
             <path d="M24 42 L34 52 L56 30" stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="check-mark"/>
           </svg>
         </div>
-        <h2 class="text-2xl font-extrabold text-center mb-2">Request Submitted! 🎉</h2>
+        <h2 class="text-2xl font-extrabold text-center mb-2">{{ !empty($isWaitlistJoin) ? "You're on the waitlist" : 'Request Submitted! 🎉' }}</h2>
         <p class="text-sm text-on-surface-variant text-center mb-2">Reference: <strong id="successRequestRef">—</strong></p>
         <p class="text-sm text-on-surface-variant text-center mb-8">
+          @if(!empty($isWaitlistJoin))
+            We'll email you when <span id="successArtistName">{{ $artistName }}</span> opens their books. Your request is saved so they can follow up then.
+          @else
           <span id="successArtistName">{{ $artistName }}</span> will review your request @if(!empty($isManagedScheduling)) and confirm a time that works for both of you @endif. You'll receive updates via email.
+          @endif
         </p>
         <div class="bg-surface-container-low rounded-2xl p-5 mb-8">
           <h3 class="text-sm font-bold mb-3">What happens next?</h3>
           <ul class="space-y-2 text-sm text-on-surface-variant">
+            @if(!empty($isWaitlistJoin))
+              <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> You're on {{ $artistName }}'s waitlist with your request details</li>
+              <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> We'll email you as soon as books open</li>
+              <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> The artist can then review your request and send a quote</li>
+              <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Check your email for updates</li>
+            @else
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> The artist will review your request and references</li>
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> They may reach out with questions or a custom quote</li>
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Once you agree, you'll schedule a session together</li>
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Check your email for updates and messages</li>
+            @endif
           </ul>
         </div>
         <a href="{{ $artistProfileUrl }}" class="block w-full py-3.5 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">
@@ -820,6 +918,7 @@
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   @include('partials.phone-country-scripts')
   @include('partials.bookpay-public-api')
+  @include('partials.bookpay-datetime-picker')
   <script>
   (function($) {
     'use strict';
@@ -838,6 +937,7 @@
       var normalizedType = typeMap[q.type] || q.type || 'input';
       var opts = Array.isArray(q.options) ? q.options : [];
       if (normalizedType === 'toggle' && !opts.length) opts = ['Yes', 'No'];
+      var studioOpts = Array.isArray(q.studio_options) ? q.studio_options : [];
       return {
         id: q.id,
         title: q.question || 'Question',
@@ -845,6 +945,7 @@
         type: normalizedType,
         question_type: q.question_type || 'other',
         options: opts,
+        studio_options: studioOpts,
         placeholder: q.placeholder || '',
         required: !!q.is_required
       };
@@ -887,7 +988,13 @@
         if (typeof answer === 'string') answer = answer.trim();
         if (answer === undefined || answer === null || answer === '') return;
         if (Array.isArray(answer) && answer.length === 0) return;
-        output[String(q.id)] = { id: q.id, question: String(q.title || ''), type: String(q.type || 'input'), answer: answer };
+        output[String(q.id)] = {
+          id: q.id,
+          question: String(q.title || ''),
+          type: String(q.type || 'input'),
+          question_type: String(q.question_type || 'other'),
+          answer: answer
+        };
       });
       return output;
     }
@@ -903,7 +1010,7 @@
       formData.append('question_id', String(questionId || ''));
       formData.append('artist_username', artistUsername);
       if (fallbackTattooSlug) {
-        formData.append('tattoo_slug', fallbackTattooSlug);
+      formData.append('tattoo_slug', fallbackTattooSlug);
       }
       return await new Promise(function(resolve, reject) {
         var xhr = new XMLHttpRequest();
@@ -946,6 +1053,7 @@
     $(document).on('qimages:updated', '.q-image-upload', function(_event, questionId, urls) {
       if (!questionId) return;
       questionAnswers[questionId] = Array.isArray(urls) ? urls.slice() : [];
+      clearQuestionError($(this).closest('.question-div'));
     });
 
     function getQuestionType(qId) {
@@ -1052,7 +1160,19 @@
         var isFirst = idx === 0;
         var isLast = idx === questionDefinitions.length - 1;
         var body = '';
-        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
+        if (q.type === 'studio') {
+          var studioList = (q.studio_options && q.studio_options.length)
+            ? q.studio_options
+            : (q.options || []).map(function(name) { return { name: name, address: '' }; });
+          body = '<div class="stpick" role="radiogroup" aria-label="Studio">' + studioList.map(function(o) {
+            var name = typeof o === 'string' ? o : String(o.name || '');
+            var addr = typeof o === 'string' ? '' : String(o.address || '');
+            return '<button type="button" class="stc single-choice-radio-button" data-value="' + escapeHtml(name) + '" aria-pressed="false">' +
+              '<span class="material-symbols-outlined stc-ico">location_on</span>' +
+              '<span class="stc-txt"><b>' + escapeHtml(name) + '</b>' + (addr ? '<small>' + escapeHtml(addr) + '</small>' : '') + '</span>' +
+              '<span class="material-symbols-outlined stc-ck">check_circle</span></button>';
+          }).join('') + '</div>';
+        } else if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
           body = '<div class="flex flex-wrap gap-2 single-choice-group">' + q.options.map(function(opt) {
             var isOther = String(opt || '').trim().toLowerCase() === 'other';
             var optionClass = (isCatalogChoiceQuestion(q.id) && isOther) ? ' option-other' : '';
@@ -1075,10 +1195,10 @@
           : '<button type="button" class="js-next-question inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>';
         html += '<div class="question-div' + (isFirst ? ' active' : '') + '" data-q="' + idx + '" data-question-id="' + q.id + '" data-question-type="' + q.type + '" data-required="' + (q.required ? '1' : '0') + '"><div class="w-full max-w-xl mx-auto">' +
           (isFirst ? '' : '<button type="button" class="js-prev-question flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>') +
-          '<p class="question-kicker"><span class="dot"></span>Question ' + (idx + 1) + ':</p>' +
-          '<h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">' + escapeHtml(q.title) + '</h2>' +
-          '<p class="text-on-surface-variant mb-6">' + escapeHtml(q.subtitle) + (q.required ? ' <span class="text-error">*</span>' : '') + '</p>' +
-          body + '<p class="text-sm text-error hidden mt-3 js-question-error">Please answer this required question.</p>' +
+          '<p class="question-kicker"><span class="dot"></span>Question ' + (idx + 1) + ' of ' + questionDefinitions.length + '</p>' +
+          '<h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2" style="letter-spacing:-.4px">' + escapeHtml(q.title) + '</h2>' +
+          '<p class="text-on-surface-variant mb-6" style="font-size:14px">' + escapeHtml(q.subtitle) + (q.required ? ' <span class="text-error">*</span>' : ' <span style="color:#9C92A3">(optional)</span>') + '</p>' +
+          body + '<div class="err-t hidden js-question-error"><span class="material-symbols-outlined ms">error</span><span class="js-question-error-text"></span></div>' +
           '<div class="flex items-center justify-end mt-6">' + navButton + '</div></div></div>';
       });
       $('#questionsMount').html(html);
@@ -1087,14 +1207,26 @@
       }
     }
 
+    function questionErrorMessage(qType) {
+      if (qType === 'image') return 'Add at least one photo.';
+      if (qType === 'input' || qType === 'textarea') return 'Please answer this question.';
+      return 'Pick an answer to continue.';
+    }
+
+    function clearQuestionError($question) {
+      if (!$question || !$question.length) return;
+      $question.find('.js-question-error').addClass('hidden');
+      $question.find('.js-question-input,.js-select2-question').removeClass('err');
+    }
+
     function validateActiveQuestion() {
       var $active = $('div.question-div.active[data-q]');
       if (!$active.length) return true;
-      if (String($active.data('required')) !== '1') { $active.find('.js-question-error').addClass('hidden'); return true; }
+      if (String($active.data('required')) !== '1') { clearQuestionError($active); return true; }
       var qType = String($active.data('question-type') || '');
       var qId = $active.data('question-id');
       var hasValue = false;
-      if (qType === 'radio' || qType === 'style' || qType === 'placement' || qType === 'sizes') {
+      if (qType === 'radio' || qType === 'style' || qType === 'placement' || qType === 'sizes' || qType === 'studio') {
         var $selected = $active.find('.single-choice-radio-button.selected');
         hasValue = $selected.length > 0;
         if (hasValue && isCatalogChoiceQuestion(qId)) {
@@ -1113,7 +1245,15 @@
       }
       else if (qType === 'toggle') hasValue = $active.find('.js-question-toggle').is(':checked');
       else hasValue = !!questionAnswers[qId];
-      $active.find('.js-question-error').toggleClass('hidden', hasValue);
+
+      var $err = $active.find('.js-question-error');
+      $active.find('.js-question-input,.js-select2-question').toggleClass('err', !hasValue && (qType === 'input' || qType === 'textarea' || qType === 'select'));
+      if (hasValue) {
+        $err.addClass('hidden');
+      } else {
+        $err.find('.js-question-error-text').text(questionErrorMessage(qType));
+        $err.removeClass('hidden');
+      }
       return hasValue;
     }
 
@@ -1149,9 +1289,10 @@
         if (answer === undefined || answer === null || answer === '') return;
         var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
         if (!$panel.length) return;
-        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
+        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes' || q.type === 'studio') {
           $panel.find('.single-choice-radio-button').each(function() {
-            $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
+            var on = String($(this).data('value')) === String(answer);
+            $(this).toggleClass('selected', on).attr('aria-pressed', on ? 'true' : 'false');
           });
           restoreStyleQuestionUi($panel);
         } else if (q.type === 'select') {
@@ -1188,6 +1329,7 @@
     };
 
     window.rcBuildStructuredQuestionAnswers = buildStructuredQuestionAnswers;
+    window.rcGetQuestionAnswers = function() { return questionAnswers; };
     window.rcGetTotalQuestions = function() { return questionDefinitions.length; };
     window.rcPrevQuestion = function() { moveQuestion(-1); };
     window.rcShowQuestion = showQuestion;
@@ -1202,9 +1344,9 @@
       var isOther = value.trim().toLowerCase() === 'other';
       var catalogQ = isCatalogChoiceQuestion(qId);
 
-      main_div.find('.single-choice-radio-button').removeClass('selected');
-      $btn.addClass('selected');
-      main_div.find('.js-question-error').addClass('hidden');
+      main_div.find('.single-choice-radio-button').removeClass('selected').attr('aria-pressed', 'false');
+      $btn.addClass('selected').attr('aria-pressed', 'true');
+      clearQuestionError(main_div);
 
       if (catalogQ && isOther) {
         delete questionAnswers[qId];
@@ -1214,7 +1356,6 @@
 
       closeStyleOtherModal(false);
       if (qId) questionAnswers[qId] = value;
-      if (!isNaN(current_question)) setTimeout(function() { moveQuestion(1); }, 180);
     });
     $(document).on('click', '.js-style-other-close', function() {
       closeStyleOtherModal(true);
@@ -1224,9 +1365,9 @@
       var ctx = styleOtherModalContext;
       if (!styleName || !ctx || ctx.qId == null) return;
       questionAnswers[ctx.qId] = styleName;
-      ctx.$questionDiv.find('.js-question-error').addClass('hidden');
+      clearQuestionError(ctx.$questionDiv);
       closeStyleOtherModal(false);
-      if (!isNaN(ctx.questionIndex)) setTimeout(function() { moveQuestion(1); }, 180);
+      restoreStyleQuestionUi(ctx.$questionDiv);
     });
     $(document).on('keydown', function(e) {
       if (e.key === 'Escape' && !getStyleOtherModal().hasClass('hidden')) {
@@ -1248,14 +1389,14 @@
       if (!qId) return;
       if ($(this).hasClass('js-question-toggle')) questionAnswers[qId] = $(this).is(':checked');
       else questionAnswers[qId] = String($(this).val() || '').trim();
-      $question.find('.js-question-error').addClass('hidden');
+      clearQuestionError($question);
     });
     $(document).on('input', '.js-question-input', function() {
       var $question = $(this).closest('.question-div');
       var qId = $question.data('question-id');
       if (!qId) return;
       questionAnswers[qId] = String($(this).val() || '').trim();
-      $question.find('.js-question-error').addClass('hidden');
+      clearQuestionError($question);
     });
 
     $(function() {
@@ -1272,6 +1413,11 @@
   @php
     $guestPrefDateMin = $guestPrefDateMin ?? null;
     $guestPrefDateMax = $guestPrefDateMax ?? null;
+    if (! isset($rcStudioName)) {
+      $rcStudioName = trim((string) ($userDetail->resolvedStudioName() ?: ($userDetail->studio_name ?? ''))) ?: 'Studio';
+      $rcStudioAddressLine = $userDetail->publicStudioAddressLine();
+      $rcStudioMapsLink = $userDetail->publicStudioMapsLink();
+    }
   @endphp
 
   <script>
@@ -1281,14 +1427,31 @@
     var artistName = @json($artistName ?? 'Artist');
     var rcArtistUsername = @json($artistUsername ?? '');
     var guestSpotId = @json($guestSpotId ?? null);
+    var isWaitlistJoin = @json(!empty($isWaitlistJoin));
     var guestPrefDateMin = @json($guestPrefDateMin);
     var guestPrefDateMax = @json($guestPrefDateMax);
     var isManagedScheduling = @json(!empty($isManagedScheduling));
+    var rcStudioChoices = @json($studioChoices ?? []);
+    var rcDefaultStudio = (Array.isArray(rcStudioChoices) && rcStudioChoices.length === 1)
+      ? rcStudioChoices[0]
+      : {
+          id: null,
+          name: @json($rcStudioName),
+          address: @json($rcStudioAddressLine ?? ''),
+          maps_link: @json($rcStudioMapsLink ?? '')
+        };
     var questionCount = (typeof window.rcGetTotalQuestions === 'function') ? window.rcGetTotalQuestions() : 0;
     var postScreens = isManagedScheduling ? [9, 10, 14, 15, 16] : [10, 14, 15, 16];
     var currentReg = 0;
     var rcMaxStep = isManagedScheduling ? 5 : 4;
     var rcCurrentQuestion = 0;
+
+    if (questionCount === 0) {
+      var rcBackQ = document.getElementById('rcBackToQuestions');
+      if (rcBackQ) rcBackQ.classList.add('hidden');
+      var rcBackEdit = document.getElementById('rcBackToEditAnswers');
+      if (rcBackEdit) rcBackEdit.classList.add('hidden');
+    }
 
     (function initGuestEntryPicker() {
       var toggle = document.getElementById('guestEntryToggle');
@@ -1301,7 +1464,7 @@
       });
     })();
     var rcPrefCount = 1;
-    var RC_PREF_TIME_PILLS = '<div class="flex flex-wrap gap-1.5"><button type="button" class="time-pref-pill" data-value="Morning" onclick="rcToggleTimePref(this)">Morning</button><button type="button" class="time-pref-pill" data-value="Afternoon" onclick="rcToggleTimePref(this)">Afternoon</button><button type="button" class="time-pref-pill" data-value="Evening" onclick="rcToggleTimePref(this)">Evening</button></div>';
+    var RC_PREF_TIME_PILLS = '<div class="rc-avail-chips"><button type="button" class="time-pref-pill" data-value="Morning" onclick="rcToggleTimePref(this)">Morning</button><button type="button" class="time-pref-pill" data-value="Afternoon" onclick="rcToggleTimePref(this)">Afternoon</button><button type="button" class="time-pref-pill" data-value="Evening" onclick="rcToggleTimePref(this)">Evening</button></div>';
 
     document.getElementById('artistNameDisplay').textContent = artistName;
     document.getElementById('successArtistName').textContent = artistName;
@@ -1405,15 +1568,15 @@
 
       // Always restore question answers from draft first so prefill cannot overwrite edits.
       if (state.questionDraft && typeof window.rcRestoreQuestionDraft === 'function') {
-        if (state.inQuestions || state.screen === 'questions') {
+      if (state.inQuestions || state.screen === 'questions') {
           showQuestionsPhase(false);
           window.rcRestoreQuestionDraft(state.questionDraft);
         } else {
           window.rcRestoreQuestionDraft(state.questionDraft, { answersOnly: true });
         }
       } else if (state.inQuestions || state.screen === 'questions') {
-        showQuestionsPhase(false);
-      }
+          showQuestionsPhase(false);
+        }
 
       if (!(state.inQuestions || state.screen === 'questions') && typeof state.screen === 'number') {
         var screen = state.screen;
@@ -1499,6 +1662,59 @@
       updateTopProgress();
     }
 
+    function rcResolveSelectedStudio() {
+      if (guestSpotId) return rcDefaultStudio;
+      var answers = (typeof window.rcGetQuestionAnswers === 'function')
+        ? (window.rcGetQuestionAnswers() || {})
+        : {};
+      var selectedName = String(answers.__studio__ || answers['__studio__'] || '').trim();
+      if (!selectedName && Array.isArray(rcStudioChoices) && rcStudioChoices.length === 1) {
+        return rcStudioChoices[0];
+      }
+      if (selectedName && Array.isArray(rcStudioChoices)) {
+        for (var i = 0; i < rcStudioChoices.length; i++) {
+          if (String(rcStudioChoices[i].name || '') === selectedName) return rcStudioChoices[i];
+        }
+        return { name: selectedName, address: '', maps_link: '' };
+      }
+      return rcDefaultStudio;
+    }
+
+    function rcMapsHref(studio) {
+      var link = String((studio && studio.maps_link) || '').trim();
+      if (link) return link;
+      var addr = String((studio && studio.address) || '').trim();
+      var name = String((studio && studio.name) || '').trim();
+      var q = addr || name;
+      if (!q) return '';
+      return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+    }
+
+    function rcUpdateAvailLocation() {
+      var root = document.getElementById('rcAvailLoc');
+      if (!root || root.getAttribute('data-guest') === '1') return;
+      var studio = rcResolveSelectedStudio() || rcDefaultStudio;
+      var nameEl = document.getElementById('rcAvailLocName');
+      var addrEl = document.getElementById('rcAvailLocAddr');
+      var dirEl = document.getElementById('rcAvailLocDirections');
+      if (nameEl) nameEl.textContent = String(studio.name || rcDefaultStudio.name || 'Studio');
+      if (addrEl) {
+        var addr = String(studio.address || '').trim();
+        addrEl.textContent = addr;
+        addrEl.style.display = addr ? '' : 'none';
+      }
+      if (dirEl) {
+        var href = rcMapsHref(studio);
+        if (href) {
+          dirEl.href = href;
+          dirEl.style.display = '';
+        } else {
+          dirEl.removeAttribute('href');
+          dirEl.style.display = 'none';
+        }
+      }
+    }
+
     function showScreen(screenId, reverse) {
       document.querySelectorAll('.tf-screen').forEach(function(s) {
         s.classList.remove('active', 'reverse');
@@ -1511,6 +1727,7 @@
         if (reverse) target.classList.add('reverse');
       }
       updateBookingChrome();
+      if (screenId === 9) rcUpdateAvailLocation();
       if (screenId === 10) showRcRegScreen(currentReg);
       scheduleRcDraftSave();
       window.scrollTo({ top: 0 });
@@ -1944,7 +2161,13 @@
       if (errorMap[cid]) setRcManagedError(errorMap[cid], false);
     };
 
-    window.rcToggleTimePref = function(btn) { btn.classList.toggle('selected'); };
+    window.rcToggleTimePref = function(btn) {
+      var group = btn.parentElement;
+      if (!group) return;
+      var on = btn.classList.contains('selected');
+      group.querySelectorAll('.time-pref-pill').forEach(function(p) { p.classList.remove('selected'); });
+      if (!on) btn.classList.add('selected');
+    };
 
     window.rcToggleDayPref = function(btn) {
       btn.classList.toggle('selected');
@@ -1954,7 +2177,7 @@
     };
 
     function rcPrefRemoveBtnHtml() {
-      return '<button type="button" class="pref-remove-btn" onclick="rcRemovePreferenceBlock(this)" aria-label="Remove preference"><span class="material-symbols-outlined text-[16px]">close</span> Remove</button>';
+      return '<button type="button" class="pref-remove-btn" onclick="rcRemovePreferenceBlock(this)" aria-label="Remove preference"><span class="material-symbols-outlined">close</span></button>';
     }
 
     function rcApplyGuestPrefDateBounds(input) {
@@ -1981,12 +2204,12 @@
 
     function rcBuildPreferenceBlockHtml(num, deletable) {
       var req = num === 1 ? ' <span class="text-error">*</span>' : '';
-      var html = '<div class="pref-block-header"><p class="text-xs font-bold text-primary uppercase tracking-wider pref-block-label">Preference ' + num + req + '</p>';
+      var html = '<div class="pref-block-header"><p class="pref-block-label">Preference ' + num + req + '</p>';
       if (deletable) html += rcPrefRemoveBtnHtml();
-      html += '</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="rc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"';
+      html += '</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end"><div><label class="rc-avail-lbl f">Date</label><input type="date" class="in sm rc-pref-date"';
       if (guestPrefDateMin) html += ' min="' + guestPrefDateMin + '"';
       if (guestPrefDateMax) html += ' max="' + guestPrefDateMax + '"';
-      html += '></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label>' + RC_PREF_TIME_PILLS + '</div></div>';
+      html += '></div><div><label class="rc-avail-lbl f">Time of day</label>' + RC_PREF_TIME_PILLS + '</div></div>';
       return html;
     }
 
@@ -2239,35 +2462,87 @@
       return String(val || '—');
     }
 
+    function rcEscapeHtml(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function rcReviewWhereLabel() {
+      if (guestSpotId) {
+        // Match template: "{city} guest spot · {dates}"
+        var guestCity = @json(
+          !empty($guestSpot)
+            ? trim(collect([$guestSpot->city ?? null, $guestSpot->country ?? null])->filter()->implode(', '))
+            : ''
+        );
+        var guestDates = @json($guestSpotDateLabel ?? '');
+        var label = (guestCity ? guestCity + ' ' : '') + 'guest spot';
+        if (guestDates) label += ' · ' + guestDates;
+        return label;
+      }
+      var studio = (typeof rcResolveSelectedStudio === 'function')
+        ? rcResolveSelectedStudio()
+        : rcDefaultStudio;
+      var name = String((studio && studio.name) || rcDefaultStudio.name || 'Studio');
+      var addr = String((studio && studio.address) || '');
+      // Prefer city/country tail when address is long (template shows "Studio, City")
+      if (addr) {
+        var parts = addr.split(',').map(function(p) { return p.trim(); }).filter(Boolean);
+        if (parts.length >= 2) return name + ', ' + parts.slice(-2).join(', ');
+        return name + ', ' + addr;
+      }
+      return name;
+    }
+
     function buildReview() {
       collectData();
-      var items = [];
+      var rows = [];
+      rows.push({ label: 'Where', value: rcReviewWhereLabel() });
       if (typeof window.rcBuildStructuredQuestionAnswers === 'function') {
         var qa = window.rcBuildStructuredQuestionAnswers();
         Object.keys(qa).forEach(function(key) {
           var entry = qa[key];
           if (!entry) return;
-          items.push({ label: entry.question || 'Question', value: formatAnswer(entry.answer, entry.type) });
+          // Studio already shown in Where
+          if (String(entry.type || '') === 'studio' || String(key) === '__studio__') return;
+          var raw = formatAnswer(entry.answer, entry.type);
+          rows.push({
+            label: entry.question || 'Question',
+            value: raw,
+            empty: !raw || raw === '—' || raw === 'None'
+          });
         });
       }
-      items.push(
-        { label: 'Name', value: data.name || '—' },
-        { label: 'Email', value: data.email || '—' },
-        { label: 'Phone', value: data.phone || '—' }
+      buildRcManagedAvailabilityReviewLines().forEach(function(line) { rows.push(line); });
+      if (data.notes && String(data.notes).trim()) {
+        rows.push({ label: 'Additional notes', value: data.notes });
+      }
+      rows.push(
+        { label: 'Name', value: data.name || '' },
+        { label: 'Email', value: data.email || '' },
+        { label: 'Phone', value: data.phone || '' }
       );
-      buildRcManagedAvailabilityReviewLines().forEach(function(line) { items.push(line); });
-      items.push({ label: 'Additional Notes', value: data.notes || 'None' });
-      document.getElementById('reviewContent').innerHTML = items.map(function(i) {
-        var v = i.value.length > 80 ? i.value.slice(0, 80) + '…' : i.value;
-        return '<div class="review-row"><span class="text-sm text-on-surface-variant">' + i.label + '</span>' +
-          '<span class="text-sm font-semibold text-on-surface text-right max-w-[60%] break-words">' + v + '</span></div>';
+      document.getElementById('reviewContent').innerHTML = rows.map(function(i) {
+        var v = String(i.value == null ? '' : i.value);
+        if (v.length > 120) v = v.slice(0, 120) + '…';
+        var valueHtml = (!v || i.empty)
+          ? '<span class="faint">Not answered</span>'
+          : rcEscapeHtml(v);
+        return '<div class="r"><span>' + rcEscapeHtml(i.label) + '</span><span>' + valueHtml + '</span></div>';
       }).join('');
     }
 
     window.submitRequest = async function() {
       var errEl = document.getElementById('customSubmitError');
       var submitBtn = document.getElementById('btnSubmit');
-      if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+      if (errEl) {
+        errEl.classList.add('hidden');
+        var errText = errEl.querySelector('.js-custom-submit-error-text');
+        if (errText) errText.textContent = '';
+      }
 
       if (!rcOtpVerified) {
         syncRcOtpEmailFromForm();
@@ -2311,6 +2586,9 @@
         if (guestSpotId) {
           requestPayload.guest_id = guestSpotId;
         }
+        if (isWaitlistJoin) {
+          requestPayload.from_waitlist = true;
+        }
         var payload = {
           artist_username: @json($artistUsername ?? ''),
           request_payload: requestPayload
@@ -2340,11 +2618,13 @@
         document.getElementById('submitLoading').classList.add('hidden');
         document.getElementById('submitSuccess').classList.add('hidden');
         if (errEl) {
-          errEl.textContent = err.message || 'Unable to submit your request.';
+          var errText = errEl.querySelector('.js-custom-submit-error-text');
+          if (errText) errText.textContent = err.message || 'Unable to submit your request.';
+          else errEl.textContent = err.message || 'Unable to submit your request.';
           errEl.classList.remove('hidden');
         }
       } finally {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Request'; }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit request'; }
       }
     };
 
@@ -2358,7 +2638,7 @@
         if (screen === 'questions' || screen === '15' || screen === '16') return;
         if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
         if (screen === '10' && currentReg === 3) {
-          e.preventDefault();
+        e.preventDefault();
           if (rcOtpVerified) finishRcAuth();
           else verifyRcOtp();
           return;

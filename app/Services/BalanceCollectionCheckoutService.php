@@ -34,7 +34,8 @@ class BalanceCollectionCheckoutService
         }
 
         if ($collection->collection_type !== BalanceCollection::TYPE_PAYMENT_LINK
-            || ! $collection->payment_link_code) {
+            || ! $collection->payment_link_code
+            || $collection->isPaymentLinkExpired()) {
             throw new RuntimeException('This payment link is no longer available.');
         }
     }

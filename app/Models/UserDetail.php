@@ -36,7 +36,7 @@ class UserDetail extends Model
         'instagram_token_expires_at',
         'instagram_connected_at',
         'avatar',
-        'currency', 
+        'currency',
         'timezone',
         'date_time_format',
         'size_unit',
@@ -50,6 +50,7 @@ class UserDetail extends Model
         'cancellation_window',
         'reschedule_times',
         'session_buffer_period',
+        'travel_buffer_minutes',
         'require_consultation',
         'session_type',
         'session_duration_minutes',
@@ -57,24 +58,16 @@ class UserDetail extends Model
         'require_gap_between_consultation_tattoo',
         'consultation_tattoo_gap_value',
         'consultation_tattoo_gap_unit',
-        'stripe_account_id',
-        'stripe_requirement',
-        'payout_setup_reminder_sent_at',
-        'stripe_requirement_email_sent_at',
-        'payout_bank_country',
-        'payout_waiting_list_country',
-        'payout_waiting_list_at',
         'current_step',
         'completed_steps',
         'scheduling_type',
         'booking_fee_type',
-        'payment_type',
         'studio_id',
         'studio_revenue_artist_percent',
         'studio_relationship_type',
-        'payment_status',
-        'payout_mode',
         'availability_status',
+        'waitlist_signup_mode',
+        'guest_waitlist_auto_notify',
         'personal_page_background_image',
         'personal_page_color',
         'page_look_mode',
@@ -123,9 +116,9 @@ class UserDetail extends Model
         'design_whats_included' => 'array',
         'design_whats_included_is_active' => 'boolean',
         'aftercare_send_automatically' => 'boolean',
+        'guest_waitlist_auto_notify' => 'boolean',
         'aftercare_content' => 'array',
         'consent_questions_seeded_at' => 'datetime',
-        'stripe_requirement' => 'boolean',
         'color_percent' => 'float',
         'customize_page_notice_dismissed' => 'boolean',
         'welcome_seen_at' => 'datetime',
@@ -141,9 +134,6 @@ class UserDetail extends Model
         'page_box_opacity' => 'integer',
         'require_consultation' => 'boolean',
         'require_gap_between_consultation_tattoo' => 'boolean',
-        'payout_waiting_list_at' => 'datetime',
-        'payout_setup_reminder_sent_at' => 'datetime',
-        'stripe_requirement_email_sent_at' => 'datetime',
         'studio_revenue_artist_percent' => 'integer',
     ];
 
@@ -161,6 +151,15 @@ class UserDetail extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function activePayout(): ?UserPayout
+    {
+        if (! $this->user_id || ! Schema::hasTable('user_payouts')) {
+            return null;
+        }
+
+        return UserPayout::activeForUser((int) $this->user_id);
     }
 
     public function studio(): BelongsTo
@@ -181,7 +180,7 @@ class UserDetail extends Model
     }
 
     /**
-     * Studio membership used for payout (payout=true + studio_id).
+     * Studio membership used for payout (payout=true + studio_id + revenue_split).
      */
     public function payoutUserStudio(): ?UserStudio
     {
@@ -190,6 +189,14 @@ class UserDetail extends Model
         }
 
         return UserStudio::payoutLinkForUser((int) $this->user_id);
+    }
+
+    /**
+     * Direct vs studio revenue split — from user_studios, not user_details.payment_type.
+     */
+    public function resolvedPayoutPaymentType(): string
+    {
+        return $this->payoutUserStudio() ? 'studio_account' : 'artist_account';
     }
 
     /**
@@ -300,7 +307,12 @@ class UserDetail extends Model
                     }
                 }
 
-                return $stored;
+                // Column moved to user_studios — do not dirty a removed attribute.
+                if (! Schema::hasColumn($this->getTable(), 'studio_name')) {
+                    return [];
+                }
+
+                return ['studio_name' => $stored];
             },
         );
     }
@@ -346,6 +358,63 @@ class UserDetail extends Model
             trim((string) ($link?->city ?? $this->attributes['city'] ?? '')),
             trim((string) ($link?->country ?? $this->attributes['country'] ?? '')),
         ], fn (string $part) => $part !== '')));
+    }
+
+    /**
+     * Full public address line for booking UIs (UserStudio preferred — same as custom request).
+     */
+    public function publicStudioAddressLine(): string
+    {
+        $link = $this->activeUserStudio();
+        if ($link) {
+            $street = trim(trim((string) ($link->street_number ?? '')).' '.trim((string) ($link->street_name ?? '')));
+            if ($street === '') {
+                $street = trim((string) ($link->studio_address ?? ''));
+            }
+            $cityLine = implode(', ', array_filter([
+                trim((string) ($link->postal_code ?? '')),
+                trim((string) ($link->city ?? '')),
+                trim((string) ($link->country ?? '')),
+            ]));
+
+            return trim(implode(', ', array_filter([$street, $cityLine])));
+        }
+
+        return trim(implode(', ', array_filter([
+            trim((string) ($this->attributes['studio_address'] ?? '')),
+            trim((string) ($this->attributes['city'] ?? '')),
+            trim((string) ($this->attributes['country'] ?? '')),
+        ])));
+    }
+
+    /**
+     * Google Maps link for public booking UIs; falls back to a maps search for the address.
+     */
+    public function publicStudioMapsLink(): string
+    {
+        $link = $this->activeUserStudio();
+        $url = trim((string) ($link?->google_maps_link ?? ''));
+        if ($url === '' && $link?->studio_id) {
+            $url = trim((string) ($link->studio?->google_maps_link
+                ?? Studio::query()->whereKey($link->studio_id)->value('google_maps_link')
+                ?? ''));
+        }
+        if ($url === '') {
+            $url = trim((string) ($this->attributes['google_maps_link'] ?? ''));
+        }
+        if ($url !== '') {
+            return $url;
+        }
+
+        $query = $this->publicStudioAddressLine();
+        if ($query === '') {
+            $query = $this->resolvedStudioName();
+        }
+        if ($query === '') {
+            return '';
+        }
+
+        return 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($query);
     }
 
     /**

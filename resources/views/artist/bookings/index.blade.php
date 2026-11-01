@@ -1,10 +1,50 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
 @section('title', 'Bookings')
 
+@php
+  $activeNav = 'bookings';
+@endphp
+
 @section('styles')
+@include('artist.partials.payment-link-modal-styles')
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          'surface-container-high': '#ece6ef',
+          'surface-container-lowest': '#ffffff',
+          'surface-container': '#f2ecf5',
+          'background': '#fdf7ff',
+          'primary': '#1a1a1a',
+          'surface-dim': '#ded8e1',
+          'on-surface-variant': '#494552',
+          'surface-container-low': '#f8f1fb',
+          'surface': '#fdf7ff',
+          'outline': '#7a7583',
+          'error-container': '#ffdad6',
+          'error': '#ba1a1a',
+          'on-primary': '#ffffff',
+          'primary-container': '#333333',
+          'on-surface': '#1c1b21',
+          'outline-variant': '#cac4d3',
+          'on-background': '#1c1b21',
+          'surface-variant': '#e6e0ea'
+        }
+      }
+    }
+  };
+</script>
 <style>
-  .artist-bdm { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+  .material-symbols-outlined{
+    font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;
+    display:inline-block;-webkit-font-smoothing:antialiased;
+    font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;vertical-align:middle
+  }
+  .artist-bdm { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); padding: 24px; align-items: center; justify-content: center; overflow: hidden; }
   .artist-bdm.artist-bdm-open { pointer-events: auto; opacity: 1; }
   .artist-bdm-backdrop {
     opacity: 0;
@@ -12,6 +52,11 @@
   }
   .artist-bdm.artist-bdm-open .artist-bdm-backdrop { opacity: 1; }
   .artist-bdm-panel {
+    display: flex; flex-direction: column;
+    width: 600px; max-width: 100%;
+    max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px);
+    background: #fff; border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25); overflow: hidden;
     opacity: 0;
     transform: translateY(1rem) scale(0.97);
     transition: opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1), transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
@@ -24,6 +69,101 @@
   .artist-bdm-panel { pointer-events: none; }
   .artist-bdm.artist-bdm-open .artist-bdm-backdrop,
   .artist-bdm.artist-bdm-open .artist-bdm-panel { pointer-events: auto; }
+  .artist-bdm .abdm-mh{padding:22px 24px 14px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #F0EAF2;flex-shrink:0}
+  .artist-bdm .abdm-mh h2{font-size:20px;font-weight:800;letter-spacing:-.3px;color:#1A1A1A;margin:0}
+  .artist-bdm .abdm-mb{padding:16px 24px 20px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .artist-bdm .abdm-mf{padding:14px 24px;border-top:1px solid #F0EAF2;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FCFAFD;flex-shrink:0;flex-wrap:nowrap}
+  .artist-bdm .abdm-tabs{display:flex;gap:28px;border-bottom:1px solid #E8DFEA;margin:0 0 16px;overflow-x:auto}
+  .artist-bdm .abdm-tabs button{padding:0 2px 12px;font-weight:600;color:#6F6874;font-size:14.5px;background:none;border:0;cursor:pointer;flex-shrink:0;white-space:nowrap}
+  .artist-bdm .abdm-tabs button.on{color:#1A1A1A;box-shadow:inset 0 -2.5px 0 #1A1A1A}
+  .artist-bdm .abdm-kv{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #F3EEF4;font-size:13.5px}
+  .artist-bdm .abdm-kv > span:first-child{color:#6F6874}
+  .artist-bdm .abdm-kv > span:last-child{font-weight:600;text-align:right;color:#1A1A1A}
+  .artist-bdm .abdm-btn{display:inline-flex;align-items:center;gap:8px;background:#1A1A1A;color:#fff;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13.5px;white-space:nowrap;border:0;cursor:pointer;font:inherit;text-decoration:none}
+  .artist-bdm .abdm-btn .material-symbols-outlined{font-size:18px}
+  .artist-bdm .abdm-btn.ghost{background:#fff;color:#1A1A1A;border:1px solid #E8DFEA}
+  .artist-bdm .abdm-btn.confirm{background:#1F6B4E}
+  .artist-bdm .abdm-btn:disabled,.artist-bdm .abdm-btn[aria-disabled="true"]{opacity:.45;pointer-events:none;cursor:not-allowed}
+  .artist-bdm .abdm-pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;font-size:11.5px;font-weight:600;padding:3px 9px;white-space:nowrap}
+  .artist-bdm .abdm-pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+  .artist-bdm .abdm-pill.g{background:#E6F8EE;color:#00A650}
+  .artist-bdm .abdm-pill.a{background:#FFF3DE;color:#B86E00}
+  .artist-bdm .abdm-pill.r{background:#FDECEC;color:#C62828}
+  .artist-bdm .abdm-pill.k{background:#F0EDF2;color:#6F6874}
+  .artist-bdm .abdm-pill.b{background:#E8F0FF;color:#1E5BD8}
+  .artist-bdm .abdm-grid2{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
+  .artist-bdm .abdm-sect{margin:18px 0 0;background:#fff}
+  .artist-bdm .abdm-tint{background:#FAF0FB;border:1px solid #F1E7F3;border-radius:16px;padding:10px 12px;font-size:12.5px;line-height:1.6}
+  .artist-bdm .abdm-faint{color:#9A929E}
+  .artist-bdm .abdm-muted{color:#6F6874}
+  @media (max-width:900px){
+    .artist-bdm{padding:12px}
+    .artist-bdm-panel{width:100%;max-height:calc(100dvh - 24px);border-radius:16px}
+    .artist-bdm .abdm-grid2{grid-template-columns:1fr}
+    .artist-bdm .abdm-mf{padding:12px 14px;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .artist-bdm .abdm-mf .abdm-btn{flex:0 0 auto;padding:9px 12px;font-size:12.5px}
+  }
+  .artist-msm{pointer-events:none;opacity:0;transition:opacity .28s cubic-bezier(.22,1,.36,1);padding:24px;align-items:center;justify-content:center;overflow:hidden}
+  .artist-msm.artist-msm-open{pointer-events:auto;opacity:1}
+  .artist-msm-backdrop{opacity:0;transition:opacity .32s cubic-bezier(.22,1,.36,1)}
+  .artist-msm.artist-msm-open .artist-msm-backdrop{opacity:1}
+  .artist-msm-panel{
+    display:flex;flex-direction:column;width:600px;max-width:100%;
+    max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+    background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;
+    opacity:0;transform:translateY(1rem) scale(.97);
+    transition:opacity .32s cubic-bezier(.22,1,.36,1),transform .36s cubic-bezier(.22,1,.36,1)
+  }
+  .artist-msm.artist-msm-open .artist-msm-panel{opacity:1;transform:translateY(0) scale(1)}
+  .artist-msm-backdrop,.artist-msm-panel{pointer-events:none}
+  .artist-msm.artist-msm-open .artist-msm-backdrop,
+  .artist-msm.artist-msm-open .artist-msm-panel{pointer-events:auto}
+  .artist-msm .amm-mh{padding:20px 22px 14px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #F0EAF2;flex-shrink:0;gap:12px}
+  .artist-msm .amm-mh h2{font-size:18px;font-weight:800;letter-spacing:-.3px;color:#1A1A1A;margin:0}
+  .artist-msm .amm-sub{font-size:12.5px;color:#6F6874;margin-top:4px}
+  .artist-msm .amm-ini{width:40px;height:40px;border-radius:50%;background:#1A1A1A;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .artist-msm .amm-mb{padding:16px 20px;flex:1 1 auto;min-height:220px;max-height:360px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;justify-content:flex-end}
+  .artist-msm .amm-bubble-other{align-self:flex-start;max-width:78%;background:#F4F0F6;border-radius:14px 14px 14px 4px;padding:10px 14px;font-size:13.5px;color:#1A1A1A;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+  .artist-msm .amm-bubble-self{align-self:flex-end;max-width:78%;background:#3E007C;color:#fff;border-radius:14px 14px 4px 14px;padding:10px 14px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+  .artist-msm .amm-empty{align-self:stretch;display:flex;align-items:center;justify-content:center;min-height:160px;color:#6F6874;font-size:13.5px;text-align:center;padding:12px}
+  .artist-msm .amm-composer{padding:12px 20px;border-top:1px solid #E8DFEA;display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .artist-msm .amm-in{
+    flex:1;min-width:0;background:#fff;border:1px solid #E8DFEA;border-radius:10px;padding:10px 13px;
+    display:flex;align-items:center;gap:8px;min-height:40px;box-shadow:none
+  }
+  .artist-msm .amm-in:focus-within{border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF}
+  .artist-msm .amm-in input,
+  .artist-msm .amm-in input[type="text"],
+  .artist-msm #ammInput{
+    appearance:none;-webkit-appearance:none;
+    border:0!important;outline:0!important;box-shadow:none!important;
+    font:inherit;flex:1;min-width:0;background:transparent!important;color:#1A1A1A;
+    padding:0!important;margin:0!important;width:100%;min-height:0;line-height:1.4;border-radius:0
+  }
+  .artist-msm .amm-in input:focus,
+  .artist-msm .amm-in input:focus-visible,
+  .artist-msm #ammInput:focus,
+  .artist-msm #ammInput:focus-visible{
+    border:0!important;outline:0!important;box-shadow:none!important
+  }
+  .artist-msm .amm-in input:disabled{color:#9A929E}
+  .artist-msm .amm-locked{display:none;width:100%;align-items:center;gap:8px;color:#6F6874;font-size:13px}
+  .artist-msm.amm-readonly .amm-locked{display:flex}
+  .artist-msm.amm-readonly .amm-input-wrap{display:none}
+  .artist-msm.amm-readonly #ammSendBtn{display:none!important}
+  .artist-msm .amm-mf{padding:14px 22px;border-top:1px solid #F0EAF2;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FCFAFD;flex-shrink:0}
+  .artist-msm .amm-btn{display:inline-flex;align-items:center;gap:8px;background:#1A1A1A;color:#fff;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13.5px;white-space:nowrap;border:0;cursor:pointer;font:inherit;text-decoration:none}
+  .artist-msm .amm-btn .material-symbols-outlined,.artist-msm .amm-btn .ms{font-size:18px}
+  .artist-msm .amm-btn.ghost{background:#fff;color:#1A1A1A;border:1px solid #E8DFEA}
+  .artist-msm .amm-btn:disabled{opacity:.45;pointer-events:none;cursor:not-allowed}
+  .artist-msm .amm-send-ico{padding:10px 12px}
+  .artist-msm .amm-faint{color:#9A929E}
+  @media (max-width:900px){
+    .artist-msm{padding:12px}
+    .artist-msm-panel{width:100%;max-height:calc(100dvh - 24px);border-radius:16px}
+    .artist-msm .amm-mb{max-height:none;min-height:180px}
+    .artist-msm .amm-mf{padding:12px 14px;gap:8px;flex-wrap:wrap}
+  }
   .artist-cbm { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
   .artist-cbm.artist-cbm-open { pointer-events: auto; opacity: 1; }
   .artist-cbm-backdrop {
@@ -44,14 +184,72 @@
   .artist-cbm-panel { pointer-events: none; }
   .artist-cbm.artist-cbm-open .artist-cbm-backdrop,
   .artist-cbm.artist-cbm-open .artist-cbm-panel { pointer-events: auto; }
-  .artist-rsm { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
-  .artist-rsm.artist-rsm-open { pointer-events: auto; opacity: 1; }
-  .artist-rsm-backdrop { opacity: 0; transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
-  .artist-rsm.artist-rsm-open .artist-rsm-backdrop { opacity: 1; }
-  .artist-rsm-panel { opacity: 0; transform: translateY(1rem) scale(0.97); transition: opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1), transform 0.36s cubic-bezier(0.22, 1, 0.36, 1); }
-  .artist-rsm.artist-rsm-open .artist-rsm-panel { opacity: 1; transform: translateY(0) scale(1); }
-  .artist-rsm-backdrop, .artist-rsm-panel { pointer-events: none; }
-  .artist-rsm.artist-rsm-open .artist-rsm-backdrop, .artist-rsm.artist-rsm-open .artist-rsm-panel { pointer-events: auto; }
+  .artist-rsm{pointer-events:none;opacity:0;transition:opacity .28s cubic-bezier(.22,1,.36,1);padding:24px;align-items:center;justify-content:center;overflow:hidden}
+  .artist-rsm.artist-rsm-open{pointer-events:auto;opacity:1}
+  .artist-rsm-backdrop{opacity:0;transition:opacity .32s cubic-bezier(.22,1,.36,1)}
+  .artist-rsm.artist-rsm-open .artist-rsm-backdrop{opacity:1}
+  .artist-rsm-panel{
+    display:flex;flex-direction:column;width:600px;max-width:100%;
+    max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+    background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;
+    opacity:0;transform:translateY(1rem) scale(.97);
+    transition:opacity .32s cubic-bezier(.22,1,.36,1),transform .36s cubic-bezier(.22,1,.36,1)
+  }
+  .artist-rsm.artist-rsm-open .artist-rsm-panel{opacity:1;transform:translateY(0) scale(1)}
+  .artist-rsm-backdrop,.artist-rsm-panel{pointer-events:none}
+  .artist-rsm.artist-rsm-open .artist-rsm-backdrop,
+  .artist-rsm.artist-rsm-open .artist-rsm-panel{pointer-events:auto}
+  .artist-rsm .arsm-mh{padding:22px 24px 16px;border-bottom:1px solid #F0EAF2;flex-shrink:0}
+  .artist-rsm .arsm-topline{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .artist-rsm .arsm-ic{
+    width:38px;height:38px;border-radius:10px;background:#F3E8FF;color:#3E007C;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0
+  }
+  .artist-rsm .arsm-ic .material-symbols-outlined{font-size:22px;color:#3E007C}
+  .artist-rsm .arsm-mh h2{font-size:20px;font-weight:800;letter-spacing:-.3px;color:#1A1A1A;margin:0}
+  .artist-rsm .arsm-lead{color:#6F6874;font-size:13.5px;line-height:1.5;margin:6px 0 0}
+  .artist-rsm .arsm-lead strong{color:#1A1A1A;font-weight:700}
+  .artist-rsm .arsm-mb{padding:16px 24px 20px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .artist-rsm .arsm-mf{padding:14px 24px;border-top:1px solid #F0EAF2;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FCFAFD;flex-shrink:0}
+  .artist-rsm .arsm-btn{display:inline-flex;align-items:center;gap:8px;background:#1A1A1A;color:#fff;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13.5px;white-space:nowrap;border:0;cursor:pointer;font:inherit;text-decoration:none}
+  .artist-rsm .arsm-btn .material-symbols-outlined{font-size:18px}
+  .artist-rsm .arsm-btn.ghost{background:#fff;color:#1A1A1A;border:1px solid #E8DFEA}
+  .artist-rsm .arsm-btn:disabled{opacity:.45;pointer-events:none;cursor:not-allowed}
+  .artist-rsm .arsm-faint{color:#9A929E}
+  .artist-rsm .arsm-card{
+    display:flex;align-items:center;gap:12px;background:#FAF0FB;border:1px solid #F1E7F3;
+    border-radius:12px;padding:12px 14px;margin:0 0 18px
+  }
+  .artist-rsm .arsm-ini{
+    width:36px;height:36px;border-radius:50%;background:#1A1A1A;color:#fff;font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0
+  }
+  .artist-rsm .arsm-card-main{flex:1;min-width:0}
+  .artist-rsm .arsm-card-title{font-size:13.5px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .artist-rsm .arsm-card-meta{font-size:12px;color:#6F6874;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .artist-rsm .arsm-pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;font-size:11.5px;font-weight:600;padding:3px 9px;white-space:nowrap;flex-shrink:0}
+  .artist-rsm .arsm-pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+  .artist-rsm .arsm-pill.g{background:#E6F8EE;color:#00A650}
+  .artist-rsm .arsm-pill.a{background:#FFF3DE;color:#B86E00}
+  .artist-rsm .arsm-pill.r{background:#FDECEC;color:#C62828}
+  .artist-rsm .arsm-pill.k{background:#F0EDF2;color:#6F6874}
+  .artist-rsm .arsm-pill.b{background:#E8F0FF;color:#1E5BD8}
+  .artist-rsm .arsm-fl{font-size:13px;font-weight:700;color:#1A1A1A;margin:0 0 6px;display:block}
+  .artist-rsm .arsm-ta{
+    width:100%;min-height:110px;resize:vertical;box-sizing:border-box;
+    background:#fff;border:1px solid #E8DFEA;border-radius:10px;padding:10px 13px;
+    font:inherit;font-size:13.5px;color:#1A1A1A;outline:none;line-height:1.45;box-shadow:none
+  }
+  .artist-rsm .arsm-ta:focus,.artist-rsm .arsm-ta:focus-visible{border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF;outline:0}
+  .artist-rsm .arsm-help{font-size:12px;color:#9A929E;margin:6px 0 0}
+  .artist-rsm .arsm-err{display:none;margin-top:8px;font-size:12.5px;font-weight:600;color:#C62828}
+  .artist-rsm .arsm-err.on{display:block}
+  @media (max-width:900px){
+    .artist-rsm{padding:12px}
+    .artist-rsm-panel{width:100%;max-height:calc(100dvh - 24px);border-radius:16px}
+    .artist-rsm .arsm-mf{padding:12px 14px;gap:8px}
+    .artist-rsm .arsm-card{flex-wrap:wrap}
+  }
   .artist-complete-modal { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
   .artist-complete-modal.artist-complete-open { pointer-events: auto; opacity: 1; }
   .artist-complete-backdrop { opacity: 0; transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
@@ -60,14 +258,114 @@
   .artist-complete-modal.artist-complete-open .artist-complete-panel { opacity: 1; transform: translateY(0) scale(1); }
   .artist-complete-backdrop, .artist-complete-panel { pointer-events: none; }
   .artist-complete-modal.artist-complete-open .artist-complete-backdrop, .artist-complete-modal.artist-complete-open .artist-complete-panel { pointer-events: auto; }
-  .artist-rpm { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
-  .artist-rpm.artist-rpm-open { pointer-events: auto; opacity: 1; }
-  .artist-rpm-backdrop { opacity: 0; transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
-  .artist-rpm.artist-rpm-open .artist-rpm-backdrop { opacity: 1; }
-  .artist-rpm-panel { opacity: 0; transform: translateY(1rem) scale(0.97); transition: opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1), transform 0.36s cubic-bezier(0.22, 1, 0.36, 1); }
-  .artist-rpm.artist-rpm-open .artist-rpm-panel { opacity: 1; transform: translateY(0) scale(1); }
-  .artist-rpm-backdrop, .artist-rpm-panel { pointer-events: none; }
-  .artist-rpm.artist-rpm-open .artist-rpm-backdrop, .artist-rpm.artist-rpm-open .artist-rpm-panel { pointer-events: auto; }
+  .artist-rpm{pointer-events:none;opacity:0;transition:opacity .28s cubic-bezier(.22,1,.36,1);padding:24px;align-items:center;justify-content:center;overflow:hidden}
+  .artist-rpm.artist-rpm-open{pointer-events:auto;opacity:1}
+  .artist-rpm-backdrop{opacity:0;transition:opacity .32s cubic-bezier(.22,1,.36,1)}
+  .artist-rpm.artist-rpm-open .artist-rpm-backdrop{opacity:1}
+  .artist-rpm-panel{
+    display:flex;flex-direction:column;width:600px;max-width:100%;
+    max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+    background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;
+    opacity:0;transform:translateY(1rem) scale(.97);
+    transition:opacity .32s cubic-bezier(.22,1,.36,1),transform .36s cubic-bezier(.22,1,.36,1)
+  }
+  .artist-rpm.artist-rpm-open .artist-rpm-panel{opacity:1;transform:translateY(0) scale(1)}
+  .artist-rpm-backdrop,.artist-rpm-panel{pointer-events:none}
+  .artist-rpm.artist-rpm-open .artist-rpm-backdrop,
+  .artist-rpm.artist-rpm-open .artist-rpm-panel{pointer-events:auto}
+  .artist-rpm .rpm-mh{padding:22px 24px 16px;border-bottom:1px solid #F0EAF2;flex-shrink:0}
+  .artist-rpm .rpm-topline{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .artist-rpm .rpm-mh h2{font-size:20px;font-weight:800;letter-spacing:-.3px;color:#1A1A1A;margin:0}
+  .artist-rpm .rpm-lead{color:#6F6874;font-size:13.5px;line-height:1.5;margin:6px 0 0}
+  .artist-rpm .rpm-mb{padding:16px 24px 20px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .artist-rpm .rpm-mf{padding:14px 24px;border-top:1px solid #F0EAF2;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#FCFAFD;flex-shrink:0}
+  .artist-rpm .rpm-footer-hint{flex:1;min-width:0;font-size:12.5px;color:#6F6874;line-height:1.4;max-width:260px}
+  .artist-rpm .rpm-mf-actions{display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:auto}
+  .artist-rpm .rpm-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#1A1A1A;color:#fff;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13.5px;white-space:nowrap;border:0;cursor:pointer;font:inherit;text-decoration:none}
+  .artist-rpm .rpm-btn .material-symbols-outlined{font-size:18px}
+  .artist-rpm .rpm-btn.ghost{background:#fff;color:#1A1A1A;border:1px solid #E8DFEA}
+  .artist-rpm .rpm-btn.green{background:#1F6B4E;color:#fff}
+  .artist-rpm .rpm-btn:disabled{opacity:.45;pointer-events:none;cursor:not-allowed}
+  .artist-rpm .rpm-faint{color:#9A929E}
+  .artist-rpm .rpm-card{
+    display:flex;align-items:center;gap:12px;background:#FAF0FB;border:1px solid #F1E7F3;
+    border-radius:12px;padding:12px 14px;margin:0 0 14px
+  }
+  .artist-rpm .rpm-ini{
+    width:36px;height:36px;border-radius:50%;background:#1A1A1A;color:#fff;font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0
+  }
+  .artist-rpm .rpm-card-main{flex:1;min-width:0}
+  .artist-rpm .rpm-card-title{font-size:13.5px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .artist-rpm .rpm-card-meta{font-size:12px;color:#6F6874;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .artist-rpm .rpm-pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;font-size:11.5px;font-weight:600;padding:3px 9px;white-space:nowrap;flex-shrink:0}
+  .artist-rpm .rpm-pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+  .artist-rpm .rpm-pill.g{background:#E6F8EE;color:#00A650}
+  .artist-rpm .rpm-pill.a{background:#FFF3DE;color:#B86E00}
+  .artist-rpm .rpm-pill.r{background:#FDECEC;color:#C62828}
+  .artist-rpm .rpm-pill.k{background:#F0EDF2;color:#6F6874}
+  .artist-rpm .rpm-pill.b{background:#E8F0FF;color:#1E5BD8}
+  .artist-rpm .rpm-settle{background:#FFF8EE;border:1px solid #F2D39A;border-radius:12px;padding:14px;margin:0 0 14px}
+  .artist-rpm .rpm-settle-bal{font-size:13.5px;font-weight:700;color:#8A5A12;margin:0 0 4px}
+  .artist-rpm .rpm-settle-q{font-size:13px;color:#8A5A12;margin:0 0 12px}
+  .artist-rpm .rpm-opts{display:flex;flex-direction:column;gap:10px}
+  .artist-rpm .rpm-opt-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .artist-rpm .rpm-option{background:none;border:0;padding:0;cursor:pointer;font:inherit;text-align:left}
+  .artist-rpm .rpm-amount-chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:4px 10px;flex-shrink:0}
+  .artist-rpm .rpm-amount-chip.hidden{display:none!important}
+  .artist-rpm .rpm-amount-chip .amt{font-size:12px;font-weight:700;color:#1A1A1A;tabular-nums:true}
+  .artist-rpm .rpm-amount-chip input{
+    width:64px;border:0;outline:0;background:transparent;font:inherit;font-size:12px;font-weight:700;color:#1A1A1A;padding:0;margin:0
+  }
+  .artist-rpm .rpm-amount-chip .edit{background:none;border:0;padding:0;font:inherit;font-size:11px;font-weight:700;color:#1E5BD8;cursor:pointer}
+  .artist-rpm .rpm-hint{font-size:11.5px;color:#8A5A12;white-space:nowrap}
+  .artist-rpm .rpm-fl{font-size:13px;font-weight:700;color:#1A1A1A;margin:0 0 6px;display:block}
+  .artist-rpm .rpm-help{font-size:13px;color:#6F6874;line-height:1.45;margin:0 0 10px}
+  .artist-rpm .rpm-duration-help{font-size:12px;color:#9A929E;margin:8px 0 0;line-height:1.4}
+  .artist-rpm .rpm-in{
+    width:100%;box-sizing:border-box;background:#fff;border:1px solid #E8DFEA;border-radius:10px;
+    padding:10px 13px;font:inherit;font-size:13.5px;color:#1A1A1A;outline:none
+  }
+  .artist-rpm select.rpm-in{
+    display:block;appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    background-color:#fff;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239A929E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;cursor:pointer
+  }
+  .artist-rpm .rpm-in:focus{border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF}
+  .artist-rpm .rpm-in.border-error{border-color:#C62828!important;box-shadow:0 0 0 3px #FDECEC}
+  .artist-rpm .rpm-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .artist-rpm .rpm-muted{font-size:12px;color:#6F6874;margin:0 0 6px;display:block}
+  .artist-rpm .rpm-when{display:flex;flex-wrap:wrap;gap:8px}
+  .artist-rpm .rpm-when-chip{
+    border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font:inherit;
+    background:#fff;border:1px solid #E8DFEA;color:#1A1A1A
+  }
+  .artist-rpm .rpm-when-chip[aria-pressed="true"]{background:#F3E8FF;border-color:#3E007C;color:#3E007C}
+  .artist-rpm .rpm-err{display:none;margin-top:8px;font-size:12.5px;font-weight:600;color:#C62828}
+  .artist-rpm .rpm-err:not(.hidden){display:block}
+  .artist-rpm .rpm-field-err{display:none;margin-top:6px;font-size:12px;font-weight:600;color:#C62828;text-align:right}
+  .artist-rpm .rpm-field-err:not(.hidden){display:block}
+  .artist-rpm .rpm-link-meta{font-size:13.5px;color:#6F6874;line-height:1.45;margin:0 0 14px}
+  .artist-rpm .rpm-box{border:1px solid #E8DFEA;border-radius:10px;padding:12px 14px;background:#fff;margin:0 0 12px}
+  .artist-rpm .rpm-box b{font-size:15px;font-weight:800;color:#1A1A1A}
+  .artist-rpm .rpm-msg{border:1px solid #E8DFEA;border-radius:10px;padding:12px 14px;background:#fff;font-size:13.5px;line-height:1.5;color:#1A1A1A;margin:0 0 12px}
+  .artist-rpm .rpm-link-actions{display:flex;flex-direction:column;gap:8px;margin:0 0 14px}
+  .artist-rpm .rpm-link-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .artist-rpm .rpm-qr{display:none;border:1px solid #E8DFEA;border-radius:12px;padding:16px;background:#fff;flex-direction:column;align-items:center;text-align:center}
+  .artist-rpm .rpm-qr:not(.hidden){display:flex}
+  .artist-rpm .rpm-qr img{width:180px;height:180px;object-fit:contain;display:block}
+  .artist-rpm .rpm-qr p{margin:10px 0 0;font-size:12px;color:#6F6874}
+  .artist-rpm .rpm-notes{font-size:13px;color:#6F6874;line-height:1.5}
+  .artist-rpm .rpm-notes p{margin:0 0 4px}
+  .artist-rpm .rpm-notes .ok{font-weight:700;color:#1F6B4E}
+  @media (max-width:900px){
+    .artist-rpm{padding:12px}
+    .artist-rpm-panel{width:100%;max-height:calc(100dvh - 24px);border-radius:16px}
+    .artist-rpm .rpm-mf{padding:12px 14px;flex-wrap:wrap}
+    .artist-rpm .rpm-card{flex-wrap:wrap}
+    .artist-rpm .rpm-grid2,.artist-rpm .rpm-link-row{grid-template-columns:1fr}
+  }
   .artist-urm { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
   .artist-urm.artist-urm-open { pointer-events: auto; opacity: 1; }
   .artist-urm-backdrop { opacity: 0; transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
@@ -84,19 +382,93 @@
   .artist-cdm.artist-cdm-open .artist-cdm-panel { opacity: 1; transform: translateY(0) scale(1); }
   .artist-cdm-backdrop, .artist-cdm-panel { pointer-events: none; }
   .artist-cdm.artist-cdm-open .artist-cdm-backdrop, .artist-cdm.artist-cdm-open .artist-cdm-panel { pointer-events: auto; }
-  .artist-cpm { pointer-events: none; opacity: 0; transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
-  .artist-cpm.artist-cpm-open { pointer-events: auto; opacity: 1; }
-  .artist-cpm-backdrop { opacity: 0; transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
-  .artist-cpm.artist-cpm-open .artist-cpm-backdrop { opacity: 1; }
-  .artist-cpm-panel { opacity: 0; transform: translateY(1rem) scale(0.97); transition: opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1), transform 0.36s cubic-bezier(0.22, 1, 0.36, 1); }
-  .artist-cpm.artist-cpm-open .artist-cpm-panel { opacity: 1; transform: translateY(0) scale(1); }
-  .artist-cpm-backdrop, .artist-cpm-panel { pointer-events: none; }
-  .artist-cpm.artist-cpm-open .artist-cpm-backdrop, .artist-cpm.artist-cpm-open .artist-cpm-panel { pointer-events: auto; }
+  .artist-cpm{pointer-events:none;opacity:0;transition:opacity .28s cubic-bezier(.22,1,.36,1);padding:24px;align-items:center;justify-content:center;overflow:hidden}
+  .artist-cpm.artist-cpm-open{pointer-events:auto;opacity:1}
+  .artist-cpm-backdrop{opacity:0;transition:opacity .32s cubic-bezier(.22,1,.36,1)}
+  .artist-cpm.artist-cpm-open .artist-cpm-backdrop{opacity:1}
+  .artist-cpm-panel{
+    display:flex;flex-direction:column;width:600px;max-width:100%;
+    max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+    background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;
+    opacity:0;transform:translateY(1rem) scale(.97);
+    transition:opacity .32s cubic-bezier(.22,1,.36,1),transform .36s cubic-bezier(.22,1,.36,1)
+  }
+  .artist-cpm.artist-cpm-open .artist-cpm-panel{opacity:1;transform:translateY(0) scale(1)}
+  .artist-cpm-backdrop,.artist-cpm-panel{pointer-events:none}
+  .artist-cpm.artist-cpm-open .artist-cpm-backdrop,
+  .artist-cpm.artist-cpm-open .artist-cpm-panel{pointer-events:auto}
+  .artist-cpm .acpm-mh{padding:22px 24px 16px;border-bottom:1px solid #F0EAF2;flex-shrink:0}
+  .artist-cpm .acpm-topline{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .artist-cpm .acpm-ic{
+    width:38px;height:38px;border-radius:10px;background:#FFF3DE;color:#B86E00;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0
+  }
+  .artist-cpm .acpm-ic .material-symbols-outlined{font-size:22px;color:#B86E00}
+  .artist-cpm .acpm-mh h2{font-size:20px;font-weight:800;letter-spacing:-.3px;color:#1A1A1A;margin:0}
+  .artist-cpm .acpm-lead{color:#6F6874;font-size:13.5px;line-height:1.5;margin:6px 0 0}
+  .artist-cpm .acpm-mb{padding:16px 24px 20px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .artist-cpm .acpm-mf{padding:14px 24px;border-top:1px solid #F0EAF2;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FCFAFD;flex-shrink:0}
+  .artist-cpm .acpm-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#1A1A1A;color:#fff;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13.5px;white-space:nowrap;border:0;cursor:pointer;font:inherit;text-decoration:none}
+  .artist-cpm .acpm-btn .material-symbols-outlined{font-size:18px}
+  .artist-cpm .acpm-btn.ghost{background:#fff;color:#1A1A1A;border:1px solid #E8DFEA}
+  .artist-cpm .acpm-btn.green{background:#1F6B4E;color:#fff}
+  .artist-cpm .acpm-btn:disabled{opacity:.45;pointer-events:none;cursor:not-allowed}
+  .artist-cpm .acpm-faint{color:#9A929E}
+  .artist-cpm .acpm-card{
+    display:flex;align-items:center;gap:12px;background:#FAF0FB;border:1px solid #F1E7F3;
+    border-radius:12px;padding:12px 14px;margin:0 0 12px
+  }
+  .artist-cpm .acpm-ini{
+    width:36px;height:36px;border-radius:50%;background:#1A1A1A;color:#fff;font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0
+  }
+  .artist-cpm .acpm-card-main{flex:1;min-width:0}
+  .artist-cpm .acpm-card-title{font-size:13.5px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .artist-cpm .acpm-card-meta{font-size:12px;color:#6F6874;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .artist-cpm .acpm-pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;font-size:11.5px;font-weight:600;padding:3px 9px;white-space:nowrap;flex-shrink:0}
+  .artist-cpm .acpm-pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+  .artist-cpm .acpm-pill.g{background:#E6F8EE;color:#00A650}
+  .artist-cpm .acpm-pill.a{background:#FFF3DE;color:#B86E00}
+  .artist-cpm .acpm-pill.r{background:#FDECEC;color:#C62828}
+  .artist-cpm .acpm-pill.k{background:#F0EDF2;color:#6F6874}
+  .artist-cpm .acpm-pill.b{background:#E8F0FF;color:#1E5BD8}
+  .artist-cpm .acpm-note{
+    display:none;align-items:center;gap:8px;background:#FFF8EE;border:1px solid #F2D39A;border-radius:10px;
+    padding:10px 12px;margin:0 0 16px;font-size:12.5px;font-weight:600;color:#8A5A12;line-height:1.4
+  }
+  .artist-cpm .acpm-note.on{display:flex}
+  .artist-cpm .acpm-note .material-symbols-outlined{font-size:18px;color:#B86E00;flex-shrink:0}
+  .artist-cpm .acpm-lbl{font-size:11px;letter-spacing:.8px;font-weight:700;color:#6F6874;text-transform:uppercase;margin:0 0 6px;display:block}
+  .artist-cpm .acpm-linkrow{display:flex;align-items:stretch;gap:8px;margin-bottom:12px}
+  .artist-cpm .acpm-link{
+    flex:1;min-width:0;background:#FBF8FC;border:1px solid #E8DFEA;border-radius:10px;padding:10px 13px;
+    font:inherit;font-size:13px;color:#1A1A1A;outline:none;box-shadow:none
+  }
+  .artist-cpm .acpm-link:focus{border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF}
+  .artist-cpm .acpm-actions{display:flex;gap:10px;margin-top:4px}
+  .artist-cpm .acpm-actions .acpm-btn{flex:1}
+  .artist-cpm .acpm-qr{display:none;margin-top:12px;border:1px solid #E8DFEA;border-radius:12px;padding:16px;background:#fff;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .artist-cpm .acpm-qr.on{display:flex}
+  .artist-cpm .acpm-qr img{width:180px;height:180px;object-fit:contain;background:#fff;border-radius:8px;display:block;margin:0 auto}
+  .artist-cpm .acpm-qr p{margin:10px 0 0;font-size:12px;color:#6F6874;text-align:center;width:100%}
+  .artist-cpm .acpm-status{display:none;margin-top:10px;font-size:12.5px;font-weight:600}
+  .artist-cpm .acpm-status.on{display:block}
+  .artist-cpm .acpm-status.ok{color:#1F6B4E}
+  .artist-cpm .acpm-status.err{color:#C62828}
+  @media (max-width:900px){
+    .artist-cpm{padding:12px}
+    .artist-cpm-panel{width:100%;max-height:calc(100dvh - 24px);border-radius:16px}
+    .artist-cpm .acpm-mf{padding:12px 14px}
+    .artist-cpm .acpm-card{flex-wrap:wrap}
+    .artist-cpm .acpm-actions{flex-direction:column}
+    .artist-cpm .acpm-linkrow{flex-direction:column}
+  }
   .rpm-option-dot { width: 18px; height: 18px; border-radius: 9999px; border: 2px solid #c9c4ce; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
   .rpm-option-dot::after { content: ''; width: 10px; height: 10px; border-radius: 9999px; background: transparent; }
-  .rpm-option[aria-checked="true"] .rpm-option-dot { border-color: #1b5e4a; }
-  .rpm-option[aria-checked="true"] .rpm-option-dot::after { background: #1b5e4a; }
-  .rpm-option[aria-checked="true"] .rpm-option-label { font-weight: 700; color: #1c1b21; }
+  .rpm-option .rpm-option-label { font-size: 13.5px; font-weight: 500; color: #1A1A1A; }
+  .rpm-option[aria-checked="true"] .rpm-option-dot { border-color: #1F6B4E; }
+  .rpm-option[aria-checked="true"] .rpm-option-dot::after { background: #1F6B4E; }
+  .rpm-option[aria-checked="true"] .rpm-option-label { font-weight: 700; color: #1A1A1A; }
   .acdm-age-toggle {
     position: relative;
     width: 40px;
@@ -130,563 +502,234 @@
     border-color: rgba(27, 94, 74, 0.25);
     background: rgba(234, 242, 239, 0.55);
   }
+  .bk-page .pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;font-size:11.5px;font-weight:600;padding:3px 9px;white-space:nowrap}
+  .bk-page .pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+  .bk-page .pill.g{background:#E6F8EE;color:#00A650}
+  .bk-page .pill.a{background:#FFF3DE;color:#B86E00}
+  .bk-page .pill.r{background:#FDECEC;color:#C62828}
+  .bk-page .pill.b{background:#E8F0FF;color:#1E5BD8}
+  .bk-page .pill.k{background:#F0EDF2;color:#6F6874}
+  .bk-page .chip{border:1px solid #E8DFEA;background:#fff;border-radius:20px;padding:6px 13px;font:inherit;font-size:12.5px;font-weight:600;color:#6F6874;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .bk-page .chip.on{background:#3E007C;border-color:#3E007C;color:#fff}
+  .bk-page .chip b{font-weight:700;margin-left:4px;opacity:.7}
+  .bk-page .chip.on b{opacity:.85}
+  .bk-page .tint{background:#FAF0FB;border:1px solid #F1E7F3;border-radius:16px;padding:16px 18px}
+  .bk-page .bk-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .bk-page .bk-filters .bk-search{flex:1;min-width:180px}
+  .bk-page .bk-filters .bk-date{width:150px;flex:none}
+  .bk-page .bk-filters .bk-sort{width:170px;flex:none}
+  .bk-page .bk-filters .in{margin:0}
+  .bk-page .bk-filters select.in{
+    display:block;appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239A929E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;cursor:pointer
+  }
+  .bk-page .bk-filters .bpx-btn.in{width:100%}
+  .bk-page .bk-filters .in input[type=search],
+  .bk-page .bk-filters .in input[type=text]{
+    border:0;outline:0;font:inherit;flex:1;min-width:0;background:none;color:inherit;padding:0;margin:0;box-shadow:none
+  }
+  .bk-page .bk-view-toggle{display:flex;gap:0;border:1px solid #E8DFEA;border-radius:10px;overflow:hidden;background:#fff;flex-shrink:0}
+  .bk-page .bk-view-toggle button{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;font-weight:600;font-size:13px;border:0;background:transparent;color:#1A1A1A;cursor:pointer;font:inherit}
+  .bk-page .bk-view-toggle button .ms,
+  .bk-page .bk-view-toggle button .material-symbols-outlined{font-size:17px}
+  .bk-page .bk-view-toggle button.on{background:#1A1A1A;color:#fff}
+  @media (max-width:900px){
+    .bk-page .bk-filters .bk-date,
+    .bk-page .bk-filters .bk-sort{width:100%;flex:1 1 100%}
+  }
+  .bk-page .head{margin:0}
+  .bk-page .head .sub{margin-top:4px}
+  .bk-page .tabs{margin:26px 0 24px}
+  .bk-page .tint{margin:0}
+  .bk-page #listView .card{margin-top:16px;overflow:hidden}
+  .bk-page table{width:100%;border-collapse:collapse}
+  .bk-page table th{font-size:11px;letter-spacing:.8px;color:#6F6874;text-align:left;font-weight:700;padding:11px 16px;background:#FBF8FC;border-bottom:1px solid #E8DFEA}
+  .bk-page table td{padding:14px 16px;border-bottom:1px solid #F3EEF4;font-size:13.5px;vertical-align:middle;color:#1A1A1A}
+  .bk-page table tr:last-child td{border-bottom:0}
+  .bk-page table .faint{color:#9A929E;font-size:11.5px;font-weight:400}
+  .bk-cal .cal-day{min-height:108px;padding:8px;border-right:1px solid #F3EEF4;border-bottom:1px solid #F3EEF4}
+  .bk-cal .ev-c{background:#E6F8EE;color:#0B6B37;font-size:11.5px;border-radius:6px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .bk-cal .ev-p{background:#FFF3DE;color:#8A5200;font-size:11.5px;border-radius:6px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .bk-cal .ev-k{background:#F0EDF2;color:#6F6874;font-size:11.5px;border-radius:6px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .bk-bpm{position:absolute;background:#fff;border:1px solid #E8DFEA;border-radius:14px;box-shadow:0 14px 40px rgba(40,10,60,.18);width:250px;padding:6px;z-index:80}
+  .bk-bpm button,.bk-bpm a{display:flex;width:100%;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font:inherit;font-size:13.5px;font-weight:500;background:none;border:0;cursor:pointer;color:#1A1A1A;text-align:left;text-decoration:none}
+  .bk-bpm button:hover,.bk-bpm button:focus-visible,.bk-bpm a:hover,.bk-bpm a:focus-visible{background:#F3E8FF;outline:0}
+  .bk-bpm .ms{font-size:19px;color:#6F6874;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+  .bk-bpm .red,.bk-bpm .red .ms{color:#C62828}
+  .bk-bpm hr{border:0;border-top:1px solid #F0EAF2;margin:5px 4px}
+  .bk-bpm-on{background:#F0EDF2!important;border-radius:8px;box-shadow:0 0 0 5px #F0EDF2}
+  .bk-bpm-sh{display:none}
+  @media (max-width:900px){
+    .bk-bpm{position:fixed!important;left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;width:auto!important}
+    .bk-bpm-sh{display:block;position:fixed;inset:0;background:rgba(26,16,32,.35);z-index:79}
+  }
+  @media (max-width:900px){
+    .bk-page #listView .card:has(table){overflow:visible!important;background:none!important;border:0!important}
+    .bk-page #listView table,.bk-page #listView tbody,.bk-page #listView tr,.bk-page #listView td{display:block;width:100%}
+    .bk-page #listView tr:has(th){display:none}
+    .bk-page #listView tr.booking-group{position:relative;background:#fff;border:1px solid #E8DFEA;border-radius:14px;padding:12px 14px;margin-bottom:10px}
+    .bk-page #listView td{border:0!important;padding:5px 0!important;display:flex!important;justify-content:space-between;align-items:center;gap:12px;text-align:right}
+    .bk-page #listView td::before{content:attr(data-label);font-size:10.5px;font-weight:700;letter-spacing:.7px;color:#6F6874;text-align:left;flex-shrink:0}
+    .bk-page #listView td:first-child{padding:0 44px 8px 0!important;margin-bottom:4px;border-bottom:1px solid #F3EEF4!important;justify-content:flex-start;text-align:left}
+    .bk-page #listView td:first-child::before{display:none}
+    .bk-page #listView td[data-label="ACTIONS"]{position:absolute;top:10px;right:10px;width:auto;padding:0!important}
+    .bk-page #listView td[data-label="ACTIONS"]::before{display:none}
+  }
 </style>
 @endsection
 
 @section('content')
-<main class="main-content flex-1 min-h-screen">
-    <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
-
-      <!-- Page Header -->
-      <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+@php
+  $filter = $filter ?? 'upcoming';
+  $sort = $sort ?? 'date_asc';
+  $search = $search ?? '';
+  $dateFrom = $dateFrom ?? '';
+  $dateTo = $dateTo ?? '';
+  $filterCounts = $filterCounts ?? ['upcoming' => 0, 'past' => 0, 'pending' => 0, 'cancelled' => 0];
+  $requestsCount = $requestsCount ?? 0;
+  $paymentLinksCount = $paymentLinksCount ?? 0;
+  $bookingsTotalCount = $bookingsTotalCount ?? $bookings->total();
+  $calendarBookings = $calendarBookings ?? [];
+@endphp
+@include('artist.bookings.partials.status-styles')
+@include('partials.bookpay-datetime-picker')
+<div class="bk-page">
+      <div class="head">
           <div>
-            <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Bookings</h2>
-            <p class="text-on-surface-variant mt-1">
-              {{ $bookings->total() }} {{ Str::plural('booking', $bookings->total()) }} total
-            </p>
+          <h1>Bookings</h1>
+          <div class="sub">Requests, confirmed bookings and payment links in one place.</div>
           </div>
-          <a href="{{ route('artist.payment-link') }}"
-            class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
-            <span class="material-symbols-outlined text-lg">add</span> New payment link
-          </a>
-        </div>
+        <button type="button" class="btn" data-open-payment-link>
+          <span class="ms">add</span> New payment link
+        </button>
       </div>
 
-      @include('artist.bookings.partials.page-tabs', ['activeTab' => 'bookings'])
+      @include('artist.bookings.partials.page-tabs', [
+        'activeTab' => 'bookings',
+        'requestsCount' => $requestsCount,
+        'bookingsTotalCount' => $bookingsTotalCount,
+        'paymentLinksCount' => $paymentLinksCount,
+      ])
 
-      <!-- Filters Bar -->
-      <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <div>
-            <label for="sortBy" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Sort by</label>
-            <select id="sortBy" name="sortBy"
-              class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-              <option value="booking-desc">Booking # · newest</option>
-              <option value="booking-asc">Booking # · oldest</option>
-              <option value="recent">Appointment date · newest</option>
-              <option value="oldest">Appointment date · oldest</option>
-              <option value="name">Client name A–Z</option>
-              <option value="name-desc">Client name Z–A</option>
+      <form method="get" action="{{ route('artist.bookings.index') }}" id="bookingsFilterForm" class="tint">
+        <input type="hidden" name="filter" id="filterInput" value="{{ $filter }}">
+        <div class="bk-filters">
+          <div class="bk-search">
+            <div class="in">
+              <span class="ms">search</span>
+              <input type="search" name="q" id="searchClient" value="{{ $search }}" placeholder="Search client name or booking #" autocomplete="off" aria-label="Search client name or booking #">
+          </div>
+          </div>
+          <div class="bk-date">
+            <input class="in" type="date" name="from" id="dateFrom" value="{{ $dateFrom }}" placeholder="From" data-ph="From" aria-label="From">
+          </div>
+          <div class="bk-date">
+            <input class="in" type="date" name="to" id="dateTo" value="{{ $dateTo }}" placeholder="To" data-ph="To" aria-label="To">
+            </div>
+          <div class="bk-sort">
+            <select class="in" name="sort" id="sortBy" aria-label="Sort bookings">
+              <option value="date_asc" @selected($sort === 'date_asc')>Date · soonest</option>
+              <option value="date_desc" @selected($sort === 'date_desc')>Date · latest</option>
+              <option value="booking_desc" @selected($sort === 'booking_desc')>Booking # · newest</option>
+              <option value="name_asc" @selected($sort === 'name_asc')>Client A–Z</option>
             </select>
           </div>
-          <div>
-            <label for="dateFrom" class="block text-xs font-semibold text-on-surface-variant mb-1.5">From</label>
-            <input type="date" id="dateFrom" name="dateFrom"
-              class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+        </div>
+        <div class="row" style="justify-content:space-between;margin-top:14px;flex-wrap:wrap;gap:12px">
+          <div class="chips" id="statusPillsRow">
+            @foreach ([
+              'upcoming' => 'Upcoming',
+              'past' => 'Past',
+              'pending' => 'Pending',
+              'cancelled' => 'Cancelled',
+            ] as $key => $label)
+              <button type="button" data-filter-status="{{ $key }}"
+                class="chip js-filter-status{{ $filter === $key ? ' on' : '' }}">
+                {{ $label }} <b>{{ $filterCounts[$key] ?? 0 }}</b>
+          </button>
+            @endforeach
           </div>
-          <div>
-            <label for="dateTo" class="block text-xs font-semibold text-on-surface-variant mb-1.5">To</label>
-            <input type="date" id="dateTo" name="dateTo"
-              class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          </div>
-          <div>
-            <label for="searchClient" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-              <input type="text" id="searchClient" name="searchClient" placeholder="Client name..."
-                class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-            </div>
+          <div class="bk-view-toggle">
+            <button type="button" id="viewListBtn" class="on"><span class="ms">list</span>List</button>
+            <button type="button" id="viewCalendarBtn"><span class="ms">calendar_month</span>Calendar</button>
           </div>
         </div>
-        <div class="flex flex-wrap gap-2" id="statusPillsRow">
-          <button type="button" data-filter-status="all"
-            class="filter-pill js-filter-status active text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white">
-            All
-          </button>
-          <button type="button" data-filter-status="confirmed"
-            class="filter-pill js-filter-status text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant">
-            Confirmed
-          </button>
-          <button type="button" data-filter-status="pending"
-            class="filter-pill js-filter-status text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant">
-            Pending
-          </button>
-          <button type="button" data-filter-status="completed"
-            class="filter-pill js-filter-status text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant">
-            Completed
-          </button>
-          <button type="button" data-filter-status="cancelled"
-            class="filter-pill js-filter-status text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant">
-            Cancelled
-          </button>
-        </div>
-      </div>
-
-      @php
-          $statusStyles = [
-              'confirmed' => 'bg-green-50 text-green-700 ring-green-500/20',
-              'pending' => 'bg-amber-50 text-amber-900 ring-amber-500/20',
-              'cancelled' => 'bg-red-50 text-red-700 ring-red-500/20',
-              'completed' => 'bg-slate-100 text-slate-700 ring-slate-500/15',
-              'no_show' => 'bg-orange-50 text-orange-900 ring-orange-500/20',
-              'rescheduled' => 'bg-blue-50 text-blue-800 ring-blue-500/15',
-          ];
-      @endphp
-
-      <!-- View Toggle -->
-      <div class="flex items-center gap-2 mb-5">
-        <button type="button" id="viewListBtn"
-          class="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border border-primary bg-primary text-white transition-colors">
-          <span class="material-symbols-outlined text-lg">view_list</span> List
-        </button>
-        <button type="button" id="viewCalendarBtn"
-          class="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border border-outline-variant/30 bg-white text-on-surface-variant hover:bg-surface-container-low transition-colors">
-          <span class="material-symbols-outlined text-lg">calendar_month</span> Calendar
-        </button>
-      </div>
+      </form>
 
       <!-- Calendar View -->
-      <div id="calendarView" class="hidden mb-6">
-        <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
+      <div id="calendarView" class="hidden mb-6 bk-cal">
+        <div class="bg-white rounded-2xl shadow-sm border border-[#E8DFEA] overflow-hidden">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#F3EEF4]">
             <div class="flex items-center gap-2">
-              <button type="button" id="calPrev" class="inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant">
+              <button type="button" id="calPrev" class="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-[#E8DFEA] hover:bg-[#FBF8FC] text-on-surface-variant">
                 <span class="material-symbols-outlined text-xl">chevron_left</span>
-              </button>
-              <h3 id="calTitle" class="text-base font-bold text-on-surface min-w-[10rem] text-center"></h3>
-              <button type="button" id="calNext" class="inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant">
+          </button>
+              <button type="button" id="calNext" class="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-[#E8DFEA] hover:bg-[#FBF8FC] text-on-surface-variant">
                 <span class="material-symbols-outlined text-xl">chevron_right</span>
-              </button>
-              <button type="button" id="calToday" class="ml-2 text-xs font-semibold px-3 py-1.5 rounded-lg border border-outline-variant/30 hover:bg-surface-container-low text-on-surface-variant">Today</button>
+          </button>
+              <h3 id="calTitle" class="text-base font-bold text-on-surface min-w-[10rem]"></h3>
+              <button type="button" id="calToday" class="ml-1 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E8DFEA] hover:bg-[#FBF8FC] text-on-surface-variant">Today</button>
             </div>
-            <div class="flex items-center gap-1 bg-surface-container-low rounded-lg p-0.5">
-              <button type="button" data-cal-mode="day" class="cal-mode-btn text-xs font-semibold px-3 py-1.5 rounded-md transition-colors">Day</button>
-              <button type="button" data-cal-mode="week" class="cal-mode-btn text-xs font-semibold px-3 py-1.5 rounded-md transition-colors">Week</button>
-              <button type="button" data-cal-mode="month" class="cal-mode-btn active text-xs font-semibold px-3 py-1.5 rounded-md bg-white shadow-sm text-on-surface transition-colors">Month</button>
+            <div class="flex items-center gap-0 border border-[#E8DFEA] rounded-[10px] overflow-hidden bg-white">
+              <button type="button" data-cal-mode="week" class="cal-mode-btn text-xs font-semibold px-3.5 py-1.5 transition-colors text-on-surface-variant">Week</button>
+              <button type="button" data-cal-mode="month" class="cal-mode-btn active text-xs font-semibold px-3.5 py-1.5 bg-[#1A1A1A] text-white transition-colors">Month</button>
             </div>
           </div>
-          <div id="calBody" class="p-4 min-h-[28rem]"></div>
+          <div class="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-0 xl:gap-0">
+            <div id="calBody" class="p-0 min-h-[28rem]"></div>
+            <div id="calDayPanel" class="border-t xl:border-t-0 xl:border-l border-[#E8DFEA] bg-white hidden xl:block">
+              <div class="flex items-start justify-between px-[18px] py-[18px] border-b border-[#E8DFEA]">
+                <div>
+                  <h3 id="calDayTitle" class="text-base font-bold">Select a day</h3>
+                  <div id="calDayMeta" class="text-[12.5px] text-[#9A929E] mt-0.5"></div>
+                </div>
+              </div>
+              <div id="calDayList" class="px-[18px] py-2"></div>
+              <div class="px-[18px] pb-4">
+                <a href="{{ route('availability.index') }}" class="inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-[#E8DFEA] bg-white px-3 py-2.5 text-[13.5px] font-semibold text-[#1A1A1A] hover:bg-[#FBF8FC]">
+                  <span class="material-symbols-outlined text-[18px]">event_busy</span>Block this day
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-4 px-5 py-3 text-xs text-[#6F6874] border-t border-[#F3EEF4]">
+            <span class="inline-flex items-center gap-1.5"><i class="inline-block w-3 h-3 rounded-[3px]" style="background:#E6F8EE;border:1px solid #0B6B37"></i>Confirmed</span>
+            <span class="inline-flex items-center gap-1.5"><i class="inline-block w-3 h-3 rounded-[3px]" style="background:#FFF3DE;border:1px solid #8A5200"></i>Pending deposit</span>
+          </div>
         </div>
       </div>
 
       <!-- List View -->
       <div id="listView">
-      <!-- Bookings Table -->
       @if ($bookings->isEmpty())
-        <div class="bg-white rounded-2xl border border-outline-variant/20 p-10 text-center text-on-surface-variant">
-          <p class="font-medium text-on-surface mb-1">No bookings yet</p>
-          <p class="text-sm">Clients will appear here when they book through your availability and designs.</p>
+        <div class="bg-white rounded-2xl border border-[#E8DFEA] p-10 text-center text-on-surface-variant">
+          <p class="font-medium text-on-surface mb-1">No bookings in this view</p>
+          <p class="text-sm">Try another filter, or wait for clients to book through your page.</p>
         </div>
       @else
-      <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 mb-6 overflow-hidden">
-          <!-- Desktop -->
-        <div class="hidden sm:block overflow-x-auto">
-            <table class="w-full text-sm">
+      <div class="card" style="overflow:hidden;margin-bottom:24px">
+            <table>
             <thead>
-              <tr class="bg-surface-container-low/50 text-on-surface-variant text-xs uppercase tracking-wider">
-                <th class="text-left px-6 py-3 font-semibold">Client</th>
-                <th class="text-left px-6 py-3 font-semibold">Booking</th>
-                <th class="text-left px-6 py-3 font-semibold">Date</th>
-                <th class="text-left px-6 py-3 font-semibold">Time</th>
-                <th class="text-left px-6 py-3 font-semibold">Duration</th>
-                <th class="text-left px-6 py-3 font-semibold">Status</th>
-                <th class="text-left px-6 py-3 font-semibold">Actions</th>
+              <tr>
+                <th>CLIENT</th>
+                <th>SERVICE</th>
+                <th>DATE</th>
+                <th>STATUS</th>
+                <th>PAYMENT</th>
+                <th>CONSENT</th>
+                <th></th>
               </tr>
             </thead>
               <tbody id="bookingsTableBody">
                 @foreach ($bookings as $booking)
-                  @php
-                      $bt = $booking->booking_time;
-                      $sessionDate = $booking->booking_date?->format('Y-m-d') ?? '';
-                      $clientName = trim(($booking->user?->first_name ?? '') . ' ' . ($booking->user?->last_name ?? ''));
-                      $clientName = $clientName !== '' ? $clientName : 'Client #' . ($booking->user_id ?? '');
-                      $clientLower = Str::lower($clientName);
-                      $details = $booking->custom_tattoo_details ?? null;
-                      $customTitle = is_array($details) ? ($details['title'] ?? null) : null;
-                      $serviceTitle = ($booking->tattoo && filled($booking->tattoo->title))
-                          ? $booking->tattoo->title
-                          : (filled($customTitle) ? (string) $customTitle : ucfirst((string) $booking->booking_type) . ' booking');
-                      $startEnd = ($bt !== null && isset($bt['start'], $bt['end'])) ? "{$bt['start']} – {$bt['end']}" : '—';
-                      $duration = '—';
-                      if ($bt !== null && isset($bt['duration_minutes'])) {
-                          $mins = (int) $bt['duration_minutes'];
-                          $hours = intdiv(max(1, $mins), 60);
-                          $tail = max(1, $mins) % 60;
-                          $duration = $mins < 60
-                              ? "{$mins} min"
-                              : ($tail ? "{$hours}h {$tail}m" : "{$hours}h");
-                      }
-                      $stKey = strtolower((string) ($booking->status ?? ''));
-                      $badgeCls = $statusStyles[$stKey] ?? 'bg-surface-container text-on-surface ring-outline-variant/20';
-                      $label = ucfirst(str_replace('_', ' ', $stKey ?: 'unknown'));
-                      $sortStamp = strtotime($sessionDate ?: '1970-01-01') ?: 0;
-                      $artistRequestPending = (
-                          $booking->reschedule_status === 'pending'
-                          && $booking->reschedule_requested_by === 'artist'
-                      );
-                      $designImage = asset('design/images/icons/avatar.jpg');
-                      if ($booking->tattoo && !empty($booking->tattoo->image)) {
-                          $imgRaw = (string) $booking->tattoo->image;
-                          $designImage = str_starts_with($imgRaw, 'http://') || str_starts_with($imgRaw, 'https://')
-                              ? $imgRaw
-                              : asset(ltrim($imgRaw, '/'));
-                      }
-                      $bookingRef = $booking->referenceLabel();
-                      $dateLong = $booking->booking_date?->format('l, F j, Y') ?? '—';
-                      $clientEmail = (string) ($booking->user?->email ?? '');
-                      $clientPhone = trim((string) ($booking->user?->phone_number ?? ''));
-                      if ($clientPhone === '') {
-                          $clientPhone = trim((string) ($booking->user?->userDetail?->mobile_number ?? ''));
-                      }
-                      $questionsAnswersData = is_array($booking->questions_answers ?? null) ? $booking->questions_answers : [];
-                      $balanceLabel = $booking->estimatedBalanceLabel();
-                      $balanceDue = $booking->remainingBalanceAmount();
-                      $showBalanceDue = $balanceDue > 0
-                          && ! $booking->remaining_amount_released
-                          && ! $booking->full_amount_paid
-                          && ! in_array($stKey, ['cancelled', 'completed', 'declined'], true);
-                      $balanceDueRounded = round($balanceDue, 2);
-                      $balanceDueLabel = fmod($balanceDueRounded, 1.0) === 0.0
-                          ? '€'.(string) (int) $balanceDueRounded
-                          : '€'.number_format($balanceDueRounded, 2, '.', '');
-                      $paidRounded = round((float) ($booking->deposit_amount ?? 0), 2);
-                      $paidLabel = fmod($paidRounded, 1.0) === 0.0
-                          ? '€'.(string) (int) $paidRounded
-                          : '€'.number_format($paidRounded, 2, '.', '');
-                      $totalRounded = round($paidRounded + $balanceDue, 2);
-                      $totalLabel = fmod($totalRounded, 1.0) === 0.0
-                          ? '€'.(string) (int) $totalRounded
-                          : '€'.number_format($totalRounded, 2, '.', '');
-                      $unsettledCollection = $booking->latestBalanceCollection;
-                      $isUnsettledReminder = $unsettledCollection && $unsettledCollection->isUnsettledOpen();
-                      $expectedPhrase = $isUnsettledReminder ? $unsettledCollection->expectedDuePhrase() : '';
-                      $collectBarLabel = $isUnsettledReminder
-                          ? $balanceDueLabel.' due · '.$expectedPhrase
-                          : $balanceDueLabel.' balance due';
-                      $unsettledNote = $isUnsettledReminder ? trim((string) $unsettledCollection->note) : '';
-                      $unsettledFirstName = trim((string) strtok($clientName, ' '));
-                      $unsettledNudge = $isUnsettledReminder
-                          ? (string) ($unsettledCollection->reminderNudge($unsettledFirstName, $balanceDueLabel) ?? '')
-                          : '';
-                  @endphp
-                  <tr class="booking-group border-t border-outline-variant/10 hover:bg-surface-container-low/40"
-                      data-booking-row
-                      data-booking-id="{{ $booking->id }}"
-                      data-status="{{ $stKey }}"
-                      data-client="{{ e($clientLower) }}"
-                      data-date="{{ $sessionDate }}"
-                      data-sort-ts="{{ $sortStamp }}"
-                      data-sort-name="{{ e($clientLower) }}"
-                      data-sort-id="{{ $booking->id }}">
-                    <td class="px-6 py-4 font-medium text-on-surface">{{ $clientName }}</td>
-                    <td class="px-6 py-4 font-medium text-on-surface tabular-nums">{{ $bookingRef }}</td>
-                    <td class="px-6 py-4 text-on-surface">{{ $booking->booking_date?->format('M j, Y') ?? '—' }}</td>
-                    <td class="px-6 py-4 text-on-surface-variant">{{ $startEnd }}</td>
-                    <td class="px-6 py-4 text-on-surface-variant tabular-nums">{{ $duration }}</td>
-                    <td class="px-6 py-4">
-                      <span class="js-artist-status-badge inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset {{ $badgeCls }}">{{ $label }}</span>
-                    </td>
-                    <td class="px-6 py-4">
-                      @if($showBalanceDue)
-                        <div class="js-artist-collect-wrap flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3 py-2 mb-2 min-w-[13.5rem]">
-                          <p class="js-artist-collect-label text-sm font-bold text-[#8a5a12] whitespace-nowrap">{{ $collectBarLabel }}</p>
-                          <button type="button"
-                            class="js-artist-collect-payment text-sm font-bold text-[#1b5e4a] underline underline-offset-2 whitespace-nowrap"
-                            aria-haspopup="dialog"
-                            aria-controls="artistRequestPaymentModal"
-                            data-booking-id="{{ $booking->id }}"
-                            data-store-url="{{ route('api.bookings.balance-collections.store', $booking->id) }}"
-                            data-service="{{ e($serviceTitle) }}"
-                            data-client-name="{{ e($clientName) }}"
-                            data-booking-ref="{{ e($bookingRef) }}"
-                            data-balance-label="{{ e($balanceDueLabel) }}"
-                            data-paid-label="{{ e($paidLabel) }}"
-                            data-total-label="{{ e($totalLabel) }}"
-                            data-date-display="{{ e($dateLong) }}"
-                            data-time-range="{{ e($startEnd) }}"
-                            data-status-label="{{ e($label) }}"
-                            data-status-badge-class="{{ e($badgeCls) }}"
-                            data-unsettled="{{ $isUnsettledReminder ? '1' : '0' }}"
-                            data-expected-label="{{ e($expectedPhrase) }}"
-                            data-unsettled-note="{{ e($unsettledNote) }}"
-                            data-nudge="{{ e($unsettledNudge) }}">Collect</button>
-                        </div>
-                      @endif
-                      @include('artist.bookings.partials.consent-bar', [
-                        'booking' => $booking,
-                        'clientName' => $clientName,
-                        'bookingRef' => $bookingRef,
-                        'dateLong' => $dateLong,
-                        'startEnd' => $startEnd,
-                      ])
-                      <div class="js-artist-row-actions flex items-center gap-1">
-                        <button type="button"
-                          class="js-artist-booking-view inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
-                          title="View booking"
-                          aria-haspopup="dialog"
-                          aria-controls="artistBookingDetailModal"
-                          data-booking-ref="{{ e($bookingRef) }}"
-                          data-client-name="{{ e($clientName) }}"
-                          data-client-email="{{ e($clientEmail) }}"
-                          data-client-phone="{{ e($clientPhone) }}"
-                          data-service="{{ e($serviceTitle) }}"
-                          data-date-display="{{ e($dateLong) }}"
-                          data-time-range="{{ e($startEnd) }}"
-                          data-duration="{{ e($duration) }}"
-                          data-timezone="{{ e($booking->timezone ?: 'UTC') }}"
-                          data-status-label="{{ e($label) }}"
-                          data-status-badge-class="{{ e($badgeCls) }}"
-                          data-booking-type="{{ e(ucfirst((string) ($booking->booking_type ?? ''))) }}"
-                          data-deposit="{{ e('€' . number_format((float) ($booking->deposit_amount ?? 0), 2)) }}"
-                          data-balance="{{ e($balanceLabel) }}"
-                          data-questions='@json($questionsAnswersData)'
-                          data-design-image="{{ e($designImage) }}"
-                          data-booking-status="{{ e($stKey) }}"
-                          data-full-amount-paid="{{ $booking->full_amount_paid ? '1' : '0' }}"
-                          data-balance-due-label="{{ e($balanceDueLabel) }}">
-                          <span class="material-symbols-outlined text-[22px]">visibility</span>
-                        </button>
-                        @if($booking->canViewChat())
-                          <a href="{{ route('artist.chat.index', ['client' => $booking->user_id, 'booking' => $booking->id]) }}"
-                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
-                            title="{{ $booking->isOpenForChat() ? 'Message client' : 'View chat history' }}">
-                            <span class="material-symbols-outlined text-[22px]">chat</span>
-                          </a>
-                        @endif
-                        @if($booking->status === 'confirmed' || $artistRequestPending)
-                          @if(!$artistRequestPending)
-                          <button type="button"
-                            class="js-artist-reschedule-request inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
-                            title="{{ $artistRequestPending ? 'Reschedule request pending' : 'Request reschedule from user' }}"
-                            data-booking-id="{{ $booking->id }}"
-                            data-request-url="{{ route('api.bookings.artist-request-reschedule', $booking->id) }}"
-                            data-pending="{{ $artistRequestPending ? '1' : '0' }}"
-                            data-client-name="{{ e($clientName) }}"
-                            data-service="{{ e($serviceTitle) }}"
-                            {{ $artistRequestPending ? 'disabled' : '' }}>
-                            <span class="material-symbols-outlined text-[22px]">event_repeat</span>
-                          </button>
-                          @endif
-                          @if($booking->status === 'confirmed')
-                          <button type="button"
-                            class="js-artist-mark-complete inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-emerald-700 hover:bg-emerald-50"
-                            title="{{ $showBalanceDue ? 'Collect remaining balance' : 'Mark completed' }}"
-                            data-booking-id="{{ $booking->id }}"
-                            data-has-balance="{{ $showBalanceDue ? '1' : '0' }}"
-                            data-client-name="{{ e($clientName) }}"
-                            data-service="{{ e($serviceTitle) }}"
-                            data-mark-completed-url="{{ route('api.bookings.mark-completed', $booking->id) }}">
-                            <span class="material-symbols-outlined text-[22px]">task_alt</span>
-                          </button>
-                          @endif
-                          <button type="button"
-                            class="js-artist-cancel-booking inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-error/80 hover:bg-error-container hover:text-error"
-                            title="Cancel booking"
-                            data-booking-id="{{ $booking->id }}"
-                            data-cancel-url="{{ route('api.bookings.cancel', $booking->id) }}"
-                            data-cancel-info-url="{{ route('api.bookings.cancellation-info', $booking->id) }}"
-                            data-booking-ref="{{ e($bookingRef) }}">
-                            <span class="material-symbols-outlined text-[22px]">close</span>
-                          </button>
-                        @endif
-                      </div>
-                    </td>
-                  </tr>
+                  @include('artist.bookings.partials.booking-table-row', [
+                    'booking' => $booking,
+                    'artistUserDetail' => auth()->user()?->userDetail,
+                  ])
                 @endforeach
             </tbody>
           </table>
-        </div>
-
-          <!-- Mobile -->
-        <div class="sm:hidden divide-y divide-outline-variant/10" id="bookingsMobile">
-            @foreach ($bookings as $booking)
-              @php
-                  $tz = $booking->timezone ?: 'UTC';
-                  $bt = $booking->booking_time;
-                  $sessionDate = $booking->booking_date?->format('Y-m-d') ?? '';
-                  $clientName = trim(($booking->user?->first_name ?? '') . ' ' . ($booking->user?->last_name ?? ''));
-                  $clientName = $clientName !== '' ? $clientName : 'Client #' . ($booking->user_id ?? '');
-                  $clientLower = Str::lower($clientName);
-                  $details = $booking->custom_tattoo_details ?? null;
-                  $customTitle = is_array($details) ? ($details['title'] ?? null) : null;
-                  $serviceTitle = ($booking->tattoo && filled($booking->tattoo->title))
-                      ? $booking->tattoo->title
-                      : (filled($customTitle) ? (string) $customTitle : ucfirst((string) $booking->booking_type) . ' booking');
-                  $startEnd = ($bt !== null && isset($bt['start'], $bt['end'])) ? "{$bt['start']} – {$bt['end']}" : '—';
-                  $duration = '—';
-                  if ($bt !== null && isset($bt['duration_minutes'])) {
-                      $mins = (int) $bt['duration_minutes'];
-                      $hours = intdiv(max(1, $mins), 60);
-                      $tail = max(1, $mins) % 60;
-                      $duration = $mins < 60 ? "{$mins} min" : ($tail ? "{$hours}h {$tail}m" : "{$hours}h");
-                  }
-                  $stKey = strtolower((string) ($booking->status ?? ''));
-                  $badgeCls = $statusStyles[$stKey] ?? 'bg-surface-container text-on-surface ring-outline-variant/20';
-                  $label = ucfirst(str_replace('_', ' ', $stKey ?: 'unknown'));
-                  $sortStamp = strtotime($sessionDate ?: '1970-01-01') ?: 0;
-                  $artistRequestPending = (
-                      $booking->reschedule_status === 'pending'
-                      && $booking->reschedule_requested_by === 'artist'
-                  );
-                  $designImage = asset('design/images/icons/avatar.jpg');
-                  if ($booking->tattoo && !empty($booking->tattoo->image)) {
-                      $imgRaw = (string) $booking->tattoo->image;
-                      $designImage = str_starts_with($imgRaw, 'http://') || str_starts_with($imgRaw, 'https://')
-                          ? $imgRaw
-                          : asset(ltrim($imgRaw, '/'));
-                  }
-                  $bookingRef = $booking->referenceLabel();
-                  $dateLong = $booking->booking_date?->format('l, F j, Y') ?? '—';
-                  $clientEmail = (string) ($booking->user?->email ?? '');
-                  $clientPhone = trim((string) ($booking->user?->phone_number ?? ''));
-                  if ($clientPhone === '') {
-                      $clientPhone = trim((string) ($booking->user?->userDetail?->mobile_number ?? ''));
-                  }
-                  $questionsAnswersData = is_array($booking->questions_answers ?? null) ? $booking->questions_answers : [];
-                  $balanceLabel = $booking->estimatedBalanceLabel();
-                  $balanceDue = $booking->remainingBalanceAmount();
-                  $showBalanceDue = $balanceDue > 0
-                      && ! $booking->remaining_amount_released
-                      && ! $booking->full_amount_paid
-                      && ! in_array($stKey, ['cancelled', 'completed', 'declined'], true);
-                  $balanceDueRounded = round($balanceDue, 2);
-                  $balanceDueLabel = fmod($balanceDueRounded, 1.0) === 0.0
-                      ? '€'.(string) (int) $balanceDueRounded
-                      : '€'.number_format($balanceDueRounded, 2, '.', '');
-                  $paidRounded = round((float) ($booking->deposit_amount ?? 0), 2);
-                  $paidLabel = fmod($paidRounded, 1.0) === 0.0
-                      ? '€'.(string) (int) $paidRounded
-                      : '€'.number_format($paidRounded, 2, '.', '');
-                  $totalRounded = round($paidRounded + $balanceDue, 2);
-                  $totalLabel = fmod($totalRounded, 1.0) === 0.0
-                      ? '€'.(string) (int) $totalRounded
-                      : '€'.number_format($totalRounded, 2, '.', '');
-                  $unsettledCollection = $booking->latestBalanceCollection;
-                  $isUnsettledReminder = $unsettledCollection && $unsettledCollection->isUnsettledOpen();
-                  $expectedPhrase = $isUnsettledReminder ? $unsettledCollection->expectedDuePhrase() : '';
-                  $collectBarLabel = $isUnsettledReminder
-                      ? $balanceDueLabel.' due · '.$expectedPhrase
-                      : $balanceDueLabel.' balance due';
-                  $unsettledNote = $isUnsettledReminder ? trim((string) $unsettledCollection->note) : '';
-                  $unsettledFirstName = trim((string) strtok($clientName, ' '));
-                  $unsettledNudge = $isUnsettledReminder
-                      ? (string) ($unsettledCollection->reminderNudge($unsettledFirstName, $balanceDueLabel) ?? '')
-                      : '';
-              @endphp
-              <div class="booking-group p-5 space-y-2"
-                   data-booking-row
-                   data-booking-id="{{ $booking->id }}"
-                   data-status="{{ $stKey }}"
-                   data-client="{{ e($clientLower) }}"
-                   data-date="{{ $sessionDate }}"
-                   data-sort-ts="{{ $sortStamp }}"
-                   data-sort-name="{{ e($clientLower) }}"
-                   data-sort-id="{{ $booking->id }}">
-                <div class="flex justify-between gap-3">
-                  <p class="font-semibold text-on-surface">{{ $clientName }}</p>
-                  <span class="js-artist-status-badge inline-flex shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset {{ $badgeCls }}">{{ $label }}</span>
-                </div>
-                @if ($artistRequestPending)
-                  <p class="text-xs font-semibold text-blue-700">Reschedule request sent{{ $booking->reschedule_reason ? ': '.Str::limit($booking->reschedule_reason, 80) : '.' }}</p>
-                @endif
-                <p class="text-sm font-medium text-on-surface tabular-nums">{{ $bookingRef }}</p>
-                <p class="text-sm text-on-surface-variant">{{ $booking->booking_date?->format('l, F j, Y') ?? '—' }} · {{ $startEnd }}</p>
-                <p class="text-xs text-on-surface-variant">{{ $duration }} · {{ strtoupper(str_replace('/', ' ', $tz)) }}</p>
-                @if($showBalanceDue)
-                  <div class="js-artist-collect-wrap flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3.5 py-2.5">
-                    <p class="js-artist-collect-label text-sm font-bold text-[#8a5a12]">{{ $collectBarLabel }}</p>
-                    <button type="button"
-                      class="js-artist-collect-payment text-sm font-bold text-[#1b5e4a] underline underline-offset-2"
-                      aria-haspopup="dialog"
-                      aria-controls="artistRequestPaymentModal"
-                      data-booking-id="{{ $booking->id }}"
-                      data-store-url="{{ route('api.bookings.balance-collections.store', $booking->id) }}"
-                      data-service="{{ e($serviceTitle) }}"
-                      data-client-name="{{ e($clientName) }}"
-                      data-booking-ref="{{ e($bookingRef) }}"
-                      data-balance-label="{{ e($balanceDueLabel) }}"
-                      data-paid-label="{{ e($paidLabel) }}"
-                      data-total-label="{{ e($totalLabel) }}"
-                      data-date-display="{{ e($dateLong) }}"
-                      data-time-range="{{ e($startEnd) }}"
-                      data-status-label="{{ e($label) }}"
-                      data-status-badge-class="{{ e($badgeCls) }}"
-                      data-unsettled="{{ $isUnsettledReminder ? '1' : '0' }}"
-                      data-expected-label="{{ e($expectedPhrase) }}"
-                      data-unsettled-note="{{ e($unsettledNote) }}"
-                      data-nudge="{{ e($unsettledNudge) }}">Collect</button>
-                  </div>
-                @endif
-                @include('artist.bookings.partials.consent-bar', [
-                  'booking' => $booking,
-                  'clientName' => $clientName,
-                  'bookingRef' => $bookingRef,
-                  'dateLong' => $dateLong,
-                  'startEnd' => $startEnd,
-                  'compact' => true,
-                ])
-                <div class="js-artist-row-actions flex flex-wrap items-center gap-2 pt-1">
-                  <button type="button"
-                    class="js-artist-booking-view inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/25 text-on-surface-variant hover:bg-surface-container-low"
-                    title="View booking"
-                    aria-haspopup="dialog"
-                    aria-controls="artistBookingDetailModal"
-                    data-booking-ref="{{ e($bookingRef) }}"
-                    data-client-name="{{ e($clientName) }}"
-                    data-client-email="{{ e($clientEmail) }}"
-                    data-client-phone="{{ e($clientPhone) }}"
-                    data-service="{{ e($serviceTitle) }}"
-                    data-date-display="{{ e($dateLong) }}"
-                    data-time-range="{{ e($startEnd) }}"
-                    data-duration="{{ e($duration) }}"
-                    data-timezone="{{ e($booking->timezone ?: 'UTC') }}"
-                    data-status-label="{{ e($label) }}"
-                    data-status-badge-class="{{ e($badgeCls) }}"
-                    data-booking-type="{{ e(ucfirst((string) ($booking->booking_type ?? ''))) }}"
-                    data-deposit="{{ e('€' . number_format((float) ($booking->deposit_amount ?? 0), 2)) }}"
-                    data-balance="{{ e($balanceLabel) }}"
-                    data-questions='@json($questionsAnswersData)'
-                    data-design-image="{{ e($designImage) }}">
-                    <span class="material-symbols-outlined text-[22px]">visibility</span>
-                  </button>
-                  @if($booking->canViewChat())
-                    <a href="{{ route('artist.chat.index', ['client' => $booking->user_id, 'booking' => $booking->id]) }}"
-                      class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/25 text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
-                      title="{{ $booking->isOpenForChat() ? 'Message client' : 'View chat history' }}">
-                      <span class="material-symbols-outlined text-[22px]">chat</span>
-                    </a>
-                  @endif
-                  @if($booking->status === 'confirmed' || $artistRequestPending)
-                    @if(!$artistRequestPending)
-                    <button type="button"
-                      class="js-artist-reschedule-request inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/25 text-on-surface-variant hover:bg-surface-container-low hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="{{ $artistRequestPending ? 'Reschedule request pending' : 'Request reschedule from user' }}"
-                      data-booking-id="{{ $booking->id }}"
-                      data-request-url="{{ route('api.bookings.artist-request-reschedule', $booking->id) }}"
-                      data-pending="{{ $artistRequestPending ? '1' : '0' }}"
-                      data-client-name="{{ e($clientName) }}"
-                      data-service="{{ e($serviceTitle) }}"
-                      {{ $artistRequestPending ? 'disabled' : '' }}>
-                      <span class="material-symbols-outlined text-[22px]">event_repeat</span>
-                    </button>
-                    @endif
-                    @if($booking->status === 'confirmed')
-                    <button type="button"
-                      class="js-artist-mark-complete inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                      title="{{ $showBalanceDue ? 'Collect remaining balance' : 'Mark completed' }}"
-                      data-booking-id="{{ $booking->id }}"
-                      data-has-balance="{{ $showBalanceDue ? '1' : '0' }}"
-                      data-client-name="{{ e($clientName) }}"
-                      data-service="{{ e($serviceTitle) }}"
-                      data-mark-completed-url="{{ route('api.bookings.mark-completed', $booking->id) }}">
-                      <span class="material-symbols-outlined text-[22px]">task_alt</span>
-                    </button>
-                    @endif
-                    <button type="button"
-                      class="js-artist-cancel-booking inline-flex h-10 w-10 items-center justify-center rounded-xl border border-error/25 text-error/90 hover:bg-error-container"
-                      title="Cancel booking"
-                      data-booking-id="{{ $booking->id }}"
-                      data-cancel-url="{{ route('api.bookings.cancel', $booking->id) }}"
-                      data-cancel-info-url="{{ route('api.bookings.cancellation-info', $booking->id) }}"
-                      data-booking-ref="{{ e($bookingRef) }}">
-                      <span class="material-symbols-outlined text-[22px]">close</span>
-                    </button>
-                  @endif
-                </div>
-              </div>
-            @endforeach
-          </div>
         </div>
 
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -699,106 +742,127 @@
         </p>
       @endif
       </div><!-- /#listView -->
-
     </div>
-</main>
 
 <div id="artistBookingDetailModal"
-  class="artist-bdm fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 sm:p-6"
+  class="artist-bdm fixed inset-0 z-[100] flex"
   aria-hidden="true"
   aria-modal="true"
   role="dialog"
   aria-labelledby="abdmTitle">
-  <div class="artist-bdm-backdrop absolute inset-0 bg-black/45" data-close-artist-bdm></div>
-  <div class="artist-bdm-panel relative w-full max-w-lg max-h-[min(90vh,640px)] overflow-y-auto rounded-2xl bg-white shadow-xl border border-outline-variant/20">
-    <div class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm rounded-t-2xl border-b border-outline-variant/15">
-      <div class="flex items-center justify-between gap-3 px-5 py-4">
-      <h3 id="abdmTitle" class="text-lg font-bold text-on-surface truncate pr-2">—</h3>
-      <button type="button" class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-bdm aria-label="Close">
-        <span class="material-symbols-outlined text-[22px]">close</span>
+  <div class="artist-bdm-backdrop absolute inset-0" style="background:rgba(20,10,30,.45)" data-close-artist-bdm></div>
+  <div class="artist-bdm-panel relative z-10">
+    <div class="abdm-mh">
+      <div><h2 id="abdmTitle">—</h2></div>
+      <button type="button" class="abdm-faint inline-flex" data-close-artist-bdm aria-label="Close" style="background:none;border:0;cursor:pointer;padding:0">
+        <span class="material-symbols-outlined" style="font-size:22px">close</span>
       </button>
-      </div>
-      <div class="flex items-center gap-1 px-5" role="tablist" aria-label="Booking detail sections">
-        <button type="button" id="abdmTabDetails" role="tab" aria-selected="true" aria-controls="abdmPanelDetails" data-abdm-tab="details"
-          class="abdm-tab px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary transition-all">
-          Details
-        </button>
-        <button type="button" id="abdmTabRequest" role="tab" aria-selected="false" aria-controls="abdmPanelRequest" data-abdm-tab="request"
-          class="abdm-tab px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all">
-          Original request
-        </button>
-      </div>
     </div>
-    <div class="p-5 space-y-5">
-      <div class="flex gap-4">
-        <div class="shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-surface-container-low border border-outline-variant/20">
-          <img id="abdmImage" src="" alt="" class="w-full h-full object-cover" width="96" height="96">
+    <div class="abdm-mb">
+      <div class="abdm-tabs bdtabs" role="tablist" aria-label="Booking detail sections">
+        <button type="button" id="abdmTabDetails" role="tab" aria-selected="true" aria-controls="abdmPanelDetails" data-abdm-tab="details" class="on">Details</button>
+        <button type="button" id="abdmTabRequest" role="tab" aria-selected="false" aria-controls="abdmPanelRequest" data-abdm-tab="request">Original request</button>
         </div>
-        <div class="min-w-0 flex-1 space-y-2">
-          <p id="abdmRef" class="text-xs font-semibold text-on-surface-variant tabular-nums">—</p>
-          <p class="flex flex-wrap items-center gap-2">
-            <span id="abdmStatus" class="inline-flex text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset">—</span>
-          </p>
-          <p id="abdmType" class="text-sm text-on-surface-variant">—</p>
-        </div>
-      </div>
 
       <div id="abdmPanelDetails" role="tabpanel" aria-labelledby="abdmTabDetails">
-      <dl class="grid grid-cols-1 gap-3 text-sm">
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Client</dt>
-          <dd id="abdmClientName" class="text-on-surface font-semibold text-right">—</dd>
+        <div class="flex items-center" style="gap:16px;margin-bottom:8px">
+          <div id="abdmImageWrap" style="width:84px;height:84px;border-radius:14px;background:#EEE center/cover;flex-shrink:0"></div>
+          <div>
+            <div id="abdmRef" class="abdm-faint" style="font-size:12.5px;font-weight:600">—</div>
+            <span id="abdmStatus" class="abdm-pill g" style="margin:6px 0;display:inline-flex">Confirmed</span>
+            <div id="abdmType" class="abdm-muted" style="font-size:13px">—</div>
         </div>
-        <div id="abdmClientEmailRow" class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Email</dt>
-          <dd id="abdmClientEmail" class="text-on-surface text-right break-all">—</dd>
-        </div>
-          <div id="abdmClientPhoneRow" class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-            <dt class="text-on-surface-variant font-medium">Mobile</dt>
-            <dd id="abdmClientPhone" class="text-on-surface text-right break-all">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Service</dt>
-          <dd id="abdmService" class="text-on-surface text-right">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Date</dt>
-          <dd id="abdmDate" class="text-on-surface text-right">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Time</dt>
-          <dd id="abdmTime" class="text-on-surface text-right">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Duration</dt>
-          <dd id="abdmDuration" class="text-on-surface text-right tabular-nums">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Timezone</dt>
-          <dd id="abdmTimezone" class="text-on-surface text-right text-xs">—</dd>
-        </div>
-        <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Deposit</dt>
-          <dd id="abdmDeposit" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
-        </div>
-          <div class="flex justify-between gap-4 py-2 border-b border-outline-variant/10">
-          <dt class="text-on-surface-variant font-medium">Balance (est.)</dt>
-          <dd id="abdmBalance" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
-        </div>
-          <div id="abdmPaidRow" class="hidden flex justify-between gap-4 py-2">
-            <dt class="text-on-surface-variant font-medium">Paid</dt>
-            <dd id="abdmPaid" class="text-on-surface font-semibold text-right tabular-nums">—</dd>
-        </div>
-      </dl>
       </div>
+        <div class="abdm-grid2">
+          <div>
+            <div class="abdm-kv"><span>Client</span><span id="abdmClientName">—</span></div>
+            <div class="abdm-kv" id="abdmClientEmailRow"><span>Email</span><span id="abdmClientEmail">—</span></div>
+            <div class="abdm-kv" id="abdmClientPhoneRow"><span>Mobile</span><span id="abdmClientPhone">—</span></div>
+            <div class="abdm-kv"><span>Service</span><span id="abdmService">—</span></div>
+            <div class="abdm-kv"><span>Deposit</span><span id="abdmDeposit">—</span></div>
+        </div>
+          <div>
+            <div class="abdm-kv"><span>Date</span><span id="abdmDate">—</span></div>
+            <div class="abdm-kv"><span>Time</span><span id="abdmTime">—</span></div>
+            <div class="abdm-kv"><span>Duration</span><span id="abdmDuration">—</span></div>
+            <div class="abdm-kv"><span>Timezone</span><span id="abdmTimezone">—</span></div>
+            <div class="abdm-kv"><span>Balance (est.)</span><span id="abdmBalance">—</span></div>
+        </div>
+        </div>
+        <div class="abdm-sect" id="abdmMoney">
+          <div class="flex items-center justify-between">
+            <div class="lbl" style="margin:0;font-size:11px;letter-spacing:.8px;font-weight:700;color:#6F6874;text-transform:uppercase">Money for this booking</div>
+            <span id="abdmMoneyPill" class="abdm-pill a">Pending</span>
+        </div>
+          <div class="abdm-kv" style="padding:8px 0;border-bottom:1px solid #F3EEF4"><span id="abdmMoneyDepositLabel">Client paid · deposit</span><span id="abdmMoneyDeposit" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmPaidRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Paid</span><span id="abdmPaid" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmBookingFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Service Booking Fee <span id="abdmBookingFeeNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmBookingFee" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmStripeFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4"><span>Stripe fee <span class="abdm-faint" style="font-size:12px">1.5% + €0.25</span></span><span id="abdmStripeFee" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmSplitRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span id="abdmSplitLabel">Split</span><span id="abdmSplitValue" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmYourShareRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your share <span id="abdmYourShareNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourShare" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmYourStripeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your part of the Stripe fee <span id="abdmYourStripeNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourStripe" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" style="padding:12px 0 4px;font-size:15px;border-bottom:0"><span style="color:#1A1A1A;font-weight:700">You get</span><span id="abdmYouGet" style="font-weight:800;font-size:18px">—</span></div>
+          <div id="abdmMoneyFootnote" class="abdm-faint" style="font-size:12.5px;display:none"></div>
+          <div id="abdmMoneyNote" class="abdm-tint" style="margin-top:12px;display:none"></div>
+        </div>
+        </div>
 
-      <div id="abdmPanelRequest" role="tabpanel" aria-labelledby="abdmTabRequest" class="hidden">
-        <div id="abdmQaSection" class="rounded-xl border border-outline-variant/20 bg-surface-container-low/40 p-4">
-          <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-3">Intake form answers</p>
-        <div id="abdmQaList" class="space-y-3 text-sm"></div>
-          <p id="abdmQaEmpty" class="hidden text-sm text-on-surface-variant">No intake form answers for this booking.</p>
+      <div id="abdmPanelRequest" role="tabpanel" aria-labelledby="abdmTabRequest" hidden>
+        <div id="abdmQaList" class="abdm-grid2" style="column-gap:20px"></div>
+        <p id="abdmQaEmpty" class="abdm-muted" style="font-size:13.5px;display:none">No intake form answers for this booking.</p>
+        </div>
+        </div>
+    <div class="abdm-mf">
+      <button type="button" id="abdmMessageBtn" class="abdm-btn ghost" style="display:none"><span class="material-symbols-outlined">chat_bubble</span>Message</button>
+      <button type="button" id="abdmAftercareBtn" class="abdm-btn ghost" style="margin-right:auto" aria-disabled="false">
+        <span class="material-symbols-outlined">healing</span><span id="abdmAftercareLabel">Send aftercare</span>
+      </button>
+      <button type="button" class="abdm-btn ghost" data-close-artist-bdm>Close</button>
+      <button type="button" id="abdmConfirmBtn" class="abdm-btn confirm" style="display:none"><span class="material-symbols-outlined">task_alt</span>Confirm booking</button>
         </div>
       </div>
+</div>
+
+<div id="artistMessageClientModal"
+  class="artist-msm fixed inset-0 z-[120] flex"
+  aria-hidden="true"
+  aria-modal="true"
+  role="dialog"
+  aria-labelledby="ammTitle">
+  <div class="artist-msm-backdrop absolute inset-0" style="background:rgba(20,10,30,.45)" data-close-artist-msm></div>
+  <div class="artist-msm-panel relative z-10">
+    <div class="amm-mh">
+      <div class="flex items-center" style="gap:12px;min-width:0">
+        <div id="ammAvatar" class="amm-ini">?</div>
+        <div style="min-width:0">
+          <h2 id="ammTitle">Message client</h2>
+          <div id="ammSub" class="amm-sub">—</div>
+        </div>
+      </div>
+      <button type="button" class="amm-faint inline-flex" data-close-artist-msm aria-label="Close" style="background:none;border:0;cursor:pointer;padding:0">
+        <span class="material-symbols-outlined" style="font-size:22px">close</span>
+      </button>
+    </div>
+    <div id="ammMessages" class="amm-mb" aria-live="polite">
+      <div class="amm-empty">Loading conversation…</div>
+    </div>
+    <div class="amm-composer" id="ammComposer">
+      <span class="material-symbols-outlined amm-faint" style="font-size:20px">attach_file</span>
+      <div class="amm-in">
+        <div class="amm-input-wrap" style="display:flex;flex:1;min-width:0">
+          <input type="text" id="ammInput" placeholder="Type a message" autocomplete="off" aria-label="Message">
+        </div>
+        <div class="amm-locked">
+          <span class="material-symbols-outlined" style="font-size:18px;color:#9A929E">lock</span>
+          <span id="ammLockedText">This chat is read-only.</span>
+        </div>
+      </div>
+      <button type="button" id="ammSendBtn" class="amm-btn amm-send-ico" aria-label="Send">
+        <span class="material-symbols-outlined" style="color:#fff">send</span>
+      </button>
+    </div>
+    <div class="amm-mf">
+      <a id="ammOpenInbox" href="#" class="amm-btn ghost"><span class="material-symbols-outlined">mail</span>Open in Inbox</a>
     </div>
         </div>
       </div>
@@ -899,7 +963,7 @@
           <p id="acdmClient" class="text-base font-bold text-on-surface truncate">—</p>
           <p id="acdmBookingRef" class="mt-0.5 text-sm font-medium text-on-surface-variant tabular-nums">—</p>
           <p id="acdmWhen" class="mt-1 text-sm text-on-surface">—</p>
-        </div>
+      </div>
         <span class="inline-flex shrink-0 items-center text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset bg-green-50 text-green-700 ring-green-500/20">Submitted</span>
       </div>
       <div class="flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3.5 py-2.5">
@@ -917,21 +981,21 @@
             aria-labelledby="acdmAgeVerifiedLabel"></button>
         </div>
         <div id="acdmGuardianFields" class="hidden mt-3 pt-3 border-t border-outline-variant/15 space-y-3">
-          <div>
+      <div>
             <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Guardian consent</p>
             <p id="acdmGuardianFormHint" class="mt-1 text-xs text-on-surface-variant leading-relaxed">Complete these with the parent or guardian present in studio. All fields are required.</p>
-          </div>
+      </div>
           <div id="acdmGuardianForm" class="space-y-3">
             <div>
               <label for="acdmGuardianName" class="block text-sm font-medium text-on-surface mb-1">Guardian full name</label>
               <input id="acdmGuardianName" type="text" autocomplete="name" required class="acdm-guardian-input w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20" aria-describedby="acdmGuardianNameError">
               <p id="acdmGuardianNameError" class="hidden mt-1 text-xs font-medium text-[#c2410c]" role="alert"></p>
-            </div>
+      </div>
             <div>
               <label for="acdmGuardianRelationship" class="block text-sm font-medium text-on-surface mb-1">Relationship to client</label>
               <input id="acdmGuardianRelationship" type="text" placeholder="e.g. Parent, Legal guardian" required class="acdm-guardian-input w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20" aria-describedby="acdmGuardianRelationshipError">
               <p id="acdmGuardianRelationshipError" class="hidden mt-1 text-xs font-medium text-[#c2410c]" role="alert"></p>
-            </div>
+    </div>
             <div>
               <label for="acdmGuardianIdRef" class="block text-sm font-medium text-on-surface mb-1">Guardian ID reference</label>
               <input id="acdmGuardianIdRef" type="text" placeholder="Passport / ID number" required class="acdm-guardian-input w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20" aria-describedby="acdmGuardianIdRefError">
@@ -978,254 +1042,264 @@
 </div>
 
 <div id="artistConsentPendingModal"
-  class="artist-cpm fixed inset-0 z-[116] flex items-end sm:items-center justify-center p-4 sm:p-6"
+  class="artist-cpm fixed inset-0 z-[116] flex"
   aria-hidden="true"
   aria-modal="true"
   role="dialog"
   aria-labelledby="acpmTitle">
-  <div class="artist-cpm-backdrop absolute inset-0 bg-black/45" data-close-artist-cpm></div>
-  <div class="artist-cpm-panel relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl border border-outline-variant/20">
-    <div class="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4 border-b border-outline-variant/15 bg-white rounded-t-2xl">
-      <h3 id="acpmTitle" class="text-lg font-bold text-on-surface">Consent pending</h3>
-      <button type="button" class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-cpm aria-label="Close">
-        <span class="material-symbols-outlined text-[22px]">close</span>
-      </button>
+  <div class="artist-cpm-backdrop absolute inset-0" style="background:rgba(20,10,30,.45)" data-close-artist-cpm></div>
+  <div class="artist-cpm-panel relative z-10">
+    <div class="acpm-mh">
+      <div class="acpm-topline">
+        <div class="acpm-ic" aria-hidden="true"><span class="material-symbols-outlined">draw</span></div>
+        <button type="button" class="acpm-faint inline-flex" data-close-artist-cpm aria-label="Close" style="background:none;border:0;cursor:pointer;padding:0">
+          <span class="material-symbols-outlined" style="font-size:22px">close</span>
+        </button>
+      </div>
+      <h2 id="acpmTitle">Consent pending</h2>
+      <p id="acpmLead" class="acpm-lead">Client hasn’t completed the consent form yet.</p>
     </div>
-    <div class="p-5 space-y-4">
-      <div>
-        <p id="acpmClient" class="text-base font-bold text-on-surface">—</p>
-        <p id="acpmBookingRef" class="mt-0.5 text-sm font-medium text-on-surface-variant tabular-nums">—</p>
-        <p id="acpmWhen" class="mt-1 text-sm text-on-surface">—</p>
-      </div>
-      <div class="flex items-center justify-between gap-3 rounded-xl bg-[#f4eee4] px-3.5 py-2.5">
-        <p class="text-sm font-bold text-[#8a5a12]">Consent pending</p>
-      </div>
-      <p class="text-sm text-on-surface-variant leading-relaxed">
-        Client hasn&rsquo;t completed the consent form yet. Copy the link below, resend the email, or show a QR code they can scan.
-      </p>
-      <div class="space-y-2">
-        <label for="acpmConsentLink" class="block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Consent form link</label>
-        <div class="flex items-stretch gap-2">
-          <input id="acpmConsentLink" type="text" readonly placeholder="Preparing link…" class="min-w-0 flex-1 rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20">
-          <button type="button" id="acpmCopyLinkBtn" class="shrink-0 rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low disabled:opacity-60 disabled:cursor-not-allowed" disabled>
-            Copy link
-          </button>
+    <div class="acpm-mb">
+      <div class="acpm-card">
+        <div id="acpmAvatar" class="acpm-ini">?</div>
+        <div class="acpm-card-main">
+          <div id="acpmCardTitle" class="acpm-card-title">—</div>
+          <div id="acpmCardMeta" class="acpm-card-meta">—</div>
         </div>
+        <span id="acpmBookingStatus" class="acpm-pill g">Confirmed</span>
       </div>
-      <div class="space-y-2">
-        <button type="button" id="acpmResendBtn" class="w-full rounded-xl bg-[#1b5e4a] px-4 py-3.5 text-sm font-bold text-white disabled:opacity-70 disabled:cursor-wait">
-          Resend email
-        </button>
-        <button type="button" id="acpmShowQrBtn" class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3 text-sm font-semibold text-on-surface" aria-expanded="false" aria-controls="acpmQrWrap">
-          Show QR
-        </button>
-        <div id="acpmQrWrap" class="hidden">
-          <div class="rounded-xl border border-outline-variant/40 bg-white px-4 py-5 flex flex-col items-center justify-center">
-            <img id="acpmQrImage" alt="Consent form QR code" class="h-48 w-48 rounded-lg bg-white object-contain">
-            <p class="mt-3 text-xs text-on-surface-variant text-center">Scan to open the consent form</p>
-          </div>
-        </div>
+      <div id="acpmAutoNote" class="acpm-note" role="status">
+        <span class="material-symbols-outlined">schedule</span>
+        <span id="acpmAutoNoteText"></span>
       </div>
-      <p id="acpmStatus" class="hidden text-xs font-semibold"></p>
+      <label for="acpmConsentLink" class="acpm-lbl">Consent form link</label>
+      <div class="acpm-linkrow">
+        <input id="acpmConsentLink" class="acpm-link" type="text" readonly placeholder="Preparing link…" aria-label="Consent form link">
+        <button type="button" id="acpmCopyLinkBtn" class="acpm-btn ghost" disabled>
+          <span class="material-symbols-outlined">content_copy</span><span id="acpmCopyLinkLabel">Copy link</span>
+        </button>
+      </div>
+      <div class="acpm-actions">
+        <button type="button" id="acpmResendBtn" class="acpm-btn green">
+          <span class="material-symbols-outlined">mail</span><span id="acpmResendLabel">Resend email</span>
+        </button>
+        <button type="button" id="acpmShowQrBtn" class="acpm-btn ghost" aria-expanded="false" aria-controls="acpmQrWrap">
+          <span class="material-symbols-outlined">qr_code_2</span><span id="acpmShowQrLabel">Show QR</span>
+        </button>
+      </div>
+      <div id="acpmQrWrap" class="acpm-qr">
+        <img id="acpmQrImage" alt="Consent form QR code">
+        <p>Scan to open the consent form</p>
+      </div>
+      <p id="acpmStatus" class="acpm-status"></p>
+    </div>
+    <div class="acpm-mf">
+      <button type="button" class="acpm-btn ghost" data-close-artist-cpm>Close</button>
     </div>
   </div>
 </div>
 
 <div id="artistRequestPaymentModal"
-  class="artist-rpm fixed inset-0 z-[117] flex items-end sm:items-center justify-center p-4 sm:p-6"
+  class="artist-rpm fixed inset-0 z-[117] flex"
   aria-hidden="true"
   aria-modal="true"
   role="dialog"
   aria-labelledby="rpmTitle">
-  <div class="artist-rpm-backdrop absolute inset-0 bg-black/45" data-close-artist-rpm></div>
-  <div class="artist-rpm-panel relative w-full max-w-md max-h-[min(90vh,720px)] overflow-y-auto rounded-2xl bg-white shadow-xl border border-outline-variant/20">
-    <div class="sticky top-0 z-10 px-5 py-4 border-b border-outline-variant/15 flex items-center justify-between bg-white rounded-t-2xl">
-      <h3 id="rpmTitle" class="text-lg font-bold text-on-surface">Request payment</h3>
-      <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-rpm aria-label="Close">
-        <span class="material-symbols-outlined text-[22px]">close</span>
-      </button>
-    </div>
-    <div id="rpmSettleView" class="p-5 space-y-3">
-      <div class="rounded-xl bg-[#f3eef8] px-4 py-3">
-        <p class="text-xs text-on-surface-variant">Booking</p>
-        <p id="rpmBookingLine" class="mt-0.5 text-sm font-bold text-on-surface">—</p>
+  <div class="artist-rpm-backdrop absolute inset-0" style="background:rgba(20,10,30,.45)" data-close-artist-rpm></div>
+  <div class="artist-rpm-panel relative z-10">
+    <div class="rpm-mh">
+      <div class="rpm-topline">
+        <div style="min-width:0">
+          <h2 id="rpmTitle">Request payment</h2>
+          <p class="rpm-lead">Settle the balance and close the session.</p>
+        </div>
+        <button type="button" class="rpm-faint inline-flex" data-close-artist-rpm aria-label="Close" style="background:none;border:0;cursor:pointer;padding:0">
+          <span class="material-symbols-outlined" style="font-size:22px">close</span>
+        </button>
       </div>
-      <div class="rounded-xl bg-[#f8f1dc] px-4 py-3.5">
-        <p id="rpmBalanceLine" class="text-sm font-bold text-[#6f5728]">Outstanding balance: —</p>
-        <p class="mt-1 text-sm text-[#6f5728]">How was it settled?</p>
-        <div class="mt-3 space-y-2.5" role="radiogroup" aria-label="How was it settled?">
-          <div class="space-y-1">
-            <div class="flex items-center justify-between gap-3">
-              <button type="button" class="rpm-option flex min-w-0 items-center gap-2.5 text-left" data-rpm-value="link" aria-checked="true" role="radio">
-                <span class="rpm-option-dot" aria-hidden="true"></span>
-                <span class="rpm-option-label text-sm text-on-surface">Client will pay by link</span>
-              </button>
-              <div id="rpmLinkAmountWrap" class="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1">
-                <span id="rpmLinkSettleAmountDisplay" class="text-xs font-semibold text-on-surface tabular-nums">€ 0</span>
-                <input id="rpmLinkSettleAmountInput" type="text" inputmode="decimal" class="hidden w-16 bg-transparent text-xs font-semibold text-on-surface tabular-nums outline-none" aria-label="Payment link amount">
-                <button type="button" id="rpmLinkSettleAmountEdit" class="text-[11px] font-semibold text-[#1a4d9e] hover:underline">edit</button>
-              </div>
-            </div>
-            <p id="rpmLinkAmountError" class="hidden text-xs font-semibold text-error text-right"></p>
+    </div>
+
+    <div id="rpmSettleView" style="display:flex;flex-direction:column;min-height:0;flex:1">
+      <div class="rpm-mb">
+        <div class="rpm-card">
+          <div id="rpmAvatar" class="rpm-ini">?</div>
+          <div class="rpm-card-main">
+            <div id="rpmCardTitle" class="rpm-card-title">—</div>
+            <div id="rpmCardMeta" class="rpm-card-meta">—</div>
           </div>
-          <div class="space-y-1">
-            <div class="flex items-center justify-between gap-3">
-              <button type="button" class="rpm-option flex min-w-0 items-center gap-2.5 text-left" data-rpm-value="cash" aria-checked="false" role="radio">
-                <span class="rpm-option-dot" aria-hidden="true"></span>
-                <span class="rpm-option-label text-sm text-on-surface">Paid in cash</span>
-              </button>
-              <div id="rpmCashAmountWrap" class="hidden flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1">
-                <span id="rpmCashAmountDisplay" class="text-xs font-semibold text-on-surface tabular-nums">€ 0</span>
-                <input id="rpmCashAmountInput" type="text" inputmode="decimal" class="hidden w-16 bg-transparent text-xs font-semibold text-on-surface tabular-nums outline-none" aria-label="Cash amount">
-                <button type="button" id="rpmCashAmountEdit" class="text-[11px] font-semibold text-[#1a4d9e] hover:underline">edit</button>
+          <span id="rpmBookingStatus" class="rpm-pill g">Confirmed</span>
+        </div>
+        <p id="rpmBookingLine" class="hidden">—</p>
+
+        <div class="rpm-settle">
+          <p id="rpmBalanceLine" class="rpm-settle-bal">Outstanding balance: —</p>
+          <p class="rpm-settle-q">How was it settled?</p>
+          <div class="rpm-opts" role="radiogroup" aria-label="How was it settled?">
+            <div>
+              <div class="rpm-opt-row">
+                <button type="button" class="rpm-option flex min-w-0 items-center gap-2.5" data-rpm-value="link" aria-checked="true" role="radio">
+                  <span class="rpm-option-dot" aria-hidden="true"></span>
+                  <span class="rpm-option-label">Client will pay by link</span>
+                </button>
+                <div id="rpmLinkAmountWrap" class="rpm-amount-chip">
+                  <span id="rpmLinkSettleAmountDisplay" class="amt">€ 0</span>
+                  <input id="rpmLinkSettleAmountInput" type="text" inputmode="decimal" class="hidden" aria-label="Payment link amount">
+                  <button type="button" id="rpmLinkSettleAmountEdit" class="edit">edit</button>
+                </div>
               </div>
+              <p id="rpmLinkAmountError" class="rpm-field-err hidden"></p>
             </div>
-            <p id="rpmCashAmountError" class="hidden text-xs font-semibold text-error text-right"></p>
+            <div>
+              <div class="rpm-opt-row">
+                <button type="button" class="rpm-option flex min-w-0 items-center gap-2.5" data-rpm-value="cash" aria-checked="false" role="radio">
+                  <span class="rpm-option-dot" aria-hidden="true"></span>
+                  <span class="rpm-option-label">Paid in cash</span>
+                </button>
+                <div id="rpmCashAmountWrap" class="rpm-amount-chip hidden">
+                  <span id="rpmCashAmountDisplay" class="amt">€ 0</span>
+                  <input id="rpmCashAmountInput" type="text" inputmode="decimal" class="hidden" aria-label="Cash amount">
+                  <button type="button" id="rpmCashAmountEdit" class="edit">edit</button>
+                </div>
+              </div>
+              <p id="rpmCashAmountError" class="rpm-field-err hidden"></p>
+            </div>
+            <button type="button" class="rpm-option rpm-opt-row w-full" data-rpm-value="unsettled" aria-checked="false" role="radio">
+              <span class="inline-flex items-center gap-2.5 min-w-0">
+                <span class="rpm-option-dot" aria-hidden="true"></span>
+                <span class="rpm-option-label">Not settled yet</span>
+              </span>
+              <span class="rpm-hint">the balance stays due on the booking</span>
+            </button>
           </div>
-          <button type="button" class="rpm-option flex w-full items-center justify-between gap-3 text-left" data-rpm-value="unsettled" aria-checked="false" role="radio">
-            <span class="inline-flex items-center gap-2.5 min-w-0">
-              <span class="rpm-option-dot" aria-hidden="true"></span>
-              <span class="rpm-option-label text-sm text-on-surface">Not settled yet</span>
-            </span>
-            <span class="text-[11px] text-on-surface-variant/80 whitespace-nowrap">keeps Collect on card</span>
+        </div>
+
+        <div id="rpmCashFields" class="hidden" style="margin-bottom:14px">
+          <p id="rpmCashHelp" class="rpm-help">Ask the client for their completion code. It’s in their booking confirmation email and confirms the cash payment.</p>
+          <label for="rpmCompletionCode" class="rpm-fl">Completion code <span style="color:#C62828">*</span></label>
+          <input id="rpmCompletionCode" type="text" maxlength="32" autocomplete="off" class="rpm-in border-outline-variant/40" placeholder="6-digit code">
+          <p id="rpmCompletionCodeError" class="rpm-field-err hidden" style="text-align:left"></p>
+        </div>
+
+        <div id="rpmUnsettledFields" class="hidden" style="margin-bottom:14px">
+          <p class="rpm-fl" style="margin-bottom:8px">When do you expect the payment?</p>
+          <div class="rpm-when" role="radiogroup" aria-label="When do you expect the payment?">
+            <button type="button" class="rpm-when-chip" data-when-value="3-days" aria-pressed="true">3 days</button>
+            <button type="button" class="rpm-when-chip" data-when-value="1-week" aria-pressed="false">1 week</button>
+            <button type="button" class="rpm-when-chip" data-when-value="pick-date" aria-pressed="false">Pick date</button>
+            <button type="button" class="rpm-when-chip" data-when-value="no-date" aria-pressed="false">No date</button>
+          </div>
+          <p id="rpmWhenError" class="rpm-field-err hidden" style="text-align:left"></p>
+          <input id="rpmUnsettledDate" type="date" class="rpm-in border-outline-variant/40 hidden" style="margin-top:10px">
+          <p id="rpmDateError" class="rpm-field-err hidden" style="text-align:left"></p>
+          <label for="rpmUnsettledNote" class="rpm-fl" style="margin-top:14px">Note <span style="font-weight:500;color:#9A929E">(optional)</span></label>
+          <input id="rpmUnsettledNote" type="text" class="rpm-in border-outline-variant/40" placeholder="e.g. Bank transfer on Friday">
+        </div>
+
+        <div id="rpmActualDurationFields">
+          <label class="rpm-fl">Actual duration <span style="color:#C62828">*</span></label>
+          <div class="rpm-grid2">
+            <div>
+              <label for="rpmDurationHours" class="rpm-muted">Hours</label>
+              <select id="rpmDurationHours" class="rpm-in border-outline-variant/40">
+                @for ($h = 0; $h <= 12; $h++)
+                  <option value="{{ $h }}" @selected($h === 0)>{{ $h }}</option>
+                @endfor
+              </select>
+            </div>
+            <div>
+              <label for="rpmDurationMinutes" class="rpm-muted">Minutes</label>
+              <select id="rpmDurationMinutes" class="rpm-in border-outline-variant/40">
+                @foreach ([0, 15, 30, 45] as $m)
+                  <option value="{{ $m }}" @selected($m === 0)>{{ $m }}</option>
+                @endforeach
+              </select>
+            </div>
+          </div>
+          <p id="rpmDurationHelp" class="rpm-duration-help">Pre-filled from the booking. Change it if the session ran shorter or longer.</p>
+          <p id="rpmDurationError" class="rpm-field-err hidden" style="text-align:left"></p>
+        </div>
+        <p id="rpmError" class="rpm-err hidden"></p>
+      </div>
+      <div class="rpm-mf">
+        <p id="rpmActionHint" class="rpm-footer-hint">Sends the link. The booking completes when the client pays.</p>
+        <div class="rpm-mf-actions">
+          <button type="button" class="rpm-btn ghost" data-close-artist-rpm>Back</button>
+          <button type="button" id="rpmActionBtn" class="rpm-btn green">
+            <span id="rpmActionIcon" class="material-symbols-outlined">link</span>
+            <span id="rpmActionLabel">Get payment link</span>
           </button>
         </div>
       </div>
-      <div id="rpmCashFields" class="hidden space-y-3">
-        <p id="rpmCashHelp" class="text-sm text-on-surface-variant leading-relaxed">Ask the client for their completion code (shared in booking confirmation email) to confirm the cash payment.</p>
-        <div>
-          <label for="rpmCompletionCode" class="block text-sm font-semibold text-on-surface mb-1.5">Completion code <span class="text-error">*</span></label>
-          <input id="rpmCompletionCode" type="text" maxlength="32" autocomplete="off"
-            class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3 text-sm text-on-surface placeholder:text-outline/60 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-            placeholder="Enter code from client">
-          <p id="rpmCompletionCodeError" class="hidden text-xs font-semibold text-error mt-1.5"></p>
-        </div>
-      </div>
-      <div id="rpmUnsettledFields" class="hidden space-y-3">
-        <div>
-          <p class="text-sm font-bold text-on-surface mb-2">When do you expect the payment?</p>
-          <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="When do you expect the payment?">
-            <button type="button" class="rpm-when-chip rounded-full px-3.5 py-1.5 text-sm font-semibold border bg-[#e7f1ff] border-transparent text-[#1a4d9e]" data-when-value="3-days" aria-pressed="true">3 days</button>
-            <button type="button" class="rpm-when-chip rounded-full px-3.5 py-1.5 text-sm font-semibold border bg-white border-outline-variant/40 text-on-surface" data-when-value="1-week" aria-pressed="false">1 week</button>
-            <button type="button" class="rpm-when-chip rounded-full px-3.5 py-1.5 text-sm font-semibold border bg-white border-outline-variant/40 text-on-surface" data-when-value="pick-date" aria-pressed="false">Pick date</button>
-            <button type="button" class="rpm-when-chip rounded-full px-3.5 py-1.5 text-sm font-semibold border bg-white border-outline-variant/40 text-on-surface" data-when-value="no-date" aria-pressed="false">No date</button>
-          </div>
-          <p id="rpmWhenError" class="hidden text-xs font-semibold text-error mt-1.5"></p>
-          <input id="rpmUnsettledDate" type="date" class="hidden mt-2 w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
-          <p id="rpmDateError" class="hidden text-xs font-semibold text-error mt-1.5"></p>
-        </div>
-        <div>
-          <label for="rpmUnsettledNote" class="block text-sm text-on-surface-variant mb-1.5">Note · optional</label>
-          <input id="rpmUnsettledNote" type="text"
-            class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3 text-sm text-on-surface placeholder:text-outline/60 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-            placeholder="Bank transfer on Friday">
-        </div>
-      </div>
-      <div id="rpmActualDurationFields" class="space-y-2">
-        <label class="block text-sm font-semibold text-on-surface">Actual duration <span class="text-error">*</span></label>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="rpmDurationHours" class="block text-xs font-medium text-on-surface-variant mb-1.5">Hours</label>
-            <select id="rpmDurationHours"
-              class="w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
-              @for ($h = 0; $h <= 12; $h++)
-                <option value="{{ $h }}" @selected($h === 0)>{{ $h }}</option>
-              @endfor
-            </select>
-          </div>
-          <div>
-            <label for="rpmDurationMinutes" class="block text-xs font-medium text-on-surface-variant mb-1.5">Minutes</label>
-            <select id="rpmDurationMinutes"
-              class="w-full rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
-              @foreach ([0, 15, 30, 45] as $m)
-                <option value="{{ $m }}" @selected($m === 0)>{{ $m }}</option>
-              @endforeach
-            </select>
-          </div>
-        </div>
-        <p id="rpmDurationError" class="hidden text-xs font-semibold text-error"></p>
-      </div>
-      <div class="flex items-start justify-between gap-3 pt-1">
-        <button type="button" class="rounded-xl border border-outline-variant/40 bg-white px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low" data-close-artist-rpm>Back</button>
-        <div class="text-right">
-          <button type="button" id="rpmActionBtn" class="rounded-xl bg-[#1b5e4a] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-70 disabled:cursor-wait">Get payment link</button>
-          <p id="rpmActionHint" class="mt-1.5 text-[11px] text-on-surface-variant">sends link — completes when client pays</p>
-        </div>
-      </div>
-      <p id="rpmError" class="hidden text-xs font-semibold text-error"></p>
     </div>
-    <div id="rpmLinkView" class="hidden p-5 space-y-4">
-      <div class="text-sm text-on-surface-variant space-y-0.5">
+
+    <div id="rpmLinkView" class="hidden rpm-mb">
+      <div class="rpm-link-meta">
         <p id="rpmLinkClientLine">—</p>
         <p id="rpmLinkTotalsLine">—</p>
       </div>
-      <div>
-        <p class="text-sm text-on-surface-variant mb-1.5">Amount</p>
-        <div class="rounded-xl border border-outline-variant/40 bg-white px-4 py-3">
-          <span id="rpmLinkAmountDisplay" class="text-base font-bold text-on-surface tabular-nums">€ 0</span>
+      <p class="rpm-muted">Amount</p>
+      <div class="rpm-box"><b id="rpmLinkAmountDisplay">€ 0</b></div>
+      <p class="rpm-muted">Message for your client</p>
+      <div id="rpmLinkMessage" class="rpm-msg"></div>
+      <div class="rpm-link-actions">
+        <button type="button" id="rpmCopyLinkBtn" class="rpm-btn"><span id="rpmCopyLinkLabel">Copy payment link</span></button>
+        <div class="rpm-link-row">
+          <button type="button" id="rpmCopyMessageBtn" class="rpm-btn ghost"><span id="rpmCopyMessageLabel">Copy message</span></button>
+          <button type="button" id="rpmShowQrBtn" class="rpm-btn ghost" aria-expanded="false" aria-controls="rpmQrWrap"><span id="rpmShowQrLabel">Show QR</span></button>
+        </div>
+        <div id="rpmQrWrap" class="rpm-qr hidden">
+          <img id="rpmQrImage" alt="Payment link QR code">
+          <p>Scan to open the payment link</p>
         </div>
       </div>
-      <div>
-        <p class="text-sm text-on-surface-variant mb-1.5">Message for your client</p>
-        <div id="rpmLinkMessage" class="rounded-xl border border-outline-variant/40 bg-white px-4 py-3 text-sm text-on-surface leading-relaxed"></div>
-      </div>
-      <div class="space-y-2">
-        <button type="button" id="rpmCopyLinkBtn" class="w-full rounded-xl bg-[#1c1b21] px-4 py-3.5 text-sm font-bold text-white">Copy payment link</button>
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" id="rpmCopyMessageBtn" class="rounded-xl border border-outline-variant/40 bg-white px-4 py-3 text-sm font-semibold text-on-surface">Copy message</button>
-          <button type="button" id="rpmShowQrBtn" class="rounded-xl border border-outline-variant/40 bg-white px-4 py-3 text-sm font-semibold text-on-surface" aria-expanded="false" aria-controls="rpmQrWrap">Show QR</button>
-        </div>
-        <div id="rpmQrWrap" class="hidden">
-          <div class="rounded-xl border border-outline-variant/40 bg-white px-4 py-5 flex flex-col items-center justify-center">
-            <img id="rpmQrImage" alt="Payment link QR code" class="h-48 w-48 rounded-lg bg-white object-contain">
-            <p class="mt-3 text-xs text-on-surface-variant">Scan to open the payment link</p>
-          </div>
-        </div>
-      </div>
-      <div class="space-y-1.5 text-sm text-on-surface-variant">
+      <div class="rpm-notes">
         <p>Client can pay in full or split with Klarna.</p>
         <p>Balance links don’t expire.</p>
-        <p id="rpmLinkStatusLine" class="text-on-surface-variant/80">Card: — requested · link sent · <span class="text-[#1a4d9e] font-semibold">Resend</span></p>
-        <p class="font-bold text-[#1b5e4a]">Client pays → booking auto-marked Completed</p>
+        <p id="rpmLinkStatusLine">Card: — requested · link sent · <span style="color:#1E5BD8;font-weight:600">Resend</span></p>
+        <p class="ok">Client pays → booking auto-marked Completed</p>
       </div>
     </div>
-        </div>
-      </div>
+  </div>
+</div>
 
 <div id="artistRescheduleRequestModal"
-  class="artist-rsm fixed inset-0 z-[115] flex items-end sm:items-center justify-center p-4 sm:p-6"
+  class="artist-rsm fixed inset-0 z-[115] flex"
   aria-hidden="true"
   aria-modal="true"
   role="dialog"
   aria-labelledby="arsmTitle">
-  <div class="artist-rsm-backdrop absolute inset-0 bg-black/45" data-close-artist-rsm></div>
-  <div class="artist-rsm-panel relative w-full max-w-lg rounded-2xl bg-white shadow-xl border border-outline-variant/20">
-    <div class="px-5 py-4 border-b border-outline-variant/15 flex items-center justify-between">
-      <h3 id="arsmTitle" class="text-lg font-bold text-on-surface">Request reschedule</h3>
-      <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low" data-close-artist-rsm aria-label="Close">
-        <span class="material-symbols-outlined text-[22px]">close</span>
-      </button>
-    </div>
-    <div class="p-5 space-y-4">
-      <p class="text-sm text-on-surface-variant">
-        Send a reschedule request to <strong id="arsmClient" class="text-on-surface">the client</strong>.
-        The client will choose a new date and time from their dashboard.
+  <div class="artist-rsm-backdrop absolute inset-0" style="background:rgba(20,10,30,.45)" data-close-artist-rsm></div>
+  <div class="artist-rsm-panel relative z-10">
+    <div class="arsm-mh">
+      <div class="arsm-topline">
+        <div class="arsm-ic" aria-hidden="true"><span class="material-symbols-outlined">event_repeat</span></div>
+        <button type="button" class="arsm-faint inline-flex" data-close-artist-rsm aria-label="Close" style="background:none;border:0;cursor:pointer;padding:0">
+          <span class="material-symbols-outlined" style="font-size:22px">close</span>
+        </button>
+      </div>
+      <h2 id="arsmTitle">Request reschedule</h2>
+      <p class="arsm-lead">
+        Send a reschedule request to <strong id="arsmClient">the client</strong>. The client picks a new date and time from their dashboard.
       </p>
-      <div class="rounded-lg bg-surface-container-low px-3 py-2 text-sm">
-        <p class="text-on-surface-variant text-xs">Booking</p>
-        <p id="arsmService" class="font-semibold text-on-surface">—</p>
+    </div>
+    <div class="arsm-mb">
+      <div class="arsm-card">
+        <div id="arsmAvatar" class="arsm-ini">?</div>
+        <div class="arsm-card-main">
+          <div id="arsmCardTitle" class="arsm-card-title">—</div>
+          <div id="arsmCardMeta" class="arsm-card-meta">—</div>
+        </div>
+        <span id="arsmStatus" class="arsm-pill g">Confirmed</span>
       </div>
-      <div>
-        <label for="arsmReason" class="block text-sm font-semibold text-on-surface mb-1.5">Reason <span class="text-error">*</span></label>
-        <textarea id="arsmReason" rows="4" maxlength="1000"
-          class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-          placeholder="Example: Unexpected emergency at the studio, please choose a new slot."></textarea>
-      </div>
-      <p id="arsmError" class="hidden text-xs font-semibold text-error"></p>
-      <div class="flex items-center justify-end gap-2 pt-1">
-        <button type="button" class="px-4 py-2.5 rounded-xl text-sm font-semibold border border-outline-variant/40 text-on-surface hover:bg-surface-container-low" data-close-artist-rsm>Back</button>
-        <button type="button" id="arsmSubmit" class="px-4 py-2.5 rounded-xl text-sm font-semibold bg-primary text-on-primary hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed">Send request</button>
-      </div>
+      <label for="arsmReason" class="arsm-fl">Reason <span style="color:#C62828">*</span></label>
+      <textarea id="arsmReason" class="arsm-ta" rows="4" maxlength="1000"
+        placeholder="e.g. Unexpected emergency at the studio, please choose a new slot."></textarea>
+      <p class="arsm-help">Sent to the client with the request</p>
+      <p id="arsmError" class="arsm-err"></p>
+    </div>
+    <div class="arsm-mf">
+      <button type="button" class="arsm-btn ghost" data-close-artist-rsm>Back</button>
+      <button type="button" id="arsmSubmit" class="arsm-btn"><span class="material-symbols-outlined">send</span>Send request</button>
     </div>
   </div>
 </div>
@@ -1266,10 +1340,138 @@
     </div>
   </div>
 </div>
+
+@include('artist.partials.payment-link-modal')
 @endsection
 
 @section('scripts')
+@include('artist.partials.payment-link-modal-script')
 <script src="{{ asset('js/question-answer-display.js') }}"></script>
+<script>
+(function () {
+  var menu = null;
+  var shade = null;
+  var currentTrigger = null;
+
+  function closeBookingMenu() {
+    if (menu) { menu.remove(); menu = null; }
+    if (shade) { shade.remove(); shade = null; }
+    if (currentTrigger) {
+      currentTrigger.classList.remove('bk-bpm-on');
+      currentTrigger.setAttribute('aria-expanded', 'false');
+      currentTrigger = null;
+    }
+  }
+
+  function openBookingMenu(trigger) {
+    var source = null;
+    if (trigger.classList.contains('js-cal-event')) {
+      var bid = trigger.getAttribute('data-cal-bid');
+      var row = bid ? document.querySelector('[data-booking-row][data-booking-id="' + bid + '"]') : null;
+      source = row ? row.querySelector('.js-artist-booking-menu-source') : null;
+      if (!source) {
+        var viewBtn = bid ? document.querySelector('.js-artist-booking-view[data-booking-id="' + bid + '"]') : null;
+        if (viewBtn) viewBtn.click();
+        return;
+      }
+    } else {
+      source = trigger.parentElement && trigger.parentElement.querySelector('.js-artist-booking-menu-source');
+    }
+    if (!source) return;
+
+    closeBookingMenu();
+    currentTrigger = trigger;
+    trigger.classList.add('bk-bpm-on');
+    trigger.setAttribute('aria-expanded', 'true');
+
+    menu = document.createElement('div');
+    menu.className = 'bk-bpm';
+    menu.setAttribute('role', 'menu');
+
+    var items = Array.prototype.slice.call(source.children).filter(function (el) {
+      return !el.classList.contains('hidden') && el.getAttribute('data-menu-label');
+    });
+
+    items.forEach(function (src) {
+      if (src.getAttribute('data-menu-divider-before') === '1') {
+        menu.appendChild(document.createElement('hr'));
+      }
+      var label = src.getAttribute('data-menu-label') || '';
+      var icon = src.getAttribute('data-menu-icon') || 'more_horiz';
+      var danger = src.getAttribute('data-menu-danger') === '1';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('role', 'menuitem');
+      if (danger) btn.className = 'red';
+      btn.innerHTML = '<span class="material-symbols-outlined ms">' + icon + '</span>' + label;
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeBookingMenu();
+        if (src.classList.contains('js-artist-message-client')) {
+          if (typeof window.openArtistBookingMessageModal === 'function') {
+            window.openArtistBookingMessageModal(src);
+          } else if (src.getAttribute('href')) {
+            window.location.href = src.getAttribute('href');
+          }
+          return;
+        }
+        if (src.tagName === 'A' && src.getAttribute('href')) {
+          window.location.href = src.getAttribute('href');
+          return;
+        }
+        src.click();
+      });
+      menu.appendChild(btn);
+    });
+
+    if (!menu.children.length) {
+      closeBookingMenu();
+      return;
+    }
+
+    shade = document.createElement('div');
+    shade.className = 'bk-bpm-sh';
+    shade.addEventListener('click', closeBookingMenu);
+    document.body.appendChild(shade);
+    document.body.appendChild(menu);
+
+    var r = trigger.getBoundingClientRect();
+    var left = r.right + window.scrollX + 5 - menu.offsetWidth;
+    if (left < window.scrollX + 8) left = window.scrollX + 8;
+    var top = r.bottom + window.scrollY + 8;
+    if (r.bottom + 8 + menu.offsetHeight > window.innerHeight - 8 && r.top - 8 - menu.offsetHeight > 8) {
+      top = r.top + window.scrollY - 8 - menu.offsetHeight;
+    }
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+    var first = menu.querySelector('button');
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (menu && menu.contains(e.target)) return;
+    var trigger = e.target.closest && e.target.closest('.js-artist-booking-menu, .js-cal-event');
+    if (trigger) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (currentTrigger === trigger) {
+        closeBookingMenu();
+        return;
+      }
+      openBookingMenu(trigger);
+      return;
+    }
+    if (menu) closeBookingMenu();
+  }, true);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeBookingMenu();
+  });
+  window.addEventListener('resize', closeBookingMenu);
+  window.closeArtistBookingMenu = closeBookingMenu;
+})();
+</script>
 <script>
 (function () {
   var liveUrl = @json(route('api.bookings.live-status'));
@@ -1283,13 +1485,12 @@
       row.querySelectorAll('.js-artist-collect-wrap').forEach(function (el) {
         el.classList.add('hidden');
       });
-      row.querySelectorAll('.js-artist-row-actions').forEach(function (actions) {
-        Array.prototype.forEach.call(actions.children, function (child) {
-          var href = child.getAttribute('href') || '';
-          if (!child.classList.contains('js-artist-booking-view') && href.indexOf('chat') === -1) {
-            child.classList.add('hidden');
-          }
-        });
+      row.querySelectorAll('.js-artist-booking-menu-source > *').forEach(function (child) {
+        var href = child.getAttribute('href') || '';
+        var keep = child.classList.contains('js-artist-booking-view') || href.indexOf('chat') !== -1;
+        if (!keep) {
+          child.classList.add('hidden');
+        }
       });
       row.querySelectorAll('.js-artist-booking-view').forEach(function (btn) {
         btn.setAttribute('data-booking-status', 'completed');
@@ -1349,113 +1550,43 @@
 </script>
 <script>
 (function () {
-  var tableBody = document.getElementById('bookingsTableBody');
-  var mobileWrap = document.getElementById('bookingsMobile');
+  var form = document.getElementById('bookingsFilterForm');
+  var filterInput = document.getElementById('filterInput');
   var pills = document.querySelectorAll('.js-filter-status');
   var sortBy = document.getElementById('sortBy');
   var dateFrom = document.getElementById('dateFrom');
   var dateTo = document.getElementById('dateTo');
   var searchClient = document.getElementById('searchClient');
-  var emptyHint = document.getElementById('artistBookingsFilteredEmpty');
-  var statusFilter = 'all';
+  var searchTimer = null;
 
-  function getRows() {
-    return document.querySelectorAll('[data-booking-row].booking-group');
-  }
-
-  function setPillUi(activeBtn) {
-    pills.forEach(function (p) {
-      p.classList.remove('active', 'ring-2', 'ring-primary/30');
-      p.classList.add('text-on-surface-variant');
-    });
-    if (activeBtn) {
-      activeBtn.classList.add('active', 'ring-2', 'ring-primary/30');
-      activeBtn.classList.remove('text-on-surface-variant');
-    }
+  function submitForm() {
+    if (form) form.submit();
   }
 
   pills.forEach(function (btn) {
     btn.addEventListener('click', function () {
-      statusFilter = btn.getAttribute('data-filter-status') || 'all';
-      setPillUi(btn);
-      applyFiltersAndSort();
+      var next = btn.getAttribute('data-filter-status') || 'upcoming';
+      if (filterInput) filterInput.value = next;
+      pills.forEach(function (p) { p.classList.toggle('on', p === btn); });
+      submitForm();
     });
   });
 
-  function rowMatches(el) {
-    var st = (el.getAttribute('data-status') || '').toLowerCase();
-    var client = (el.getAttribute('data-client') || '').toLowerCase();
-    var d = el.getAttribute('data-date') || '';
-    var q = (searchClient && searchClient.value || '').trim().toLowerCase();
-    var df = dateFrom && dateFrom.value;
-    var dt = dateTo && dateTo.value;
-
-    if (statusFilter !== 'all' && st !== statusFilter) return false;
-    if (df && (!d || d < df)) return false;
-    if (dt && (!d || d > dt)) return false;
-    if (q && client.indexOf(q) === -1) return false;
-    return true;
-  }
-
-  function applyFiltersOnly() {
-    var any = false;
-    getRows().forEach(function (el) {
-      var ok = rowMatches(el);
-      el.classList.toggle('hidden', !ok);
-      if (ok) any = true;
+  if (sortBy) sortBy.addEventListener('change', submitForm);
+  if (dateFrom) dateFrom.addEventListener('change', submitForm);
+  if (dateTo) dateTo.addEventListener('change', submitForm);
+  if (searchClient) {
+    searchClient.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitForm();
+      }
     });
-    if (emptyHint) emptyHint.classList.toggle('hidden', any);
-  }
-
-  function reorderBody(container, rows) {
-    if (!container) return;
-    rows.forEach(function (tr) {
-      container.appendChild(tr);
+    searchClient.addEventListener('input', function () {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(submitForm, 450);
     });
   }
-
-  function applySort() {
-    if (!sortBy) return applyFiltersOnly();
-    var mode = sortBy.value || 'booking-desc';
-    var tbody = tableBody;
-    var mobile = mobileWrap;
-    var deskRows = tbody ? Array.prototype.slice.call(tbody.querySelectorAll('tr.booking-group')) : [];
-    var mobRows = mobile ? Array.prototype.slice.call(mobile.querySelectorAll('.booking-group')) : [];
-
-    function cmp(a, b) {
-      if (mode === 'name' || mode === 'name-desc') {
-        var an = (a.getAttribute('data-sort-name') || '').toLowerCase();
-        var bn = (b.getAttribute('data-sort-name') || '').toLowerCase();
-        return mode === 'name' ? an.localeCompare(bn) : bn.localeCompare(an);
-      }
-      if (mode === 'booking-desc' || mode === 'booking-asc') {
-        var ai = parseInt(a.getAttribute('data-sort-id') || '0', 10);
-        var bi = parseInt(b.getAttribute('data-sort-id') || '0', 10);
-        return mode === 'booking-asc' ? ai - bi : bi - ai;
-      }
-      var at = parseInt(a.getAttribute('data-sort-ts') || '0', 10);
-      var bt = parseInt(b.getAttribute('data-sort-ts') || '0', 10);
-      return mode === 'oldest' ? at - bt : bt - at;
-    }
-
-    deskRows.sort(cmp);
-    mobRows.sort(cmp);
-    reorderBody(tbody, deskRows);
-    reorderBody(mobile, mobRows);
-
-    applyFiltersOnly();
-  }
-
-  function applyFiltersAndSort() {
-    applySort();
-  }
-
-  if (sortBy) sortBy.addEventListener('change', applyFiltersAndSort);
-  if (dateFrom) dateFrom.addEventListener('change', applyFiltersAndSort);
-  if (dateTo) dateTo.addEventListener('change', applyFiltersAndSort);
-  if (searchClient) searchClient.addEventListener('input', applyFiltersAndSort);
-
-  applySort();
 })();
 </script>
 <script>
@@ -1470,24 +1601,25 @@
   var calNext = document.getElementById('calNext');
   var calToday = document.getElementById('calToday');
   var modeBtns = document.querySelectorAll('.cal-mode-btn');
+  var dayTitle = document.getElementById('calDayTitle');
+  var dayMeta = document.getElementById('calDayMeta');
+  var dayList = document.getElementById('calDayList');
+  var dayPanel = document.getElementById('calDayPanel');
 
   if (!listView || !calendarView) return;
-
-  var activeBtn = 'bg-primary text-white border-primary';
-  var inactiveBtn = 'bg-white text-on-surface-variant border-outline-variant/30 hover:bg-surface-container-low';
 
   function setView(view) {
     if (view === 'calendar') {
       listView.classList.add('hidden');
       calendarView.classList.remove('hidden');
-      listBtn.className = 'inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border ' + inactiveBtn + ' transition-colors';
-      calBtn.className = 'inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border ' + activeBtn + ' transition-colors';
+      listBtn.classList.remove('on');
+      calBtn.classList.add('on');
       renderCalendar();
     } else {
       listView.classList.remove('hidden');
       calendarView.classList.add('hidden');
-      listBtn.className = 'inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border ' + activeBtn + ' transition-colors';
-      calBtn.className = 'inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border ' + inactiveBtn + ' transition-colors';
+      calBtn.classList.remove('on');
+      listBtn.classList.add('on');
     }
   }
 
@@ -1497,49 +1629,21 @@
   var calMode = 'month';
   var calDate = new Date();
   calDate.setHours(0,0,0,0);
+  var bookings = @json($calendarBookings);
 
-  var bookings = [];
-  var rows = document.querySelectorAll('[data-booking-row]');
-  rows.forEach(function(r) {
-    var d = r.getAttribute('data-date');
-    if (!d) return;
-    var status = r.getAttribute('data-status') || '';
-    var client = r.getAttribute('data-client') || '';
-    var time = '';
-    var deskRow = r.tagName === 'TR' ? r : null;
-    if (deskRow) {
-      var cells = deskRow.querySelectorAll('td');
-      if (cells.length >= 4) time = cells[3].textContent.trim();
-    }
-    var ref = '';
-    if (deskRow) {
-      var cells2 = deskRow.querySelectorAll('td');
-      if (cells2.length >= 2) ref = cells2[1].textContent.trim();
-    }
-    if (r.closest('.sm\\:hidden') || r.closest('[class*="sm:hidden"]')) return;
-    var bid = r.getAttribute('data-booking-id') || '';
-    bookings.push({ date: d, status: status, client: client, time: time, ref: ref, id: bid });
-  });
-
-  var statusColors = {
-    confirmed: '#16a34a',
-    pending: '#d97706',
-    cancelled: '#dc2626',
-    completed: '#64748b',
-    no_show: '#ea580c',
-    rescheduled: '#2563eb'
-  };
+  function fmt(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  var selectedDay = fmt(calDate);
 
   function setMode(m) {
     calMode = m;
     modeBtns.forEach(function(b) {
-      if (b.getAttribute('data-cal-mode') === m) {
-        b.classList.add('bg-white', 'shadow-sm', 'text-on-surface');
-        b.classList.remove('text-on-surface-variant');
-      } else {
-        b.classList.remove('bg-white', 'shadow-sm', 'text-on-surface');
-        b.classList.add('text-on-surface-variant');
-      }
+      var on = b.getAttribute('data-cal-mode') === m;
+      b.classList.toggle('active', on);
+      b.classList.toggle('bg-[#1A1A1A]', on);
+      b.classList.toggle('text-white', on);
+      b.classList.toggle('text-on-surface-variant', !on);
     });
     renderCalendar();
   }
@@ -1550,29 +1654,77 @@
 
   calPrev.addEventListener('click', function() { navigate(-1); });
   calNext.addEventListener('click', function() { navigate(1); });
-  calToday.addEventListener('click', function() { calDate = new Date(); calDate.setHours(0,0,0,0); renderCalendar(); });
+  calToday.addEventListener('click', function() {
+    calDate = new Date();
+    calDate.setHours(0,0,0,0);
+    selectedDay = fmt(calDate);
+    renderCalendar();
+  });
 
   function navigate(dir) {
     if (calMode === 'month') calDate.setMonth(calDate.getMonth() + dir);
-    else if (calMode === 'week') calDate.setDate(calDate.getDate() + 7 * dir);
-    else calDate.setDate(calDate.getDate() + dir);
+    else calDate.setDate(calDate.getDate() + 7 * dir);
     renderCalendar();
   }
-
-  function fmt(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 
   function bookingsFor(dateStr) {
     return bookings.filter(function(b) { return b.date === dateStr; });
   }
 
-  function eventDot(b) {
-    var color = statusColors[b.status] || '#94a3b8';
-    var label = b.time !== '—' ? b.time : '';
-    var clientCap = b.client.charAt(0).toUpperCase() + b.client.slice(1);
-    var shortClient = clientCap.length > 14 ? clientCap.slice(0,13) + '…' : clientCap;
-    return '<div class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-tight truncate hover:bg-surface-container-low cursor-pointer js-cal-event" data-cal-bid="' + b.id + '" title="' + clientCap + ' · ' + b.ref + '">' +
-      '<span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background:' + color + '"></span>' +
-      '<span class="truncate">' + (label ? label + ' ' : '') + shortClient + '</span></div>';
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, function(c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+    });
+  }
+
+  function shortName(name) {
+    var parts = String(name || '').trim().split(/\s+/);
+    if (parts.length === 1) return parts[0];
+    return parts[0] + ' ' + parts[parts.length - 1].charAt(0) + '.';
+  }
+
+  function eventChip(b) {
+    var cls = b.status === 'pending' ? 'ev-p' : (b.status === 'confirmed' ? 'ev-c' : 'ev-k');
+    return '<div class="' + cls + ' js-cal-event" data-cal-bid="' + esc(b.id) + '" title="' + esc(b.client) + ' · ' + esc(b.ref) + '"><b>' + esc(b.time || '') + '</b> ' + esc(shortName(b.client)) + '</div>';
+  }
+
+  function renderDayPanel(ds) {
+    selectedDay = ds;
+    if (!dayTitle || !dayList) return;
+    if (dayPanel) dayPanel.classList.remove('hidden');
+    var d = new Date(ds + 'T12:00:00');
+    dayTitle.textContent = d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
+    var evts = bookingsFor(ds);
+    var hours = 0;
+    evts.forEach(function(b) {
+      if (b.time && b.end) {
+        var a = b.time.split(':'), e = b.end.split(':');
+        hours += Math.max(0, (parseInt(e[0],10)*60 + parseInt(e[1]||0,10)) - (parseInt(a[0],10)*60 + parseInt(a[1]||0,10))) / 60;
+      }
+    });
+    dayMeta.textContent = evts.length
+      ? (evts.length + ' booking' + (evts.length === 1 ? '' : 's') + (hours ? ' · ' + (Math.round(hours * 10) / 10) + 'h booked' : ''))
+      : 'No bookings';
+    if (!evts.length) {
+      dayList.innerHTML = '<p class="text-sm text-[#9A929E] py-4">Nothing scheduled.</p>';
+      return;
+    }
+    dayList.innerHTML = evts.map(function(b) {
+      var ini = shortName(b.client).split(/\s+/).map(function(p){ return p.charAt(0); }).join('').slice(0,2).toUpperCase();
+      var range = [b.time, b.end].filter(Boolean).join(' – ');
+      var statusPill = b.status === 'pending'
+        ? '<span class="pill a">Pending</span>'
+        : '<span class="pill g">Confirmed</span>';
+      return '<div class="py-3 border-b border-[#F3EEF4]">' +
+        '<div class="flex items-center gap-2.5">' +
+          '<div class="ini" style="width:30px;height:30px;font-size:11px;background:#1A1A1A;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700">' + esc(ini) + '</div>' +
+          '<div class="flex-1 min-w-0"><b style="font-size:13.5px">' + esc(b.client) + '</b>' +
+            '<div class="text-xs text-[#9A929E]">' + esc(b.service || '') + (range ? ' · ' + esc(range) : '') + '</div></div>' +
+          '<button type="button" class="js-cal-event material-symbols-outlined text-[#9A929E]" data-cal-bid="' + esc(b.id) + '" style="font-size:22px;background:none;border:0;cursor:pointer">more_horiz</button>' +
+        '</div>' +
+        '<div class="flex gap-1.5 mt-2 pl-10 flex-wrap">' + statusPill + '</div>' +
+      '</div>';
+    }).join('');
   }
 
   function renderMonth() {
@@ -1582,26 +1734,33 @@
     var startDay = (first.getDay() + 6) % 7;
     var daysInMonth = new Date(y, m + 1, 0).getDate();
     var today = fmt(new Date());
-    var html = '<div class="grid grid-cols-7 text-center text-xs font-semibold text-on-surface-variant mb-1">';
-    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d) { html += '<div class="py-2">' + d + '</div>'; });
-    html += '</div><div class="grid grid-cols-7 border-t border-outline-variant/10">';
-    for (var i = 0; i < startDay; i++) html += '<div class="min-h-[5.5rem] border-b border-r border-outline-variant/10 p-1"></div>';
+    var html = '<div class="grid grid-cols-7 text-center text-[11px] font-bold tracking-wider text-[#6F6874] bg-[#FBF8FC] border-b border-[#E8DFEA]">';
+    ['MON','TUE','WED','THU','FRI','SAT','SUN'].forEach(function(d) { html += '<div class="py-2.5 px-2">' + d + '</div>'; });
+    html += '</div><div class="grid grid-cols-7">';
+    var lead = new Date(y, m, 1 - startDay);
+    for (var i = 0; i < startDay; i++) {
+      html += '<div class="cal-day bg-[#FCFAFD]"><span class="text-xs text-[#C0B6C4]">' + lead.getDate() + '</span></div>';
+      lead.setDate(lead.getDate() + 1);
+    }
     for (var d = 1; d <= daysInMonth; d++) {
       var ds = fmt(new Date(y, m, d));
-      var isToday = ds === today;
+      var isSel = ds === selectedDay;
       var evts = bookingsFor(ds);
-      html += '<div class="min-h-[5.5rem] border-b border-r border-outline-variant/10 p-1' + (isToday ? ' bg-primary/5' : '') + '">';
-      html += '<div class="text-xs font-medium mb-0.5 ' + (isToday ? 'text-primary font-bold' : 'text-on-surface-variant') + '">' + d + '</div>';
-      var max = 3;
-      evts.slice(0, max).forEach(function(b) { html += eventDot(b); });
-      if (evts.length > max) html += '<div class="text-[10px] text-on-surface-variant px-1.5">+' + (evts.length - max) + ' more</div>';
-      html += '</div>';
+      html += '<div class="cal-day js-cal-day' + (isSel ? ' ring-2 ring-inset ring-[#3E007C]' : '') + '" data-day="' + ds + '" style="cursor:pointer">';
+      html += '<span class="inline-flex items-center justify-center w-[26px] h-[26px] rounded-full text-[13px] font-semibold ' + (isSel ? 'bg-[#3E007C] text-white' : 'text-[#1A1A1A]') + '">' + d + '</span>';
+      html += '<div class="flex flex-col gap-1 mt-1">';
+      evts.slice(0, 3).forEach(function(b) { html += eventChip(b); });
+      if (evts.length > 3) html += '<div class="text-[10px] text-[#9A929E] px-1">+' + (evts.length - 3) + ' more</div>';
+      html += '</div></div>';
     }
     var totalCells = startDay + daysInMonth;
     var remaining = (7 - totalCells % 7) % 7;
-    for (var i = 0; i < remaining; i++) html += '<div class="min-h-[5.5rem] border-b border-r border-outline-variant/10 p-1"></div>';
+    for (var j = 0; j < remaining; j++) {
+      html += '<div class="cal-day bg-[#FCFAFD]"><span class="text-xs text-[#C0B6C4]">' + (j + 1) + '</span></div>';
+    }
     html += '</div>';
     calBody.innerHTML = html;
+    renderDayPanel(selectedDay);
   }
 
   function renderWeek() {
@@ -1610,65 +1769,34 @@
     start.setDate(start.getDate() - dow);
     var end = new Date(start); end.setDate(end.getDate() + 6);
     calTitle.textContent = start.toLocaleDateString('default', { month: 'short', day: 'numeric' }) + ' – ' + end.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' });
-    var today = fmt(new Date());
-    var html = '<div class="grid grid-cols-7 gap-px bg-outline-variant/10 rounded-xl overflow-hidden">';
+    var html = '<div class="grid grid-cols-7 gap-px bg-[#E8DFEA] rounded-none overflow-hidden">';
     for (var i = 0; i < 7; i++) {
       var d = new Date(start); d.setDate(d.getDate() + i);
       var ds = fmt(d);
-      var isToday = ds === today;
       var evts = bookingsFor(ds);
-      html += '<div class="bg-white min-h-[14rem] p-2' + (isToday ? ' ring-2 ring-inset ring-primary/20' : '') + '">';
-      html += '<div class="text-xs font-semibold mb-2 ' + (isToday ? 'text-primary' : 'text-on-surface-variant') + '">' + d.toLocaleDateString('default', { weekday: 'short', day: 'numeric' }) + '</div>';
-      html += '<div class="space-y-0.5">';
-      evts.forEach(function(b) { html += eventDot(b); });
-      if (!evts.length) html += '<div class="text-[11px] text-on-surface-variant/50 italic">No bookings</div>';
+      html += '<div class="bg-white min-h-[14rem] p-2 js-cal-day" data-day="' + ds + '" style="cursor:pointer">';
+      html += '<div class="text-xs font-semibold mb-2 text-[#6F6874]">' + d.toLocaleDateString('default', { weekday: 'short', day: 'numeric' }) + '</div>';
+      html += '<div class="space-y-1">';
+      evts.forEach(function(b) { html += eventChip(b); });
       html += '</div></div>';
     }
     html += '</div>';
     calBody.innerHTML = html;
-  }
-
-  function renderDay() {
-    calTitle.textContent = calDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-    var ds = fmt(calDate);
-    var evts = bookingsFor(ds);
-    var today = fmt(new Date());
-    var isToday = ds === today;
-    var html = '<div class="max-w-2xl mx-auto">';
-    if (isToday) html += '<div class="text-xs font-bold text-primary mb-3">Today</div>';
-    if (!evts.length) {
-      html += '<div class="text-center py-12 text-on-surface-variant"><span class="material-symbols-outlined text-4xl mb-2 block">event_available</span><p class="text-sm">No bookings on this day</p></div>';
-    } else {
-      html += '<div class="space-y-2">';
-      evts.forEach(function(b) {
-        var color = statusColors[b.status] || '#94a3b8';
-        var clientCap = b.client.charAt(0).toUpperCase() + b.client.slice(1);
-        html += '<div class="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/15 hover:bg-surface-container-low/40 cursor-pointer js-cal-event" data-cal-bid="' + b.id + '">';
-        html += '<span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background:' + color + '"></span>';
-        html += '<div class="flex-1 min-w-0"><p class="text-sm font-semibold text-on-surface truncate">' + clientCap + '</p><p class="text-xs text-on-surface-variant">' + b.ref + (b.time !== '—' ? ' · ' + b.time : '') + '</p></div>';
-        html += '<span class="text-xs font-medium capitalize px-2 py-0.5 rounded-full" style="background:' + color + '15;color:' + color + '">' + b.status.replace('_',' ') + '</span>';
-        html += '</div>';
-      });
-      html += '</div>';
-    }
-    html += '</div>';
-    calBody.innerHTML = html;
+    renderDayPanel(selectedDay);
   }
 
   function renderCalendar() {
-    if (calMode === 'month') renderMonth();
-    else if (calMode === 'week') renderWeek();
-    else renderDay();
+    if (calMode === 'week') renderWeek();
+    else renderMonth();
   }
 
   calBody.addEventListener('click', function(e) {
-    var el = e.target.closest('.js-cal-event');
-    if (!el) return;
-    var bid = el.getAttribute('data-cal-bid');
-    if (!bid) return;
-    var viewBtn = document.querySelector('.js-artist-booking-view[data-booking-id="' + bid + '"]') ||
-                  document.querySelector('tr[data-booking-id="' + bid + '"] .js-artist-booking-view');
-    if (viewBtn) viewBtn.click();
+    if (e.target.closest('.js-cal-event')) return;
+    var dayEl = e.target.closest('.js-cal-day');
+    if (dayEl && dayEl.getAttribute('data-day')) {
+      selectedDay = dayEl.getAttribute('data-day');
+      renderCalendar();
+    }
   });
 
   renderCalendar();
@@ -1680,7 +1808,10 @@
   if (!modal) return;
 
   var clientEl = document.getElementById('arsmClient');
-  var serviceEl = document.getElementById('arsmService');
+  var avatarEl = document.getElementById('arsmAvatar');
+  var cardTitleEl = document.getElementById('arsmCardTitle');
+  var cardMetaEl = document.getElementById('arsmCardMeta');
+  var statusEl = document.getElementById('arsmStatus');
   var reasonEl = document.getElementById('arsmReason');
   var errorEl = document.getElementById('arsmError');
   var submitBtn = document.getElementById('arsmSubmit');
@@ -1693,17 +1824,35 @@
 
   function openModal(btn) {
     activeBtn = btn;
-    if (clientEl) clientEl.textContent = btn.getAttribute('data-client-name') || 'the client';
-    if (serviceEl) serviceEl.textContent = btn.getAttribute('data-service') || 'Booking';
+    var clientName = btn.getAttribute('data-client-name') || 'the client';
+    var service = btn.getAttribute('data-service') || 'Booking';
+    var initials = btn.getAttribute('data-client-initials') || '?';
+    var dateLabel = btn.getAttribute('data-booking-date') || '';
+    var timeRange = btn.getAttribute('data-time-range') || '';
+    var bookingRef = btn.getAttribute('data-booking-ref') || '';
+    var statusLabel = btn.getAttribute('data-status-label') || 'Confirmed';
+    var statusPill = btn.getAttribute('data-status-pill') || 'g';
+
+    if (clientEl) clientEl.textContent = clientName;
+    if (avatarEl) avatarEl.textContent = initials;
+    if (cardTitleEl) cardTitleEl.textContent = clientName + ' · ' + service;
+    if (cardMetaEl) {
+      cardMetaEl.textContent = [dateLabel, timeRange, bookingRef].filter(Boolean).join(' · ') || '—';
+    }
+    if (statusEl) {
+      statusEl.className = 'arsm-pill ' + statusPill;
+      statusEl.textContent = statusLabel;
+    }
     if (reasonEl) reasonEl.value = '';
     if (errorEl) {
-      errorEl.classList.add('hidden');
+      errorEl.classList.remove('on');
       errorEl.textContent = '';
     }
     modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     requestAnimationFrame(function () {
       modal.classList.add('artist-rsm-open');
+      if (reasonEl) reasonEl.focus();
     });
   }
 
@@ -1714,17 +1863,25 @@
     activeBtn = null;
   }
 
+  function showError(msg) {
+    if (!errorEl) return;
+    errorEl.textContent = msg || 'Could not send request.';
+    errorEl.classList.add('on');
+  }
+
   function submitRequest() {
     if (!activeBtn) return;
     var url = activeBtn.getAttribute('data-request-url');
     if (!url) return;
     var reason = reasonEl ? reasonEl.value.trim() : '';
     if (reason.length < 3) {
-      if (errorEl) {
-        errorEl.textContent = 'Reason is required (minimum 3 characters).';
-        errorEl.classList.remove('hidden');
-      }
+      showError('Reason is required (minimum 3 characters).');
+      if (reasonEl) reasonEl.focus();
       return;
+    }
+    if (errorEl) {
+      errorEl.classList.remove('on');
+      errorEl.textContent = '';
     }
     submitBtn.disabled = true;
     fetch(url, {
@@ -1750,22 +1907,16 @@
       })
       .then(function (res) {
         if (res.ok && res.data && res.data.success) {
-          if (typeof flashSaveToast === 'function') {
-            flashSaveToast((res.data && res.data.message) || 'Reschedule request sent.');
-          }
+          var msg = (res.data && res.data.message) || 'Reschedule request sent.';
+          if (typeof flashSaveToast === 'function') flashSaveToast(msg);
+          else if (typeof showSaveToast === 'function') showSaveToast(msg);
           window.location.reload();
           return;
         }
-        if (errorEl) {
-          errorEl.textContent = (res.data && res.data.message) || 'Could not send request.';
-          errorEl.classList.remove('hidden');
-        }
+        showError((res.data && res.data.message) || 'Could not send request.');
       })
       .catch(function () {
-        if (errorEl) {
-          errorEl.textContent = 'Network error. Try again.';
-          errorEl.classList.remove('hidden');
-        }
+        showError('Network error. Try again.');
       })
       .finally(function () {
         submitBtn.disabled = false;
@@ -2122,7 +2273,7 @@
   if (!modal) return;
 
   var titleEl = document.getElementById('abdmTitle');
-  var imgEl = document.getElementById('abdmImage');
+  var imgWrap = document.getElementById('abdmImageWrap');
   var refEl = document.getElementById('abdmRef');
   var statusEl = document.getElementById('abdmStatus');
   var typeEl = document.getElementById('abdmType');
@@ -2138,72 +2289,169 @@
   var tzEl = document.getElementById('abdmTimezone');
   var depEl = document.getElementById('abdmDeposit');
   var balEl = document.getElementById('abdmBalance');
+  var moneyPill = document.getElementById('abdmMoneyPill');
+  var moneyDepositLabel = document.getElementById('abdmMoneyDepositLabel');
+  var moneyDeposit = document.getElementById('abdmMoneyDeposit');
+  var moneyNote = document.getElementById('abdmMoneyNote');
+  var moneyFootnote = document.getElementById('abdmMoneyFootnote');
+  var bookingFeeRow = document.getElementById('abdmBookingFeeRow');
+  var bookingFeeNote = document.getElementById('abdmBookingFeeNote');
+  var bookingFeeEl = document.getElementById('abdmBookingFee');
+  var stripeFeeEl = document.getElementById('abdmStripeFee');
+  var splitRow = document.getElementById('abdmSplitRow');
+  var splitLabel = document.getElementById('abdmSplitLabel');
+  var splitValue = document.getElementById('abdmSplitValue');
+  var yourShareRow = document.getElementById('abdmYourShareRow');
+  var yourShareNote = document.getElementById('abdmYourShareNote');
+  var yourShareEl = document.getElementById('abdmYourShare');
+  var yourStripeRow = document.getElementById('abdmYourStripeRow');
+  var yourStripeNote = document.getElementById('abdmYourStripeNote');
+  var yourStripeEl = document.getElementById('abdmYourStripe');
+  var youGetEl = document.getElementById('abdmYouGet');
+  var paidRow = document.getElementById('abdmPaidRow');
+  var paidEl = document.getElementById('abdmPaid');
   var qaListEl = document.getElementById('abdmQaList');
   var qaEmptyEl = document.getElementById('abdmQaEmpty');
   var panelDetails = document.getElementById('abdmPanelDetails');
   var panelRequest = document.getElementById('abdmPanelRequest');
-  var tabButtons = modal.querySelectorAll('[data-abdm-tab]');
-  var activeTabClass = 'abdm-tab px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary transition-all';
-  var inactiveTabClass = 'abdm-tab px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant transition-all';
+  var tabButtons = modal.querySelectorAll('.abdm-tabs [data-abdm-tab]');
+  var messageBtn = document.getElementById('abdmMessageBtn');
+  var aftercareBtn = document.getElementById('abdmAftercareBtn');
+  var aftercareLabel = document.getElementById('abdmAftercareLabel');
+  var confirmBtn = document.getElementById('abdmConfirmBtn');
+  var currentSourceBtn = null;
+  var aftercareUrl = @json(route('artist.aftercare.index'));
+  var fallbackImg = @json(asset('design/images/icons/avatar.jpg'));
+
+  function statusPillClass(status) {
+    var s = String(status || '').toLowerCase();
+    if (s === 'confirmed') return 'abdm-pill g';
+    if (s === 'pending') return 'abdm-pill a';
+    if (s === 'cancelled' || s === 'declined') return 'abdm-pill r';
+    if (s === 'rescheduled') return 'abdm-pill b';
+    return 'abdm-pill k';
+  }
 
   function setAbdmTab(tab) {
     var isDetails = tab !== 'request';
     tabButtons.forEach(function (btn) {
       var selected = btn.getAttribute('data-abdm-tab') === (isDetails ? 'details' : 'request');
       btn.setAttribute('aria-selected', selected ? 'true' : 'false');
-      btn.className = selected ? activeTabClass : inactiveTabClass;
+      btn.classList.toggle('on', selected);
     });
-    if (panelDetails) panelDetails.classList.toggle('hidden', !isDetails);
-    if (panelRequest) panelRequest.classList.toggle('hidden', isDetails);
+    if (panelDetails) panelDetails.hidden = !isDetails;
+    if (panelRequest) panelRequest.hidden = isDetails;
   }
 
   tabButtons.forEach(function (btn) {
-    btn.addEventListener('click', function () {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
       setAbdmTab(btn.getAttribute('data-abdm-tab') || 'details');
     });
   });
 
+  function rowFor(btn) {
+    var id = btn && btn.getAttribute('data-booking-id');
+    return id ? document.querySelector('[data-booking-row][data-booking-id="' + id + '"]') : null;
+  }
+
+  function syncFooter(btn) {
+    var row = rowFor(btn);
+    var ds = btn && btn.dataset ? btn.dataset : {};
+    var status = String(ds.bookingStatus || (row && row.getAttribute('data-status')) || '').toLowerCase();
+    var chat = row ? row.querySelector('.js-artist-booking-menu-source .js-artist-message-client') : null;
+    var complete = row ? row.querySelector('.js-artist-booking-menu-source .js-artist-mark-complete') : null;
+    var aftercareLink = row ? row.querySelector('.js-artist-booking-menu-source a[data-menu-icon="healing"]') : null;
+    var collect = row
+      ? (row.querySelector('.js-artist-booking-menu-source .js-artist-collect-payment')
+        || row.querySelector('.js-artist-collect-payment'))
+      : null;
+
+    if (messageBtn) {
+      if (chat) {
+        messageBtn.style.display = '';
+        messageBtn._chatSource = chat;
+      } else {
+        messageBtn.style.display = 'none';
+        messageBtn._chatSource = null;
+      }
+    }
+
+    if (aftercareBtn) {
+      aftercareBtn.style.display = '';
+      aftercareBtn.disabled = false;
+      aftercareBtn.setAttribute('aria-disabled', 'false');
+      aftercareBtn._source = null;
+      aftercareBtn._mode = 'none';
+      aftercareBtn.title = '';
+
+      var sent = ds.aftercareSent === '1' || (aftercareLink && /sent/i.test(aftercareLink.getAttribute('data-menu-label') || ''));
+      var label = 'Send aftercare';
+
+      if (complete) {
+        aftercareBtn._mode = 'send';
+        aftercareBtn._source = complete;
+        label = 'Send aftercare';
+      } else if (status === 'completed' || aftercareLink) {
+        aftercareBtn._mode = sent ? 'sent' : 'manage';
+        aftercareBtn._source = aftercareLink || null;
+        label = sent ? 'Aftercare sent' : 'Send aftercare';
+        if (sent) {
+          aftercareBtn.disabled = true;
+          aftercareBtn.setAttribute('aria-disabled', 'true');
+          aftercareBtn.title = 'Aftercare already sent';
+        }
+      } else if (collect) {
+        aftercareBtn._mode = 'collect';
+        aftercareBtn._source = collect;
+        label = 'Send aftercare';
+        aftercareBtn.title = 'Collect the balance before sending aftercare';
+      } else {
+        aftercareBtn._mode = 'none';
+        aftercareBtn.disabled = true;
+        aftercareBtn.setAttribute('aria-disabled', 'true');
+        aftercareBtn.title = status === 'confirmed'
+          ? 'Collect the balance before sending aftercare'
+          : 'Aftercare is available after the booking is confirmed';
+      }
+
+      if (aftercareLabel) aftercareLabel.textContent = label;
+    }
+
+    if (confirmBtn) {
+      var action = collect || complete;
+      confirmBtn.style.display = action ? '' : 'none';
+      confirmBtn._source = action || null;
+    }
+  }
+
   function openModal(btn) {
     var ds = btn.dataset;
+    currentSourceBtn = btn;
     setAbdmTab('details');
     if (titleEl) titleEl.textContent = ds.service || 'Booking';
-    if (imgEl) {
-      var fallback = '{{ e(asset('design/images/icons/avatar.jpg')) }}';
-      imgEl.onerror = function () {
-        imgEl.onerror = null;
-        imgEl.src = fallback;
-      };
-      imgEl.src = ds.designImage || fallback;
-      imgEl.alt = ds.service || '';
+    if (imgWrap) {
+      var src = ds.designImage || fallbackImg;
+      imgWrap.style.backgroundImage = "url('" + String(src).replace(/'/g, "\\'") + "')";
     }
     if (refEl) refEl.textContent = ds.bookingRef || '';
     if (statusEl) {
       statusEl.textContent = ds.statusLabel || '—';
-      statusEl.className =
-        'inline-flex text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset ' +
-        (ds.statusBadgeClass || 'bg-surface-container text-on-surface ring-outline-variant/20');
+      statusEl.className = statusPillClass(ds.bookingStatus || ds.statusLabel);
+      statusEl.style.margin = '6px 0';
+      statusEl.style.display = 'inline-flex';
     }
     if (typeEl) typeEl.textContent = ds.bookingType ? ds.bookingType + ' booking' : '—';
     if (nameEl) nameEl.textContent = ds.clientName || '—';
     if (emailRow && emailEl) {
       var em = (ds.clientEmail || '').trim();
-      if (em) {
-        emailRow.classList.remove('hidden');
-        emailEl.textContent = em;
-      } else {
-        emailRow.classList.add('hidden');
-        emailEl.textContent = '';
-      }
+      emailRow.style.display = em ? '' : 'none';
+      emailEl.textContent = em || '—';
     }
     if (phoneRow && phoneEl) {
       var phone = (ds.clientPhone || '').trim();
-      if (phone) {
-        phoneRow.classList.remove('hidden');
-        phoneEl.textContent = phone;
-      } else {
-        phoneRow.classList.add('hidden');
-        phoneEl.textContent = '';
-      }
+      phoneRow.style.display = phone ? '' : 'none';
+      phoneEl.textContent = phone || '—';
     }
     if (serviceEl) serviceEl.textContent = ds.service || '—';
     if (dateEl) dateEl.textContent = ds.dateDisplay || '—';
@@ -2212,19 +2460,139 @@
     if (tzEl) tzEl.textContent = ds.timezone || 'UTC';
     if (depEl) depEl.textContent = ds.deposit || '—';
     if (balEl) balEl.textContent = ds.balance || '—';
-    var paidRow = document.getElementById('abdmPaidRow');
-    var paidEl = document.getElementById('abdmPaid');
-    if (paidRow && paidEl) {
-      if (ds.bookingStatus === 'completed') {
-        var dep = ds.deposit || '€0';
-        var bal = ds.balanceDueLabel || '€0';
-        var fullPaid = ds.fullAmountPaid === '1';
-        paidRow.classList.remove('hidden');
-        paidEl.textContent = dep + ' deposit, ' + bal + ' balance' + (fullPaid ? '' : ' (cash)');
-      } else {
-        paidRow.classList.add('hidden');
+
+    function parseMoneyPayload(raw) {
+      if (!raw) return null;
+      if (typeof raw === 'object') return raw;
+      var text = String(raw).trim();
+      if (!text) return null;
+      try {
+        if (text.charAt(0) === '{' || text.charAt(0) === '[') {
+          return JSON.parse(text);
+        }
+        var binary = atob(text);
+        var jsonText = binary;
+        if (typeof TextDecoder !== 'undefined') {
+          var bytes = new Uint8Array(binary.length);
+          for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          jsonText = new TextDecoder('utf-8').decode(bytes);
+        } else {
+          jsonText = decodeURIComponent(escape(binary));
+        }
+        return JSON.parse(jsonText);
+      } catch (err) {
+        return null;
       }
     }
+    var money = parseMoneyPayload(btn.getAttribute('data-money') || ds.money || '');
+    if (!money) {
+      var moneyRow = rowFor(btn);
+      money = parseMoneyPayload(moneyRow ? moneyRow.getAttribute('data-money') : '');
+    }
+
+    if (money) {
+      if (moneyDeposit) moneyDeposit.textContent = money.deposit || ds.deposit || '—';
+      if (moneyDepositLabel) moneyDepositLabel.textContent = money.deposit_label || 'Client paid · deposit';
+      if (moneyPill) {
+        moneyPill.textContent = money.pill || 'Pending';
+        moneyPill.className = 'abdm-pill ' + (money.pill_class || 'a');
+      }
+      if (bookingFeeRow && bookingFeeEl) {
+        if (money.booking_fee) {
+          bookingFeeRow.style.display = '';
+          bookingFeeEl.textContent = money.booking_fee;
+          if (bookingFeeNote) bookingFeeNote.textContent = money.booking_fee_note || '';
+        } else {
+          bookingFeeRow.style.display = 'none';
+        }
+      }
+      if (stripeFeeEl) {
+        stripeFeeEl.textContent = String(money.stripe_fee || '—').replace(/^-€/, '−€');
+      }
+      if (splitRow) {
+        splitRow.style.display = '';
+        if (splitLabel) splitLabel.textContent = money.split_label || 'Split';
+        if (splitValue) splitValue.textContent = money.split_value || '—';
+      }
+      if (yourShareRow && yourShareEl) {
+        if (money.has_split) {
+          yourShareRow.style.display = '';
+          yourShareEl.textContent = money.your_share || '—';
+          if (yourShareNote) yourShareNote.textContent = money.your_share_note || '';
+        } else {
+          yourShareRow.style.display = 'none';
+        }
+      }
+      if (yourStripeRow && yourStripeEl) {
+        if (money.has_split) {
+          yourStripeRow.style.display = '';
+          yourStripeEl.textContent = String(money.your_stripe || '—').replace(/^-€/, '−€');
+          if (yourStripeNote) yourStripeNote.textContent = money.your_stripe_note || '';
+        } else {
+          yourStripeRow.style.display = 'none';
+        }
+      }
+      if (youGetEl) youGetEl.textContent = money.you_get || '—';
+      if (moneyFootnote) {
+        if (money.footnote) {
+          moneyFootnote.style.display = '';
+          moneyFootnote.textContent = money.footnote;
+        } else {
+          moneyFootnote.style.display = 'none';
+          moneyFootnote.textContent = '';
+        }
+      }
+      if (moneyNote) {
+        if (money.balance_note_html) {
+          moneyNote.style.display = '';
+          moneyNote.innerHTML = money.balance_note_html;
+        } else {
+          moneyNote.style.display = 'none';
+          moneyNote.textContent = '';
+        }
+      }
+    } else {
+      if (moneyDeposit) moneyDeposit.textContent = ds.deposit || '—';
+      if (moneyDepositLabel) moneyDepositLabel.textContent = 'Client paid · deposit';
+      if (moneyPill) {
+        if (ds.bookingStatus === 'completed' || ds.fullAmountPaid === '1') {
+          moneyPill.textContent = 'Settled';
+          moneyPill.className = 'abdm-pill g';
+        } else if ((ds.balanceDueLabel || '').trim() && ds.balanceDueLabel !== '€0') {
+          moneyPill.textContent = 'Pending';
+          moneyPill.className = 'abdm-pill a';
+        } else {
+          moneyPill.textContent = 'Paid';
+          moneyPill.className = 'abdm-pill g';
+        }
+      }
+      if (bookingFeeRow) bookingFeeRow.style.display = 'none';
+      if (stripeFeeEl) stripeFeeEl.textContent = '—';
+      if (splitRow) splitRow.style.display = 'none';
+      if (yourShareRow) yourShareRow.style.display = 'none';
+      if (yourStripeRow) yourStripeRow.style.display = 'none';
+      if (youGetEl) youGetEl.textContent = '—';
+      if (moneyFootnote) {
+        moneyFootnote.style.display = 'none';
+        moneyFootnote.textContent = '';
+      }
+      if (moneyNote) {
+        moneyNote.style.display = 'none';
+        moneyNote.textContent = '';
+      }
+    }
+    if (paidRow && paidEl) {
+      if (ds.bookingStatus === 'completed') {
+        var dep = (money && money.deposit) || ds.deposit || '€0';
+        var bal = ds.balanceDueLabel || '€0';
+        var fullPaid = ds.fullAmountPaid === '1';
+        paidRow.style.display = '';
+        paidEl.textContent = dep + ' deposit, ' + bal + ' balance' + (fullPaid ? '' : ' (cash)');
+      } else {
+        paidRow.style.display = 'none';
+      }
+    }
+
     if (qaListEl) {
       qaListEl.innerHTML = '';
       var rawQuestions = ds.questions || '';
@@ -2238,36 +2606,31 @@
         ? Object.entries(parsedQuestions)
         : [];
       var hasAnswers = entries.length > 0;
-      if (qaEmptyEl) qaEmptyEl.classList.toggle('hidden', hasAnswers);
-      if (qaListEl) qaListEl.classList.toggle('hidden', !hasAnswers);
+      if (qaEmptyEl) qaEmptyEl.style.display = hasAnswers ? 'none' : '';
+      qaListEl.style.display = hasAnswers ? '' : 'none';
       if (hasAnswers) {
         entries.forEach(function (pair) {
           var qKey = String(pair[0] || '').trim();
           var payload = window.QuestionAnswerDisplay
             ? window.QuestionAnswerDisplay.normalizePayload(pair[1], 'Question #' + (qKey || '—'))
             : { question: 'Question #' + (qKey || '—'), type: '', answer: pair[1] };
-          if (window.QuestionAnswerDisplay) {
-            window.QuestionAnswerDisplay.appendAnswerBlock(qaListEl, payload);
-          } else {
-            var item = document.createElement('div');
-            item.className = 'border-b border-outline-variant/15 pb-2 last:border-b-0 last:pb-0';
-            var q = document.createElement('p');
-            q.className = 'text-xs font-semibold text-on-surface-variant';
-            q.textContent = payload.question;
-            var a = document.createElement('p');
-            a.className = 'text-on-surface mt-1 break-words';
-            a.textContent = window.QuestionAnswerDisplay
+          var answerText = window.QuestionAnswerDisplay
               ? window.QuestionAnswerDisplay.formatAnswerForReview(payload.answer, payload.type)
               : (Array.isArray(payload.answer)
                 ? payload.answer.map(function (_, idx) { return 'Photo ' + (idx + 1); }).join(', ')
                 : String(payload.answer ?? '—'));
-            item.appendChild(q);
-            item.appendChild(a);
-            qaListEl.appendChild(item);
-          }
+          var cell = document.createElement('div');
+          cell.style.cssText = 'padding:9px 0;border-bottom:1px solid #F3EEF4';
+          cell.innerHTML = '<div class="lbl" style="font-size:10.5px;letter-spacing:.8px;font-weight:700;color:#6F6874;text-transform:uppercase"></div>' +
+            '<div style="font-size:14px;margin-top:3px;color:#1A1A1A"></div>';
+          cell.children[0].textContent = payload.question || '—';
+          cell.children[1].textContent = answerText || '—';
+          qaListEl.appendChild(cell);
         });
       }
     }
+
+    syncFooter(btn);
 
     modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
@@ -2280,6 +2643,47 @@
     modal.classList.remove('artist-bdm-open');
     modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
+    currentSourceBtn = null;
+  }
+
+  if (messageBtn) {
+    messageBtn.addEventListener('click', function () {
+      var chat = messageBtn._chatSource;
+      if (!chat) return;
+      closeModal();
+      if (typeof window.openArtistBookingMessageModal === 'function') {
+        window.openArtistBookingMessageModal(chat);
+      } else if (chat.getAttribute('href')) {
+        window.location.href = chat.getAttribute('href');
+      }
+    });
+  }
+
+  if (aftercareBtn) {
+    aftercareBtn.addEventListener('click', function () {
+      if (aftercareBtn.disabled || aftercareBtn.getAttribute('aria-disabled') === 'true') return;
+      var mode = aftercareBtn._mode || 'none';
+      var src = aftercareBtn._source;
+      closeModal();
+      if (mode === 'send' || mode === 'collect') {
+        if (src) src.click();
+        return;
+      }
+      if (mode === 'manage') {
+        if (src && src.tagName === 'A' && src.getAttribute('href')) {
+          window.location.href = src.getAttribute('href');
+          return;
+        }
+        window.location.href = aftercareUrl;
+      }
+    });
+  }
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function () {
+      var src = confirmBtn._source;
+      closeModal();
+      if (src) src.click();
+    });
   }
 
   document.querySelectorAll('.js-artist-booking-view').forEach(function (btn) {
@@ -2315,8 +2719,18 @@
 
   var bookingLine = document.getElementById('rpmBookingLine');
   var balanceLine = document.getElementById('rpmBalanceLine');
+  var avatarEl = document.getElementById('rpmAvatar');
+  var cardTitleEl = document.getElementById('rpmCardTitle');
+  var cardMetaEl = document.getElementById('rpmCardMeta');
+  var bookingStatusEl = document.getElementById('rpmBookingStatus');
   var actionBtn = document.getElementById('rpmActionBtn');
+  var actionIcon = document.getElementById('rpmActionIcon');
+  var actionLabel = document.getElementById('rpmActionLabel');
   var actionHint = document.getElementById('rpmActionHint');
+  var durationHelp = document.getElementById('rpmDurationHelp');
+  var copyLinkLabel = document.getElementById('rpmCopyLinkLabel');
+  var copyMessageLabel = document.getElementById('rpmCopyMessageLabel');
+  var showQrLabel = document.getElementById('rpmShowQrLabel');
   var cashFields = document.getElementById('rpmCashFields');
   var cashHelp = document.getElementById('rpmCashHelp');
   var cashAmountWrap = document.getElementById('rpmCashAmountWrap');
@@ -2366,10 +2780,59 @@
     linkUrl: 'bookpay.ink/p/x7Kq2mPa'
   };
   var copy = {
-    link: { label: 'Get payment link', hint: 'sends link — completes when client pays', busy: 'Creating link...', busyHint: 'Please wait' },
-    cash: { label: 'Confirm completed', hint: 'code confirms cash — marks completed', busy: 'Confirming...', busyHint: 'Marking booking completed' },
-    unsettled: { label: 'Save', hint: 'booking stays open — nudge on the date', busy: 'Saving...', busyHint: 'Please wait' }
+    link: {
+      label: 'Get payment link',
+      hint: 'Sends the link. The booking completes when the client pays.',
+      icon: 'link',
+      busy: 'Creating link...',
+      busyHint: 'Please wait'
+    },
+    cash: {
+      label: 'Confirm completed',
+      hint: 'The code confirms the cash and marks the booking completed.',
+      icon: 'check_circle',
+      busy: 'Confirming...',
+      busyHint: 'Marking booking completed'
+    },
+    unsettled: {
+      label: 'Save',
+      hint: 'You get a reminder on Home when it’s due.',
+      icon: 'save',
+      busy: 'Saving...',
+      busyHint: 'Please wait'
+    }
   };
+
+  function formatDurationHelpLabel(totalMins) {
+    var mins = Math.max(0, parseInt(totalMins, 10) || 0);
+    var h = Math.floor(mins / 60);
+    var m = mins % 60;
+    if (h > 0 && m > 0) return h + 'h ' + m + 'm';
+    if (h > 0) return h + 'h';
+    return m + 'm';
+  }
+
+  function snapDurationMinutes(totalMins) {
+    var mins = Math.max(0, parseInt(totalMins, 10) || 0);
+    var h = Math.min(12, Math.floor(mins / 60));
+    var rem = mins % 60;
+    var steps = [0, 15, 30, 45];
+    var nearest = steps.reduce(function (best, step) {
+      return Math.abs(step - rem) < Math.abs(best - rem) ? step : best;
+    }, 0);
+    if (nearest === 0 && rem > 52 && h < 12) {
+      h += 1;
+      nearest = 0;
+    }
+    return { hours: h, minutes: nearest };
+  }
+
+  function applyActionCopy(value, busy) {
+    var selected = copy[value] || copy.link;
+    if (actionIcon) actionIcon.textContent = selected.icon || 'link';
+    if (actionLabel) actionLabel.textContent = busy ? (selected.busy || 'Please wait...') : selected.label;
+    if (actionHint) actionHint.textContent = busy ? (selected.busyHint || 'Please wait') : selected.hint;
+  }
 
   function compactEuro(amountLabel) {
     return String(amountLabel || '€0').replace(/^€\s*/, '€');
@@ -2539,12 +3002,8 @@
       return;
     }
 
-    var selected = copy[currentOption] || copy.link;
-    if (actionBtn) {
-      actionBtn.disabled = true;
-      actionBtn.textContent = selected.busy || 'Please wait...';
-    }
-    if (actionHint) actionHint.textContent = selected.busyHint || 'Please wait';
+    if (actionBtn) actionBtn.disabled = true;
+    applyActionCopy(currentOption, true);
 
     fetch(currentStoreUrl, {
       method: 'POST',
@@ -2604,12 +3063,8 @@
     }).catch(function () {
       showRpmError('Could not save.');
     }).finally(function () {
-      var selected = copy[currentOption] || copy.link;
-      if (actionBtn) {
-        actionBtn.disabled = false;
-        actionBtn.textContent = selected.label;
-      }
-      if (actionHint) actionHint.textContent = selected.hint;
+      if (actionBtn) actionBtn.disabled = false;
+      applyActionCopy(currentOption, false);
     });
   }
 
@@ -2620,7 +3075,10 @@
   }
 
   function showSettleView() {
-    if (settleView) settleView.classList.remove('hidden');
+    if (settleView) {
+      settleView.classList.remove('hidden');
+      settleView.style.display = 'flex';
+    }
     if (linkView) linkView.classList.add('hidden');
   }
 
@@ -2640,7 +3098,7 @@
     if (linkAmountDisplay) linkAmountDisplay.textContent = currentAmountLabel;
     if (linkMessage) linkMessage.textContent = buildLinkMessage(currentAmountLabel);
     if (linkStatusLine) {
-      linkStatusLine.innerHTML = 'Card: ' + remaining + ' requested · link sent · <span class="text-[#1a4d9e] font-semibold">Resend</span>';
+      linkStatusLine.innerHTML = 'Card: ' + remaining + ' requested · link sent · <span style="color:#1E5BD8;font-weight:600">Resend</span>';
     }
   }
 
@@ -2648,17 +3106,18 @@
     fillLinkView();
     resetCopyButtons();
     hideQr();
-    if (settleView) settleView.classList.add('hidden');
+    if (settleView) {
+      settleView.classList.add('hidden');
+      settleView.style.display = 'none';
+    }
     if (linkView) linkView.classList.remove('hidden');
   }
 
   function hideQr() {
     if (qrWrap) qrWrap.classList.add('hidden');
     if (qrImage) qrImage.removeAttribute('src');
-    if (showQrBtn) {
-      showQrBtn.textContent = 'Show QR';
-      showQrBtn.setAttribute('aria-expanded', 'false');
-    }
+    if (showQrBtn) showQrBtn.setAttribute('aria-expanded', 'false');
+    if (showQrLabel) showQrLabel.textContent = 'Show QR';
   }
 
   function showQr() {
@@ -2666,30 +3125,25 @@
     if (!url || !qrWrap || !qrImage) return;
     qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
     qrWrap.classList.remove('hidden');
-    if (showQrBtn) {
-      showQrBtn.textContent = 'Hide QR';
-      showQrBtn.setAttribute('aria-expanded', 'true');
-    }
+    if (showQrBtn) showQrBtn.setAttribute('aria-expanded', 'true');
+    if (showQrLabel) showQrLabel.textContent = 'Hide QR';
   }
 
   function resetCopyButtons() {
-    if (copyLinkBtn) {
-      clearTimeout(copyLinkBtn._copyTimer);
-      copyLinkBtn.textContent = 'Copy payment link';
-    }
-    if (copyMessageBtn) {
-      clearTimeout(copyMessageBtn._copyTimer);
-      copyMessageBtn.textContent = 'Copy message';
-    }
+    if (copyLinkBtn) clearTimeout(copyLinkBtn._copyTimer);
+    if (copyMessageBtn) clearTimeout(copyMessageBtn._copyTimer);
+    if (copyLinkLabel) copyLinkLabel.textContent = 'Copy payment link';
+    if (copyMessageLabel) copyMessageLabel.textContent = 'Copy message';
   }
 
-  function copyText(text, button, idleLabel) {
+  function copyText(text, button, idleLabel, labelEl) {
     if (!text || !button) return;
+    var target = labelEl || button;
     var done = function () {
-      button.textContent = 'Copied';
+      target.textContent = 'Copied';
       clearTimeout(button._copyTimer);
       button._copyTimer = setTimeout(function () {
-        button.textContent = idleLabel;
+        target.textContent = idleLabel;
       }, 1500);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2721,12 +3175,6 @@
     whenChips.forEach(function (chip) {
       var selected = chip.getAttribute('data-when-value') === value;
       chip.setAttribute('aria-pressed', selected ? 'true' : 'false');
-      chip.classList.toggle('bg-[#e7f1ff]', selected);
-      chip.classList.toggle('border-transparent', selected);
-      chip.classList.toggle('text-[#1a4d9e]', selected);
-      chip.classList.toggle('bg-white', !selected);
-      chip.classList.toggle('border-outline-variant/40', !selected);
-      chip.classList.toggle('text-on-surface', !selected);
     });
     if (unsettledDate) {
       unsettledDate.classList.toggle('hidden', value !== 'pick-date');
@@ -2825,9 +3273,7 @@
     if (!isCash) setCashEditing(false);
     if (!isLink) setLinkSettleAmountEditing(false);
     updateSettleAmountDisplays();
-    var selected = copy[value] || copy.link;
-    if (actionBtn) actionBtn.textContent = selected.label;
-    if (actionHint) actionHint.textContent = selected.hint;
+    applyActionCopy(value, false);
     clearFieldErrors();
   }
 
@@ -2835,13 +3281,14 @@
     var ds = btn.dataset || {};
     var service = (ds.service || '').trim();
     var client = (ds.clientName || '').trim() || 'the client';
-    var line = [service, (ds.clientName || '').trim()].filter(Boolean).join(' · ');
+    var first = firstNameFrom(ds.clientName);
+    var line = [client, service].filter(Boolean).join(' · ');
     currentAmountLabel = formatCashAmount(ds.balanceLabel || '0');
     currentStoreUrl = ds.storeUrl || '';
     currentBookingId = ds.bookingId || '';
     currentContext = {
       clientName: (ds.clientName || '').trim(),
-      firstName: firstNameFrom(ds.clientName),
+      firstName: first,
       bookingRef: (ds.bookingRef || '').trim(),
       paidLabel: (ds.paidLabel || '€0').trim() || '€0',
       totalLabel: (ds.totalLabel || '€0').trim() || '€0',
@@ -2849,15 +3296,31 @@
       linkUrl: 'bookpay.ink/p/x7Kq2mPa'
     };
     if (bookingLine) bookingLine.textContent = line || 'Booking';
+    if (avatarEl) avatarEl.textContent = ds.clientInitials || '?';
+    if (cardTitleEl) cardTitleEl.textContent = line || 'Booking';
+    if (cardMetaEl) {
+      cardMetaEl.textContent = [ds.dateDisplay, ds.timeRange, ds.bookingRef].filter(Boolean).join(' · ') || '—';
+    }
+    if (bookingStatusEl) {
+      bookingStatusEl.className = 'rpm-pill ' + (ds.statusPill || 'g');
+      bookingStatusEl.textContent = ds.statusLabel || 'Confirmed';
+    }
     setOutstandingBalance(currentAmountLabel);
     if (cashHelp) {
-      cashHelp.textContent = 'Ask ' + client + ' for their completion code (shared in booking confirmation email) to confirm the cash payment.';
+      cashHelp.textContent = 'Ask ' + first + ' for their completion code. It’s in their booking confirmation email and confirms the cash payment.';
     }
     if (cashAmountDisplay) cashAmountDisplay.textContent = currentAmountLabel;
     if (linkSettleAmountDisplay) linkSettleAmountDisplay.textContent = currentAmountLabel;
     if (completionCode) completionCode.value = '';
-    if (durationHours) durationHours.value = '0';
-    if (durationMinutes) durationMinutes.value = '0';
+    var snapped = snapDurationMinutes(ds.durationMinutes || '0');
+    if (durationHours) durationHours.value = String(snapped.hours);
+    if (durationMinutes) durationMinutes.value = String(snapped.minutes);
+    if (durationHelp) {
+      var totalMins = Math.max(0, parseInt(ds.durationMinutes || '0', 10) || 0);
+      durationHelp.textContent = totalMins > 0
+        ? ('Pre-filled from the booking (' + formatDurationHelpLabel(totalMins) + '). Change it if the session ran shorter or longer.')
+        : 'Change it if the session ran shorter or longer.';
+    }
     if (unsettledNote) unsettledNote.value = '';
     if (unsettledDate) unsettledDate.value = '';
     setWhenChip('3-days');
@@ -3055,14 +3518,14 @@
 
   if (copyLinkBtn) {
     copyLinkBtn.addEventListener('click', function () {
-      copyText(currentContext.linkUrl || '', copyLinkBtn, 'Copy payment link');
+      copyText(currentContext.linkUrl || '', copyLinkBtn, 'Copy payment link', copyLinkLabel);
     });
   }
 
   if (copyMessageBtn) {
     copyMessageBtn.addEventListener('click', function () {
       var message = linkMessage ? (linkMessage.textContent || '').trim() : '';
-      copyText(message, copyMessageBtn, 'Copy message');
+      copyText(message, copyMessageBtn, 'Copy message', copyMessageLabel);
     });
   }
 
@@ -3589,16 +4052,23 @@
   var modal = document.getElementById('artistConsentPendingModal');
   if (!modal) return;
 
-  var clientEl = document.getElementById('acpmClient');
-  var refEl = document.getElementById('acpmBookingRef');
-  var whenEl = document.getElementById('acpmWhen');
+  var leadEl = document.getElementById('acpmLead');
+  var avatarEl = document.getElementById('acpmAvatar');
+  var cardTitleEl = document.getElementById('acpmCardTitle');
+  var cardMetaEl = document.getElementById('acpmCardMeta');
+  var bookingStatusEl = document.getElementById('acpmBookingStatus');
+  var autoNoteEl = document.getElementById('acpmAutoNote');
+  var autoNoteTextEl = document.getElementById('acpmAutoNoteText');
   var resendBtn = document.getElementById('acpmResendBtn');
+  var resendLabel = document.getElementById('acpmResendLabel');
   var showQrBtn = document.getElementById('acpmShowQrBtn');
+  var showQrLabel = document.getElementById('acpmShowQrLabel');
   var qrWrap = document.getElementById('acpmQrWrap');
   var qrImage = document.getElementById('acpmQrImage');
   var statusEl = document.getElementById('acpmStatus');
   var consentLinkInput = document.getElementById('acpmConsentLink');
   var copyLinkBtn = document.getElementById('acpmCopyLinkBtn');
+  var copyLinkLabel = document.getElementById('acpmCopyLinkLabel');
 
   var currentResendUrl = '';
   var currentConsentUrl = '';
@@ -3615,21 +4085,20 @@
   function setStatus(msg, isError) {
     if (!statusEl) return;
     if (!msg) {
-      statusEl.classList.add('hidden');
+      statusEl.classList.remove('on', 'ok', 'err');
       statusEl.textContent = '';
       return;
     }
     statusEl.textContent = msg;
-    statusEl.classList.remove('hidden');
-    statusEl.className = 'text-xs font-semibold ' + (isError ? 'text-error' : 'text-[#1b5e4a]');
+    statusEl.classList.add('on');
+    statusEl.classList.toggle('err', !!isError);
+    statusEl.classList.toggle('ok', !isError);
   }
 
   function hideQr() {
-    if (qrWrap) qrWrap.classList.add('hidden');
-    if (showQrBtn) {
-      showQrBtn.setAttribute('aria-expanded', 'false');
-      showQrBtn.textContent = 'Show QR';
-    }
+    if (qrWrap) qrWrap.classList.remove('on');
+    if (showQrBtn) showQrBtn.setAttribute('aria-expanded', 'false');
+    if (showQrLabel) showQrLabel.textContent = 'Show QR';
   }
 
   function consentLinkUrl(bookingId) {
@@ -3644,8 +4113,8 @@
     }
     if (copyLinkBtn) {
       copyLinkBtn.disabled = loading || !url;
-      if (!loading) copyLinkBtn.textContent = 'Copy link';
     }
+    if (copyLinkLabel && !loading) copyLinkLabel.textContent = 'Copy link';
     if (currentPendingBtn) {
       currentPendingBtn.setAttribute('data-consent-url', url || '');
     }
@@ -3703,10 +4172,10 @@
   function copyConsentLink() {
     if (!currentConsentUrl || !copyLinkBtn) return;
     var done = function () {
-      copyLinkBtn.textContent = 'Copied';
+      if (copyLinkLabel) copyLinkLabel.textContent = 'Copied';
       clearTimeout(copyLinkBtn._copyTimer);
       copyLinkBtn._copyTimer = setTimeout(function () {
-        copyLinkBtn.textContent = 'Copy link';
+        if (copyLinkLabel) copyLinkLabel.textContent = 'Copy link';
       }, 1500);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -3733,21 +4202,32 @@
     currentResendUrl = ds.resendUrl || '';
     currentConsentUrl = ds.consentUrl || '';
     sending = false;
-    if (resendBtn) {
-      resendBtn.disabled = false;
-      resendBtn.textContent = 'Resend email';
+
+    var clientName = ds.clientName || 'Client';
+    var firstName = ds.clientFirstName || clientName.split(/\s+/)[0] || 'Client';
+    var service = ds.service || 'Booking';
+
+    if (leadEl) leadEl.textContent = firstName + " hasn't completed the consent form yet.";
+    if (avatarEl) avatarEl.textContent = ds.clientInitials || '?';
+    if (cardTitleEl) cardTitleEl.textContent = clientName + ' · ' + service;
+    if (cardMetaEl) {
+      cardMetaEl.textContent = [ds.dateDisplay, ds.timeRange, ds.bookingRef].filter(Boolean).join(' · ') || '—';
     }
+    if (bookingStatusEl) {
+      bookingStatusEl.className = 'acpm-pill ' + (ds.statusPill || 'g');
+      bookingStatusEl.textContent = ds.statusLabel || 'Confirmed';
+    }
+    if (autoNoteEl && autoNoteTextEl) {
+      var note = (ds.autoNote || '').trim();
+      autoNoteTextEl.textContent = note;
+      autoNoteEl.classList.toggle('on', !!note);
+    }
+
+    if (resendBtn) resendBtn.disabled = false;
+    if (resendLabel) resendLabel.textContent = 'Resend email';
     hideQr();
     setStatus('');
     setConsentLink(currentConsentUrl, !!currentBookingId && !currentConsentUrl);
-
-    if (clientEl) clientEl.textContent = ds.clientName || '—';
-    if (refEl) refEl.textContent = ds.bookingRef || '—';
-    if (whenEl) {
-      var when = [ds.dateDisplay, ds.timeRange].filter(Boolean).join(' · ');
-      whenEl.textContent = when || '—';
-    }
-
     loadConsentLink(currentBookingId);
 
     modal.setAttribute('aria-hidden', 'false');
@@ -3786,9 +4266,9 @@
       if (qrImage) {
         qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(currentConsentUrl);
       }
-      if (qrWrap) qrWrap.classList.remove('hidden');
+      if (qrWrap) qrWrap.classList.add('on');
       showQrBtn.setAttribute('aria-expanded', 'true');
-      showQrBtn.textContent = 'Hide QR';
+      if (showQrLabel) showQrLabel.textContent = 'Hide QR';
     });
   }
 
@@ -3797,7 +4277,7 @@
       if (sending || !currentResendUrl) return;
       sending = true;
       resendBtn.disabled = true;
-      resendBtn.textContent = 'Sending…';
+      if (resendLabel) resendLabel.textContent = 'Sending…';
       setStatus('');
 
       fetch(currentResendUrl, {
@@ -3828,7 +4308,7 @@
         .finally(function () {
           sending = false;
           resendBtn.disabled = false;
-          resendBtn.textContent = 'Resend email';
+          if (resendLabel) resendLabel.textContent = 'Resend email';
         });
     });
   }
@@ -3850,4 +4330,13 @@
   });
 })();
 </script>
+<script>
+  window.artistBookingMessageModal = {
+    apiBase: @json(url('/api/chat')),
+    csrf: @json(csrf_token()),
+    userId: @json((string) auth()->id()),
+    inboxUrl: @json(route('artist.chat.index')),
+  };
+</script>
+<script src="{{ asset('js/artist-booking-message-modal.js') }}?v=2"></script>
 @endsection

@@ -11,47 +11,21 @@ use App\Models\CustomRequest;
 use App\Models\User;
 use App\Services\ArtistPayoutService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
-use Illuminate\View\View;
 
 class ArtistCustomRequestsController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): RedirectResponse
     {
         $isGuestScope = $request->routeIs('artist.guest-requests.index');
 
-        $requests = CustomRequest::query()
-            ->with(['user', 'guestSpot'])
-            ->where('artist_id', Auth::id())
-            ->where('is_guest', $isGuestScope)
-            ->orderByDesc('created_at')
-            ->get();
-
-        $requestsPayload = $requests
-            ->map(fn (CustomRequest $request) => $request->toArtistPanelArray())
-            ->values()
-            ->all();
-
-        $userDetail = Auth::user()?->userDetail;
-        $canSendQuotes = $userDetail
-            ? app(ArtistPayoutService::class)->canAcceptClientPayments($userDetail)
-            : false;
-        $quotesBlockedMessage = $canSendQuotes || ! $userDetail
-            ? null
-            : app(ArtistPayoutService::class)->clientPaymentsBlockedMessage($userDetail);
-
-        return view('artist.custom-requests.index', [
-            'scope' => $isGuestScope ? 'guest' : 'custom',
-            'activeTab' => $isGuestScope ? 'guest' : 'custom',
-            'requests' => $requests,
-            'requestsPayload' => $requestsPayload,
-            'pendingCount' => $requests->where('status', 'pending')->count(),
-            'canSendQuotes' => $canSendQuotes,
-            'quotesBlockedMessage' => $quotesBlockedMessage,
+        return redirect()->route('artist.requests.index', [
+            'type' => $isGuestScope ? 'guest' : 'custom',
         ]);
     }
 

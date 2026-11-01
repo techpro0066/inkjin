@@ -56,6 +56,145 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/studio', \App\Http\Controllers\Studio\DashboardController::class)
         ->middleware('studio')
         ->name('studio.dashboard');
+    Route::post('/studio/guest-spot-invites/{guestSpot}/accept', [\App\Http\Controllers\GuestSpotStudioInviteAcceptController::class, 'acceptFromDashboard'])
+        ->middleware('studio')
+        ->whereNumber('guestSpot')
+        ->name('studio.guest-spot-invite.accept');
+    Route::post('/studio/guest-spot-invites/{guestSpot}/decline', [\App\Http\Controllers\GuestSpotStudioInviteAcceptController::class, 'declineFromDashboard'])
+        ->middleware('studio')
+        ->whereNumber('guestSpot')
+        ->name('studio.guest-spot-invite.decline');
+    Route::get('/studio/artists', [\App\Http\Controllers\Studio\ArtistsController::class, 'index'])
+        ->middleware('studio')
+        ->name('studio.artists');
+    Route::get('/studio/artists/join-requests', [\App\Http\Controllers\Studio\ArtistsController::class, 'joinRequests'])
+        ->middleware('studio')
+        ->name('studio.artists.join-requests');
+    Route::get('/studio/artists/guests', [\App\Http\Controllers\Studio\ArtistsController::class, 'guests'])
+        ->middleware('studio')
+        ->name('studio.artists.guests');
+    Route::get('/studio/artists/invites', [\App\Http\Controllers\Studio\ArtistsController::class, 'invites'])
+        ->middleware('studio')
+        ->name('studio.artists.invites');
+    Route::post('/studio/artists/invites', [\App\Http\Controllers\Studio\ArtistsController::class, 'sendInvite'])
+        ->middleware('studio')
+        ->name('studio.artists.invites.send');
+    Route::post('/studio/artists/invites/{invite}/resend', [\App\Http\Controllers\Studio\ArtistsController::class, 'resendInvite'])
+        ->middleware('studio')
+        ->whereNumber('invite')
+        ->name('studio.artists.invites.resend');
+    Route::post('/studio/artists/invites/{invite}/cancel', [\App\Http\Controllers\Studio\ArtistsController::class, 'cancelInvite'])
+        ->middleware('studio')
+        ->whereNumber('invite')
+        ->name('studio.artists.invites.cancel');
+    Route::post('/studio/artists/{userStudio}/remove', [\App\Http\Controllers\Studio\ArtistsController::class, 'remove'])
+        ->middleware('studio')
+        ->whereNumber('userStudio')
+        ->name('studio.artists.remove');
+    Route::post('/studio/artists/{userStudio}/accept', [\App\Http\Controllers\Studio\ArtistsController::class, 'accept'])
+        ->middleware('studio')
+        ->whereNumber('userStudio')
+        ->name('studio.artists.accept');
+    Route::post('/studio/artists/{userStudio}/decline', [\App\Http\Controllers\Studio\ArtistsController::class, 'decline'])
+        ->middleware('studio')
+        ->whereNumber('userStudio')
+        ->name('studio.artists.decline');
+    Route::get('/studio/page', fn () => redirect()->route('studio.page.about'))
+        ->middleware('studio')
+        ->name('studio.page');
+    Route::get('/studio/page/about', [\App\Http\Controllers\Studio\StudioPageController::class, 'about'])
+        ->middleware('studio')
+        ->name('studio.page.about');
+    Route::post('/studio/page/about', [\App\Http\Controllers\Studio\StudioPageController::class, 'updateAbout'])
+        ->middleware('studio')
+        ->name('studio.page.about.update');
+    Route::get('/studio/page/artists', [\App\Http\Controllers\Studio\StudioPageController::class, 'artists'])
+        ->middleware('studio')
+        ->name('studio.page.artists');
+    Route::post('/studio/page/artists', [\App\Http\Controllers\Studio\StudioPageController::class, 'updateArtists'])
+        ->middleware('studio')
+        ->name('studio.page.artists.update');
+    Route::get('/studio/page/portfolio', [\App\Http\Controllers\Studio\StudioPageController::class, 'portfolio'])
+        ->middleware('studio')
+        ->name('studio.page.portfolio');
+    Route::post('/studio/page/portfolio', [\App\Http\Controllers\Studio\StudioPageController::class, 'updatePortfolio'])
+        ->middleware('studio')
+        ->name('studio.page.portfolio.update');
+    Route::post('/studio/page/portfolio/instagram/refresh', [\App\Http\Controllers\Studio\StudioPageController::class, 'refreshInstagram'])
+        ->middleware('studio')
+        ->name('studio.page.portfolio.instagram.refresh');
+    Route::post('/studio/page/portfolio/instagram/disconnect', [\App\Http\Controllers\Studio\StudioPageController::class, 'disconnectInstagram'])
+        ->middleware('studio')
+        ->name('studio.page.portfolio.instagram.disconnect');
+    Route::get('/studio/page/look', [\App\Http\Controllers\Studio\StudioPageController::class, 'look'])
+        ->middleware('studio')
+        ->name('studio.page.look');
+    Route::post('/studio/page/look', [\App\Http\Controllers\Studio\StudioPageController::class, 'updateLook'])
+        ->middleware('studio')
+        ->name('studio.page.look.update');
+    Route::get('/studio/client-flow', fn () => redirect()->route('studio.client-flow.intake'))
+        ->middleware('studio')
+        ->name('studio.client-flow');
+    Route::get('/studio/client-flow/intake', [\App\Http\Controllers\Studio\ClientFlowController::class, 'intake'])
+        ->middleware('studio')
+        ->name('studio.client-flow.intake');
+    Route::get('/studio/client-flow/consent', [\App\Http\Controllers\Studio\ClientFlowController::class, 'consent'])
+        ->middleware('studio')
+        ->name('studio.client-flow.consent');
+    Route::put('/studio/client-flow/consent/policy', [\App\Http\Controllers\Studio\ClientFlowController::class, 'updateConsentPolicy'])
+        ->middleware('studio')
+        ->name('studio.client-flow.consent.policy');
+    Route::put('/studio/client-flow/consent/settings', [\App\Http\Controllers\Studio\ClientFlowController::class, 'updateConsentSettings'])
+        ->middleware('studio')
+        ->name('studio.client-flow.consent.settings');
+    Route::post('/studio/client-flow/questions', [QuestionsController::class, 'store'])
+        ->middleware('studio')
+        ->name('studio.client-flow.questions.store');
+    Route::put('/studio/client-flow/questions/{id}', [QuestionsController::class, 'update'])
+        ->middleware('studio')
+        ->name('studio.client-flow.questions.update');
+    Route::patch('/studio/client-flow/questions/{id}/status', [QuestionsController::class, 'updateSystemQuestionStatus'])
+        ->middleware('studio')
+        ->name('studio.client-flow.questions.status');
+    Route::post('/studio/client-flow/questions/reorder', [QuestionsController::class, 'reorder'])
+        ->middleware('studio')
+        ->name('studio.client-flow.questions.reorder');
+    Route::delete('/studio/client-flow/questions/{id}', [QuestionsController::class, 'destroy'])
+        ->middleware('studio')
+        ->name('studio.client-flow.questions.destroy');
+    Route::get('/studio/money', fn () => redirect()->route('studio.money.earnings'))
+        ->middleware('studio')
+        ->name('studio.money');
+    Route::get('/studio/money/earnings', [\App\Http\Controllers\Studio\MoneyController::class, 'earnings'])
+        ->middleware('studio')
+        ->name('studio.money.earnings');
+    Route::get('/studio/money/payouts', [\App\Http\Controllers\Studio\MoneyController::class, 'payouts'])
+        ->middleware('studio')
+        ->name('studio.money.payouts');
+    Route::post('/studio/money/payouts', [\App\Http\Controllers\Studio\MoneyController::class, 'updatePayouts'])
+        ->middleware('studio')
+        ->name('studio.money.payouts.update');
+    Route::post('/studio/money/payouts/stripe/session', [\App\Http\Controllers\Studio\MoneyController::class, 'createStripeSession'])
+        ->middleware('studio')
+        ->name('studio.money.payouts.stripe.session');
+    Route::get('/studio/money/payouts/stripe/status', [\App\Http\Controllers\Studio\MoneyController::class, 'stripeStatus'])
+        ->middleware('studio')
+        ->name('studio.money.payouts.stripe.status');
+    Route::post('/studio/money/payouts/stripe/complete', [\App\Http\Controllers\Studio\MoneyController::class, 'completeStripe'])
+        ->middleware('studio')
+        ->name('studio.money.payouts.stripe.complete');
+    Route::post('/studio/money/payouts/stripe/disconnect', [\App\Http\Controllers\Studio\MoneyController::class, 'disconnectStripe'])
+        ->middleware('studio')
+        ->name('studio.money.payouts.stripe.disconnect');
+    Route::post('/studio/money/payouts/stripe/reactivate', [\App\Http\Controllers\Studio\MoneyController::class, 'reactivateStripe'])
+        ->middleware('studio')
+        ->name('studio.money.payouts.stripe.reactivate');
+    Route::post('/studio/money/payouts/stripe/change-account', [\App\Http\Controllers\Studio\MoneyController::class, 'changePayoutAccount'])
+        ->middleware('studio')
+        ->name('studio.money.payouts.stripe.change-account');
+    Route::post('/studio/money/payouts/stripe/finalize-change-account', [\App\Http\Controllers\Studio\MoneyController::class, 'finalizeChangePayoutAccount'])
+        ->middleware('studio')
+        ->name('studio.money.payouts.stripe.finalize-change-account');
     Route::middleware('studio')->prefix('studio/onboarding')->name('studio.onboarding.')->group(function () {
         Route::get('/', fn () => redirect()->route('studio.onboarding.profile'));
         Route::get('/profile', [\App\Http\Controllers\Studio\OnboardingController::class, 'profile'])->name('profile');
@@ -94,6 +233,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/onboarding/styles-social', [OnboardingController::class, 'saveStylesSocial'])->name('onboarding.styles-social.save');
     Route::post('/onboarding/profile', [OnboardingController::class, 'saveProfile'])->name('onboarding.profile.save');
     Route::post('/onboarding/studio', [OnboardingController::class, 'saveStudio'])->name('onboarding.studio.save');
+    Route::post('/onboarding/studio/accept-invite', [OnboardingController::class, 'acceptStudioInvite'])->name('onboarding.studio.accept-invite');
+    Route::post('/onboarding/studio/skip-invite', [OnboardingController::class, 'skipStudioInvite'])->name('onboarding.studio.skip-invite');
     Route::post('/onboarding/calendar', [OnboardingController::class, 'saveCalendar'])->name('onboarding.calendar.save');
     Route::post('/onboarding/preferences', [OnboardingController::class, 'savePreferences'])->name('onboarding.preferences.save');
     Route::post('/onboarding/preferences/country', [OnboardingController::class, 'savePreferencesCountry'])->name('onboarding.preferences.country');
@@ -125,6 +266,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::post('/auth/instagram/deauthorize', [\App\Http\Controllers\InstagramController::class, 'deauthorize'])
     ->name('instagram.deauthorize');
+
+Route::get('/invite/studio/{token}', [\App\Http\Controllers\Studio\StudioArtistInviteAcceptController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->name('studio.artist-invite.show');
+Route::post('/invite/studio/{token}/accept', [\App\Http\Controllers\Studio\StudioArtistInviteAcceptController::class, 'accept'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('studio.artist-invite.accept');
+Route::post('/invite/studio/{token}/decline', [\App\Http\Controllers\Studio\StudioArtistInviteAcceptController::class, 'decline'])
+    ->middleware('throttle:30,1')
+    ->name('studio.artist-invite.decline');
+
+Route::get('/invite/guest-spot/{token}', [\App\Http\Controllers\GuestSpotStudioInviteAcceptController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->name('guest-spot.studio-invite.show');
+Route::post('/invite/guest-spot/{token}/accept', [\App\Http\Controllers\GuestSpotStudioInviteAcceptController::class, 'accept'])
+    ->middleware('throttle:30,1')
+    ->name('guest-spot.studio-invite.accept');
+Route::post('/invite/guest-spot/{token}/decline', [\App\Http\Controllers\GuestSpotStudioInviteAcceptController::class, 'decline'])
+    ->middleware('throttle:30,1')
+    ->name('guest-spot.studio-invite.decline');
+Route::post('/invite/guest-spot/{token}/stripe/session', [\App\Http\Controllers\GuestSpotStudioInviteAcceptController::class, 'createStripeSession'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('guest-spot.studio-invite.stripe.session');
+Route::post('/invite/guest-spot/{token}/stripe/complete', [\App\Http\Controllers\GuestSpotStudioInviteAcceptController::class, 'completeStripe'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('guest-spot.studio-invite.stripe.complete');
 
 Route::get('/stripe/delete-account', [StripeConnectDevController::class, 'showDeleteForm'])
     ->name('stripe.delete-account.show');
@@ -286,34 +453,16 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/dashboard', [ArtistDashboardController::class, 'index'])->name('artist.dashboard');
     Route::post('/welcome-seen', [ArtistDashboardController::class, 'markWelcomeSeen'])->name('artist.welcome-seen');
     Route::post('/instagram-bio-added', [ArtistDashboardController::class, 'markInstagramBioAdded'])->name('artist.instagram-bio-added');
-    Route::get('/payment-link', [ArtistDashboardController::class, 'paymentLink'])->name('artist.payment-link');
     Route::post('/payment-link/validate', [ArtistDashboardController::class, 'validatePaymentLink'])->name('artist.payment-link.validate');
     Route::post('/payment-link', [ArtistDashboardController::class, 'storePaymentLink'])->name('artist.payment-link.store');
 
     // Settings routes
 
-    Route::get('/settings/styles', function (\Illuminate\Http\Request $request) {
-        $user = $request->user();
-        $userDetail = $user->userDetail;
-        $styleOptions = \App\Models\Style::query()
-            ->active()
-            ->ordered()
-            ->pluck('name', 'name')
-            ->toArray();
-
-        if (empty($styleOptions)) {
-            $fallbackSlugs = [
-                'traditional', 'neo-traditional', 'japanese', 'realism', 'blackwork',
-                'minimalist', 'geometric', 'watercolor', 'tribal', 'dotwork', 'new-school', 'illustrative',
-            ];
-            foreach ($fallbackSlugs as $slug) {
-                $styleOptions[$slug] = ucwords(str_replace('-', ' ', $slug));
-            }
-        }
-
-        return view('artist.settings.styles', compact('userDetail', 'styleOptions'));
+    // Legacy styles settings URL → My Page (styles edited there now)
+    Route::get('/settings/styles', function () {
+        return redirect()->route('personal-page.index');
     })->name('settings.styles');
-    
+
     Route::post('/settings/styles', [OnboardingController::class, 'updateStylesSocial'])->name('settings.styles.update');
 
     Route::get('/settings/studio', [StudioSettingsController::class, 'show'])->name('settings.studio');
@@ -328,14 +477,33 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/settings/studio/resend-join', [StudioSettingsController::class, 'resendJoinRequest'])->name('settings.studio.resend-join');
     Route::post('/settings/studio/accept-split', [StudioSettingsController::class, 'acceptSplit'])->name('settings.studio.accept-split');
     Route::post('/settings/studio/decline-split', [StudioSettingsController::class, 'declineSplit'])->name('settings.studio.decline-split');
+    Route::post('/settings/studio/invites/{invite}/accept', [StudioSettingsController::class, 'acceptInvite'])->name('settings.studio.accept-invite');
+    Route::post('/settings/studio/invites/{invite}/decline', [StudioSettingsController::class, 'declineInvite'])->name('settings.studio.decline-invite');
     
-    Route::get('/settings/calendar', function (\Illuminate\Http\Request $request) {
-        $user = $request->user();
-        $userDetail = $user->userDetail;
-        return view('artist.settings.calendar', compact('userDetail'));
+    // Legacy settings calendar URL → Schedule → Calendar sync
+    Route::get('/settings/calendar', function () {
+        return redirect()->route('schedule.calendar-sync');
     })->name('settings.calendar');
-    
+
     Route::post('/settings/calendar', [OnboardingController::class, 'updateCalendar'])->name('settings.calendar.update');
+
+    // Schedule → Calendar sync (03c)
+    Route::get('/schedule/calendar-sync', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $userDetail = $user->userDetail ?? \App\Models\UserDetail::create(['user_id' => $user->id]);
+
+        return view('artist.schedule.calendar-sync', compact('userDetail'));
+    })->name('schedule.calendar-sync');
+    Route::post('/schedule/calendar-sync', [OnboardingController::class, 'updateCalendarSync'])->name('schedule.calendar-sync.update');
+
+    // Schedule → Booking rules (03d)
+    Route::get('/schedule/booking-rules', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $userDetail = $user->userDetail ?? \App\Models\UserDetail::create(['user_id' => $user->id]);
+
+        return view('artist.schedule.booking-rules', compact('userDetail'));
+    })->name('schedule.booking-rules');
+    Route::post('/schedule/booking-rules', [OnboardingController::class, 'updateBookingRules'])->name('schedule.booking-rules.update');
     
     Route::get('/settings/payments', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
@@ -351,6 +519,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/settings/payouts', [OnboardingController::class, 'paymentSettings'])->name('settings.payment');
     Route::post('/settings/payouts', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
     Route::post('/settings/payouts/bank-country', [OnboardingController::class, 'savePayoutBankCountry'])->name('settings.payment.bank-country');
+    Route::post('/settings/payouts/change-account', [OnboardingController::class, 'changePayoutAccount'])->name('settings.payment.change-account');
+    Route::post('/settings/payouts/finalize-change-account', [OnboardingController::class, 'finalizeChangePayoutAccount'])->name('settings.payment.finalize-change-account');
+    Route::post('/settings/payouts/activate-account', [OnboardingController::class, 'activatePayoutAccount'])->name('settings.payment.activate-account');
     Route::post('/settings/payouts/waiting-list', [OnboardingController::class, 'savePayoutWaitingList'])->name('settings.payment.waiting-list');
     Route::get('/settings/payouts/stripe/requirements', [OnboardingController::class, 'stripeRequirements'])->name('settings.payment.stripe.requirements');
     Route::post('/settings/payouts/stripe/session', [OnboardingController::class, 'createStripeConnectSession'])->name('settings.payment.stripe.session');
@@ -442,6 +613,10 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     // Booking routes
     Route::get('/bookings', [ArtistBookingsController::class, 'index'])->name('artist.bookings.index');
     Route::get('/bookings/payment-links', [ArtistBookingsController::class, 'paymentLinks'])->name('artist.bookings.payment-links');
+    Route::post('/bookings/payment-links/{source}/{id}/expire', [ArtistBookingsController::class, 'expirePaymentLink'])
+        ->whereIn('source', ['standalone', 'booking'])
+        ->whereNumber('id')
+        ->name('artist.bookings.payment-links.expire');
 
     // Requests
     Route::get('/requests', [RequestsController::class, 'index'])->name('artist.requests.index');
@@ -455,6 +630,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/chat', [ArtistChatController::class, 'index'])->name('artist.chat.index');
     Route::get('/clients', [ArtistClientsController::class, 'index'])->name('artist.clients.index');
     Route::post('/clients/waitlist/notify', [ArtistClientsController::class, 'notifyWaitlist'])->name('artist.clients.waitlist.notify');
+    Route::put('/clients/waitlist/signup-mode', [ArtistClientsController::class, 'updateWaitlistSignup'])->name('artist.clients.waitlist.signup-mode');
+    Route::put('/clients/guest-waitlist/auto-notify', [ArtistClientsController::class, 'updateGuestWaitlistAutoNotify'])->name('artist.clients.guest-waitlist.auto-notify');
+    Route::post('/clients/guest-waitlist/notify', [ArtistClientsController::class, 'notifyGuestWaitlist'])->name('artist.clients.guest-waitlist.notify');
     Route::get('/refer-earn', [ArtistReferEarnController::class, 'index'])->name('artist.refer-earn.index');
     Route::get('/payments', [ArtistPaymentsController::class, 'index'])->name('artist.payments.index');
     Route::post('/payments/request-payout', [ArtistPaymentsController::class, 'requestPayout'])->name('artist.payments.request-payout');
@@ -555,10 +733,14 @@ Route::post('/p/{code}/session-details/{booking}/image', [ArtistDashboardControl
     ->name('public.payment-link.session-details.image');
 Route::get('/@{username}', [InkJinController::class, 'publicArtistProfile'])->name('public.artist');
 
-Route::get('/@{user_name}/{tattoo_slug}', [InkJinController::class, 'publicTattooPage'])->name('public.tattoo');
-
-// custom request
+// custom request (before tattoo slug catch-all)
 Route::get('/@{user_name}/request/custom', [CustomRequestController::class, 'requestCustom'])->name('public.request-custom');
+
+Route::get('/@{user_name}/guest/{guestSpotSlug}', [InkJinController::class, 'publicGuestSpot'])
+    ->where('guestSpotSlug', '[A-Za-z0-9\-]+')
+    ->name('public.guest-spot');
+
+Route::get('/@{user_name}/{tattoo_slug}', [InkJinController::class, 'publicTattooPage'])->name('public.tattoo');
 
 Route::get('/@{user_name}/{tattoo_slug}/book', [InkJinController::class, 'bookTattoo'])->name('public.tattoo.book');
 Route::get('/api/public/check-email-availability', [InkJinController::class, 'checkEmailAvailability'])->name('public.email.availability');
@@ -575,4 +757,5 @@ Route::get('/viva/success', [VivaReturnController::class, 'success'])->name('viv
 Route::get('/viva/fail', [VivaReturnController::class, 'fail'])->name('viva.fail');
 Route::post('/api/public/submit-managed-booking', [InkJinController::class, 'submitManagedBooking'])->name('public.booking.managed.submit');
 Route::post('/api/public/submit-waitlist', [InkJinController::class, 'submitWaitlist'])->name('public.waitlist.submit');
+Route::post('/api/public/submit-guest-waitlist', [InkJinController::class, 'submitGuestWaitlist'])->name('public.guest-waitlist.submit');
 Route::post('/api/public/submit-custom-request', [CustomRequestController::class, 'submitCustomRequest'])->name('public.custom-request.submit');

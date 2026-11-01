@@ -196,7 +196,7 @@
         <div class="card pad">
           <h3 style="font-size:14.5px">Change a rule</h3>
           <div class="faint" style="font-size:12.5px;margin-top:4px;line-height:1.5">The text updates automatically when you change these settings.</div>
-          <a class="rule-link" href="{{ route('settings.calendar') }}">
+          <a class="rule-link" href="{{ route('schedule.booking-rules') }}">
             <span class="ms">event_repeat</span>
             <span style="flex:1">Reschedule and cancellation</span>
             <span class="faint" style="font-size:12px">Schedule</span>

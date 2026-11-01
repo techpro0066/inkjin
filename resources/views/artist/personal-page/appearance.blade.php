@@ -109,6 +109,7 @@
   .mp-look .mp-toast .ms{color:#3DD68C;font-size:20px}
   .mp-look .btn.lk-save{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:10px;padding:10px 16px}
   .mp-look .btn.lk-save .ms{font-size:18px}
+  .mp-look .btn.lk-save:disabled{cursor:default}
   .mp-look .mp-leave{position:fixed;inset:0;background:rgba(20,10,30,.45);display:none;align-items:center;justify-content:center;z-index:500;padding:16px}
   .mp-look .mp-leave.on{display:flex}
   .mp-look .mp-leave-box{background:#fff;border-radius:22px;width:420px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;position:relative}
@@ -236,10 +237,10 @@
   var CROP_PRESETS = {
     banner: {
       title: 'Crop banner',
-      sub: 'Recommended 3:1 · keep the main subject near the centre.',
-      aspect: 3 / 1,
+      sub: 'Recommended 1600 × 230 · keep the main subject near the centre.',
+      aspect: 1600 / 230,
       width: 1600,
-      height: 534,
+      height: 230,
       tall: false
     },
     bgD: {

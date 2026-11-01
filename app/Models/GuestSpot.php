@@ -5,11 +5,28 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class GuestSpot extends Model
 {
+    /** Guest studio revenue-split invite: awaiting studio response. */
+    public const INVITE_PENDING = 'pending';
+
+    /** Guest studio accepted the revenue split. */
+    public const INVITE_ACCEPTED = 'accepted';
+
+    /** Guest studio rejected the revenue split. */
+    public const INVITE_REJECTED = 'rejected';
+
+    public const INVITE_STATUSES = [
+        self::INVITE_PENDING,
+        self::INVITE_ACCEPTED,
+        self::INVITE_REJECTED,
+    ];
+
     protected $fillable = [
         'user_id',
+        'studio_id',
         'status',
         'city',
         'country',
@@ -35,6 +52,20 @@ class GuestSpot extends Model
         'google_maps_link',
         'latitude',
         'longitude',
+        'payout_mode',
+        'artist_percent',
+        'guest_studio_invite_email',
+        'guest_studio_invite_status',
+        'guest_studio_invite_token',
+        'show_designs',
+        'show_portfolio',
+        'show_rates',
+        'show_policies',
+        'show_faq',
+        'selected_design_ids',
+        'selected_portfolio_ids',
+        'banner_path',
+        'color_scheme',
     ];
 
     protected function casts(): array
@@ -52,12 +83,25 @@ class GuestSpot extends Model
             'remaining_spots' => 'integer',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
+            'artist_percent' => 'integer',
+            'show_designs' => 'boolean',
+            'show_portfolio' => 'boolean',
+            'show_rates' => 'boolean',
+            'show_policies' => 'boolean',
+            'show_faq' => 'boolean',
+            'selected_design_ids' => 'array',
+            'selected_portfolio_ids' => 'array',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function studio(): BelongsTo
+    {
+        return $this->belongsTo(Studio::class);
     }
 
     public function tracksSpotCapacity(): bool
@@ -220,6 +264,48 @@ class GuestSpot extends Model
         };
     }
 
+    /**
+     * Public URL title segment, e.g. london-oct-11-15-2026.
+     */
+    public function publicSlug(): string
+    {
+        $city = Str::slug(trim((string) ($this->city ?? '')) ?: 'guest');
+
+        if (! $this->from_date || ! $this->to_date) {
+            return $city.'-'.$this->id;
+        }
+
+        $fromPart = Str::slug($this->from_date->format('M j'));
+        $toPart = $this->from_date->isSameMonth($this->to_date) && $this->from_date->isSameYear($this->to_date)
+            ? Str::slug($this->to_date->format('j Y'))
+            : Str::slug($this->to_date->format('M j Y'));
+
+        return $city.'-'.$fromPart.'-'.$toPart;
+    }
+
+    /**
+     * Resolvable guest spot for public design booking from that guest page.
+     */
+    public static function resolveReservableForArtist(mixed $guestSpotId, int $artistUserId): ?self
+    {
+        if ($guestSpotId === null || $guestSpotId === '') {
+            return null;
+        }
+
+        $id = (int) $guestSpotId;
+        if ($id <= 0) {
+            return null;
+        }
+
+        return static::query()
+            ->whereKey($id)
+            ->where('user_id', $artistUserId)
+            ->where('status', 'available')
+            ->whereDate('to_date', '>=', now()->toDateString())
+            ->get()
+            ->first(fn (self $spot) => $spot->isReservable());
+    }
+
     public function publicStatusColor(): string
     {
         return match ($this->effectiveStatusKey()) {
@@ -250,15 +336,38 @@ class GuestSpot extends Model
      */
     public function listRemainingSpotsLabel(): ?string
     {
-        if (! $this->tracksSpotCapacity()) {
+        $capacity = (int) ($this->number_of_spots ?? 0);
+        if ($capacity <= 0) {
             return null;
         }
 
-        if ($this->isFull()) {
-            return 'Available spots: Full';
+        if ($this->status === 'planned') {
+            return 'Available spots: '.$capacity.' · not bookable yet';
         }
 
-        return 'Available spots: '.max(0, (int) ($this->remaining_spots ?? 0));
+        $remaining = max(0, (int) ($this->remaining_spots ?? 0));
+        $booked = max(0, $capacity - $remaining);
+
+        return 'Available spots: '.$capacity.' · '.$booked.' booked';
+    }
+
+    /**
+     * Payout line for the schedule list (matches 03b template).
+     */
+    public function listPayoutLabel(): ?string
+    {
+        if (! $this->showsBookingDetailFields()) {
+            return null;
+        }
+
+        if (($this->payout_mode ?: 'direct') === 'split') {
+            $you = max(0, min(100, (int) ($this->artist_percent ?? 60)));
+            $studio = max(0, 100 - $you);
+
+            return 'Revenue split · You '.$you.'% · Studio '.$studio.'%';
+        }
+
+        return 'Paid to you directly';
     }
 
     public function bufferDaysBefore(): int
@@ -379,11 +488,11 @@ class GuestSpot extends Model
     }
 
     /**
-     * Whether studio/hours/location rows should render (available + completed).
+     * Whether studio/hours/location rows should render in the schedule list.
      */
     public function showsBookingDetailFields(): bool
     {
-        return in_array($this->status, ['available', 'completed'], true);
+        return in_array($this->status, ['available', 'planned', 'completed'], true);
     }
 
     /**
@@ -485,7 +594,7 @@ class GuestSpot extends Model
         $start = Carbon::parse($this->start_time);
         $end = Carbon::parse($this->end_time);
 
-        return $start->format('g:i A').' – '.$end->format('g:i A');
+        return $start->format('H:i').' – '.$end->format('H:i');
     }
 
     public function hasListDetails(): bool
@@ -494,11 +603,17 @@ class GuestSpot extends Model
             return false;
         }
 
+        if ($this->status === 'planned') {
+            return true;
+        }
+
         return (bool) ($this->listStudioLabel()
             || $this->listLocationLabel()
             || $this->listBufferLabel()
             || $this->listAvailabilityTimeLabel()
-            || $this->status === 'available');
+            || $this->listRemainingSpotsLabel()
+            || $this->listPayoutLabel()
+            || in_array($this->status, ['available', 'completed'], true));
     }
 
     /**
@@ -540,9 +655,29 @@ class GuestSpot extends Model
             'guest_google_maps_link' => $this->google_maps_link,
             'guest_latitude' => $this->latitude,
             'guest_longitude' => $this->longitude,
+            'studio_id' => $this->studio_id,
+            'payout_mode' => $this->payout_mode ?: 'direct',
+            'artist_percent' => $this->artist_percent,
+            'guest_studio_invite_email' => $this->guest_studio_invite_email,
+            'guest_studio_invite_status' => $this->guest_studio_invite_status,
+            'show_designs' => (bool) $this->show_designs,
+            'show_portfolio' => (bool) $this->show_portfolio,
+            'show_rates' => (bool) $this->show_rates,
+            'show_policies' => (bool) ($this->show_policies ?? true),
+            'show_faq' => (bool) ($this->show_faq ?? true),
+            'selected_design_ids' => array_values(array_map('intval', $this->selected_design_ids ?? [])),
+            'selected_portfolio_ids' => array_values(array_map('intval', $this->selected_portfolio_ids ?? [])),
+            'banner_path' => $this->banner_path,
+            'banner_url' => $this->banner_path
+                ? (str_starts_with((string) $this->banner_path, 'http')
+                    ? $this->banner_path
+                    : asset(ltrim((string) $this->banner_path, '/')))
+                : null,
+            'color_scheme' => $this->color_scheme,
             'list_studio' => $this->listStudioLabel(),
             'list_location' => $this->listLocationLabel(),
             'list_buffer' => $this->listBufferLabel(),
+            'list_payout' => $this->listPayoutLabel(),
             'has_list_details' => $this->hasListDetails(),
         ];
     }

@@ -1,6 +1,13 @@
-@props(['role' => 'user', 'streamConfigured' => false, 'hasOpenBooking' => false, 'hasConversations' => false])
+@props([
+  'role' => 'user',
+  'streamConfigured' => false,
+  'hasOpenBooking' => false,
+  'hasConversations' => false,
+  'skin' => 'default',
+])
 
 @php
+  $isBookpay = $skin === 'bookpay';
   $showChatInbox = $streamConfigured && (
     $hasConversations
     || $hasOpenBooking
@@ -9,111 +16,147 @@
     || request()->filled('booking_request')
     || request()->filled('custom_request')
   );
+  $bookingsIndexUrl = $role === 'artist'
+    ? route('artist.bookings.index')
+    : route('user.bookings.index');
 @endphp
 
 @if ($showChatInbox)
 <style>
-  .conversation-item { transition: background 0.15s ease; cursor: pointer; }
-  .conversation-item:hover { background: #f8f1fb; }
-  .conversation-item.active { background: #f2ecf5; border-left: 3px solid #310f7a; }
-  .msg-bubble-other { background: #f8f1fb; border-radius: 18px 18px 18px 4px; }
-  .msg-bubble-self { background: #310f7a; color: white; border-radius: 18px 18px 4px 18px; }
-  #chatMessages { scroll-behavior: smooth; }
-  .presence-dot {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 11px;
-    height: 11px;
-    border-radius: 9999px;
-    border: 2px solid #fff;
+  .bp-inbox .hidden{display:none!important}
+  .bp-inbox .row{display:flex;align-items:center;gap:12px}
+  .bp-inbox .in{
+    background:#fff;border:1px solid #E8DFEA;border-radius:10px;padding:10px 13px;font-size:13.5px;
+    display:flex;align-items:center;gap:8px;min-height:40px;width:100%;color:#1A1A1A;outline:none;box-sizing:border-box
   }
-  .presence-dot--online { background: #22c55e; }
-  .presence-dot--offline { background: #cac4d3; }
-  .chat-unread-dot {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 9999px;
-    background: #310f7a;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 1;
-    border: 2px solid #fff;
+  .bp-inbox .in .ms{font-size:18px;color:#9A929E}
+  .bp-inbox .ms{
+    font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;
+    display:inline-block;-webkit-font-smoothing:antialiased;
+    font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;vertical-align:middle
   }
-  .typing-dots { display: inline-flex; align-items: center; gap: 4px; height: 16px; }
-  .typing-dots span {
-    width: 6px; height: 6px; border-radius: 9999px; background: #7a7583;
-    animation: typingBounce 1.2s infinite ease-in-out;
+  .bp-inbox .card{background:#fff;border:1px solid #E8DFEA;border-radius:16px}
+  .bp-inbox .card.pad{padding:20px 22px}
+  .bp-inbox .ic{width:38px;height:38px;border-radius:10px;background:#F0EDF2;display:flex;align-items:center;justify-content:center}
+  .bp-inbox .conversation-item{padding:12px 14px;border-radius:12px;cursor:pointer;transition:background .15s ease}
+  .bp-inbox .conversation-item:hover{background:#FAF0FB}
+  .bp-inbox .conversation-item.active{background:#F3E8FF}
+  .bp-inbox .msg-bubble-other{background:#F4F0F6;border-radius:14px 14px 14px 4px;color:#1A1A1A}
+  .bp-inbox .msg-bubble-self{background:#3E007C;color:#fff;border-radius:14px 14px 4px 14px}
+  #chatMessages{scroll-behavior:smooth}
+  .bp-inbox .presence-dot{position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:9999px;border:2px solid #fff}
+  .bp-inbox .presence-dot--online{background:#00A650}
+  .bp-inbox .presence-dot--offline{background:#CAC4D3}
+  .bp-inbox .chat-unread-dot{
+    width:8px;height:8px;min-width:8px;padding:0;border-radius:50%;background:#7A1FC4;border:0;
+    position:static;display:inline-block;flex-shrink:0
   }
-  .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
-  .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
-  @keyframes typingBounce {
-    0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
-    30% { transform: translateY(-4px); opacity: 1; }
+  .bp-inbox .chat-unread-dot[data-count]:not([data-count=""]){font-size:0}
+  .typing-dots{display:inline-flex;align-items:center;gap:4px;height:16px}
+  .typing-dots span{width:6px;height:6px;border-radius:9999px;background:#9A929E;animation:typingBounce 1.2s infinite ease-in-out}
+  .typing-dots span:nth-child(2){animation-delay:.15s}
+  .typing-dots span:nth-child(3){animation-delay:.3s}
+  @keyframes typingBounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}
+  .bp-inbox .ibwrap{position:relative;flex-shrink:0}
+  .bp-inbox .ibsel{
+    display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #E8DFEA;border-radius:10px;
+    padding:6px 10px;cursor:pointer;font:inherit;text-align:left;max-width:280px
   }
-  #chatBookingSelectMenu {
-    box-shadow: 0 12px 40px rgba(28, 27, 33, 0.12);
-    max-height: 280px;
-    overflow-y: auto;
+  .bp-inbox .ibsel>span:first-child{display:flex;flex-direction:column;min-width:0}
+  .bp-inbox .ibsel b{font-size:12.5px;font-weight:700;color:#1A1A1A}
+  .bp-inbox .ibsel .ibsub{font-size:11.5px;color:#6F6874;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+  .bp-inbox .ibsel .ms{font-size:18px;color:#9A929E;flex-shrink:0}
+  .bp-inbox .ibsel.has-other-unread{border-color:#D4B8F0;background:#FBF5FF}
+  .bp-inbox .ibmenu{
+    position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #E8DFEA;border-radius:12px;
+    box-shadow:0 14px 40px rgba(40,10,60,.18);width:300px;max-height:320px;overflow-y:auto;padding:6px;z-index:30
   }
-  .chat-booking-option { transition: background 0.12s ease; }
-  .chat-booking-option:hover { background: #f8f1fb; }
-  .chat-booking-option .chat-booking-ref { color: #1c1b21; }
-  .chat-booking-option .chat-booking-meta { color: #494552; }
-  .chat-booking-option.active { background: #f2ecf5; border-left: 3px solid #310f7a; }
-  .chat-booking-option.has-unread {
-    background: #310f7a;
-    border-left: 3px solid #664db1;
-    color: #fff;
+  .bp-inbox .ibo{
+    display:flex;flex-direction:column;align-items:flex-start;width:100%;border:0;background:none;font:inherit;
+    text-align:left;padding:9px 10px;border-radius:9px;cursor:pointer
   }
-  .chat-booking-option.has-unread:hover { background: #482d91; }
-  .chat-booking-option.active.has-unread {
-    background: #310f7a;
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+  .bp-inbox .ibo:hover,.bp-inbox .ibo.on{background:#F3E8FF}
+  .bp-inbox .ibo.has-unread{background:#3E007C;color:#fff}
+  .bp-inbox .ibo.has-unread:hover{background:#4A1490}
+  .bp-inbox .ibo b{font-size:13px;font-weight:700}
+  .bp-inbox .ibo span,.bp-inbox .ibo .chat-booking-meta,.bp-inbox .ibo .chat-booking-preview{font-size:11.5px;color:#6F6874}
+  .bp-inbox .ibo.has-unread span,.bp-inbox .ibo.has-unread .chat-booking-meta,.bp-inbox .ibo.has-unread .chat-booking-preview{color:rgba(255,255,255,.9)}
+  .bp-inbox .chat-booking-select-dot{
+    position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:9999px;background:#7A1FC4;border:2px solid #fff
   }
-  .chat-booking-option.has-unread .chat-booking-ref,
-  .chat-booking-option.has-unread .chat-booking-meta,
-  .chat-booking-option.has-unread .chat-booking-preview {
-    color: #fff;
+  .bp-inbox .bp-inbox-card{
+    display:grid;grid-template-columns:320px 1fr;margin-top:24px;height:620px;overflow:hidden;
+    background:#fff;border:1px solid #E8DFEA;border-radius:16px
   }
-  .chat-booking-option.has-unread .chat-booking-meta,
-  .chat-booking-option.has-unread .chat-booking-preview {
-    opacity: 0.92;
+  .bp-inbox .bp-conv-pane{border-right:1px solid #E8DFEA;padding:14px;display:flex;flex-direction:column;min-height:0}
+  .bp-inbox .bp-chat-pane{display:none;flex-direction:column;min-width:0;min-height:0}
+  @media (min-width:1024px){
+    .bp-inbox .bp-chat-pane{display:flex}
   }
-  #chatBookingSelectBtn.has-other-unread {
-    border: 1px solid rgba(49, 15, 122, 0.22);
-    background: #f8f1fb;
+  .bp-inbox .bp-search.in{margin-bottom:10px}
+  .bp-inbox .bp-search input{
+    border:0;outline:0;font:inherit;flex:1;min-width:0;background:none;color:inherit;padding:0;margin:0;box-shadow:none
   }
-  #chatBookingSelectUnreadHint { line-height: 1.3; }
-  .chat-booking-select-dot {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    width: 10px;
-    height: 10px;
-    border-radius: 9999px;
-    background: #310f7a;
-    border: 2px solid #fff;
+  .bp-inbox .bp-composer .in{flex:1;min-width:0}
+  .bp-inbox .bp-composer .in input{
+    border:0;outline:0;font:inherit;flex:1;min-width:0;background:none;color:inherit;padding:0;margin:0;box-shadow:none;width:100%
   }
-  @media (max-width: 1023px) {
-    #chatView.mobile-open { display: flex !important; position: fixed; inset: 0; top: 70px; z-index: 40; background: #fdf7ff; flex-direction: column; }
+  .bp-inbox #chatLockedField.hidden{display:none!important}
+  .bp-inbox #chatLockedField:not(.hidden){display:flex!important}
+  .bp-inbox #chatMessageInput.hidden{display:none!important}
+  .bp-inbox #chatBookingSelectWrap.hidden,
+  .bp-inbox #chatBookingStatic.hidden,
+  .bp-inbox #chatViewBookingBtn.hidden,
+  .bp-inbox #chatBookingSelectMenu.hidden,
+  .bp-inbox #chatTypingIndicator.hidden,
+  .bp-inbox #chatHeaderLock.hidden,
+  .bp-inbox #chatBookingSelectUnreadHint.hidden,
+  .bp-inbox #chatBookingSelectDot.hidden{display:none!important}
+  .bp-inbox #chatBookingSelectWrap:not(.hidden){display:block}
+  .bp-inbox #chatBookingStatic:not(.hidden){display:flex!important}
+  .bp-inbox #chatViewBookingBtn:not(.hidden){display:inline-flex!important}
+  .bp-inbox #chatBookingSelectMenu:not(.hidden){display:block}
+  .bp-inbox .bp-send.btn{padding:10px 12px}
+  .bp-inbox .ini{
+    width:34px;height:34px;border-radius:50%;background:#1A1A1A;color:#fff;font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden
+  }
+  .bp-inbox .ini img{width:100%;height:100%;object-fit:cover}
+  .bp-inbox .faint{color:#9A929E}
+  .bp-inbox .btn.sm.ghost{
+    display:inline-flex;align-items:center;gap:6px;background:#fff;color:#1A1A1A;border:1px solid #E8DFEA;
+    border-radius:8px;padding:6px 11px;font-weight:600;font-size:12.5px;white-space:nowrap;cursor:pointer;font:inherit;text-decoration:none
+  }
+  .bp-inbox .btn.sm.ghost .ms{font-size:16px}
+  @media (max-width:1023px){
+    .bp-inbox .bp-inbox-card{grid-template-columns:1fr;height:auto;min-height:70vh}
+    .bp-inbox .bp-conv-pane{border-right:0;border-bottom:1px solid #E8DFEA;max-height:42vh}
+    #chatView.mobile-open{display:flex!important;position:fixed;inset:0;top:0;z-index:40;background:#fff;flex-direction:column}
     #chatView.mobile-open ~ #convList,
-    .chat-layout.mobile-thread #convList { display: none !important; }
+    .chat-layout.mobile-thread #convList{display:none!important}
+    #chatView.mobile-open #chatBackBtn{display:inline-flex!important}
+    .bp-inbox .ibmenu{width:260px}
   }
 </style>
 @endif
 
-<main class="main-content flex-1 min-h-screen">
+@if ($isBookpay)
+  <div class="bp-inbox">
+    <div class="head">
+      <div>
+        <h1>Inbox</h1>
+        <div class="sub">
+          @if ($showChatInbox)
+            <span id="chatInboxSubtitle">Messages with your {{ $role === 'artist' ? 'clients' : 'artists' }}</span>
+          @else
+            Messages with your {{ $role === 'artist' ? 'clients' : 'artists' }}
+          @endif
+        </div>
+      </div>
+    </div>
+@else
+  <main class="main-content flex-1 min-h-screen bp-inbox">
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
-
     <div class="mb-8">
       <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Inbox</h2>
       <p class="text-on-surface-variant mt-1">
@@ -124,25 +167,23 @@
         @endif
       </p>
     </div>
+@endif
 
     @if (! $streamConfigured)
-      <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+      <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900" style="margin-top:24px">
         Chat is not configured yet. Add <code class="font-mono text-xs">STREAM_API_KEY</code> and <code class="font-mono text-xs">STREAM_API_SECRET</code> to your <code class="font-mono text-xs">.env</code> file.
       </div>
     @elseif (! $showChatInbox)
-      <div class="rounded-2xl border border-outline-variant/20 bg-white shadow-sm px-6 py-20 text-center">
-        <div class="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-dashed border-outline-variant/40 bg-surface-container-low">
-          <span class="material-symbols-outlined text-outline text-5xl">forum</span>
-        </div>
-        <p class="text-lg font-semibold text-on-surface">No conversation is there</p>
-        <p class="mx-auto mt-2 max-w-md text-sm text-on-surface-variant">
+      <div class="card pad" style="margin-top:24px;text-align:center;padding:48px 24px">
+        <div class="ic" style="margin:0 auto 16px;width:56px;height:56px;border-radius:14px"><span class="ms">forum</span></div>
+        <p style="font-weight:700;font-size:16px;margin-bottom:6px">No conversation is there</p>
+        <p class="faint" style="font-size:13.5px;max-width:420px;margin:0 auto">
           You can message {{ $role === 'artist' ? 'a client' : 'your artist' }} when you have an open request or booking.
         </p>
       </div>
     @else
       <div id="chatInboxApp"
-        class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden"
-        style="min-height: 600px;"
+        data-skin="bookpay"
         data-api-base="{{ url('/api/chat') }}"
         data-role="{{ $role }}"
         data-user-id="{{ Auth::id() }}"
@@ -152,88 +193,89 @@
         data-open-booking-request="{{ request('booking_request', '') }}"
         data-open-custom-request="{{ request('custom_request', '') }}"
         data-csrf="{{ csrf_token() }}"
+        data-bookings-url="{{ $bookingsIndexUrl }}"
         data-locked-message="{{ $role === 'artist'
           ? 'This chat is read-only. You cannot send new messages for this booking.'
           : 'This chat is read-only. You cannot send new messages for this booking.' }}">
 
-        <div class="flex h-[600px] chat-layout" id="chatLayout">
-          <div class="w-full lg:w-[340px] flex-shrink-0 border-r border-outline-variant/15 flex flex-col" id="convList">
-            <div class="p-4 border-b border-outline-variant/10">
-              <div class="relative">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-                <input type="text" id="chatSearch" placeholder="Search conversations..." class="w-full text-sm border border-outline-variant/30 rounded-xl pl-10 pr-4 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+        <div class="bp-inbox-card chat-layout" id="chatLayout">
+        <div class="bp-conv-pane" id="convList">
+          <div class="in bp-search">
+            <span class="ms">search</span>
+            <input type="search" id="chatSearch" placeholder="Search conversations" autocomplete="off" aria-label="Search conversations">
               </div>
-            </div>
-            <div class="flex-1 overflow-y-auto" id="conversationList">
-              <div class="p-8 text-center text-sm text-on-surface-variant" id="conversationEmpty">Loading conversations…</div>
-            </div>
+          <div id="conversationList" style="flex:1;min-height:0;overflow-y:auto">
+            <div style="padding:32px 16px;text-align:center;font-size:13.5px;color:#6F6874" id="conversationEmpty">Loading conversations…</div>
           </div>
+                </div>
 
-          <div class="hidden lg:flex flex-1 flex-col" id="chatView">
-            <div class="px-6 py-4 border-b border-outline-variant/10 flex items-center justify-between gap-3">
-              <div class="flex items-center gap-3 min-w-0">
-                <button type="button" id="chatBackBtn" class="lg:hidden material-symbols-outlined text-on-surface-variant">arrow_back</button>
-                <div id="chatHeaderAvatar" class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
-                  <span class="text-white text-xs font-bold">?</span>
-                </div>
-                <div class="min-w-0">
-                  <div class="flex items-center gap-1.5 min-w-0">
-                    <p class="font-bold text-on-surface text-sm truncate" id="chatHeaderName">Select a conversation</p>
-                    <span id="chatHeaderLock" class="hidden material-symbols-outlined text-[18px] text-outline flex-shrink-0" title="Read-only conversation">lock</span>
-                  </div>
-                  <p class="text-xs text-on-surface-variant truncate" id="chatHeaderMeta"></p>
-                </div>
+        <div class="bp-chat-pane" id="chatView">
+          <div class="row" style="padding:14px 20px;border-bottom:1px solid #E8DFEA;gap:12px;flex-wrap:wrap">
+            <button type="button" id="chatBackBtn" class="lg:hidden" style="background:none;border:0;cursor:pointer;padding:0;color:#6F6874;display:none" aria-label="Back to conversations">
+              <span class="ms">arrow_back</span>
+            </button>
+            <div id="chatHeaderAvatar" class="ini">?</div>
+            <div style="flex:1;min-width:0">
+              <div class="row" style="gap:6px;justify-content:flex-start">
+                <b id="chatHeaderName" style="font-size:14px">Select a conversation</b>
+                <span id="chatHeaderLock" class="hidden ms" style="font-size:18px;color:#9A929E" title="Read-only conversation">lock</span>
               </div>
-              <div class="flex flex-col items-end gap-1 flex-shrink-0 min-w-0 max-w-[220px] sm:max-w-[280px]" id="chatBookingWrap">
-                <div class="hidden relative w-full" id="chatBookingSelectWrap">
-                  <button type="button" id="chatBookingSelectBtn" class="relative w-full flex items-center justify-between gap-2 bg-surface-container-low rounded-lg px-3 py-2 text-left hover:bg-surface-container transition-colors border border-transparent">
-                    <span class="min-w-0">
-                      <span class="block text-xs font-bold text-on-surface truncate" id="chatBookingSelectLabel">INK-FL-00000</span>
-                      <span class="block text-[11px] text-on-surface-variant truncate" id="chatBookingSelectMeta"></span>
-                      <span class="hidden text-[10px] text-primary font-semibold truncate mt-0.5" id="chatBookingSelectUnreadHint"></span>
+              <div class="faint" style="font-size:12px" id="chatHeaderMeta"></div>
+            </div>
+
+            <div class="row" style="gap:10px;flex-shrink:0;margin-left:auto" id="chatBookingWrap">
+              <div class="ibwrap hidden" id="chatBookingSelectWrap">
+                <button type="button" class="ibsel" id="chatBookingSelectBtn" aria-haspopup="listbox">
+                  <span>
+                    <b id="chatBookingSelectLabel">—</b>
+                    <span class="ibsub" id="chatBookingSelectMeta"></span>
+                    <span class="hidden" id="chatBookingSelectUnreadHint" style="font-size:10px;color:#3E007C;font-weight:600"></span>
                     </span>
-                    <span class="relative flex-shrink-0 flex items-center">
-                      <span class="material-symbols-outlined text-outline text-lg">expand_more</span>
+                  <span style="position:relative;flex-shrink:0;display:flex;align-items:center">
+                    <span class="ms">expand_more</span>
                       <span id="chatBookingSelectDot" class="chat-booking-select-dot hidden" aria-hidden="true"></span>
                     </span>
                   </button>
-                  <div id="chatBookingSelectMenu" class="hidden absolute right-0 top-full mt-1 z-50 w-[min(100vw-2rem,320px)] rounded-xl border border-outline-variant/20 bg-white py-1"></div>
+                <div id="chatBookingSelectMenu" class="ibmenu hidden" hidden></div>
                 </div>
-                <div class="hidden items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2 w-full" id="chatBookingStatic">
-                  <span class="material-symbols-outlined text-primary text-sm flex-shrink-0">calendar_today</span>
-                  <div class="min-w-0">
-                    <p class="text-xs font-bold text-on-surface truncate" id="chatBookingTitle"></p>
-                    <p class="text-[11px] text-on-surface-variant truncate" id="chatBookingDate"></p>
-                  </div>
+              <div class="hidden" id="chatBookingStatic" style="align-items:center;gap:8px;background:#FAF0FB;border-radius:10px;padding:6px 10px">
+                <span class="ms" style="font-size:16px;color:#3E007C">calendar_today</span>
+                <div style="min-width:0">
+                  <div style="font-size:12.5px;font-weight:700" id="chatBookingTitle"></div>
+                  <div class="faint" style="font-size:11.5px" id="chatBookingDate"></div>
                 </div>
               </div>
+              <a href="#" id="chatViewBookingBtn" class="btn sm ghost hidden">
+                <span class="ms">visibility</span>View booking
+              </a>
+            </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-6 space-y-4" id="chatMessages">
-              <div class="flex items-center justify-center h-full text-sm text-on-surface-variant">Choose a conversation to start messaging</div>
-            </div>
-            <div id="chatTypingIndicator" class="hidden px-6 pb-2">
-              <div class="flex items-end gap-2 max-w-[75%]">
-                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0" id="chatTypingAvatar">
-                  <span class="text-white text-[9px] font-bold">?</span>
+          <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:10px;justify-content:flex-end;overflow-y:auto;min-height:0" id="chatMessages">
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6F6874;font-size:13.5px;align-self:stretch">Choose a conversation to start messaging</div>
                 </div>
-                <div class="msg-bubble-other px-4 py-3">
+
+          <div id="chatTypingIndicator" class="hidden" style="padding:0 20px 8px">
+            <div style="display:flex;align-items:flex-end;gap:8px;max-width:75%">
+              <div class="ini" style="width:28px;height:28px;font-size:9px" id="chatTypingAvatar">?</div>
+              <div class="msg-bubble-other" style="padding:10px 14px">
                   <span class="typing-dots" aria-label="Typing"><span></span><span></span><span></span></span>
-                </div>
               </div>
             </div>
-
-            <div class="px-6 py-4 border-t border-outline-variant/10" id="chatInputWrap">
-              <form id="chatSendForm" class="flex items-center gap-3">
-                <div class="relative flex-1">
-                  <input type="text" id="chatMessageInput" placeholder="Type a message..." class="w-full text-sm border border-outline-variant/30 rounded-full pl-5 pr-5 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" autocomplete="off">
-                  <div id="chatLockedField" class="hidden w-full text-sm border border-outline-variant/30 rounded-full pl-4 pr-5 py-3 bg-surface-container-low text-on-surface-variant flex items-center gap-2.5 min-h-[46px]">
-                    <span class="material-symbols-outlined text-outline text-lg flex-shrink-0">lock</span>
-                    <span id="chatLockedMessage" class="leading-snug"></span>
                   </div>
+
+          <div class="row bp-composer" style="padding:14px 20px;border-top:1px solid #E8DFEA;gap:10px" id="chatInputWrap">
+            <span class="ms faint" style="color:#9A929E">attach_file</span>
+            <form id="chatSendForm" class="row" style="flex:1;gap:10px;min-width:0">
+              <div class="in" style="flex:1;position:relative">
+                <input type="text" id="chatMessageInput" placeholder="Type a message" autocomplete="off">
+                <div id="chatLockedField" class="hidden" style="width:100%;align-items:center;gap:8px;color:#6F6874;font-size:13.5px">
+                  <span class="ms" style="font-size:18px;color:#9A929E">lock</span>
+                  <span id="chatLockedMessage"></span>
                 </div>
-                <button type="submit" id="chatSendBtn" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center hover:bg-primary-container transition-colors flex-shrink-0 disabled:opacity-50 disabled:bg-surface-container-highest">
-                  <span id="chatSendIcon" class="material-symbols-outlined text-white text-xl">send</span>
+              </div>
+              <button type="submit" id="chatSendBtn" class="btn bp-send" style="background:#1A1A1A;color:#fff;border:0;border-radius:10px;padding:10px 12px;cursor:pointer;display:inline-flex;align-items:center">
+                <span id="chatSendIcon" class="ms" style="font-size:18px;color:#fff">send</span>
                 </button>
               </form>
             </div>
@@ -242,7 +284,12 @@
       </div>
 
       <script src="https://cdn.jsdelivr.net/npm/stream-chat@8.40.0/dist/browser.full-bundle.min.js"></script>
-      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=19"></script>
+      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=22"></script>
     @endif
+
+@if ($isBookpay)
+  </div>
+@else
   </div>
 </main>
+@endif

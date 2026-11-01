@@ -47,6 +47,7 @@ const publishableKey = @json($stripePublishableKey ?? '');
 const sessionUrl = @json($stripeSessionUrl);
 const statusUrl = @json($stripeStatusUrl);
 const requirementsUrl = @json($requirementsUrl);
+const doneUrl = @json($doneUrl ?? $requirementsUrl);
 const stripeConnectLocale = @json($stripeConnectLocale);
 const stripeConnectAppearance = @json(config('services.stripe.connect.appearance', []));
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -57,7 +58,6 @@ let redirectInProgress = false;
 
 function stillNeedsUserSubmission(status) {
   if (!status?.success) return true;
-  if (status.disabled_reason) return true;
   return Array.isArray(status.currently_due) && status.currently_due.length > 0;
 }
 
@@ -87,6 +87,13 @@ async function refreshStripeStatus() {
   return res.json();
 }
 
+function goToDone() {
+  if (redirectInProgress) return;
+  redirectInProgress = true;
+  try { sessionStorage.setItem('bp-toast', 'Stripe details submitted'); } catch (e) {}
+  window.location.href = doneUrl || requirementsUrl;
+}
+
 function reloadRequirementsPage() {
   if (redirectInProgress) return;
   redirectInProgress = true;
@@ -95,6 +102,18 @@ function reloadRequirementsPage() {
 
 async function finishOrReloadRequirements() {
   await new Promise((resolve) => setTimeout(resolve, 1200));
+  for (let i = 0; i < 5; i++) {
+    try {
+      const status = await refreshStripeStatus();
+      if (!stillNeedsUserSubmission(status)) {
+        goToDone();
+        return;
+      }
+    } catch (err) {
+      // Retry — Stripe status can lag right after submit.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 800));
+  }
   reloadRequirementsPage();
 }
 
@@ -128,7 +147,7 @@ async function mountRequirementsOnboarding() {
         try {
           const status = await refreshStripeStatus();
           if (!stillNeedsUserSubmission(status)) {
-            reloadRequirementsPage();
+            goToDone();
           }
         } catch (err) {
           // Ignore transient status errors while typing.

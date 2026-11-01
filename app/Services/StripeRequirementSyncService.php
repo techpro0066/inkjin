@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Mail\ArtistStripeRequirementMail;
 use App\Models\Studio;
+use App\Models\StudioPayout;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Models\UserPayout;
+use App\Models\UserStudio;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -39,16 +42,23 @@ class StripeRequirementSyncService
      */
     private function syncArtistAccountDetails(array &$stats): void
     {
-        UserDetail::query()
-            ->where('payment_type', 'artist_account')
+        $userIds = UserPayout::query()
+            ->where('is_active', true)
             ->whereNotNull('stripe_account_id')
             ->where('stripe_account_id', '!=', '')
             ->where(function ($query) {
-                $query->where('payment_status', 'approved')
+                $query->where('status', 'approved')
                     ->orWhere('stripe_requirement', true)
-                    ->orWhereNull('payment_status')
-                    ->orWhere('payment_status', 'pending');
+                    ->orWhere('status', 'draft')
+                    ->orWhere('status', 'pending');
             })
+            ->pluck('user_id')
+            ->unique()
+            ->filter()
+            ->values();
+
+        UserDetail::query()
+            ->whereIn('user_id', $userIds)
             ->orderBy('id')
             ->chunkById(50, function ($details) use (&$stats) {
                 foreach ($details as $userDetail) {
@@ -65,7 +75,7 @@ class StripeRequirementSyncService
                         $stats['failed']++;
                         Log::warning('Stripe requirement sync failed', [
                             'user_detail_id' => $userDetail->id,
-                            'stripe_account_id' => $userDetail->stripe_account_id,
+                            'stripe_account_id' => $userDetail->activePayout()?->stripe_account_id,
                             'error' => $e->getMessage(),
                         ]);
                     }
@@ -78,31 +88,37 @@ class StripeRequirementSyncService
      */
     private function syncStudioAccounts(array &$stats): void
     {
-        Studio::query()
+        $studioIds = StudioPayout::query()
+            ->where('is_active', true)
             ->whereNotNull('stripe_account_id')
             ->where('stripe_account_id', '!=', '')
-            ->orderBy('id')
-            ->chunkById(50, function ($studios) use (&$stats) {
-                foreach ($studios as $studio) {
-                    $stats['checked']++;
+            ->orderBy('studio_id')
+            ->pluck('studio_id')
+            ->unique()
+            ->values();
 
-                    try {
-                        $result = $this->syncStudio($studio);
-                        if ($result === 'flagged') {
-                            $stats['flagged']++;
-                        } elseif ($result === 'cleared') {
-                            $stats['cleared']++;
-                        }
-                    } catch (\Throwable $e) {
-                        $stats['failed']++;
-                        Log::warning('Studio Stripe requirement sync failed', [
-                            'studio_id' => $studio->id,
-                            'stripe_account_id' => $studio->stripe_account_id,
-                            'error' => $e->getMessage(),
-                        ]);
+        foreach ($studioIds->chunk(50) as $chunk) {
+            $studios = Studio::query()->whereIn('id', $chunk)->get();
+            foreach ($studios as $studio) {
+                $stats['checked']++;
+
+                try {
+                    $result = $this->syncStudio($studio);
+                    if ($result === 'flagged') {
+                        $stats['flagged']++;
+                    } elseif ($result === 'cleared') {
+                        $stats['cleared']++;
                     }
+                } catch (\Throwable $e) {
+                    $stats['failed']++;
+                    Log::warning('Studio Stripe requirement sync failed', [
+                        'studio_id' => $studio->id,
+                        'stripe_account_id' => $studio->resolveStripeAccountId(),
+                        'error' => $e->getMessage(),
+                    ]);
                 }
-            });
+            }
+        }
     }
 
     /**
@@ -115,16 +131,23 @@ class StripeRequirementSyncService
             return 'unchanged';
         }
 
-        if ($studio->stripe_account_id !== $accountId) {
-            $studio->stripe_account_id = $accountId;
+        $payout = StudioPayout::activeForStudio((int) $studio->id);
+        if (! $payout) {
+            return 'unchanged';
         }
 
         $status = $this->stripeConnect->getOnboardingStatus($accountId);
         $needsRequirement = $this->stripeConnect->accountNeedsUserAction($status);
-        $wasFlagged = (bool) $studio->stripe_requirement;
+        $wasFlagged = (bool) $payout->stripe_requirement;
 
-        $studio->stripe_requirement = $needsRequirement;
-        $studio->save();
+        $payout->stripe_requirement = $needsRequirement;
+        if ($needsRequirement && ($payout->status ?? null) === StudioPayout::STATUS_APPROVED) {
+            $payout->status = StudioPayout::STATUS_PENDING;
+        } elseif (! $needsRequirement && filled($payout->stripe_account_id)) {
+            $payout->status = StudioPayout::STATUS_APPROVED;
+        }
+        $payout->save();
+        $studio->unsetRelation('activePayoutRelation');
 
         $this->propagateStudioRequirementToArtists($studio, $needsRequirement);
 
@@ -159,18 +182,34 @@ class StripeRequirementSyncService
 
     private function propagateStudioRequirementToArtists(Studio $studio, bool $needsRequirement): void
     {
-        $query = UserDetail::query()
+        if (! UserStudio::tableReady()) {
+            return;
+        }
+
+        $userIds = UserStudio::query()
             ->where('studio_id', $studio->id)
-            ->where('payment_type', 'studio_account')
-            ->where('payment_status', 'approved');
+            ->where('payout', true)
+            ->pluck('user_id')
+            ->unique()
+            ->filter()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            return;
+        }
+
+        $payoutQuery = UserPayout::query()
+            ->whereIn('user_id', $userIds)
+            ->where('status', 'approved')
+            ->where('is_active', true);
 
         if ($needsRequirement) {
-            $query->update(['stripe_requirement' => true]);
+            $payoutQuery->update(['stripe_requirement' => true]);
 
             return;
         }
 
-        $query->update([
+        $payoutQuery->update([
             'stripe_requirement' => false,
             'stripe_requirement_email_sent_at' => null,
         ]);
@@ -178,13 +217,36 @@ class StripeRequirementSyncService
 
     private function notifyLinkedStudioArtists(Studio $studio): void
     {
-        UserDetail::query()
-            ->with('user')
+        if (! UserStudio::tableReady()) {
+            return;
+        }
+
+        $linkedUserIds = UserStudio::query()
             ->where('studio_id', $studio->id)
-            ->where('payment_type', 'studio_account')
-            ->where('payment_status', 'approved')
+            ->where('payout', true)
+            ->pluck('user_id')
+            ->unique()
+            ->filter()
+            ->values();
+
+        if ($linkedUserIds->isEmpty()) {
+            return;
+        }
+
+        $userIds = UserPayout::query()
+            ->whereIn('user_id', $linkedUserIds)
+            ->where('status', 'approved')
+            ->where('is_active', true)
             ->where('stripe_requirement', true)
             ->whereNull('stripe_requirement_email_sent_at')
+            ->pluck('user_id')
+            ->unique()
+            ->filter()
+            ->values();
+
+        UserDetail::query()
+            ->with('user')
+            ->whereIn('user_id', $userIds)
             ->orderBy('id')
             ->chunkById(50, function ($details) {
                 foreach ($details as $userDetail) {
@@ -198,8 +260,16 @@ class StripeRequirementSyncService
      */
     public function syncUserDetail(UserDetail $userDetail): string
     {
-        if (($userDetail->payment_type ?? '') === 'studio_account') {
-            $studio = $userDetail->studio;
+        $payout = $userDetail->activePayout();
+        $hasStudioPayout = UserStudio::tableReady()
+            && UserStudio::payoutLinkForUser((int) $userDetail->user_id) !== null;
+
+        // Studio-linked payouts: sync the studio Connect account when the artist has no own Stripe row.
+        if ($hasStudioPayout && empty($payout?->stripe_account_id)) {
+            $studio = $userDetail->studio
+                ?? ($userDetail->resolvedStudioId()
+                    ? Studio::query()->find($userDetail->resolvedStudioId())
+                    : null);
             if (! $studio) {
                 return 'unchanged';
             }
@@ -207,7 +277,7 @@ class StripeRequirementSyncService
             return $this->syncStudio($studio);
         }
 
-        $accountId = trim((string) ($userDetail->stripe_account_id ?? ''));
+        $accountId = trim((string) ($payout?->stripe_account_id ?? ''));
         if ($accountId === '') {
             return 'unchanged';
         }
@@ -215,15 +285,14 @@ class StripeRequirementSyncService
         $status = $this->stripeConnect->getOnboardingStatus($accountId);
         $needsRequirement = $this->stripeConnect->accountNeedsUserAction($status);
 
-        $wasFlagged = (bool) $userDetail->stripe_requirement;
-        $previousPaymentStatus = (string) ($userDetail->payment_status ?? '');
+        $wasFlagged = (bool) ($payout?->stripe_requirement);
+        $previousPaymentStatus = (string) ($payout?->status ?? '');
 
         if ($needsRequirement) {
-            $userDetail->stripe_requirement = true;
-            if (($userDetail->payment_type ?? '') === 'artist_account') {
-                $userDetail->payment_status = 'pending';
-            }
-            $userDetail->save();
+            UserPayout::upsertActiveForUser((int) $userDetail->user_id, [
+                'stripe_requirement' => true,
+                'status' => 'pending',
+            ]);
 
             if (! $wasFlagged || $previousPaymentStatus === 'approved') {
                 Log::info('Stripe account requires user action; payout marked pending', [
@@ -241,12 +310,17 @@ class StripeRequirementSyncService
             return 'unchanged';
         }
 
-        $userDetail->stripe_requirement = false;
-        $userDetail->stripe_requirement_email_sent_at = null;
-        if (($userDetail->payment_type ?? '') === 'artist_account' && $previousPaymentStatus !== 'rejected') {
-            $userDetail->payment_status = 'approved';
+        $attrs = [
+            'stripe_requirement' => false,
+            'stripe_requirement_email_sent_at' => null,
+        ];
+        // Studio revenue-split invites stay pending until the studio accepts.
+        // Do not mark approved from the artist's own Stripe becoming ready.
+        if ($previousPaymentStatus !== 'rejected'
+            && ! ($hasStudioPayout && $previousPaymentStatus !== 'approved')) {
+            $attrs['status'] = 'approved';
         }
-        $userDetail->save();
+        UserPayout::upsertActiveForUser((int) $userDetail->user_id, $attrs);
 
         if ($wasFlagged) {
             Log::info('Stripe account requirements cleared; payout marked approved', [
@@ -262,7 +336,8 @@ class StripeRequirementSyncService
 
     private function sendRequirementEmail(UserDetail $userDetail, bool $isStudioPayout): void
     {
-        if ($userDetail->stripe_requirement_email_sent_at) {
+        $payout = $userDetail->activePayout();
+        if ($payout?->stripe_requirement_email_sent_at) {
             return;
         }
 
@@ -293,9 +368,9 @@ class StripeRequirementSyncService
                 $isStudioPayout,
             ));
 
-            $userDetail->forceFill([
+            \App\Models\UserPayout::upsertActiveForUser((int) $userDetail->user_id, [
                 'stripe_requirement_email_sent_at' => now(),
-            ])->save();
+            ]);
         } catch (\Throwable $e) {
             Log::error('Failed to send Stripe requirement email to artist', [
                 'user_id' => $user->id,

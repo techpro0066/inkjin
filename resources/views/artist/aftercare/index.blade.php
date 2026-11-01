@@ -1,222 +1,239 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
-@section('title', 'Aftercare')
+@section('title', 'Client Flow')
+
+@php
+  $helpBody = trim((string) ($textBlocks['when_to_get_help']['body'] ?? ''));
+  $sectionByKey = collect($sections ?? [])->keyBy('key');
+  $leftKeys = ['first_24_hours', 'keeping_it_clean'];
+  $rightKeys = ['moisturizing', 'next_2_4_weeks'];
+@endphp
 
 @section('styles')
 <style>
-  .toggle-switch {
-    width: 48px;
-    height: 26px;
-    border-radius: 13px;
-    background: #cac4d3;
-    cursor: pointer;
-    position: relative;
-    transition: background 0.3s;
-    flex-shrink: 0;
+  .ac-page{max-width:1112px}
+  .ac-page .ac-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .ac-page .ac-grid > .ac-full{grid-column:1/-1}
+  .ac-page .acitem{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .ac-page .acitem .in{
+    flex:1;min-height:36px;padding:8px 12px;font-size:13px;font:inherit;color:var(--ink);
+    background:#fff;border:1px solid var(--line);border-radius:10px;outline:none;width:100%
   }
-  .toggle-switch.active { background: #310f7a; }
-  .toggle-switch::after {
-    content: '';
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: white;
-    transition: transform 0.3s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  .ac-page .acitem .in:focus{border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF}
+  .ac-page .acitem .ac-rm{
+    border:0;background:none;padding:0;cursor:pointer;color:var(--faint);display:inline-flex;line-height:1
   }
-  .toggle-switch.active::after { transform: translateX(22px); }
-
-  .included-item-row { display: flex; align-items: center; gap: 0.5rem; }
-  .included-item-row input { flex: 1; min-width: 0; }
-  .included-item-remove {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 0.5rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #7a7583;
-    flex-shrink: 0;
-    transition: background 0.15s, color 0.15s;
+  .ac-page .acitem .ac-rm .ms{font-size:20px}
+  .ac-page .acitem .ac-rm:hover{color:var(--red)}
+  .ac-page .acadd{
+    display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:13px;margin-top:4px;
+    cursor:pointer;border:0;background:none;padding:0;color:var(--ink);font:inherit
   }
-  .included-item-remove:hover { background: #fce8e8; color: #ba1a1a; }
-  .included-item-remove.is-hidden { visibility: hidden; pointer-events: none; }
-
-  .aftercare-textarea {
-    width: 100%;
-    min-height: 110px;
-    resize: vertical;
-    border: 1px solid rgba(202, 196, 211, 0.45);
-    border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    color: #1c1b21;
-    background: #fff;
+  .ac-page .acadd .ms{font-size:17px}
+  .ac-page #achelp{
+    width:100%;min-height:74px;resize:none;overflow:hidden;font:inherit;font-size:13px;line-height:1.5;
+    color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 13px;outline:none
   }
-  .aftercare-textarea:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(49, 15, 122, 0.25);
-    border-color: rgba(49, 15, 122, 0.35);
+  .ac-page #achelp:focus{border-color:#3E007C;box-shadow:0 0 0 3px #F3E8FF}
+  .ac-page .tog,.ac-page .toggle-switch{
+    width:38px;height:22px;border-radius:12px;background:#D9D2DD;position:relative;flex-shrink:0;
+    cursor:pointer;border:0;padding:0;display:inline-block
+  }
+  .ac-page .tog:after,.ac-page .toggle-switch:after{
+    content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s
+  }
+  .ac-page .tog.on,.ac-page .tog.active,.ac-page .toggle-switch.active{background:var(--pri)}
+  .ac-page .tog.on:after,.ac-page .tog.active:after,.ac-page .toggle-switch.active:after{left:19px}
+  .ac-page .foot{display:flex;justify-content:flex-start;gap:12px;margin-top:4px;flex-wrap:wrap;align-items:center}
+  .ac-page .field-err{color:var(--red);font-size:13px;font-weight:600}
+  .ac-page .cf-icon-btn{
+    width:28px;height:28px;border:0;background:none;border-radius:8px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;color:var(--faint);padding:0
+  }
+  .ac-page .cf-icon-btn .ms{font-size:18px}
+  .ac-page .cf-icon-btn:hover{background:#F7F3F9;color:var(--ink)}
+  .ac-page .mp-toast{
+    position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;
+    font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);
+    display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));
+    transition:opacity .25s,transform .35s;pointer-events:none
+  }
+  .ac-page .mp-toast.show{opacity:1;transform:none;pointer-events:auto}
+  #aftercarePreviewModal{
+    position:fixed;inset:0;background:rgba(26,26,26,.45);z-index:300;
+    align-items:center;justify-content:center;padding:24px;display:none
+  }
+  #aftercarePreviewModal:not(.hidden){display:flex!important}
+  .ac-page .cs-modal-panel{
+    background:#fff;border-radius:16px;border:1px solid var(--line);width:100%;max-width:640px;
+    max-height:calc(100vh - 48px);overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.18)
+  }
+  @media (max-width:900px){
+    .ac-page .ac-grid{grid-template-columns:1fr}
+    .ac-page .mp-toast{left:16px;right:16px;top:74px}
   }
 </style>
 @endsection
 
 @section('content')
-@php
-  $username = $userDetail?->user_name ?? '';
-  $bookingPageUrl = !empty($username) ? 'https://inkjin.com/@'.$username : null;
-  $sendAutomatically = (bool) ($sendAutomatically ?? false);
-@endphp
-<main class="main-content flex-1 min-h-screen">
-  <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
-    <div class="mb-8">
-      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Booking Page</h2>
-          <p class="text-on-surface-variant mt-1">Manage your intake forms, available designs, portfolio and the style of your page</p>
-        </div>
-        @if ($bookingPageUrl)
-        <a href="{{ $bookingPageUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors shrink-0">
-          <span class="material-symbols-outlined text-lg">open_in_new</span> Open your booking page
+<div class="ac-page">
+  <div class="head">
+    <div>
+      <h1>
+        Client Flow
+        <a class="help-q" href="https://help.inkjin.com/en/articles/17201402-dashboard-client-flow-aftercare" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
+          <span class="ms">help</span>
         </a>
-        @endif
-      </div>
-    </div>
-
-    @include('artist.partials.booking-page-tabs', ['activeTab' => 'aftercare'])
-
-    <div class="mb-6 max-w-3xl">
-      <h3 class="text-xl font-bold text-on-surface tracking-tight">Tattoo Aftercare Instructions</h3>
-      <p class="text-on-surface-variant mt-1">Edit the aftercare guidance clients receive after their appointment.</p>
-    </div>
-
-    <!-- Auto-send toggle -->
-    <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20 max-w-3xl" id="aftercareAutoSendPanel">
-      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div class="flex items-start gap-3 min-w-0 flex-1">
-          <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <span class="material-symbols-outlined text-primary text-lg">healing</span>
-          </div>
-          <div class="min-w-0">
-            <h3 class="font-bold text-on-surface">Send aftercare instructions automatically</h3>
-            <p class="text-xs text-on-surface-variant mt-1 max-w-xl">If on, these instructions will be sent automatically to the client right after the appointment ends.</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-3 shrink-0">
-          <div
-            id="toggleAftercareAutoSend"
-            class="toggle-switch {{ $sendAutomatically ? 'active' : '' }}"
-            role="switch"
-            aria-checked="{{ $sendAutomatically ? 'true' : 'false' }}"
-            title="Send aftercare instructions automatically"
-          ></div>
-          <span id="toggleAftercareAutoSendLabel" class="text-xs font-semibold {{ $sendAutomatically ? 'text-primary' : 'text-on-surface-variant' }} min-w-[1.75rem]">{{ $sendAutomatically ? 'On' : 'Off' }}</span>
-        </div>
-      </div>
-    </div>
-
-    @foreach($sections as $section)
-      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20 max-w-3xl aftercare-section" data-section-key="{{ $section['key'] }}">
-        <div class="flex items-start gap-3 mb-5">
-          <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <span class="material-symbols-outlined text-primary text-lg">checklist</span>
-          </div>
-          <div>
-            <h3 class="font-bold text-on-surface">{{ $section['title'] }}</h3>
-            <p class="text-xs text-on-surface-variant mt-1">Add, edit, or remove bullet points for this section.</p>
-          </div>
-        </div>
-
-        <div class="aftercare-item-list space-y-2.5" aria-label="{{ $section['title'] }} items">
-          @foreach($section['items'] as $item)
-            <div class="included-item-row">
-              <input type="text" class="included-item-input w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" maxlength="500" value="{{ $item }}">
-              <button type="button" class="included-item-remove" title="Remove item" aria-label="Remove item"><span class="material-symbols-outlined text-[18px]">close</span></button>
-            </div>
-          @endforeach
-        </div>
-
-        <button type="button" class="btn-add-aftercare-item inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-container transition-colors mt-4">
-          <span class="material-symbols-outlined text-[18px]">add</span> Add item
-        </button>
-      </div>
-    @endforeach
-
-    @foreach($textBlocks as $key => $block)
-      <div class="bg-white rounded-2xl p-5 md:p-6 mb-6 border border-outline-variant/20 max-w-3xl" data-text-key="{{ $key }}">
-        <div class="flex items-start gap-3 mb-4">
-          <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <span class="material-symbols-outlined text-primary text-lg">notes</span>
-          </div>
-          <div>
-            <h3 class="font-bold text-on-surface">{{ $block['title'] }}</h3>
-          </div>
-        </div>
-        <textarea class="aftercare-textarea" rows="4" maxlength="2000">{{ $block['body'] }}</textarea>
-      </div>
-    @endforeach
-
-    <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 max-w-3xl">
-      <button type="button" id="btnSaveAftercare" class="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm">
-        <span class="material-symbols-outlined text-lg">save</span> Save
-      </button>
-      <p id="aftercareSaveStatus" class="hidden text-sm font-medium text-green-700"></p>
+      </h1>
+      <div class="sub">What clients fill in and receive, from first request to healed tattoo.</div>
     </div>
   </div>
-</main>
+
+  @include('artist.partials.client-flow-tabs', ['clientFlowTab' => 'aftercare'])
+
+  <div class="ac-grid">
+    <div class="ac-full">
+      <div class="card" style="margin-bottom:0" id="aftercareAutoSendPanel">
+        <div class="ch">
+          <div>
+            <h3>Send aftercare automatically</h3>
+            <div class="faint" style="font-size:12.5px;margin-top:2px">Sent to the client right after the appointment ends</div>
+          </div>
+        </div>
+        <div style="padding:18px 22px">
+          <div class="row" style="justify-content:space-between">
+            <div class="row">
+              <span class="ms">schedule_send</span>
+              <span style="font-size:13.5px">Email · right after the session</span>
+            </div>
+            <div class="row" style="gap:10px">
+              <button type="button" class="btn sm ghost" id="btnPreviewAftercare"><span class="ms" style="font-size:16px">visibility</span>Preview</button>
+              <div
+                id="toggleAftercareAutoSend"
+                class="tog toggle-switch {{ !empty($sendAutomatically) ? 'on active' : '' }}"
+                role="switch"
+                aria-checked="{{ !empty($sendAutomatically) ? 'true' : 'false' }}"
+                title="Send aftercare automatically"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      @foreach($leftKeys as $key)
+        @php $section = $sectionByKey->get($key); @endphp
+        @if($section)
+          @include('artist.aftercare.partials.section-card', ['section' => $section])
+        @endif
+      @endforeach
+    </div>
+
+    <div>
+      @foreach($rightKeys as $key)
+        @php $section = $sectionByKey->get($key); @endphp
+        @if($section)
+          @include('artist.aftercare.partials.section-card', ['section' => $section])
+        @endif
+      @endforeach
+
+      <div class="card" style="margin-bottom:14px" data-text-key="when_to_get_help">
+        <div class="ch">
+          <div>
+            <h3>When to get help</h3>
+            <div class="faint" style="font-size:12.5px;margin-top:2px">Shown at the end</div>
+          </div>
+        </div>
+        <div style="padding:18px 22px">
+          <textarea id="achelp" maxlength="2000" aria-label="When to get help">{{ $helpBody }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{-- Preserve email text blocks not shown in 08c UI --}}
+  @foreach(['what_is_normal', 'once_healed', 'questions'] as $hiddenKey)
+    <input type="hidden" class="ac-hidden-text" data-text-key="{{ $hiddenKey }}" value="{{ $textBlocks[$hiddenKey]['body'] ?? '' }}">
+  @endforeach
+
+  <div class="foot">
+    <button type="button" class="btn" id="btnSaveAftercare"><span class="ms">save</span>Save changes</button>
+    <p id="aftercareSaveStatus" class="field-err hidden" role="status" style="margin:0"></p>
+  </div>
+
+  <div id="aftercarePreviewModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="aftercarePreviewTitle">
+    <div class="cs-modal-panel" style="display:flex;flex-direction:column;max-height:calc(100vh - 48px)" onclick="event.stopPropagation()">
+      <div class="row" style="justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid #F0EAF2;flex-shrink:0">
+        <h3 id="aftercarePreviewTitle" style="font-size:18px;font-weight:800;margin:0">Preview · Aftercare email</h3>
+        <button type="button" class="cf-icon-btn" id="btnCloseAftercarePreview" aria-label="Close"><span class="ms">close</span></button>
+      </div>
+      <div id="aftercarePreviewBody" style="padding:16px 22px;overflow-y:auto;min-height:0;flex:1"></div>
+      <div class="row" style="justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid #F0E9F2;flex-shrink:0">
+        <button type="button" class="btn" id="btnCloseAftercarePreview2">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mp-toast" id="acToast" role="status"><span class="ms">check_circle</span><span id="acToastText">Saved</span></div>
+</div>
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script>
   (function () {
     var AFTERCARE_UPDATE_URL = @json(route('artist.aftercare.update'));
-    var $toggle = $('#toggleAftercareAutoSend');
-    var $toggleLabel = $('#toggleAftercareAutoSendLabel');
-    var $saveStatus = $('#aftercareSaveStatus');
+    var ARTIST_LABEL = @json($artistLabel ?? 'your artist');
+    var $toggle = $("#toggleAftercareAutoSend");
+    var $saveStatus = $("#aftercareSaveStatus");
+    var $toast = $("#acToast");
+    var $toastText = $("#acToastText");
 
-    function syncToggleUi() {
-      var on = $toggle.hasClass('active');
-      $toggle.attr('aria-checked', on ? 'true' : 'false');
-      $toggleLabel.text(on ? 'On' : 'Off')
-        .toggleClass('text-primary', on)
-        .toggleClass('text-on-surface-variant', !on);
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
-    function syncRemoveButtons($list) {
-      $list.find('.included-item-row').each(function () {
-        var hasText = $.trim($(this).find('.included-item-input').val()) !== '';
-        $(this).find('.included-item-remove').toggleClass('is-hidden', !hasText);
-      });
+    function showToast(msg) {
+      $toastText.text(msg || "Saved");
+      $toast.addClass("show");
+      clearTimeout($toast.data("timer"));
+      $toast.data("timer", setTimeout(function () { $toast.removeClass("show"); }, 2600));
+    }
+
+    function syncToggleUi() {
+      var on = $toggle.hasClass("on") || $toggle.hasClass("active");
+      $toggle.toggleClass("on", on).toggleClass("active", on);
+      $toggle.attr("aria-checked", on ? "true" : "false");
+    }
+
+    function isAutoOn() {
+      return $toggle.hasClass("on") || $toggle.hasClass("active");
     }
 
     function buildRow(value) {
-      var $row = $('<div class="included-item-row"></div>');
-      var $input = $('<input type="text" class="included-item-input w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" maxlength="500" placeholder="e.g. Add an aftercare tip">');
+      var $row = $('<div class="acitem row"></div>');
+      var $input = $('<input type="text" class="in included-item-input" maxlength="500" placeholder="Add an aftercare tip">');
       if (value) $input.val(value);
-      var $remove = $('<button type="button" class="included-item-remove is-hidden" title="Remove item" aria-label="Remove item"><span class="material-symbols-outlined text-[18px]">close</span></button>');
+      var $remove = $('<button type="button" class="ac-rm" title="Remove" aria-label="Remove item"><span class="ms">close</span></button>');
       $row.append($input, $remove);
       return $row;
     }
 
     function collectPayload(includeContent) {
-      var payload = {
-        send_automatically: $toggle.hasClass('active')
-      };
-
-      if (!includeContent) {
-        return payload;
-      }
+      var payload = { send_automatically: isAutoOn() };
+      if (!includeContent) return payload;
 
       var sections = {};
-      $('.aftercare-section').each(function () {
-        var key = String($(this).data('section-key') || '');
+      $(".aftercare-section").each(function () {
+        var key = String($(this).data("section-key") || "");
         if (!key) return;
         var items = [];
-        $(this).find('.included-item-input').each(function () {
+        $(this).find(".included-item-input").each(function () {
           var v = $.trim($(this).val());
           if (v) items.push(v);
         });
@@ -224,10 +241,14 @@
       });
 
       var textBlocks = {};
-      $('[data-text-key]').each(function () {
-        var key = String($(this).data('text-key') || '');
+      $("[data-text-key]").each(function () {
+        var key = String($(this).data("text-key") || "");
         if (!key) return;
-        textBlocks[key] = $.trim($(this).find('textarea').val() || '');
+        if ($(this).is("input[type=hidden]")) {
+          textBlocks[key] = String($(this).val() || "");
+          return;
+        }
+        textBlocks[key] = $.trim($(this).find("textarea").val() || "");
       });
 
       payload.sections = sections;
@@ -237,18 +258,18 @@
 
     function saveAftercare(payload) {
       return fetch(AFTERCARE_UPDATE_URL, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '',
-          'X-Requested-With': 'XMLHttpRequest'
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content") || "",
+          "X-Requested-With": "XMLHttpRequest"
         },
         body: JSON.stringify(payload),
-        credentials: 'same-origin'
+        credentials: "same-origin"
       }).then(function (res) {
-        var ct = res.headers.get('content-type') || '';
-        if (ct.indexOf('application/json') !== -1) {
+        var ct = res.headers.get("content-type") || "";
+        if (ct.indexOf("application/json") !== -1) {
           return res.json().then(function (data) {
             return { ok: res.ok, status: res.status, data: data };
           });
@@ -260,93 +281,142 @@
     }
 
     function showStatus(message, isError) {
-      $saveStatus.removeClass('hidden text-green-700 text-error')
-        .addClass(isError ? 'text-error' : 'text-green-700')
-        .text(message || '');
-      clearTimeout($saveStatus.data('timer'));
-      if (message) {
-        var t = setTimeout(function () { $saveStatus.addClass('hidden').text(''); }, 3500);
-        $saveStatus.data('timer', t);
+      if (!message) {
+        $saveStatus.addClass("hidden").text("");
+        return;
       }
+      $saveStatus
+        .removeClass("hidden")
+        .css("color", isError ? "var(--red)" : "var(--green)")
+        .text(message);
+      clearTimeout($saveStatus.data("timer"));
+      $saveStatus.data("timer", setTimeout(function () {
+        $saveStatus.addClass("hidden").text("");
+      }, 3500));
     }
 
-    $('.aftercare-section').each(function () {
-      syncRemoveButtons($(this).find('.aftercare-item-list'));
-    });
+    function buildPreviewHtml() {
+      var html = '<div style="border:1px solid #F0E9F2;border-radius:14px;overflow:hidden">';
+      html += '<div style="background:#1A1A1A;color:#fff;padding:16px 20px">';
+      html += '<div style="font-weight:800;font-size:16px">Caring for your new tattoo</div>';
+      html += '<div style="font-size:12.5px;opacity:.75;margin-top:2px">From ' + esc(ARTIST_LABEL) + ' · sent right after your session</div>';
+      html += '</div><div style="padding:6px 20px 16px">';
 
-    $toggle.on('click', function () {
+      $(".aftercare-section").each(function () {
+        var title = $.trim($(this).find("h3").first().text() || "");
+        var items = [];
+        $(this).find(".included-item-input").each(function () {
+          var v = $.trim($(this).val());
+          if (v) items.push(v);
+        });
+        if (!items.length || !title) return;
+        html += '<div style="font-weight:700;font-size:14px;margin-top:14px">' + esc(title) + "</div>";
+        html += '<ul style="margin:6px 0 0 18px;padding:0;font-size:13px;line-height:1.6">';
+        items.forEach(function (v) {
+          html += "<li>" + esc(v) + "</li>";
+        });
+        html += "</ul>";
+      });
+
+      var help = $.trim($("#achelp").val() || "");
+      if (help) {
+        html += '<div style="margin-top:16px;padding:12px 14px;background:#FFF3DC;border-radius:10px;font-size:12.5px;line-height:1.5"><b>When to get help.</b> ' + esc(help) + "</div>";
+      }
+      html += "</div></div>";
+      return html;
+    }
+
+    function openPreview() {
+      $("#aftercarePreviewBody").html(buildPreviewHtml());
+      $("#aftercarePreviewModal").removeClass("hidden");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closePreview() {
+      $("#aftercarePreviewModal").addClass("hidden");
+      document.body.style.overflow = "";
+    }
+
+    $toggle.on("click", function () {
       var $t = $(this);
-      var wasActive = $t.hasClass('active');
-      $t.toggleClass('active');
+      var wasOn = isAutoOn();
+      $t.toggleClass("on active");
       syncToggleUi();
-      var isActive = $t.hasClass('active');
-      $t.addClass('opacity-60 pointer-events-none');
+      var nowOn = isAutoOn();
+      $t.css({ opacity: 0.6, pointerEvents: "none" });
 
-      saveAftercare({ send_automatically: isActive }).then(function (result) {
+      saveAftercare({ send_automatically: nowOn }).then(function (result) {
         if (result.ok && result.data && result.data.success) {
-          if (typeof showSaveToast === 'function') {
-            showSaveToast(result.data.message || 'Saved.');
-          }
+          showToast(result.data.message || "Saved.");
         } else {
-          if (wasActive) $t.addClass('active');
-          else $t.removeClass('active');
+          if (wasOn) $t.addClass("on active");
+          else $t.removeClass("on active");
           syncToggleUi();
-          showStatus((result.data && result.data.message) || 'Could not update auto-send. Please try again.', true);
+          showStatus((result.data && result.data.message) || "Could not update auto-send. Please try again.", true);
         }
       }).catch(function () {
-        if (wasActive) $t.addClass('active');
-        else $t.removeClass('active');
+        if (wasOn) $t.addClass("on active");
+        else $t.removeClass("on active");
         syncToggleUi();
-        showStatus('Could not update auto-send. Please try again.', true);
+        showStatus("Could not update auto-send. Please try again.", true);
       }).finally(function () {
-        $t.removeClass('opacity-60 pointer-events-none');
+        $t.css({ opacity: "", pointerEvents: "" });
       });
     });
 
-    $(document).on('click', '.btn-add-aftercare-item', function () {
-      var $section = $(this).closest('.aftercare-section');
-      var $list = $section.find('.aftercare-item-list');
-      $list.append(buildRow(''));
-      syncRemoveButtons($list);
-      $list.find('.included-item-row:last .included-item-input').trigger('focus');
+    $(document).on("click", ".btn-add-aftercare-item", function () {
+      var $list = $(this).closest(".aftercare-section").find(".aftercare-item-list");
+      $list.append(buildRow(""));
+      $list.find(".acitem:last .included-item-input").trigger("focus");
     });
 
-    $(document).on('input', '.aftercare-item-list .included-item-input', function () {
-      syncRemoveButtons($(this).closest('.aftercare-item-list'));
-    });
-
-    $(document).on('click', '.aftercare-item-list .included-item-remove', function () {
-      var $row = $(this).closest('.included-item-row');
-      var $list = $row.closest('.aftercare-item-list');
-      if ($list.find('.included-item-row').length <= 1) {
-        $row.find('.included-item-input').val('');
-        syncRemoveButtons($list);
+    $(document).on("click", ".aftercare-item-list .ac-rm", function () {
+      var $row = $(this).closest(".acitem");
+      var $list = $row.closest(".aftercare-item-list");
+      if ($list.find(".acitem").length <= 1) {
+        $row.find(".included-item-input").val("").trigger("focus");
         return;
       }
       $row.remove();
-      syncRemoveButtons($list);
     });
 
-    $('#btnSaveAftercare').on('click', function () {
+    $("#btnSaveAftercare").on("click", function () {
       var $btn = $(this);
       var btnHtml = $btn.html();
-      $btn.prop('disabled', true).html('<span class="material-symbols-outlined text-[16px] animate-pulse">hourglass_empty</span> Saving…');
+      $btn.prop("disabled", true).html('<span class="ms">hourglass_empty</span> Saving…');
 
       saveAftercare(collectPayload(true)).then(function (result) {
         if (result.ok && result.data && result.data.success) {
-          showStatus(result.data.message || 'Saved.', false);
-          if (typeof showSaveToast === 'function') {
-            showSaveToast(result.data.message || 'Saved.');
-          }
+          showStatus("");
+          showToast(result.data.message || "Changes saved successfully");
         } else {
-          showStatus((result.data && result.data.message) || 'Could not save. Please try again.', true);
+          showStatus((result.data && result.data.message) || "Could not save. Please try again.", true);
         }
       }).catch(function () {
-        showStatus('Could not save. Please try again.', true);
+        showStatus("Could not save. Please try again.", true);
       }).finally(function () {
-        $btn.prop('disabled', false).html(btnHtml);
+        $btn.prop("disabled", false).html(btnHtml);
       });
     });
+
+    $("#btnPreviewAftercare").on("click", openPreview);
+    $("#btnCloseAftercarePreview, #btnCloseAftercarePreview2, #aftercarePreviewModal").on("click", function (e) {
+      if (e.target === this || $(e.target).closest("#btnCloseAftercarePreview, #btnCloseAftercarePreview2").length) {
+        closePreview();
+      }
+    });
+    $(document).on("keydown", function (e) {
+      if (e.key === "Escape" && !$("#aftercarePreviewModal").hasClass("hidden")) closePreview();
+    });
+
+    function autosizeHelp() {
+      var el = document.getElementById("achelp");
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = Math.max(74, el.scrollHeight) + "px";
+    }
+    $("#achelp").on("input", autosizeHelp);
+    autosizeHelp();
 
     syncToggleUi();
   })();

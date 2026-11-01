@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Studio;
+use App\Models\StudioPayout;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Models\UserPayout;
 use App\Support\StripeConnectCountries;
 use Illuminate\Support\Facades\Log;
 use Stripe\Account;
@@ -299,11 +301,18 @@ class StripeConnectService
     /**
      * @return array{account_id: string, client_secret: string, collection_options: array<string, mixed>}
      */
-    public function createOnboardingSession(User $user, UserDetail $userDetail, ?string $phase = null, bool $currentlyDueOnly = false): array
-    {
+    public function createOnboardingSession(
+        User $user,
+        UserDetail $userDetail,
+        ?string $phase = null,
+        bool $currentlyDueOnly = false,
+        ?UserPayout $payout = null,
+    ): array {
         $this->initialize();
 
-        $accountId = $this->ensureConnectedAccount($user, $userDetail);
+        $accountId = $payout
+            ? $this->ensureConnectedAccountForPayout($user, $userDetail, $payout)
+            : $this->ensureConnectedAccount($user, $userDetail);
         $this->ensureAccountCapabilitiesRequested($accountId);
 
         $session = AccountSession::create([
@@ -358,18 +367,19 @@ class StripeConnectService
      * @param  array{business_type: string, country: string, industry?: string}  $setup
      * @return array{account_id: string, client_secret: string, collection_options: array<string, mixed>}
      */
-    public function createStudioOwnerOnboardingSession(Studio $studio, array $setup): array
+    public function createStudioOwnerOnboardingSession(Studio $studio, array $setup, ?StudioPayout $targetPayout = null): array
     {
         $setup['industry'] = $setup['industry'] ?? 'tattoo_studio';
 
         $this->initialize();
 
-        $accountId = $this->ensureStudioConnectedAccount($studio, $setup, null);
+        $accountId = $this->ensureStudioConnectedAccount($studio, $setup, null, $targetPayout);
         $this->ensureAccountCapabilitiesRequested($accountId);
 
-        if ($studio->stripe_account_id !== $accountId) {
-            $studio->stripe_account_id = $accountId;
-            $studio->save();
+        if ($targetPayout) {
+            $this->persistStudioPayoutRow($targetPayout, $accountId, $setup['country'] ?? null);
+        } else {
+            $this->persistStudioStripeAccount($studio, $accountId, $setup['country'] ?? null);
         }
 
         $session = AccountSession::create([
@@ -383,6 +393,7 @@ class StripeConnectService
             'account_id' => $accountId,
             'client_secret' => $session->client_secret,
             'collection_options' => $this->embeddedCollectionOptionsForStudio($setup['business_type']),
+            'payout_id' => $targetPayout?->id ?? $studio->activePayout()?->id,
         ];
     }
 
@@ -400,10 +411,7 @@ class StripeConnectService
             throw new \RuntimeException('Studio does not have a connected Stripe account yet.');
         }
 
-        if ($studio->stripe_account_id !== $accountId) {
-            $studio->stripe_account_id = $accountId;
-            $studio->save();
-        }
+        $this->persistStudioStripeAccount($studio, $accountId);
 
         $this->ensureAccountCapabilitiesRequested($accountId);
 
@@ -424,8 +432,12 @@ class StripeConnectService
     /**
      * @param  array{business_type: string, country: string, industry: string}  $setup
      */
-    public function ensureStudioConnectedAccount(Studio $studio, array $setup, ?UserDetail $userDetail = null): string
-    {
+    public function ensureStudioConnectedAccount(
+        Studio $studio,
+        array $setup,
+        ?UserDetail $userDetail = null,
+        ?StudioPayout $targetPayout = null,
+    ): string {
         $this->initialize();
 
         $country = strtoupper(trim((string) ($setup['country'] ?? '')));
@@ -435,31 +447,58 @@ class StripeConnectService
 
         $businessType = $setup['business_type'] === 'individual' ? 'individual' : 'company';
         $setup['industry'] = $setup['industry'] ?? 'tattoo_studio';
+        $pendingChange = $targetPayout && ! $targetPayout->is_active;
 
-        $existingId = $this->resolveStudioStripeAccountId($studio);
+        $existingId = $pendingChange
+            ? trim((string) ($targetPayout->stripe_account_id ?? ''))
+            : $this->resolveStudioStripeAccountId($studio);
+        if ($existingId === '') {
+            $existingId = null;
+        }
+
+        $forceNewAccount = false;
         if ($existingId !== null && $existingId !== '') {
             try {
                 $account = Account::retrieve($existingId);
                 if (strtoupper((string) ($account->country ?? '')) !== $country) {
+                    $forceNewAccount = true;
                     Log::info('Studio Stripe account country mismatch; creating a new connected account', [
                         'studio_id' => $studio->id,
                         'stripe_account_id' => $existingId,
                         'account_country' => $account->country ?? null,
                         'expected_country' => $country,
+                        'pending_change' => $pendingChange,
                     ]);
                 } else {
                     $this->ensureAccountCapabilitiesRequested($existingId);
                     $this->syncStudioProfileToAccount($existingId, $studio, $setup);
+                    if ($pendingChange && $targetPayout) {
+                        $this->persistStudioPayoutRow($targetPayout, $existingId, $country);
+                    } else {
+                        $this->persistStudioStripeAccount($studio, $existingId, $country);
+                    }
 
                     return $existingId;
                 }
             } catch (ApiErrorException $e) {
+                $forceNewAccount = true;
                 Log::warning('Stored studio Stripe account not found, creating a new one', [
                     'studio_id' => $studio->id,
                     'stripe_account_id' => $existingId,
                     'error' => $e->getMessage(),
                 ]);
             }
+        }
+
+        if ($forceNewAccount && $studio->id && ! $pendingChange) {
+            StudioPayout::deactivateActiveForStudio((int) $studio->id);
+            $studio->unsetRelation('activePayoutRelation');
+        }
+
+        if ($forceNewAccount && $pendingChange && $targetPayout) {
+            $targetPayout->stripe_account_id = null;
+            $targetPayout->connected_at = null;
+            $targetPayout->save();
         }
 
         $payload = array_merge(
@@ -475,8 +514,11 @@ class StripeConnectService
 
         $account = Account::create(array_filter($payload, fn ($value) => $value !== null));
 
-        $studio->stripe_account_id = $account->id;
-        $studio->save();
+        if ($pendingChange && $targetPayout) {
+            $this->persistStudioPayoutRow($targetPayout, $account->id, $country);
+        } else {
+            $this->persistStudioStripeAccount($studio, $account->id, $country);
+        }
 
         return $account->id;
     }
@@ -516,6 +558,31 @@ class StripeConnectService
             }
         } catch (ApiErrorException $e) {
             Log::warning('Could not resolve Stripe account currency', [
+                'stripe_account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Last 4 digits of the primary external bank account on a Connect account, if any.
+     */
+    public function resolveBankLast4(string $accountId): ?string
+    {
+        try {
+            $this->initialize();
+            $account = Account::retrieve($accountId, ['expand' => ['external_accounts']]);
+            $accounts = $account->external_accounts->data ?? [];
+            foreach ($accounts as $ext) {
+                $last4 = trim((string) ($ext->last4 ?? ''));
+                if ($last4 !== '') {
+                    return $last4;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Could not resolve bank last4 from Stripe', [
                 'stripe_account_id' => $accountId,
                 'error' => $e->getMessage(),
             ]);
@@ -645,17 +712,70 @@ class StripeConnectService
             throw new \RuntimeException('Stripe onboarding is not complete yet.');
         }
 
-        $studio->stripe_account_id = $accountId;
-        $studio->save();
+        $this->persistStudioStripeAccount($studio, $accountId);
 
         try {
             app(\App\Services\StripeRequirementSyncService::class)->syncStudio($studio);
         } catch (\Throwable) {
-            $studio->stripe_requirement = true;
-            $studio->save();
+            StudioPayout::upsertActiveForStudio((int) $studio->id, [
+                'stripe_account_id' => $accountId,
+                'stripe_requirement' => true,
+                'status' => StudioPayout::STATUS_PENDING,
+            ]);
+            $studio->unsetRelation('activePayoutRelation');
         }
 
         app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
+    }
+
+    /**
+     * Keep the active studio_payouts row in sync with a Connect account id.
+     */
+    private function persistStudioStripeAccount(Studio $studio, string $accountId, ?string $country = null): void
+    {
+        if (! $studio->id) {
+            return;
+        }
+
+        $countryCode = strtoupper(trim((string) ($country ?? $studio->country ?? '')));
+        if (strlen($countryCode) !== 2) {
+            $countryCode = null;
+        }
+
+        StudioPayout::upsertActiveForStudio((int) $studio->id, [
+            'stripe_account_id' => $accountId,
+            'status' => StudioPayout::STATUS_APPROVED,
+            'payout_bank_country' => $countryCode,
+            'connected_at' => now(),
+            'disconnected_at' => null,
+        ]);
+        $studio->unsetRelation('activePayoutRelation');
+    }
+
+    /**
+     * Persist Stripe fields on a specific studio_payouts row (active or pending change).
+     */
+    private function persistStudioPayoutRow(StudioPayout $payout, string $accountId, ?string $country = null): void
+    {
+        $countryCode = strtoupper(trim((string) ($country ?? $payout->payout_bank_country ?? '')));
+        if (strlen($countryCode) !== 2) {
+            $countryCode = null;
+        }
+
+        $payout->stripe_account_id = $accountId;
+        $payout->payout_bank_country = $countryCode;
+        $payout->disconnected_at = null;
+        if (empty($payout->connected_at)) {
+            $payout->connected_at = now();
+        }
+        if ($payout->is_active) {
+            $payout->status = StudioPayout::STATUS_APPROVED;
+        } elseif (! in_array($payout->status, [StudioPayout::STATUS_DRAFT, StudioPayout::STATUS_PENDING], true)) {
+            $payout->status = StudioPayout::STATUS_PENDING;
+        } elseif ($payout->status === StudioPayout::STATUS_DRAFT) {
+            $payout->status = StudioPayout::STATUS_PENDING;
+        }
+        $payout->save();
     }
 
     /**
@@ -666,10 +786,11 @@ class StripeConnectService
         $this->finalizeStudioOwnerOnboarding($studio, $accountId);
 
         // Keep the artist's own stripe_account_id — studio payout requires both accounts.
-        $userDetail->payment_status = 'approved';
         $studio->refresh();
-        $userDetail->stripe_requirement = (bool) ($studio->stripe_requirement ?? false);
-        $userDetail->save();
+        UserPayout::upsertActiveForUser((int) $userDetail->user_id, [
+            'status' => UserPayout::STATUS_APPROVED,
+            'stripe_requirement' => (bool) ($studio->stripe_requirement ?? false),
+        ]);
     }
 
     /**
@@ -820,31 +941,68 @@ class StripeConnectService
             throw new \RuntimeException('Signup country is missing or not supported for Stripe payouts.');
         }
 
-        if (! empty($userDetail->stripe_account_id)) {
-            try {
-                $account = Account::retrieve($userDetail->stripe_account_id);
-                if (strtoupper((string) ($account->country ?? '')) !== $country) {
-                    Log::info('Stripe account country mismatch; creating a new connected account', [
-                        'user_id' => $user->id,
-                        'stripe_account_id' => $userDetail->stripe_account_id,
-                        'account_country' => $account->country ?? null,
-                        'expected_country' => $country,
-                    ]);
-                    $userDetail->stripe_account_id = null;
-                    $userDetail->save();
-                } else {
-                    $this->ensureIndividualBusinessType($userDetail->stripe_account_id);
-                    $this->ensureAccountCapabilitiesRequested($userDetail->stripe_account_id);
-                    $this->syncProfileToAccount($userDetail->stripe_account_id, $user, $userDetail);
+        $payout = UserPayout::activeForUser((int) $user->id)
+            ?? UserPayout::upsertActiveForUser((int) $user->id, [
+                'status' => UserPayout::STATUS_DRAFT,
+                'payout_bank_country' => $country,
+            ]);
 
-                    return $userDetail->stripe_account_id;
+        return $this->ensureConnectedAccountForPayout($user, $userDetail, $payout, $country);
+    }
+
+    /**
+     * Create or reuse a Stripe Connect account on a specific payout row (active or pending draft).
+     */
+    public function ensureConnectedAccountForPayout(
+        User $user,
+        UserDetail $userDetail,
+        UserPayout $payout,
+        ?string $country = null,
+    ): string {
+        $this->initialize();
+
+        $country = strtoupper((string) (
+            $country
+            ?: $payout->payout_bank_country
+            ?: $this->resolvePayoutBankCountry($userDetail)
+            ?: ''
+        ));
+        if ($country === '' || ! StripeConnectCountries::isSupported($country)) {
+            throw new \RuntimeException('Signup country is missing or not supported for Stripe payouts.');
+        }
+
+        if (! empty($payout->stripe_account_id)) {
+            try {
+                $account = Account::retrieve($payout->stripe_account_id);
+                if (strtoupper((string) ($account->country ?? '')) === $country) {
+                    $this->ensureIndividualBusinessType($payout->stripe_account_id);
+                    $this->ensureAccountCapabilitiesRequested($payout->stripe_account_id);
+                    $this->syncProfileToAccount($payout->stripe_account_id, $user, $userDetail);
+
+                    return $payout->stripe_account_id;
                 }
+
+                Log::info('Stripe account country mismatch on payout row; creating a new connected account', [
+                    'user_id' => $user->id,
+                    'payout_id' => $payout->id,
+                    'stripe_account_id' => $payout->stripe_account_id,
+                    'account_country' => $account->country ?? null,
+                    'expected_country' => $country,
+                ]);
+                // Keep the old Stripe id off this row; a new Connect account will be created below.
+                $payout->stripe_account_id = null;
+                $payout->connected_at = null;
+                $payout->save();
             } catch (ApiErrorException $e) {
                 Log::warning('Stored Stripe account not found, creating a new one', [
                     'user_id' => $user->id,
-                    'stripe_account_id' => $userDetail->stripe_account_id,
+                    'payout_id' => $payout->id,
+                    'stripe_account_id' => $payout->stripe_account_id,
                     'error' => $e->getMessage(),
                 ]);
+                $payout->stripe_account_id = null;
+                $payout->connected_at = null;
+                $payout->save();
             }
         }
 
@@ -855,8 +1013,12 @@ class StripeConnectService
             $this->buildStripeAccountPrefill($user, $userDetail),
         ), fn ($value) => $value !== null));
 
-        $userDetail->stripe_account_id = $account->id;
-        $userDetail->save();
+        $payout->stripe_account_id = $account->id;
+        $payout->status = $payout->is_active ? UserPayout::STATUS_PENDING : ($payout->status ?: UserPayout::STATUS_DRAFT);
+        $payout->payout_bank_country = $country;
+        $payout->connected_at = now();
+        $payout->disconnected_at = null;
+        $payout->save();
 
         return $account->id;
     }
@@ -911,20 +1073,31 @@ class StripeConnectService
 
     /**
      * Whether Stripe still needs user action (same rules as stripe:sync-requirements).
+     * Pending verification alone is not treated as actionable user work.
      *
      * @param  array<string, mixed>  $status
      */
     public function accountNeedsUserAction(array $status): bool
     {
-        if (! empty($status['disabled_reason'])) {
-            return true;
-        }
-
         if (! empty($status['currently_due'])) {
             return true;
         }
 
+        $disabledReason = trim((string) ($status['disabled_reason'] ?? ''));
+        if (
+            $disabledReason !== ''
+            && $disabledReason !== 'requirements.pending_verification'
+        ) {
+            return true;
+        }
+
         if (empty($status['charges_enabled']) || empty($status['payouts_enabled'])) {
+            // Still reviewing after submit — do not keep the studio on the requirements form.
+            if ($disabledReason === 'requirements.pending_verification'
+                || ! empty($status['pending_verification'])) {
+                return false;
+            }
+
             return true;
         }
 
@@ -932,16 +1105,13 @@ class StripeConnectService
     }
 
     /**
-     * Whether the artist still has Stripe form fields to submit (not pending review alone).
+     * Whether the account still has Stripe form fields to submit.
+     * Pending Stripe review (disabled_reason / pending_verification) is not user submission.
      *
      * @param  array<string, mixed>  $status
      */
     public function accountNeedsUserSubmission(array $status): bool
     {
-        if (! empty($status['disabled_reason'])) {
-            return true;
-        }
-
         return ! empty($status['currently_due']);
     }
 
@@ -1090,9 +1260,17 @@ class StripeConnectService
      */
     public function resolvePayoutBankCountry(UserDetail $userDetail): ?string
     {
-        $code = strtoupper(trim((string) $userDetail->payout_bank_country));
+        $code = strtoupper(trim((string) (
+            $userDetail->activePayout()?->payout_bank_country
+            ?? ''
+        )));
         if ($code !== '' && StripeConnectCountries::isSupported($code)) {
             return $code;
+        }
+
+        $signup = strtoupper(trim((string) ($userDetail->user?->country_user_belongs_in ?? '')));
+        if ($signup !== '' && StripeConnectCountries::isSupported($signup)) {
+            return $signup;
         }
 
         return null;

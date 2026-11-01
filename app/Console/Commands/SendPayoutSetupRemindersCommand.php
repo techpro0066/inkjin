@@ -27,10 +27,14 @@ class SendPayoutSetupRemindersCommand extends Command
             ->where('role', 'artist')
             ->whereNotNull('email_verified_at')
             ->where('created_at', '<=', $cutoff)
-            ->whereHas('userDetail', function ($query) {
-                $query->whereNull('payout_setup_reminder_sent_at');
+            ->where(function ($query) {
+                $query->whereDoesntHave('payouts')
+                    ->orWhereHas('payouts', function ($payoutQuery) {
+                        $payoutQuery->where('is_active', true)
+                            ->whereNull('payout_setup_reminder_sent_at');
+                    });
             })
-            ->with(['userDetail.studio'])
+            ->with(['userDetail.studio', 'payouts'])
             ->orderBy('id')
             ->chunkById(100, function ($artists) use ($payoutService, &$sent, &$failed, &$skipped) {
                 foreach ($artists as $artist) {
@@ -53,19 +57,33 @@ class SendPayoutSetupRemindersCommand extends Command
 
                     $claimed = false;
                     try {
-                        $claimed = DB::transaction(function () use ($userDetail) {
-                            $locked = $userDetail->newQuery()
-                                ->whereKey($userDetail->id)
+                        $claimed = DB::transaction(function () use ($userDetail, $artist) {
+                            $locked = \App\Models\UserPayout::query()
+                                ->where('user_id', $artist->id)
+                                ->where('is_active', true)
                                 ->whereNull('payout_setup_reminder_sent_at')
                                 ->lockForUpdate()
                                 ->first();
 
-                            if (! $locked) {
+                            if ($locked) {
+                                $locked->payout_setup_reminder_sent_at = now();
+                                $locked->save();
+
+                                return true;
+                            }
+
+                            // No payout row yet — create a draft marker so we don't re-email.
+                            if (\App\Models\UserPayout::query()->where('user_id', $artist->id)->exists()) {
                                 return false;
                             }
 
-                            $locked->payout_setup_reminder_sent_at = now();
-                            $locked->save();
+                            \App\Models\UserPayout::query()->create([
+                                'user_id' => $artist->id,
+                                'status' => 'draft',
+                                'is_active' => true,
+                                'payout_mode' => 'automatic',
+                                'payout_setup_reminder_sent_at' => now(),
+                            ]);
 
                             return true;
                         });

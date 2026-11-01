@@ -21,7 +21,14 @@
 
 @php
   $resolvedReferrerUserId = $referrerUserId ?? session('artist_referral_referrer_user_id');
+  $studioInviteToken = $studioInviteToken ?? null;
+  $studioInviteEmail = $studioInviteEmail ?? null;
+  $studioInviteName = $studioInviteName ?? null;
+  $hasStudioInvite = filled($studioInviteToken);
   $initialRole = old('role', request()->query('as') === 'studio' ? 'studio' : 'artist');
+  if ($hasStudioInvite) {
+      $initialRole = 'artist';
+  }
   if (! in_array($initialRole, ['artist', 'studio'], true)) {
       $initialRole = 'artist';
   }
@@ -179,7 +186,13 @@
 
 @section('content')
   <h1>Create your account</h1>
-  <p class="sub">One account for your bookings and payments.</p>
+  <p class="sub">
+    @if ($hasStudioInvite && $studioInviteName)
+      Join <b>{{ $studioInviteName }}</b> on Bookpay. After signup you can accept their studio details.
+    @else
+      One account for your bookings and payments.
+    @endif
+  </p>
 
   <div id="register-alert" class="banner bad" role="alert" style="display:none"></div>
 
@@ -188,27 +201,32 @@
     @if ($resolvedReferrerUserId)
       <input type="hidden" name="referrer_user_id" value="{{ $resolvedReferrerUserId }}">
     @endif
+    @if ($hasStudioInvite)
+      <input type="hidden" name="studio_invite_token" value="{{ $studioInviteToken }}">
+    @endif
     <input type="hidden" name="role" id="role-input" value="{{ $initialRole }}">
     <input type="hidden" name="payout_bank_country" id="payout_bank_country" value="{{ $oldCountry }}">
     <input type="hidden" name="unlisted_country" id="unlisted_country" value="{{ $oldUnlisted }}">
     <input type="hidden" name="referral_source" id="referral_source" value="{{ $oldReferral }}">
 
     <div class="fl" style="margin-top:0">I'm signing up as</div>
-    <div class="roles" role="radiogroup" aria-label="Account type">
+    <div class="roles" role="radiogroup" aria-label="Account type" @if($hasStudioInvite) style="pointer-events:none;opacity:.85" @endif>
       <button type="button" class="role" data-role="artist" role="radio" aria-checked="{{ $initialRole === 'artist' ? 'true' : 'false' }}">
         <span class="ms">{{ $initialRole === 'artist' ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
         <span><b>An artist</b><small>I tattoo and take my own bookings.</small></span>
   </button>
+      @unless($hasStudioInvite)
       <button type="button" class="role" data-role="studio" role="radio" aria-checked="{{ $initialRole === 'studio' ? 'true' : 'false' }}">
         <span class="ms">{{ $initialRole === 'studio' ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
         <span><b>A studio</b><small>I run a studio with one or more artists.</small></span>
   </button>
+      @endunless
   </div>
     <div class="err" id="role-error">Please choose how you are signing up</div>
 
     <label class="fl" for="signup-email">Email address</label>
     <div class="in" id="email-wrap">
-      <input id="signup-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" value="{{ old('email') }}">
+      <input id="signup-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" value="{{ old('email', $studioInviteEmail) }}" @if($hasStudioInvite && $studioInviteEmail) readonly @endif>
   </div>
     <div class="err" id="email-error">Enter a valid email address</div>
 

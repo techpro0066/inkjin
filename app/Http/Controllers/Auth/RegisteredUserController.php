@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\CountryNotAvailableMail;
 use App\Models\ArtistReferral;
+use App\Models\StudioInvite;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserNotRegistered;
+use App\Services\StudioArtistInviteService;
 use App\Rules\NotBotGmailPattern;
 use App\Support\StripeConnectCountries;
 use Illuminate\Auth\Events\Registered;
@@ -50,11 +52,21 @@ class RegisteredUserController extends Controller
             ]);
         }
 
+        $inviteService = app(StudioArtistInviteService::class);
+        $inviteToken = trim((string) $request->query('invite', session(StudioInvite::SESSION_TOKEN_KEY, '')));
+        if ($inviteToken !== '') {
+            $inviteService->rememberToken($inviteToken);
+        }
+        $pendingInvite = $inviteService->pendingInviteForUser(null, $inviteToken ?: null);
+
         return view('auth.register', [
             'registrationCountries' => StripeConnectCountries::registrationCountriesForSelect(),
             'unlistedCountries' => StripeConnectCountries::unsupportedCountryNamesForWaitingList(),
             'referrerUsername' => $referrer?->userDetail?->user_name,
             'referrerUserId' => $referrer?->id,
+            'studioInviteToken' => $pendingInvite?->token,
+            'studioInviteEmail' => $pendingInvite?->email,
+            'studioInviteName' => trim((string) ($pendingInvite?->studio?->name ?? '')),
         ]);
     }
 
@@ -150,9 +162,15 @@ class RegisteredUserController extends Controller
 
         $userDetail = UserDetail::create([
             'user_id' => $user->id,
-            'payout_bank_country' => $countryCode,
         ]);
-        StripeConnectCountries::syncCurrencyFromBankCountry($userDetail);
+
+        \App\Models\UserPayout::upsertActiveForUser($user->id, [
+            'status' => \App\Models\UserPayout::STATUS_DRAFT,
+            'payout_bank_country' => $countryCode,
+            'payout_mode' => 'automatic',
+        ]);
+
+        StripeConnectCountries::syncCurrencyFromBankCountry($userDetail->fresh() ?? $userDetail);
         $userDetail->save();
 
         $this->createArtistReferralIfValid($user, $validated['referrer_user_id'] ?? null);
@@ -161,6 +179,23 @@ class RegisteredUserController extends Controller
         if ($validated['role'] === 'studio') {
             app(\App\Services\MailcoachSubscriberService::class)
                 ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_STUDIO);
+            app(StudioArtistInviteService::class)->forgetToken();
+        } elseif ($validated['role'] === 'artist') {
+            $inviteService = app(StudioArtistInviteService::class);
+            $inviteToken = trim((string) ($request->input('studio_invite_token') ?: session(StudioInvite::SESSION_TOKEN_KEY, '')));
+            if ($inviteToken !== '') {
+                $inviteService->rememberToken($inviteToken);
+            }
+            $pendingInvite = $inviteService->pendingInviteForUser($user, $inviteToken ?: null);
+            if ($pendingInvite) {
+                $inviteService->rememberToken($pendingInvite->token);
+                if (! $pendingInvite->user_id) {
+                    $pendingInvite->user_id = $user->id;
+                    $pendingInvite->save();
+                }
+            } else {
+                $inviteService->forgetToken();
+            }
         }
 
         // Login user temporarily so they can access verification page

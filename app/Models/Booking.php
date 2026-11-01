@@ -13,6 +13,8 @@ class Booking extends Model
     protected $fillable = [
         'user_id',
         'artist_user_id',
+        'studio_id',
+        'guest_spot_id',
         'tattoo_id',
         'booking_type',
         'custom_tattoo_details',
@@ -153,6 +155,52 @@ class Booking extends Model
     public function artist(): BelongsTo
     {
         return $this->belongsTo(User::class, 'artist_user_id');
+    }
+
+    public function studio(): BelongsTo
+    {
+        return $this->belongsTo(Studio::class, 'studio_id');
+    }
+
+    public function guestSpot(): BelongsTo
+    {
+        return $this->belongsTo(GuestSpot::class, 'guest_spot_id');
+    }
+
+    public function isGuestSpotBooking(): bool
+    {
+        return (int) ($this->guest_spot_id ?? 0) > 0;
+    }
+
+    /**
+     * Consume guest-spot capacity and mark details for later release on cancel.
+     */
+    public function consumeGuestSpotCapacity(GuestSpot $guestSpot): bool
+    {
+        if (! $guestSpot->tracksSpotCapacity()) {
+            $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+            $details['guest_id'] = (int) $guestSpot->id;
+            $this->forceFill([
+                'guest_spot_id' => $guestSpot->id,
+                'custom_tattoo_details' => $details,
+            ])->save();
+
+            return true;
+        }
+
+        if (! $guestSpot->consumeRemainingSpot()) {
+            return false;
+        }
+
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $details['guest_id'] = (int) $guestSpot->id;
+        $details['guest_spot_consumed'] = true;
+        $this->forceFill([
+            'guest_spot_id' => $guestSpot->id,
+            'custom_tattoo_details' => $details,
+        ])->save();
+
+        return true;
     }
 
     public function tattoo(): BelongsTo

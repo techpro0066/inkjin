@@ -6,7 +6,7 @@
   }
   $artistEmail = $authUser?->email ?? '';
   $artistInitials = strtoupper(substr(preg_replace('/\s+/', '', $artistName) ?: 'AR', 0, 2));
-  $activeNav = $activeNav ?? 'home';
+  $activeNav = $activeNav ?? null;
 
   $avatarUrl = null;
   $avatarPath = trim((string) ($authUser?->userDetail?->avatar ?? ''));
@@ -145,8 +145,9 @@
     .ch .l{font-weight:600;font-size:13px;display:inline-flex;gap:4px;align-items:center;color:var(--pri);text-decoration:none}
     .ch .l:hover{text-decoration:underline}
     .btn.disabled,.btn[aria-disabled="true"]{opacity:.45;pointer-events:none;cursor:not-allowed}
-    .bpw-toast{position:fixed;bottom:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:2000;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;max-width:calc(100% - 32px);opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s,transform .2s}
+    .bpw-toast{position:fixed;top:22px;right:24px;bottom:auto;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:2000;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;max-width:calc(100% - 32px);opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .2s,transform .2s}
     .bpw-toast.on{opacity:1;transform:translateY(0);pointer-events:auto}
+    @media (max-width:600px){.bpw-toast{left:16px;right:16px;top:74px}}
     .bpw-toast .ms{color:#3DD68C}
     .muted{color:var(--muted)}.faint{color:var(--faint)}
     .pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;font-size:11.5px;font-weight:600;padding:3px 9px;white-space:nowrap}
@@ -220,10 +221,10 @@
       <a href="{{ route('artist.dashboard') }}" class="{{ $activeNav === 'home' || request()->routeIs('artist.dashboard') ? 'on' : '' }}">
         <span class="ms">space_dashboard</span>Home
       </a>
-      <a href="{{ route('artist.bookings.index') }}" class="{{ $activeNav === 'bookings' || request()->routeIs('artist.bookings.*') ? 'on' : '' }}">
+      <a href="{{ route('artist.bookings.index') }}" class="{{ $activeNav === 'bookings' || request()->routeIs('artist.bookings.*') || request()->routeIs('artist.requests.*') || request()->routeIs('artist.custom-requests.*') || request()->routeIs('artist.guest-requests.*') ? 'on' : '' }}">
         <span class="ms">calendar_month</span>Bookings
       </a>
-      <a href="{{ route('availability.index') }}" class="{{ $activeNav === 'schedule' || request()->routeIs('availability.*') ? 'on' : '' }}">
+      <a href="{{ route('availability.index') }}" class="{{ $activeNav === 'schedule' || request()->routeIs('availability.*') || request()->routeIs('guest-spots.*') || request()->routeIs('schedule.*') ? 'on' : '' }}">
         <span class="ms">schedule</span>Schedule
       </a>
       <a href="{{ route('artist.chat.index') }}" class="{{ $activeNav === 'inbox' || request()->routeIs('artist.chat.*') ? 'on' : '' }}">
@@ -233,16 +234,16 @@
       <a href="{{ route('artist.clients.index') }}" class="{{ $activeNav === 'clients' || request()->routeIs('artist.clients.*') ? 'on' : '' }}">
         <span class="ms">group</span>Clients
       </a>
-      <a href="{{ route('artist.payments.index') }}" class="{{ $activeNav === 'money' || request()->routeIs('artist.payments.*') ? 'on' : '' }}">
+      <a href="{{ route('artist.payments.index') }}" class="{{ $activeNav === 'money' || request()->routeIs('artist.payments.*') || request()->routeIs('settings.preferences') || request()->routeIs('settings.payment') || request()->routeIs('settings.payment.*') ? 'on' : '' }}">
         <span class="ms">payments</span>Money
       </a>
       <a href="{{ route('personal-page.index') }}" class="{{ $activeNav === 'my-page' || request()->routeIs('personal-page.*') || request()->routeIs('portfolio.*') || request()->routeIs('artist-designs.*') || request()->routeIs('artist.faq.*') ? 'on' : '' }}">
         <span class="ms">folder_open</span>My Page
       </a>
-      <a href="{{ route('artist.forms.index') }}" class="{{ $activeNav === 'client-flow' || request()->routeIs('artist.forms.*') || request()->routeIs('artist.requests.*') || request()->routeIs('artist.custom-requests.*') || request()->routeIs('artist.guest-requests.*') ? 'on' : '' }}">
+      <a href="{{ route('artist.forms.index', ['tab' => 'booking']) }}" class="{{ $activeNav === 'client-flow' || request()->routeIs('artist.forms.*') || request()->routeIs('artist.aftercare.*') ? 'on' : '' }}">
         <span class="ms">edit_note</span>Client Flow
       </a>
-      <a href="{{ route('profile.edit') }}" class="{{ $activeNav === 'account' || request()->routeIs('profile.*') || request()->routeIs('settings.*') ? 'on' : '' }}">
+      <a href="{{ route('profile.edit') }}" class="{{ $activeNav === 'account' || request()->routeIs('profile.*') || (request()->routeIs('settings.*') && ! request()->routeIs('settings.preferences') && ! request()->routeIs('settings.preferences.*') && ! request()->routeIs('settings.payment') && ! request()->routeIs('settings.payment.*')) ? 'on' : '' }}">
         <span class="ms">settings</span>Account
       </a>
 

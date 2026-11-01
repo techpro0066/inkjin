@@ -40,4 +40,4 @@
     class="flex-1 min-w-0 border border-outline-variant/30 bg-white rounded-2xl px-4 sm:px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
   >
 </div>
-<p id="{{ $errorId }}" class="text-sm text-error mt-2 hidden">This field is required.</p>
+<p id="{{ $errorId }}" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text">Please enter a valid phone number.</span></p>

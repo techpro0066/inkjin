@@ -122,17 +122,16 @@ class OfferArtistSlotsRequest extends FormRequest
                 $parsed[] = ['start' => $start, 'end' => $end, 'rangeIndex' => $rangeIndex];
             }
 
+            // Start times are alternative options for the client — overlapping windows are OK.
             usort($parsed, fn (array $a, array $b) => $a['start'] <=> $b['start']);
 
-            for ($i = 0; $i < count($parsed); $i++) {
-                for ($j = $i + 1; $j < count($parsed); $j++) {
-                    if ($parsed[$i]['start'] < $parsed[$j]['end'] && $parsed[$j]['start'] < $parsed[$i]['end']) {
-                        $validator->errors()->add(
-                            "{$prefix}.{$index}.ranges.{$parsed[$j]['rangeIndex']}.from",
-                            "{$label}: time windows on the same date cannot overlap."
-                        );
-                        break 2;
-                    }
+            for ($i = 1; $i < count($parsed); $i++) {
+                if ($parsed[$i]['start'] === $parsed[$i - 1]['start']) {
+                    $validator->errors()->add(
+                        "{$prefix}.{$index}.ranges.{$parsed[$i]['rangeIndex']}.from",
+                        "{$label}: you already offered that start time on this date."
+                    );
+                    break;
                 }
             }
         }

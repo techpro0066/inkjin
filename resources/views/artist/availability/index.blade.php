@@ -1,1566 +1,1657 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
-@section('title', 'Availability')
+@section('title', 'Schedule')
+
+@php
+  $savedStatus = old('availability_status', $savedAvailabilityStatus ?? '');
+  $tzLabel = $userTimezone ?? 'UTC';
+  $multiStudio = (bool) ($multiStudio ?? false);
+  $scheduleStudios = $scheduleStudios ?? [];
+  $travelBufferMinutes = (int) ($travelBufferMinutes ?? 120);
+  $statusCards = [
+    ['key' => 'design_custom', 'icon' => 'bolt', 'title' => 'Open', 'desc' => 'Flash designs + custom requests'],
+    ['key' => 'design_only', 'icon' => 'palette', 'title' => 'Flash designs only', 'desc' => 'Only your available flash designs'],
+    ['key' => 'custom_only', 'icon' => 'edit_note', 'title' => 'Custom only', 'desc' => 'Only custom tattoo requests'],
+    ['key' => 'closed', 'icon' => 'block', 'title' => 'Books closed', 'desc' => 'Not taking new bookings'],
+  ];
+  $studioDotColors = ['#7A1FC4', '#0E9C86', '#1E5BD8', '#B86E00', '#C62828', '#3E007C'];
+@endphp
 
 @section('styles')
+@include('partials.bookpay-datetime-picker')
     <style>
-      .radio-card { border: 1.5px solid #cac4d3; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; position: relative; }
-      .radio-card.selected { border-color: #310f7a; background: #fdf7ff; }
-      .radio-card .radio-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #cac4d3; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-      .radio-card.selected .radio-dot { border-color: #310f7a; background: #310f7a; }
-      .radio-card.selected .radio-dot::after { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; }
-
-      .cal-day { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; cursor: default; transition: all 0.15s; user-select: none; }
-      .cal-day.today { border: 2px solid #310f7a; font-weight: 700; }
-      .cal-day.blocked { background: #ffdad6; color: #ba1a1a; text-decoration: line-through; font-weight: 600; }
-      .cal-day.past { color: #cac4d3; cursor: default; }
-      .cal-day.disabled { color: #cac4d3; cursor: default; }
-
-      #monthYearPicker { box-shadow: 0 12px 40px rgba(28, 27, 33, 0.12); }
-
-      .block-modal-backdrop { background: rgba(28, 27, 33, 0.45); }
-      .block-modal-panel { animation: blockModalIn 0.2s ease-out; }
-      @keyframes blockModalIn {
-        from { opacity: 0; transform: scale(0.97) translateY(6px); }
-        to { opacity: 1; transform: scale(1) translateY(0); }
+  .av-page .help-q{
+    display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-left:8px;
+    border-radius:50%;color:#9A929E;vertical-align:middle;text-decoration:none;position:relative;top:-2px
+  }
+  .av-page .help-q .ms{font-size:22px}
+  .av-page .help-q:hover{color:#3E007C;background:#F3E8FF}
+  .av-page .bst{border:1px solid var(--line);transition:border-color .15s}
+  .av-page .bst:hover{border-color:#C9B8D8}
+  .av-page .bst[aria-checked="true"]{border:2px solid #3E007C}
+  .av-page .bst .brad{font-size:22px}
+  .av-page .whday{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #F3EEF4}
+  .av-page .whday:last-child{border-bottom:0}
+  .av-page .whl{
+    width:34px;height:34px;border-radius:50%;border:1.5px solid #CFC6D3;display:flex;align-items:center;
+    justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;color:var(--muted)
+  }
+  .av-page .whday.on .whl{background:#1A1A1A;border-color:#1A1A1A;color:#fff}
+  .av-page .whbody{flex:1;min-width:0}
+  .av-page .whtop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .av-page .whday.on .whoff,.av-page .whday.on .whadd{display:none}
+  .av-page .whoff{font-size:14px;color:var(--muted);margin-top:2px}
+  .av-page .whadd{
+    width:32px;height:32px;border-radius:50%;background:#1A1A1A;color:#fff;border:0;cursor:pointer;
+    display:flex;align-items:center;justify-content:center
+  }
+  .av-page .whadd .ms{font-size:20px}
+  .av-page .whslots,.av-page .whact{display:none}
+  .av-page .whday.on .whslots{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .av-page .whday.on .whact{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .av-page .whslot{
+    display:flex;align-items:center;gap:8px;background:#FBF6FC;border-radius:12px;padding:8px 10px;
+    width:max-content;max-width:100%
+  }
+  .av-page .whslot .in,.av-page .whslot .bpx-btn.in{width:112px;min-height:36px;padding:6px 10px}
+  .av-page .whdel{cursor:pointer}
+  .av-page .whact .btn{cursor:pointer;font:inherit;font-size:12.5px;font-weight:600}
+  .av-page .pgsaverow{justify-content:flex-start;margin-top:16px}
+  .av-page .pgsave{opacity:.4;pointer-events:none}
+  .av-page .pgsave.is-dirty{opacity:1;pointer-events:auto}
+  .av-page .bdnav{border:0;background:none;cursor:pointer;padding:4px;border-radius:8px;color:inherit}
+  .av-page .bdnav:hover{background:#F3E8FF}
+  .av-page .bdgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+  .av-page .bdgrid .dw{font-size:11px;font-weight:700;color:var(--faint);padding-bottom:4px}
+  .av-page .bdgrid .d{
+    height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;
+    font-size:13px;margin:0 auto;width:34px
+  }
+  .av-page .bdgrid .d.past{color:#CFC6D3}
+  .av-page .bdgrid .d.bk{background:#F3E8FF;color:#3E007C;font-weight:700}
+  .av-page .bdgrid .d.bl{background:#FDDDDD;color:#C62828;font-weight:700;text-decoration:line-through}
+  .av-page .bdgrid .d.today{box-shadow:inset 0 0 0 2px #3E007C}
+  .av-page .lg{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .av-page .lg-b{background:#FDDDDD;border:1px solid #C62828}
+  .av-page .lg-k{background:#F3E8FF;border:1px solid #3E007C}
+  .av-page .lg-t{border:2px solid #3E007C}
+  .av-page .bditem{
+    display:flex;align-items:center;gap:10px;background:#FBF3FC;border-radius:12px;
+    padding:11px 12px;margin-bottom:8px
+  }
+  .av-page .bditem.loc{background:#EAF7F4}
+  .av-page .bditem b{font-size:13.5px}
+  .av-page .bditem .rs{font-size:12px;color:var(--faint)}
+  .av-page .bditem button{border:0;background:none;cursor:pointer;padding:4px;border-radius:6px;color:var(--muted)}
+  .av-page .bditem button:hover{background:#fff}
+  .av-page .twonote{
+    display:flex;gap:8px;align-items:flex-start;background:#EAF7F4;border:1px solid #BFE5DC;color:#0E5C50;
+    border-radius:12px;padding:10px 12px;font-size:12.5px;line-height:1.45;margin:10px 0 8px
+  }
+  .av-page .twonote .ms{font-size:18px;flex-shrink:0;margin-top:1px}
+  .av-page .whtop{flex-wrap:wrap}
+  .av-page .whlocw{display:none;align-items:flex-start;gap:6px;color:var(--muted);max-width:100%}
+  .av-page .whday.on .whlocw{display:flex}
+  .av-page .whloc-multi{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+  .av-page .whloc-opt{
+    display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink,#1c1b21);
+    cursor:pointer;user-select:none;padding:3px 8px;border:1px solid var(--line2,#cac4d3);border-radius:999px;background:#fff
+  }
+  .av-page .whloc-opt:has(input:checked){border-color:var(--p,#310f7a);background:#FBF5FF;color:var(--p,#310f7a)}
+  .av-page .whloc-opt input{margin:0;accent-color:var(--p,#310f7a)}
+  .av-page .loc-multi{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .av-page .loc-opt{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--line2,#cac4d3);
+    border-radius:12px;background:#fff;cursor:pointer;font-size:13.5px;color:var(--ink,#1c1b21)
+  }
+  .av-page .loc-opt:has(input:checked){border-color:var(--p,#310f7a);background:#FBF5FF}
+  .av-page .loc-opt input{margin:0;accent-color:var(--p,#310f7a)}
+  .av-page .dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-left:2px;vertical-align:middle}
+  .av-page .bdgrid .d{position:relative}
+  .av-page .bdgrid .d .dots{
+    position:absolute;bottom:1px;left:50%;transform:translateX(-50%);display:flex;gap:2px;align-items:center
+  }
+  .av-page .bdgrid .d .dots .dot{position:static;transform:none;margin:0;flex-shrink:0}
+  .av-page .bdov,.av-unsaved-ov{
+    position:fixed;inset:0;background:rgba(20,10,30,.45);display:none;align-items:center;
+    justify-content:center;z-index:400;padding:16px;opacity:0;transition:opacity .2s
+  }
+  .av-page .bdov.open,.av-unsaved-ov.open{display:flex}
+  .av-page .bdov.show,.av-unsaved-ov.show{opacity:1}
+  .av-unsaved-ov{z-index:520}
+  .av-unsaved-ov [data-x]{
+    border:0;background:none;cursor:pointer;padding:4px;border-radius:8px;color:var(--muted);
+    display:inline-flex;align-items:center;justify-content:center;line-height:1
+  }
+  .av-unsaved-ov [data-x]:hover{background:#F3E8FF;color:var(--pri)}
+  .av-unsaved-ov [data-x] .ms{font-size:22px}
+  .av-page .bdm{
+    background:#fff;border-radius:18px;width:420px;max-width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.25)
+  }
+  .av-page .bdm .bt{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid #F0EAF2}
+  .av-page .bdm .bt h2{font-size:17px;font-weight:800;margin:0}
+  .av-page .bdm .bb{padding:16px 20px;display:grid;gap:12px}
+  .av-page .bdm .bf{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid #F0EAF2}
+  .av-page .bdm textarea{width:100%;min-height:70px;resize:vertical;font:inherit}
+  .av-page .bdm .err{color:#C62828;font-size:12.5px}
+  .av-page .bdm .bf .btn.danger{background:#C62828;border-color:#C62828;color:#fff}
+  .av-page .bdm .bf .btn.danger:hover{background:#B71C1C;border-color:#B71C1C}
+  .av-page .setup-note{
+    border:1.5px dashed #E0B86A;background:#FFF8EB;border-radius:12px;padding:12px 14px;
+    font-size:13px;color:#6B4E00;display:flex;gap:10px;align-items:flex-start;margin-bottom:16px
+  }
+  .av-page .setup-note .ms{font-size:20px;flex-shrink:0;margin-top:1px}
+  .av-page .mp-toast{
+    position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;
+    font-weight:600;font-size:14px;z-index:500;box-shadow:0 10px 30px rgba(0,0,0,.22);
+    display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));
+    transition:opacity .25s,transform .35s;pointer-events:none
+  }
+  .av-page .mp-toast.show{opacity:1;transform:none}
+  .av-page .text-error{color:#C62828;font-size:12.5px;margin-top:6px}
+  .av-page .hidden{display:none!important}
+  @media (max-width:900px){
+    .av-page .av-grid{grid-template-columns:1fr!important}
+    .av-page .bst-grid{grid-template-columns:1fr 1fr!important}
+  }
+  @media (max-width:560px){
+    .av-page .bst-grid{grid-template-columns:1fr!important}
+    .av-page .mp-toast{left:16px;right:16px;top:74px}
       }
-      textarea.block-reason-field { min-height: 5.5rem; resize: vertical; line-height: 1.45; }
-
-      .wh-time-input {
-        min-width: 7rem;
-      }
-
-      #saveBookingStatusBtnIcon.is-loading,
-      #saveWorkingHoursBtnIcon.is-loading {
-        animation: hourglass-wait 1.1s ease-in-out infinite;
-      }
-      @keyframes hourglass-wait {
-        0%, 100% { opacity: 1; transform: rotate(0deg); }
-        50% { opacity: 0.65; transform: rotate(180deg); }
-      }
-
-      @media (max-width: 1023px) {
-        .main-content { overflow-x: hidden; padding: 16px; padding-top: 70px; }
-        body { overflow-x: hidden; }
-      }
-
-      .availability-tab-content { display: none; animation: availabilityTabIn 0.2s ease; }
-      .availability-tab-content.active { display: block; }
-      @keyframes availabilityTabIn {
-        from { opacity: 0; transform: translateY(4px); }
-        to { opacity: 1; transform: translateY(0); }
+  /* Waitlist notify modal (no Tailwind on new layout) */
+  #waitlistNotifyModal{position:fixed;inset:0;z-index:320;display:none;align-items:center;justify-content:center;padding:16px}
+  #waitlistNotifyModal.is-open,#waitlistNotifyModal.flex{display:flex}
+  #waitlistNotifyModal.hidden{display:none!important}
+  #waitlistNotifyModalBackdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);border:0;cursor:default}
+  #waitlistNotifyModal .waitlist-notify-dialog{position:relative;background:#fff;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.2);width:100%;max-width:28rem;overflow:hidden}
+  #waitlistNotifyModal .p-6{padding:24px}
+  #waitlistNotifyModal .pb-5{padding-bottom:20px}
+  #waitlistNotifyModal .px-6{padding-left:24px;padding-right:24px}
+  #waitlistNotifyModal .py-4{padding-top:16px;padding-bottom:16px}
+  #waitlistNotifyModal .mb-4{margin-bottom:16px}
+  #waitlistNotifyModal .mb-2{margin-bottom:8px}
+  #waitlistNotifyModal .mt-1{margin-top:4px}
+  #waitlistNotifyModal .mt-4{margin-top:16px}
+  #waitlistNotifyModal .w-12{width:48px;height:48px}
+  #waitlistNotifyModal .rounded-2xl{border-radius:16px}
+  #waitlistNotifyModal .rounded-xl{border-radius:12px}
+  #waitlistNotifyModal .bg-primary\/10,  #waitlistNotifyModal [class*="bg-primary"]{background:#EDEDED}
+  #waitlistNotifyModal .text-primary{color:#1A1A1A}
+  #waitlistNotifyModal #waitlistNotifyModalIcon{background:#EDEDED}
+  #waitlistNotifyModal .text-on-surface{color:#1A1A1A}
+  #waitlistNotifyModal .text-on-surface-variant{color:#6F6874}
+  #waitlistNotifyModal .text-xl{font-size:20px;font-weight:800}
+  #waitlistNotifyModal .text-sm{font-size:14px}
+  #waitlistNotifyModal .text-xs{font-size:12px}
+  #waitlistNotifyModal .font-bold{font-weight:800}
+  #waitlistNotifyModal .font-semibold{font-weight:600}
+  #waitlistNotifyModal .leading-relaxed{line-height:1.5}
+  #waitlistNotifyModal .bg-green-50{background:#E6F8EE;border:1px solid #B7E2C6;border-radius:12px;padding:12px 16px}
+  #waitlistNotifyModal .text-green-900{color:#1F6B4E;font-weight:700;font-size:14px}
+  #waitlistNotifyModal .text-green-800{color:#2F6B4E;font-size:12px}
+  #waitlistNotifyModal .bg-surface-container-low,#waitlistNotifyModal [class*="bg-surface-container"]{background:#F8F1FB}
+  #waitlistNotifyModal [class*="border-outline"]{border:1px solid #E8DFEA}
+  #waitlistNotifyModal .border-t{border-top:1px solid #E8DFEA}
+  #waitlistNotifyModal .flex{display:flex}
+  #waitlistNotifyModal .flex-col-reverse{flex-direction:column-reverse}
+  #waitlistNotifyModal .gap-3{gap:12px}
+  #waitlistNotifyModal .flex-1{flex:1}
+  #waitlistNotifyModal .items-center{align-items:center}
+  #waitlistNotifyModal .justify-center{justify-content:center}
+  #waitlistNotifyModal .inline-flex{display:inline-flex}
+  #waitlistNotifyModal button{font:inherit;cursor:pointer}
+  #waitlistNotifyModal #waitlistNotifyModalCancel{padding:10px 16px;border-radius:12px;border:1px solid #E8DFEA;background:#fff;color:#1A1A1A;font-weight:600;font-size:14px}
+  #waitlistNotifyModal #waitlistNotifyModalConfirm{padding:10px 16px;border-radius:12px;border:0;background:#1A1A1A!important;color:#fff;font-weight:600;font-size:14px}
+  #waitlistNotifyModal .hidden{display:none!important}
+  @media (min-width:640px){
+    #waitlistNotifyModal .sm\:flex-row{flex-direction:row}
       }
     </style>
 @endsection
 
 @section('content')
-<!-- Sidebar Backdrop -->
-{{-- <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="document.getElementById('mobileSidebar').classList.add('hidden');document.getElementById('mobileSidebar').classList.remove('flex');document.getElementById('mobileMenuBtn').textContent='menu';this.classList.add('hidden')"></div> --}}
-
-<!-- Main Content -->
-<main class="main-content flex-1 min-h-screen">
-  <div class="p-6 md:p-10 lg:p-12 max-w-4xl">
-
-    @include('artist.partials.settings-tabs', ['activeTab' => 'availability'])
-
-    <!-- Page Header -->
-    <div class="mb-8">
-      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Availability</h2>
-      <p class="text-on-surface-variant mt-1">Manage your booking status, blocked dates, and working hours.</p>
-    </div>
-
-    <div id="availabilityPageSetupAlert" class="mb-8 rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-amber-100/40 p-5 sm:p-6 shadow-sm{{ empty($needsWeeklyAvailabilitySetup) ? ' hidden' : '' }}" role="alert">
-      <div class="flex flex-col sm:flex-row sm:items-start gap-4">
-        <div class="w-11 h-11 rounded-xl bg-amber-100 border border-amber-200/60 flex items-center justify-center flex-shrink-0">
-          <span class="material-symbols-outlined text-amber-800 text-2xl">event_available</span>
-        </div>
-        <div class="min-w-0 flex-1">
-          <h3 class="text-sm font-bold text-amber-950">Weekly hours not configured</h3>
-          <p class="text-xs text-amber-900/90 mt-1.5 leading-relaxed">Add at least one working time in the Working Hours tab and save. Until you do, clients cannot complete bookings with you.</p>
-        </div>
-        <button type="button" id="availabilityPageGoToHoursBtn" class="self-start sm:self-center shrink-0 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 px-4 py-2.5 rounded-xl shadow-sm transition-colors">
-          <span class="material-symbols-outlined text-base">edit_calendar</span>
-          Go to working hours
-        </button>
+<div class="av-page">
+  <div class="head">
+    <div>
+      <h1>
+        Schedule
+        <a class="help-q" href="https://help.inkjin.com/en/articles/17200976-dashboard-schedule-availability" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
+          <span class="ms">help</span>
+        </a>
+      </h1>
+      <div class="sub">When and how clients can book you.</div>
       </div>
     </div>
 
-    <div class="flex items-center gap-2 mb-8 overflow-x-auto" role="tablist" aria-label="Availability sections">
-      <button type="button" id="availability-tab-status" data-availability-tab="status" class="availability-tab-btn shrink-0 px-4 py-2 text-sm font-semibold rounded-xl bg-primary text-on-primary transition-all whitespace-nowrap">
-        Status
-      </button>
-      <button type="button" id="availability-tab-blocked" data-availability-tab="blocked" class="availability-tab-btn shrink-0 px-4 py-2 text-sm font-semibold rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all whitespace-nowrap">
-        Blocked dates
-      </button>
-      <button type="button" id="availability-tab-hours" data-availability-tab="hours" class="availability-tab-btn shrink-0 px-4 py-2 text-sm font-semibold rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all whitespace-nowrap">
-        Working hours
-      </button>
-    </div>
+  @include('artist.partials.schedule-tabs', ['scheduleTab' => 'availability'])
 
-    <div class="space-y-10">
+  <div class="mp-toast" id="avToast" role="status"><span class="ms">check_circle</span><span id="avToastText">Saved</span></div>
 
-      <!-- Tab: Booking Status -->
-      <section id="availability-panel-status" class="availability-tab-content active">
-        <h3 id="bookingStatusHeading" class="text-lg font-bold text-on-surface mb-1">Booking Status</h3>
-        <div class="h-px bg-outline-variant/30 mb-5"></div>
-
-        <form id="bookingStatusForm" action="{{ route('availability.booking-status') }}" method="post" class="space-y-4">
-          @csrf
-          <input type="hidden" name="availability_status" id="availability_status" value="{{ old('availability_status', $savedAvailabilityStatus ?? '') }}">
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="statusCards" role="radiogroup" aria-labelledby="bookingStatusHeading">
-
-          <!-- Open (Available Designs + Custom) -->
-          <div role="radio" tabindex="0" aria-checked="false" class="radio-card" data-status="design_custom" onclick="selectStatus(this, 'design_custom')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectStatus(this,'design_custom');}">
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center">
-                  <span class="material-symbols-outlined text-primary">flash_on</span>
-                </div>
+  <div id="avSetupNote" class="setup-note{{ empty($needsWeeklyAvailabilitySetup) ? ' hidden' : '' }}" role="alert">
+    <span class="ms">event_available</span>
                 <div>
-                  <span class="text-sm font-bold text-on-surface">Open (Available Designs + Custom)</span>
-                  <div class="status-active flex items-center gap-1.5 mt-0.5" style="display:none;">
-                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                    <span class="text-xs text-green-600 font-medium">Active</span>
+      <b style="display:block;margin-bottom:2px">Weekly hours not configured</b>
+      Add at least one working time below and save. Until you do, clients cannot complete bookings with you.
                   </div>
                 </div>
+
+  <div class="row" style="justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+    <h3 style="margin:0">Booking status</h3>
               </div>
-              <div class="radio-dot"></div>
-            </div>
-            <p class="text-xs text-on-surface-variant ml-[52px]">Accepting both available design bookings and custom requests</p>
+  <p id="bookingStatusError" class="text-error hidden" role="alert"></p>
+  <input type="hidden" id="availability_status" value="{{ $savedStatus }}">
+
+  <div class="grid bst-grid" style="grid-template-columns:repeat(4,1fr)" id="statusCards" role="radiogroup" aria-label="Booking status">
+    @foreach ($statusCards as $card)
+      @php $on = $savedStatus === $card['key']; @endphp
+      <div
+        class="card bst"
+        role="radio"
+        tabindex="0"
+        data-status="{{ $card['key'] }}"
+        aria-checked="{{ $on ? 'true' : 'false' }}"
+        style="padding:16px;cursor:pointer;{{ $on ? 'border:2px solid #3E007C' : '' }}"
+      >
+        <div class="row" style="justify-content:space-between">
+          <div class="ic"><span class="ms">{{ $card['icon'] }}</span></div>
+          <span class="ms brad" style="color:{{ $on ? '#3E007C' : '#C8BFCC' }};font-variation-settings:'FILL' {{ $on ? '1' : '0' }}">
+            {{ $on ? 'radio_button_checked' : 'radio_button_unchecked' }}
+          </span>
+                </div>
+        <b style="display:block;margin-top:12px;font-size:14.5px">{{ $card['title'] }}</b>
+        <div class="faint" style="font-size:12.5px;margin-top:3px">{{ $card['desc'] }}</div>
+        @if ($on)
+          <span class="pill g" style="margin-top:10px">Active</span>
+        @endif
+                  </div>
+    @endforeach
           </div>
 
-          <!-- Open (Available Designs Only) -->
-          <div role="radio" tabindex="0" aria-checked="false" class="radio-card" data-status="design_only" onclick="selectStatus(this, 'design_only')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectStatus(this,'design_only');}">
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center">
-                  <span class="material-symbols-outlined text-primary">palette</span>
-                </div>
+  @if($multiStudio)
+  <div class="card" style="margin-top:26px" id="travelbuf">
+    <div class="ch">
                 <div>
-                  <span class="text-sm font-bold text-on-surface">Open (Available Designs Only)</span>
-                  <div class="status-active flex items-center gap-1.5 mt-0.5" style="display:none;">
-                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                    <span class="text-xs text-green-600 font-medium">Active</span>
+        <h3>Travel between studios</h3>
+        <div class="faint" style="font-size:12.5px;margin-top:2px">Time kept free when you move between studios on the same day</div>
                   </div>
                 </div>
+    <div style="padding:16px 22px 18px">
+      <div class="row" style="gap:14px;align-items:flex-start;flex-wrap:wrap">
+        <div style="min-width:180px">
+          <span class="fl">Travel buffer</span>
+          <select class="in" id="travelBufferSelect" style="width:180px" aria-label="Travel buffer">
+            @foreach([30 => '30 minutes', 60 => '1 hour', 90 => '1.5 hours', 120 => '2 hours', 180 => '3 hours', 240 => '4 hours'] as $mins => $label)
+              <option value="{{ $mins }}" @selected($travelBufferMinutes === $mins)>{{ $label }}</option>
+            @endforeach
+          </select>
               </div>
-              <div class="radio-dot"></div>
+        <div class="faint" style="flex:1;min-width:240px;font-size:13px;line-height:1.55;margin-top:4px">
+          Used on days set to <b>All studios</b>. If a client books 10:00 to 13:00 at one studio, clients booking at another that day only see times from <b id="travelBufferExample">{{ sprintf('%02d:00', 13 + intdiv(max(30, $travelBufferMinutes), 60)) }}{{ max(30, $travelBufferMinutes) % 60 === 30 ? ':30' : '' }}</b>. Bookings at the same studio keep your normal buffer time from Booking rules.
             </div>
-            <p class="text-xs text-on-surface-variant ml-[52px]">Only accepting bookings for your available designs</p>
           </div>
-
-          <!-- Open (Custom Only) -->
-          <div role="radio" tabindex="0" aria-checked="false" class="radio-card" data-status="custom_only" onclick="selectStatus(this, 'custom_only')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectStatus(this,'custom_only');}">
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center">
-                  <span class="material-symbols-outlined text-primary">edit_note</span>
                 </div>
+  </div>
+  @endif
+
+  <div class="grid av-grid" style="grid-template-columns:1fr 1fr;margin-top:26px;align-items:start;gap:16px">
+    <div class="card">
+      <div class="ch">
                 <div>
-                  <span class="text-sm font-bold text-on-surface">Open (Custom Only)</span>
-                  <div class="status-active flex items-center gap-1.5 mt-0.5" style="display:none;">
-                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                    <span class="text-xs text-green-600 font-medium">Active</span>
+          <h3>Working hours</h3>
+          <div class="faint" style="font-size:12.5px;margin-top:2px">Your regular weekly availability · {{ $tzLabel }}</div>
                   </div>
                 </div>
+      <div style="padding:4px 22px 16px">
+        @if($multiStudio)
+          <div class="twonote">
+            <span class="ms">storefront</span>
+            <span>You have {{ count($scheduleStudios) }} active studios. Pick where you work each day, and clients only see times at that studio. Pick <b>All studios</b> to take bookings at both, with your travel buffer between them.</span>
               </div>
-              <div class="radio-dot"></div>
+        @endif
+        <div id="workingHoursContainer"></div>
             </div>
-            <p class="text-xs text-on-surface-variant ml-[52px]">Only accepting custom tattoo requests</p>
+      <p id="workingHoursError" class="text-error hidden" style="padding:0 22px 16px" role="alert"></p>
           </div>
 
-          <!-- Books Closed -->
-          <div role="radio" tabindex="0" aria-checked="false" class="radio-card" data-status="closed" onclick="selectStatus(this, 'closed')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectStatus(this,'closed');}">
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center">
-                  <span class="material-symbols-outlined text-primary">block</span>
-                </div>
+    <div class="card">
+      <div class="ch">
                 <div>
-                  <span class="text-sm font-bold text-on-surface">Books Closed</span>
-                  <div class="status-active flex items-center gap-1.5 mt-0.5" style="display:none;">
-                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                    <span class="text-xs text-green-600 font-medium">Active</span>
+          <h3>{{ $multiStudio ? 'Blocked dates & locations' : 'Blocked dates' }}</h3>
+          <div class="faint" style="font-size:12.5px;margin-top:2px">
+            {{ $multiStudio
+              ? "Days you're not available, or at a different studio than usual."
+              : "Days you're not available. To unblock, remove the entry below." }}
+          </div>
+          </div>
                   </div>
+      <div style="padding:16px 22px">
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <button type="button" class="bdnav" id="bdprev" aria-label="Previous month"><span class="ms">chevron_left</span></button>
+          <b id="bdmonth"></b>
+          <button type="button" class="bdnav" id="bdnext" aria-label="Next month"><span class="ms">chevron_right</span></button>
                 </div>
+        <div class="bdgrid" id="bdgrid"></div>
+        <div class="row" style="gap:16px;margin-top:12px;font-size:12px;flex-wrap:wrap;color:var(--muted)">
+          <span class="row" style="gap:6px"><i class="lg lg-b"></i>Blocked</span>
+          <span class="row" style="gap:6px"><i class="lg lg-t"></i>Today</span>
+          @if($multiStudio)
+            @foreach($scheduleStudios as $si => $st)
+              <span class="row" style="gap:6px"><i class="dot" style="background:{{ $studioDotColors[$si % count($studioDotColors)] }}"></i>{{ $st['name'] }}</span>
+            @endforeach
+          @endif
               </div>
-              <div class="radio-dot"></div>
+        <div class="row" style="gap:8px;margin-top:14px;flex-wrap:wrap">
+          <button type="button" class="btn sm ghost" id="bdone"><span class="ms" style="font-size:16px">event_busy</span>Block a date</button>
+          <button type="button" class="btn sm ghost" id="bdrange"><span class="ms" style="font-size:16px">date_range</span>Block a range</button>
+          @if($multiStudio)
+            <button type="button" class="btn sm ghost" id="bdloc"><span class="ms" style="font-size:16px">storefront</span>Set location for a date</button>
+          @endif
             </div>
-            <p class="text-xs text-on-surface-variant ml-[52px]">Not accepting any new bookings</p>
-          </div>
-
-          </div>
-
-          <p id="bookingStatusError" class="hidden text-sm font-medium text-error" role="alert"></p>
-
-          <div class="mt-6 flex justify-end">
-            <button type="submit" id="saveBookingStatusBtn" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none">
-              <span id="saveBookingStatusBtnIcon" class="material-symbols-outlined text-lg transition-opacity" aria-hidden="true">save</span>
-              <span id="saveBookingStatusBtnLabel">Save Status</span>
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <!-- Tab: Blocked Dates -->
-      <section id="availability-panel-blocked" class="availability-tab-content">
-        <h3 class="text-lg font-bold text-on-surface mb-1">Blocked Dates</h3>
-        <p class="text-on-surface-variant text-sm mb-1">Block off dates when you're not available</p>
-        <p class="text-on-surface-variant text-xs mb-3 max-w-xl">To block a day or range, use <strong class="text-on-surface font-semibold">Block a date</strong> or <strong class="text-on-surface font-semibold">Block a range</strong> below. To unblock, remove the entry from <strong class="text-on-surface font-semibold">Currently Blocked</strong>. The calendar is for reference only.</p>
-        <div class="h-px bg-outline-variant/30 mb-5"></div>
-
-        <div class="bg-surface-container-low rounded-2xl p-6 mb-6">
-          <!-- Mini Calendar (read-only; blocks managed via modals + list) -->
-          <div class="max-w-sm mx-auto">
-            <div class="flex items-center justify-between mb-5 gap-2">
-              <button type="button" onclick="changeMonth(-1)" class="p-1.5 rounded-lg hover:bg-surface-container transition-colors shrink-0" aria-label="Previous month"><span class="material-symbols-outlined text-on-surface-variant">chevron_left</span></button>
-              <div class="flex-1 flex justify-center min-w-0 relative">
-                <button type="button" id="calMonthBtn" onclick="toggleMonthYearPicker(event)" class="font-bold text-base text-on-surface max-w-full truncate inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg hover:bg-surface-container transition-colors text-center" aria-expanded="false" aria-haspopup="dialog" aria-controls="monthYearPicker">
-                  <span id="calMonth"></span>
-                  <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0" aria-hidden="true">expand_more</span>
-                </button>
-                <div id="monthYearPicker" class="hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 w-[min(calc(100vw-2rem),17rem)] rounded-xl border border-outline-variant/30 bg-white p-4" role="dialog" aria-modal="true" aria-labelledby="monthYearPickerTitle" onclick="event.stopPropagation()">
-                  <p id="monthYearPickerTitle" class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-3">Go to month</p>
-                  <div class="flex gap-2 mb-3">
-                    <label class="sr-only" for="calMonthSelect">Month</label>
-                    <select id="calMonthSelect" class="flex-1 min-w-0 text-sm border border-outline-variant/40 rounded-lg px-2 py-2 bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"></select>
-                    <label class="sr-only" for="calYearSelect">Year</label>
-                    <select id="calYearSelect" class="w-[5.25rem] shrink-0 text-sm border border-outline-variant/40 rounded-lg px-2 py-2 bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"></select>
-                  </div>
-                  <button type="button" onclick="applyMonthYear()" class="w-full py-2.5 rounded-lg bg-primary text-on-primary text-sm font-bold hover:opacity-90 transition-opacity">Go</button>
-                </div>
-              </div>
-              <button type="button" onclick="changeMonth(1)" class="p-1.5 rounded-lg hover:bg-surface-container transition-colors shrink-0" aria-label="Next month"><span class="material-symbols-outlined text-on-surface-variant">chevron_right</span></button>
+        <div class="lbl" style="margin:18px 0 6px">{{ $multiStudio ? 'Blocked and location changes' : 'Currently blocked' }}</div>
+        <p id="blockedDatesError" class="text-error hidden" role="alert"></p>
+        <div id="bdlist"></div>
             </div>
-            <div class="grid grid-cols-7 gap-1 text-center mb-2">
-              <div class="text-xs font-semibold text-on-surface-variant py-1">Mon</div>
-              <div class="text-xs font-semibold text-on-surface-variant py-1">Tue</div>
-              <div class="text-xs font-semibold text-on-surface-variant py-1">Wed</div>
-              <div class="text-xs font-semibold text-on-surface-variant py-1">Thu</div>
-              <div class="text-xs font-semibold text-on-surface-variant py-1">Fri</div>
-              <div class="text-xs font-semibold text-on-surface-variant py-1">Sat</div>
-              <div class="text-xs font-semibold text-on-surface-variant py-1">Sun</div>
-            </div>
-            <div class="grid grid-cols-7 gap-1 justify-items-center" id="calGrid" aria-label="Calendar preview. Add blocks with Block a date or Block a range; remove them from Currently Blocked."></div>
-          </div>
-
-          <!-- Block date / range actions -->
-          <div class="mt-6 pt-4 border-t border-outline-variant/20 flex flex-col sm:flex-row flex-wrap gap-3">
-            <button type="button" onclick="openBlockDateModal()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-primary/30 bg-white text-primary text-sm font-bold hover:bg-primary/5 transition-colors">
-              <span class="material-symbols-outlined text-[20px]">event_busy</span> Block a date
-            </button>
-            <button type="button" onclick="openBlockRangeModal()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-primary/30 bg-white text-primary text-sm font-bold hover:bg-primary/5 transition-colors">
-              <span class="material-symbols-outlined text-[20px]">date_range</span> Block a range
-            </button>
           </div>
         </div>
 
-        <!-- Blocked Dates List -->
-        <div class="bg-white rounded-2xl border border-outline-variant/20 p-5">
-          <h4 class="text-sm font-bold text-on-surface mb-4">Currently Blocked</h4>
-          <p id="blockedDatesError" class="hidden mb-3 text-sm font-medium text-error" role="alert"></p>
-          <div class="space-y-3" id="blockedList"></div>
-          <div id="blockedListPagination" class="hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 mt-4 border-t border-outline-variant/15"></div>
-        </div>
-      </section>
-
-      <!-- Tab: Working Hours -->
-      <section id="availability-panel-hours" class="availability-tab-content">
-        <h3 class="text-lg font-bold text-on-surface mb-1">Working Hours</h3>
-        <p class="text-on-surface-variant text-sm mb-1">Set your regular weekly availability</p>
-        <div class="h-px bg-outline-variant/30 mb-5"></div>
-
-        <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 p-6">
-          <div id="workingHoursContainer"></div>
-          <p class="text-xs text-on-surface-variant mt-5 pt-4 border-t border-outline-variant/10">These are your regular weekly hours. Use Blocked Dates to mark specific days off.</p>
-        </div>
-        <p id="workingHoursError" class="hidden mt-4 text-sm font-medium text-error" role="alert"></p>
-        <div class="mt-6 flex justify-end">
-          <button type="button" id="saveWorkingHoursBtn" onclick="saveWorkingHours()" class="inline-flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none">
-            <span id="saveWorkingHoursBtnIcon" class="material-symbols-outlined text-lg transition-opacity" aria-hidden="true">save</span>
-            <span id="saveWorkingHoursBtnLabel">Save working hours</span>
+  <div class="row pgsaverow" id="pgSaveRow">
+    <button type="button" class="btn pgsave" id="saveWorkingHoursBtn" disabled aria-disabled="true">
+      <span class="ms" id="saveWorkingHoursBtnIcon">save</span>
+      <span id="saveWorkingHoursBtnLabel">Save changes</span>
           </button>
         </div>
-      </section>
 
+  <div class="bdov" id="blockModal" aria-hidden="true">
+    <div class="bdm" role="dialog" aria-modal="true" aria-labelledby="blockModalTitle" onclick="event.stopPropagation()">
+      <div class="bt">
+        <h2 id="blockModalTitle">Block a date</h2>
+        <button type="button" class="bdnav" id="blockModalClose" aria-label="Close"><span class="ms">close</span></button>
     </div>
-  </div>
-</main>
-
-<!-- Block a date modal -->
-<div id="blockDateModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 block-modal-backdrop" onclick="closeBlockDateModal()">
-  <div class="block-modal-panel w-full max-w-md rounded-2xl bg-surface-container-lowest border border-outline-variant/25 shadow-2xl shadow-primary/10 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="blockDateModalTitle" onclick="event.stopPropagation()">
-    <div class="px-5 py-4 border-b border-outline-variant/20 flex items-center justify-between gap-3 bg-white/80">
-      <h3 id="blockDateModalTitle" class="text-lg font-bold text-on-surface">Block a date</h3>
-      <button type="button" onclick="closeBlockDateModal()" class="p-2 rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant" aria-label="Close">
-        <span class="material-symbols-outlined text-[22px]">close</span>
-      </button>
-    </div>
-    <div class="p-5 space-y-4 bg-surface-container-lowest">
+      <div class="bb">
+        <div id="blockModalFields"></div>
       <div>
-        <label for="blockDateInput" class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Date</label>
-        <input type="date" id="blockDateInput" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <span class="fl">Reason <span class="faint" style="font-weight:500">(optional)</span></span>
+          <textarea class="in" id="blockReason" placeholder="e.g. Personal day, appointment"></textarea>
       </div>
-      <div>
-        <label for="blockDateReason" class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Reason <span class="font-normal text-on-surface-variant/70">(optional)</span></label>
-        <textarea id="blockDateReason" rows="3" placeholder="e.g., Personal day, Appointment…" class="block-reason-field w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"></textarea>
+        <div class="err hidden" id="blockModalError"></div>
       </div>
-      <p id="blockDateModalError" class="hidden text-sm font-medium text-error" role="alert"></p>
-      <div class="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-1">
-        <button type="button" onclick="closeBlockDateModal()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface font-semibold text-sm hover:bg-white transition-colors">Cancel</button>
-        <button type="button" onclick="submitBlockDate()" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity">
-          <span class="material-symbols-outlined text-[18px]">event_busy</span>
-          <span id="blockDateSubmitLabel">Block date</span>
-        </button>
-      </div>
+      <div class="bf">
+        <button type="button" class="btn ghost" id="blockModalCancel">Cancel</button>
+        <button type="button" class="btn" id="blockModalSave"><span class="ms">event_busy</span><span id="blockModalSaveLabel">Block date</span></button>
     </div>
   </div>
 </div>
 
-<!-- Block a range modal -->
-<div id="blockRangeModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 block-modal-backdrop" onclick="closeBlockRangeModal()">
-  <div class="block-modal-panel w-full max-w-md rounded-2xl bg-surface-container-lowest border border-outline-variant/25 shadow-2xl shadow-primary/10 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="blockRangeModalTitle" onclick="event.stopPropagation()">
-    <div class="px-5 py-4 border-b border-outline-variant/20 flex items-center justify-between gap-3 bg-white/80">
-      <h3 id="blockRangeModalTitle" class="text-lg font-bold text-on-surface">Block a range</h3>
-      <button type="button" onclick="closeBlockRangeModal()" class="p-2 rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant" aria-label="Close">
-        <span class="material-symbols-outlined text-[22px]">close</span>
-      </button>
+  <div class="bdov" id="blockDeleteModal" aria-hidden="true">
+    <div class="bdm" role="dialog" aria-modal="true" aria-labelledby="blockDeleteTitle" onclick="event.stopPropagation()">
+      <div class="bt">
+        <h2 id="blockDeleteTitle">Remove blocked dates?</h2>
+        <button type="button" class="bdnav" id="blockDeleteClose" aria-label="Close"><span class="ms">close</span></button>
     </div>
-    <div class="p-5 space-y-4 bg-surface-container-lowest">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="bb">
+        <p style="margin:0;font-size:14px;line-height:1.55;color:var(--ink)">
+          <span id="blockDeleteLead">Remove this blocked period?</span>
+          <span id="blockDeleteRange" style="display:block;margin-top:8px;font-weight:700"></span>
+        </p>
+        <div class="err hidden" id="blockDeleteError"></div>
+        </div>
+      <div class="bf">
+        <button type="button" class="btn ghost" id="blockDeleteCancel">Cancel</button>
+        <button type="button" class="btn danger" id="blockDeleteConfirm"><span class="ms">delete</span>Remove</button>
+    </div>
+  </div>
+</div>
+
+  @if($multiStudio)
+  <div class="bdov" id="locationModal" aria-hidden="true">
+    <div class="bdm" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle" onclick="event.stopPropagation()">
+      <div class="bt">
+        <h2 id="locationModalTitle">Set location for a date</h2>
+        <button type="button" class="bdnav" id="locationModalClose" aria-label="Close"><span class="ms">close</span></button>
+        </div>
+      <div class="bb">
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+          <div><span class="fl">From</span><input class="in" type="date" id="locFrom"></div>
+          <div><span class="fl">To</span><input class="in" type="date" id="locTo"></div>
+        </div>
         <div>
-          <label for="blockRangeFrom" class="text-xs font-semibold text-on-surface-variant mb-1.5 block">From</label>
-          <input type="date" id="blockRangeFrom" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-        </div>
-        <div>
-          <label for="blockRangeTo" class="text-xs font-semibold text-on-surface-variant mb-1.5 block">To</label>
-          <input type="date" id="blockRangeTo" class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-        </div>
+          <span class="fl">Where will you work?</span>
+          <div class="loc-multi" id="locStudioList" role="group" aria-label="Where will you work">
+            @foreach($scheduleStudios as $st)
+              <label class="loc-opt">
+                <input type="checkbox" class="loc-studio-cb" value="{{ $st['id'] }}">
+                <span>{{ $st['name'] }}</span>
+              </label>
+            @endforeach
+            <label class="loc-opt">
+              <input type="checkbox" id="locStudioAll" value="all">
+              <span>All studios</span>
+            </label>
       </div>
+          <div class="help" style="margin-top:6px">Replaces your usual studio for these days. Clients only see times at the selected studio(s).</div>
+    </div>
       <div>
-        <label for="blockRangeReason" class="text-xs font-semibold text-on-surface-variant mb-1.5 block">Reason <span class="font-normal text-on-surface-variant/70">(optional)</span></label>
-        <textarea id="blockRangeReason" rows="3" placeholder="e.g., Vacation, convention, travel…" class="block-reason-field w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"></textarea>
+          <span class="fl">Note <span class="faint" style="font-weight:500">(optional)</span></span>
+          <input class="in" id="locReason" placeholder="e.g. Covering for another artist" style="width:100%">
       </div>
-      <p id="blockRangeModalError" class="hidden text-sm font-medium text-error" role="alert"></p>
-      <div class="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-1">
-        <button type="button" onclick="closeBlockRangeModal()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface font-semibold text-sm hover:bg-white transition-colors">Cancel</button>
-        <button type="button" onclick="submitBlockRange()" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity">
-          <span class="material-symbols-outlined text-[18px]">date_range</span>
-          <span id="blockRangeSubmitLabel">Block range</span>
-        </button>
+        <div class="err hidden" id="locationModalError"></div>
       </div>
+      <div class="bf">
+        <button type="button" class="btn ghost" id="locationModalCancel">Cancel</button>
+        <button type="button" class="btn" id="locationModalSave"><span class="ms">storefront</span><span id="locationModalSaveLabel">Set location</span></button>
     </div>
   </div>
 </div>
+  @endif
 
-<!-- Confirm remove blocked entry -->
-<div id="removeBlockedConfirmModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 block-modal-backdrop" onclick="closeRemoveBlockedConfirm()" role="presentation">
-  <div class="block-modal-panel w-full max-w-md rounded-2xl bg-surface-container-lowest border border-outline-variant/25 shadow-2xl shadow-primary/10 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="removeBlockedConfirmTitle" onclick="event.stopPropagation()">
-    <div class="px-5 py-4 border-b border-outline-variant/20 bg-white/80">
-      <div class="flex items-start gap-3">
-        <div class="w-11 h-11 shrink-0 rounded-full bg-error-container/60 flex items-center justify-center">
-          <span class="material-symbols-outlined text-error text-[26px]" aria-hidden="true">event_busy</span>
-        </div>
-        <div class="min-w-0 pt-0.5">
-          <h3 id="removeBlockedConfirmTitle" class="text-lg font-bold text-on-surface leading-snug">Remove blocked dates?</h3>
-          <p class="text-sm text-on-surface-variant mt-1">This period will be available for booking again. You can block it later if needed.</p>
-        </div>
-      </div>
-    </div>
-    <div class="p-5 space-y-4 bg-surface-container-lowest">
-      <div>
-        <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">You are about to remove</p>
-        <div id="removeBlockedConfirmDetail" class="rounded-xl border border-outline-variant/30 bg-white px-4 py-3 text-sm font-semibold text-on-surface"></div>
-        <p id="removeBlockedConfirmReasonLine" class="hidden mt-2 text-xs text-on-surface-variant"></p>
-      </div>
-      <div class="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-1">
-        <button type="button" onclick="closeRemoveBlockedConfirm()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface font-semibold text-sm hover:bg-white transition-colors">Cancel</button>
-        <button type="button" onclick="confirmRemoveBlocked()" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-error text-on-error font-bold text-sm hover:opacity-90 transition-opacity">
-          <span class="material-symbols-outlined text-[18px]">delete</span>
-          Remove block
-        </button>
-      </div>
-    </div>
-  </div>
+  @include('components.waitlist-notify-modal')
 </div>
+@endsection
 
+@section('scripts')
+<script src="{{ asset('js/waitlist-notify.js') }}?v=6"></script>
 <script>
-  // ── Availability tabs ──
-  function switchAvailabilityTab(tab) {
-    var valid = ['status', 'blocked', 'hours'];
-    if (valid.indexOf(tab) === -1) tab = 'status';
-
-    document.querySelectorAll('.availability-tab-content').forEach(function(el) {
-      el.classList.remove('active');
-    });
-    document.querySelectorAll('.availability-tab-btn').forEach(function(btn) {
-      btn.classList.remove('bg-primary', 'text-on-primary');
-      btn.classList.add('text-on-surface-variant', 'hover:bg-surface-container-low', 'hover:text-on-surface');
-    });
-
-    var panel = document.getElementById('availability-panel-' + tab);
-    var tabBtn = document.getElementById('availability-tab-' + tab);
-    if (panel) panel.classList.add('active');
-    if (tabBtn) {
-      tabBtn.classList.add('bg-primary', 'text-on-primary');
-      tabBtn.classList.remove('text-on-surface-variant', 'hover:bg-surface-container-low', 'hover:text-on-surface');
-    }
-
-    if (tab === 'blocked' && typeof renderCalendar === 'function') {
-      renderCalendar();
-    }
-  }
-
-  function restoreAvailabilityTab() {
-    var tab = 'status';
-    try {
-      var params = new URLSearchParams(window.location.search);
-      if (params.get('tab') === 'blocked' || params.get('tab') === 'hours' || params.get('tab') === 'status') {
-        tab = params.get('tab');
-      }
-    } catch (e) {}
-    switchAvailabilityTab(tab);
-  }
-
-  document.addEventListener('DOMContentLoaded', function () {
-    restoreAvailabilityTab();
-
-    document.querySelectorAll('.availability-tab-btn').forEach(function(btn) {
-      btn.addEventListener('click', function () {
-        var tab = btn.getAttribute('data-availability-tab');
-        if (tab) switchAvailabilityTab(tab);
-      });
-    });
-
-    var goHoursBtn = document.getElementById('availabilityPageGoToHoursBtn');
-    if (goHoursBtn) {
-      goHoursBtn.addEventListener('click', function () {
-        switchAvailabilityTab('hours');
-      });
-    }
-  });
-
-  // ── Booking Status (saved value from DB; "Active" badge only after a successful save) ──
-  var savedBookingStatus = @json($savedAvailabilityStatus ?? null);
-
-  function updateBookingStatusActiveBadges() {
-    document.querySelectorAll('#statusCards .radio-card').forEach(function(card) {
-      var badge = card.querySelector('.status-active');
-      var st = card.getAttribute('data-status');
-      var show = savedBookingStatus && st === savedBookingStatus;
-      if (badge) badge.style.display = show ? 'flex' : 'none';
-    });
-  }
-
-  function syncBookingStatusAriaChecked() {
-    document.querySelectorAll('#statusCards .radio-card').forEach(function(card) {
-      card.setAttribute('aria-checked', card.classList.contains('selected') ? 'true' : 'false');
-    });
-  }
-
-  function selectStatus(el, dbValue) {
-    document.querySelectorAll('#statusCards .radio-card').forEach(function(c) {
-      c.classList.remove('selected');
-    });
-    el.classList.add('selected');
-    var hidden = document.getElementById('availability_status');
-    if (hidden) hidden.value = dbValue;
-    syncBookingStatusAriaChecked();
-    updateBookingStatusActiveBadges();
-    var err = document.getElementById('bookingStatusError');
-    if (err) { err.classList.add('hidden'); err.textContent = ''; }
-  }
-
-  function applySavedBookingStatusSelection() {
-    var hidden = document.getElementById('availability_status');
-    var val = hidden ? hidden.value : '';
-    document.querySelectorAll('#statusCards .radio-card').forEach(function(card) {
-      card.classList.remove('selected');
-    });
-    if (!val) {
-      syncBookingStatusAriaChecked();
-      updateBookingStatusActiveBadges();
-      return;
-    }
-    document.querySelectorAll('#statusCards .radio-card').forEach(function(card) {
-      if (card.getAttribute('data-status') === val) {
-        card.classList.add('selected');
-      }
-    });
-    syncBookingStatusAriaChecked();
-    updateBookingStatusActiveBadges();
-  }
-
-  (function initBookingStatusForm() {
-    applySavedBookingStatusSelection();
-
-    var form = document.getElementById('bookingStatusForm');
-    if (!form) return;
-
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      var errEl = document.getElementById('bookingStatusError');
-      var btn = document.getElementById('saveBookingStatusBtn');
-      var hidden = document.getElementById('availability_status');
-      var val = hidden ? String(hidden.value || '').trim() : '';
-
-      if (errEl) {
-        errEl.classList.add('hidden');
-        errEl.textContent = '';
-      }
-
-      if (!val) {
-        if (errEl) {
-          errEl.textContent = 'Please select a booking status before saving.';
-          errEl.classList.remove('hidden');
-        }
-        return;
-      }
-
-      var fd = new FormData(form);
-      var btnIcon = document.getElementById('saveBookingStatusBtnIcon');
-      var btnLabel = document.getElementById('saveBookingStatusBtnLabel');
-      if (btn) {
-        btn.disabled = true;
-        btn.setAttribute('aria-busy', 'true');
-        if (btnIcon) {
-          btnIcon.textContent = 'hourglass_empty';
-          btnIcon.classList.add('is-loading');
-        }
-        if (btnLabel) btnLabel.textContent = 'Saving...';
-      }
-
-      fetch(form.action, {
-        method: 'POST',
-        body: fd,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Accept': 'application/json'
-        },
-        credentials: 'same-origin'
-      })
-        .then(function(res) {
-          return res.json().then(function(data) {
-            return { ok: res.ok, status: res.status, data: data };
-          });
-        })
-        .then(function(result) {
-          if (result.ok && result.data && result.data.success) {
-            savedBookingStatus = result.data.availability_status || val;
-            applySavedBookingStatusSelection();
-            if (typeof showSaveToast === 'function') showSaveToast();
-            return;
-          }
-          var msg = (result.data && result.data.message) ? result.data.message : 'Could not save booking status.';
-          if (result.data && result.data.errors && result.data.errors.availability_status) {
-            msg = result.data.errors.availability_status[0];
-          }
-          if (errEl) {
-            errEl.textContent = msg;
-            errEl.classList.remove('hidden');
-          }
-        })
-        .catch(function() {
-          if (errEl) {
-            errEl.textContent = 'Network error. Please try again.';
-            errEl.classList.remove('hidden');
-          }
-        })
-        .finally(function() {
-          if (btn) {
-            btn.disabled = false;
-            btn.removeAttribute('aria-busy');
-          }
-          var iconEl = document.getElementById('saveBookingStatusBtnIcon');
-          var labelEl = document.getElementById('saveBookingStatusBtnLabel');
-          if (iconEl) {
-            iconEl.textContent = 'save';
-            iconEl.classList.remove('is-loading');
-          }
-          if (labelEl) labelEl.textContent = 'Save Status';
-        });
-    });
-  })();
-
-  // ── Blocked Dates (availability_overrides: start_date, end_date, reason) ──
+(function () {
+  var csrf = @json(csrf_token());
+  var statusUrl = @json(route('availability.booking-status'));
+  var hoursUrl = @json(route('availability.store'));
+  var blockStoreUrl = @json(route('availability.override.store'));
+  var blockDestroyTpl = @json(route('availability.override.destroy', ['id' => '__ID__']));
+  var savedStatus = @json($savedStatus);
   var blockedPeriods = @json($blockedPeriods ?? []);
+  var workingHoursData = @json($workingHoursInitial ?? []);
+  var todayIso = @json(now()->format('Y-m-d'));
+  var multiStudio = @json($multiStudio);
+  var scheduleStudios = @json($scheduleStudios);
+  var studioDotColors = @json($studioDotColors);
+  var travelBufferMinutes = @json($travelBufferMinutes);
+  var allStudioIds = scheduleStudios.map(function (s) { return Number(s.id); });
 
-  var BLOCK_CSRF = '{{ csrf_token() }}';
-  var BLOCK_STORE_URL = '{{ route('availability.override.store') }}';
-  function blockDestroyUrl(id) {
-    return '{{ route('availability.override.destroy', ['id' => '__BLOCK_ID__']) }}'.replace('__BLOCK_ID__', encodeURIComponent(String(id)));
-  }
-
+  var MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var view = new Date();
+  view = new Date(view.getFullYear(), view.getMonth(), 1);
   var editingBlockId = null;
+  var editingLocationId = null;
+  var pendingDeleteIndex = null;
+  var blockMode = 'date'; // date | range
+  var toastTimer = null;
+  var hoursDirty = false;
+  var selectedStatus = savedStatus || '';
 
-  function clearBlockDateModalError() {
-    var el = document.getElementById('blockDateModalError');
-    if (el) {
-      el.textContent = '';
-      el.classList.add('hidden');
+  function studioNameById(id) {
+    for (var i = 0; i < scheduleStudios.length; i++) {
+      if (Number(scheduleStudios[i].id) === Number(id)) return scheduleStudios[i].name;
+    }
+    return 'Studio';
+  }
+
+  function studioIdsLabel(ids) {
+    ids = Array.isArray(ids) ? ids.map(Number) : [];
+    if (!ids.length) return '';
+    if (isAllStudios(ids)) return 'All studios';
+    return ids.map(studioNameById).filter(Boolean).join(', ');
+  }
+
+  function isAllStudios(ids) {
+    ids = Array.isArray(ids) ? ids.map(Number) : [];
+    return allStudioIds.length > 0 && ids.length === allStudioIds.length && allStudioIds.every(function (id) { return ids.indexOf(id) !== -1; });
+  }
+
+  function studioDotColorsForIds(ids) {
+    ids = Array.isArray(ids) ? ids.map(Number) : [];
+    if (!ids.length) return [];
+    var list = isAllStudios(ids) ? allStudioIds.slice() : ids;
+    return list.map(function (id) {
+      var idx = allStudioIds.indexOf(Number(id));
+      if (idx < 0) idx = 0;
+      return studioDotColors[idx % studioDotColors.length];
+    });
+  }
+
+  function studioDotsHtml(ids) {
+    var colors = studioDotColorsForIds(ids);
+    if (!colors.length) return '';
+    return '<span class="dots">' + colors.map(function (c) {
+      return '<i class="dot" style="background:' + c + '"></i>';
+    }).join('') + '</span>';
+  }
+
+  function normalizeSelectedStudioIds(ids) {
+    ids = Array.isArray(ids) ? ids.map(Number).filter(function (id) { return allStudioIds.indexOf(id) !== -1; }) : [];
+    if (!ids.length && allStudioIds.length) return [allStudioIds[0]];
+    return ids;
+  }
+
+  function readLocationIdsFromContainer(root) {
+    if (!root) return allStudioIds.length ? [allStudioIds[0]] : [];
+    var allCb = root.querySelector('#locStudioAll, .whloc-all');
+    if (allCb && allCb.checked) return allStudioIds.slice();
+    var ids = [];
+    root.querySelectorAll('.whloc-cb, .loc-studio-cb').forEach(function (cb) {
+      if (cb.checked) ids.push(Number(cb.value));
+    });
+    return normalizeSelectedStudioIds(ids);
+  }
+
+  function setLocationCheckboxes(root, ids) {
+    if (!root) return;
+    ids = normalizeSelectedStudioIds(ids);
+    var allOn = isAllStudios(ids);
+    var allCb = root.querySelector('#locStudioAll, .whloc-all');
+    if (allCb) allCb.checked = allOn;
+    root.querySelectorAll('.whloc-cb, .loc-studio-cb').forEach(function (cb) {
+      cb.checked = allOn || ids.indexOf(Number(cb.value)) !== -1;
+    });
+  }
+
+  function locationSelectHtml(day, idx) {
+    if (!multiStudio || !scheduleStudios.length) return '';
+    var ids = normalizeSelectedStudioIds(day.studio_ids);
+    var allOn = isAllStudios(ids);
+    var checks = scheduleStudios.map(function (s) {
+      var on = allOn || ids.indexOf(Number(s.id)) !== -1;
+      return '<label class="whloc-opt"><input type="checkbox" class="whloc-cb" value="' + Number(s.id) + '"' + (on ? ' checked' : '') + '> ' + escapeHtml(s.name) + '</label>';
+    }).join('') +
+      '<label class="whloc-opt"><input type="checkbox" class="whloc-all" value="all"' + (allOn ? ' checked' : '') + '> All studios</label>';
+    return '<span class="whlocw"><span class="ms" style="font-size:16px">storefront</span>' +
+      '<div class="whloc-multi" data-loc-idx="' + idx + '" role="group" aria-label="Where on ' + escapeHtml(day.day) + '">' + checks + '</div></span>';
+  }
+
+  function syncTravelBufferExample() {
+    var el = document.getElementById('travelBufferExample');
+    var sel = document.getElementById('travelBufferSelect');
+    if (!el || !sel) return;
+    var mins = parseInt(sel.value, 10) || 120;
+    travelBufferMinutes = mins;
+    var end = 13 * 60 + mins;
+    var h = Math.floor(end / 60);
+    var m = end % 60;
+    el.textContent = ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+  }
+  var pendingNav = null;
+
+  function statusDirty() {
+    return String(selectedStatus || '') !== String(savedStatus || '');
+  }
+
+  function isPageDirty() {
+    return hoursDirty || statusDirty();
+  }
+
+  function refreshSaveBtn() {
+    var dirty = isPageDirty();
+    var btn = document.getElementById('saveWorkingHoursBtn');
+    if (!btn) return;
+    btn.classList.toggle('is-dirty', dirty);
+    btn.disabled = !dirty;
+    btn.setAttribute('aria-disabled', dirty ? 'false' : 'true');
+    btn.style.opacity = dirty ? '1' : '.4';
+    btn.style.pointerEvents = dirty ? 'auto' : 'none';
+  }
+
+  function setHoursDirty(v) {
+    hoursDirty = !!v;
+    refreshSaveBtn();
+  }
+
+  function scanDateTime(root) {
+    if (typeof window.bpDtScan === 'function') {
+      window.bpDtScan(root || document);
     }
   }
 
-  function clearBlockRangeModalError() {
-    var el = document.getElementById('blockRangeModalError');
-    if (el) {
-      el.textContent = '';
-      el.classList.add('hidden');
-    }
-  }
-
-  function clearBlockedDatesSectionError() {
-    var el = document.getElementById('blockedDatesError');
-    if (el) {
-      el.textContent = '';
-      el.classList.add('hidden');
-    }
-  }
-
-  function showBlockDateModalError(msg) {
-    clearBlockDateModalError();
-    var el = document.getElementById('blockDateModalError');
-    if (el) {
-      el.textContent = msg;
-      el.classList.remove('hidden');
-    }
-  }
-
-  function showBlockRangeModalError(msg) {
-    clearBlockRangeModalError();
-    var el = document.getElementById('blockRangeModalError');
-    if (el) {
-      el.textContent = msg;
-      el.classList.remove('hidden');
-    }
-  }
-
-  function showBlockedDatesSectionError(msg) {
-    clearBlockedDatesSectionError();
-    var el = document.getElementById('blockedDatesError');
-    if (el) {
-      el.textContent = msg;
-      el.classList.remove('hidden');
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }
-
-  /** API/network errors: show in the open block modal if any, else under Currently Blocked */
-  function showBlockedDatesApiError(msg) {
-    var dateM = document.getElementById('blockDateModal');
-    var rangeM = document.getElementById('blockRangeModal');
-    if (dateM && !dateM.classList.contains('hidden')) {
-      showBlockDateModalError(msg);
-      return;
-    }
-    if (rangeM && !rangeM.classList.contains('hidden')) {
-      showBlockRangeModalError(msg);
-      return;
-    }
-    showBlockedDatesSectionError(msg);
-  }
-
-  const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-  function toInputDate(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return y + '-' + m + '-' + day;
-  }
-
-  function fromInputDate(str) {
-    const p = str.split('-');
-    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+  function showToast(msg) {
+    var el = document.getElementById('avToast');
+    var text = document.getElementById('avToastText');
+    if (!el || !text) return;
+    text.textContent = msg || 'Saved';
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2800);
   }
 
   function escapeHtml(s) {
-    const div = document.createElement('div');
-    div.textContent = s;
-    return div.innerHTML;
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
   }
 
-  function formatBlockedRangeLabel(start, end) {
-    var sm = CAL_MONTHS[start.getMonth()];
-    var sy = start.getFullYear();
-    var sd = start.getDate();
-    if (toInputDate(start) === toInputDate(end)) {
-      return sm + ' ' + sd + ', ' + sy;
-    }
-    var em = CAL_MONTHS[end.getMonth()];
-    var ey = end.getFullYear();
-    var ed = end.getDate();
-    if (start.getMonth() === end.getMonth() && sy === ey) {
-      return sm + ' ' + sd + ' – ' + ed + ', ' + sy;
-    }
-    return sm + ' ' + sd + ', ' + sy + ' – ' + em + ' ' + ed + ', ' + ey;
+  function iso(d) {
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
   }
 
-  const BLOCKED_PAGE_SIZE = 5;
-  let blockedListPage = 1;
-  var pendingRemoveBlockedIndex = null;
-
-  function isSingleDayPeriod(p) {
-    return p.start_date === p.end_date;
+  function parseIso(s) {
+    var p = String(s).split('-');
+    return new Date(+p[0], +p[1] - 1, +p[2]);
   }
 
-  function clampBlockedListPage() {
-    const totalPages = Math.max(1, Math.ceil(blockedPeriods.length / BLOCKED_PAGE_SIZE));
-    if (blockedListPage > totalPages) blockedListPage = totalPages;
-    if (blockedListPage < 1) blockedListPage = 1;
+  function nice(s) {
+    var d = parseIso(s);
+    return MON[d.getMonth()].slice(0, 3) + ' ' + d.getDate() + ', ' + d.getFullYear();
   }
 
-  function resetDateModalUi() {
-    document.getElementById('blockDateModalTitle').textContent = 'Block a date';
-    document.getElementById('blockDateSubmitLabel').textContent = 'Block date';
-  }
-
-  function resetRangeModalUi() {
-    document.getElementById('blockRangeModalTitle').textContent = 'Block a range';
-    document.getElementById('blockRangeSubmitLabel').textContent = 'Block range';
-  }
-
-  function clearBlockDateInputMins() {
-    ['blockDateInput', 'blockRangeFrom', 'blockRangeTo'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) el.removeAttribute('min');
-    });
-  }
-
-  function renderBlockedList() {
-    clampBlockedListPage();
-    const container = document.getElementById('blockedList');
-    if (!container) return;
-    container.innerHTML = '';
-    const n = blockedPeriods.length;
-    const startIdx = (blockedListPage - 1) * BLOCKED_PAGE_SIZE;
-    const endIdx = Math.min(startIdx + BLOCKED_PAGE_SIZE, n);
-    for (var index = startIdx; index < endIdx; index++) {
-      var b = blockedPeriods[index];
-      var row = document.createElement('div');
-      row.className = 'flex items-center justify-between gap-2 p-3 bg-surface-container-low rounded-xl';
-      row.setAttribute('data-block', String(index));
-      var label = formatBlockedRangeLabel(fromInputDate(b.start_date), fromInputDate(b.end_date));
-      var reasonText = (b.reason && String(b.reason).trim()) ? escapeHtml(String(b.reason).trim()) : '';
-      row.innerHTML =
-        '<div class="flex items-center gap-3 min-w-0 flex-1">' +
-          '<div class="w-9 h-9 shrink-0 rounded-lg bg-red-50 flex items-center justify-center">' +
-            '<span class="material-symbols-outlined text-red-500 text-lg">event_busy</span>' +
-          '</div>' +
-          '<div class="min-w-0">' +
-            '<p class="text-sm font-semibold text-on-surface">' + escapeHtml(label) + '</p>' +
-            (reasonText ? '<p class="text-xs text-on-surface-variant mt-0.5">' + reasonText + '</p>' : '') +
-          '</div>' +
-        '</div>' +
-        '<div class="flex items-center gap-0.5 shrink-0">' +
-          '<button type="button" onclick="editBlocked(' + index + ')" class="p-2 rounded-lg hover:bg-primary/10 transition-colors text-primary" title="Edit" aria-label="Edit">' +
-            '<span class="material-symbols-outlined text-lg">edit</span>' +
-          '</button>' +
-          '<button type="button" onclick="openRemoveBlockedConfirm(' + index + ')" class="p-2 rounded-lg hover:bg-error-container transition-colors" title="Remove" aria-label="Remove">' +
-            '<span class="material-symbols-outlined text-error text-lg">delete</span>' +
-          '</button>' +
-        '</div>';
-      container.appendChild(row);
-    }
-    renderBlockedPagination();
-  }
-
-  function renderBlockedPagination() {
-    var wrap = document.getElementById('blockedListPagination');
-    if (!wrap) return;
-    var n = blockedPeriods.length;
-    var totalPages = Math.max(1, Math.ceil(n / BLOCKED_PAGE_SIZE));
-    if (n <= BLOCKED_PAGE_SIZE) {
-      wrap.classList.add('hidden');
-      wrap.innerHTML = '';
-      return;
-    }
-    wrap.classList.remove('hidden');
-    var start = (blockedListPage - 1) * BLOCKED_PAGE_SIZE + 1;
-    var end = Math.min(blockedListPage * BLOCKED_PAGE_SIZE, n);
-    var prevDisabled = blockedListPage <= 1;
-    var nextDisabled = blockedListPage >= totalPages;
-    wrap.innerHTML =
-      '<p class="text-xs text-on-surface-variant">Showing ' + start + '–' + end + ' of ' + n + '</p>' +
-      '<div class="flex items-center justify-center gap-2">' +
-        '<button type="button" onclick="goBlockedPage(-1)" ' + (prevDisabled ? 'disabled' : '') + ' class="p-2 rounded-lg border border-outline-variant/30 bg-white text-on-surface hover:bg-surface-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white" aria-label="Previous page">' +
-          '<span class="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_left</span>' +
-        '</button>' +
-        '<span class="text-sm font-medium text-on-surface px-2 min-w-[7rem] text-center">Page ' + blockedListPage + ' of ' + totalPages + '</span>' +
-        '<button type="button" onclick="goBlockedPage(1)" ' + (nextDisabled ? 'disabled' : '') + ' class="p-2 rounded-lg border border-outline-variant/30 bg-white text-on-surface hover:bg-surface-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white" aria-label="Next page">' +
-          '<span class="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>' +
-        '</button>' +
-      '</div>';
-  }
-
-  function goBlockedPage(delta) {
-    blockedListPage += delta;
-    clampBlockedListPage();
-    renderBlockedList();
-  }
-
-  function setDateInputMinToday() {
-    var t = toInputDate(new Date());
-    var dateIn = document.getElementById('blockDateInput');
-    var fromIn = document.getElementById('blockRangeFrom');
-    var toIn = document.getElementById('blockRangeTo');
-    if (dateIn) dateIn.min = t;
-    if (fromIn) fromIn.min = t;
-    if (toIn) toIn.min = t;
-  }
-
-  function editBlocked(index) {
-    var b = blockedPeriods[index];
-    if (!b) return;
-    editingBlockId = b.id;
-    clearBlockDateModalError();
-    clearBlockRangeModalError();
-    clearBlockedDatesSectionError();
-    closeMonthYearPicker();
-    clearBlockDateInputMins();
-    if (isSingleDayPeriod(b)) {
-      resetDateModalUi();
-      document.getElementById('blockDateModalTitle').textContent = 'Edit blocked date';
-      document.getElementById('blockDateSubmitLabel').textContent = 'Save changes';
-      document.getElementById('blockDateInput').value = b.start_date;
-      document.getElementById('blockDateReason').value = b.reason ? String(b.reason) : '';
-      document.getElementById('blockDateModal').classList.remove('hidden');
-      syncBodyScrollForBlockModals();
-      setTimeout(function() { document.getElementById('blockDateInput').focus(); }, 50);
-    } else {
-      resetRangeModalUi();
-      document.getElementById('blockRangeModalTitle').textContent = 'Edit blocked range';
-      document.getElementById('blockRangeSubmitLabel').textContent = 'Save changes';
-      document.getElementById('blockRangeFrom').value = b.start_date;
-      document.getElementById('blockRangeTo').value = b.end_date;
-      document.getElementById('blockRangeReason').value = b.reason ? String(b.reason) : '';
-      document.getElementById('blockRangeModal').classList.remove('hidden');
-      syncBodyScrollForBlockModals();
-      setTimeout(function() { document.getElementById('blockRangeFrom').focus(); }, 50);
-    }
-  }
-
-  function openBlockDateModal() {
-    editingBlockId = null;
-    clearBlockDateModalError();
-    clearBlockedDatesSectionError();
-    resetDateModalUi();
-    closeMonthYearPicker();
-    document.getElementById('blockDateModal').classList.remove('hidden');
-    syncBodyScrollForBlockModals();
-    setDateInputMinToday();
-    document.getElementById('blockDateInput').value = '';
-    document.getElementById('blockDateReason').value = '';
-    setTimeout(function() { document.getElementById('blockDateInput').focus(); }, 50);
-  }
-
-  function syncBodyScrollForBlockModals() {
-    var dateOpen = !document.getElementById('blockDateModal').classList.contains('hidden');
-    var rangeOpen = !document.getElementById('blockRangeModal').classList.contains('hidden');
-    var removeOpen = !document.getElementById('removeBlockedConfirmModal').classList.contains('hidden');
-    document.body.style.overflow = (dateOpen || rangeOpen || removeOpen) ? 'hidden' : '';
-  }
-
-  function closeBlockDateModal() {
-    document.getElementById('blockDateModal').classList.add('hidden');
-    editingBlockId = null;
-    clearBlockDateModalError();
-    resetDateModalUi();
-    syncBodyScrollForBlockModals();
-  }
-
-  function openBlockRangeModal() {
-    editingBlockId = null;
-    clearBlockRangeModalError();
-    clearBlockedDatesSectionError();
-    resetRangeModalUi();
-    closeMonthYearPicker();
-    document.getElementById('blockRangeModal').classList.remove('hidden');
-    syncBodyScrollForBlockModals();
-    setDateInputMinToday();
-    document.getElementById('blockRangeFrom').value = '';
-    document.getElementById('blockRangeTo').value = '';
-    document.getElementById('blockRangeReason').value = '';
-    setTimeout(function() { document.getElementById('blockRangeFrom').focus(); }, 50);
-  }
-
-  function closeBlockRangeModal() {
-    document.getElementById('blockRangeModal').classList.add('hidden');
-    editingBlockId = null;
-    clearBlockRangeModalError();
-    resetRangeModalUi();
-    syncBodyScrollForBlockModals();
-  }
-
-  function closeAllBlockModals() {
-    document.getElementById('blockDateModal').classList.add('hidden');
-    document.getElementById('blockRangeModal').classList.add('hidden');
-    document.getElementById('removeBlockedConfirmModal').classList.add('hidden');
-    editingBlockId = null;
-    pendingRemoveBlockedIndex = null;
-    resetDateModalUi();
-    resetRangeModalUi();
-    syncBodyScrollForBlockModals();
-  }
-
-  function openRemoveBlockedConfirm(index) {
-    var b = blockedPeriods[index];
-    if (!b) return;
-    pendingRemoveBlockedIndex = index;
-    clearBlockedDatesSectionError();
-    closeMonthYearPicker();
-    document.getElementById('removeBlockedConfirmDetail').textContent = formatBlockedRangeLabel(fromInputDate(b.start_date), fromInputDate(b.end_date));
-    var reason = b.reason && String(b.reason).trim();
-    var reasonEl = document.getElementById('removeBlockedConfirmReasonLine');
-    if (reason) {
-      reasonEl.textContent = 'Reason: ' + reason;
-      reasonEl.classList.remove('hidden');
-    } else {
-      reasonEl.textContent = '';
-      reasonEl.classList.add('hidden');
-    }
-    document.getElementById('removeBlockedConfirmModal').classList.remove('hidden');
-    syncBodyScrollForBlockModals();
-  }
-
-  function closeRemoveBlockedConfirm() {
-    document.getElementById('removeBlockedConfirmModal').classList.add('hidden');
-    pendingRemoveBlockedIndex = null;
-    syncBodyScrollForBlockModals();
-  }
-
-  function mergeSavedBlock(block) {
-    if (!block || !block.id) return;
-    var idx = blockedPeriods.findIndex(function(p) { return p.id === block.id; });
-    var row = { id: block.id, start_date: block.start_date, end_date: block.end_date, reason: block.reason || '' };
-    if (idx >= 0) {
-      blockedPeriods[idx] = row;
-    } else {
-      blockedPeriods.push(row);
-    }
-    blockedPeriods.sort(function(a, b) {
-      if (a.start_date !== b.start_date) return a.start_date < b.start_date ? 1 : -1;
-      return b.id - a.id;
-    });
-    blockedListPage = Math.min(blockedListPage, Math.max(1, Math.ceil(blockedPeriods.length / BLOCKED_PAGE_SIZE)));
-    clampBlockedListPage();
-  }
-
-  function saveBlockPeriod(startDateStr, endDateStr, reason) {
+  function postForm(url, fields) {
     var fd = new FormData();
-    fd.append('_token', BLOCK_CSRF);
-    fd.append('start_date', startDateStr);
-    fd.append('end_date', endDateStr);
-    fd.append('reason', reason || '');
-    if (editingBlockId) {
-      fd.append('block_id', String(editingBlockId));
-    }
-
-    return fetch(BLOCK_STORE_URL, {
-      method: 'POST',
-      body: fd,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json'
-      },
-      credentials: 'same-origin'
-    })
-      .then(function(res) {
-        return res.json().then(function(data) {
-          return { ok: res.ok, data: data };
-        });
-      })
-      .then(function(result) {
-        if (result.ok && result.data && result.data.success && result.data.block) {
-          clearBlockDateModalError();
-          clearBlockRangeModalError();
-          clearBlockedDatesSectionError();
-          mergeSavedBlock(result.data.block);
-          renderBlockedList();
-          renderCalendar();
-          if (typeof showSaveToast === 'function') showSaveToast();
-          closeAllBlockModals();
-          return;
-        }
-        var msg = (result.data && result.data.message) ? result.data.message : 'Could not save blocked dates.';
-        if (result.data && result.data.errors) {
-          var keys = Object.keys(result.data.errors);
-          if (keys.length && result.data.errors[keys[0]][0]) {
-            msg = result.data.errors[keys[0]][0];
-          }
-        }
-        showBlockedDatesApiError(msg);
-      })
-      .catch(function() {
-        showBlockedDatesApiError('Network error. Please try again.');
+    fd.append('_token', csrf);
+    Object.keys(fields || {}).forEach(function (k) {
+      var v = fields[k];
+      if (v == null) return;
+      if (typeof v === 'object' && !(v instanceof File)) {
+        // nested handled by caller for hours
+        return;
+      }
+      fd.append(k, v);
+    });
+    return fetch(url, {
+        method: 'POST',
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+        body: fd,
+    }).then(function (res) {
+      return res.json().then(function (body) {
+        return { ok: res.ok, status: res.status, body: body };
       });
+    });
   }
 
-  function confirmRemoveBlocked() {
-    if (pendingRemoveBlockedIndex === null) return;
-    var index = pendingRemoveBlockedIndex;
-    var b = blockedPeriods[index];
-    if (!b) {
-      closeRemoveBlockedConfirm();
+  // ── Booking status (saved only via Save changes) ──
+  function applyStatusUi(key) {
+    selectedStatus = key || '';
+    document.getElementById('availability_status').value = selectedStatus;
+    document.querySelectorAll('#statusCards .bst').forEach(function (x) {
+      var on = x.getAttribute('data-status') === selectedStatus;
+      var r = x.querySelector('.brad');
+      x.style.border = on ? '2px solid #3E007C' : '';
+      x.setAttribute('aria-checked', on ? 'true' : 'false');
+      if (r) {
+        r.textContent = on ? 'radio_button_checked' : 'radio_button_unchecked';
+        r.style.color = on ? '#3E007C' : '#C8BFCC';
+        r.style.fontVariationSettings = on ? "'FILL' 1" : "'FILL' 0";
+      }
+      var p = x.querySelector('.pill');
+      if (on && !p) {
+        x.insertAdjacentHTML('beforeend', '<span class="pill g" style="margin-top:10px">Active</span>');
+      }
+      if (!on && p) p.remove();
+    });
+    refreshSaveBtn();
+  }
+
+  function pickStatus(card) {
+    var key = card.getAttribute('data-status');
+    if (!key) return;
+    var err = document.getElementById('bookingStatusError');
+    if (err) { err.classList.add('hidden'); err.textContent = ''; }
+    applyStatusUi(key);
+  }
+
+  function promptWaitlistNotify(notify) {
+    if (!notify || !notify.pending_count || !notify.notify_url || !window.InkjinWaitlistNotify) {
       return;
     }
-    closeRemoveBlockedConfirm();
-
-    var delFd = new FormData();
-    delFd.append('_token', BLOCK_CSRF);
-    delFd.append('_method', 'DELETE');
-
-    fetch(blockDestroyUrl(b.id), {
-      method: 'POST',
-      body: delFd,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json'
-      },
-      credentials: 'same-origin'
-    })
-      .then(function(res) {
-        return res.json().then(function(data) {
-          return { ok: res.ok, data: data };
-        });
-      })
-      .then(function(result) {
-        if (result.ok && result.data && result.data.success) {
-          clearBlockedDatesSectionError();
-          blockedPeriods.splice(index, 1);
-          clampBlockedListPage();
-          renderBlockedList();
-          renderCalendar();
-          if (typeof showSaveToast === 'function') showSaveToast();
-          return;
-        }
-        showBlockedDatesSectionError((result.data && result.data.message) ? result.data.message : 'Could not remove block.');
-      })
-      .catch(function() {
-        showBlockedDatesSectionError('Network error. Please try again.');
+    window.setTimeout(function () {
+      window.InkjinWaitlistNotify.showPrompt({
+        notifyUrl: notify.notify_url,
+        pendingCount: Number(notify.pending_count) || 0,
+        requestMoveCount: Number(notify.request_move_count) || 0,
       });
+    }, 250);
   }
 
-  function submitBlockDate() {
-    clearBlockDateModalError();
-    var val = document.getElementById('blockDateInput').value;
-    if (!val) {
-      showBlockDateModalError('Please select a date.');
-      return;
-    }
-    var reason = document.getElementById('blockDateReason').value.trim();
-    saveBlockPeriod(val, val, reason);
+  function saveBookingStatus(val) {
+    var err = document.getElementById('bookingStatusError');
+    if (err) { err.classList.add('hidden'); err.textContent = ''; }
+
+    return postForm(statusUrl, { availability_status: val }).then(function (result) {
+      if (result.ok && result.body && result.body.success) {
+        savedStatus = result.body.availability_status || val;
+        selectedStatus = savedStatus;
+        document.getElementById('availability_status').value = savedStatus;
+        refreshSaveBtn();
+        promptWaitlistNotify(result.body.waitlist_notify);
+        return true;
+      }
+      var msg = (result.body && result.body.message) || 'Could not save booking status.';
+      if (result.body && result.body.errors && result.body.errors.availability_status) {
+        msg = result.body.errors.availability_status[0];
+      }
+      if (err) { err.textContent = msg; err.classList.remove('hidden'); }
+      return false;
+    }).catch(function () {
+      if (err) { err.textContent = 'Network error. Please try again.'; err.classList.remove('hidden'); }
+      return false;
+    });
   }
 
-  function submitBlockRange() {
-    clearBlockRangeModalError();
-    var startStr = document.getElementById('blockRangeFrom').value;
-    var endStr = document.getElementById('blockRangeTo').value;
-    if (!startStr || !endStr) {
-      showBlockRangeModalError('Please select both from and to dates.');
-      return;
-    }
-    var start = fromInputDate(startStr);
-    var end = fromInputDate(endStr);
-    start.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
-    if (end < start) {
-      showBlockRangeModalError('The end date must be on or after the start date.');
-      return;
-    }
-    var reason = document.getElementById('blockRangeReason').value.trim();
-    saveBlockPeriod(startStr, endStr, reason);
-  }
-
-  let currentMonth = new Date().getMonth();
-  let currentYear = new Date().getFullYear();
-
-  function changeMonth(delta) {
-    closeMonthYearPicker();
-    currentMonth += delta;
-    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-    renderCalendar();
-  }
-
-  function syncMonthYearPicker() {
-    const monthSel = document.getElementById('calMonthSelect');
-    const yearSel = document.getElementById('calYearSelect');
-    if (monthSel.options.length === 0) {
-      CAL_MONTHS.forEach(function(name, i) {
-        const o = document.createElement('option');
-        o.value = String(i);
-        o.textContent = name;
-        monthSel.appendChild(o);
-      });
-    }
-    monthSel.value = String(currentMonth);
-    const yNow = new Date().getFullYear();
-    const yFrom = yNow - 25;
-    const yTo = yNow + 15;
-    yearSel.innerHTML = '';
-    for (let y = yFrom; y <= yTo; y++) {
-      const o = document.createElement('option');
-      o.value = String(y);
-      o.textContent = String(y);
-      yearSel.appendChild(o);
-    }
-    if (currentYear < yFrom) {
-      const o = document.createElement('option');
-      o.value = String(currentYear);
-      o.textContent = String(currentYear);
-      yearSel.insertBefore(o, yearSel.firstChild);
-    } else if (currentYear > yTo) {
-      const o = document.createElement('option');
-      o.value = String(currentYear);
-      o.textContent = String(currentYear);
-      yearSel.appendChild(o);
-    }
-    yearSel.value = String(currentYear);
-  }
-
-  function closeMonthYearPickerOnOutside(e) {
-    const picker = document.getElementById('monthYearPicker');
-    const btn = document.getElementById('calMonthBtn');
-    if (!picker || picker.classList.contains('hidden')) return;
-    if (picker.contains(e.target) || btn.contains(e.target)) return;
-    closeMonthYearPicker();
-  }
-
-  function closeMonthYearPicker() {
-    const picker = document.getElementById('monthYearPicker');
-    const btn = document.getElementById('calMonthBtn');
-    if (picker) picker.classList.add('hidden');
-    if (btn) btn.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('click', closeMonthYearPickerOnOutside, true);
-  }
-
-  function toggleMonthYearPicker(e) {
-    e.stopPropagation();
-    const picker = document.getElementById('monthYearPicker');
-    const btn = document.getElementById('calMonthBtn');
-    if (picker.classList.contains('hidden')) {
-      syncMonthYearPicker();
-      picker.classList.remove('hidden');
-      btn.setAttribute('aria-expanded', 'true');
-      setTimeout(function() {
-        document.addEventListener('click', closeMonthYearPickerOnOutside, true);
-      }, 0);
-    } else {
-      closeMonthYearPicker();
-    }
-  }
-
-  function applyMonthYear() {
-    const m = parseInt(document.getElementById('calMonthSelect').value, 10);
-    const y = parseInt(document.getElementById('calYearSelect').value, 10);
-    if (!isNaN(m) && m >= 0 && m <= 11 && !isNaN(y)) {
-      currentMonth = m;
-      currentYear = y;
-      renderCalendar();
-    }
-    closeMonthYearPicker();
-  }
-
-  document.addEventListener('keydown', function monthYearPickerEsc(e) {
-    if (e.key !== 'Escape') return;
-    var removeM = document.getElementById('removeBlockedConfirmModal');
-    if (removeM && !removeM.classList.contains('hidden')) {
-      closeRemoveBlockedConfirm();
-      return;
-    }
-    var dateM = document.getElementById('blockDateModal');
-    var rangeM = document.getElementById('blockRangeModal');
-    if (dateM && !dateM.classList.contains('hidden')) {
-      closeBlockDateModal();
-      return;
-    }
-    if (rangeM && !rangeM.classList.contains('hidden')) {
-      closeBlockRangeModal();
-      return;
-    }
-    var picker = document.getElementById('monthYearPicker');
-    if (picker && !picker.classList.contains('hidden')) closeMonthYearPicker();
+  document.querySelectorAll('#statusCards .bst').forEach(function (c) {
+    c.addEventListener('click', function () { pickStatus(c); });
+    c.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickStatus(c); }
+    });
   });
 
-  function isBlocked(date) {
-    var key = toInputDate(date);
-    return blockedPeriods.some(function(p) {
-      return key >= p.start_date && key <= p.end_date;
+  // ── Working hours ──
+  function clearWhError() {
+    var el = document.getElementById('workingHoursError');
+    if (el) { el.classList.add('hidden'); el.textContent = ''; }
+  }
+
+  function showWhError(msg) {
+    var el = document.getElementById('workingHoursError');
+    if (!el) return;
+      el.textContent = msg;
+      el.classList.remove('hidden');
+  }
+
+  function slotEl(start, end) {
+    var d = document.createElement('div');
+    d.className = 'whslot';
+    d.innerHTML =
+      '<input class="in" type="time" value="' + escapeHtml(start) + '">' +
+      '<span class="faint">–</span>' +
+      '<input class="in" type="time" value="' + escapeHtml(end) + '">' +
+      '<span class="ms faint whdel" title="Remove time slot">delete</span>';
+    return d;
+  }
+
+  function syncDayFromDom(row) {
+    var idx = +row.getAttribute('data-idx');
+    var day = workingHoursData[idx];
+    if (!day) return;
+    var on = row.classList.contains('on');
+    day.available = on;
+    day.slots = [];
+    var locRoot = row.querySelector('.whloc-multi');
+    if (locRoot) day.studio_ids = readLocationIdsFromContainer(locRoot);
+    if (!on) return;
+    row.querySelectorAll('.whslot').forEach(function (s) {
+      var inputs = s.querySelectorAll('input[type="time"]');
+      day.slots.push({
+        start: inputs[0] ? inputs[0].value : '',
+        end: inputs[1] ? inputs[1].value : '',
+      });
     });
-  }
-
-  function renderCalendar() {
-    document.getElementById('calMonth').textContent = CAL_MONTHS[currentMonth] + ' ' + currentYear;
-
-    const grid = document.getElementById('calGrid');
-    grid.innerHTML = '';
-
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    let startDay = firstDay.getDay() - 1;
-    if (startDay < 0) startDay = 6;
-
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < startDay; i++) {
-      const empty = document.createElement('div');
-      empty.className = 'cal-day disabled';
-      grid.appendChild(empty);
-    }
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dayEl = document.createElement('div');
-      dayEl.className = 'cal-day';
-      dayEl.textContent = d;
-
-      const date = new Date(currentYear, currentMonth, d);
-      date.setHours(0, 0, 0, 0);
-
-      if (date < today) {
-        dayEl.classList.add('past');
-      } else {
-        if (date.getTime() === today.getTime()) {
-          dayEl.classList.add('today');
-        }
-        if (isBlocked(date)) {
-          dayEl.classList.add('blocked');
-          dayEl.title = 'Blocked — remove it from Currently Blocked below to unblock';
-        } else {
-          dayEl.title = 'Use Block a date or Block a range below to block this day';
-        }
-      }
-
-      grid.appendChild(dayEl);
-    }
-  }
-
-  renderCalendar();
-  renderBlockedList();
-
-  // ── Working Hours Manager ──
-  // Each day: { dayKey, day, letter, available, slots: [{ start, end }, ...] } — loaded from DB via AvailabilityController
-  var workingHoursData = @json($workingHoursInitial ?? []);
-
-  var WH_CSRF_TOKEN = '{{ csrf_token() }}';
-  var WH_STORE_URL = '{{ route('availability.store') }}';
-
-  var WH_INPUT_CLASS = 'inkjin-time-input text-sm px-3 py-2 bg-white text-on-surface';
-
-  function updateWhSlot(dayIdx, slotIdx, field, value) {
-    if (!workingHoursData[dayIdx] || !workingHoursData[dayIdx].slots[slotIdx]) return;
-    workingHoursData[dayIdx].slots[slotIdx][field] = value;
-    clearWhDayError(dayIdx);
-  }
-
-  function removeWhSlot(dayIdx, slotIdx) {
-    var d = workingHoursData[dayIdx];
-    if (!d || !d.slots) return;
-    d.slots.splice(slotIdx, 1);
-    if (d.slots.length === 0) {
-      d.available = false;
-    }
-    clearWhDayError(dayIdx);
-    renderWorkingHours();
-  }
-
-  function addWhSlot(dayIdx) {
-    var d = workingHoursData[dayIdx];
-    if (!d) return;
-    if (!d.slots) d.slots = [];
-    d.slots.push({ start: '09:00', end: '17:00' });
-    d.available = true;
-    clearWhDayError(dayIdx);
-    renderWorkingHours();
   }
 
   function renderWorkingHours() {
     var container = document.getElementById('workingHoursContainer');
+    if (!container) return;
     container.innerHTML = '';
-    workingHoursData.forEach(function(item, idx) {
-      if (item.available && (!item.slots || item.slots.length === 0)) {
-        item.available = false;
-      }
-      var row = document.createElement('div');
-      row.id = 'wh-row-' + idx;
-      row.style.transition = 'all 0.3s ease';
-      var borderClass = idx < workingHoursData.length - 1 ? ' border-b border-outline-variant/10' : '';
 
-      if (item.available && item.slots && item.slots.length > 0) {
-        row.className = 'flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 py-4 px-2' + borderClass;
-        var slotsParts = [];
-        for (var s = 0; s < item.slots.length; s++) {
-          var slot = item.slots[s];
-          slotsParts.push(
-            '<div class="flex items-center gap-2 flex-wrap w-full sm:w-auto sm:min-w-[260px] rounded-xl border border-outline-variant/20 bg-surface-container-low/60 px-3 py-2.5">' +
-              '<label class="sr-only">From ' + item.day + ' slot ' + (s + 1) + '</label>' +
-              '<div class="inkjin-time-wrap flex-1 min-w-[7rem]"><input type="time" value="' + slot.start + '" onchange="updateWhSlot(' + idx + ',' + s + ',\'start\',this.value)" class="' + WH_INPUT_CLASS + '" step="300" title="Start time"></div>' +
-              '<span class="text-on-surface-variant text-sm shrink-0">–</span>' +
-              '<label class="sr-only">To ' + item.day + ' slot ' + (s + 1) + '</label>' +
-              '<div class="inkjin-time-wrap flex-1 min-w-[7rem]"><input type="time" value="' + slot.end + '" onchange="updateWhSlot(' + idx + ',' + s + ',\'end\',this.value)" class="' + WH_INPUT_CLASS + '" step="300" title="End time"></div>' +
-              '<button type="button" onclick="removeWhSlot(' + idx + ',' + s + ')" class="p-2 rounded-lg hover:bg-error-container/80 transition-colors text-on-surface-variant hover:text-error shrink-0" title="Remove this time">' +
-                '<span class="material-symbols-outlined text-lg">delete</span>' +
-              '</button>' +
-            '</div>'
-          );
-        }
-        row.innerHTML =
-          '<div class="w-9 h-9 min-w-[36px] rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shrink-0">' + item.letter + '</div>' +
-          '<div class="flex-1 min-w-0 flex flex-col gap-3">' +
-            '<div class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">' + item.day + '</div>' +
-            '<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-x-4 sm:gap-y-3">' +
-              slotsParts.join('') +
-            '</div>' +
-            '<div class="flex flex-col sm:flex-row sm:flex-wrap gap-3 pt-0.5">' +
-              '<button type="button" onclick="addWhSlot(' + idx + ')" class="inline-flex items-center justify-center gap-2 w-full sm:w-auto text-sm font-bold text-primary border-2 border-primary/30 bg-white rounded-xl px-4 py-2.5 hover:bg-primary/5 transition-colors">' +
-                '<span class="material-symbols-outlined text-[20px] shrink-0">add</span> Add another time slot' +
-              '</button>' +
-              '<button type="button" onclick="toggleDay(' + idx + ', false)" class="inline-flex items-center justify-center w-full sm:w-auto text-sm font-semibold text-error border border-error/30 bg-white rounded-xl px-4 py-2.5 hover:bg-error-container/40 transition-colors">' +
-                'Make this day unavailable' +
-              '</button>' +
-            '</div>' +
-            '<p id="wh-day-error-' + idx + '" class="wh-day-error hidden text-sm font-medium text-error mt-1" role="alert"></p>' +
-          '</div>';
-      } else {
-        row.className = 'flex items-center gap-3 sm:gap-4 py-4 px-2' + borderClass;
-        row.innerHTML =
-          '<div class="w-9 h-9 min-w-[36px] rounded-full border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold text-sm shrink-0">' + item.letter + '</div>' +
-          '<div class="flex-1 min-w-0">' +
-            '<div class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-0.5">' + item.day + '</div>' +
-            '<span class="text-sm text-on-surface-variant">Unavailable</span>' +
-          '</div>' +
-          '<button type="button" onclick="toggleDay(' + idx + ', true)" class="w-8 h-8 min-w-[32px] rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90 transition-all shrink-0" title="Add hours">' +
-            '<span class="material-symbols-outlined text-lg">add</span>' +
-          '</button>';
+    workingHoursData.forEach(function (item, idx) {
+      if (!Array.isArray(item.studio_ids) || !item.studio_ids.length) {
+        item.studio_ids = allStudioIds.length ? [allStudioIds[0]] : [];
       }
+      if (item.available && (!item.slots || !item.slots.length)) item.available = false;
+      var row = document.createElement('div');
+      row.className = 'whday' + (item.available ? ' on' : '');
+      row.setAttribute('data-idx', String(idx));
+      row.setAttribute('data-day', item.day);
+
+      var slotsHtml = (item.slots || []).map(function (s) {
+        return '<div class="whslot">' +
+          '<input class="in" type="time" value="' + escapeHtml(s.start || '') + '">' +
+          '<span class="faint">–</span>' +
+          '<input class="in" type="time" value="' + escapeHtml(s.end || '') + '">' +
+          '<span class="ms faint whdel" title="Remove time slot">delete</span>' +
+        '</div>';
+      }).join('');
+
+      row.innerHTML =
+        '<div class="whl">' + escapeHtml(item.letter) + '</div>' +
+        '<div class="whbody">' +
+          '<div class="whtop">' +
+            '<div><div class="lbl">' + escapeHtml(String(item.day).toUpperCase()) + '</div><div class="whoff">Unavailable</div></div>' +
+            locationSelectHtml(item, idx) +
+            '<button type="button" class="whadd" aria-label="Make ' + escapeHtml(item.day) + ' available"><span class="ms">add</span></button>' +
+          '</div>' +
+          '<div class="whslots">' + slotsHtml + '</div>' +
+          '<div class="whact">' +
+            '<button type="button" class="btn sm ghost whmore"><span class="ms" style="font-size:16px">add</span>Add another time slot</button>' +
+            '<button type="button" class="btn sm ghost whoffbtn" style="color:#C62828;border-color:#F3C9C9">Make this day unavailable</button>' +
+          '</div>' +
+        '</div>';
+
+      var slots = row.querySelector('.whslots');
+
+      row.querySelector('.whadd').addEventListener('click', function () {
+        if (!slots.children.length) slots.appendChild(slotEl('09:00', '17:00'));
+        row.classList.add('on');
+        syncDayFromDom(row);
+        scanDateTime(slots);
+        markHoursDirty();
+      });
+
+      row.querySelector('.whmore').addEventListener('click', function () {
+        var last = slots.lastElementChild;
+        var inputs = last ? last.querySelectorAll('input[type="time"]') : [];
+        var st = inputs[1] ? inputs[1].value : '09:00';
+        var h = Math.min(23, parseInt(st, 10) + 1);
+        var start = ('0' + h).slice(-2) + ':00';
+        var end = ('0' + Math.min(23, h + 3)).slice(-2) + ':00';
+        slots.appendChild(slotEl(start, end));
+        row.classList.add('on');
+        syncDayFromDom(row);
+        scanDateTime(slots);
+        markHoursDirty();
+      });
+
+      row.querySelector('.whoffbtn').addEventListener('click', function () {
+        slots.innerHTML = '';
+        row.classList.remove('on');
+        syncDayFromDom(row);
+        markHoursDirty();
+      });
+
+      var locRoot = row.querySelector('.whloc-multi');
+      if (locRoot) {
+        locRoot.addEventListener('change', function (e) {
+          var t = e.target;
+          if (!t || t.type !== 'checkbox') return;
+          if (t.classList.contains('whloc-all')) {
+            locRoot.querySelectorAll('.whloc-cb').forEach(function (cb) { cb.checked = t.checked; });
+            if (!t.checked && allStudioIds.length) {
+              var first = locRoot.querySelector('.whloc-cb');
+              if (first) first.checked = true;
+            }
+    } else {
+            var checked = locRoot.querySelectorAll('.whloc-cb:checked');
+            if (!checked.length && allStudioIds.length) t.checked = true;
+            var allCb = locRoot.querySelector('.whloc-all');
+            if (allCb) {
+              allCb.checked = locRoot.querySelectorAll('.whloc-cb').length === locRoot.querySelectorAll('.whloc-cb:checked').length;
+            }
+          }
+          item.studio_ids = readLocationIdsFromContainer(locRoot);
+          markHoursDirty();
+        });
+      }
+
+      slots.addEventListener('click', function (e) {
+        if (!e.target.classList.contains('whdel')) return;
+        e.target.parentNode.remove();
+        if (!slots.children.length) row.classList.remove('on');
+        syncDayFromDom(row);
+        markHoursDirty();
+      });
+
+      slots.addEventListener('change', function () {
+        syncDayFromDom(row);
+        markHoursDirty();
+      });
 
       container.appendChild(row);
     });
+
+    scanDateTime(container);
   }
 
-  function toggleDay(idx, makeAvailable) {
-    var row = document.getElementById('wh-row-' + idx);
-    row.style.opacity = '0';
-    setTimeout(function() {
-      workingHoursData[idx].available = makeAvailable;
-      if (makeAvailable) {
-        workingHoursData[idx].slots = [{ start: '09:00', end: '17:00' }];
-      } else {
-        workingHoursData[idx].slots = [];
-      }
-      renderWorkingHours();
-      var newRow = document.getElementById('wh-row-' + idx);
-      newRow.style.opacity = '0';
-      requestAnimationFrame(function() { newRow.style.opacity = '1'; });
-    }, 200);
-  }
-
-  function whTimeToMinutes(t) {
-    if (!t || typeof t !== 'string') return NaN;
-    var p = t.split(':');
-    if (p.length < 2) return NaN;
-    return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
-  }
-
-  function clearWhDayError(idx) {
-    var el = document.getElementById('wh-day-error-' + idx);
-    if (el) {
-      el.textContent = '';
-      el.classList.add('hidden');
-    }
-  }
-
-  function clearAllWhDayErrors() {
-    for (var i = 0; i < workingHoursData.length; i++) {
-      clearWhDayError(i);
-    }
-  }
-
-  function showWhDayError(dayIndex, message) {
-    clearAllWhDayErrors();
-    var globalEl = document.getElementById('workingHoursError');
-    if (globalEl) {
-      globalEl.classList.add('hidden');
-      globalEl.textContent = '';
-    }
-    var el = document.getElementById('wh-day-error-' + dayIndex);
-    if (el) {
-      el.textContent = message;
-      el.classList.remove('hidden');
-    }
-    var row = document.getElementById('wh-row-' + dayIndex);
-    if (row && typeof row.scrollIntoView === 'function') {
-      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }
-
-  /** Match server messages like "Overlapping time slots on Monday." or "End time must be after start time on Monday." */
-  function parseWhServerErrorDayIndex(message) {
-    if (!message || typeof message !== 'string') return -1;
-    var m = message.match(/\bon\s+([A-Za-z]+)\s*\./);
-    if (!m) return -1;
-    var name = m[1];
-    for (var i = 0; i < workingHoursData.length; i++) {
-      if (workingHoursData[i].day === name) return i;
-    }
-    return -1;
-  }
-
-  function validateWorkingHoursSlots() {
-    var err = document.getElementById('workingHoursError');
-    if (err) {
-      err.classList.add('hidden');
-      err.textContent = '';
-    }
-    clearAllWhDayErrors();
-
-    for (var d = 0; d < workingHoursData.length; d++) {
-      var item = workingHoursData[d];
-      if (!item.available || !item.slots || item.slots.length === 0) continue;
-      var dayLabel = item.day;
-      var intervals = [];
-      for (var s = 0; s < item.slots.length; s++) {
-        var sl = item.slots[s];
-        var from = whTimeToMinutes(sl.start);
-        var to = whTimeToMinutes(sl.end);
-        if (isNaN(from) || isNaN(to)) {
-          return { dayIndex: d, message: 'Please set valid start and end times for every slot.' };
-        }
-        if (from >= to) {
-          return { dayIndex: d, message: 'End time must be after start time.' };
-        }
-        intervals.push({ from: from, to: to });
-      }
-      intervals.sort(function(a, b) { return a.from - b.from; });
-      for (var i = 0; i < intervals.length - 1; i++) {
-        if (intervals[i].to > intervals[i + 1].from) {
-          return { dayIndex: d, message: 'These time slots overlap. Adjust the times so they do not cross.' };
-        }
-      }
-    }
-    return null;
-  }
-
-  function buildWorkingHoursAvailabilityPayload() {
-    var out = {};
-    workingHoursData.forEach(function(item) {
-      if (!item.dayKey || !item.available || !item.slots || !item.slots.length) return;
-      out[item.dayKey] = item.slots.map(function(s) {
+  function collectHoursPayload() {
+    document.querySelectorAll('#workingHoursContainer .whday').forEach(syncDayFromDom);
+    var availability = {};
+    workingHoursData.forEach(function (day) {
+      if (!day.available || !day.slots || !day.slots.length) return;
+      availability[day.dayKey] = day.slots.map(function (s) {
         return { from: s.start, to: s.end };
       });
     });
-    return out;
+    return availability;
   }
 
-  function saveWorkingHours() {
-    var errEl = document.getElementById('workingHoursError');
-    var btn = document.getElementById('saveWorkingHoursBtn');
-    var btnIcon = document.getElementById('saveWorkingHoursBtnIcon');
-    var btnLabel = document.getElementById('saveWorkingHoursBtnLabel');
+  function saveWorkingHoursOnly() {
+    clearWhError();
+    var availability = collectHoursPayload();
 
-    var validation = validateWorkingHoursSlots();
-    if (validation) {
-      showWhDayError(validation.dayIndex, validation.message);
+    for (var i = 0; i < workingHoursData.length; i++) {
+      var day = workingHoursData[i];
+      if (!day.available || !day.slots) continue;
+      var intervals = [];
+      for (var s = 0; s < day.slots.length; s++) {
+        var a = day.slots[s].start, b = day.slots[s].end;
+        if (!a || !b) {
+          showWhError('Fill both start and end times on ' + day.day + '.');
+          return Promise.resolve(false);
+        }
+        if (a >= b) {
+          showWhError('End time must be after start time on ' + day.day + '.');
+          return Promise.resolve(false);
+        }
+        intervals.push({ from: a, to: b });
+      }
+      intervals.sort(function (x, y) { return x.from < y.from ? -1 : 1; });
+      for (var j = 0; j < intervals.length - 1; j++) {
+        if (intervals[j].to > intervals[j + 1].from) {
+          showWhError('Overlapping time slots on ' + day.day + '.');
+          return Promise.resolve(false);
+        }
+      }
+    }
+
+    var fd = new FormData();
+    fd.append('_token', csrf);
+    Object.keys(availability).forEach(function (dayKey) {
+      availability[dayKey].forEach(function (slot, idx) {
+        fd.append('availability[' + dayKey + '][' + idx + '][from]', slot.from);
+        fd.append('availability[' + dayKey + '][' + idx + '][to]', slot.to);
+      });
+    });
+    workingHoursData.forEach(function (day) {
+      if (!day.available || !day.slots || !day.slots.length) return;
+      var ids = normalizeSelectedStudioIds(day.studio_ids);
+      var mode = isAllStudios(ids) ? 'all' : 'studio';
+      fd.append('day_studio_mode[' + day.dayKey + ']', mode);
+      if (mode === 'studio') {
+        ids.forEach(function (id, i) {
+          fd.append('day_studio_ids[' + day.dayKey + '][' + i + ']', String(id));
+        });
+        if (ids[0]) fd.append('day_studio_id[' + day.dayKey + ']', String(ids[0]));
+      }
+    });
+    if (multiStudio) {
+      var tb = document.getElementById('travelBufferSelect');
+      fd.append('travel_buffer_minutes', String(tb ? tb.value : travelBufferMinutes));
+    }
+
+    return fetch(hoursUrl, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+      body: fd,
+    }).then(function (res) {
+      return res.json().then(function (body) { return { ok: res.ok, body: body }; });
+    }).then(function (result) {
+      if (result.ok && result.body && result.body.success) {
+        hoursDirty = false;
+        var note = document.getElementById('avSetupNote');
+        if (note) {
+          if (result.body.needs_weekly_availability_setup) note.classList.remove('hidden');
+          else note.classList.add('hidden');
+        }
+        refreshSaveBtn();
+        return true;
+      }
+      var msg = (result.body && result.body.message) || 'Could not save working hours.';
+      if (result.body && result.body.errors) {
+        var first = Object.keys(result.body.errors)[0];
+        if (first && result.body.errors[first][0]) msg = result.body.errors[first][0];
+      }
+      showWhError(msg);
+      return false;
+    }).catch(function () {
+      showWhError('Network error. Please try again.');
+      return false;
+    });
+  }
+
+  function saveChanges(opts) {
+    opts = opts || {};
+    var btn = document.getElementById('saveWorkingHoursBtn');
+    var icon = document.getElementById('saveWorkingHoursBtnIcon');
+    var label = document.getElementById('saveWorkingHoursBtnLabel');
+    var needStatus = statusDirty();
+    var needHours = hoursDirty;
+
+    if (!needStatus && !needHours) {
+      return Promise.resolve(true);
+    }
+
+    if (needStatus && !selectedStatus) {
+      var err = document.getElementById('bookingStatusError');
+      if (err) {
+        err.textContent = 'Please select a booking status before saving.';
+        err.classList.remove('hidden');
+      }
+      return Promise.resolve(false);
+    }
+
+    if (btn) { btn.disabled = true; btn.style.pointerEvents = 'none'; }
+    if (icon) icon.textContent = 'hourglass_empty';
+    if (label) label.textContent = 'Saving…';
+
+    var chain = Promise.resolve(true);
+    if (needStatus) {
+      chain = chain.then(function (ok) {
+        if (!ok) return false;
+        return saveBookingStatus(selectedStatus);
+      });
+    }
+    if (needHours) {
+      chain = chain.then(function (ok) {
+        if (!ok) return false;
+        return saveWorkingHoursOnly();
+      });
+    }
+
+    return chain.then(function (ok) {
+      if (ok) {
+        refreshSaveBtn();
+        showToast(opts.toast || 'Changes saved');
+      }
+      return ok;
+    }).finally(function () {
+      if (icon) icon.textContent = 'save';
+      if (label) label.textContent = 'Save changes';
+      refreshSaveBtn();
+    });
+  }
+
+  function markHoursDirty() {
+    setHoursDirty(true);
+  }
+
+  document.getElementById('saveWorkingHoursBtn').addEventListener('click', function () {
+    saveChanges();
+  });
+
+  var whContainer = document.getElementById('workingHoursContainer');
+  whContainer.addEventListener('input', function (e) {
+    if (e.target.closest('.bdm')) return;
+    markHoursDirty();
+  });
+  whContainer.addEventListener('change', function (e) {
+    if (e.target.closest('.bdm')) return;
+    markHoursDirty();
+  });
+  whContainer.addEventListener('click', function (e) {
+    if (e.target.closest('.whadd,.whmore,.whoffbtn,.whdel')) markHoursDirty();
+  }, true);
+
+  function navigatePending(nav) {
+    if (!nav) return;
+    var href = nav.getAttribute('href');
+    if (href && href !== '#' && !href.startsWith('javascript:')) {
+      window.location.href = href;
+      return;
+    }
+    nav.click();
+  }
+
+  function openUnsavedModal() {
+    if (document.querySelector('.av-unsaved-ov')) return;
+
+    var o = document.createElement('div');
+    o.className = 'av-unsaved-ov open show';
+    o.setAttribute('role', 'presentation');
+    o.innerHTML =
+      '<div role="dialog" aria-modal="true" style="background:#fff;border-radius:22px;width:420px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;position:relative">' +
+        '<button type="button" data-x class="bdnav" aria-label="Close" style="position:absolute;top:14px;right:14px;z-index:1">' +
+          '<span class="ms">close</span>' +
+        '</button>' +
+        '<div style="padding:24px 24px 16px">' +
+          '<div style="width:48px;height:48px;border-radius:12px;background:#FFF3DC;color:#B7791F;display:flex;align-items:center;justify-content:center;margin-bottom:14px"><span class="ms">warning</span></div>' +
+          '<h2 style="font-size:20px;font-weight:800;margin-bottom:8px;padding-right:28px">Your changes are not saved</h2>' +
+          '<p style="color:#3a3a3a;line-height:1.55;margin:0">Save them before you leave, or leave without saving and lose them.</p>' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;padding:16px 24px;background:#FCF6FE;border-top:1px solid #F0E4F5;flex-wrap:wrap">' +
+          '<button type="button" data-l class="btn ghost" style="flex:1;justify-content:center">Leave without saving</button>' +
+          '<button type="button" data-s class="btn" style="flex:1;justify-content:center"><span class="ms">save</span>Save and leave</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(o);
+    document.body.style.overflow = 'hidden';
+
+    function close() {
+      o.remove();
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', onKey, true);
+      pendingNav = null;
+    }
+    function onKey(ev) {
+      if (ev.key === 'Escape') { ev.preventDefault(); close(); }
+    }
+    document.addEventListener('keydown', onKey, true);
+
+    o.addEventListener('click', function (ev) {
+      if (ev.target === o || ev.target.closest('[data-x]')) { close(); return; }
+      var leave = ev.target.closest('[data-l]');
+      var saveLeave = ev.target.closest('[data-s]');
+      if (!leave && !saveLeave) return;
+      var nav = pendingNav;
+      pendingNav = null;
+      if (saveLeave) {
+        saveChanges({ toast: 'Changes saved' }).then(function (ok) {
+          close();
+          if (ok) navigatePending(nav);
+        });
+      return;
+    }
+      applyStatusUi(savedStatus || '');
+      setHoursDirty(false);
+      close();
+      navigatePending(nav);
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!isPageDirty()) return;
+    if (e.target.closest('.av-unsaved-ov,.bdov,.pgsaverow,[role=dialog]')) return;
+
+    var n = e.target.closest('aside a[href], .tabs a[href], a.user[href], a[href]:not([href="#"])');
+    if (!n) return;
+    if (n.matches('a[href^="#"]') || n.getAttribute('target') === '_blank') return;
+    // Same-page Availability tab — nothing to leave.
+    try {
+      var dest = new URL(n.href, window.location.href);
+      if (dest.pathname === window.location.pathname && dest.search === window.location.search) return;
+    } catch (err) {}
+
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    pendingNav = n;
+    openUnsavedModal();
+  }, true);
+
+  window.addEventListener('beforeunload', function (e) {
+    if (!isPageDirty()) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  renderWorkingHours();
+  selectedStatus = savedStatus || '';
+  refreshSaveBtn();
+  scanDateTime(whContainer);
+
+  // ── Blocked dates & locations ──
+  function isBlockedOnly(s) {
+    return blockedPeriods.some(function (i) {
+      return !i.is_location && !(Array.isArray(i.studio_ids) && i.studio_ids.length) && s >= i.start_date && s <= i.end_date;
+    });
+  }
+
+  function locationOverrideFor(s) {
+    return blockedPeriods.filter(function (i) {
+      return (i.is_location || (Array.isArray(i.studio_ids) && i.studio_ids.length)) && s >= i.start_date && s <= i.end_date;
+    })[0] || null;
+  }
+
+  function defaultStudioIdsForWeekday(isoDate) {
+    var d = parseIso(isoDate);
+    var jsDay = d.getDay(); // 0 Sun .. 6 Sat
+    var map = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday' };
+    var key = map[jsDay];
+    for (var i = 0; i < workingHoursData.length; i++) {
+      if (workingHoursData[i].dayKey === key && workingHoursData[i].available) {
+        return Array.isArray(workingHoursData[i].studio_ids) ? workingHoursData[i].studio_ids.slice() : [];
+      }
+    }
+    // Day marked unavailable in working hours → no studio dot
+    return [];
+  }
+
+  function renderCal() {
+    document.getElementById('bdmonth').textContent = MON[view.getMonth()] + ' ' + view.getFullYear();
+    var g = document.getElementById('bdgrid');
+    var h = '';
+    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function (x) {
+      h += '<div class="dw">' + x + '</div>';
+    });
+    var first = (view.getDay() + 6) % 7;
+    for (var i = 0; i < first; i++) h += '<div></div>';
+    var n = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    for (var d = 1; d <= n; d++) {
+      var s = iso(new Date(view.getFullYear(), view.getMonth(), d));
+      var c = 'd';
+      if (s < todayIso) c += ' past';
+      else if (isBlockedOnly(s)) c += ' bl';
+      if (s === todayIso) c += ' today';
+      var dot = '';
+      if (multiStudio && s >= todayIso && !isBlockedOnly(s)) {
+        var loc = locationOverrideFor(s);
+        var ids = loc ? (loc.studio_ids || []) : defaultStudioIdsForWeekday(s);
+        dot = studioDotsHtml(ids);
+      }
+      h += '<div class="' + c + '">' + d + dot + '</div>';
+    }
+    g.innerHTML = h;
+  }
+
+  function renderList() {
+    var l = document.getElementById('bdlist');
+    var items = blockedPeriods.slice().sort(function (a, b) {
+      return a.start_date < b.start_date ? -1 : 1;
+    });
+    blockedPeriods = items;
+    if (!items.length) {
+      l.innerHTML = '<div class="faint" style="font-size:13px">' + (multiStudio ? 'No blocked dates or location changes.' : 'No blocked dates.') + '</div>';
+      return;
+    }
+    l.innerHTML = items.map(function (i, k) {
+      var isLoc = !!(i.is_location || (Array.isArray(i.studio_ids) && i.studio_ids.length));
+      var label = i.start_date === i.end_date
+        ? nice(i.start_date)
+        : nice(i.start_date) + ' to ' + nice(i.end_date);
+      if (isLoc) label += ' · at ' + studioIdsLabel(i.studio_ids);
+      return '<div class="bditem' + (isLoc ? ' loc' : '') + '">' +
+        '<span class="ms" style="color:' + (isLoc ? '#0E7C6B' : '#C62828') + '">' + (isLoc ? 'storefront' : 'event_busy') + '</span>' +
+        '<div style="flex:1"><b>' + escapeHtml(label) + '</b>' +
+        (i.reason ? '<div class="rs">' + escapeHtml(i.reason) + '</div>' : '') +
+        '</div>' +
+        '<button type="button" data-e="' + k + '" aria-label="Edit"><span class="ms">edit</span></button>' +
+        '<button type="button" data-d="' + k + '" aria-label="Remove" style="color:#C62828"><span class="ms">delete</span></button>' +
+      '</div>';
+    }).join('');
+  }
+
+  function renderBlocked() {
+    renderCal();
+    renderList();
+  }
+
+  function openBlockModal(range, index) {
+    var it = index == null ? null : blockedPeriods[index];
+    if (it && (it.is_location || (Array.isArray(it.studio_ids) && it.studio_ids.length))) {
+      openLocationModal(index);
+      return;
+    }
+    editingBlockId = it ? it.id : null;
+    blockMode = it ? (it.start_date !== it.end_date ? 'range' : 'date') : (range ? 'range' : 'date');
+    var isRange = blockMode === 'range';
+    var title = (it ? 'Edit blocked ' : 'Block a ') + (isRange ? 'range' : 'date');
+    document.getElementById('blockModalTitle').textContent = title;
+    document.getElementById('blockModalSaveLabel').textContent = it
+      ? 'Save'
+      : ('Block ' + (isRange ? 'range' : 'date'));
+    document.getElementById('blockModalError').classList.add('hidden');
+    document.getElementById('blockModalError').textContent = '';
+    document.getElementById('blockReason').value = it ? (it.reason || '') : '';
+    document.getElementById('blockReason').placeholder = isRange
+      ? 'e.g. Vacation, convention, travel'
+      : 'e.g. Personal day, appointment';
+
+    var fields = document.getElementById('blockModalFields');
+    if (isRange) {
+      fields.innerHTML =
+        '<div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">' +
+          '<div><span class="fl">From</span><input class="in" type="date" id="bdf"></div>' +
+          '<div><span class="fl">To</span><input class="in" type="date" id="bdt"></div>' +
+          '</div>';
+      } else {
+      fields.innerHTML = '<div><span class="fl">Date</span><input class="in" type="date" id="bdf"></div>';
+    }
+
+    var f = document.getElementById('bdf');
+    var t = document.getElementById('bdt');
+    if (!it) {
+      f.min = todayIso;
+      if (t) t.min = todayIso;
+    }
+    if (it) {
+      f.value = it.start_date;
+      if (t) t.value = it.end_date;
+      } else {
+      f.value = '';
+      if (t) t.value = '';
+    }
+
+    var ov = document.getElementById('blockModal');
+    ov.classList.add('open');
+    requestAnimationFrame(function () { ov.classList.add('show'); });
+    ov.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    scanDateTime(ov);
+    setTimeout(function () {
+      if (f && f.__bpx) f.__bpx.focus();
+      else if (f) f.focus();
+    }, 50);
+  }
+
+  function closeBlockModal() {
+    var ov = document.getElementById('blockModal');
+    ov.classList.remove('show');
+    setTimeout(function () {
+      ov.classList.remove('open');
+      ov.setAttribute('aria-hidden', 'true');
+    }, 180);
+    document.body.style.overflow = '';
+    editingBlockId = null;
+  }
+
+  function showBlockError(msg) {
+    var e = document.getElementById('blockModalError');
+    e.textContent = msg;
+    e.classList.remove('hidden');
+  }
+
+  function saveBlock() {
+    var f = document.getElementById('bdf');
+    var t = document.getElementById('bdt');
+    var fv = f ? f.value : '';
+    var tv = t ? t.value : fv;
+    var reason = document.getElementById('blockReason').value.trim();
+    document.getElementById('blockModalError').classList.add('hidden');
+
+    if (!fv || !tv) {
+      showBlockError('Pick ' + (blockMode === 'range' ? 'both dates' : 'a date') + '.');
+      return;
+    }
+    if (tv < fv) {
+      showBlockError('The end date is before the start date.');
       return;
     }
 
-    var payload = buildWorkingHoursAvailabilityPayload();
-    var fd = new FormData();
-    fd.append('_token', WH_CSRF_TOKEN);
-    Object.keys(payload).forEach(function(day) {
-      payload[day].forEach(function(slot, i) {
-        fd.append('availability[' + day + '][' + i + '][from]', slot.from);
-        fd.append('availability[' + day + '][' + i + '][to]', slot.to);
-      });
+    var fields = {
+      start_date: fv,
+      end_date: tv,
+      reason: reason,
+      type: 'blocked',
+    };
+    if (editingBlockId) fields.block_id = editingBlockId;
+
+    var btn = document.getElementById('blockModalSave');
+    btn.disabled = true;
+
+    postForm(blockStoreUrl, fields).then(function (result) {
+      if (result.ok && result.body && result.body.success && result.body.block) {
+        var b = result.body.block;
+        if (editingBlockId) {
+          blockedPeriods = blockedPeriods.map(function (x) {
+            return x.id === editingBlockId ? b : x;
+          });
+        } else {
+          blockedPeriods.push(b);
+        }
+        view = new Date(parseIso(fv).getFullYear(), parseIso(fv).getMonth(), 1);
+        closeBlockModal();
+        renderBlocked();
+        showToast(result.body.message || 'Dates blocked');
+        return;
+      }
+      var msg = (result.body && result.body.message) || 'Could not save blocked dates.';
+      if (result.body && result.body.errors) {
+        var first = Object.keys(result.body.errors)[0];
+        if (first && result.body.errors[first][0]) msg = result.body.errors[first][0];
+      }
+      showBlockError(msg);
+    }).catch(function () {
+      showBlockError('Network error. Please try again.');
+    }).finally(function () {
+      btn.disabled = false;
     });
-
-    if (btn) {
-      btn.disabled = true;
-      btn.setAttribute('aria-busy', 'true');
-    }
-    if (btnIcon) {
-      btnIcon.textContent = 'hourglass_empty';
-      btnIcon.classList.add('is-loading');
-    }
-    if (btnLabel) btnLabel.textContent = 'Saving...';
-
-    fetch(WH_STORE_URL, {
-      method: 'POST',
-      body: fd,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json'
-      },
-      credentials: 'same-origin'
-    })
-      .then(function(res) {
-        return res.json().then(function(data) {
-          return { ok: res.ok, status: res.status, data: data };
-        });
-      })
-      .then(function(result) {
-        if (result.ok && result.data && result.data.success) {
-          clearAllWhDayErrors();
-          if (errEl) {
-            errEl.classList.add('hidden');
-            errEl.textContent = '';
-          }
-          var setupAlert = document.getElementById('availabilityPageSetupAlert');
-          var needsSetup = !!(result.data && result.data.needs_weekly_availability_setup);
-          if (setupAlert) {
-            if (needsSetup) {
-              setupAlert.classList.remove('hidden');
-            } else {
-              setupAlert.classList.add('hidden');
-            }
-          }
-          try {
-            sessionStorage.removeItem('inkjin_dismiss_availability_page_alert');
-          } catch (e) {}
-          if (typeof showSaveToast === 'function') showSaveToast();
-          return;
-        }
-        var errMsg = (result.data && result.data.message) ? result.data.message : 'Could not save working hours.';
-        if (result.data && result.data.errors) {
-          if (result.data.errors.availability) {
-            errMsg = Array.isArray(result.data.errors.availability)
-              ? result.data.errors.availability[0]
-              : result.data.errors.availability;
-          }
-        }
-        var dayIdx = parseWhServerErrorDayIndex(errMsg);
-        if (dayIdx >= 0) {
-          showWhDayError(dayIdx, errMsg);
-        } else if (errEl) {
-          clearAllWhDayErrors();
-          errEl.textContent = errMsg;
-          errEl.classList.remove('hidden');
-        }
-      })
-      .catch(function() {
-        clearAllWhDayErrors();
-        if (errEl) {
-          errEl.textContent = 'Network error. Please try again.';
-          errEl.classList.remove('hidden');
-        }
-      })
-      .finally(function() {
-        if (btn) {
-          btn.disabled = false;
-          btn.removeAttribute('aria-busy');
-        }
-        var iconEl = document.getElementById('saveWorkingHoursBtnIcon');
-        var labelEl = document.getElementById('saveWorkingHoursBtnLabel');
-        if (iconEl) {
-          iconEl.textContent = 'save';
-          iconEl.classList.remove('is-loading');
-        }
-        if (labelEl) labelEl.textContent = 'Save working hours';
-      });
   }
 
-  renderWorkingHours();
+  function openLocationModal(index) {
+    if (!multiStudio) return;
+    var it = index == null ? null : blockedPeriods[index];
+    editingLocationId = it ? it.id : null;
+    document.getElementById('locationModalTitle').textContent = it ? 'Edit location' : 'Set location for a date';
+    document.getElementById('locationModalSaveLabel').textContent = it ? 'Save' : 'Set location';
+    document.getElementById('locationModalError').classList.add('hidden');
+    document.getElementById('locationModalError').textContent = '';
+    var f = document.getElementById('locFrom');
+    var t = document.getElementById('locTo');
+    var list = document.getElementById('locStudioList');
+    var r = document.getElementById('locReason');
+    f.min = todayIso;
+    t.min = todayIso;
+    if (it) {
+      f.value = it.start_date;
+      t.value = it.end_date;
+      r.value = it.reason || '';
+      setLocationCheckboxes(list, it.studio_ids || []);
+    } else {
+      f.value = '';
+      t.value = '';
+      r.value = '';
+      var defaultIds = allStudioIds.length > 1
+        ? [allStudioIds[Math.min(1, allStudioIds.length - 1)]]
+        : (allStudioIds[0] ? [allStudioIds[0]] : []);
+      setLocationCheckboxes(list, defaultIds);
+    }
+    var ov = document.getElementById('locationModal');
+    ov.classList.add('open');
+    requestAnimationFrame(function () { ov.classList.add('show'); });
+    ov.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    scanDateTime(ov);
+  }
+
+  function closeLocationModal() {
+    var ov = document.getElementById('locationModal');
+    if (!ov) return;
+    ov.classList.remove('show');
+    setTimeout(function () {
+      ov.classList.remove('open');
+      ov.setAttribute('aria-hidden', 'true');
+    }, 180);
+    document.body.style.overflow = '';
+    editingLocationId = null;
+  }
+
+  function showLocationError(msg) {
+    var e = document.getElementById('locationModalError');
+    e.textContent = msg;
+    e.classList.remove('hidden');
+  }
+
+  function saveLocation() {
+    var f = document.getElementById('locFrom');
+    var t = document.getElementById('locTo');
+    var list = document.getElementById('locStudioList');
+    var fv = f ? f.value : '';
+    var tv = t && t.value ? t.value : fv;
+    var reason = (document.getElementById('locReason').value || '').trim();
+    document.getElementById('locationModalError').classList.add('hidden');
+    if (!fv) { showLocationError('Pick a date.'); return; }
+    if (tv < fv) { showLocationError('The end date is before the start date.'); return; }
+
+    var studioIds = readLocationIdsFromContainer(list);
+    if (!studioIds.length) { showLocationError('Pick at least one studio.'); return; }
+    var mode = isAllStudios(studioIds) ? 'all' : 'studio';
+
+    var fields = {
+      start_date: fv,
+      end_date: tv,
+      reason: reason,
+      type: 'location',
+      location_mode: mode,
+    };
+    studioIds.forEach(function (id, idx) { fields['studio_ids[' + idx + ']'] = id; });
+    if (editingLocationId) fields.block_id = editingLocationId;
+
+    var btn = document.getElementById('locationModalSave');
+    btn.disabled = true;
+    postForm(blockStoreUrl, fields).then(function (result) {
+      if (result.ok && result.body && result.body.success && result.body.block) {
+        var b = result.body.block;
+        if (editingLocationId) {
+          blockedPeriods = blockedPeriods.map(function (x) {
+            return x.id === editingLocationId ? b : x;
+          });
+        } else {
+          blockedPeriods.push(b);
+        }
+        view = new Date(parseIso(fv).getFullYear(), parseIso(fv).getMonth(), 1);
+        closeLocationModal();
+        renderBlocked();
+        showToast(result.body.message || 'Location set');
+        return;
+      }
+      var msg = (result.body && result.body.message) || 'Could not save location.';
+      if (result.body && result.body.errors) {
+        var first = Object.keys(result.body.errors)[0];
+        if (first && result.body.errors[first][0]) msg = result.body.errors[first][0];
+      }
+      showLocationError(msg);
+    }).catch(function () {
+      showLocationError('Network error. Please try again.');
+    }).finally(function () {
+      btn.disabled = false;
+    });
+  }
+
+  function openBlockDeleteModal(index) {
+    var b = blockedPeriods[index];
+    if (!b) return;
+    pendingDeleteIndex = index;
+    var isLoc = !!(b.is_location || (Array.isArray(b.studio_ids) && b.studio_ids.length));
+    var range = b.start_date === b.end_date
+      ? nice(b.start_date)
+      : nice(b.start_date) + ' to ' + nice(b.end_date);
+    if (isLoc) range += ' · at ' + studioIdsLabel(b.studio_ids);
+    document.getElementById('blockDeleteTitle').textContent = isLoc ? 'Remove location change?' : 'Remove blocked dates?';
+    document.getElementById('blockDeleteLead').textContent = isLoc
+      ? 'Remove this location change?'
+      : 'Remove this blocked period?';
+    document.getElementById('blockDeleteRange').textContent = range;
+    var err = document.getElementById('blockDeleteError');
+    err.classList.add('hidden');
+    err.textContent = '';
+    var ov = document.getElementById('blockDeleteModal');
+    ov.classList.add('open');
+    requestAnimationFrame(function () { ov.classList.add('show'); });
+    ov.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function () {
+      var btn = document.getElementById('blockDeleteConfirm');
+      if (btn) btn.focus();
+    }, 50);
+  }
+
+  function closeBlockDeleteModal() {
+    var ov = document.getElementById('blockDeleteModal');
+    ov.classList.remove('show');
+    setTimeout(function () {
+      ov.classList.remove('open');
+      ov.setAttribute('aria-hidden', 'true');
+    }, 180);
+    document.body.style.overflow = '';
+    pendingDeleteIndex = null;
+    var btn = document.getElementById('blockDeleteConfirm');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="ms">delete</span>Remove';
+    }
+  }
+
+  function confirmDestroyBlock() {
+    var index = pendingDeleteIndex;
+    var b = index == null ? null : blockedPeriods[index];
+    if (!b) {
+      closeBlockDeleteModal();
+      return;
+    }
+    var btn = document.getElementById('blockDeleteConfirm');
+    var err = document.getElementById('blockDeleteError');
+    err.classList.add('hidden');
+    err.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Removing…';
+
+    var url = blockDestroyTpl.replace('__ID__', encodeURIComponent(String(b.id)));
+    var fd = new FormData();
+    fd.append('_token', csrf);
+    fd.append('_method', 'DELETE');
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+      body: fd,
+    }).then(function (res) {
+      return res.json().then(function (body) { return { ok: res.ok, body: body }; });
+    }).then(function (result) {
+      if (result.ok && result.body && result.body.success) {
+        blockedPeriods.splice(index, 1);
+        closeBlockDeleteModal();
+        renderBlocked();
+        showToast(result.body.message || 'Dates unblocked');
+        return;
+      }
+      err.textContent = (result.body && result.body.message) || 'Could not remove blocked dates.';
+      err.classList.remove('hidden');
+      btn.disabled = false;
+      btn.innerHTML = '<span class="ms">delete</span>Remove';
+    }).catch(function () {
+      err.textContent = 'Network error. Please try again.';
+      err.classList.remove('hidden');
+      btn.disabled = false;
+      btn.innerHTML = '<span class="ms">delete</span>Remove';
+    });
+  }
+
+  document.getElementById('bdprev').addEventListener('click', function () {
+    view = new Date(view.getFullYear(), view.getMonth() - 1, 1);
+    renderCal();
+  });
+  document.getElementById('bdnext').addEventListener('click', function () {
+    view = new Date(view.getFullYear(), view.getMonth() + 1, 1);
+    renderCal();
+  });
+  document.getElementById('bdone').addEventListener('click', function () { openBlockModal(false); });
+  document.getElementById('bdrange').addEventListener('click', function () { openBlockModal(true); });
+  document.getElementById('blockModalClose').addEventListener('click', closeBlockModal);
+  document.getElementById('blockModalCancel').addEventListener('click', closeBlockModal);
+  document.getElementById('blockModalSave').addEventListener('click', saveBlock);
+  document.getElementById('blockModal').addEventListener('click', function (e) {
+    if (e.target === this) closeBlockModal();
+  });
+  document.getElementById('blockDeleteClose').addEventListener('click', closeBlockDeleteModal);
+  document.getElementById('blockDeleteCancel').addEventListener('click', closeBlockDeleteModal);
+  document.getElementById('blockDeleteConfirm').addEventListener('click', confirmDestroyBlock);
+  document.getElementById('blockDeleteModal').addEventListener('click', function (e) {
+    if (e.target === this) closeBlockDeleteModal();
+  });
+  var bdloc = document.getElementById('bdloc');
+  if (bdloc) bdloc.addEventListener('click', function () { openLocationModal(null); });
+  var locClose = document.getElementById('locationModalClose');
+  var locCancel = document.getElementById('locationModalCancel');
+  var locSave = document.getElementById('locationModalSave');
+  var locModal = document.getElementById('locationModal');
+  var locList = document.getElementById('locStudioList');
+  if (locList) {
+    locList.addEventListener('change', function (e) {
+      var t = e.target;
+      if (!t || t.type !== 'checkbox') return;
+      var allCb = document.getElementById('locStudioAll');
+      var studioCbs = locList.querySelectorAll('.loc-studio-cb');
+      if (t.id === 'locStudioAll') {
+        studioCbs.forEach(function (cb) { cb.checked = t.checked; });
+        if (!t.checked && studioCbs.length) studioCbs[0].checked = true;
+            } else {
+        var checked = locList.querySelectorAll('.loc-studio-cb:checked');
+        if (!checked.length) t.checked = true;
+        if (allCb) allCb.checked = studioCbs.length === locList.querySelectorAll('.loc-studio-cb:checked').length;
+      }
+    });
+  }
+  if (locClose) locClose.addEventListener('click', closeLocationModal);
+  if (locCancel) locCancel.addEventListener('click', closeLocationModal);
+  if (locSave) locSave.addEventListener('click', saveLocation);
+  if (locModal) locModal.addEventListener('click', function (e) {
+    if (e.target === this) closeLocationModal();
+  });
+  var travelSel = document.getElementById('travelBufferSelect');
+  if (travelSel) {
+    syncTravelBufferExample();
+    travelSel.addEventListener('change', function () {
+      syncTravelBufferExample();
+      markHoursDirty();
+    });
+  }
+  document.getElementById('bdlist').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.e != null) openBlockModal(null, +b.dataset.e);
+    if (b.dataset.d != null) openBlockDeleteModal(+b.dataset.d);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('blockDeleteModal').classList.contains('open')) {
+      closeBlockDeleteModal();
+          return;
+        }
+    if (locModal && locModal.classList.contains('open')) {
+      closeLocationModal();
+          return;
+        }
+    if (document.getElementById('blockModal').classList.contains('open')) {
+      closeBlockModal();
+    }
+  });
+
+  renderBlocked();
+})();
 </script>
 @endsection

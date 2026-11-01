@@ -162,6 +162,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Payout options for this artist.
+     */
+    public function payouts()
+    {
+        return $this->hasMany(UserPayout::class);
+    }
+
+    /**
      * Studio owned by this user (role = studio).
      */
     public function ownedStudio()

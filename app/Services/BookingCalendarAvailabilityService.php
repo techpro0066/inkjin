@@ -34,31 +34,10 @@ class BookingCalendarAvailabilityService
         $tattoo = $booking->tattoo;
         $tattooDurationMinutes = $this->resolveTattooDurationMinutes($tattoo);
 
-        $artistAvailabilitySchedule = Availability::query()
-            ->where('user_id', $artistUserId)
-            ->orderBy('day_of_week')
-            ->orderBy('start_time')
-            ->get()
-            ->groupBy('day_of_week')
-            ->map(function ($rows) use ($artistTimezone) {
-                return $rows->map(function ($availability) use ($artistTimezone) {
-                    $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->start_time, 'UTC')
-                        ->setTimezone($artistTimezone)
-                        ->format('H:i');
-                    $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->end_time, 'UTC')
-                        ->setTimezone($artistTimezone)
-                        ->format('H:i');
-
-                    return [
-                        'start' => $startLocal,
-                        'end' => $endLocal,
-                    ];
-                })->values()->all();
-            })
-            ->toArray();
-
-        $artistBlockedPeriods = app(ManagedRequestBookingService::class)
-            ->artistBlockedPeriods($artistUserId);
+        $artistAvailabilitySchedule = $this->weeklyAvailabilitySchedule($artistUserId, $artistTimezone);
+        $managedAvailability = app(ManagedRequestBookingService::class);
+        $artistBlockedPeriods = $managedAvailability->artistBlockedPeriods($artistUserId);
+        $artistLocationOverrides = $managedAvailability->artistLocationOverrides($artistUserId);
 
         $excludeIds = array_values(array_unique(array_filter([
             (int) $booking->id,
@@ -78,6 +57,7 @@ class BookingCalendarAvailabilityService
             'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
             'artistTimezone' => $artistTimezone,
             'artistBlockedPeriods' => $artistBlockedPeriods,
+            'artistLocationOverrides' => $artistLocationOverrides,
             'artistBusyIntervalsByDate' => $artistBusyIntervalsByDate,
             'tattooDurationMinutes' => $tattooDurationMinutes,
             'artistConsultationSettings' => [
@@ -114,32 +94,11 @@ class BookingCalendarAvailabilityService
         $artistTimezone = $userDetail->timezone ?: 'UTC';
         $tattooDurationMinutes = max(15, $customRequest->sessionDurationMinutes());
 
-        $artistAvailabilitySchedule = Availability::query()
-            ->where('user_id', $artistUserId)
-            ->orderBy('day_of_week')
-            ->orderBy('start_time')
-            ->get()
-            ->groupBy('day_of_week')
-            ->map(function ($rows) use ($artistTimezone) {
-                return $rows->map(function ($availability) use ($artistTimezone) {
-                    $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->start_time, 'UTC')
-                        ->setTimezone($artistTimezone)
-                        ->format('H:i');
-                    $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->end_time, 'UTC')
-                        ->setTimezone($artistTimezone)
-                        ->format('H:i');
-
-                    return [
-                        'start' => $startLocal,
-                        'end' => $endLocal,
-                    ];
-                })->values()->all();
-            })
-            ->toArray();
-
+        $artistAvailabilitySchedule = $this->weeklyAvailabilitySchedule($artistUserId, $artistTimezone);
         $exceptGuestSpotId = $customRequest->isGuestRequest() ? (int) $customRequest->guest_id : null;
-        $artistBlockedPeriods = app(ManagedRequestBookingService::class)
-            ->artistBlockedPeriods($artistUserId, $exceptGuestSpotId ?: null);
+        $managedAvailability = app(ManagedRequestBookingService::class);
+        $artistBlockedPeriods = $managedAvailability->artistBlockedPeriods($artistUserId, $exceptGuestSpotId ?: null);
+        $artistLocationOverrides = $managedAvailability->artistLocationOverrides($artistUserId);
 
         $from = Carbon::now($artistTimezone)->startOfDay();
         $to = $from->copy()->addDays(180)->endOfDay();
@@ -156,7 +115,7 @@ class BookingCalendarAvailabilityService
             $startHi = $this->normalizeAvailabilityTime($guestSpot->start_time);
             $endHi = $this->normalizeAvailabilityTime($guestSpot->end_time);
             if ($startHi && $endHi && $startHi < $endHi) {
-                $guestDayRanges = [['start' => $startHi, 'end' => $endHi]];
+                $guestDayRanges = [['start' => $startHi, 'end' => $endHi, 'studio_ids' => []]];
                 $artistAvailabilitySchedule = [
                     'sunday' => $guestDayRanges,
                     'monday' => $guestDayRanges,
@@ -173,6 +132,7 @@ class BookingCalendarAvailabilityService
             'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
             'artistTimezone' => $artistTimezone,
             'artistBlockedPeriods' => $artistBlockedPeriods,
+            'artistLocationOverrides' => $artistLocationOverrides,
             'artistBusyIntervalsByDate' => $artistBusyIntervalsByDate,
             'allowedDateRange' => $allowedDateRange,
             'tattooDurationMinutes' => $tattooDurationMinutes,
@@ -199,9 +159,10 @@ class BookingCalendarAvailabilityService
      * Same availability payload shape used by the public booking calendar.
      *
      * @return array{
-     *     artistAvailabilitySchedule: array<string, list<array{start:string,end:string}>>,
+     *     artistAvailabilitySchedule: array<string, list<array{start:string,end:string,studio_ids:list<int>}>>,
      *     artistTimezone: string,
      *     artistBlockedPeriods: list<array{start_date:string,end_date:string}>,
+     *     artistLocationOverrides: list<array{start_date:string,end_date:string,studio_ids:list<int>}>,
      *     artistBusyIntervalsByDate: array<string, list<array{start:int,end:int}>>,
      *     tattooDurationMinutes: int
      * }
@@ -216,12 +177,13 @@ class BookingCalendarAvailabilityService
         $artistTimezone = $userDetail->timezone ?: 'UTC';
         $from = Carbon::now($artistTimezone)->startOfDay();
         $to = $from->copy()->addDays(max(1, $busyLookAheadDays))->endOfDay();
+        $managedAvailability = app(ManagedRequestBookingService::class);
 
         return [
             'artistAvailabilitySchedule' => $this->weeklyAvailabilitySchedule($artistUserId, $artistTimezone),
             'artistTimezone' => $artistTimezone,
-            'artistBlockedPeriods' => app(ManagedRequestBookingService::class)
-                ->artistBlockedPeriods($artistUserId, $exceptGuestSpotId),
+            'artistBlockedPeriods' => $managedAvailability->artistBlockedPeriods($artistUserId, $exceptGuestSpotId),
+            'artistLocationOverrides' => $managedAvailability->artistLocationOverrides($artistUserId),
             'artistBusyIntervalsByDate' => $this->busyIntervalsByDateForRange($userDetail, $from, $to),
             'tattooDurationMinutes' => max(15, $durationMinutes),
         ];
@@ -307,7 +269,7 @@ class BookingCalendarAvailabilityService
     }
 
     /**
-     * @return array<string, list<array{start:string,end:string}>>
+     * @return array<string, list<array{start:string,end:string,studio_ids:list<int>}>>
      */
     private function weeklyAvailabilitySchedule(int $artistUserId, string $artistTimezone): array
     {
@@ -325,10 +287,15 @@ class BookingCalendarAvailabilityService
                     $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', now('UTC')->format('Y-m-d').' '.$availability->end_time, 'UTC')
                         ->setTimezone($artistTimezone)
                         ->format('H:i');
+                    $studioIds = array_values(array_unique(array_filter(array_map(
+                        static fn ($id) => ((int) $id) > 0 ? (int) $id : null,
+                        is_array($availability->studio_ids) ? $availability->studio_ids : []
+                    ))));
 
                     return [
                         'start' => $startLocal,
                         'end' => $endLocal,
+                        'studio_ids' => $studioIds,
                     ];
                 })->values()->all();
             })

@@ -45,7 +45,7 @@
       <div class="twonote2">
         <span class="ms">calendar_month</span>
         <span style="flex:1">Clients only see times at the studio you're at that day. Pick which days you work at each studio in Schedule.</span>
-        <a href="{{ route('settings.calendar') }}" class="btn sm ghost" style="text-decoration:none">
+        <a href="{{ route('schedule.calendar-sync') }}" class="btn sm ghost" style="text-decoration:none">
           Set days per studio<span class="ms" style="font-size:16px">arrow_forward</span>
         </a>
       </div>

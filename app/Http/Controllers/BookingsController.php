@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\Mail\BookingCompletionCodeMail;
 use App\Models\BalanceCollection;
 use App\Models\Booking;
+use App\Models\BookingRequest;
+use App\Models\CustomRequest;
 use App\Models\PaymentLink;
 use App\Services\ArtistPayoutService;
 use App\Services\BookingConsentService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -24,26 +28,468 @@ class BookingsController extends Controller
      */
     public function index(Request $request)
     {
-        $bookings = Booking::query()
-            ->where('artist_user_id', Auth::id())
-            ->with(['user.userDetail', 'tattoo', 'latestBalanceCollection', 'consentAnswer'])
-            ->orderByDesc('booking_date')
-            ->orderByDesc('id')
-            ->paginate(20)
-            ->withQueryString();
+        $artistId = (int) Auth::id();
+        $today = Carbon::today()->toDateString();
+        $filter = strtolower(trim((string) $request->input('filter', 'upcoming')));
+        if (! in_array($filter, ['upcoming', 'past', 'pending', 'cancelled', 'all'], true)) {
+            $filter = 'upcoming';
+        }
+        $sort = strtolower(trim((string) $request->input('sort', 'date_asc')));
+        if (! in_array($sort, ['date_asc', 'date_desc', 'booking_desc', 'name_asc'], true)) {
+            $sort = 'date_asc';
+        }
+        $search = trim((string) $request->input('q', ''));
+        $dateFrom = trim((string) $request->input('from', ''));
+        $dateTo = trim((string) $request->input('to', ''));
 
-        return view('artist.bookings.index', compact('bookings'));
+        $countBase = Booking::query()->where('artist_user_id', $artistId);
+        $filterCounts = [
+            'upcoming' => (clone $countBase)
+                ->where('status', 'confirmed')
+                ->whereDate('booking_date', '>=', $today)
+                ->count(),
+            'past' => (clone $countBase)
+                ->where(function ($q) use ($today) {
+                    $q->whereIn('status', ['completed', 'no_show'])
+                        ->orWhere(function ($q2) use ($today) {
+                            $q2->where('status', 'confirmed')
+                                ->whereDate('booking_date', '<', $today);
+                        });
+                })
+                ->count(),
+            'pending' => (clone $countBase)->where('status', 'pending')->count(),
+            'cancelled' => (clone $countBase)->whereIn('status', ['cancelled', 'declined'])->count(),
+        ];
+
+        $query = Booking::query()
+            ->where('artist_user_id', $artistId)
+            ->with(['user.userDetail', 'tattoo', 'latestBalanceCollection', 'consentAnswer', 'studio']);
+
+        match ($filter) {
+            'upcoming' => $query->where('status', 'confirmed')->whereDate('booking_date', '>=', $today),
+            'past' => $query->where(function ($q) use ($today) {
+                $q->whereIn('status', ['completed', 'no_show'])
+                    ->orWhere(function ($q2) use ($today) {
+                        $q2->where('status', 'confirmed')
+                            ->whereDate('booking_date', '<', $today);
+                    });
+            }),
+            'pending' => $query->where('status', 'pending'),
+            'cancelled' => $query->whereIn('status', ['cancelled', 'declined']),
+            default => null,
+        };
+
+        if ($dateFrom !== '') {
+            $query->whereDate('booking_date', '>=', $dateFrom);
+        }
+        if ($dateTo !== '') {
+            $query->whereDate('booking_date', '<=', $dateTo);
+        }
+
+        if ($search !== '') {
+            $digits = preg_replace('/\D+/', '', $search) ?: '';
+            $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], mb_strtolower($search)).'%';
+            $query->where(function ($q) use ($like, $digits) {
+                $q->whereHas('user', function ($uq) use ($like) {
+                    $uq->whereRaw('LOWER(CONCAT(COALESCE(first_name, ""), " ", COALESCE(last_name, ""))) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(email) LIKE ?', [$like]);
+                });
+                if ($digits !== '') {
+                    $q->orWhere('id', (int) $digits)
+                        ->orWhereRaw('CAST(id AS CHAR) LIKE ?', ['%'.$digits.'%']);
+                }
+            });
+        }
+
+        match ($sort) {
+            'date_desc' => $query->orderByDesc('booking_date')->orderByDesc('id'),
+            'booking_desc' => $query->orderByDesc('id'),
+            'name_asc' => $query
+                ->leftJoin('users', 'users.id', '=', 'bookings.user_id')
+                ->orderByRaw('LOWER(CONCAT(COALESCE(users.first_name, ""), " ", COALESCE(users.last_name, ""))) ASC')
+                ->orderBy('bookings.id')
+                ->select('bookings.*'),
+            default => $query->orderBy('booking_date')->orderBy('id'),
+        };
+
+        $bookings = $query->paginate(50)->withQueryString();
+
+        $calendarBookings = Booking::query()
+            ->where('artist_user_id', $artistId)
+            ->whereNotIn('status', ['cancelled', 'declined'])
+            ->whereDate('booking_date', '>=', Carbon::today()->subMonths(3)->toDateString())
+            ->whereDate('booking_date', '<=', Carbon::today()->addMonths(12)->toDateString())
+            ->with(['user:id,first_name,last_name', 'tattoo:id,title'])
+            ->orderBy('booking_date')
+            ->get()
+            ->map(function (Booking $booking) {
+                $clientName = trim(($booking->user?->first_name ?? '').' '.($booking->user?->last_name ?? ''));
+                if ($clientName === '') {
+                    $clientName = 'Client #'.($booking->user_id ?? '');
+                }
+                $bt = $booking->booking_time;
+                $time = ($bt !== null && isset($bt['start'])) ? (string) $bt['start'] : '';
+                $end = ($bt !== null && isset($bt['end'])) ? (string) $bt['end'] : '';
+                $details = is_array($booking->custom_tattoo_details) ? $booking->custom_tattoo_details : [];
+                $customTitle = $details['title'] ?? null;
+                $service = ($booking->tattoo && filled($booking->tattoo->title))
+                    ? (string) $booking->tattoo->title
+                    : (filled($customTitle) ? (string) $customTitle : ucfirst((string) $booking->booking_type).' booking');
+
+                return [
+                    'id' => $booking->id,
+                    'date' => $booking->booking_date?->format('Y-m-d'),
+                    'status' => strtolower((string) ($booking->status ?? '')),
+                    'client' => $clientName,
+                    'time' => $time,
+                    'end' => $end,
+                    'service' => $service,
+                    'ref' => $booking->referenceLabel(),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $requestsCount = BookingRequest::query()
+            ->where('artist_id', $artistId)
+            ->whereNotIn('status', ['cancelled', 'moved_to_booking'])
+            ->count()
+            + CustomRequest::query()
+                ->where('artist_id', $artistId)
+                ->whereNotIn('status', ['cancelled', 'moved_to_booking'])
+                ->count();
+
+        $paymentLinksCount = $this->artistPaymentLinksTotalCount($artistId);
+
+        $bookingsTotalCount = (int) array_sum($filterCounts);
+
+        $userDetail = Auth::user()?->userDetail;
+        $payoutService = app(ArtistPayoutService::class);
+        $canCreatePaymentLinks = $userDetail
+            ? $payoutService->canAcceptClientPayments($userDetail)
+            : false;
+        $isAutoScheduling = ($userDetail?->scheduling_type ?? '') === 'auto';
+        $paymentLinksBlockedMessage = $canCreatePaymentLinks || ! $userDetail
+            ? null
+            : $payoutService->clientPaymentsBlockedMessage($userDetail);
+        $currency = '€';
+
+        return view('artist.bookings.index', compact(
+            'bookings',
+            'filter',
+            'sort',
+            'search',
+            'dateFrom',
+            'dateTo',
+            'filterCounts',
+            'calendarBookings',
+            'requestsCount',
+            'paymentLinksCount',
+            'bookingsTotalCount',
+            'canCreatePaymentLinks',
+            'isAutoScheduling',
+            'paymentLinksBlockedMessage',
+            'currency',
+        ));
     }
 
-    public function paymentLinks(Request $request)
+    public function paymentLinks(Request $request, ArtistPayoutService $payoutService)
     {
-        $paymentLinks = PaymentLink::query()
-            ->where('artist_id', Auth::id())
-            ->orderByDesc('id')
-            ->paginate(20)
-            ->withQueryString();
+        $artistId = (int) Auth::id();
+        $user = Auth::user();
+        $userDetail = $user?->userDetail;
 
-        return view('artist.bookings.payment-links', compact('paymentLinks'));
+        $filter = strtolower(trim((string) $request->input('filter', 'all')));
+        if (! in_array($filter, ['all', 'open', 'paid', 'expired'], true)) {
+            $filter = 'all';
+        }
+        $search = trim((string) $request->input('q', ''));
+
+        $rows = $this->artistPaymentLinkRows($artistId);
+
+        $filterCounts = [
+            'all' => $rows->count(),
+            'open' => $rows->where('status', 'open')->count(),
+            'paid' => $rows->where('status', 'paid')->count(),
+            'expired' => $rows->where('status', 'expired')->count(),
+        ];
+
+        $filtered = $rows;
+        if ($filter !== 'all') {
+            $filtered = $filtered->where('status', $filter)->values();
+        }
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $filtered = $filtered->filter(function ($row) use ($needle) {
+                $hay = mb_strtolower(implode(' ', array_filter([
+                    (string) ($row->title ?? ''),
+                    (string) ($row->client ?? ''),
+                    (string) ($row->code ?? ''),
+                    (string) ($row->badge ?? ''),
+                ])));
+
+                return str_contains($hay, $needle);
+            })->values();
+        }
+
+        $perPage = 20;
+        $page = max(1, (int) $request->input('page', 1));
+        $paymentLinks = new LengthAwarePaginator(
+            $filtered->forPage($page, $perPage)->values(),
+            $filtered->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
+        $today = Carbon::today()->toDateString();
+        $bookingsTotalCount = Booking::query()
+            ->where('artist_user_id', $artistId)
+            ->where(function ($q) use ($today) {
+                $q->whereIn('status', ['pending', 'cancelled', 'declined', 'completed', 'no_show'])
+                    ->orWhere(function ($q2) use ($today) {
+                        $q2->where('status', 'confirmed');
+                    });
+            })
+            ->count();
+        $requestsCount = BookingRequest::query()
+            ->where('artist_id', $artistId)
+            ->whereNotIn('status', ['cancelled', 'moved_to_booking'])
+            ->count()
+            + CustomRequest::query()
+                ->where('artist_id', $artistId)
+                ->whereNotIn('status', ['cancelled', 'moved_to_booking'])
+                ->count();
+        $paymentLinksCount = $filterCounts['all'];
+
+        $canCreatePaymentLinks = $userDetail
+            ? $payoutService->canAcceptClientPayments($userDetail)
+            : false;
+        $isAutoScheduling = ($userDetail?->scheduling_type ?? '') === 'auto';
+        $paymentLinksBlockedMessage = $canCreatePaymentLinks || ! $userDetail
+            ? null
+            : $payoutService->clientPaymentsBlockedMessage($userDetail);
+        $currency = '€';
+        $paymentLinkModalReloadOnDone = true;
+
+        return view('artist.bookings.payment-links', compact(
+            'paymentLinks',
+            'bookingsTotalCount',
+            'requestsCount',
+            'paymentLinksCount',
+            'canCreatePaymentLinks',
+            'isAutoScheduling',
+            'paymentLinksBlockedMessage',
+            'currency',
+            'paymentLinkModalReloadOnDone',
+            'filter',
+            'search',
+            'filterCounts',
+        ));
+    }
+
+    private function artistPaymentLinksTotalCount(int $artistId): int
+    {
+        $standalone = PaymentLink::query()->where('artist_id', $artistId)->count();
+        $bookingLinks = BalanceCollection::query()
+            ->where('artist_user_id', $artistId)
+            ->where('collection_type', BalanceCollection::TYPE_PAYMENT_LINK)
+            ->whereNotNull('payment_link_code')
+            ->where('payment_link_code', '!=', '')
+            ->count();
+
+        return $standalone + $bookingLinks;
+    }
+
+    /**
+     * @return Collection<int, object>
+     */
+    private function artistPaymentLinkRows(int $artistId): Collection
+    {
+        $now = now();
+
+        $standalone = PaymentLink::query()
+            ->where('artist_id', $artistId)
+            ->with(['booking.user'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (PaymentLink $link) use ($now) {
+                $status = $link->listStatus();
+                if ($status === 'pending') {
+                    $status = 'open';
+                }
+                // listStatus already handles paid/expired; normalize pending→open
+                if ($status !== 'paid' && $status !== 'expired') {
+                    $status = 'open';
+                }
+                if ($status === 'open' && $link->expires_at && $link->expires_at->lt($now) && ! $link->isPaid()) {
+                    $status = 'expired';
+                }
+
+                $clientName = trim((string) ($link->payer_name ?? ''));
+                if ($clientName === '') {
+                    $bookingUser = $link->booking?->user;
+                    if ($bookingUser) {
+                        $clientName = trim(($bookingUser->first_name ?? '').' '.($bookingUser->last_name ?? ''));
+                    }
+                }
+                if ($clientName === '') {
+                    $clientName = 'Not used yet';
+                }
+
+                return (object) [
+                    'source' => 'standalone',
+                    'id' => $link->id,
+                    'title' => (string) $link->title,
+                    'client' => $clientName,
+                    'deposit' => $link->depositAmount(),
+                    'total' => $link->totalAmount(),
+                    'status' => $status,
+                    'created_at' => $link->created_at,
+                    'url' => $link->publicUrl(),
+                    'code' => (string) $link->code,
+                    'booking_id' => $link->booking_id ? (int) $link->booking_id : null,
+                    'badge' => null,
+                ];
+            });
+
+        $bookingLinks = BalanceCollection::query()
+            ->where('artist_user_id', $artistId)
+            ->where('collection_type', BalanceCollection::TYPE_PAYMENT_LINK)
+            ->whereNotNull('payment_link_code')
+            ->where('payment_link_code', '!=', '')
+            ->with(['booking.tattoo', 'booking.user', 'client'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (BalanceCollection $collection) {
+                $booking = $collection->booking;
+                $sessionTitle = trim((string) ($booking?->displayTitle() ?? ''));
+                $title = $sessionTitle !== ''
+                    ? 'Balance · '.$sessionTitle
+                    : 'Balance payment';
+
+                $clientUser = $collection->client ?: $booking?->user;
+                $clientName = $clientUser
+                    ? trim(($clientUser->first_name ?? '').' '.($clientUser->last_name ?? ''))
+                    : '';
+                if ($clientName === '') {
+                    $clientName = 'Not used yet';
+                }
+
+                $amount = round((float) $collection->amount, 2);
+                $depositPaid = round((float) ($booking?->deposit_amount ?? 0), 2);
+                $bookingTotal = $depositPaid > 0 ? round($depositPaid + $amount, 2) : $amount;
+                $status = $collection->isPaid()
+                    ? 'paid'
+                    : ($collection->isPaymentLinkExpired() || $collection->status === BalanceCollection::STATUS_FAILED
+                        ? 'expired'
+                        : 'open');
+
+                $url = trim((string) ($collection->payment_link_url ?? ''));
+                if ($url === '' && $collection->payment_link_code) {
+                    $url = url('/p/'.$collection->payment_link_code);
+                }
+
+                return (object) [
+                    'source' => 'booking',
+                    'id' => $collection->id,
+                    'title' => $title,
+                    'client' => $clientName,
+                    'deposit' => $amount,
+                    'total' => $bookingTotal > 0 ? $bookingTotal : $amount,
+                    'status' => $status,
+                    'created_at' => $collection->created_at,
+                    'url' => $url,
+                    'code' => (string) $collection->payment_link_code,
+                    'booking_id' => $collection->booking_id ? (int) $collection->booking_id : null,
+                    'badge' => 'From booking',
+                ];
+            });
+
+        return $standalone
+            ->concat($bookingLinks)
+            ->sortByDesc(function ($row) {
+                return optional($row->created_at)->getTimestamp() ?? 0;
+            })
+            ->values();
+    }
+
+    public function expirePaymentLink(Request $request, string $source, int $id)
+    {
+        $artistId = (int) Auth::id();
+
+        if ($source === 'standalone') {
+            $link = PaymentLink::query()
+                ->whereKey($id)
+                ->where('artist_id', $artistId)
+                ->firstOrFail();
+
+            if ($link->isPaid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This link has already been paid and can’t be expired.',
+                ], 422);
+            }
+
+            if ($link->listStatus() === 'expired') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Link expired',
+                    'status' => 'expired',
+                ]);
+            }
+
+            $link->forceFill([
+                'status' => PaymentLink::STATUS_EXPIRED,
+                'expires_at' => now(),
+            ])->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Link expired',
+                'status' => 'expired',
+            ]);
+        }
+
+        if ($source === 'booking') {
+            $collection = BalanceCollection::query()
+                ->whereKey($id)
+                ->where('artist_user_id', $artistId)
+                ->where('collection_type', BalanceCollection::TYPE_PAYMENT_LINK)
+                ->firstOrFail();
+
+            if ($collection->isPaid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This link has already been paid and can’t be expired.',
+                ], 422);
+            }
+
+            if ($collection->isPaymentLinkExpired()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Link expired',
+                    'status' => 'expired',
+                ]);
+            }
+
+            $collection->markPaymentLinkExpired();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Link expired',
+                'status' => 'expired',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid payment link.',
+        ], 404);
     }
 
     public function resendConsent(Request $request, int $id, BookingConsentService $consents)

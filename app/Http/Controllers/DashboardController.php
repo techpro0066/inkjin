@@ -16,19 +16,19 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        // For admin, get statistics
-        if ($user->role === 'admin') {
-            $stats = [
-                'total_users' => User::where('role', '!=', 'admin')->count(),
-                'total_regular_users' => User::where('role', 'user')->count(),
-                'total_artists' => User::where('role', 'artist')->count(),
-            ];
-            
-            return view('dashboard', compact('stats'));
+        if (($user->role ?? '') === 'admin') {
+            return redirect()->route('admin.dashboard');
         }
-        
-        // For other roles, just show the dashboard
-        return view('dashboard');
+
+        if (($user->role ?? '') === 'artist') {
+            return redirect()->route('artist.dashboard');
+        }
+
+        if (($user->role ?? '') === 'studio') {
+            return redirect()->route('studio.dashboard');
+        }
+
+        return redirect()->route('user.dashboard');
     }
 
     /**

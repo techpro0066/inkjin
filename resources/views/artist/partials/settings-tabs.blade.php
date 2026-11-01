@@ -6,11 +6,10 @@
 @endphp
 <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
   <a href="{{ route('profile.edit') }}" class="{{ $settingsTabClass('profile') }}">Profile</a>
-  <a href="{{ route('settings.styles') }}" class="{{ $settingsTabClass('styles') }}">Styles &amp; Social</a>
   <a href="{{ route('settings.studio') }}" class="{{ $settingsTabClass('studio') }}">Studio</a>
   <a href="{{ route('availability.index') }}" class="{{ $settingsTabClass('availability') }}">Availability</a>
   <a href="{{ route('settings.preferences') }}" class="{{ $settingsTabClass('payments') }}">Payments</a>
-  <a href="{{ route('settings.calendar') }}" class="{{ $settingsTabClass('calendar') }}">Calendar</a>
+  <a href="{{ route('schedule.calendar-sync') }}" class="{{ $settingsTabClass('calendar') }}">Calendar sync</a>
   <a href="{{ route('settings.payment') }}" class="{{ $settingsTabClass('payouts') }}">Payouts</a>
   <a href="{{ route('settings.regional') }}" class="{{ $settingsTabClass('regional') }}">Regional</a>
 </div>

@@ -1,49 +1,96 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
-@section('title', 'Stripe Requirements')
+@section('title', 'Money · Stripe requirements')
 
-@section('content')
 @php
+  $activeNav = 'money';
   $stripeConnectLocale = $stripeConnectLocale ?? config('services.stripe.connect.locale', 'en-US');
 @endphp
-<main class="main-content flex-1 min-h-screen flex flex-col">
-  <div class="flex-1 p-6 md:p-10 lg:p-12 max-w-5xl">
-    @include('artist.partials.settings-tabs', ['activeTab' => 'payouts'])
 
-    <div class="mb-6">
-      <a href="{{ route('settings.payment') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:opacity-80">
-        <span class="material-symbols-outlined text-base">arrow_back</span>
-        Back to payout settings
-      </a>
+@section('styles')
+<style>
+  .req-page .back{
+    display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;
+    color:var(--pri);margin-bottom:18px
+  }
+  .req-page .back .ms{font-size:18px}
+  .req-page .back:hover{opacity:.8}
+  .req-page .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px
+  }
+  .req-page .pill{
+    display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 12px;
+    font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+    background:var(--amberl);color:var(--amber);border:1px solid #F0D9A8;margin-bottom:12px
+  }
+  .req-page .pill .ms{font-size:16px;font-variation-settings:'FILL' 1}
+  .req-page .help{font-size:13px;color:var(--muted);line-height:1.55;margin:0}
+  .req-page .err{color:var(--red);font-size:13px;margin-top:10px}
+  .req-page .err.hidden{display:none!important}
+  .req-page .hint{font-size:12.5px;color:var(--faint);margin-top:12px;line-height:1.5}
+  .req-page #stripeRequirementsMount{
+    min-height:420px;width:100%;max-width:100%;margin-top:16px;
+    background:#fff;border-radius:12px;overflow:hidden
+  }
+  .req-page #stripeRequirementsMount > *{
+    display:block;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box
+  }
+  .req-page #stripeRequirementsMount iframe{width:100%!important;max-width:100%!important}
+  .req-page .note{
+    display:flex;gap:10px;align-items:flex-start;background:var(--amberl);border:1px solid #F0D9A8;
+    border-radius:14px;padding:12px 14px;color:#7A4E00;font-size:13.5px;line-height:1.5;margin-bottom:14px
+  }
+  .req-page .note .ms{color:var(--amber);font-size:22px;font-variation-settings:'FILL' 1;flex-shrink:0}
+</style>
+@endsection
+
+@section('content')
+<div class="req-page">
+  <div class="head">
+    <div>
+      <h1>
+        Money
+        <a class="help-q" href="https://help.inkjin.com/en/articles/17201212-dashboard-money-payouts" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
+          <span class="ms">help</span>
+        </a>
+      </h1>
+      <div class="sub">What you've earned, how clients pay you, and where your payouts go.</div>
     </div>
+  </div>
 
-    <div class="mb-8">
-      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Stripe required information</h2>
-      <p class="text-on-surface-variant mt-1">Submit any details Stripe still needs for your connected payout account.</p>
-    </div>
+  @include('artist.partials.money-tabs', ['moneyTab' => 'payouts'])
 
-    <div class="bg-surface-container-low rounded-2xl p-6 bg-white space-y-6">
-      <div class="max-w-2xl space-y-4 mb-2">
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200/80 px-3 py-1 text-xs font-bold uppercase tracking-wide">Action needed</span>
-        <p class="text-on-surface-variant text-sm">
-          Complete the form below. When you’re done, you’ll return to payout settings.
-        </p>
-      </div>
+  <a href="{{ route('settings.payment') }}" class="back">
+    <span class="ms">arrow_back</span>
+    Back to payouts
+  </a>
 
-      @if (!($stripeConnectConfigured ?? false))
-        <div class="rounded-xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
-          Stripe is not configured. Please contact support.
-        </div>
-      @else
-        <div id="stripeRequirementsMount" class="min-h-[420px] rounded-xl p-1 bg-white overflow-hidden"></div>
-        <p id="stripe_requirements_error" class="text-error text-xs mt-2 hidden"></p>
-        <p id="stripeRequirementsHint" class="text-on-surface-variant text-xs mt-3">
-          Finish every required Stripe step. You’ll be redirected when nothing else is due.
-        </p>
+  <div class="note">
+    <span class="ms">priority_high</span>
+    <div>
+      <b style="display:block;margin-bottom:2px">Stripe needs more information</b>
+      Submit the details below for your connected payout account. When you’re done, you’ll return to payouts.
+      @if (!empty($payoutBankCountryName))
+        <div style="margin-top:4px;font-size:12.5px;opacity:.9">Bank country: {{ $payoutBankCountryName }}</div>
       @endif
     </div>
   </div>
-</main>
+
+  <div class="card">
+    <span class="pill"><span class="ms">assignment</span>Action needed</span>
+    <p class="help">Complete every required Stripe step. This page redirects automatically when nothing else is due.</p>
+
+    @if (!($stripeConnectConfigured ?? false))
+      <p class="err" style="display:block">Stripe is not configured. Please contact support.</p>
+    @else
+      <div id="stripeRequirementsMount"></div>
+      <p id="stripe_requirements_error" class="err hidden"></p>
+      <p id="stripeRequirementsHint" class="hint">
+        Finish every required Stripe step. You’ll be redirected when nothing else is due.
+      </p>
+    @endif
+  </div>
+</div>
 @endsection
 
 @section('scripts')
@@ -66,7 +113,6 @@ let redirectInProgress = false;
 
 function stillNeedsUserSubmission(status) {
   if (!status?.success) return true;
-  if (status.disabled_reason) return true;
   return Array.isArray(status.currently_due) && status.currently_due.length > 0;
 }
 
@@ -127,7 +173,7 @@ async function mountRequirementsOnboarding() {
   const container = document.getElementById('stripeRequirementsMount');
   if (!stripeConfigured || !publishableKey || !container) return;
 
-  container.innerHTML = '<p class="text-sm text-on-surface-variant p-6">Loading Stripe form…</p>';
+  container.innerHTML = '<p class="help" style="padding:24px 8px">Loading Stripe form…</p>';
 
   try {
     await createStripeSession();

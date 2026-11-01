@@ -12,7 +12,9 @@ use App\Models\Placement;
 use App\Models\Style;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Models\Waitlist;
 use App\Services\PublicBookingEmailVerificationService;
+use App\Support\ArtistStudioChoices;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,10 +41,7 @@ class CustomRequestController extends Controller
             abort(404, 'User not found');
         }
 
-        if (in_array($userDetail->availability_status, ['closed', 'design_only'], true)) {
-            return redirect()->route('public.artist', ['username' => $userName]);
-        }
-
+        // Resolve guest spot first — guest reservations stay bookable even when home books are closed / design-only.
         $guestSpotId = null;
         $guestSpot = null;
         if ($request->has('guest_spot')) {
@@ -56,6 +55,25 @@ class CustomRequestController extends Controller
             }
 
             $guestSpotId = $guestSpot->id;
+        }
+
+        $isGuestSpotRequest = $guestSpotId !== null;
+        $isWaitlistJoin = ! $isGuestSpotRequest
+            && $request->boolean('waitlist')
+            && ($userDetail->waitlist_signup_mode ?? Waitlist::SIGNUP_MODE_NAME_EMAIL)
+                === Waitlist::SIGNUP_MODE_REQUEST_FORM;
+
+        if (
+            in_array($userDetail->availability_status, ['closed', 'design_only'], true)
+            && ! $isWaitlistJoin
+            && ! $isGuestSpotRequest
+        ) {
+            return redirect()->route('public.artist', ['username' => $userName]);
+        }
+
+        if ($isWaitlistJoin && ($userDetail->availability_status ?? '') !== 'closed') {
+            // Request-form waitlist is only for closed books; otherwise use the normal flow.
+            return redirect()->route('public.request-custom', ['user_name' => $userName]);
         }
 
         // Entry pills on the regular custom flow only (not when already scoped to a guest spot).
@@ -74,7 +92,18 @@ class CustomRequestController extends Controller
 
         $questions = QuestionSorting::activeQuestionsPayloadForArtist($userDetail->user_id, 'custom');
 
-        if (count($questions) === 0) {
+        $artistName = $userDetail->publicDisplayName();
+        $artistDisplay = $artistName !== '' ? $artistName : 'Artist';
+
+        $studioChoices = ArtistStudioChoices::forArtist((int) $userDetail->user_id, $userDetail);
+        // Always ask where to tattoo when the artist has 2+ active studios (not guest-spot scoped).
+        if ($guestSpotId === null) {
+            $questions = ArtistStudioChoices::prependQuestionIfNeeded($questions, $studioChoices, $artistDisplay);
+        }
+
+        // Regular custom requests need intake questions. Guest-spot / waitlist can still open
+        // (contact + scheduling screens) even when the artist has none configured yet.
+        if (count($questions) === 0 && ! $isGuestSpotRequest && ! $isWaitlistJoin) {
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
@@ -83,8 +112,6 @@ class CustomRequestController extends Controller
             (int) $userDetail->user_id,
             $questions
         );
-
-        $artistName = $userDetail->publicDisplayName();
 
         $studioLabel = $guestSpot?->studioNameWithCityCountry()
             ?: $userDetail->studioNameWithCityCountry();
@@ -114,11 +141,11 @@ class CustomRequestController extends Controller
 
         return view('public.request-custom', [
             'userDetail' => $userDetail,
-            'artistName' => $artistName !== '' ? $artistName : 'Artist',
+            'artistName' => $artistDisplay,
             'questions' => $questions,
             'requiredBookingQuestions' => $questions,
             'prefilledQuestionAnswers' => $prefilledQuestionAnswers,
-            'hasArtistQuestions' => !empty($questions),
+            'hasArtistQuestions' => ! empty($questions),
             'artistUsername' => $userDetail->user_name,
             'fallbackTattooSlug' => $fallbackTattooSlug,
             'artistProfileUrl' => route('public.artist', ['username' => $userDetail->user_name]),
@@ -128,7 +155,9 @@ class CustomRequestController extends Controller
             'guestSpotId' => $guestSpotId,
             'guestSpot' => $guestSpot,
             'studioLabel' => $studioLabel,
-            'activeGuestSpots' => $activeGuestSpots,
+            'activeGuestSpots' => $isWaitlistJoin ? collect() : $activeGuestSpots,
+            'studioChoices' => $studioChoices,
+            'isWaitlistJoin' => $isWaitlistJoin,
         ]);
     }
 
@@ -156,6 +185,7 @@ class CustomRequestController extends Controller
             'request_payload.referral_source' => ['nullable', 'string', 'max:255'],
             'request_payload.questions_answers' => ['nullable', 'array'],
             'request_payload.guest_id' => ['nullable', 'integer'],
+            'request_payload.from_waitlist' => ['sometimes', 'boolean'],
         ];
 
         if ($isManagedScheduling) {
@@ -170,19 +200,26 @@ class CustomRequestController extends Controller
 
         $payload = $validated['request_payload'];
         $email = mb_strtolower(trim((string) ($payload['email'] ?? '')));
+        $wantsWaitlist = (bool) ($payload['from_waitlist'] ?? false);
+        $waitlistMode = $userDetail->waitlist_signup_mode ?? Waitlist::SIGNUP_MODE_NAME_EMAIL;
+        $isWaitlistJoin = $wantsWaitlist
+            && $waitlistMode === Waitlist::SIGNUP_MODE_REQUEST_FORM
+            && ($userDetail->availability_status ?? '') === 'closed';
 
         $verifiedEntry = $emailVerification->getVerified($email);
         if (! $verifiedEntry) {
             return response()->json(['message' => 'Please verify your email before submitting your request.'], 422);
         }
 
-        $guestSpot = $this->resolveGuestSpotForArtist(
-            $payload['guest_id'] ?? null,
-            (int) $userDetail->user_id
-        );
+        $guestSpot = $isWaitlistJoin
+            ? null
+            : $this->resolveGuestSpotForArtist(
+                $payload['guest_id'] ?? null,
+                (int) $userDetail->user_id
+            );
         $isGuestRequest = $guestSpot !== null;
 
-        if (! empty($payload['guest_id']) && ! $isGuestRequest) {
+        if (! $isWaitlistJoin && ! empty($payload['guest_id']) && ! $isGuestRequest) {
             return response()->json(['message' => 'This guest spot is no longer available.'], 422);
         }
 
@@ -201,8 +238,18 @@ class CustomRequestController extends Controller
             }
         }
 
-        if (in_array($userDetail->availability_status, ['closed', 'design_only'], true)) {
+        $isGuestSpotSubmit = $isGuestRequest;
+
+        if (
+            in_array($userDetail->availability_status, ['closed', 'design_only'], true)
+            && ! $isWaitlistJoin
+            && ! $isGuestSpotSubmit
+        ) {
             return response()->json(['message' => 'This artist is not accepting custom requests right now.'], 422);
+        }
+
+        if ($wantsWaitlist && ! $isWaitlistJoin) {
+            return response()->json(['message' => 'Waitlist request form is not available right now.'], 422);
         }
 
         $requestUser = User::query()->find((int) $verifiedEntry['user_id']);
@@ -237,6 +284,8 @@ class CustomRequestController extends Controller
             'user_id' => $requestUser->id,
             'artist_id' => $userDetail->user_id,
             'is_guest' => $isGuestRequest,
+            'from_waitlist' => $isWaitlistJoin,
+            'waitlist_released_at' => null,
             'guest_id' => $guestSpot?->id,
             'type' => $schedulingType,
             'questions_answers' => $questionsAnswers,
@@ -248,6 +297,15 @@ class CustomRequestController extends Controller
             'how_much_flexible' => $isManagedScheduling ? trim((string) ($payload['how_much_flexible'] ?? '')) : null,
             'urgency' => $isManagedScheduling ? trim((string) ($payload['urgency'] ?? '')) : null,
         ]);
+
+        if ($isWaitlistJoin) {
+            $this->syncWaitlistFromCustomRequest(
+                artistUserId: (int) $userDetail->user_id,
+                customRequest: $customRequest,
+                requestUser: $requestUser,
+                fallbackName: $name,
+            );
+        }
 
         app(\App\Services\MailcoachSubscriberService::class)
             ->queueSubscribeUser($requestUser, \App\Services\MailcoachSubscriberService::TAG_USER);
@@ -281,7 +339,8 @@ class CustomRequestController extends Controller
         }
 
         $artistEmail = (string) ($userDetail->user->email ?? '');
-        if ($artistEmail !== '') {
+        // Waitlist joins stay on Clients > Waitlist until the artist notifies them.
+        if ($artistEmail !== '' && ! $isWaitlistJoin) {
             try {
                 $customRequest->load(['user', 'artist']);
                 Mail::to($artistEmail)->send(new CustomRequestSubmittedArtistMail(
@@ -303,6 +362,54 @@ class CustomRequestController extends Controller
             'custom_request_id' => $customRequest->id,
             'request_reference' => $customRequest->referenceLabel(),
             'post_request_access_url' => $accessUrl,
+            'from_waitlist' => $isWaitlistJoin,
+        ]);
+    }
+
+    private function syncWaitlistFromCustomRequest(
+        int $artistUserId,
+        CustomRequest $customRequest,
+        User $requestUser,
+        string $fallbackName = ''
+    ): void {
+        $email = mb_strtolower(trim((string) $requestUser->email));
+        if ($email === '') {
+            return;
+        }
+
+        $name = trim(implode(' ', array_filter([
+            (string) ($requestUser->first_name ?? ''),
+            (string) ($requestUser->last_name ?? ''),
+        ])));
+        if ($name === '') {
+            $name = trim($fallbackName);
+        }
+        if ($name === '') {
+            $name = 'Client';
+        }
+
+        $existing = Waitlist::query()
+            ->booksOnly()
+            ->where('user_id', $artistUserId)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
+
+        if ($existing) {
+            $existing->update([
+                'name' => $name,
+                'custom_request_id' => $customRequest->id,
+                'status' => Waitlist::STATUS_PENDING,
+            ]);
+
+            return;
+        }
+
+        Waitlist::query()->create([
+            'user_id' => $artistUserId,
+            'name' => $name,
+            'email' => $email,
+            'status' => Waitlist::STATUS_PENDING,
+            'custom_request_id' => $customRequest->id,
         ]);
     }
 

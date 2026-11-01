@@ -23,12 +23,21 @@ class ArtistAftercareController extends Controller
             is_array($userDetail?->aftercare_content) ? $userDetail->aftercare_content : null
         );
 
+        $artistLabel = trim((string) ($userDetail?->studio_name ?? ''));
+        if ($artistLabel === '') {
+            $artistLabel = trim(($user?->first_name ?? '').' '.($user?->last_name ?? ''));
+        }
+        if ($artistLabel === '') {
+            $artistLabel = 'your artist';
+        }
+
         return view('artist.aftercare.index', [
             'user' => $user,
             'userDetail' => $userDetail,
             'sendAutomatically' => (bool) ($userDetail?->aftercare_send_automatically ?? false),
             'sections' => $resolved['sections'],
             'textBlocks' => $resolved['text_blocks'],
+            'artistLabel' => $artistLabel,
         ]);
     }
 

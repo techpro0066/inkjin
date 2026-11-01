@@ -73,6 +73,7 @@
   $splitCard = $splitCard ?? null;
   $multiCards = $multiCards ?? [];
   $pastCards = $pastCards ?? collect();
+  $inviteCards = $inviteCards ?? collect();
   $emptyMeta = $emptyMeta ?? ['left_name' => null, 'left_on' => null, 'upcoming' => 0];
 
   $bodyState = $viewState;
@@ -143,6 +144,7 @@
     @include('artist.settings.partials.on-bookpay-studio', ['card' => $primaryCard])
   @endif
 
+  @include('artist.settings.partials.pending-studio-invites', ['inviteCards' => $inviteCards])
   @include('artist.settings.partials.past-studios', ['pastCards' => $pastCards])
     </div>
 

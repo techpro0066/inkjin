@@ -104,6 +104,24 @@ class BalanceCollection extends Model
             || $this->paid_at !== null;
     }
 
+    public function isPaymentLinkExpired(): bool
+    {
+        if ($this->collection_type !== self::TYPE_PAYMENT_LINK) {
+            return false;
+        }
+
+        $meta = is_array($this->meta) ? $this->meta : [];
+
+        return ! empty($meta['payment_link_expired_at']);
+    }
+
+    public function markPaymentLinkExpired(): void
+    {
+        $meta = is_array($this->meta) ? $this->meta : [];
+        $meta['payment_link_expired_at'] = now()->toIso8601String();
+        $this->forceFill(['meta' => $meta])->save();
+    }
+
     public function isUnsettledOpen(): bool
     {
         return $this->collection_type === self::TYPE_NOT_SETTLED_YET

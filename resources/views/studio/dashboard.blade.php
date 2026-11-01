@@ -54,6 +54,47 @@
     </div>
   @endunless
 
+  @if (($pendingGuestSpotInvites ?? collect())->isNotEmpty())
+    <div class="card" style="margin-top:14px;border-color:#E4D6F5;background:#FBF7FE">
+      <div class="ch" style="border-bottom:0;padding-bottom:0">
+        <h3>Guest spot split requests</h3>
+        <a href="{{ route('studio.artists.guests') }}" style="font-size:13px;font-weight:700;color:var(--pri);text-decoration:none">View all</a>
+      </div>
+      <div style="padding:4px 22px 18px">
+        <div class="faint" style="font-size:13px;margin-bottom:12px;line-height:1.45">Artists who want a revenue split for a guest spot at your studio. Nothing changes until you accept.</div>
+        @foreach ($pendingGuestSpotInvites as $invite)
+          <div class="row" style="gap:12px;flex-wrap:wrap;{{ ! $loop->first ? 'margin-top:14px;padding-top:14px;border-top:1px solid #F0E4F5' : '' }}">
+            <div class="avatar" @if($invite['artist_avatar']) style="background-image:url('{{ $invite['artist_avatar'] }}')" @endif>
+              @unless ($invite['artist_avatar'])
+                {{ $invite['artist_initials'] }}
+              @endunless
+            </div>
+            <div style="min-width:0;flex:1">
+              <b style="display:block">{{ $invite['artist_name'] }}</b>
+              <div class="faint" style="font-size:12.5px;margin-top:2px;line-height:1.4">
+                Guest
+                @if ($invite['dates'] !== '')
+                  · {{ $invite['dates'] }}
+                @endif
+                · Split: {{ explode(' ', $invite['artist_name'])[0] }} {{ $invite['artist_percent'] }}%, you {{ $invite['studio_percent'] }}%
+              </div>
+            </div>
+            <form method="post" action="{{ route('studio.guest-spot-invite.decline', $invite['id']) }}">
+              @csrf
+              <input type="hidden" name="redirect" value="guests">
+              <button type="submit" class="btn ghost sm">Decline</button>
+            </form>
+            <form method="post" action="{{ route('studio.guest-spot-invite.accept', $invite['id']) }}">
+              @csrf
+              <input type="hidden" name="redirect" value="guests">
+              <button type="submit" class="btn sm">Accept</button>
+            </form>
+          </div>
+        @endforeach
+      </div>
+    </div>
+  @endif
+
   <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px">
     <div class="card" style="padding:18px 20px">
       <div class="faint" style="font-size:12.5px">Your share this month</div>
@@ -82,7 +123,7 @@
     <div class="card">
       <div class="ch">
         <h3>Your artists</h3>
-        <a href="#" data-locked="Artists" style="font-size:13px;font-weight:700;color:var(--pri);text-decoration:none">View</a>
+        <a href="{{ route('studio.artists') }}" style="font-size:13px;font-weight:700;color:var(--pri);text-decoration:none">View</a>
       </div>
       <div style="padding:14px 22px 18px">
         @forelse ($artists as $link)

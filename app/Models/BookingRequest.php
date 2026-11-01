@@ -155,6 +155,54 @@ class BookingRequest extends Model
         return is_array($decoded) ? $decoded : null;
     }
 
+    public function guestSpotId(): ?int
+    {
+        $id = (int) (($this->consultationDetailsArray() ?? [])['guest_spot_id'] ?? 0);
+
+        return $id > 0 ? $id : null;
+    }
+
+    public function isGuestSpotRequest(): bool
+    {
+        return $this->guestSpotId() !== null;
+    }
+
+    public function guestSpot(): ?GuestSpot
+    {
+        $id = $this->guestSpotId();
+        if (! $id) {
+            return null;
+        }
+
+        return GuestSpot::query()->find($id);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function artistGuestSpotSummary(): ?array
+    {
+        $spot = $this->guestSpot();
+        if (! $spot) {
+            return null;
+        }
+
+        return [
+            'city' => $spot->city,
+            'country' => $spot->country,
+            'fromDate' => $spot->from_date?->format('M j, Y'),
+            'toDate' => $spot->to_date?->format('M j, Y'),
+            'availabilityTime' => $spot->listAvailabilityTimeLabel(),
+            'studio' => $spot->studioNameWithCityCountry(),
+            'location' => $spot->listLocationLabel(),
+            'remainingSpotsLabel' => $spot->listRemainingSpotsLabel(),
+            'tracksCapacity' => $spot->tracksSpotCapacity(),
+            'remainingSpots' => (int) ($spot->remaining_spots ?? 0),
+            'isFull' => $spot->isFull(),
+            'id' => $spot->id,
+        ];
+    }
+
     public function hasConsultation(): bool
     {
         $details = $this->consultationDetailsArray();
@@ -850,6 +898,8 @@ class BookingRequest extends Model
 
     public function toArtistPanelArray(): array
     {
+        $isGuest = $this->isGuestSpotRequest();
+
         return [
             'id' => $this->id,
             'reference' => $this->referenceLabel(),
@@ -886,6 +936,10 @@ class BookingRequest extends Model
             'tattooDurationLabel' => self::formatDurationMinutes($this->tattooDurationMinutes()),
             'consultDurationLabel' => self::formatDurationMinutes($this->consultationDurationMinutes()),
             'questionsAnswers' => is_array($this->questions_answers) ? array_values($this->questions_answers) : [],
+            'isGuest' => $isGuest,
+            'guestSpotId' => $this->guestSpotId(),
+            'guestSpot' => $isGuest ? $this->artistGuestSpotSummary() : null,
+            'type' => 'managed',
         ];
     }
 

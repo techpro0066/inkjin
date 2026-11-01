@@ -74,6 +74,8 @@
     .question-div { display: none; min-height: 60vh; align-items: center; justify-content: center; padding: 2rem 0; }
     .question-div.active { display: flex; animation: tfSlideIn 0.4s ease-out; }
     .question-div.active.reverse { animation: tfSlideInReverse 0.4s ease-out; }
+    /* Register steps: no tall centered gap under Back */
+    #stepRegister .question-div { min-height: 0; align-items: flex-start; justify-content: flex-start; padding: 0.25rem 0 1.5rem; }
     @keyframes tfSlideIn { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes tfSlideInReverse { from { opacity: 0; transform: translateY(-40px); } to { opacity: 1; transform: translateY(0); } }
     .cal-card { background: white; border-radius: 1rem; border: 1px solid #e6e0ea; overflow: hidden; box-shadow: 0 4px 24px rgba(49,15,122,0.06); }
@@ -114,15 +116,25 @@
     .time-slot-card:hover { border-color: #310f7a; background: #f8f1fb; }
     .time-slot-card.selected { background: #310f7a; color: white; border-color: #310f7a; }
     .time-slot-card.booked { background: #f2ecf5; color: #cac4d3; cursor: default; border-color: transparent; pointer-events: none; }
-    .time-slot-wrap { display: flex; gap: 0.5rem; align-items: stretch; }
-    .time-slot-confirm { display: none; padding: 0.75rem 1.25rem; border-radius: 0.75rem; background: #310f7a; color: white; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-    .time-slot-wrap.selected .time-slot-confirm { display: flex; align-items: center; gap: 0.35rem; animation: tfSlideIn 0.2s ease-out; }
+    .time-slot-wrap { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 0.5rem; align-items: stretch; width: 100%; }
+    .time-slot-wrap > .time-slot-card { flex: 1 1 auto; min-width: 0; width: auto !important; }
+    .time-slot-confirm { display: none; flex: 0 0 auto; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #310f7a; color: white; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; border: 0; align-items: center; gap: 0.35rem; }
+    .time-slot-wrap.selected .time-slot-confirm { display: inline-flex; animation: tfSlideIn 0.2s ease-out; }
     .single-choice-radio-button { padding: 0.75rem 1.5rem; border-radius: 9999px; border: 2px solid #cac4d3; font-size: 0.95rem; font-weight: 600; color: #494552; cursor: pointer; transition: all 0.15s; background: white; }
     .single-choice-radio-button:hover { border-color: #310f7a; color: #310f7a; }
     .single-choice-radio-button.selected { background: #310f7a; color: white; border-color: #310f7a; }
     .single-choice-radio-button.option-other { background: #f2ecf5; border-color: #b69fff; color: #310f7a; }
     .single-choice-radio-button.option-other:hover { background: #e8ddff; border-color: #664db1; color: #21005e; }
     .single-choice-radio-button.option-other.selected { background: #310f7a; border-color: #310f7a; color: #ffffff; }
+    /* Studio picker (multi-studio) — matches custom request */
+    .stpick{display:grid;gap:10px}
+    .stc.single-choice-radio-button{display:flex;align-items:center;gap:12px;text-align:left;border:1.5px solid #cac4d3;background:#fff;border-radius:14px;padding:14px 16px;width:100%;box-shadow:none;font-weight:inherit;color:inherit}
+    .stc.single-choice-radio-button:hover{border-color:#310f7a;background:#FBF5FF;color:inherit}
+    .stc.single-choice-radio-button.selected{border-color:#310f7a;background:#FBF5FF;color:inherit;box-shadow:none}
+    .stc .stc-ico{color:#310f7a;font-size:20px;flex:none}
+    .stc .stc-txt{flex:1;min-width:0}.stc .stc-txt b{display:block;font-size:15px;color:#1c1b21}.stc .stc-txt small{display:block;font-size:12.5px;color:#494552;margin-top:2px}
+    .stc .stc-ck{margin-left:auto;color:#310f7a;visibility:hidden;font-variation-settings:'FILL' 1;font-size:20px}
+    .stc.single-choice-radio-button.selected .stc-ck{visibility:visible}
     .style-other-modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
     .style-other-modal.hidden { display: none !important; }
     .style-other-modal-backdrop { position: absolute; inset: 0; background: rgba(28, 27, 33, 0.55); backdrop-filter: blur(2px); }
@@ -180,28 +192,16 @@
     .consult-type-card.selected .ct-icon .material-symbols-outlined { color: white; }
     .confirm-chip { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; background: #310f7a; color: white; }
     .section-disabled { opacity: 0.4; pointer-events: none; filter: grayscale(0.3); }
-    .question-kicker {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.35rem 0.85rem;
-      border-radius: 9999px;
-      border: 1px solid #ddd0ff;
-      background: linear-gradient(135deg, #f8f1fb 0%, #f2ecf5 100%);
-      color: #310f7a;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      margin-bottom: 0.75rem;
-      box-shadow: 0 2px 8px rgba(49, 15, 122, 0.08);
+    /* Match client-book .chip0 / .back on questions */
+    .question-kicker,.chip0{
+      display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;
+      border:1px solid #E6D6F1;background:var(--pl,#F5ECFB);
+      color:var(--p,#3E007C);font-size:11.5px;font-weight:700;margin:0 0 10px;letter-spacing:0;
+      box-shadow:none;
     }
-    .question-kicker .dot {
-      width: 0.45rem;
-      height: 0.45rem;
-      border-radius: 9999px;
-      background: #310f7a;
-      opacity: 0.9;
-    }
+    .question-kicker .dot,.chip0:before{content:'';width:5px;height:5px;border-radius:999px;background:var(--p,#3E007C);display:inline-block;flex:none}
+    .q-back{font-size:12.5px;display:inline-flex;align-items:center;gap:4px;color:var(--ink,#1D1A21);text-decoration:none;margin-bottom:12px;background:none;border:0;padding:0;cursor:pointer;font-family:inherit}
+    .q-back .ms,.q-back .material-symbols-outlined{font-size:16px}
     .select2-container--default .select2-selection--single {
       height: 58px;
       border: 1px solid rgba(122, 117, 131, 0.35);
@@ -307,23 +307,43 @@
     .q-toggle-input:focus-visible + .q-toggle-ui {
       box-shadow: 0 0 0 3px rgba(30, 107, 255, 0.22);
     }
+
+    /* Design chrome — match client-book .dc / dcard() */
+    :root{--p:#3E007C;--p2:#5A238E;--pl:#F5ECFB;--ink:#1D1A21;--muted:#6E6475;--line:#EFE3F2;--bg:#FFF6FF}
+    .bk-top{display:block;width:100%;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
+    .bk-top .in{max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-sizing:border-box}
+    .bk-top .logo{display:flex;align-items:center;gap:6px;font-weight:800;font-size:17px;color:var(--p);letter-spacing:-.3px;font-family:'Space Grotesk',system-ui,sans-serif;text-decoration:none}
+    .bk-top .logo i{width:22px;height:22px;border-radius:50%;background:var(--p);color:#fff;font-style:normal;font-size:11px;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:700}
+    .bk-top .back{font-size:12.5px;display:inline-flex;align-items:center;gap:4px;color:var(--ink);text-decoration:none;white-space:nowrap}
+    .bk-top .back .ms{font-size:16px}
+    .bk-prog{height:2px;background:var(--p);width:0;max-width:100%;transition:width .3s}
+    .dc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;gap:14px;align-items:center;margin-bottom:18px}
+    .dc .im{width:72px;height:72px;border-radius:6px;background:#F3F0F5 center/contain no-repeat;flex:none}
+    .dc h2{font-size:15px;margin:0 0 3px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+    .dc .m{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
+    .dc .m span{display:inline-flex;align-items:center;gap:3px}.dc .m .ms{font-size:14px}
+    .dc .w{font-size:12px;margin-top:5px;line-height:1.6;color:var(--ink)}
+    .dc .w i{width:18px;height:18px;border-radius:50%;background:var(--p);color:#fff;font-style:normal;font-size:8.5px;font-weight:700;margin-right:5px;vertical-align:middle;display:inline-flex;align-items:center;justify-content:center}
+    #bookingMainContent{max-width:60rem}
+    .loc{background:var(--pl,#F5ECFB);border-radius:12px;padding:12px 14px;display:flex;gap:10px;margin:14px 0 16px;font-size:12px;align-items:flex-start}
+    .loc .ms{color:var(--p,#3E007C);font-size:17px;margin-top:1px;flex:none}
+    .loc b{display:block;font-size:12.5px;color:var(--ink,#1D1A21);font-weight:700}
+    .loc .loc-addr{display:block;color:#3F3A45;line-height:1.45}
+    .loc a{color:var(--p,#3E007C);font-weight:600;text-decoration:none;display:block;margin-top:3px}
+    .loc a:hover{text-decoration:underline}
+    .err-t{color:var(--bad,#C0262D);font-size:12.5px;margin-top:8px;display:flex;gap:5px;align-items:center}
+    .err-t .ms,.err-t .material-symbols-outlined{font-size:15px;line-height:1}
+    .js-question-input.err,.js-select2-question.err,.in.err{border-color:var(--bad,#C0262D)!important}
   </style>
 </head>
-<body class="bg-surface text-on-surface min-h-screen">
-  <div class="tf-progress" id="topProgressBar" style="width: 0%"></div>
-
-  <!-- HEADER -->
-  <header class="border-b border-outline-variant/20 bg-white/70 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-2 text-primary font-extrabold text-xl tracking-tight">
-        <img src="{{ asset('design/images/logo-blue.png') }}" alt="inkjin" class="h-7">
-      </a>
-      <div class="flex items-center gap-3 flex-wrap justify-end">
-        <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to artist
-        </a>
-      </div>
+<body class="bg-surface text-on-surface min-h-screen" style="background:var(--bg)">
+  <!-- HEADER — match client-book .top -->
+  <header class="bk-top">
+    <div class="in">
+      <a class="logo" href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}"><i>ij</i>inkjin</a>
+      <a class="back" href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}"><span class="material-symbols-outlined ms">arrow_back</span>Back to {{ $userDetail->publicDisplayName() }}</a>
     </div>
+    <div class="bk-prog" id="topProgressBar"></div>
   </header>
 
   <!-- BOOKINGS CLOSED OVERLAY (hidden by default) -->
@@ -340,19 +360,37 @@
     </div>
   </div>
 
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8" id="bookingMainContent">
+  <main class="mx-auto px-4 py-6" id="bookingMainContent" style="width:100%;box-sizing:border-box">
 
     @php
-      $studioCityCountry = trim(implode(', ', array_filter([
-          $userDetail->city ?? '',
-          $userDetail->country ?? '',
-      ])));
-      $studioNamePlain = trim((string) ($userDetail->studio_name ?? ''));
-      $studioNameDisplay = $studioNamePlain !== '' ? $studioNamePlain : 'Studio';
-      if ($studioCityCountry !== '') {
-          $studioNameDisplay .= ' (' . $studioCityCountry . ')';
+      $guestSpot = $guestSpot ?? null;
+      $guestSpotId = $guestSpotId ?? ($guestSpot?->id);
+      $activeStudioLink = $userDetail->activeUserStudio();
+      if ($guestSpot) {
+          $studioNamePlain = $guestSpot->studioDisplayName() ?: 'Guest studio';
+          $studioCityCountry = trim(implode(', ', array_filter([
+              trim((string) ($guestSpot->city ?? '')),
+              trim((string) ($guestSpot->country ?? '')),
+          ])));
+          $studioNameDisplay = $studioNamePlain;
+          if ($studioCityCountry !== '') {
+              $studioNameDisplay .= ' (' . $studioCityCountry . ')';
+          }
+          $studioAddressLine = $guestSpot->listLocationLabel() ?: '';
+          $studioMapsLink = trim((string) ($guestSpot->google_maps_link ?? ''));
+      } else {
+          $studioCityCountry = trim(implode(', ', array_filter([
+              $activeStudioLink?->city ?? ($userDetail->city ?? ''),
+              $activeStudioLink?->country ?? ($userDetail->country ?? ''),
+          ])));
+          $studioNamePlain = trim((string) ($userDetail->resolvedStudioName() ?: ($userDetail->studio_name ?? ''))) ?: 'Studio';
+          $studioNameDisplay = $studioNamePlain;
+          if ($studioCityCountry !== '') {
+              $studioNameDisplay .= ' (' . $studioCityCountry . ')';
+          }
+          $studioAddressLine = $userDetail->publicStudioAddressLine();
+          $studioMapsLink = $userDetail->publicStudioMapsLink();
       }
-      $studioAddressLine = trim((string) ($userDetail->studio_address ?? ''));
     @endphp
 
     <!-- STEP DOTS -->
@@ -368,23 +406,19 @@
       <div class="progress-step text-center" data-step="5"><div class="step-dot mx-auto">5</div><div class="step-label" id="step5Label">Confirmed</div></div>
     </div>
 
-      <div class="bg-white rounded-2xl border border-outline-variant/20 p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
-        <div class="w-full sm:w-24 h-24 sm:h-24 rounded-xl bg-surface-container flex items-center justify-center flex-shrink-0">
-          <img src="{{asset($tattoo->image)}}" alt="{{ $tattoo->title }}" class="w-full h-full object-cover">
+    {{-- Design card — match client-book dcard() for flash --}}
+    <div class="dc">
+      <div class="im" style="background-image:url('{{ asset($tattoo->image) }}')" role="img" aria-label="{{ $tattoo->title }}"></div>
+      <div>
+        <h2 class="cc-designTitle">{{ $tattoo->title }}</h2>
+        <div class="m">
+          <span><span class="material-symbols-outlined ms">brush</span><span class="cc-designStyle">{{ ucwords(str_replace('-', ' ', $tattoo->primary_style)) }}</span></span>
+          <span class="cc-designPrice">€{{ $tattoo->min_price }} – €{{ $tattoo->max_price }}</span>
+          <span><span class="material-symbols-outlined ms">schedule</span><span class="cc-designTime">{{ $tattoo->session_duration }}h</span></span>
         </div>
-        <div class="flex-1 min-w-0">
-          <h2 class="text-base sm:text-lg font-bold text-on-surface mb-1 break-words cc-designTitle">{{ $tattoo->title }}</h2>
-          <div class="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-on-surface-variant">
-            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> <span class="cc-designStyle">{{ ucwords(str_replace('-', ' ', $tattoo->primary_style)) }}</span></span>
-            <span class="flex items-center gap-1"> <span class="cc-designPrice">€{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}</span></span>
-            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> <span class="cc-designTime">{{ $tattoo->session_duration }} hours</span></span>
-        </div>
-          <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
-            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0"><span class="text-white text-[10px] font-bold cc-artistAvatar">{{ $userDetail->publicDisplayInitials() }}</span></div>
-            <span class="leading-relaxed break-words">with <strong class="cc-artistName">{{ $userDetail->publicDisplayName() }}</strong> at <strong class="cc-studioName">{{ $studioNameDisplay }}</strong></span>
+        <div class="w"><i class="cc-artistAvatar">{{ $userDetail->publicDisplayInitials() }}</i>with <b class="cc-artistName">{{ $userDetail->publicDisplayName() }}</b> at <b class="cc-studioName">{{ $studioNameDisplay }}</b></div>
       </div>
-          </div>
-        </div>
+    </div>
 
     <!-- ================================== -->
     <!-- STEP 1: QUESTIONS (Typeform-style) -->
@@ -421,7 +455,7 @@
             <div class="grid grid-cols-7 gap-1 text-center mb-2"><div class="text-xs font-semibold text-on-surface-variant py-1">Mon</div><div class="text-xs font-semibold text-on-surface-variant py-1">Tue</div><div class="text-xs font-semibold text-on-surface-variant py-1">Wed</div><div class="text-xs font-semibold text-on-surface-variant py-1">Thu</div><div class="text-xs font-semibold text-on-surface-variant py-1">Fri</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sat</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sun</div></div>
             <div class="grid grid-cols-7 gap-1 justify-items-center" id="calGrid"></div>
           </div>
-          <div class="md:w-[280px] p-6" id="timeSlotsPanel">
+          <div class="md:w-[340px] p-6" id="timeSlotsPanel">
             <div id="timeSlotsEmpty" class="flex flex-col items-center justify-center h-full min-h-[200px] text-center"><span class="material-symbols-outlined text-outline-variant text-4xl mb-2">calendar_today</span><p class="text-sm text-on-surface-variant">Select a date to see<br>available times</p></div>
             <div id="timeSlotsContent" class="hidden slide-in-right">
               <h3 class="font-bold text-base mb-1" id="selectedDateLabel">—</h3>
@@ -432,16 +466,12 @@
           </div>
         </div>
       </div>
-      <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
-        <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+      <div class="loc">
+        <span class="material-symbols-outlined ms">location_on</span>
         <div>
-          <p class="text-sm font-semibold text-on-surface cc-studioName">{{ $studioNameDisplay }}</p>
-          @if ($studioAddressLine !== '')
-          <p class="text-xs text-on-surface-variant cc-studioAddress">{{ $studioAddressLine }}</p>
-          @endif
-          @if (!empty($userDetail->google_maps_link))
-          <a href="{{ $userDetail->google_maps_link }}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
-          @endif
+          <b class="cc-studioName">{{ $studioNamePlain }}</b>
+          <span class="loc-addr cc-studioAddress">{{ $studioAddressLine }}</span>
+          <a class="bk-studioDirections" href="{{ $studioMapsLink !== '' ? $studioMapsLink : '#' }}" target="_blank" rel="noopener noreferrer" @if($studioMapsLink === '') style="display:none" @endif>Get directions →</a>
         </div>
       </div>
       <div id="confirmBar" class="hidden mt-6 bg-white rounded-2xl border border-primary/20 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
@@ -509,7 +539,7 @@
               <div class="grid grid-cols-7 gap-1 text-center mb-2"><div class="text-xs font-semibold text-on-surface-variant py-1">Mon</div><div class="text-xs font-semibold text-on-surface-variant py-1">Tue</div><div class="text-xs font-semibold text-on-surface-variant py-1">Wed</div><div class="text-xs font-semibold text-on-surface-variant py-1">Thu</div><div class="text-xs font-semibold text-on-surface-variant py-1">Fri</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sat</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sun</div></div>
               <div class="grid grid-cols-7 gap-1 justify-items-center" id="ccCalGrid"></div>
             </div>
-            <div class="md:w-[280px] p-6">
+            <div class="md:w-[340px] p-6">
               <div id="ccTimeSlotsEmpty" class="flex flex-col items-center justify-center h-full min-h-[200px] text-center"><span class="material-symbols-outlined text-outline-variant text-4xl mb-2">calendar_today</span><p class="text-sm text-on-surface-variant">Select a date to see<br>available times</p></div>
               <div id="ccTimeSlotsContent" class="hidden slide-in-right">
                 <h3 class="font-bold text-base mb-1" id="ccSelectedDateLabel">—</h3>
@@ -538,7 +568,7 @@
                 <div class="grid grid-cols-7 gap-1 text-center mb-2"><div class="text-xs font-semibold text-on-surface-variant py-1">Mon</div><div class="text-xs font-semibold text-on-surface-variant py-1">Tue</div><div class="text-xs font-semibold text-on-surface-variant py-1">Wed</div><div class="text-xs font-semibold text-on-surface-variant py-1">Thu</div><div class="text-xs font-semibold text-on-surface-variant py-1">Fri</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sat</div><div class="text-xs font-semibold text-on-surface-variant py-1">Sun</div></div>
                 <div class="grid grid-cols-7 gap-1 justify-items-center" id="ccTatCalGrid"></div>
               </div>
-              <div class="md:w-[280px] p-6">
+              <div class="md:w-[340px] p-6">
                 <div id="ccTatTimeSlotsEmpty" class="flex flex-col items-center justify-center h-full min-h-[200px] text-center"><span class="material-symbols-outlined text-outline-variant text-4xl mb-2">calendar_today</span><p class="text-sm text-on-surface-variant">Select a date to see<br>available times</p></div>
                 <div id="ccTatTimeSlotsContent" class="hidden slide-in-right">
                   <h3 class="font-bold text-base mb-1" id="ccTatSelectedDateLabel">—</h3>
@@ -552,16 +582,12 @@
           <div id="ccTattooChip" class="hidden mb-2"><div class="confirm-chip" id="ccTattooChipText">🎨 Tattoo Session: —</div></div>
         </div>
       </div>
-      <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
-        <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+      <div class="loc">
+        <span class="material-symbols-outlined ms">location_on</span>
         <div>
-          <p class="text-sm font-semibold text-on-surface cc-studioName">{{ $studioNameDisplay }}</p>
-          @if ($studioAddressLine !== '')
-          <p class="text-xs text-on-surface-variant cc-studioAddress">{{ $studioAddressLine }}</p>
-          @endif
-          @if (!empty($userDetail->google_maps_link))
-          <a href="{{ $userDetail->google_maps_link }}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
-          @endif
+          <b class="cc-studioName">{{ $studioNamePlain }}</b>
+          <span class="loc-addr cc-studioAddress">{{ $studioAddressLine }}</span>
+          <a class="bk-studioDirections" href="{{ $studioMapsLink !== '' ? $studioMapsLink : '#' }}" target="_blank" rel="noopener noreferrer" @if($studioMapsLink === '') style="display:none" @endif>Get directions →</a>
         </div>
       </div>
       <!-- Bottom summary -->
@@ -608,16 +634,12 @@
           <div><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Urgency</label><div class="flex flex-wrap gap-2" id="urgencyPills"><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="No rush" onclick="selectPill(this,'urgencyPills')">No rush</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="Within 2 weeks" onclick="selectPill(this,'urgencyPills')">Within 2 weeks</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="Within a month" onclick="selectPill(this,'urgencyPills')">Within a month</button><button class="single-choice-radio-button text-sm !py-2 !px-4" data-value="ASAP" onclick="selectPill(this,'urgencyPills')">ASAP</button></div></div>
         </div>
       </div>
-      <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
-        <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+      <div class="loc">
+        <span class="material-symbols-outlined ms">location_on</span>
         <div>
-          <p class="text-sm font-semibold text-on-surface cc-studioName">{{ $studioNameDisplay }}</p>
-          @if ($studioAddressLine !== '')
-          <p class="text-xs text-on-surface-variant cc-studioAddress">{{ $studioAddressLine }}</p>
-          @endif
-          @if (!empty($userDetail->google_maps_link))
-          <a href="{{ $userDetail->google_maps_link }}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
-          @endif
+          <b class="cc-studioName">{{ $studioNamePlain }}</b>
+          <span class="loc-addr cc-studioAddress">{{ $studioAddressLine }}</span>
+          <a class="bk-studioDirections" href="{{ $studioMapsLink !== '' ? $studioMapsLink : '#' }}" target="_blank" rel="noopener noreferrer" @if($studioMapsLink === '') style="display:none" @endif>Get directions →</a>
         </div>
       </div>
       <button onclick="goToStep(3)" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm mt-4">Continue to Your Details</button>
@@ -677,16 +699,12 @@
             <p class="text-sm font-semibold text-on-surface">🎨 Your tattoo session</p>
           </div>
         </div>
-        <div class="flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
-          <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+        <div class="loc">
+          <span class="material-symbols-outlined ms">location_on</span>
           <div>
-            <p class="text-sm font-semibold text-on-surface mc-studioName">{{ $studioNameDisplay }}</p>
-            @if ($studioAddressLine !== '')
-            <p class="text-xs text-on-surface-variant mc-studioAddress">{{ $studioAddressLine }}</p>
-            @endif
-            @if (!empty($userDetail->google_maps_link))
-            <a href="{{ $userDetail->google_maps_link }}" target="_blank" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
-            @endif
+            <b class="mc-studioName">{{ $studioNamePlain }}</b>
+            <span class="loc-addr mc-studioAddress">{{ $studioAddressLine }}</span>
+            <a class="bk-studioDirections" href="{{ $studioMapsLink !== '' ? $studioMapsLink : '#' }}" target="_blank" rel="noopener noreferrer" @if($studioMapsLink === '') style="display:none" @endif>Get directions →</a>
           </div>
         </div>
         <button onclick="goToStep(3)" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm flex items-center justify-center gap-2 mt-4">Continue <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>
@@ -705,7 +723,7 @@
           <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your name?</h2>
           <p class="text-on-surface-variant mb-6">So the artist knows who to expect.</p>
           <input type="text" id="bdName" placeholder="Your full name" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="bdNameError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          <p id="bdNameError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text">Please enter your full name.</span></p>
           <div class="flex items-center justify-between mt-6"><button onclick="nextReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button><span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span></div>
         </div>
       </div>
@@ -717,7 +735,7 @@
           <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your email?</h2>
           <p class="text-on-surface-variant mb-6">We'll send your booking confirmation here.</p>
           <input type="email" id="bdEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="bdEmailError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          <p id="bdEmailError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text">That email doesn't look right.</span></p>
           <div class="flex items-center justify-between mt-6"><button onclick="nextReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button><span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span></div>
         </div>
       </div>
@@ -745,7 +763,7 @@
             <div class="mb-4">
               <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpCode">4-digit code</label>
               <input type="text" id="bdOtpCode" maxlength="4" inputmode="numeric" placeholder="1234" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-              <p id="bdOtpError" class="text-sm text-error mt-2 hidden">Please enter a valid 4-digit code.</p>
+              <p id="bdOtpError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text">That code isn't right. Check the email and try again.</span></p>
             </div>
             
             <p id="bdOtpStatus" class="hidden items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3"></p>
@@ -817,7 +835,7 @@
               <hr class="border-outline-variant/20 my-4">
               <div class="space-y-2 text-sm mb-3"><div class="flex justify-between"><span class="font-semibold text-on-surface">Price Estimate</span><span class="font-semibold text-on-surface" id="payPriceEstimate">—</span></div></div>
               <div id="payFeeVatNote" class="rounded-xl px-3 py-2.5 mb-3 text-xs leading-relaxed text-on-surface bg-primary/5 border border-primary/10">
-                Your deposit is paid to the artist for the tattoo service — no Inkjin fee applies to it. Inkjin's booking fee, shown below, is a separate charge.
+                Your deposit is paid to the artist for the tattoo. No Inkjin fee comes out of it. Inkjin's booking fee, shown below, is a separate charge and includes VAT (24%).
               </div>
               <div class="bg-surface-container-low rounded-xl p-3 mb-3">
                 <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due Now</p>
@@ -831,12 +849,12 @@
                   <div class="flex justify-between"><span class="font-bold text-on-surface">Total Due Now</span><span class="font-bold text-primary text-lg" id="payTotal">—</span></div>
                 </div>
               </div>
-              <div class="bg-surface-container-low rounded-xl p-3"><p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due at Studio</p><div class="space-y-1.5 text-sm"><div class="flex justify-between"><span class="text-on-surface-variant">Remaining Balance (est.)</span><span class="font-semibold" id="payBalance">—</span></div><p class="text-xs text-on-surface-variant italic mt-1">If you get this design as-is (original size, no modifications), expect to pay the minimum. Final price confirmed by the artist based on size, placement, and any customizations.</p></div></div>
+              <div class="bg-surface-container-low rounded-xl p-3"><p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due at Studio</p><div class="space-y-1.5 text-sm"><div class="flex justify-between"><span class="text-on-surface-variant">Remaining Balance (est.)</span><span class="font-semibold" id="payBalance">—</span></div><p class="text-xs text-on-surface-variant italic mt-1">If you get this design as it is (original size, no changes), expect to pay the minimum. The artist confirms the final price based on size, placement and any changes.</p></div></div>
             </div>
           </div>
           <div class="flex-1 lg:order-1">
-            <h2 class="text-xl font-bold mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[22px] text-primary">lock</span> Secure Payment</h2>
-            <p class="text-sm text-on-surface-variant mb-2">Your payment is securely processed. You won't be charged until you confirm.</p>
+            <h2 class="text-xl font-bold mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[22px] text-primary">lock</span> Secure payment</h2>
+            <p class="text-sm text-on-surface-variant mb-2">Your payment is processed securely. You won't be charged until you confirm.</p>
 
             @include('partials.checkout-payment-tabs', [
               'showIrisTab' => $showIrisTab ?? false,
@@ -901,51 +919,59 @@
     <!-- ======================= -->
     <div class="step-panel" id="stepConfirmation">
       <div class="flex flex-col items-center justify-center py-16" id="processingView"><div class="spinner mb-4"></div><p class="text-sm text-on-surface-variant" id="processingText">Processing your payment…</p></div>
-      <!-- Calendar confirmation -->
-      <div class="hidden" id="confirmationCalendar">
-        <div class="flex justify-center mb-6"><svg width="80" height="80" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="36" stroke="#310f7a" stroke-width="3" fill="none" class="check-circle"/><path d="M24 42 L34 52 L56 30" stroke="#310f7a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="check-mark"/></svg></div>
-        <h2 class="text-2xl font-extrabold text-center mb-2">Booking Confirmed!</h2>
-        <p class="text-sm text-on-surface-variant text-center mb-8">Your deposit has been received and your appointment is secured.</p>
-        <div class="bg-white rounded-2xl border border-outline-variant/20 p-5 mb-8">
-          <div class="space-y-2.5 text-sm">
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Booking Ref</span><span class="book-meta-value font-bold text-primary" id="confRef">#INK-000000</span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Design</span><span class="book-meta-value font-semibold" id="confDesign">—</span></div>
-            <div class="book-meta-row hidden" id="confConsultRow"><span class="book-meta-label text-on-surface-variant">Consultation</span><span class="book-meta-value font-semibold" id="confConsultDateTime">—</span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant" id="confDateTimeLabel">Date & Time</span><span class="book-meta-value font-semibold" id="confDateTime">—</span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Artist</span><span class="book-meta-value font-semibold" id="confArtist">—</span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Studio</span><span class="book-meta-value font-semibold" id="confStudio">—</span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Location</span><span class="book-meta-value font-semibold text-xs sm:text-sm" id="confLocationName">—</span></div>
-            <div class="book-meta-row"><span class="book-meta-label"></span><span class="book-meta-value"><a href="#" id="confDirectionsLink" target="_blank" class="text-xs text-primary font-medium hover:underline">Get Directions →</a></span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Placement</span><span class="book-meta-value font-semibold" id="confPlacement">—</span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Size</span><span class="book-meta-value font-semibold" id="confSize">—</span></div>
-            <div id="confImageAnswers" class="space-y-2.5"></div>
-            <hr class="border-outline-variant/20">
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Price Estimate</span><span class="book-meta-value font-semibold" id="confPriceEstimate">—</span></div>
-            <div class="book-meta-row hidden" id="confConsultFeeRow"><span class="book-meta-label text-on-surface-variant">Consultation</span><span class="book-meta-value font-semibold text-green-600">Free</span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant" id="confDepositLabel">Artist Deposit</span><span class="book-meta-value font-semibold" id="confDeposit">—</span></div>
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Inkjin Booking Fee</span><span class="book-meta-value font-semibold" id="confBookingFee">—</span></div>
-            <div class="book-meta-row hidden" id="confSubtotalRow"><span class="book-meta-label text-on-surface-variant">Subtotal</span><span class="book-meta-value font-semibold" id="confSubtotal">—</span></div>
-            <div class="book-meta-row hidden" id="confTaxRow"><span class="book-meta-label text-on-surface-variant" id="confTaxLabel">VAT on booking fee (24%)</span><span class="book-meta-value font-semibold" id="confTax">—</span></div>
-            <div class="book-meta-row"><span class="book-meta-label font-bold text-on-surface">Total Paid</span><span class="book-meta-value font-bold text-primary" id="confTotalPaid">—</span></div>
-            <hr class="border-outline-variant/10">
-            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Remaining Balance (est.)</span><span class="book-meta-value font-semibold" id="confBalance">—</span></div>
-            <p class="text-xs text-on-surface-variant italic">If you get this design as-is (original size, no modifications), expect to pay the minimum. Final price confirmed by the artist based on size, placement, and any customizations.</p>
-          </div>
-          <div class="mt-3 pt-3 border-t border-outline-variant/20"><a href="javascript:void(0)" onclick="scrollToCancellationPolicy()" class="text-xs text-primary font-medium hover:underline">View cancellation policy →</a></div>
+      <!-- Calendar confirmation (matches client-book auto done) -->
+      @php
+        $cwRawConf = strtolower(trim((string) ($userDetail->cancellation_window ?? '48h')));
+        if (str_contains($cwRawConf, 'w')) {
+            preg_match('/(\d+)/', $cwRawConf, $mConf);
+            $nConf = (int) ($mConf[1] ?? 1);
+            $confCancelWindowHuman = $nConf === 1 ? '1 week' : $nConf.' weeks';
+        } elseif (str_contains($cwRawConf, 'day')) {
+            preg_match('/(\d+)/', $cwRawConf, $mConf);
+            $nConf = (int) ($mConf[1] ?? 1);
+            $confCancelWindowHuman = $nConf === 1 ? '1 day' : $nConf.' days';
+        } else {
+            preg_match('/(\d+)/', $cwRawConf, $mConf);
+            $nConf = (int) ($mConf[1] ?? 48);
+            $confCancelWindowHuman = $nConf === 1 ? '1 hour' : $nConf.' hours';
+        }
+        $confReschedulePolicy = strtolower((string) ($userDetail->reschedule_times ?? 'never'));
+        $confRescheduleBullet = match ($confReschedulePolicy) {
+            'once' => 'Need to change the time? You can reschedule once, up to '.$confCancelWindowHuman.' before.',
+            'twice' => 'Need to change the time? You can reschedule twice, up to '.$confCancelWindowHuman.' before.',
+            'unlimited' => 'Need to change the time? You can reschedule up to '.$confCancelWindowHuman.' before.',
+            default => 'Need to change the time? Contact the artist — online rescheduling is not available.',
+        };
+      @endphp
+      <div class="hidden max-w-[430px] mx-auto text-center pt-4" id="confirmationCalendar">
+        <div class="w-[52px] h-[52px] rounded-full border-[2.5px] border-[#3BB36A] text-[#3BB36A] flex items-center justify-center mx-auto mb-3">
+          <span class="material-symbols-outlined text-[30px]">check</span>
         </div>
-        <div class="bg-surface-container-low rounded-2xl p-5 mb-8">
-          <h3 class="text-sm font-bold mb-3">What's next?</h3>
-          <ul class="space-y-2 text-sm text-on-surface-variant" id="confWhatsNext">
-            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> You'll receive a confirmation email</li>
-            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> The artist may reach out about design details</li>
-            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Arrive 10 minutes early on your appointment day</li>
-            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Remember to bring a valid photo ID</li>
+        <h2 class="text-[19px] font-bold text-on-surface mb-1">You're booked!</h2>
+        <div class="text-xs text-on-surface-variant mb-2">Booking ID: <b class="text-on-surface" id="confRef">#INK-000000</b></div>
+        <p class="text-[12.5px] text-[#3F3A45] mb-4">We sent a confirmation and receipt to <b id="confEmail">—</b>.</p>
+        <div class="bg-white rounded-2xl border border-outline-variant/20 px-4 py-3 mb-3.5 text-left text-sm space-y-2">
+          <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Design</span><span class="book-meta-value font-semibold" id="confDesign">—</span></div>
+          <div class="book-meta-row hidden" id="confConsultRow"><span class="book-meta-label text-on-surface-variant">Consultation</span><span class="book-meta-value font-semibold" id="confConsultDateTime">—</span></div>
+          <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant" id="confDateTimeLabel">When</span><span class="book-meta-value font-semibold" id="confDateTime">—</span></div>
+          <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Where</span><span class="book-meta-value font-semibold text-xs sm:text-sm" id="confWhere">—</span></div>
+          <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Paid now</span><span class="book-meta-value font-semibold" id="confPaidNow">—</span></div>
+        </div>
+        <div class="rounded-xl bg-primary/5 px-4 py-3.5 mb-4 text-left">
+          <h3 class="text-sm font-bold text-on-surface mb-2">Before your appointment</h3>
+          <ul class="space-y-1.5 text-[12.5px] text-[#3F3A45] list-disc pl-4">
+            <li>Fill in your consent form. It takes about 3 minutes.</li>
+            <li>Bring a valid ID. The artist checks it before the session.</li>
+            <li id="confRescheduleBullet">{{ $confRescheduleBullet }}</li>
           </ul>
         </div>
-        <div class="flex flex-col sm:flex-row gap-3">
-          <a id="viewMyBookingPostLoginLink" href="{{ route('login') }}" class="flex-1 py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm text-center">View My Booking</a>
-          <a href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}" class="flex-1 py-3.5 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">Back to Artist Page</a>
+        <a id="confConsentLink" href="{{ route('login') }}" class="block w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm text-center">Fill in consent form</a>
+        <div class="flex gap-2 mt-2">
+          <a id="confAddToCalendar" href="#" target="_blank" rel="noopener" class="flex-1 py-3 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">Add to calendar</a>
+          <a href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}" class="flex-1 py-3 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">Back to artist page</a>
         </div>
+        {{-- Keep for payment success handlers that still set post-booking access --}}
+        <a id="viewMyBookingPostLoginLink" href="{{ route('login') }}" class="hidden">View My Booking</a>
       </div>
       <!-- Managed confirmation -->
       <div class="hidden" id="confirmationManaged">
@@ -1009,11 +1035,7 @@
       $('#processingView').removeClass('hidden');
       $('#confirmationCalendar, #confirmationManaged').addClass('hidden');
       $('#processingText').text('Confirming your payment...');
-      $('#confRef').text(data.booking_reference || '#INK-000000');
-      $('#viewMyBookingPostLoginLink').attr(
-        'href',
-        data.post_booking_login_url || data.redirect_url || @json(route('login'))
-      );
+      applyCalendarConfirmationSuccess(data, data.booking_reference || '#INK-000000');
       $('#processingView').addClass('hidden');
       $('#confirmationCalendar').removeClass('hidden');
     };
@@ -1023,6 +1045,7 @@
     var bookingFeeType = @json($bookingFeeType ?? 'client');
     var bookingArtistUsername = @json($userDetail->user_name ?? '');
     var bookingTattooSlug = @json($tattoo->slug ?? '');
+    var designDetailUrl = @json(route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug]));
     var stripe = null;
     var stripeElements = null;
     var stripeCardNumber = null;
@@ -1038,6 +1061,7 @@
       var typeMap = { text: 'input', free: 'input', images: 'image', checkbox: 'toggle' };
       var normalizedType = typeMap[q.type] || q.type || 'input';
       var opts = Array.isArray(q.options) ? q.options : [];
+      var studioOpts = Array.isArray(q.studio_options) ? q.studio_options : [];
       if (normalizedType === 'toggle' && !opts.length) opts = ['Yes', 'No'];
       return {
         id: q.id,
@@ -1045,10 +1069,86 @@
         subtitle: q.description || 'Please answer this question.',
         type: normalizedType,
         options: opts,
+        studio_options: studioOpts,
         placeholder: q.placeholder || '',
         required: !!q.is_required
       };
     });
+    var studioChoices = @json($studioChoices ?? []);
+    var guestSpotId = @json($guestSpotId ?? null);
+    var guestBookableWindow = @json($guestBookableWindow ?? null);
+    var defaultStudio = (Array.isArray(studioChoices) && studioChoices.length === 1)
+      ? studioChoices[0]
+      : {
+          id: null,
+          name: @json($studioNamePlain ?? 'Studio'),
+          address: @json($studioAddressLine ?? ''),
+          maps_link: @json($studioMapsLink ?? '')
+        };
+
+    function resolveSelectedStudio() {
+      var selectedName = String(questionAnswers.__studio__ || questionAnswers['__studio__'] || '').trim();
+      if (!selectedName && Array.isArray(studioChoices) && studioChoices.length === 1) {
+        return studioChoices[0];
+      }
+      if (selectedName && Array.isArray(studioChoices)) {
+        for (var i = 0; i < studioChoices.length; i++) {
+          if (String(studioChoices[i].name || '') === selectedName) return studioChoices[i];
+        }
+        return { id: null, name: selectedName, address: '', maps_link: '' };
+      }
+      if (Array.isArray(studioChoices) && studioChoices.length === 1) return studioChoices[0];
+      return defaultStudio;
+    }
+
+    function selectedStudioId() {
+      var studio = resolveSelectedStudio();
+      var id = studio && studio.id != null ? Number(studio.id) : 0;
+      return id > 0 ? id : null;
+    }
+
+    function rangesForSelectedStudio(dayRanges) {
+      if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
+      var sid = selectedStudioId();
+      if (!sid) return dayRanges;
+      return dayRanges.filter(function(r) {
+        var ids = Array.isArray(r.studio_ids) ? r.studio_ids.map(Number) : [];
+        // Empty studio_ids = legacy / all studios
+        if (!ids.length) return true;
+        return ids.indexOf(sid) !== -1;
+      });
+    }
+
+    function mapsHrefForStudio(studio) {
+      var link = String((studio && studio.maps_link) || '').trim();
+      if (link) return link;
+      var addr = String((studio && studio.address) || '').trim();
+      var name = String((studio && studio.name) || '').trim();
+      var q = addr || name;
+      if (!q) return '';
+      return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+    }
+
+    function updateStudioLocationUi() {
+      var studio = resolveSelectedStudio() || defaultStudio;
+      var name = String(studio.name || defaultStudio.name || 'Studio');
+      var addr = String(studio.address || '').trim();
+      var href = mapsHrefForStudio(studio);
+      document.querySelectorAll('.mc-studioName, .cc-studioName').forEach(function(el) { el.textContent = name; });
+      document.querySelectorAll('.mc-studioAddress, .cc-studioAddress').forEach(function(el) {
+        el.textContent = addr;
+        el.style.display = addr ? '' : 'none';
+      });
+      document.querySelectorAll('.bk-studioDirections').forEach(function(el) {
+        if (href) {
+          el.href = href;
+          el.style.display = '';
+        } else {
+          el.removeAttribute('href');
+          el.style.display = 'none';
+        }
+      });
+    }
 
     function escapeHtml(str) {
       return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -1245,11 +1345,85 @@
     }
 
     function bookingFeeVatNoteText(vatApplies) {
-      var base = "Your deposit is paid to the artist for the tattoo service — no Inkjin fee applies to it. Inkjin's booking fee, shown below, is a separate charge";
+      var base = "Your deposit is paid to the artist for the tattoo. No Inkjin fee comes out of it. Inkjin's booking fee, shown below, is a separate charge";
       if (vatApplies) {
         return base + ' and includes VAT (' + euVatRate + '%).';
       }
       return base + '.';
+    }
+
+    function formatConfWhenLabel(dateObj, timeLabel) {
+      if (!(dateObj instanceof Date) || !timeLabel) return '—';
+      return dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ', ' + timeLabel;
+    }
+
+    function pad2(n) {
+      return String(n).padStart(2, '0');
+    }
+
+    function gcalLocalStamp(d) {
+      return d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + pad2(d.getMinutes()) + '00';
+    }
+
+    function updateConfAddToCalendarLink() {
+      var dateObj = null;
+      var timeStr = '';
+      var durationMins = getMainRequiredMinutes();
+      if (consultationRequired) {
+        if (consultationTiming === 'combined') {
+          dateObj = ccConsultDate;
+          timeStr = ccConsultTime;
+          durationMins = tattooDurationMinutes + consultDurationMinutes;
+        } else {
+          dateObj = ccTattooDate;
+          timeStr = ccTattooTime;
+          durationMins = tattooDurationMinutes;
+        }
+      } else {
+        dateObj = selectedDate;
+        timeStr = selectedTime;
+      }
+      var $btn = $('#confAddToCalendar');
+      if (!(dateObj instanceof Date) || !timeStr) {
+        $btn.attr('href', '#').addClass('opacity-50 pointer-events-none');
+        return;
+      }
+      var parts = String(timeStr).split(':');
+      var h = parseInt(parts[0], 10) || 0;
+      var m = parseInt(parts[1], 10) || 0;
+      var start = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), h, m, 0);
+      var end = new Date(start.getTime() + Math.max(15, durationMins || 60) * 60000);
+      var studio = (typeof resolveSelectedStudio === 'function') ? resolveSelectedStudio() : null;
+      var loc = [studio && studio.name, studio && studio.address].filter(Boolean).join(', ');
+      var title = @json(($tattoo->title ?? 'Tattoo') . ' with ' . ($userDetail->publicDisplayName() ?? 'artist'));
+      var url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+        + '&text=' + encodeURIComponent(title)
+        + '&dates=' + gcalLocalStamp(start) + '/' + gcalLocalStamp(end)
+        + '&details=' + encodeURIComponent('Booked via Inkjin. Booking ID: ' + ($('#confRef').text() || ''))
+        + '&location=' + encodeURIComponent(loc || '');
+      $btn.attr('href', url).removeClass('opacity-50 pointer-events-none');
+    }
+
+    function applyCalendarConfirmationSuccess(savedBooking, fallbackRef) {
+      var ref = (savedBooking && savedBooking.booking_reference)
+        || fallbackRef
+        || '#INK-000000';
+      $('#confRef').text(ref);
+      var email = String(bookingConnectedEmail || $('#bdEmail').val() || '').trim();
+      $('#confEmail').text(email || 'your email');
+      var consentUrl = savedBooking && savedBooking.consent_url
+        ? String(savedBooking.consent_url)
+        : '';
+      var bookingLink = (savedBooking && savedBooking.post_booking_login_url)
+        ? savedBooking.post_booking_login_url
+        : @json(route('login'));
+      $('#viewMyBookingPostLoginLink').attr('href', bookingLink);
+      if (consentUrl) {
+        $('#confConsentLink').attr('href', consentUrl).removeClass('hidden opacity-50 pointer-events-none');
+      } else {
+        $('#confConsentLink').attr('href', bookingLink);
+      }
+      updateConfAddToCalendarLink();
     }
 
     function updateCheckoutReceiptNote(deposit, fee, tax) {
@@ -1357,11 +1531,12 @@
       var maxBalance = Math.max(0, maxPrice - deposit);
       var balanceLabel = formatEUR(minBalance) + ' - ' + formatEUR(maxBalance);
       var artistName = @json($userDetail->publicDisplayName());
-      var studioName = @json($studioNameDisplay);
-      var studioAddress = @json($studioAddressLine);
-      var mapsLink = @json($userDetail->google_maps_link ?? '');
+      var selectedStudio = (typeof resolveSelectedStudio === 'function') ? resolveSelectedStudio() : null;
+      var studioName = String((selectedStudio && selectedStudio.name) || @json($studioNamePlain) || 'Studio');
+      var studioAddress = String((selectedStudio && selectedStudio.address) || '');
 
       var mainDateTime = '—';
+      var confWhen = '—';
       var consultDateTime = '—';
       var durationLabel = formatDurationLabel(tattooDurationMinutes);
 
@@ -1372,11 +1547,13 @@
 
         if (consultationTiming === 'combined') {
           mainDateTime = consultDateTime;
+          confWhen = (ccConsultDate && ccConsultTime) ? formatConfWhenLabel(ccConsultDate, ccConsultTime) : '—';
           durationLabel = formatDurationLabel(tattooDurationMinutes + consultDurationMinutes);
           $('#payDateTimeLabel').text('Date & Time');
           $('#payConsultRow').addClass('hidden');
         } else {
           mainDateTime = (ccTattooDate && ccTattooTime) ? formatDateTimeLabel(ccTattooDate, ccTattooTime) : '—';
+          confWhen = (ccTattooDate && ccTattooTime) ? formatConfWhenLabel(ccTattooDate, ccTattooTime) : '—';
           durationLabel = formatDurationLabel(tattooDurationMinutes + consultDurationMinutes) + ' total';
           $('#payDateTimeLabel').text('Tattoo Date & Time');
           $('#payConsultDateTime').text(consultDateTime);
@@ -1384,6 +1561,7 @@
         }
       } else {
         mainDateTime = (selectedDate && selectedTime) ? formatDateTimeLabel(selectedDate, selectedTime) : '—';
+        confWhen = (selectedDate && selectedTime) ? formatConfWhenLabel(selectedDate, selectedTime) : '—';
         $('#payDateTimeLabel').text('Date & Time');
         $('#payConsultRow').addClass('hidden');
       }
@@ -1391,7 +1569,7 @@
       var placement = getAnswerByKeywords(['placement', 'body part', 'where']);
       var requestedSize = getAnswerByKeywords(['size', 'cm', 'inch']);
       var sizeLabel = requestedSize || @json($tattoo->sizeLabel());
-      var locationLabel = studioAddress ? (studioName + ' — ' + studioAddress) : studioName;
+      var locationLabel = studioAddress ? (studioName + ', ' + studioAddress) : studioName;
 
       $('#payDesign').text(@json($tattoo->title ?? '—'));
       $('#payArtist').text(artistName);
@@ -1426,69 +1604,28 @@
       if (typeof window.checkoutUpdateKlarnaAmount === 'function') {
         window.checkoutUpdateKlarnaAmount();
       }
-      $('#confPriceEstimate').text(formatEUR(minPrice) + ' - ' + formatEUR(maxPrice));
-      $('#confDepositLabel').text(getDepositLabel());
-      $('#confDeposit').text(formatEUR(deposit));
-      $('#confBookingFee').text(formatEUR(fee));
-      $('#confSubtotal').text(formatEUR(subtotal));
-      $('#confSubtotalRow').addClass('hidden');
-      if (vatApplies && vat.label) {
-        $('#confTaxLabel').text(vat.label);
-        $('#confTax').text(formatEUR(vat.amount));
-        $('#confTaxRow').removeClass('hidden');
-      } else {
-        $('#confTaxRow').addClass('hidden');
-      }
-      $('#confTotalPaid').text(formatEUR(total));
-      $('#confBalance').text(balanceLabel);
       $('#confDesign').text(@json($tattoo->title ?? '—'));
-      $('#confArtist').text(artistName);
-      $('#confDateTime').text(mainDateTime);
-      $('#confPlacement').text(placement || 'To be confirmed');
-      $('#confSize').text(sizeLabel);
-      $('#confStudio').text(studioName);
-      $('#confLocationName').text(studioAddress || '—');
-      var $confImageAnswers = $('#confImageAnswers');
-      $confImageAnswers.empty();
-      var structuredForConf = buildStructuredQuestionAnswers();
-      Object.keys(structuredForConf).forEach(function (key) {
-        var entry = structuredForConf[key];
-        if (!entry) return;
-        var imageUrls = window.QuestionAnswerDisplay
-          ? window.QuestionAnswerDisplay.imageUrlsFromAnswer(entry.answer, entry.type)
-          : [];
-        if (!imageUrls.length && String(entry.type || '') !== 'image') return;
-        var photoCount = imageUrls.length
-          || (Array.isArray(entry.answer) ? entry.answer.length : (entry.answer ? 1 : 0));
-        if (!photoCount) return;
-        var labels = window.QuestionAnswerDisplay
-          ? window.QuestionAnswerDisplay.formatPhotoLabels(photoCount)
-          : Array.from({ length: photoCount }, function (_, idx) { return 'Photo ' + (idx + 1); }).join(', ');
-        $confImageAnswers.append(
-          '<div class="book-meta-row">' +
-            '<span class="book-meta-label text-on-surface-variant">' + $('<div>').text(entry.question || 'Photos').html() + '</span>' +
-            '<span class="book-meta-value font-semibold">' + $('<div>').text(labels).html() + '</span>' +
-          '</div>'
-        );
-      });
-      if (mapsLink) {
-        $('#confDirectionsLink').attr('href', mapsLink).removeClass('pointer-events-none opacity-50');
-      } else {
-        $('#confDirectionsLink').attr('href', '#').addClass('pointer-events-none opacity-50');
-      }
+      $('#confDateTime').text(confWhen);
+      $('#confWhere').text(locationLabel || '—');
+      $('#confPaidNow').text(formatEUR(total));
+      var confEmail = String(bookingConnectedEmail || $('#bdEmail').val() || '').trim();
+      if (confEmail) $('#confEmail').text(confEmail);
       $('#payManagedArtist, #confManagedArtist').text(artistName);
+      updateConfAddToCalendarLink();
 
       if (consultationRequired) {
         if (consultationTiming === 'separate') {
-          $('#confDateTimeLabel').text('Tattoo Date & Time');
-          $('#confConsultDateTime').text(consultDateTime);
+          $('#confDateTimeLabel').text('When');
+          $('#confConsultDateTime').text(
+            (ccConsultDate && ccConsultTime) ? formatConfWhenLabel(ccConsultDate, ccConsultTime) : consultDateTime
+          );
           $('#confConsultRow').removeClass('hidden');
         } else {
-          $('#confDateTimeLabel').text('Date & Time');
+          $('#confDateTimeLabel').text('When');
           $('#confConsultRow').addClass('hidden');
         }
       } else {
-        $('#confDateTimeLabel').text('Date & Time');
+        $('#confDateTimeLabel').text('When');
         $('#confConsultRow').addClass('hidden');
       }
     }
@@ -1636,6 +1773,8 @@
         email: String(bookingConnectedEmail || $('#bdEmail').val() || '').trim(),
         phone: bookingPhone(),
         name: String($('#bdName').val() || '').trim(),
+        studio_id: (typeof selectedStudioId === 'function') ? selectedStudioId() : null,
+        guest_spot_id: guestSpotId || null,
         consultation_required: isConsultRequired,
         consultation_timing: timing,
         consult_duration_minutes: parseInt(consultDurationMinutes || 30, 10) || 30,
@@ -1789,9 +1928,10 @@
         }
 
         var savedBooking = await persistBookingRecord(confirmResult.paymentIntent.id);
-        $('#confRef').text(savedBooking.booking_reference || ('#INK-' + String(confirmResult.paymentIntent.id || '').replace('pi_', '').slice(-6).toUpperCase()));
-        var bookingLink = (savedBooking && savedBooking.post_booking_login_url) ? savedBooking.post_booking_login_url : @json(route('login'));
-        $('#viewMyBookingPostLoginLink').attr('href', bookingLink);
+        applyCalendarConfirmationSuccess(
+          savedBooking,
+          '#INK-' + String(confirmResult.paymentIntent.id || '').replace('pi_', '').slice(-6).toUpperCase()
+        );
         $('#processingView').addClass('hidden');
         $('#confirmationCalendar').removeClass('hidden');
       } catch (error) {
@@ -1812,7 +1952,19 @@
         var isLast = idx === questionDefinitions.length - 1;
         var body = '';
 
-        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
+        if (q.type === 'studio') {
+          var studioList = (q.studio_options && q.studio_options.length)
+            ? q.studio_options
+            : (q.options || []).map(function(name) { return { name: name, address: '' }; });
+          body = '<div class="stpick" role="radiogroup" aria-label="Studio">' + studioList.map(function(o) {
+            var name = typeof o === 'string' ? o : String(o.name || '');
+            var addr = typeof o === 'string' ? '' : String(o.address || '');
+            return '<button type="button" class="stc single-choice-radio-button" data-value="' + escapeHtml(name) + '" aria-pressed="false">' +
+              '<span class="material-symbols-outlined stc-ico">location_on</span>' +
+              '<span class="stc-txt"><b>' + escapeHtml(name) + '</b>' + (addr ? '<small>' + escapeHtml(addr) + '</small>' : '') + '</span>' +
+              '<span class="material-symbols-outlined stc-ck">check_circle</span></button>';
+          }).join('') + '</div>';
+        } else if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
           var radioButtons = q.options.map(function(opt) {
             var isOther = String(opt || '').trim().toLowerCase() === 'other';
             var optionClass = (isCatalogChoiceQuestion(q.id) && isOther) ? ' option-other' : '';
@@ -1835,18 +1987,21 @@
         }
 
         var navButton = isLast
-          ? '<button class="js-continue-scheduling inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Continue to Scheduling <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>'
+          ? '<button class="js-continue-scheduling inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Continue to schedule <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>'
           : '<button class="js-next-question inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>';
+        var backHtml = isFirst
+          ? '<a class="q-back" href="' + escapeHtml(designDetailUrl) + '"><span class="material-symbols-outlined ms">arrow_back</span>Back to design</a>'
+          : '<button type="button" class="q-back js-prev-question"><span class="material-symbols-outlined ms">arrow_back</span>Back</button>';
 
         html +=
           '<div class="question-div' + (isFirst ? ' active' : '') + '" data-q="' + idx + '" data-question-id="' + q.id + '" data-question-type="' + q.type + '" data-required="' + (q.required ? '1' : '0') + '">' +
             '<div class="w-full max-w-xl mx-auto">' +
-              (isFirst ? '' : '<button class="js-prev-question flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>') +
-              '<p class="question-kicker"><span class="dot"></span>Question ' + (idx + 1) + ':</p>' +
+              backHtml +
+              '<div><span class="chip0 question-kicker">Question ' + (idx + 1) + ' of ' + questionDefinitions.length + '</span></div>' +
               '<h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">' + escapeHtml(q.title) + '</h2>' +
-              '<p class="text-on-surface-variant mb-6">' + escapeHtml(q.subtitle) + (q.required ? ' <span class="text-error">*</span>' : '') + '</p>' +
+              '<p class="text-on-surface-variant mb-6">' + escapeHtml(q.subtitle) + (q.required ? ' <span class="text-error">*</span>' : ' <span style="color:#9C92A3">(optional)</span>') + '</p>' +
               body +
-              '<p class="text-sm text-error hidden mt-3 js-question-error">Please answer this required question.</p>' +
+              '<div class="err-t hidden js-question-error"><span class="material-symbols-outlined ms">error</span><span class="js-question-error-text"></span></div>' +
               '<div class="flex items-center justify-end mt-6">' + navButton + '</div>' +
             '</div>' +
           '</div>';
@@ -1862,13 +2017,25 @@
       return $('div.question-div.active[data-q]');
     }
 
+    function questionErrorMessage(qType) {
+      if (qType === 'image') return 'Add at least one photo.';
+      if (qType === 'input' || qType === 'textarea') return 'Please answer this question.';
+      return 'Pick an answer to continue.';
+    }
+
+    function clearQuestionError($question) {
+      if (!$question || !$question.length) return;
+      $question.find('.js-question-error').addClass('hidden');
+      $question.find('.js-question-input,.js-select2-question').removeClass('err');
+    }
+
     function validateActiveQuestion() {
       var $active = getCurrentQuestionDiv();
       if (!$active.length) return true;
 
       var isRequired = String($active.data('required')) === '1';
       if (!isRequired) {
-        $active.find('.js-question-error').addClass('hidden');
+        clearQuestionError($active);
         return true;
       }
 
@@ -1876,7 +2043,7 @@
       var qId = $active.data('question-id');
       var hasValue = false;
 
-      if (qType === 'radio' || qType === 'style' || qType === 'placement' || qType === 'sizes') {
+      if (qType === 'radio' || qType === 'style' || qType === 'placement' || qType === 'sizes' || qType === 'studio') {
         var $selected = $active.find('.single-choice-radio-button.selected');
         hasValue = $selected.length > 0;
         if (hasValue && isCatalogChoiceQuestion(qId)) {
@@ -1899,7 +2066,14 @@
         hasValue = !!questionAnswers[qId];
       }
 
-      $active.find('.js-question-error').toggleClass('hidden', hasValue);
+      var $err = $active.find('.js-question-error');
+      $active.find('.js-question-input,.js-select2-question').toggleClass('err', !hasValue && (qType === 'input' || qType === 'textarea' || qType === 'select'));
+      if (hasValue) {
+        $err.addClass('hidden');
+      } else {
+        $err.find('.js-question-error-text').text(questionErrorMessage(qType));
+        $err.removeClass('hidden');
+      }
       return hasValue;
     }
 
@@ -1924,6 +2098,26 @@
         }
       }
       if (step === 2) {
+        updateStudioLocationUi();
+        // Drop date/time if no longer valid for the selected studio.
+        if (selectedDate) {
+          var keepSlots = getSlotsForDate(selectedDate, getMainRequiredMinutes());
+          if (!keepSlots.length) {
+            selectedDate = null;
+            selectedTime = null;
+          } else if (selectedTime && !keepSlots.some(function(s) { return s.time === selectedTime; })) {
+            selectedTime = null;
+          }
+        }
+        if (ccConsultDate) {
+          var keepConsult = getSlotsForDate(ccConsultDate, getConsultSelectionRequiredMinutes());
+          if (!keepConsult.length) {
+            ccConsultDate = null;
+            ccConsultTime = null;
+          } else if (ccConsultTime && !keepConsult.some(function(s) { return s.time === ccConsultTime; })) {
+            ccConsultTime = null;
+          }
+        }
         focusSchedulingCalendarOnFirstAvailableMonth();
         if (consultationRequired) {
           $('#step2CalendarConsult').addClass('active');
@@ -1934,6 +2128,8 @@
       } else {
           $('#step2Calendar').addClass('active');
           renderMainCal();
+          if (selectedDate) showMainTimeSlots();
+          else $('#confirmBar').addClass('hidden');
         }
       }
       if (step === 3) $('#stepRegister').addClass('active');
@@ -1982,6 +2178,7 @@
     var selectedTime = null;
 
     var artistAvailabilitySchedule = @json($artistAvailabilitySchedule ?? []);
+    var artistLocationOverrides = @json($artistLocationOverrides ?? []);
     var artistTimezone = @json($artistTimezone ?? 'UTC');
     var artistBlockedPeriods = @json($artistBlockedPeriods ?? []);
     var artistBusyIntervalsByDate = @json($artistBusyIntervalsByDate ?? []);
@@ -2164,9 +2361,10 @@
         var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
         if (!$panel.length) return;
 
-        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
+        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes' || q.type === 'studio') {
           $panel.find('.single-choice-radio-button').each(function() {
-            $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
+            var on = String($(this).data('value')) === String(answer);
+            $(this).toggleClass('selected', on).attr('aria-pressed', on ? 'true' : 'false');
           });
           restoreStyleQuestionUi($panel);
         } else if (q.type === 'select') {
@@ -2291,6 +2489,7 @@
         $('#stepQuestions').addClass('active');
         showQuestion(currentQuestionIndex);
       } else if (currentStep === 2) {
+        updateStudioLocationUi();
         if (consultationRequired) {
           $('#step2CalendarConsult').addClass('active');
         } else {
@@ -2378,13 +2577,41 @@
     }
 
     function isArtistDateBlocked(ymd) {
-      if (!ymd || !Array.isArray(artistBlockedPeriods) || !artistBlockedPeriods.length) return false;
-      for (var i = 0; i < artistBlockedPeriods.length; i++) {
-        var p = artistBlockedPeriods[i];
-        if (!p) continue;
-        var s = String(p.start_date || '');
-        var e = String(p.end_date || '');
-        if (ymd >= s && ymd <= e) return true;
+      if (!ymd) return false;
+      if (guestBookableWindow && guestBookableWindow.start && guestBookableWindow.end) {
+        if (ymd < String(guestBookableWindow.start) || ymd > String(guestBookableWindow.end)) {
+          return true;
+        }
+      }
+      if (Array.isArray(artistBlockedPeriods) && artistBlockedPeriods.length) {
+        for (var i = 0; i < artistBlockedPeriods.length; i++) {
+          var p = artistBlockedPeriods[i];
+          if (!p) continue;
+          var s = String(p.start_date || '');
+          var e = String(p.end_date || '');
+          if (ymd >= s && ymd <= e) return true;
+        }
+      }
+      // Guest-spot bookings are locked to the guest studio — skip home-studio location overrides.
+      if (guestSpotId) return false;
+      // Location override for these dates: only listed studios are bookable.
+      var sid = selectedStudioId();
+      if (sid && Array.isArray(artistLocationOverrides) && artistLocationOverrides.length) {
+        var covering = [];
+        for (var j = 0; j < artistLocationOverrides.length; j++) {
+          var loc = artistLocationOverrides[j];
+          if (!loc) continue;
+          var ls = String(loc.start_date || '');
+          var le = String(loc.end_date || '');
+          if (ymd >= ls && ymd <= le) covering.push(loc);
+        }
+        if (covering.length) {
+          var allowed = covering.some(function(loc) {
+            var ids = Array.isArray(loc.studio_ids) ? loc.studio_ids.map(Number) : [];
+            return ids.indexOf(sid) !== -1;
+          });
+          if (!allowed) return true;
+        }
       }
       return false;
     }
@@ -2449,7 +2676,7 @@
       }
 
       var weekdayKey = weekdayKeyFromYmd(ymdArtist);
-      var dayRanges = artistAvailabilitySchedule[weekdayKey];
+      var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
       if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
       var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
 
@@ -2486,7 +2713,7 @@
       }
 
       var weekdayKey = weekdayKeyFromYmd(ymdArtist);
-      var dayRanges = artistAvailabilitySchedule[weekdayKey];
+      var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
       if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
       var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
 
@@ -2639,8 +2866,8 @@
           html += '<button class="time-slot-card w-full' + bookedClass + '" data-time="' + slot.time + '" disabled>' + slot.time + bookedText + '</button>';
           } else {
           html += '<div class="time-slot-wrap">' +
-            '<button class="time-slot-card flex-1" data-time="' + slot.time + '">' + slot.time + '</button>' +
-            '<button class="time-slot-confirm js-time-slot-continue">Continue <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button>' +
+            '<button type="button" class="time-slot-card" data-time="' + slot.time + '">' + slot.time + '</button>' +
+            '<button type="button" class="time-slot-confirm js-time-slot-continue">Continue <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button>' +
           '</div>';
         }
       });
@@ -2754,7 +2981,10 @@
       var html = '';
       slots.forEach(function(slot) {
         if (slot.booked) return;
-        html += '<button class="time-slot-card w-full js-cc-consult-slot" data-time="' + slot.time + '">' + slot.time + '</button>';
+        html += '<div class="time-slot-wrap">' +
+          '<button type="button" class="time-slot-card js-cc-consult-slot" data-time="' + slot.time + '">' + slot.time + '</button>' +
+          '<button type="button" class="time-slot-confirm js-cc-consult-continue">Continue <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button>' +
+        '</div>';
       });
       $('#ccTimeSlots').html(html);
     }
@@ -2800,7 +3030,10 @@
         if (slot.booked) return;
         var slotDt = buildDateTime(ccTattooDate, slot.time);
         if (minDt && slotDt < minDt) return;
-        html += '<button class="time-slot-card w-full js-cc-tattoo-slot" data-time="' + slot.time + '">' + slot.time + '</button>';
+        html += '<div class="time-slot-wrap">' +
+          '<button type="button" class="time-slot-card js-cc-tattoo-slot" data-time="' + slot.time + '">' + slot.time + '</button>' +
+          '<button type="button" class="time-slot-confirm js-cc-tattoo-continue">Continue <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button>' +
+        '</div>';
       });
       $('#ccTatTimeSlots').html(html);
     }
@@ -2894,14 +3127,27 @@
       }
     }
 
+    function ensureErrT(el, message) {
+      if (!el || !el.length) return;
+      if (!el.hasClass('err-t') || !el.find('.js-reg-error-text').length) {
+        el.attr('class', 'err-t').html('<span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text"></span>');
+      }
+      el.find('.js-reg-error-text').text(message || '');
+      el.removeClass('hidden');
+    }
+
     function clearRegError(inputId, errorId) {
-      $('#' + inputId).removeClass('border-error ring-1 ring-error/40');
-      $('#' + errorId).addClass('hidden').text('This field is required.');
+      $('#' + inputId).removeClass('border-error ring-1 ring-error/40 err');
+      $('#' + errorId).addClass('hidden');
     }
 
     function setRegError(inputId, errorId, message) {
-      $('#' + inputId).addClass('border-error ring-1 ring-error/40');
-      $('#' + errorId).removeClass('hidden').text(message);
+      $('#' + inputId).addClass('border-error ring-1 ring-error/40 err');
+      ensureErrT($('#' + errorId), message);
+    }
+
+    function setOtpError(message) {
+      ensureErrT($('#bdOtpError'), message);
     }
 
     function isValidEmail(email) {
@@ -2944,20 +3190,16 @@
 
       if (currentRegIndex === 0) {
         var nameVal = $('#bdName').val().trim();
-        if (!nameVal) {
-          setRegError('bdName', 'bdNameError', 'This field is required.');
+        if (!nameVal || nameVal.length < 2) {
+          setRegError('bdName', 'bdNameError', 'Please enter your full name.');
           return;
         }
       }
 
       if (currentRegIndex === 1) {
         var emailVal = $('#bdEmail').val().trim();
-        if (!emailVal) {
-          setRegError('bdEmail', 'bdEmailError', 'This field is required.');
-          return;
-        }
-        if (!isValidEmail(emailVal)) {
-          setRegError('bdEmail', 'bdEmailError', 'Please enter a valid email address.');
+        if (!emailVal || !isValidEmail(emailVal)) {
+          setRegError('bdEmail', 'bdEmailError', 'That email doesn\'t look right.');
           return;
         }
         try {
@@ -2975,16 +3217,8 @@
       if (currentRegIndex === 2) {
         var phoneVal = bookingPhone();
         var nationalVal = String($('#bdPhone').val() || '').trim();
-        if (!nationalVal) {
-          setRegError('bdPhone', 'bdPhoneError', 'This field is required.');
-          return;
-        }
-        if (!$('#bdPhoneCountry').val()) {
-          setRegError('bdPhone', 'bdPhoneError', 'Please select a country code.');
-          return;
-        }
-        if (!isValidPhoneWithCountryCode(phoneVal)) {
-          setRegError('bdPhone', 'bdPhoneError', 'Enter a valid phone number for the selected country.');
+        if (!nationalVal || !isValidPhoneWithCountryCode(phoneVal)) {
+          setRegError('bdPhone', 'bdPhoneError', 'Please enter a valid phone number.');
           return;
         }
       }
@@ -3071,11 +3305,11 @@
       $('#bdOtpEmail').val(email);
       $('#bdOtpError').addClass('hidden');
       if (bookingOtpResendRemaining > 0 && bookingOtpResendEmail === email.toLowerCase()) {
-        $('#bdOtpError').removeClass('hidden').text('Please wait ' + formatSecondsToMMSS(bookingOtpResendRemaining) + ' before requesting another code.');
+        setOtpError('Please wait ' + formatSecondsToMMSS(bookingOtpResendRemaining) + ' before requesting another code.');
         return;
       }
       if (!isValidEmail(email)) {
-        $('#bdOtpError').removeClass('hidden').text('Please enter a valid email first.');
+        setOtpError('That email doesn\'t look right.');
         return;
       }
 
@@ -3108,7 +3342,7 @@
         bookingOtpResendEmail = email.toLowerCase();
         startOtpResendCountdown(data && data.resend_available_in_seconds ? data.resend_available_in_seconds : 60);
       } catch (err) {
-        $('#bdOtpError').removeClass('hidden').text(err.message || 'Could not send verification code.');
+        setOtpError(err.message || 'Could not send verification code.');
       } finally {
         if (bookingOtpResendRemaining <= 0) {
           $('#bdSendOtpBtn').prop('disabled', false).text('Resend code');
@@ -3132,11 +3366,11 @@
       $('#bdOtpError').addClass('hidden');
 
       if (!isValidEmail(email)) {
-        $('#bdOtpError').removeClass('hidden').text('Please enter a valid email.');
+        setOtpError('That email doesn\'t look right.');
         return;
       }
       if (!/^\d{4}$/.test(code)) {
-        $('#bdOtpError').removeClass('hidden').text('Please enter a valid 4-digit code.');
+        setOtpError('That code isn\'t right. Check the email and try again.');
         return;
       }
 
@@ -3169,7 +3403,7 @@
         updateConnectedUi();
         finishRegister();
       } catch (err) {
-        $('#bdOtpError').removeClass('hidden').text(err.message || 'Verification failed.');
+        setOtpError(err.message || 'That code isn\'t right. Check the email and try again.');
       } finally {
         $('#bdVerifyOtpBtn').prop('disabled', false).text('Verify & Continue');
       }
@@ -3178,7 +3412,7 @@
 
     function finishRegister() {
       if (!bookingOtpVerified) {
-        $('#bdOtpError').removeClass('hidden').text('Please verify your email to continue.');
+        setOtpError('Please verify your email to continue.');
         return;
       }
       goToStep(4);
@@ -3193,15 +3427,14 @@
       var main_div = $btn.closest('div.question-div');
       if (!main_div.length) return;
 
-      var current_question = parseInt(main_div.data('q'), 10);
       var qId = main_div.data('question-id');
       var value = String($btn.data('value') || '');
       var isOther = value.trim().toLowerCase() === 'other';
       var catalogQ = isCatalogChoiceQuestion(qId);
 
-      main_div.find('.single-choice-radio-button').removeClass('selected');
-      $btn.addClass('selected');
-      main_div.find('.js-question-error').addClass('hidden');
+      main_div.find('.single-choice-radio-button').removeClass('selected').attr('aria-pressed', 'false');
+      $btn.addClass('selected').attr('aria-pressed', 'true');
+      clearQuestionError(main_div);
 
       if (catalogQ && isOther) {
         delete questionAnswers[qId];
@@ -3211,11 +3444,6 @@
 
       closeStyleOtherModal(false);
       if (qId) questionAnswers[qId] = value;
-      if (isNaN(current_question)) return;
-
-      setTimeout(function() {
-        nextQuestion(current_question);
-      }, 180);
     });
 
     $(document).on('click', '.js-style-other-close', function() {
@@ -3227,9 +3455,10 @@
       var ctx = styleOtherModalContext;
       if (!styleName || !ctx || ctx.qId == null) return;
       questionAnswers[ctx.qId] = styleName;
-      ctx.$questionDiv.find('.js-question-error').addClass('hidden');
+      clearQuestionError(ctx.$questionDiv);
       closeStyleOtherModal(false);
-      if (!isNaN(ctx.questionIndex)) setTimeout(function() { nextQuestion(ctx.questionIndex); }, 180);
+      restoreStyleQuestionUi(ctx.$questionDiv);
+      // Match template / custom request: select only — user clicks Next
     });
 
     $(document).on('keydown', function(e) {
@@ -3308,9 +3537,14 @@
       });
 
       var draftRestored = tryRestoreBookingDraftFromSession();
+      var hasNoQuestions = !Array.isArray(questionDefinitions) || questionDefinitions.length === 0;
 
-      if (!draftRestored && !vivaRestorePayload && (!Array.isArray(questionDefinitions) || questionDefinitions.length === 0)) {
+      // Always hide when there are no questions (including after draft restore / refresh).
+      if (hasNoQuestions) {
         $('.js-back-to-questions').addClass('hidden');
+      }
+
+      if (!draftRestored && !vivaRestorePayload && hasNoQuestions) {
         goToStep(2);
       }
 
@@ -3413,10 +3647,8 @@
       if (ccTatCalMonth > 11) { ccTatCalMonth = 0; ccTatCalYear++; }
       renderCcTattooCal();
     };
-    $(document).on('click', '.js-cc-consult-slot', function() {
-      $('.js-cc-consult-slot').removeClass('selected');
-      $(this).addClass('selected');
-      ccConsultTime = $(this).data('time');
+    function applyCcConsultTimeSelection() {
+      if (!ccConsultDate || !ccConsultTime) return;
       $('#ccConsultChip').removeClass('hidden');
       $('#ccConsultChipText').text('📹 Consultation: ' + ccConsultDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccConsultTime);
       if (consultationTiming === 'separate') {
@@ -3424,7 +3656,7 @@
         ccTatCalYear = ccConsultDate.getFullYear();
         ccTatCalMonth = ccConsultDate.getMonth();
         renderCcTattooCal();
-    } else {
+      } else {
         var consultStartDt = buildDateTime(ccConsultDate, ccConsultTime);
         var tattooStartDt = addGapToDateTime(consultStartDt, consultDurationMinutes, 'minutes');
         ccTattooDate = new Date(tattooStartDt.getFullYear(), tattooStartDt.getMonth(), tattooStartDt.getDate());
@@ -3434,16 +3666,52 @@
         $('#ccSumTattoo').text('🎨 Tattoo Session: ' + ccTattooDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccTattooTime);
         $('#ccBottomSummary').removeClass('hidden');
       }
-    });
-    $(document).on('click', '.js-cc-tattoo-slot', function() {
-      $('.js-cc-tattoo-slot').removeClass('selected');
-      $(this).addClass('selected');
-      ccTattooTime = $(this).data('time');
+    }
+    function applyCcTattooTimeSelection() {
+      if (!ccTattooDate || !ccTattooTime) return;
       $('#ccTattooChip').removeClass('hidden');
       $('#ccTattooChipText').text('🎨 Tattoo Session: ' + ccTattooDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccTattooTime);
       $('#ccSumConsult').text('📹 Consultation: ' + ccConsultDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccConsultTime + (ccConsultType ? ' (' + ccConsultType + ')' : ''));
       $('#ccSumTattoo').text('🎨 Tattoo Session: ' + ccTattooDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + ccTattooTime);
       $('#ccBottomSummary').removeClass('hidden');
+    }
+    $(document).on('click', '.js-cc-consult-slot', function() {
+      $('.js-cc-consult-slot').removeClass('selected');
+      $('#ccTimeSlots .time-slot-wrap').removeClass('selected');
+      $(this).addClass('selected');
+      $(this).closest('.time-slot-wrap').addClass('selected');
+      ccConsultTime = $(this).data('time');
+    });
+    $(document).on('click', '.js-cc-consult-continue', function() {
+      var $wrap = $(this).closest('.time-slot-wrap');
+      var $slot = $wrap.find('.js-cc-consult-slot');
+      if ($slot.length) {
+        $('.js-cc-consult-slot').removeClass('selected');
+        $('#ccTimeSlots .time-slot-wrap').removeClass('selected');
+        $slot.addClass('selected');
+        $wrap.addClass('selected');
+        ccConsultTime = $slot.data('time');
+      }
+      applyCcConsultTimeSelection();
+    });
+    $(document).on('click', '.js-cc-tattoo-slot', function() {
+      $('.js-cc-tattoo-slot').removeClass('selected');
+      $('#ccTatTimeSlots .time-slot-wrap').removeClass('selected');
+      $(this).addClass('selected');
+      $(this).closest('.time-slot-wrap').addClass('selected');
+      ccTattooTime = $(this).data('time');
+    });
+    $(document).on('click', '.js-cc-tattoo-continue', function() {
+      var $wrap = $(this).closest('.time-slot-wrap');
+      var $slot = $wrap.find('.js-cc-tattoo-slot');
+      if ($slot.length) {
+        $('.js-cc-tattoo-slot').removeClass('selected');
+        $('#ccTatTimeSlots .time-slot-wrap').removeClass('selected');
+        $slot.addClass('selected');
+        $wrap.addClass('selected');
+        ccTattooTime = $slot.data('time');
+      }
+      applyCcTattooTimeSelection();
     });
 
       renderMainCal();
@@ -3516,9 +3784,10 @@
         $('#processingText').text('Processing your payment...');
         try {
           var savedBooking = await persistBookingRecord(paymentIntentId);
-          $('#confRef').text(savedBooking.booking_reference || ('#INK-' + String(paymentIntentId || '').replace('pi_', '').slice(-6).toUpperCase()));
-          var bookingLink = (savedBooking && savedBooking.post_booking_login_url) ? savedBooking.post_booking_login_url : @json(route('login'));
-          $('#viewMyBookingPostLoginLink').attr('href', bookingLink);
+          applyCalendarConfirmationSuccess(
+            savedBooking,
+            '#INK-' + String(paymentIntentId || '').replace('pi_', '').slice(-6).toUpperCase()
+          );
           $('#processingView').addClass('hidden');
           $('#confirmationCalendar').removeClass('hidden');
         } catch (error) {
@@ -3613,9 +3882,10 @@
           if (typeof window.clearBookingDraftSession === 'function') {
             window.clearBookingDraftSession();
           }
-          $('#confRef').text(savedBooking.booking_reference || ('#INK-' + String(paymentIntentId || '').replace('pi_', '').slice(-6).toUpperCase()));
-          var bookingLink = (savedBooking && savedBooking.post_booking_login_url) ? savedBooking.post_booking_login_url : @json(route('login'));
-          $('#viewMyBookingPostLoginLink').attr('href', bookingLink);
+          applyCalendarConfirmationSuccess(
+            savedBooking,
+            '#INK-' + String(paymentIntentId || '').replace('pi_', '').slice(-6).toUpperCase()
+          );
           $('#processingView').addClass('hidden');
           $('#confirmationCalendar').removeClass('hidden');
         } catch (error) {

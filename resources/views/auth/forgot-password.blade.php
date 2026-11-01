@@ -26,11 +26,11 @@
     data-initial-status="{{ session('status') ? 'sent' : '' }}"
     data-status-message="{{ session('status') }}"
     data-email-error="{{ $errors->first('email') }}">
-  </div>
+    </div>
 @endsection
 
 @push('scripts')
-<script>
+  <script>
 (function () {
   var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   var MAILS = [
@@ -99,7 +99,7 @@
     });
 
     form.addEventListener('submit', function (e) {
-      e.preventDefault();
+        e.preventDefault();
       var value = emailInput.value.trim();
       if (!EMAIL.test(value)) {
         emailWrap.classList.add('bad');
@@ -117,11 +117,11 @@
       body.append('email', mail);
 
       fetch(action, {
-        method: 'POST',
+          method: 'POST',
         body: body,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Accept': 'application/json'
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
         },
         credentials: 'same-origin'
       }).then(function (res) {
@@ -271,5 +271,5 @@
     showForm(mail, root.dataset.emailError || '');
   }
 })();
-</script>
+  </script>
 @endpush

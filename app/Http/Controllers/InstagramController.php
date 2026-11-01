@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Studio;
 use App\Models\UserDetail;
 use App\Services\InstagramPortfolioImportService;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,10 @@ class InstagramController extends Controller
 {
     private const STATE_SESSION_KEY = 'instagram_oauth_state';
 
+    private const TARGET_SESSION_KEY = 'instagram_oauth_target';
+
+    private const TARGET_STUDIO = 'studio';
+
     private function redirectUri(): string
     {
         $configured = trim((string) config('services.instagram.redirect'));
@@ -30,18 +35,25 @@ class InstagramController extends Controller
 
     public function connect(Request $request): RedirectResponse
     {
+        $target = (string) $request->query('target', '');
+        $forStudio = $target === self::TARGET_STUDIO || $request->boolean('studio');
+        $failRoute = $forStudio ? 'studio.page.portfolio' : 'portfolio.index';
+
         $clientId = trim((string) config('services.instagram.client_id'));
         $clientSecret = trim((string) config('services.instagram.client_secret'));
         $redirectUri = $this->redirectUri();
 
         if ($clientId === '' || $clientSecret === '') {
             return redirect()
-                ->route('portfolio.index')
+                ->route($failRoute)
                 ->with('error', 'Instagram is not configured yet. Add INSTAGRAM_CLIENT_ID and INSTAGRAM_CLIENT_SECRET to your .env (use the Instagram App ID/Secret from the Instagram product, not the Facebook App ID).');
         }
 
         $state = Str::random(40);
-        session([self::STATE_SESSION_KEY => $state]);
+        session([
+            self::STATE_SESSION_KEY => $state,
+            self::TARGET_SESSION_KEY => $forStudio ? self::TARGET_STUDIO : 'artist',
+        ]);
 
         $scopes = implode(',', config('services.instagram.scopes', ['instagram_business_basic']));
 
@@ -58,9 +70,15 @@ class InstagramController extends Controller
 
     public function callback(Request $request): RedirectResponse
     {
-        $portfolioUrl = route('portfolio.index');
+        $target = (string) session(self::TARGET_SESSION_KEY, 'artist');
+        $forStudio = $target === self::TARGET_STUDIO;
+        $portfolioUrl = $forStudio
+            ? route('studio.page.portfolio')
+            : route('portfolio.index');
 
         if ($request->filled('error')) {
+            session()->forget(self::TARGET_SESSION_KEY);
+
             return redirect($portfolioUrl)->with(
                 'error',
                 'Instagram connection was cancelled or denied.'
@@ -69,11 +87,15 @@ class InstagramController extends Controller
 
         $expectedState = session()->pull(self::STATE_SESSION_KEY);
         if (! $expectedState || ! hash_equals((string) $expectedState, (string) $request->query('state', ''))) {
+            session()->forget(self::TARGET_SESSION_KEY);
+
             return redirect($portfolioUrl)->with('error', 'Invalid Instagram OAuth state. Please try again.');
         }
 
         $code = $request->query('code');
         if (! is_string($code) || $code === '') {
+            session()->forget(self::TARGET_SESSION_KEY);
+
             return redirect($portfolioUrl)->with('error', 'Instagram did not return an authorization code.');
         }
 
@@ -96,6 +118,31 @@ class InstagramController extends Controller
             $profilePictureUrl = isset($profile['profile_picture_url'])
                 ? trim((string) $profile['profile_picture_url'])
                 : '';
+
+            if ($forStudio) {
+                $studio = $this->resolveStudioForAuthUser();
+                session()->forget(self::TARGET_SESSION_KEY);
+                if (! $studio) {
+                    return redirect($portfolioUrl)->with('error', 'Studio not found.');
+                }
+
+                $studio->update([
+                    'instagram_user_id' => $userId,
+                    'instagram_username' => $username,
+                    'instagram_profile_picture' => $profilePictureUrl !== '' ? $profilePictureUrl : $studio->instagram_profile_picture,
+                    'instagram_access_token' => $token,
+                    'instagram_token_expires_at' => $expiresIn > 0 ? now()->addSeconds($expiresIn) : null,
+                    'instagram_connected_at' => now(),
+                ]);
+
+                $label = $username ? '@'.$username : 'Instagram';
+
+                return redirect($portfolioUrl)
+                    ->with('success', $label.' connected successfully.')
+                    ->with('instagram_auto_import', true);
+            }
+
+            session()->forget(self::TARGET_SESSION_KEY);
 
             /** @var UserDetail|null $detail */
             $detail = Auth::user()?->userDetail;
@@ -120,13 +167,35 @@ class InstagramController extends Controller
                 ->with('success', $label.' connected successfully.')
                 ->with('instagram_auto_import', true);
         } catch (\Throwable $e) {
+            session()->forget(self::TARGET_SESSION_KEY);
             Log::error('Instagram OAuth callback failed', [
                 'message' => $e->getMessage(),
                 'user_id' => Auth::id(),
+                'target' => $target,
             ]);
 
             return redirect($portfolioUrl)->with('error', 'Failed to connect Instagram. Please try again.');
         }
+    }
+
+    private function resolveStudioForAuthUser(): ?Studio
+    {
+        $user = Auth::user();
+        if (! $user?->id) {
+            return null;
+        }
+
+        $studio = Studio::query()->where('user_id', $user->id)->first();
+        if ($studio) {
+            return $studio;
+        }
+
+        $email = strtolower(trim((string) ($user->email ?? '')));
+        if ($email === '') {
+            return null;
+        }
+
+        return Studio::query()->whereRaw('LOWER(email) = ?', [$email])->first();
     }
 
     public function import(Request $request): RedirectResponse|JsonResponse

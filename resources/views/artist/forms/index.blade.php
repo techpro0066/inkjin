@@ -1,588 +1,210 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
-@section('title', 'Forms')
+@section('title', 'Client Flow')
+
+@php
+  $defaultCount = $default_questions->count();
+  $customCount = $custom_questions->count();
+  $studioCount = (int) (auth()->user()?->userStudios()->count() ?? 0);
+  $showStudioPicker = $studioCount >= 2;
+@endphp
 
 @section('styles')
-
 <style>
-    /* Drag handle only — rest of row stays scrollable */
-    .q-drag-handle {
-      cursor: grab;
-      touch-action: none;
-      flex-shrink: 0;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    .q-drag-handle:active {
-      cursor: grabbing;
-    }
-
-    .drag-over-top {
-      box-shadow: 0 -2px 0 0 #310f7a inset;
-    }
-
-    .drag-over-bottom {
-      box-shadow: 0 2px 0 0 #310f7a inset;
-    }
-
-    .q-row.sortable-chosen {
-      opacity: 0.4;
-    }
-
-    /* Toggle switch */
-    .toggle-switch {
-      position: relative;
-      width: 40px;
-      height: 22px;
-      background: #cac4d3;
-      border-radius: 11px;
-      cursor: pointer;
-      transition: background 0.2s;
-      flex-shrink: 0;
-    }
-
-    .toggle-switch.active {
-      background: #310f7a;
-    }
-
-    .toggle-switch::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 18px;
-      height: 18px;
-      background: white;
-      border-radius: 50%;
-      transition: transform 0.2s;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-
-    .toggle-switch.active::after {
-      transform: translateX(18px);
-    }
-
-    /* Question row */
-    .q-row {
-      transition: all 0.15s ease;
-      border-bottom: 1px solid rgba(202, 196, 211, 0.15);
-      align-items: flex-start;
-    }
-
-    .q-row:hover {
-      background: #f8f1fb;
-    }
-
-    .q-row:last-child {
-      border-bottom: none;
-    }
-
-    .q-row.disabled {
-      opacity: 0.45;
-    }
-
-    .q-row > .material-symbols-outlined:not(.q-drag-handle) {
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    .q-text {
-      flex: 0 1 auto;
-      min-width: 0;
-      /* ~15 words per line (avg ~6ch per word including space) */
-      max-width: 90ch;
-    }
-
-    .q-text p {
-      white-space: pre-line;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-      line-height: 1.4;
-    }
-
-    .q-meta {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      flex-shrink: 0;
-      white-space: nowrap;
-      margin-top: 2px;
-      margin-left: 0;
-    }
-
-    .q-row .badge,
-    .q-row .toggle-switch,
-    .q-row .js-edit-question,
-    .q-row .js-remove-question {
-      flex-shrink: 0;
-    }
-
-    .questions-list-scroll {
-      overflow-x: auto;
-      overflow-y: visible;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior-x: contain;
-      touch-action: pan-x pan-y;
-    }
-
-    .questions-list {
-      min-width: 0;
-    }
-
-    .q-row .q-drag-handle {
-      position: sticky;
-      left: 0;
-      z-index: 1;
-      background: #ffffff;
-      padding-right: 2px;
-      margin-top: 2px;
-    }
-
-    .q-row:hover .q-drag-handle {
-      background: #f8f1fb;
-    }
-
-    @media (max-width: 639px) {
-      .q-text {
-        /* Keep question readable; wrap instead of stretching a wide empty gap */
-        max-width: min(90ch, calc(100vw - 11rem));
-        flex: 1 1 auto;
-      }
-
-      .q-meta {
-        /* Meta stays one line; horizontal scroll reveals it if needed */
-        flex: 0 0 auto;
-      }
-
-      .questions-list,
-      .q-row {
-        min-width: max-content;
-      }
-    }
-
-    @media (min-width: 640px) {
-      .q-row {
-        align-items: center;
-        width: 100%;
-      }
-
-      .q-text {
-        /* Fill remaining space so type / toggle / actions sit on the right */
-        flex: 1 1 auto;
-        max-width: none;
-        min-width: 0;
-      }
-
-      .q-meta {
-        margin-left: auto;
-      }
-
-      .q-row > .material-symbols-outlined:not(.q-drag-handle),
-      .q-row .q-drag-handle,
-      .q-meta {
-        margin-top: 0;
-      }
-
-      .questions-list-scroll {
-        overflow-x: visible;
-      }
-
-      .questions-list,
-      .q-row {
-        min-width: 0;
-      }
-    }
-
-    .sortable-ghost {
-      opacity: 0.45;
-      background: #f8f1fb;
-    }
-
-    .sortable-chosen {
-      cursor: grabbing;
-    }
-
-    /* Form type tabs */
-    .form-tab {
-      padding: 10px 20px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      color: #494552;
-      transition: all 0.2s;
-      background: none;
-      border-top: none;
-      border-left: none;
-      border-right: none;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .form-tab.active {
-      color: #310f7a;
-      border-bottom-color: #310f7a;
-    }
-
-    .form-tab:hover:not(.active) {
-      color: #1c1b21;
-    }
-
-    /* Type badges */
-    .badge {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 6px;
-      white-space: nowrap;
-    }
-
-    .badge-select {
-      background: #dbeafe;
-      color: #1d4ed8;
-    }
-
-    .badge-text {
-      background: #f3f4f6;
-      color: #374151;
-    }
-
-    .badge-textarea {
-      background: #f3f4f6;
-      color: #374151;
-    }
-
-    .badge-toggle {
-      background: #f3e8ff;
-      color: #7c3aed;
-    }
-
-    .badge-file {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .badge-system {
-      background: #e5e7eb;
-      color: #6b7280;
-    }
-
-    .badge-custom {
-      background: #e8ddff;
-      color: #310f7a;
-    }
-
-    /* Modal */
-    .modal-backdrop {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 200;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal-backdrop.open {
-      display: flex;
-    }
-
-    @media (max-width: 1023px) {
-      .main-content {
-        overflow-x: hidden;
-        padding: 16px;
-        padding-top: 70px;
-      }
-
-      body {
-        overflow-x: hidden;
-      }
+  .cf-page .cfform{
+    cursor:pointer;padding:13px 14px;border-radius:12px;border:1px solid transparent;margin-bottom:6px;
+    display:flex;align-items:center;gap:12px;transition:background .15s,border-color .15s,padding .15s
+  }
+  .cf-page .cfform:hover{background:#FBF7FC}
+  .cf-page .cfform.on{background:#fff;border:2px solid #3E007C;padding:12px 13px}
+  .cf-page .cfrow{
+    display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid #F3EEF4
+  }
+  .cf-page .cfrow.off{opacity:.55}
+  .cf-page .cfrow .qt{flex:1;font-size:13.5px;min-width:0;line-height:1.4}
+  .cf-page .cfrow .qt[role="button"]{cursor:pointer}
+  .cf-page .cfrow .qt[role="button"]:hover{text-decoration:underline}
+  .cf-page .cfrow .drag{cursor:grab;flex-shrink:0}
+  .cf-page .cfrow .cf-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
+  .cf-page .cfrow .cf-icon-btn{
+    width:28px;height:28px;border:0;background:none;border-radius:8px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;color:var(--faint);padding:0
+  }
+  .cf-page .cfrow .cf-icon-btn .ms{font-size:18px}
+  .cf-page .cfrow .cf-icon-btn:hover{background:#F7F3F9;color:var(--ink)}
+  .cf-page .cfrow .cf-icon-btn.del:hover{background:#FDECEC;color:#C62828}
+  .cf-page .cfrow.sortable-ghost{opacity:.45;background:#FBF7FC}
+  .cf-page .cfrow.sortable-chosen{cursor:grabbing}
+  .cf-page .cf-fixed{
+    display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid #F3EEF4;background:#FBF7FC
+  }
+  .cf-page .tog{
+    width:38px;height:22px;border-radius:12px;background:#D9D2DD;position:relative;flex-shrink:0;cursor:pointer;border:0
+  }
+  .cf-page .tog:after{
+    content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s
+  }
+  .cf-page .tog.on,.cf-page .tog.active{background:var(--pri)}
+  .cf-page .tog.on:after,.cf-page .tog.active:after{left:19px}
+  .cf-page .intake-grid{display:grid;grid-template-columns:270px 1fr;gap:20px;align-items:start}
+  .cf-page .modal-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(26,26,26,.45);z-index:300;
+    align-items:center;justify-content:center;padding:24px
+  }
+  .cf-page .modal-backdrop.open{display:flex}
+  .cf-page .cfm{
+    background:#fff;border-radius:16px;border:1px solid var(--line);width:100%;max-width:520px;
+    max-height:calc(100vh - 48px);display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.18)
+  }
+  .cf-page .cfm.sm{max-width:420px}
+  .cf-page .cfmh{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:18px 22px 14px;border-bottom:1px solid #F0EAF2;flex-shrink:0
+  }
+  .cf-page .cfmh h3{font-size:18px;font-weight:800;margin:0}
+  .cf-page .cfmh .x{cursor:pointer;color:var(--faint);font-size:22px}
+  .cf-page .cfmb{padding:18px 22px;overflow-y:auto;min-height:0;flex:1}
+  .cf-page .cfmf{
+    display:flex;justify-content:flex-end;align-items:center;gap:10px;
+    padding:14px 22px;border-top:1px solid #F0E9F2;flex-shrink:0
+  }
+  .cf-page .cfmb .fl{margin-top:12px}
+  .cf-page .cfmb .fl:first-child{margin-top:0}
+  .cf-page .cfmb textarea.in{min-height:72px;resize:vertical;width:100%;font:inherit;font-size:13.5px}
+  .cf-page .cfmb select.in{width:100%;font:inherit;font-size:13.5px;color:var(--ink);appearance:auto}
+  .cf-page .cfmb select.in:disabled{background:#F5F2F6;color:#6F6874;cursor:not-allowed}
+  .cf-page .field-err{color:#C62828;font-size:12px;margin-top:6px}
+  .cf-page .field-err.hidden,.cf-page .hidden{display:none!important}
+  .cf-page .cfopt{display:flex;gap:8px;align-items:center;margin-top:6px}
+  .cf-page .cfopt input{flex:1}
+  .cf-page .cfopt .ms{cursor:pointer;color:var(--faint)}
+  .cf-page .cfadd{
+    display:inline-flex;gap:6px;align-items:center;font-weight:600;font-size:13px;margin-top:8px;cursor:pointer;color:var(--pri)
+  }
+  .cf-page .mp-toast{
+    position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;
+    font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);
+    display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));
+    transition:opacity .25s,transform .35s;pointer-events:none
+  }
+  .cf-page .mp-toast.on{opacity:1;transform:none}
+  .cf-page .mp-toast .ms{color:#3DD68C;font-size:20px}
+  @media (max-width:900px){
+    .cf-page .intake-grid{grid-template-columns:1fr}
+    .cf-page .mp-toast{left:16px;right:16px;top:74px}
     }
 </style>
-
 @endsection
 
 @section('content')
-    <!-- Main Content -->
-  <main class="main-content flex-1 min-h-screen">
-    <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
-
-      <!-- Page Header -->
-      @php
-        $bookingPageUsername = Auth::user()->userDetail->user_name ?? null;
-        $bookingPageUrl = $bookingPageUsername ? 'https://inkjin.com/@'.$bookingPageUsername : null;
-      @endphp
-      <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+<div class="cf-page">
+  <div class="head">
           <div>
-            <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Booking Page</h2>
-            <p class="text-on-surface-variant mt-1">Manage your intake forms, available designs, portfolio and the style of your page</p>
-          </div>
-          @if ($bookingPageUrl)
-          <a href="{{ $bookingPageUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-xl transition-colors shrink-0">
-            <span class="material-symbols-outlined text-lg">open_in_new</span> Open your booking page
-          </a>
-          @endif
+      <h1>
+        Client Flow
+        <a class="help-q" href="https://help.inkjin.com/en/articles/17201374-dashboard-client-flow-intake-forms" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
+          <span class="ms">help</span>
+        </a>
+      </h1>
+      <div class="sub">What clients fill in and receive, from first request to healed tattoo.</div>
         </div>
       </div>
 
-      @include('artist.partials.booking-page-tabs', ['activeTab' => 'forms'])
+  @include('artist.partials.client-flow-journey', ['activeStep' => 'intake'])
+  @include('artist.partials.client-flow-tabs', ['clientFlowTab' => 'intake'])
 
-      <!-- Section intro -->
-      <div class="mb-8">
-        <p class="text-on-surface-variant">Customize the questions clients see when booking or requesting a tattoo.</p>
+  <div class="intake-grid">
+    <div>
+      <div class="lbl" style="margin-bottom:10px">Forms</div>
+      <div id="cfforms">
+        <div class="cfform on" data-form="booking" id="tabBooking" role="button" tabindex="0" aria-current="true">
+          <span class="ms">palette</span>
+          <div style="flex:1">
+            <b style="font-size:13.5px">Flash design</b>
+            <div class="faint cfcnt" id="flashCount" style="font-size:12px">{{ $defaultCount }} question{{ $defaultCount === 1 ? '' : 's' }}</div>
       </div>
-
-      <!-- Form Type Tabs -->
-      <div class="flex border-b border-outline-variant/20 mb-6">
-        <button class="form-tab active" onclick="switchFormType('booking', this)" id="tabBooking">Available
-          Design</button>
-        <button class="form-tab" onclick="switchFormType('request', this)" id="tabRequest">Custom Request</button>
-        <a href="{{ route('artist.forms.consent') }}" class="form-tab" id="tabConsent">Consent form</a>
+          <span class="ms faint">chevron_right</span>
       </div>
-
-      <div class="max-w-3xl">
-        <!-- Form Builder -->
-        <div class="w-full">
-
-          <!-- Unified Questions List -->
-          <div class="bg-white rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden mb-6">
-            <div class="px-6 py-4 border-b border-outline-variant/15 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-primary" style="font-size:18px;">reorder</span>
+        <div class="cfform" data-form="request" id="tabRequest" role="button" tabindex="0" aria-current="false">
+          <span class="ms">edit_note</span>
+          <div style="flex:1">
+            <b style="font-size:13.5px">Custom request</b>
+            <div class="faint cfcnt" id="customCount" style="font-size:12px">{{ $customCount }} question{{ $customCount === 1 ? '' : 's' }}</div>
                 </div>
-                <div>
-                  <h3 class="font-bold text-on-surface text-sm">Form Questions</h3>
-                  <p class="text-[11px] text-on-surface-variant">Drag the handle icon to reorder — system &amp; custom questions in one
-                    list</p>
+          <span class="ms faint">chevron_right</span>
                 </div>
               </div>
             </div>
-            <div class="questions-list-scroll">
-            <div id="bookingQuestionsList" class="questions-list">
-                @forelse ($default_questions as $question)
-                    @php
-                        $type = $question->type === 'image' ? 'images' : $question->type;
-                        $options = is_array($question->options) ? $question->options : [];
-                        $isSystem = in_array((int) $question->id, $system_questions_ids ?? [], true);
-                        $isEnabled = (bool) ($question->is_active ?? true);
-                        $typeLabel = match ($type) {
-                            'input' => 'Input',
-                            'textarea' => 'Textarea',
-                            'select' => 'Select',
-                            'toggle' => 'Toggle',
-                            'radio' => 'Radio',
-                            'images' => 'Images',
-                            'style' => 'Style',
-                            'placement' => 'Placement',
-                            'sizes' => 'Sizes',
-                            default => ucfirst((string) $type),
-                        };
-                        $icon = match ($type) {
-                            'select', 'radio', 'style', 'placement', 'sizes' => 'list',
-                            'textarea' => 'notes',
-                            'toggle' => 'toggle_on',
-                            'images' => 'upload_file',
-                            default => 'short_text',
-                        };
-                        $badgeClass = match ($type) {
-                            'select', 'radio' => 'badge-select',
-                            'textarea' => 'badge-textarea',
-                            'toggle' => 'badge-toggle',
-                            'images' => 'badge-file',
-                            'style', 'placement', 'sizes' => 'badge-select',
-                            default => 'badge-text',
-                        };
-                        $questionWords = preg_split('/\s+/u', trim((string) $question->question), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-                        $questionWrapped = implode("\n", array_map(
-                            static fn (array $chunk): string => implode(' ', $chunk),
-                            array_chunk($questionWords, 15)
-                        ));
-                    @endphp
-                    <div
-                        class="q-row flex gap-3 px-5 py-3.5 {{ $isEnabled ? '' : 'disabled' }}"
-                        data-id="{{ $question->id }}"
-                        data-type="{{ $typeLabel }}"
-                        data-type-value="{{ $type }}"
-                        data-question-type="{{ $question->question_type ?? 'other' }}"
-                        data-form-context="default"
-                        data-description="{{ e($question->description ?? '') }}"
-                        data-placeholder="{{ e($question->placeholder ?? '') }}"
-                        data-system="{{ $isSystem ? 'true' : 'false' }}"
-                        data-enabled="{{ $isEnabled ? 'true' : 'false' }}"
-                        data-required="{{ $question->is_required ? 'true' : 'false' }}"
-                        data-available="{{ $isEnabled ? 'true' : 'false' }}"
-                        data-options='@json($options)'
-                    >
-                        <span class="q-drag-handle material-symbols-outlined text-outline" style="font-size:18px;" title="Drag to reorder">drag_indicator</span>
-                        <span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px;">{{ $icon }}</span>
-                        <div class="q-text">
-                            <p class="text-sm font-medium text-on-surface">{{ $questionWrapped }}</p>
+
+    <div class="card" id="cfcard">
+      <div class="ch">
+        <div>
+          <h3 id="cfTitle">Flash design form</h3>
+          <div class="faint" id="cfSub" style="font-size:12.5px;margin-top:2px">Asked when a client books one of your flash designs · drag to reorder</div>
                         </div>
-                        <div class="q-meta">
-                        <span class="badge {{ $badgeClass }}">{{ $typeLabel }}</span>
-                        <span class="badge {{ $isSystem ? 'badge-system' : 'badge-custom' }}">{{ $isSystem ? 'SYSTEM' : 'CUSTOM' }}</span>
-                        @if($isSystem)
-                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleQuestionStatus(this)" title="Enable/Disable"></div>
-                            <span class="material-symbols-outlined text-outline/40" style="font-size:16px;" title="System question">lock</span>
-                        @else
-                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleQuestionStatus(this)" title="Enable/Disable"></div>
-                            <div class="flex items-center gap-1">
-                                <button type="button" class="js-edit-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-surface-container-low" title="Edit">
-                                    <span class="material-symbols-outlined text-on-surface-variant" style="font-size:16px;">edit</span>
-                                </button>
-                                <button type="button" class="js-remove-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50" title="Delete">
-                                    <span class="material-symbols-outlined text-red-500" style="font-size:16px;">delete</span>
-                                </button>
+        <div class="btns">
+          <button type="button" class="btn sm ghost" id="btnPreviewForm"><span class="ms" style="font-size:16px">visibility</span>Preview</button>
+          <button type="button" class="btn sm" id="btnOpenAddQuestionModal"><span class="ms" style="font-size:16px">add</span>Add question</button>
                             </div>
-                        @endif
-                        </div>
                     </div>
+
+      @if($showStudioPicker)
+        <div class="cf-fixed" id="studioPickerRow">
+          <span class="ms faint" title="Always first">lock</span>
+          <span style="flex:1;font-size:13.5px">
+            Where do you want to get tattooed?
+            <div class="faint" style="font-size:12px">Your active studios, with their addresses. Shows only when you work at 2 or more studios. Skipped when the client comes from a studio’s page. Always the first question.</div>
+          </span>
+          <span class="pill nd b">Select</span>
+          <span class="pill nd k" style="font-size:10.5px">FIXED</span>
+        </div>
+      @endif
+
+      <div id="bookingQuestionsList" class="questions-list">
+        @forelse ($default_questions as $question)
+          @include('artist.forms.partials.intake-question-row', ['question' => $question, 'formContext' => 'default', 'system_questions_ids' => $system_questions_ids])
                 @empty
-                    <p class="px-5 py-6 text-sm text-on-surface-variant">No default questions found.</p>
+          <p class="cf-empty faint" style="padding:26px 18px;text-align:center;font-size:13px">No questions yet. Add your first one.</p>
                 @endforelse
             </div>
+
             <div id="requestQuestionsList" class="questions-list hidden">
                 @forelse ($custom_questions as $question)
-                    @php
-                        $type = $question->type === 'image' ? 'images' : $question->type;
-                        $options = is_array($question->options) ? $question->options : [];
-                        $isSystem = in_array((int) $question->id, $system_questions_ids ?? [], true);
-                        $isEnabled = (bool) ($question->is_active ?? true);
-                        $typeLabel = match ($type) {
-                            'input' => 'Input',
-                            'textarea' => 'Textarea',
-                            'select' => 'Select',
-                            'toggle' => 'Toggle',
-                            'radio' => 'Radio',
-                            'images' => 'Images',
-                            'style' => 'Style',
-                            'placement' => 'Placement',
-                            'sizes' => 'Sizes',
-                            default => ucfirst((string) $type),
-                        };
-                        $icon = match ($type) {
-                            'select', 'radio', 'style', 'placement', 'sizes' => 'list',
-                            'textarea' => 'notes',
-                            'toggle' => 'toggle_on',
-                            'images' => 'upload_file',
-                            default => 'short_text',
-                        };
-                        $badgeClass = match ($type) {
-                            'select', 'radio' => 'badge-select',
-                            'textarea' => 'badge-textarea',
-                            'toggle' => 'badge-toggle',
-                            'images' => 'badge-file',
-                            'style', 'placement', 'sizes' => 'badge-select',
-                            default => 'badge-text',
-                        };
-                        $questionWords = preg_split('/\s+/u', trim((string) $question->question), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-                        $questionWrapped = implode("\n", array_map(
-                            static fn (array $chunk): string => implode(' ', $chunk),
-                            array_chunk($questionWords, 15)
-                        ));
-                    @endphp
-                    <div
-                        class="q-row flex gap-3 px-5 py-3.5 {{ $isEnabled ? '' : 'disabled' }}"
-                        data-id="{{ $question->id }}"
-                        data-type="{{ $typeLabel }}"
-                        data-type-value="{{ $type }}"
-                        data-question-type="{{ $question->question_type ?? 'other' }}"
-                        data-form-context="custom"
-                        data-description="{{ e($question->description ?? '') }}"
-                        data-placeholder="{{ e($question->placeholder ?? '') }}"
-                        data-system="{{ $isSystem ? 'true' : 'false' }}"
-                        data-enabled="{{ $isEnabled ? 'true' : 'false' }}"
-                        data-required="{{ $question->is_required ? 'true' : 'false' }}"
-                        data-available="{{ $isEnabled ? 'true' : 'false' }}"
-                        data-options='@json($options)'
-                    >
-                        <span class="q-drag-handle material-symbols-outlined text-outline" style="font-size:18px;" title="Drag to reorder">drag_indicator</span>
-                        <span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px;">{{ $icon }}</span>
-                        <div class="q-text">
-                            <p class="text-sm font-medium text-on-surface">{{ $questionWrapped }}</p>
-                        </div>
-                        <div class="q-meta">
-                        <span class="badge {{ $badgeClass }}">{{ $typeLabel }}</span>
-                        <span class="badge {{ $isSystem ? 'badge-system' : 'badge-custom' }}">{{ $isSystem ? 'SYSTEM' : 'CUSTOM' }}</span>
-                        @if($isSystem)
-                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleQuestionStatus(this)" title="Enable/Disable"></div>
-                            <span class="material-symbols-outlined text-outline/40" style="font-size:16px;" title="System question">lock</span>
-                        @else
-                            <div class="toggle-switch {{ $isEnabled ? 'active' : '' }}" onclick="toggleQuestionStatus(this)" title="Enable/Disable"></div>
-                            <div class="flex items-center gap-1">
-                                <button type="button" class="js-edit-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-surface-container-low" title="Edit">
-                                    <span class="material-symbols-outlined text-on-surface-variant" style="font-size:16px;">edit</span>
-                                </button>
-                                <button type="button" class="js-remove-question w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50" title="Delete">
-                                    <span class="material-symbols-outlined text-red-500" style="font-size:16px;">delete</span>
-                                </button>
-                            </div>
-                        @endif
-                        </div>
-                    </div>
+          @include('artist.forms.partials.intake-question-row', ['question' => $question, 'formContext' => 'custom', 'system_questions_ids' => $system_questions_ids])
                 @empty
-                    <p class="px-5 py-6 text-sm text-on-surface-variant">No custom questions found.</p>
+          <p class="cf-empty faint" style="padding:26px 18px;text-align:center;font-size:13px">No questions yet. Add your first one.</p>
                 @endforelse
-            </div>
-            </div>
-          </div>
-
-          <!-- Sticky Footer -->
-          <div class="sticky bottom-0 bg-surface z-10 py-4 flex flex-col sm:flex-row justify-end gap-3 mt-4">
-            <button type="button" id="btnOpenAddQuestionModal"
-              class="border border-outline-variant text-on-surface hover:bg-surface-container px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
-              <span class="material-symbols-outlined" style="font-size:18px;">add</span> Add Question
-            </button>
-            <button onclick="openPreviewModal()"
-              class="border border-outline-variant text-on-surface hover:bg-surface-container px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
-              <span class="material-symbols-outlined" style="font-size:18px;">visibility</span> Preview Form
-            </button>
-            {{-- <button onclick="saveForm()"
-              class="bg-primary text-white hover:bg-primary-container shadow-sm px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
-              <span class="material-symbols-outlined" style="font-size:18px;">save</span> Save Changes
-            </button> --}}
           </div>
         </div>
       </div>
 
-    </div>
-  </main>
-
-  <!-- Add question modal -->
+  {{-- Add / Edit question modal --}}
   <div class="modal-backdrop" id="addQuestionModal" aria-hidden="true">
-    <div class="add-question-modal-inner bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/15">
-      <h3 id="addQuestionModalTitle" class="text-lg font-bold text-on-surface">Add question</h3>
-        <button type="button" id="btnCloseAddQuestionModal" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-container-low transition-colors" aria-label="Close">
-          <span class="material-symbols-outlined text-on-surface-variant">close</span>
-        </button>
+    <div class="cfm" role="dialog" aria-modal="true" aria-labelledby="addQuestionModalTitle">
+      <div class="cfmh">
+        <h3 id="addQuestionModalTitle">Add question</h3>
+        <span class="ms x" id="btnCloseAddQuestionModal" aria-label="Close">close</span>
       </div>
-      <div class="p-5 space-y-4">
+      <div class="cfmb">
       <form id="addQuestionForm">
         <input type="hidden" id="editingQuestionId" value="">
-        <p id="addQuestionGeneralError" class="hidden text-sm text-error rounded-xl bg-error-container/30 border border-error/20 px-3 py-2"></p>
-        <div class="mb-2">
-          <label for="newQuestionText" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Question</label>
-          <input type="text" id="newQuestionText" name="newQuestionText" placeholder="e.g., Preferred session length" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="newQuestionTextError" class="hidden text-sm text-error mt-1"></p>
-        </div>
-        <div class="mb-2">
-          <label for="newQuestionDescription" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Description (optional)</label>
-          <textarea id="newQuestionDescription" name="newQuestionDescription" rows="2" placeholder="Add helper text for clients (optional)" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
-          <p id="newQuestionDescriptionError" class="hidden text-sm text-error mt-1"></p>
-        </div>
-        <div class="mb-2">
-          <label for="newQuestionPlaceholder" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Placeholder (optional)</label>
-          <input type="text" id="newQuestionPlaceholder" name="newQuestionPlaceholder" placeholder="e.g., Tell us your tattoo idea..." class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="newQuestionPlaceholderError" class="hidden text-sm text-error mt-1"></p>
-        </div>
-        <div class="mb-2">
-          <label for="newQuestionSemanticType" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Question type <span class="text-error">*</span></label>
-          <select id="newQuestionSemanticType" name="newQuestionSemanticType" required class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <input type="hidden" id="form-context" name="form_context" value="default">
+          <p id="addQuestionGeneralError" class="field-err hidden"></p>
+
+          <label class="fl" for="newQuestionText">Question</label>
+          <input class="in" type="text" id="newQuestionText" name="newQuestionText" placeholder="e.g., Preferred session length">
+          <p id="newQuestionTextError" class="field-err hidden"></p>
+
+          <label class="fl" for="newQuestionDescription">Description (optional)</label>
+          <textarea class="in" id="newQuestionDescription" name="newQuestionDescription" placeholder="Add helper text for clients (optional)"></textarea>
+          <p id="newQuestionDescriptionError" class="field-err hidden"></p>
+
+          <label class="fl" for="newQuestionPlaceholder">Placeholder (optional)</label>
+          <input class="in" type="text" id="newQuestionPlaceholder" name="newQuestionPlaceholder" placeholder="e.g., Tell us your tattoo idea...">
+          <p id="newQuestionPlaceholderError" class="field-err hidden"></p>
+
+          <label class="fl" for="newQuestionSemanticType">Question type <span style="color:#C62828">*</span></label>
+          <select class="in" id="newQuestionSemanticType" name="newQuestionSemanticType" required>
             <option value="description">Description</option>
             <option value="style">Style</option>
             <option value="color">Color</option>
@@ -593,101 +215,87 @@
             <option value="coverup_photo">Cover-up photo</option>
             <option value="other" selected>Other</option>
           </select>
-          <p id="newQuestionSemanticTypeError" class="hidden text-sm text-error mt-1"></p>
-        </div>
-        <div class="mb-2">
-          <input type="hidden" id="form-context" name="form_context" value="default">
-          <label for="newQuestionType" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Answer type</label>
-          <select id="newQuestionType" name="newQuestionType" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="newQuestionSemanticTypeError" class="field-err hidden"></p>
+
+          <label class="fl" for="newQuestionType">Answer type</label>
+          <select class="in" id="newQuestionType" name="newQuestionType">
             <option value="" selected disabled>Select answer type</option>
-            <option value="input" selected>Input (a single-line field for short answers)</option>
+            <option value="input">Input (a single-line field for short answers)</option>
             <option value="textarea">Textarea (a multi-line field for longer responses)</option>
             <option value="select">Select (a list of options where the user picks one)</option>
             <option value="toggle">Toggle (a yes/no question)</option>
             <option value="images">Images (a field for uploading images)</option>
             <option value="radio">Radio (a list of options where the user picks only one)</option>
           </select>
-          <p id="newQuestionTypeError" class="hidden text-sm text-error mt-1"></p>
-        </div>
-        <div class="add-options-div mb-2"></div>
-        <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 pt-1">
-          <div class="flex items-center justify-between sm:justify-start sm:gap-3">
-            <span class="text-sm text-on-surface">Required</span>
-            <button type="button" id="newQuestionRequiredToggle" class="toggle-switch active" role="switch" aria-checked="true" aria-label="Toggle required"></button>
+          <p id="newQuestionTypeError" class="field-err hidden"></p>
+
+          <div class="add-options-div"></div>
+
+          <div class="row" style="gap:26px;margin-top:18px">
+            <label class="row" style="gap:10px;font-size:13.5px;cursor:pointer">
+              Required
+              <button type="button" id="newQuestionRequiredToggle" class="tog on active" role="switch" aria-checked="true" aria-label="Toggle required"></button>
             <input type="hidden" id="newQuestionRequired" name="newQuestionRequired" value="true">
-          </div>
-          <div class="flex items-center justify-between sm:justify-start sm:gap-3">
-            <span class="text-sm text-on-surface">Available</span>
-            <button type="button" id="newQuestionAvailableToggle" class="toggle-switch active" role="switch" aria-checked="true" aria-label="Toggle available"></button>
+            </label>
+            <label class="row" style="gap:10px;font-size:13.5px;cursor:pointer">
+              Available
+              <button type="button" id="newQuestionAvailableToggle" class="tog on active" role="switch" aria-checked="true" aria-label="Toggle available"></button>
             <input type="hidden" id="newQuestionAvailable" name="newQuestionAvailable" value="true">
-          </div>
+            </label>
         </div>
       </form>
       </div>
-      <div class="px-5 py-4 border-t border-outline-variant/15 flex items-center justify-end gap-3">
-        <button type="button" id="btnCancelAddQuestionModal" class="text-sm font-semibold text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-xl transition-colors">Cancel</button>
-        <button type="button" id="btnSubmitAddQuestion" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm inline-flex items-center gap-2">
-        <span id="btnSubmitAddQuestionIcon" class="material-symbols-outlined text-lg">add</span>
+      <div class="cfmf">
+        <button type="button" class="btn ghost" id="btnCancelAddQuestionModal">Cancel</button>
+        <button type="button" class="btn" id="btnSubmitAddQuestion">
+          <span class="ms" id="btnSubmitAddQuestionIcon">add</span>
         <span id="btnSubmitAddQuestionText">Add question</span>
       </button>
     </div>
   </div>
 </div>
 
-  <!-- Delete question confirmation modal -->
+  {{-- Delete confirmation --}}
   <div class="modal-backdrop" id="deleteQuestionModal" aria-hidden="true">
-    <div class="add-question-modal-inner bg-white rounded-2xl w-full max-w-md mx-4 shadow-2xl">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/15">
-        <h3 class="text-lg font-bold text-on-surface">Delete question</h3>
-        <button type="button" id="btnCloseDeleteQuestionModal" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-container-low transition-colors" aria-label="Close">
-          <span class="material-symbols-outlined text-on-surface-variant">close</span>
-        </button>
+    <div class="cfm sm" role="dialog" aria-modal="true">
+      <div class="cfmh">
+        <h3>Delete question</h3>
+        <span class="ms x" id="btnCloseDeleteQuestionModal" aria-label="Close">close</span>
       </div>
-      <div class="p-5 space-y-2">
-        <p class="text-sm text-on-surface">Are you sure you want to delete this question?</p>
-        <p class="text-xs text-on-surface-variant">This action cannot be undone.</p>
-        <p id="deleteQuestionError" class="hidden text-sm text-error rounded-xl bg-error-container/30 border border-error/20 px-3 py-2"></p>
+      <div class="cfmb">
+        <p style="margin:0;font-size:13.5px;line-height:1.5">Are you sure you want to delete this question?</p>
+        <p class="faint" style="font-size:12.5px;margin:8px 0 0">This action cannot be undone.</p>
+        <p id="deleteQuestionError" class="field-err hidden"></p>
       </div>
-      <div class="px-5 py-4 border-t border-outline-variant/15 flex items-center justify-end gap-3">
-        <button type="button" id="btnCancelDeleteQuestionModal" class="text-sm font-semibold text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-xl transition-colors">Cancel</button>
-        <button type="button" id="btnConfirmDeleteQuestion" class="bg-red-600 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-red-700 transition-colors shadow-sm inline-flex items-center gap-2">
-          <span class="material-symbols-outlined text-lg">delete</span>
-          Delete
+      <div class="cfmf">
+        <button type="button" class="btn ghost" id="btnCancelDeleteQuestionModal">Cancel</button>
+        <button type="button" class="btn" id="btnConfirmDeleteQuestion" style="background:#C62828">
+          <span class="ms">delete</span>Delete
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Preview Modal -->
-  <div class="modal-backdrop" id="previewModal" onclick="if(event.target===this){closePreviewModal()}">
-    <div class="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
-      onclick="event.stopPropagation()">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15">
-        <h3 class="text-lg font-bold text-on-surface">Form Preview</h3>
-        <button onclick="closePreviewModal()"
-          class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors">
-          <span class="material-symbols-outlined text-on-surface-variant">close</span>
-        </button>
+  {{-- Preview --}}
+  <div class="modal-backdrop" id="previewModal" aria-hidden="true">
+    <div class="cfm" role="dialog" aria-modal="true">
+      <div class="cfmh">
+        <h3>Form Preview</h3>
+        <span class="ms x" onclick="closePreviewModal()" aria-label="Close">close</span>
       </div>
-      <div class="flex-1 overflow-y-auto" id="previewModalContent"></div>
-      <div class="px-6 py-4 border-t border-outline-variant/15 flex justify-end">
-        <button onclick="closePreviewModal()"
-          class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm">Close</button>
+      <div class="cfmb" id="previewModalContent" style="padding:0"></div>
+      <div class="cfmf">
+        <button type="button" class="btn" onclick="closePreviewModal()">Close</button>
       </div>
     </div>
   </div>
 
-  <!-- Toast -->
-  <div id="saveToast"
-    class="fixed top-6 right-6 z-[300] transform translate-x-full opacity-0 transition-all duration-300">
-    <div class="flex items-center gap-3 bg-on-surface text-white px-5 py-3 rounded-xl shadow-lg">
-      <span class="material-symbols-outlined text-green-400" style="font-size:20px;">check_circle</span>
-      <span class="text-sm font-medium" id="toastMessage">Changes saved successfully</span>
-    </div>
+  <div class="mp-toast" id="saveToast" role="status"><span class="ms">check_circle</span><span id="toastMessage">Saved</span></div>
   </div>
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
 <script>
   const ARTIST_FORMS_QUESTION_STORE = @json(route('artist.forms.questions.store'));
@@ -696,57 +304,73 @@
   const ARTIST_FORMS_REORDER_URL = @json(route('artist.forms.questions.reorder'));
   const ARTIST_SYSTEM_QUESTION_STATUS_URL_TEMPLATE = @json(route('artist.forms.questions.status', ['id' => '__ID__']));
   const ARTIST_FORMS_TAB_STORAGE_KEY = "artistFormsActiveTab";
+  const FORM_META = {
+    booking: {
+      context: "default",
+      title: "Flash design form",
+      sub: "Asked when a client books one of your flash designs · drag to reorder",
+      countId: "flashCount"
+    },
+    request: {
+      context: "custom",
+      title: "Custom request form",
+      sub: "Asked when a client requests a custom tattoo · drag to reorder",
+      countId: "customCount"
+    }
+  };
   const currentFormToContext = { booking: "default", request: "custom" };
   let currentFormType = "booking";
   let $pendingDeleteRow = null;
 
+  function countLabel(n) {
+    return n + " question" + (n === 1 ? "" : "s");
+  }
+
+  function refreshFormCounts() {
+    $("#flashCount").text(countLabel($("#bookingQuestionsList .q-row").length));
+    $("#customCount").text(countLabel($("#requestQuestionsList .q-row").length));
+  }
+
   function persistActiveFormTab(type) {
-    try {
-      sessionStorage.setItem(ARTIST_FORMS_TAB_STORAGE_KEY, type);
-    } catch (e) {}
+    try { sessionStorage.setItem(ARTIST_FORMS_TAB_STORAGE_KEY, type); } catch (e) {}
     const url = new URL(window.location.href);
     url.searchParams.set("tab", type === "request" ? "custom" : "booking");
     window.history.replaceState({}, "", url);
   }
 
+  function switchFormType(type, options) {
+    options = options || {};
+    currentFormType = type;
+    if (options.persist !== false) persistActiveFormTab(type);
+
+    $(".cfform").each(function () {
+      const on = this.dataset.form === type;
+      $(this).toggleClass("on", on).attr("aria-current", on ? "true" : "false");
+    });
+
+    $("#bookingQuestionsList").toggleClass("hidden", type !== "booking");
+    $("#requestQuestionsList").toggleClass("hidden", type !== "request");
+    $("#studioPickerRow").toggle(type === "booking" || type === "request");
+
+    const meta = FORM_META[type] || FORM_META.booking;
+    $("#cfTitle").text(meta.title);
+    $("#cfSub").text(meta.sub);
+    $("#form-context").val(meta.context);
+    closeAddQuestionModal();
+  }
+
   function restoreActiveFormTab() {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
-    let saved = null;
-    try {
-      saved = sessionStorage.getItem(ARTIST_FORMS_TAB_STORAGE_KEY);
-    } catch (e) {}
-
-    const type = tabParam === "custom" || tabParam === "request"
-      ? "request"
-      : (tabParam === "booking" ? "booking" : (saved === "request" ? "request" : "booking"));
-
-    const btn = document.getElementById(type === "request" ? "tabRequest" : "tabBooking");
-    if (btn) {
-      switchFormType(type, btn, { persist: false });
-    }
-  }
-
-  function switchFormType(type, btn, options) {
-    options = options || {};
-    currentFormType = type;
-    if (options.persist !== false) {
-      persistActiveFormTab(type);
-    }
-    document.querySelectorAll(".form-tab").forEach(function (tab) {
-      tab.classList.remove("active");
-    });
-    btn.classList.add("active");
-    document.getElementById("bookingQuestionsList").classList.toggle("hidden", type !== "booking");
-    document.getElementById("requestQuestionsList").classList.toggle("hidden", type !== "request");
-    closeAddQuestionModal();
+    // Default to Flash design; only open Custom when ?tab=custom|request
+    const type = tabParam === "custom" || tabParam === "request" ? "request" : "booking";
+    switchFormType(type, { persist: tabParam == null });
   }
 
   function toggleQuestionStatus(el) {
     const row = el.closest(".q-row");
     if (!row) return;
     const questionId = row.dataset.id;
-    console.log("questionId", questionId);
     if (!questionId || el.dataset.loading === "true") return;
 
     const previousEnabled = row.dataset.enabled === "true";
@@ -755,7 +379,9 @@
     row.dataset.enabled = nextEnabled ? "true" : "false";
     row.dataset.available = nextEnabled ? "true" : "false";
     el.classList.toggle("active", nextEnabled);
-    row.classList.toggle("disabled", !nextEnabled);
+    el.classList.toggle("on", nextEnabled);
+    el.setAttribute("aria-checked", nextEnabled ? "true" : "false");
+    row.classList.toggle("off", !nextEnabled);
     el.dataset.loading = "true";
     el.style.pointerEvents = "none";
 
@@ -774,16 +400,19 @@
         row.dataset.enabled = previousEnabled ? "true" : "false";
         row.dataset.available = previousEnabled ? "true" : "false";
         el.classList.toggle("active", previousEnabled);
-        row.classList.toggle("disabled", !previousEnabled);
+        el.classList.toggle("on", previousEnabled);
+        el.setAttribute("aria-checked", previousEnabled ? "true" : "false");
+        row.classList.toggle("off", !previousEnabled);
         showToast((response && response.message) || "Failed to update question status.");
       }
     }).fail(function (xhr) {
       row.dataset.enabled = previousEnabled ? "true" : "false";
       row.dataset.available = previousEnabled ? "true" : "false";
       el.classList.toggle("active", previousEnabled);
-      row.classList.toggle("disabled", !previousEnabled);
-      const msg = (xhr.responseJSON && xhr.responseJSON.message) || "Failed to update question status.";
-      showToast(msg);
+      el.classList.toggle("on", previousEnabled);
+      el.setAttribute("aria-checked", previousEnabled ? "true" : "false");
+      row.classList.toggle("off", !previousEnabled);
+      showToast((xhr.responseJSON && xhr.responseJSON.message) || "Failed to update question status.");
     }).always(function () {
       delete el.dataset.loading;
       el.style.pointerEvents = "";
@@ -804,26 +433,13 @@
     $addOptionsDiv.find(".btn-remove-option").toggleClass("hidden", !showRemove);
   }
 
-  function appendOptionField(value = "") {
+  function appendOptionField(value) {
+    value = value || "";
     const $optionRow = $(`
-      <div class="option-row space-y-1">
-        <div class="flex items-center gap-2">
-          <input
-            type="text"
-            name="newQuestionOptions[]"
-            value="${value}"
-            placeholder="Add option"
-            class="option-input w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-          <button
-            type="button"
-            class="btn-remove-option w-9 h-9 rounded-xl flex items-center justify-center hover:bg-red-50 text-red-500 transition-colors hidden"
-            aria-label="Remove option"
-          >
-            <span class="material-symbols-outlined text-base">delete</span>
-          </button>
-        </div>
-        <p class="option-error hidden text-sm text-error"></p>
+      <div class="option-row cfopt">
+        <input type="text" name="newQuestionOptions[]" value="${$("<div>").text(value).html()}" placeholder="Option" class="in option-input">
+        <span class="ms btn-remove-option hidden" aria-label="Remove option">close</span>
+        <p class="option-error field-err hidden" style="flex-basis:100%;margin:0"></p>
       </div>
     `);
     $addOptionsDiv.find(".options-list").append($optionRow);
@@ -832,42 +448,31 @@
 
   function appendFieldsByType(questionType) {
     $addOptionsDiv.empty();
-
-    if (questionType !== "select" && questionType !== "radio") {
-      return;
-    }
-
+    if (questionType !== "select" && questionType !== "radio") return;
     $addOptionsDiv.append(`
-      <div class="space-y-2">
-        <div class="flex items-center justify-between gap-2">
-          <label class="block text-xs font-semibold text-on-surface-variant">Options</label>
-          <button type="button" class="btn-add-option inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-container transition-colors">
-            <span class="material-symbols-outlined text-base">add_circle</span>
-            Add more
-          </button>
-        </div>
-        <p class="text-[11px] text-on-surface-variant">Add the choices clients can select.</p>
-        <p class="options-general-error hidden text-sm text-error"></p>
-        <div class="options-list space-y-2"></div>
+      <div>
+        <span class="fl">Options</span>
+        <p class="options-general-error field-err hidden"></p>
+        <div class="options-list"></div>
+        <div class="cfadd btn-add-option"><span class="ms" style="font-size:17px">add</span>Add option</div>
       </div>
     `);
-
     appendOptionField();
     appendOptionField();
   }
 
   function clearFieldError($input, $error) {
-    $input.removeClass("border-error ring-1 ring-error/40");
+    $input.css({ borderColor: "", boxShadow: "" });
     $error.addClass("hidden").text("");
   }
 
   function setFieldError($input, $error, message) {
-    $input.addClass("border-error ring-1 ring-error/40");
+    $input.css({ borderColor: "#C62828", boxShadow: "0 0 0 3px #FDECEC" });
     $error.removeClass("hidden").text(message);
   }
 
   function clearOptionErrors() {
-    $addOptionsDiv.find(".option-input").removeClass("border-error ring-1 ring-error/40");
+    $addOptionsDiv.find(".option-input").css({ borderColor: "", boxShadow: "" });
     $addOptionsDiv.find(".option-error").addClass("hidden").text("");
     $addOptionsDiv.find(".options-general-error").addClass("hidden").text("");
   }
@@ -875,7 +480,7 @@
   function setOptionErrorByIndex(index, message) {
     const $row = getOptionRows().eq(index);
     if (!$row.length) return;
-    $row.find(".option-input").addClass("border-error ring-1 ring-error/40");
+    $row.find(".option-input").css({ borderColor: "#C62828", boxShadow: "0 0 0 3px #FDECEC" });
     $row.find(".option-error").removeClass("hidden").text(message);
   }
 
@@ -892,7 +497,6 @@
   function resetAddQuestionForm() {
     const form = document.getElementById("addQuestionForm");
     if (form) form.reset();
-
     $("#newQuestionText").val("");
     $("#newQuestionDescription").val("");
     $("#newQuestionPlaceholder").val("");
@@ -902,10 +506,11 @@
     $("#form-context").val(currentFormToContext[currentFormType] || "default");
     $("#newQuestionRequired").val("true");
     $("#newQuestionAvailable").val("true");
-    $("#newQuestionRequiredToggle").addClass("active").attr("aria-checked", "true");
-    $("#newQuestionAvailableToggle").addClass("active").attr("aria-checked", "true");
+    $("#newQuestionRequiredToggle").addClass("on active").attr("aria-checked", "true");
+    $("#newQuestionAvailableToggle").addClass("on active").attr("aria-checked", "true");
     $("#btnSubmitAddQuestionText").text("Add question");
     $("#btnSubmitAddQuestionIcon").text("add");
+    $("#addQuestionModalTitle").text("Add question");
     $addOptionsDiv.empty();
     clearAllAddQuestionErrors();
   }
@@ -918,9 +523,8 @@
 
   function openEditQuestionModal($row) {
     resetAddQuestionForm();
-
     const questionId = $row.data("id");
-    const questionText = $.trim($row.find(".q-text p").first().text() || "").replace(/\s+/g, " ");
+    const questionText = String($row.attr("data-question") || "");
     const questionDescription = String($row.data("description") || "");
     const questionPlaceholder = String($row.data("placeholder") || "");
     const typeValue = String($row.data("type-value") || "input");
@@ -940,21 +544,18 @@
     $("#form-context").val(formContext);
     $("#newQuestionRequired").val(isRequired ? "true" : "false");
     $("#newQuestionAvailable").val(isAvailable ? "true" : "false");
-    $("#newQuestionRequiredToggle").toggleClass("active", isRequired).attr("aria-checked", isRequired ? "true" : "false");
-    $("#newQuestionAvailableToggle").toggleClass("active", isAvailable).attr("aria-checked", isAvailable ? "true" : "false");
-    $("#btnSubmitAddQuestionText").text("Update question");
-    $("#btnSubmitAddQuestionIcon").text("save");
+    $("#newQuestionRequiredToggle").toggleClass("on active", isRequired).attr("aria-checked", isRequired ? "true" : "false");
+    $("#newQuestionAvailableToggle").toggleClass("on active", isAvailable).attr("aria-checked", isAvailable ? "true" : "false");
+    $("#btnSubmitAddQuestionText").text("Save question");
+    $("#btnSubmitAddQuestionIcon").text("check");
+    $("#addQuestionModalTitle").text("Edit question");
 
     appendFieldsByType(typeValue);
     if ((typeValue === "select" || typeValue === "radio") && optionValues.length) {
       const $list = $addOptionsDiv.find(".options-list");
       $list.empty();
-      optionValues.forEach(function (value) {
-        appendOptionField(value || "");
-      });
-      while (getOptionRows().length < 2) {
-        appendOptionField("");
-      }
+      optionValues.forEach(function (value) { appendOptionField(value || ""); });
+      while (getOptionRows().length < 2) appendOptionField("");
       toggleRemoveOptionButtons();
     }
 
@@ -964,7 +565,7 @@
 
   function closeAddQuestionModal() {
     $addQuestionModal.removeClass("open").attr("aria-hidden", "true");
-    if (!$("#previewModal").hasClass("open")) {
+    if (!$("#previewModal").hasClass("open") && !$deleteQuestionModal.hasClass("open")) {
       document.body.style.overflow = "";
     }
   }
@@ -992,14 +593,11 @@
   }
 
   function showToast(message) {
-    const toast = document.getElementById("saveToast");
-    document.getElementById("toastMessage").textContent = message;
-    toast.classList.remove("translate-x-full", "opacity-0");
-    toast.classList.add("translate-x-0", "opacity-100");
-    setTimeout(function () {
-      toast.classList.add("translate-x-full", "opacity-0");
-      toast.classList.remove("translate-x-0", "opacity-100");
-    }, 3000);
+    const $t = $("#saveToast");
+    $("#toastMessage").text(message);
+    $t.addClass("on");
+    clearTimeout($t.data("t"));
+    $t.data("t", setTimeout(function () { $t.removeClass("on"); }, 2600));
   }
 
   function escapeHtml(value) {
@@ -1021,104 +619,76 @@
 
     const rows = Array.from(currentList.querySelectorAll(".q-row"));
     const visibleRows = rows.filter(function (row) {
-      const isSystem = row.dataset.system === "true";
-      return isSystem ? row.dataset.enabled === "true" : row.dataset.available === "true";
+      return row.dataset.enabled === "true" || row.dataset.available === "true";
+    }).filter(function (row) {
+      return row.dataset.enabled === "true";
     });
 
-    const title = currentFormType === "booking" ? "Available Design Form" : "Custom Request Form";
+    const title = currentFormType === "booking" ? "Flash design form" : "Custom request form";
     let html = `
-      <div class="px-6 py-5 bg-primary text-white">
-        <h4 class="font-bold text-lg">${title}</h4>
-        <p class="text-white/80 text-sm mt-1">Preview of active questions shown to clients</p>
+      <div style="padding:16px 20px;background:#1A1A1A;color:#fff">
+        <div style="font-weight:800;font-size:16px">${escapeHtml(title)}</div>
+        <div style="font-size:12.5px;opacity:.75;margin-top:2px">Preview of active questions shown to clients</div>
       </div>
     `;
 
     if (!visibleRows.length) {
-      html += `
-        <div class="px-6 py-8 text-center">
-          <p class="text-sm text-on-surface-variant">No active questions to preview.</p>
-        </div>
-      `;
+      html += `<div style="padding:28px 20px;text-align:center" class="faint">No active questions to preview.</div>`;
     } else {
-      html += visibleRows.map(function (row, index) {
-        const questionText = escapeHtml($.trim($(row).find(".q-text p").first().text() || "").replace(/\s+/g, " ") || "Question");
+      html += `<div style="padding:6px 20px 16px">` + visibleRows.map(function (row) {
+        const questionText = escapeHtml(row.getAttribute("data-question") || "Question");
         const questionDescription = escapeHtml(row.dataset.description || "");
         const questionPlaceholder = escapeHtml(row.dataset.placeholder || "");
         const type = String(row.dataset.typeValue || "input");
         const isRequired = row.dataset.required === "true";
-        const optionsRaw = row.dataset.options || "[]";
         let options = [];
-        try {
-          options = JSON.parse(optionsRaw);
-        } catch (e) {
-          options = [];
-        }
-        if (!Array.isArray(options)) {
-          options = [];
-        }
+        try { options = JSON.parse(row.dataset.options || "[]"); } catch (e) { options = []; }
+        if (!Array.isArray(options)) options = [];
 
         let inputHtml = "";
         if (type === "textarea") {
-          inputHtml = `<textarea rows="3" placeholder="${questionPlaceholder || "Your answer..."}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white mt-2 resize-none" disabled></textarea>`;
+          inputHtml = `<div class="in" style="margin-top:8px;color:var(--faint)">${questionPlaceholder || "Your answer..."}</div>`;
         } else if (type === "select") {
-          const optionHtml = options
-            .map(function (option) { return `<option>${escapeHtml(option)}</option>`; })
-            .join("");
-          inputHtml = `<select class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white mt-2" disabled><option>Select an option</option>${optionHtml}</select>`;
+          inputHtml = `<div class="chips" style="margin-top:8px">${(options.length ? options : ["Option"]).map(function (o) {
+            return `<span class="chip">${escapeHtml(o)}</span>`;
+          }).join("")}</div>`;
         } else if (type === "radio" || type === "style" || type === "placement" || type === "sizes") {
-          const radioHtml = (options.length ? options : ["Option 1", "Option 2"])
-            .map(function (option) {
-              return `<label class="inline-flex items-center gap-2 mr-4 mt-2"><input type="radio" disabled><span class="text-sm text-on-surface">${escapeHtml(option)}</span></label>`;
-            })
-            .join("");
-          inputHtml = `<div>${radioHtml}</div>`;
+          inputHtml = `<div class="chips" style="margin-top:8px">${(options.length ? options : ["Option 1", "Option 2"]).map(function (o) {
+            return `<span class="chip">${escapeHtml(o)}</span>`;
+          }).join("")}</div>`;
         } else if (type === "toggle") {
-          inputHtml = '<div class="inline-flex items-center gap-2 mt-2"><span class="toggle-switch"></span><span class="text-sm text-on-surface-variant">Yes / No</span></div>';
+          inputHtml = `<div class="chips" style="margin-top:8px"><span class="chip">Yes</span><span class="chip">No</span></div>`;
         } else if (type === "images" || type === "image") {
-          inputHtml = '<div class="mt-2 border-2 border-dashed border-outline-variant/30 rounded-xl px-4 py-6 text-center"><span class="material-symbols-outlined text-outline text-3xl">upload</span><p class="text-sm text-on-surface-variant mt-1">Image upload area</p></div>';
+          inputHtml = `<div style="margin-top:8px;border:1.5px dashed #D6C9DB;border-radius:12px;padding:16px;text-align:center;color:#6F6874;font-size:13px">Image upload area</div>`;
         } else {
-          inputHtml = `<input type="text" placeholder="${questionPlaceholder || "Your answer..."}" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2.5 bg-white mt-2" disabled>`;
+          inputHtml = `<div class="in" style="margin-top:8px;color:var(--faint)">${questionPlaceholder || "Your answer..."}</div>`;
         }
 
-        return `
-          <div class="px-6 py-5 ${index ? "border-t border-outline-variant/15" : ""}">
-            <label class="text-sm font-semibold text-on-surface">
-              ${questionText}${isRequired ? ' <span class="text-red-500">*</span>' : ""}
-            </label>
-            ${questionDescription ? `<p class="text-xs text-on-surface-variant mt-1">${questionDescription}</p>` : ""}
+        return `<div style="padding:14px 0;border-bottom:1px solid #F3EEF4">
+          <b style="font-size:14px">${questionText}${isRequired ? ' <span style="color:#C62828">*</span>' : ""}</b>
+          ${questionDescription ? `<div class="faint" style="font-size:12px;margin-top:4px">${questionDescription}</div>` : ""}
             ${inputHtml}
-          </div>
-        `;
-      }).join("");
+        </div>`;
+      }).join("") + `</div>`;
     }
-
-    html += `
-      <div class="px-6 py-5 border-t border-outline-variant/15">
-        <button class="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm" disabled>Submit</button>
-      </div>
-    `;
 
     document.getElementById("previewModalContent").innerHTML = html;
     document.getElementById("previewModal").classList.add("open");
+    document.getElementById("previewModal").setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
   }
 
   function closePreviewModal() {
     document.getElementById("previewModal").classList.remove("open");
-    if (!$("#addQuestionModal").hasClass("open")) {
+    document.getElementById("previewModal").setAttribute("aria-hidden", "true");
+    if (!$("#addQuestionModal").hasClass("open") && !$deleteQuestionModal.hasClass("open")) {
       document.body.style.overflow = "";
     }
   }
 
-  function saveForm() {
-    showToast("Use Add Question modal to save.");
-  }
-
   function initQuestionSorting(listSelector, formContext) {
     const listEl = document.querySelector(listSelector);
-    if (!listEl || typeof Sortable === "undefined") {
-      return;
-    }
+    if (!listEl || typeof Sortable === "undefined") return;
 
     Sortable.create(listEl, {
       draggable: ".q-row",
@@ -1131,24 +701,16 @@
           .map(function (row, index) {
             const id = Number(row.dataset.id);
             if (!id) return null;
-            return {
-              id: id,
-              order: index + 1
-            };
+            return { id: id, order: index + 1 };
           })
           .filter(Boolean);
 
-        if (!orderedItems.length) {
-          return;
-        }
+        if (!orderedItems.length) return;
 
         $.ajax({
           url: ARTIST_FORMS_REORDER_URL,
           method: "POST",
-          data: JSON.stringify({
-            form_context: formContext,
-            items: orderedItems
-          }),
+          data: JSON.stringify({ form_context: formContext, items: orderedItems }),
           contentType: "application/json; charset=UTF-8",
           headers: {
             "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
@@ -1156,52 +718,54 @@
             "X-Requested-With": "XMLHttpRequest"
           }
         }).fail(function (xhr) {
-          const msg = (xhr.responseJSON && xhr.responseJSON.message) || "Could not save question order.";
-          showToast(msg);
+          showToast((xhr.responseJSON && xhr.responseJSON.message) || "Could not save question order.");
         });
       }
     });
   }
 
-  $("#btnOpenAddQuestionModal").on("click", function () {
-    openAddQuestionModal();
+  $(".cfform").on("click", function () {
+    switchFormType(this.dataset.form);
+  }).on("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      switchFormType(this.dataset.form);
+    }
   });
 
-  $(document).on("click", ".js-edit-question", function () {
+  $("#btnOpenAddQuestionModal").on("click", openAddQuestionModal);
+  $("#btnPreviewForm").on("click", openPreviewModal);
+
+  $(document).on("click", ".js-edit-question, .q-row .qt[role='button']", function () {
     const $row = $(this).closest(".q-row");
-    if (!$row.length || String($row.data("system")) === "true") {
-      return;
-    }
+    if (!$row.length || String($row.data("system")) === "true") return;
     openEditQuestionModal($row);
+  });
+
+  $(document).on("keydown", ".q-row .qt[role='button']", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    $(this).trigger("click");
   });
 
   $(document).on("click", ".js-remove-question", function () {
     const $row = $(this).closest(".q-row");
-    if (!$row.length || String($row.data("system")) === "true") {
-      return;
-    }
-
+    if (!$row.length || String($row.data("system")) === "true") return;
     openDeleteQuestionModal($row);
   });
 
-  $("#btnCloseAddQuestionModal, #btnCancelAddQuestionModal").on("click", function () {
-    closeAddQuestionModal();
-  });
-
+  $("#btnCloseAddQuestionModal, #btnCancelAddQuestionModal").on("click", closeAddQuestionModal);
   $addQuestionModal.on("click", function (event) {
-    if (event.target === this) {
-      closeAddQuestionModal();
-    }
+    if (event.target === this) closeAddQuestionModal();
   });
 
-  $("#btnCloseDeleteQuestionModal, #btnCancelDeleteQuestionModal").on("click", function () {
-    closeDeleteQuestionModal();
-  });
-
+  $("#btnCloseDeleteQuestionModal, #btnCancelDeleteQuestionModal").on("click", closeDeleteQuestionModal);
   $deleteQuestionModal.on("click", function (event) {
-    if (event.target === this) {
-      closeDeleteQuestionModal();
-    }
+    if (event.target === this) closeDeleteQuestionModal();
+  });
+
+  $("#previewModal").on("click", function (event) {
+    if (event.target === this) closePreviewModal();
   });
 
   $("#btnConfirmDeleteQuestion").on("click", function () {
@@ -1209,13 +773,11 @@
       closeDeleteQuestionModal();
       return;
     }
-
     const questionId = $pendingDeleteRow.data("id");
     if (!questionId) {
       $("#deleteQuestionError").removeClass("hidden").text("Could not determine question id.");
       return;
     }
-
     const $btn = $(this);
     const originalBtnHtml = $btn.html();
     $btn.prop("disabled", true).html("Deleting...");
@@ -1233,37 +795,32 @@
         $("#deleteQuestionError").removeClass("hidden").text((response && response.message) || "Failed to delete question.");
         return;
       }
-
       const $list = $pendingDeleteRow.closest(".questions-list");
       $pendingDeleteRow.remove();
       if ($list.length && !$list.children(".q-row").length) {
-        const emptyText = $list.attr("id") === "bookingQuestionsList"
-          ? "No default questions found."
-          : "No custom questions found.";
-        $list.append('<p class="px-5 py-6 text-sm text-on-surface-variant">' + emptyText + "</p>");
+        $list.append('<p class="cf-empty faint" style="padding:26px 18px;text-align:center;font-size:13px">No questions yet. Add your first one.</p>');
       }
+      refreshFormCounts();
       closeDeleteQuestionModal();
       showToast("Question deleted.");
     }).fail(function (xhr) {
-      const msg = (xhr.responseJSON && xhr.responseJSON.message) || "Failed to delete question.";
-      $("#deleteQuestionError").removeClass("hidden").text(msg);
+      $("#deleteQuestionError").removeClass("hidden").text((xhr.responseJSON && xhr.responseJSON.message) || "Failed to delete question.");
     }).always(function () {
       $btn.prop("disabled", false).html(originalBtnHtml);
     });
   });
 
-  $("#newQuestionRequiredToggle, #newQuestionAvailableToggle").on("click", function () {
+  $("#newQuestionRequiredToggle, #newQuestionAvailableToggle").on("click", function (e) {
+    e.preventDefault();
     const $toggle = $(this);
-    const isActive = !$toggle.hasClass("active");
-    $toggle.toggleClass("active", isActive).attr("aria-checked", isActive ? "true" : "false");
+    const isActive = !$toggle.hasClass("on");
+    $toggle.toggleClass("on active", isActive).attr("aria-checked", isActive ? "true" : "false");
   });
-
   $("#newQuestionRequiredToggle").on("click", function () {
-    $("#newQuestionRequired").val($(this).hasClass("active") ? "true" : "false");
+    $("#newQuestionRequired").val($(this).hasClass("on") ? "true" : "false");
   });
-
   $("#newQuestionAvailableToggle").on("click", function () {
-    $("#newQuestionAvailable").val($(this).hasClass("active") ? "true" : "false");
+    $("#newQuestionAvailable").val($(this).hasClass("on") ? "true" : "false");
   });
 
   $newQuestionType.on("change", function () {
@@ -1284,26 +841,23 @@
 
   $addOptionsDiv.on("click", ".btn-add-option", function () {
     appendOptionField();
+    const $inputs = $addOptionsDiv.find(".option-input");
+    $inputs.last().focus();
   });
-
   $addOptionsDiv.on("input", ".option-input", function () {
     const $row = $(this).closest(".option-row");
-    $row.find(".option-input").removeClass("border-error ring-1 ring-error/40");
+    $row.find(".option-input").css({ borderColor: "", boxShadow: "" });
     $row.find(".option-error").addClass("hidden").text("");
     $addOptionsDiv.find(".options-general-error").addClass("hidden").text("");
   });
-
   $addOptionsDiv.on("click", ".btn-remove-option", function () {
-    if (getOptionRows().length <= 2) {
-      return;
-    }
+    if (getOptionRows().length <= 2) return;
     $(this).closest(".option-row").remove();
     toggleRemoveOptionButtons();
   });
 
   $("#btnSubmitAddQuestion").on("click", function () {
     clearAllAddQuestionErrors();
-
     const payload = {
       question: $.trim($("#newQuestionText").val()),
       description: $.trim($("#newQuestionDescription").val()),
@@ -1314,7 +868,6 @@
       is_required: $("#newQuestionRequired").val() === "true",
       is_active: $("#newQuestionAvailable").val() === "true"
     };
-
     if (payload.type === "select" || payload.type === "radio") {
       payload.options = getRawOptionValues();
     }
@@ -1349,7 +902,6 @@
     }).fail(function (xhr) {
       if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
         const serverErrors = xhr.responseJSON.errors;
-
         if (serverErrors.question && serverErrors.question[0]) {
           setFieldError($("#newQuestionText"), $("#newQuestionTextError"), serverErrors.question[0]);
         }
@@ -1365,17 +917,13 @@
         if (serverErrors.type && serverErrors.type[0]) {
           setFieldError($("#newQuestionType"), $("#newQuestionTypeError"), serverErrors.type[0]);
         }
-
         Object.keys(serverErrors).forEach(function (key) {
           const m = key.match(/^options\.(\d+)$/);
           if (!m) return;
-          const idx = parseInt(m[1], 10);
-          const msg = Array.isArray(serverErrors[key]) ? serverErrors[key][0] : "This field is required.";
-          setOptionErrorByIndex(idx, msg);
+          setOptionErrorByIndex(parseInt(m[1], 10), Array.isArray(serverErrors[key]) ? serverErrors[key][0] : "This field is required.");
         });
       } else {
-        const msg = (xhr.responseJSON && xhr.responseJSON.message) || "Something went wrong while saving.";
-        $("#addQuestionGeneralError").removeClass("hidden").text(msg);
+        $("#addQuestionGeneralError").removeClass("hidden").text((xhr.responseJSON && xhr.responseJSON.message) || "Something went wrong while saving.");
       }
     }).always(function () {
       $submitBtn.prop("disabled", false).html(originalBtnHtml);
@@ -1392,5 +940,6 @@
   initQuestionSorting("#bookingQuestionsList", "default");
   initQuestionSorting("#requestQuestionsList", "custom");
   restoreActiveFormTab();
+  refreshFormCounts();
   </script>
 @endsection

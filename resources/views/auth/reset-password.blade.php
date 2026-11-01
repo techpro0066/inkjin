@@ -39,7 +39,7 @@
 @endsection
 
 @push('scripts')
-<script>
+  <script>
 (function () {
   var root = document.getElementById('reset-app');
   if (!root) return;
@@ -180,7 +180,7 @@
     if (confirmError) p2w.classList.add('bad');
 
     form.addEventListener('submit', function (e) {
-      e.preventDefault();
+        e.preventDefault();
 
       var list = rules(p1.value);
       var strong = list.every(function (item) { return item[0]; });
@@ -203,11 +203,11 @@
       body.append('_token', csrf);
 
       fetch(action, {
-        method: 'POST',
+          method: 'POST',
         body: body,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Accept': 'application/json'
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
         },
         credentials: 'same-origin'
       }).then(function (res) {
@@ -262,5 +262,5 @@
     });
   }
 })();
-</script>
+  </script>
 @endpush

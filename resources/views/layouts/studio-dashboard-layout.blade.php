@@ -179,18 +179,18 @@
     <div class="tag">STUDIO DASHBOARD<br>BY INKJIN</div>
     <nav>
       <a href="{{ route('studio.dashboard') }}" class="{{ $activeNav === 'home' ? 'on' : '' }}"><span class="ms">space_dashboard</span>Home</a>
+      <a href="{{ route('studio.artists') }}" class="{{ $activeNav === 'artists' ? 'on' : '' }}"><span class="ms">groups</span>Artists</a>
       @if ($profileComplete)
-        <a href="#"><span class="ms">groups</span>Artists</a>
         <a href="#"><span class="ms">calendar_month</span>Calendar</a>
-        <a href="#"><span class="ms">event_note</span>Bookings</a>
-        <a href="#"><span class="ms">payments</span>Money</a>
-        <a href="#"><span class="ms">storefront</span>Studio Page</a>
-        <a href="#"><span class="ms">edit_note</span>Client Flow</a>
       @else
-        <a href="#" data-locked="Artists"><span class="ms">groups</span>Artists<span class="ms lk">lock</span></a>
         <a href="#" data-locked="Calendar"><span class="ms">calendar_month</span>Calendar<span class="ms lk">lock</span></a>
-        <a href="#" data-locked="Bookings"><span class="ms">event_note</span>Bookings<span class="ms lk">lock</span></a>
-        <a href="#" data-locked="Money"><span class="ms">payments</span>Money<span class="ms lk">lock</span></a>
+      @endif
+      <a href="#"><span class="ms">event_note</span>Bookings</a>
+      <a href="{{ route('studio.money.earnings') }}" class="{{ $activeNav === 'money' ? 'on' : '' }}"><span class="ms">payments</span>Money</a>
+      @if ($profileComplete)
+        <a href="{{ route('studio.page.about') }}" class="{{ $activeNav === 'page' ? 'on' : '' }}"><span class="ms">storefront</span>Studio Page</a>
+        <a href="{{ route('studio.client-flow.intake') }}" class="{{ $activeNav === 'client-flow' ? 'on' : '' }}"><span class="ms">edit_note</span>Client Flow</a>
+      @else
         <a href="#" data-locked="Studio Page"><span class="ms">storefront</span>Studio Page<span class="ms lk">lock</span></a>
         <a href="#" data-locked="Client Flow"><span class="ms">edit_note</span>Client Flow<span class="ms lk">lock</span></a>
       @endif

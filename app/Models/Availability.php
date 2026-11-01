@@ -12,11 +12,13 @@ class Availability extends Model
         'day_of_week',
         'start_time',
         'end_time',
+        'studio_ids',
     ];
 
     protected $casts = [
         'start_time' => 'string',
         'end_time' => 'string',
+        'studio_ids' => 'array',
     ];
 
     /**

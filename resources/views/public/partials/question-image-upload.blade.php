@@ -1,39 +1,66 @@
 <style>
+  /* Match client-book .upl / .thumbs / .thumb */
   .q-image-upload {
-    border: 2px dashed rgba(122, 117, 131, 0.35);
-    border-radius: 1rem;
-    background: #ffffff;
-    transition: border-color 0.2s ease, background 0.2s ease;
-    overflow: hidden;
+    width: 100%;
   }
-  .q-image-upload:hover,
-  .q-image-upload.is-dragover {
-    border-color: rgba(49, 15, 122, 0.45);
-    background: #f8f1fb;
+  .q-image-upload-trigger {
+    display: block;
+    width: 100%;
+    border: 1.5px dashed var(--line2, #DCCFE3);
+    border-radius: 12px;
+    background: #fff;
+    padding: 22px;
+    text-align: center;
+    color: var(--muted, #6E6475);
+    font-size: 13px;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: border-color .15s, background .15s;
+  }
+  .q-image-upload-trigger:hover,
+  .q-image-upload.is-dragover .q-image-upload-trigger {
+    border-color: var(--p2, #5A238E);
+    background: var(--pl, #F5ECFB);
+  }
+  .q-image-upload.is-full .q-image-upload-trigger {
+    display: none;
+  }
+  .q-image-upload-trigger .ms {
+    font-size: 28px;
+    color: var(--p, #3E007C);
+    display: block;
+    margin: 0 auto 6px;
+    line-height: 1;
+  }
+  .q-image-upload-trigger b {
+    color: var(--ink, #1D1A21);
+    font-weight: 700;
   }
   .q-image-upload-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-    gap: 0.75rem;
-    padding: 1rem 1rem 0;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
   }
   .q-image-upload-list:empty {
     display: none;
-    padding: 0;
+    margin: 0;
   }
   .q-image-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
     position: relative;
-    aspect-ratio: 1;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    background: #f2ecf5;
-    border: 1px solid rgba(122, 117, 131, 0.2);
+    background: linear-gradient(135deg, #E9D6F5, #C7A6E0);
+    overflow: visible;
+    flex: none;
   }
   .q-image-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
+    border-radius: 10px;
     pointer-events: none;
   }
   .q-image-thumb-uploading {
@@ -43,113 +70,61 @@
     justify-content: center;
     width: 100%;
     height: 100%;
-    background: #f2ecf5;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #E9D6F5, #C7A6E0);
+    padding: 6px;
+    box-sizing: border-box;
   }
   .q-image-thumb-uploading .material-symbols-outlined {
-    font-size: 1.75rem;
-    color: #7a7583;
-    margin-bottom: 0.25rem;
-    animation: q-pulse 1.5s ease-in-out infinite;
+    font-size: 18px;
+    color: #3E007C;
+    margin-bottom: 4px;
+    opacity: .7;
   }
   .q-image-thumb-progress {
     width: 70%;
-    height: 4px;
+    height: 3px;
     border-radius: 2px;
-    background: rgba(122, 117, 131, 0.2);
+    background: rgba(62, 0, 124, 0.15);
     overflow: hidden;
-    margin-top: 0.35rem;
   }
   .q-image-thumb-progress-bar {
     height: 100%;
     border-radius: 2px;
-    background: #310f7a;
+    background: #3E007C;
     width: 0%;
     transition: width 0.2s ease;
   }
   .q-image-thumb-pct {
-    font-size: 0.65rem;
-    color: #7a7583;
-    margin-top: 0.2rem;
-    font-weight: 600;
-  }
-  @keyframes q-pulse {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 1; }
+    font-size: 9px;
+    color: #3E007C;
+    margin-top: 3px;
+    font-weight: 700;
   }
   .q-image-thumb-remove {
     position: absolute;
-    top: 0.35rem;
-    right: 0.35rem;
-    display: inline-flex;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1D1A21;
+    color: #fff;
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.65rem;
-    height: 1.65rem;
-    border-radius: 9999px;
-    border: none;
-    background: rgba(28, 27, 33, 0.78);
-    color: #fff;
+    border: 0;
+    padding: 0;
     cursor: pointer;
-    transition: background 0.15s ease;
     z-index: 2;
   }
   .q-image-thumb-remove:hover {
-    background: rgba(186, 26, 26, 0.92);
+    background: #C0262D;
   }
   .q-image-thumb-remove .material-symbols-outlined {
-    font-size: 1rem;
+    font-size: 13px;
     line-height: 1;
     pointer-events: none;
-  }
-  .q-image-upload-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 2rem 1.5rem;
-    min-height: 140px;
-    text-align: center;
-    cursor: pointer;
-    margin: 0;
-  }
-  .q-image-upload.has-images .q-image-upload-empty {
-    min-height: 112px;
-    padding: 1.25rem 1.5rem 1.5rem;
-  }
-  .q-image-upload.is-full .q-image-upload-empty {
-    display: none;
-  }
-  .q-image-upload-empty .material-symbols-outlined {
-    font-size: 2.25rem;
-    color: #7a7583;
-    line-height: 1;
-    pointer-events: none;
-  }
-  .q-image-upload-text {
-    font-size: 0.95rem;
-    color: #494552;
-    margin: 0;
-    line-height: 1.5;
-    pointer-events: none;
-  }
-  .q-image-upload-browse {
-    font-weight: 700;
-    color: #310f7a;
-  }
-  .q-image-upload-hint {
-    font-size: 0.8rem;
-    color: #7a7583;
-    margin: 0;
-    line-height: 1.4;
-    pointer-events: none;
-  }
-  .q-image-upload-meta {
-    font-size: 0.75rem;
-    color: #7a7583;
-    text-align: center;
-    padding: 0 1rem 1rem;
-    margin: 0;
   }
   .q-image-upload-input {
     position: absolute;
@@ -162,37 +137,36 @@
     white-space: nowrap;
     border: 0;
   }
+  .q-image-upload-hint {
+    font-size: 12px;
+    color: var(--faint, #9C92A3);
+    margin-top: 8px;
+  }
+  .q-image-upload.is-full .q-image-upload-hint {
+    display: none;
+  }
 </style>
 <script>
 (function(window, $) {
   'use strict';
+  if (!$) return;
 
-  var MAX_BYTES = 10 * 1024 * 1024;
   var MAX_IMAGES = 5;
-  // Keep compressed uploads under common live PHP/nginx 1–2MB caps.
-  var UPLOAD_TARGET_BYTES = 900 * 1024;
+  var MAX_BYTES = 10 * 1024 * 1024;
+  var UPLOAD_TARGET_BYTES = 1.6 * 1024 * 1024;
   var ALLOWED_MIME = {
     'image/jpeg': true,
     'image/jpg': true,
-    'image/pjpeg': true,
     'image/png': true,
     'image/webp': true,
     'image/heic': true,
-    'image/heif': true,
-    'image/heic-sequence': true,
-    'image/heif-sequence': true
+    'image/heif': true
   };
-  var ALLOWED_EXT = {
-    jpg: true,
-    jpeg: true,
-    png: true,
-    webp: true,
-    heic: true,
-    heif: true
-  };
+  var ALLOWED_EXT = { jpg: true, jpeg: true, png: true, webp: true, heic: true, heif: true };
 
+  // Keep compressed uploads under common live PHP/nginx 1–2MB caps.
   function escapeHtml(str) {
-    return String(str || '')
+    return String(str == null ? '' : str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -201,40 +175,29 @@
 
   function fileExtension(file) {
     var name = String((file && file.name) || '');
-    var match = name.toLowerCase().match(/\.([a-z0-9]+)$/);
-    return match ? match[1] : '';
+    var i = name.lastIndexOf('.');
+    return i >= 0 ? name.slice(i + 1).toLowerCase() : '';
   }
 
-  // Hosts/WAFs often 403 filenames with quotes, spaces, or unicode (e.g. Investor's Night...).
   function safeUploadFilename(originalName, fallbackExt) {
     var raw = String(originalName || 'upload');
-    var extMatch = raw.toLowerCase().match(/\.([a-z0-9]+)$/);
-    var ext = (extMatch ? extMatch[1] : '') || String(fallbackExt || 'jpg');
-    if (!/^(jpe?g|png|webp|heic|heif)$/i.test(ext)) {
-      ext = 'jpg';
+    var ext = '';
+    var dot = raw.lastIndexOf('.');
+    if (dot >= 0) {
+      ext = raw.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '');
+      raw = raw.slice(0, dot);
     }
-    if (ext === 'jpeg') ext = 'jpg';
-    var base = raw.replace(/\.[^.]+$/, '');
-    base = base
-      .replace(/['’`"]/g, '')
-      .replace(/[^A-Za-z0-9._-]+/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^[._-]+|[._-]+$/g, '');
+    if (!ext) ext = String(fallbackExt || 'jpg').toLowerCase();
+    var base = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     if (!base) base = 'upload';
-    if (base.length > 80) base = base.slice(0, 80);
-    return base + '.' + ext;
+    return base.slice(0, 40) + '.' + ext;
   }
 
-  function blobToJpegFile(blob, originalName) {
-    var filename = safeUploadFilename(originalName, 'jpg').replace(/\.[^.]+$/, '') + '.jpg';
+  function blobToJpegFile(blob, name) {
     try {
-      return new File([blob], filename, { type: 'image/jpeg', lastModified: Date.now() });
+      return new File([blob], safeUploadFilename(name, 'jpg'), { type: 'image/jpeg' });
     } catch (e) {
-      try {
-        blob.name = filename;
-        blob.lastModifiedDate = new Date();
-        blob.lastModified = Date.now();
-      } catch (ignored) {}
+      blob.name = safeUploadFilename(name, 'jpg');
       return blob;
     }
   }
@@ -252,7 +215,6 @@
       var mime = String((file && file.type) || '').toLowerCase();
       var fallbackExt = mime.indexOf('png') !== -1 ? 'png' : (mime.indexOf('webp') !== -1 ? 'webp' : 'jpg');
       var name = safeUploadFilename((file && file.name) || ('upload.' + fallbackExt), fallbackExt);
-      // Always send a sanitized filename — apostrophes/spaces trigger live 403s.
       formData.append('image', file, name);
     },
 
@@ -307,14 +269,12 @@
       return '' +
         '<div class="q-image-upload relative" data-question-id="' + questionId + '">' +
           '<input type="file" id="' + inputId + '" accept="image/*,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png,.webp" multiple data-question-id="' + questionId + '" class="q-image-upload-input js-question-file">' +
-          '<div class="q-image-upload-list" aria-live="polite"></div>' +
-          '<label for="' + inputId + '" class="q-image-upload-empty">' +
-            '<span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span>' +
-            '<p class="q-image-upload-text q-image-upload-text-primary">Drop images here or <span class="q-image-upload-browse">browse</span></p>' +
-            '<p class="q-image-upload-text q-image-upload-text-more hidden">Add more images</p>' +
-            '<p class="q-image-upload-hint">Photos up to 10MB each (JPG, PNG, HEIC)</p>' +
+          '<label for="' + inputId + '" class="q-image-upload-trigger">' +
+            '<span class="material-symbols-outlined ms" aria-hidden="true">add_photo_alternate</span>' +
+            '<b>Tap to add a photo</b><br>JPG or PNG, up to 10 MB each' +
           '</label>' +
-          '<p class="q-image-upload-meta"><span class="q-image-upload-count">0</span>/' + MAX_IMAGES + ' images</p>' +
+          '<div class="q-image-upload-list" aria-live="polite"></div>' +
+          '<p class="q-image-upload-hint">Add up to ' + MAX_IMAGES + ' photos.</p>' +
         '</div>';
     },
 
@@ -329,7 +289,6 @@
 
       if (mime && ALLOWED_MIME[mime]) return '';
       if (ext && ALLOWED_EXT[ext]) return '';
-      // iOS camera / Drive may omit both; allow and try canvas convert next.
       if (!mime && !ext) return '';
       if (mime === 'application/octet-stream' && (!ext || ALLOWED_EXT[ext])) return '';
       if (mime.indexOf('image/') === 0) return '';
@@ -360,7 +319,6 @@
             reject(new Error('Unable to process this image. Please try a JPG instead.'));
             return;
           }
-          // White background so transparent PNGs become valid JPEGs.
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -428,8 +386,8 @@
       urls.forEach(function(url, index) {
         $list.append(
           '<div class="q-image-thumb" data-index="' + index + '">' +
-            '<img src="' + escapeHtml(url) + '" alt="Uploaded reference image ' + (index + 1) + '">' +
-            '<button type="button" class="q-image-thumb-remove" data-index="' + index + '" aria-label="Remove image ' + (index + 1) + '">' +
+            '<img src="' + escapeHtml(url) + '" alt="Uploaded photo ' + (index + 1) + '">' +
+            '<button type="button" class="q-image-thumb-remove" data-index="' + index + '" aria-label="Remove photo">' +
               '<span class="material-symbols-outlined">close</span>' +
             '</button>' +
           '</div>'
@@ -438,9 +396,12 @@
 
       $zone.toggleClass('has-images', urls.length > 0);
       $zone.toggleClass('is-full', urls.length >= MAX_IMAGES);
-      $zone.find('.q-image-upload-count').text(String(urls.length));
-      $zone.find('.q-image-upload-text-primary').toggleClass('hidden', urls.length > 0);
-      $zone.find('.q-image-upload-text-more').toggleClass('hidden', urls.length === 0);
+      var $hint = $zone.find('.q-image-upload-hint');
+      if ($hint.length) {
+        $hint.text(urls.length >= MAX_IMAGES
+          ? ''
+          : (urls.length ? 'Add up to ' + (MAX_IMAGES - urls.length) + ' more.' : 'Add up to ' + MAX_IMAGES + ' photos.'));
+      }
     },
 
     clear: function($zone) {
@@ -458,9 +419,11 @@
     },
 
     showError: function($zone, message) {
-      $zone.closest('.question-div').find('.js-question-error')
-        .removeClass('hidden')
-        .text(message || 'Unable to upload image.');
+      var $err = $zone.closest('.question-div').find('.js-question-error');
+      var $text = $err.find('.js-question-error-text');
+      if ($text.length) $text.text(message || 'Unable to upload image.');
+      else $err.text(message || 'Unable to upload image.');
+      $err.removeClass('hidden');
     },
 
     clearError: function($zone) {
@@ -523,7 +486,6 @@
         var uploadId = 'upl_' + Date.now() + '_' + i;
         $list.append(self._buildPlaceholder(uploadId));
         $zone.addClass('has-images');
-        $zone.find('.q-image-upload-count').text(String(urls.length + 1));
 
         try {
           var progressCb = function(pct) { self._updatePlaceholder($zone, uploadId, pct); };

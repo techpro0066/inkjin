@@ -171,7 +171,10 @@ class StripeConnectCountries
      */
     public static function syncCurrencyFromBankCountry(UserDetail $userDetail): array
     {
-        $country = strtoupper(trim((string) $userDetail->payout_bank_country));
+        $country = strtoupper(trim((string) (
+            $userDetail->activePayout()?->payout_bank_country
+            ?? $userDetail->getAttributes()['payout_bank_country'] ?? ''
+        )));
         $expected = self::currencyForCountry($country);
         $previous = $userDetail->currency ? strtoupper(trim($userDetail->currency)) : null;
 

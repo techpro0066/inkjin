@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\BookingRequest;
+use App\Models\ConsentAnswer;
 use App\Models\CustomRequest;
 use App\Models\PaymentLink;
 use App\Models\PendingVivaPayment;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Support\PaymentMethods;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -249,6 +251,7 @@ class VivaCheckoutService
                 'booking_reference' => $booking
                     ? '#INK-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT)
                     : null,
+                'consent_url' => $booking ? $this->consentPublicUrlForBooking($booking) : null,
             ];
         }
 
@@ -395,6 +398,32 @@ class VivaCheckoutService
         }
 
         return route('login').'?viva=fail';
+    }
+
+    private function consentPublicUrlForBooking(Booking $booking): ?string
+    {
+        $consent = ConsentAnswer::query()->where('booking_id', $booking->id)->first();
+        if (! $consent) {
+            try {
+                $consent = app(BookingConsentService::class)->syncForBooking($booking);
+            } catch (\Throwable $e) {
+                Log::warning('Unable to sync consent for Viva booking confirmation URL', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return null;
+            }
+        }
+
+        if (! $consent || in_array((string) $consent->status, [
+            ConsentAnswer::STATUS_CANCELLED,
+            ConsentAnswer::STATUS_EXPIRED,
+        ], true)) {
+            return null;
+        }
+
+        return $consent->publicUrl();
     }
 
     /**

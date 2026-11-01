@@ -6,9 +6,12 @@
   $wt = $userDetail->workspace_type ?? '';
   $hasStudio = filled($userDetail->studio_name ?? null);
   $relSelected = $userDetail->studio_relationship_type ?? '';
+  $pendingStudioInvite = $pendingStudioInvite ?? null;
+  $lockedStudioFromInvite = $lockedStudioFromInvite ?? null;
+  $lockedInviteMode = filled($lockedStudioFromInvite);
   // Resume path: relationship is only saved for "not on Bookpay"; empty → own space.
   $initialPath = '';
-  if ($hasStudio) {
+  if (! $lockedInviteMode && $hasStudio) {
     $initialPath = filled($relSelected) ? 'not_found' : 'own_space';
   }
   $studioTypes = [
@@ -54,6 +57,7 @@
   .addr-in input{border:0;outline:0;font:inherit;flex:1;background:none;min-width:0;padding:2px 0}
   .path-err{color:#C62828;font-size:12.5px;margin-top:8px}
   .path-err.hidden{display:none}
+  #inviteAcceptBtn:disabled{opacity:.65;cursor:not-allowed}
   @media (max-width:700px){
     .addr-grid-2{grid-template-columns:1fr!important}
   }
@@ -80,8 +84,8 @@
     <h1 style="margin-top:6px">Set up your studio<a class="help-q" href="https://help.inkjin.com/en/articles/17200672-setup-step-3-studio" target="_blank" rel="noopener" data-help-article="O3-studio" title="Help with this page" aria-label="Help with this page"><span class="ms">help</span></a></h1>
     <div class="sub" style="max-width:640px;margin-bottom:24px">Tell clients where they can find you.</div>
 
-    {{-- Search + path chooser (always visible unless a Bookpay studio is picked) --}}
-    <div class="card pad" id="panelSearch" @if($initialPath === 'found') hidden @endif>
+    {{-- Search + path chooser (hidden only after invite is already accepted/locked) --}}
+    <div class="card pad" id="panelSearch" @if($initialPath === 'found' || $lockedInviteMode) hidden @endif>
       <h3 style="margin-bottom:4px">Find your studio</h3>
       <div class="faint" style="font-size:13px;margin-bottom:14px">If your studio is on Bookpay, pick it and its details fill in automatically.</div>
       <label class="fl" for="studio_search">Where do you tattoo? <span style="color:#C62828">*</span></label>
@@ -109,6 +113,32 @@
       </label>
       <p id="studio_path_error" class="path-err hidden" role="alert"></p>
     </div>
+
+    @if ($lockedStudioFromInvite)
+      <div class="card pad" id="panelInviteLocked" style="margin-bottom:14px">
+        <h3 style="margin-bottom:12px">Your studio</h3>
+        <div class="picked">
+          <div class="row" style="gap:14px;padding-bottom:12px;border-bottom:1px solid #F0EAF2">
+            <div class="logo2">{{ $lockedStudioFromInvite['studio_initials'] }}</div>
+            <div style="flex:1">
+              <div class="row" style="gap:8px;flex-wrap:wrap">
+                <b style="font-size:16px">{{ $lockedStudioFromInvite['studio_name'] }}</b>
+                <span class="pill g">On Bookpay</span>
+              </div>
+              <div class="faint" style="font-size:12.5px">Managed by {{ $lockedStudioFromInvite['managed_by'] }}</div>
+            </div>
+          </div>
+          @if (!empty($lockedStudioFromInvite['address']))
+            <div class="kv" style="margin-top:8px"><span>Address</span><span>{{ $lockedStudioFromInvite['address'] }}</span></div>
+          @endif
+          <div class="kv"><span>Relationship</span><span>{{ $lockedStudioFromInvite['relationship_label'] }}</span></div>
+      </div>
+        <div class="lockbar" style="margin-top:12px">
+          <span class="ms" style="font-size:17px">lock</span>
+          The studio manages these details. You can’t change them here.
+        </div>
+      </div>
+    @endif
 
     {{-- Found on Bookpay (reserved for when search returns a pick) --}}
     <div class="studio-panel" id="panelFound" hidden>
@@ -158,10 +188,10 @@
     </div>
 
     {{-- Not on Bookpay: manual studio details --}}
-    <div class="studio-panel" id="panelNotFound" @if($initialPath !== 'not_found') hidden @endif>
+    <div class="studio-panel" id="panelNotFound" @if($initialPath !== 'not_found' || $lockedInviteMode) hidden @endif>
       <div class="card" style="margin-bottom:14px;margin-top:14px">
         <div class="ch">
-          <div>
+        <div>
             <h3>Studio details</h3>
             <div class="faint" style="font-size:12.5px;margin-top:2px">You manage these details until the studio joins Bookpay.</div>
           </div>
@@ -183,7 +213,7 @@
 
       <div class="card" style="margin-bottom:14px">
         <div class="ch">
-          <div>
+        <div>
             <h3>Studio type <span style="color:#C62828">*</span></h3>
             <div class="faint" style="font-size:12.5px;margin-top:2px">What best describes your workspace?</div>
           </div>
@@ -206,7 +236,7 @@
 
       <div class="card" style="margin-bottom:14px">
         <div class="ch">
-          <div>
+      <div>
             <h3>Your relationship with this studio <span style="color:#C62828">*</span></h3>
             <div class="faint" style="font-size:12.5px;margin-top:2px">How do you work with this studio?</div>
           </div>
@@ -230,7 +260,7 @@
     </div>
 
     {{-- Own space --}}
-    <div class="studio-panel" id="panelOwnSpace" @if($initialPath !== 'own_space') hidden @endif>
+    <div class="studio-panel" id="panelOwnSpace" @if($initialPath !== 'own_space' || $lockedInviteMode) hidden @endif>
       <div class="card" style="margin-bottom:14px;margin-top:14px">
         <div class="ch">
           <div>
@@ -279,6 +309,33 @@
       </div>
     </div>
 
+    @if ($pendingStudioInvite)
+      <div class="card pad" id="panelInvite" style="margin-top:14px">
+        <h3 style="margin-bottom:4px">Studio invite</h3>
+        <div class="faint" style="font-size:13px;margin-bottom:14px">Optional. Accept to join with their details — they stay locked. Or set up your studio above instead.</div>
+        <div class="picked">
+          <div class="row" style="gap:14px;padding-bottom:12px;border-bottom:1px solid #F0EAF2">
+            <div class="logo2">{{ $pendingStudioInvite['studio_initials'] }}</div>
+            <div style="flex:1">
+              <div class="row" style="gap:8px;flex-wrap:wrap">
+                <b style="font-size:16px">{{ $pendingStudioInvite['studio_name'] }}</b>
+                <span class="pill g">On Bookpay</span>
+              </div>
+              <div class="faint" style="font-size:12.5px">Managed by {{ $pendingStudioInvite['managed_by'] }}</div>
+            </div>
+          </div>
+          @if (!empty($pendingStudioInvite['address']))
+            <div class="kv" style="margin-top:8px"><span>Address</span><span>{{ $pendingStudioInvite['address'] }}</span></div>
+          @endif
+          <div class="kv"><span>Relationship</span><span>{{ $pendingStudioInvite['relationship_label'] }}</span></div>
+          <div class="kv"><span>How you're paid</span><span>{{ $pendingStudioInvite['pay_label'] }}</span></div>
+        </div>
+        <div style="margin-top:14px;display:flex;justify-content:flex-end">
+          <button type="button" class="btn" id="inviteAcceptBtn"><span class="ms">check</span>Accept invite</button>
+        </div>
+      </div>
+    @endif
+
     <div class="obfoot">
       <a href="{{ route('onboarding.styles-social') }}" class="btn ghost"><span class="ms">arrow_back</span>Back</a>
       <button type="submit" class="btn" id="studioSubmit">Next step<span class="ms">arrow_forward</span></button>
@@ -292,6 +349,7 @@
 <script>
 (function ($) {
   var currentPath = @json($initialPath);
+  var lockedInviteMode = @json((bool) $lockedInviteMode);
 
   function clearErrors() {
     $('#studioForm').find('[id$="_error"]').addClass('hidden').text('');
@@ -400,7 +458,7 @@
   }
 
   function initAutocomplete(inputId, prefix, mapsBoxId) {
-    @if(config('services.google.place_api_key'))
+@if(config('services.google.place_api_key'))
     var input = document.getElementById(inputId);
     if (!input || typeof google === 'undefined' || !google.maps || !google.maps.places) return;
     var ac = new google.maps.places.Autocomplete(input, {
@@ -439,7 +497,7 @@
         $('#google_maps_link').val(link);
       }
       if (currentPath === 'own_space' && prefix === 'own_') {
-        $('#studio_address').val(place.formatted_address || '');
+      $('#studio_address').val(place.formatted_address || '');
         $('#google_maps_link').val(link);
       }
       updateMapsBox(mapsBoxId, link, 'google.com/maps · ' + (place.formatted_address || ''));
@@ -531,7 +589,36 @@
   }
 
   $(function () {
-    setPath(currentPath);
+    if (!lockedInviteMode) {
+      setPath(currentPath);
+    }
+
+    $('#inviteAcceptBtn').on('click', function () {
+      var $btn = $(this);
+      if ($btn.prop('disabled')) return;
+      var original = $btn.html();
+      $btn.prop('disabled', true).html('<span class="ms">hourglass_top</span>Accepting...');
+      $.ajax({
+        url: @json(route('onboarding.studio.accept-invite')),
+        type: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+          Accept: 'application/json',
+        },
+      })
+        .done(function (data) {
+          if (data.success && data.redirect) {
+            window.location.href = data.redirect;
+            return;
+          }
+          alert(data.message || 'Could not join studio');
+          $btn.prop('disabled', false).html(original);
+        })
+        .fail(function (xhr) {
+          alert((xhr.responseJSON && xhr.responseJSON.message) || 'Could not join studio');
+          $btn.prop('disabled', false).html(original);
+        });
+    });
 
     $('input[name=studio_path_radio]').on('change', function () {
       setPath(this.value);
@@ -596,55 +683,55 @@
       setPath('');
     });
 
-    $('#studioForm').on('submit', function (e) {
-      e.preventDefault();
-      if (!validateClient()) return;
-      var $btn = $('#studioSubmit');
+  $('#studioForm').on('submit', function (e) {
+    e.preventDefault();
+      if (!lockedInviteMode && !validateClient()) return;
+    var $btn = $('#studioSubmit');
       var original = $btn.html();
       $btn.prop('disabled', true).text('Saving...');
-      var fd = prepareFormData(this);
-      $.ajax({
-        url: @json(route('onboarding.studio.save')),
-        type: 'POST',
-        data: fd,
-        processData: false,
-        contentType: false,
-        headers: {
-          'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-          Accept: 'application/json',
-        },
-      })
-        .done(function (data) {
-          if (data.success && data.redirect) {
-            window.location.href = data.redirect;
-          } else if (data.errors) {
+      var fd = lockedInviteMode ? new FormData(this) : prepareFormData(this);
+    $.ajax({
+      url: @json(route('onboarding.studio.save')),
+      type: 'POST',
+      data: fd,
+      processData: false,
+      contentType: false,
+      headers: {
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+        Accept: 'application/json',
+      },
+    })
+      .done(function (data) {
+        if (data.success && data.redirect) {
+          window.location.href = data.redirect;
+        } else if (data.errors) {
             $.each(data.errors, function (k, messages) {
               setErr(k, messages[0]);
             });
             if (typeof window.scrollToFirstOnboardingError === 'function') {
               window.scrollToFirstOnboardingError(document.getElementById('studioForm'));
             }
-          } else {
-            alert(data.message || 'Error');
-          }
-        })
-        .fail(function (xhr) {
-          if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+        } else {
+          alert(data.message || 'Error');
+        }
+      })
+      .fail(function (xhr) {
+        if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
             $.each(xhr.responseJSON.errors, function (k, messages) {
               setErr(k, messages[0]);
             });
             if (typeof window.scrollToFirstOnboardingError === 'function') {
               window.scrollToFirstOnboardingError(document.getElementById('studioForm'));
             }
-          } else {
-            alert((xhr.responseJSON && xhr.responseJSON.message) || 'Error');
-          }
-        })
-        .always(function () {
+        } else {
+          alert((xhr.responseJSON && xhr.responseJSON.message) || 'Error');
+        }
+      })
+      .always(function () {
           $btn.prop('disabled', false).html(original);
-        });
-    });
+      });
   });
+});
 })(window.jQuery);
 </script>
 @endpush

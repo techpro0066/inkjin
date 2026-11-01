@@ -22,6 +22,8 @@ use Illuminate\Support\Str;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Booking;
 use App\Models\BookingRequest;
+use App\Models\ConsentAnswer;
+use App\Services\BookingConsentService;
 use App\Mail\BookingConfirmationMail;
 use App\Mail\ManagedBookingRequestArtistMail;
 use App\Mail\ManagedBookingRequestMail;
@@ -32,12 +34,14 @@ use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Services\ArtistPayoutService;
 use App\Services\BookingCheckoutPricingService;
 use App\Models\UserDetail;
+use App\Models\GuestSpot;
 use App\Models\Waitlist;
 use App\Models\Question;
 use App\Models\QuestionSorting;
 use App\Models\Placement;
 use App\Models\Style;
 use App\Models\UserQuestion;
+use App\Support\ArtistStudioChoices;
 use App\Support\PaymentMethods;
 use App\Models\PendingVivaPayment;
 use App\Services\VivaCheckoutService;
@@ -55,6 +59,32 @@ class InkJinController extends Controller
             now()->addDays(14),
             ['user' => $bookingUser->id, 'booking' => $booking->id]
         );
+    }
+
+    private function bookingConsentPublicUrl(Booking $booking): ?string
+    {
+        $consent = ConsentAnswer::query()->where('booking_id', $booking->id)->first();
+        if (! $consent) {
+            try {
+                $consent = app(BookingConsentService::class)->syncForBooking($booking);
+            } catch (\Throwable $e) {
+                Log::warning('Unable to sync consent for booking confirmation URL', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return null;
+            }
+        }
+
+        if (! $consent || in_array((string) $consent->status, [
+            ConsentAnswer::STATUS_CANCELLED,
+            ConsentAnswer::STATUS_EXPIRED,
+        ], true)) {
+            return null;
+        }
+
+        return $consent->publicUrl();
     }
 
     private function makePostManagedRequestAccessUrl(User $user, BookingRequest $bookingRequest): string
@@ -82,10 +112,51 @@ class InkJinController extends Controller
     /**
      * Full-day unavailability from availability_overrides + guest spot away/buffer windows.
      */
-    private function artistLocalDateIsBlocked(int $artistUserId, string $ymd): bool
+    private function artistLocalDateIsBlocked(int $artistUserId, string $ymd, ?int $exceptGuestSpotId = null): bool
     {
         return app(\App\Services\ManagedRequestBookingService::class)
-            ->artistLocalDateIsBlocked($artistUserId, $ymd);
+            ->artistLocalDateIsBlocked($artistUserId, $ymd, $exceptGuestSpotId);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{0: ?\App\Models\GuestSpot, 1: ?int, 2: ?string} guest spot, studios.id, error message
+     */
+    private function resolveGuestSpotBookingContext(int $artistUserId, array $payload): array
+    {
+        $guestSpot = \App\Models\GuestSpot::resolveReservableForArtist(
+            $payload['guest_spot_id'] ?? null,
+            $artistUserId
+        );
+
+        if (! empty($payload['guest_spot_id']) && ! $guestSpot) {
+            return [null, null, 'This guest spot is no longer available to book.'];
+        }
+
+        if (! $guestSpot) {
+            return [null, ArtistStudioChoices::resolveStudiosTableIdFromPayload($artistUserId, $payload), null];
+        }
+
+        $studioId = $guestSpot->studio_id ? (int) $guestSpot->studio_id : null;
+
+        return [$guestSpot, $studioId, null];
+    }
+
+    private function guestSpotRejectsDate(?\App\Models\GuestSpot $guestSpot, string $ymd): ?string
+    {
+        if (! $guestSpot || $ymd === '') {
+            return null;
+        }
+
+        if (! $guestSpot->containsBookableDate($ymd)) {
+            return 'Selected dates must fall within this guest spot ('
+                .$guestSpot->from_date->format('M j, Y')
+                .' – '
+                .$guestSpot->to_date->format('M j, Y')
+                .').';
+        }
+
+        return null;
     }
 
     /**
@@ -698,6 +769,71 @@ class InkJinController extends Controller
         ]);
     }
 
+    public function publicGuestSpot(string $userName, string $guestSpotSlug)
+    {
+        $userDetail = UserDetail::where('user_name', $userName)->first();
+
+        if (! $userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes') {
+            abort(404, 'Artist not found');
+        }
+
+        if (! (bool) ($userDetail->display_guest_spots ?? false)) {
+            abort(404, 'Guest spot not found');
+        }
+
+        $slug = Str::lower(trim($guestSpotSlug));
+
+        $spot = $userDetail->user->guestSpots()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->first(fn (\App\Models\GuestSpot $candidate) => $candidate->publicSlug() === $slug);
+
+        if (! $spot) {
+            abort(404, 'Guest spot not found');
+        }
+
+        $spot->ensureCompletedStatus();
+
+        $selectedDesignIds = array_values(array_map('intval', $spot->selected_design_ids ?? []));
+        $selectedPortfolioIds = array_values(array_map('intval', $spot->selected_portfolio_ids ?? []));
+
+        $artistDesigns = ($spot->show_designs && $selectedDesignIds !== [])
+            ? $userDetail->user->artistDesigns()
+                ->where('is_active', true)
+                ->whereIn('id', $selectedDesignIds)
+                ->withSoldOutState()
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->sortBy(fn ($d) => array_search((int) $d->id, $selectedDesignIds, true))
+                ->values()
+            : collect();
+
+        $artistPortfolios = ($spot->show_portfolio && $selectedPortfolioIds !== [])
+            ? $userDetail->user->portfolios()
+                ->where('is_active', true)
+                ->whereIn('id', $selectedPortfolioIds)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->sortBy(fn ($p) => array_search((int) $p->id, $selectedPortfolioIds, true))
+                ->values()
+            : collect();
+
+        $faqs = ($spot->show_faq ?? true)
+            ? $userDetail->user->artistFaqs()->active()->ordered()->get()
+            : collect();
+
+        return view('public.guest-spot', [
+            'userDetail' => $userDetail,
+            'guestSpot' => $spot,
+            'artistDesigns' => $artistDesigns,
+            'artistPortfolios' => $artistPortfolios,
+            'faqs' => $faqs,
+        ]);
+    }
+
     public function publicArtistsList(Request $request): View
     {
         $search = trim((string) $request->query('q', ''));
@@ -761,7 +897,7 @@ class InkJinController extends Controller
         ]);
     }
 
-    public function publicTattooPage(string $userName, string $tattooSlug)
+    public function publicTattooPage(Request $request, string $userName, string $tattooSlug)
     {
         // Get tattoo by ID
         $userDetail = UserDetail::where('user_name', $userName)->first();
@@ -782,10 +918,16 @@ class InkJinController extends Controller
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
+        $guestSpot = \App\Models\GuestSpot::resolveReservableForArtist(
+            $request->query('guest_spot'),
+            (int) $userDetail->user_id
+        );
+
         $relatedTattoos = $userDetail->user->artistDesigns()
             ->where('is_active', true)
             ->where('id', '!=', $tattoo->id)
             ->withSoldOutState()
+            ->latest('id')
             ->take(3)
             ->get();
 
@@ -800,6 +942,8 @@ class InkJinController extends Controller
             'relatedTattoos' => $relatedTattoos,
             'isSoldOut' => $isSoldOut,
             'canBookOnline' => $canBookOnline,
+            'guestSpotId' => $guestSpot?->id,
+            'guestSpot' => $guestSpot,
             'bookingUnavailableMessage' => $canBookOnline
                 ? null
                 : $payoutService->publicBookingUnavailableMessage(),
@@ -845,7 +989,34 @@ class InkJinController extends Controller
             ]);
         }
 
+        $guestSpot = \App\Models\GuestSpot::resolveReservableForArtist(
+            $request->query('guest_spot'),
+            (int) $userDetail->user_id
+        );
+        if ($request->has('guest_spot') && ! $guestSpot) {
+            return redirect()->route('public.tattoo', [
+                'user_name' => $userName,
+                'tattoo_slug' => $tattooSlug,
+            ]);
+        }
+
         $questions = QuestionSorting::activeQuestionsPayloadForArtist($userDetail->user_id, 'default');
+        $studioChoices = ArtistStudioChoices::forArtist((int) $userDetail->user_id, $userDetail);
+        if ($guestSpot === null) {
+            $questions = ArtistStudioChoices::prependQuestionIfNeeded(
+                $questions,
+                $studioChoices,
+                $userDetail->publicDisplayName()
+            );
+        } else {
+            $studioChoices = [[
+                'id' => null,
+                'name' => $guestSpot->studioDisplayName() ?: 'Guest studio',
+                'address' => $guestSpot->listLocationLabel() ?: '',
+                'maps_link' => trim((string) ($guestSpot->google_maps_link ?? '')),
+                'studios_table_id' => $guestSpot->studio_id ? (int) $guestSpot->studio_id : null,
+            ]];
+        }
 
         $hiddenStyleOptions = Style::query()
             ->active()
@@ -873,12 +1044,46 @@ class InkJinController extends Controller
             }
 
             $calendarPayload = app(\App\Services\BookingCalendarAvailabilityService::class)
-                ->calendarPayloadForArtist($userDetail, $tattooDurationMinutes);
+                ->calendarPayloadForArtist(
+                    $userDetail,
+                    $tattooDurationMinutes,
+                    180,
+                    $guestSpot?->id
+                );
             $artistAvailabilitySchedule = $calendarPayload['artistAvailabilitySchedule'];
             $artistBlockedPeriods = $calendarPayload['artistBlockedPeriods'];
+            $artistLocationOverrides = $guestSpot
+                ? []
+                : ($calendarPayload['artistLocationOverrides'] ?? []);
             $artistBusyIntervalsByDate = $calendarPayload['artistBusyIntervalsByDate'];
             $artistTimezone = $calendarPayload['artistTimezone'] ?: $artistTimezone;
             $tattooDurationMinutes = $calendarPayload['tattooDurationMinutes'] ?: $tattooDurationMinutes;
+
+            $guestBookableWindow = null;
+            if ($guestSpot && $guestSpot->from_date && $guestSpot->to_date) {
+                $guestBookableWindow = [
+                    'start' => $guestSpot->from_date->format('Y-m-d'),
+                    'end' => $guestSpot->to_date->format('Y-m-d'),
+                ];
+                $startHi = $guestSpot->start_time
+                    ? Carbon::parse($guestSpot->start_time)->format('H:i')
+                    : null;
+                $endHi = $guestSpot->end_time
+                    ? Carbon::parse($guestSpot->end_time)->format('H:i')
+                    : null;
+                if ($startHi && $endHi) {
+                    $guestDayRanges = [['start' => $startHi, 'end' => $endHi, 'studio_ids' => []]];
+                    $artistAvailabilitySchedule = [
+                        'sunday' => $guestDayRanges,
+                        'monday' => $guestDayRanges,
+                        'tuesday' => $guestDayRanges,
+                        'wednesday' => $guestDayRanges,
+                        'thursday' => $guestDayRanges,
+                        'friday' => $guestDayRanges,
+                        'saturday' => $guestDayRanges,
+                    ];
+                }
+            }
 
             // Verified emails are stored in cache (not session) for reverse-proxy compatibility.
 
@@ -897,11 +1102,16 @@ class InkJinController extends Controller
                 'questions' => $questions,
                 'requiredBookingQuestions' => $questions,
                 'hasArtistQuestions' => !empty($questions),
+                'studioChoices' => $studioChoices,
+                'guestSpotId' => $guestSpot?->id,
+                'guestSpot' => $guestSpot,
+                'guestBookableWindow' => $guestBookableWindow,
                 'hiddenStyleOptions' => $hiddenStyleOptions,
                 'hiddenPlacementOptions' => $hiddenPlacementOptions,
                 'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
                 'artistTimezone' => $artistTimezone,
                 'artistBlockedPeriods' => $artistBlockedPeriods,
+                'artistLocationOverrides' => $artistLocationOverrides,
                 'artistBusyIntervalsByDate' => $artistBusyIntervalsByDate,
                 'tattooDurationMinutes' => $tattooDurationMinutes,
                 'artistConsultationSettings' => [
@@ -930,6 +1140,9 @@ class InkJinController extends Controller
                 'questions' => $questions,
                 'requiredBookingQuestions' => $questions,
                 'hasArtistQuestions' => !empty($questions),
+                'studioChoices' => $studioChoices,
+                'guestSpotId' => $guestSpot?->id,
+                'guestSpot' => $guestSpot,
                 'hiddenStyleOptions' => $hiddenStyleOptions,
                 'hiddenPlacementOptions' => $hiddenPlacementOptions,
                 'artistConsultationSettings' => [
@@ -1083,6 +1296,8 @@ class InkJinController extends Controller
             'booking_payload.consultation_date' => ['nullable', 'date'],
             'booking_payload.consultation_time' => ['nullable', 'string', 'max:20'],
             'booking_payload.referral_source' => ['nullable', 'string', 'max:255'],
+            'booking_payload.studio_id' => ['nullable', 'integer', 'min:1'],
+            'booking_payload.guest_spot_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $payload = $validated['booking_payload'];
@@ -1129,6 +1344,7 @@ class InkJinController extends Controller
                 'post_booking_login_url' => $existingBookingUser
                     ? $this->makePostBookingAccessUrl($existingBookingUser, $existingByIntent)
                     : null,
+                'consent_url' => $this->bookingConsentPublicUrl($existingByIntent),
             ]);
         }
 
@@ -1146,6 +1362,13 @@ class InkJinController extends Controller
         $consultationTiming = (string) ($payload['consultation_timing'] ?? 'combined');
         $consultDurationMinutes = (int) ($payload['consult_duration_minutes'] ?? 30);
         $tattooDurationMinutes = (int) ($payload['tattoo_duration_minutes'] ?? 120);
+        [$guestSpot, $studioId, $guestSpotError] = $this->resolveGuestSpotBookingContext(
+            (int) $userDetail->user_id,
+            $payload
+        );
+        if ($guestSpotError) {
+            return response()->json(['message' => $guestSpotError], 422);
+        }
 
         $toUtcTime = function (string $date, string $time) use ($artistTimezone): string {
             return Carbon::createFromFormat('Y-m-d g:i A', $date . ' ' . $time, $artistTimezone)
@@ -1185,17 +1408,37 @@ class InkJinController extends Controller
             }
         }
 
-        if ($this->artistLocalDateIsBlocked((int) $userDetail->user_id, $bookingDate)) {
+        $managedBooking = app(\App\Services\ManagedRequestBookingService::class);
+        $exceptGuestSpotId = $guestSpot?->id ?: $managedBooking->guestSpotIdCoveringBookableDate(
+            (int) $userDetail->user_id,
+            $bookingDate,
+            $studioId
+        );
+
+        if ($dateError = $this->guestSpotRejectsDate($guestSpot, $bookingDate)) {
+            return response()->json(['message' => $dateError], 422);
+        }
+
+        if ($this->artistLocalDateIsBlocked((int) $userDetail->user_id, $bookingDate, $exceptGuestSpotId)) {
             return response()->json([
                 'message' => 'This date is not available. The artist has blocked it — please choose another day.',
             ], 422);
         }
 
-        if ($consultationRequired && $consultationTiming === 'separate' && $consultDate !== ''
-            && $this->artistLocalDateIsBlocked((int) $userDetail->user_id, $consultDate)) {
-            return response()->json([
-                'message' => 'Consultation date is not available. The artist has blocked it — please choose another day.',
-            ], 422);
+        if ($consultationRequired && $consultationTiming === 'separate' && $consultDate !== '') {
+            if ($dateError = $this->guestSpotRejectsDate($guestSpot, $consultDate)) {
+                return response()->json(['message' => $dateError], 422);
+            }
+            $exceptConsultGuestSpotId = $guestSpot?->id ?: $managedBooking->guestSpotIdCoveringBookableDate(
+                (int) $userDetail->user_id,
+                $consultDate,
+                $studioId
+            );
+            if ($this->artistLocalDateIsBlocked((int) $userDetail->user_id, $consultDate, $exceptConsultGuestSpotId)) {
+                return response()->json([
+                    'message' => 'Consultation date is not available. The artist has blocked it — please choose another day.',
+                ], 422);
+            }
         }
 
         $pricing = app(BookingCheckoutPricingService::class);
@@ -1208,6 +1451,8 @@ class InkJinController extends Controller
         $booking = Booking::create([
             'user_id' => $bookingUser->id,
             'artist_user_id' => $userDetail->user_id,
+            'studio_id' => $studioId,
+            'guest_spot_id' => $guestSpot?->id,
             'tattoo_id' => $design->id,
             'booking_type' => 'flash',
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
@@ -1234,6 +1479,12 @@ class InkJinController extends Controller
             'questions_answers' => $payload['questions_answers'] ?? [],
             'notes' => trim((string) ($payload['notes'] ?? '')),
         ]);
+
+        if ($guestSpot && ! $booking->consumeGuestSpotCapacity($guestSpot)) {
+            $booking->delete();
+
+            return response()->json(['message' => 'All guest spots are full.'], 422);
+        }
 
         if (!$booking->completion_code) {
             do {
@@ -1315,6 +1566,7 @@ class InkJinController extends Controller
             'booking_id' => $booking->id,
             'booking_reference' => '#INK-' . str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
             'post_booking_login_url' => $this->makePostBookingAccessUrl($bookingUser, $booking),
+            'consent_url' => $this->bookingConsentPublicUrl($booking),
         ]);
     }
 
@@ -1337,6 +1589,8 @@ class InkJinController extends Controller
             'booking_payload.urgency' => ['nullable', 'string'],
             'booking_payload.session_gap' => ['nullable', 'string'],
             'booking_payload.referral_source' => ['nullable', 'string', 'max:255'],
+            'booking_payload.studio_id' => ['nullable', 'integer', 'min:1'],
+            'booking_payload.guest_spot_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $payload = $validated['booking_payload'];
@@ -1399,15 +1653,26 @@ class InkJinController extends Controller
         $bookingUser->syncPhoneNumber($payload['phone'] ?? null);
         $bookingUser->syncHearAboutUs($payload['referral_source'] ?? null);
 
-        $consultationDetails = null;
+        [$guestSpot, $studioId, $guestSpotError] = $this->resolveGuestSpotBookingContext(
+            (int) $userDetail->user_id,
+            $payload
+        );
+        if ($guestSpotError) {
+            return response()->json(['message' => $guestSpotError], 422);
+        }
+        $consultationDetails = [
+            'studio_id' => $studioId,
+            'guest_spot_id' => $guestSpot?->id,
+        ];
         if ($consultationRequired) {
-            $consultationDetails = json_encode([
+            $consultationDetails = array_merge($consultationDetails, [
                 'required' => true,
                 'type' => (string) ($payload['consultation_type'] ?? ''),
                 'session_gap' => (string) ($payload['session_gap'] ?? ''),
                 'client_phone' => trim((string) ($payload['phone'] ?? '')),
             ]);
         }
+        $consultationDetails = json_encode($consultationDetails);
 
         $bookingRequest = BookingRequest::create([
             'user_id' => $bookingUser->id,
@@ -1497,10 +1762,24 @@ class InkJinController extends Controller
             return response()->json(['message' => 'Artist not found.'], 404);
         }
 
+        $signupMode = $userDetail->waitlist_signup_mode ?? Waitlist::SIGNUP_MODE_NAME_EMAIL;
+        if ($signupMode === Waitlist::SIGNUP_MODE_REQUEST_FORM) {
+            return response()->json([
+                'saved' => false,
+                'requires_request_form' => true,
+                'message' => 'Please complete the request form to join this waitlist.',
+                'request_form_url' => route('public.request-custom', [
+                    'user_name' => $userDetail->user_name,
+                    'waitlist' => 1,
+                ]),
+            ], 422);
+        }
+
         $email = mb_strtolower(trim($validated['email']));
         $name = trim($validated['name']);
 
         $existing = Waitlist::query()
+            ->booksOnly()
             ->where('user_id', $userDetail->user_id)
             ->whereRaw('LOWER(email) = ?', [$email])
             ->first();
@@ -1522,6 +1801,66 @@ class InkJinController extends Controller
         return response()->json([
             'saved' => true,
             'message' => 'You have been added to the waitlist.',
+        ]);
+    }
+
+    public function submitGuestWaitlist(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'artist_username' => ['required', 'string'],
+            'guest_spot_id' => ['required', 'integer', 'min:1'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $userDetail = UserDetail::query()
+            ->where('user_name', $validated['artist_username'])
+            ->first();
+
+        if (! $userDetail || ! $userDetail->user || $userDetail->user->role !== 'artist') {
+            return response()->json(['message' => 'Artist not found.'], 404);
+        }
+
+        $guestSpot = GuestSpot::query()
+            ->where('id', (int) $validated['guest_spot_id'])
+            ->where('user_id', $userDetail->user_id)
+            ->first();
+
+        if (! $guestSpot) {
+            return response()->json(['message' => 'Guest spot not found.'], 404);
+        }
+
+        $email = mb_strtolower(trim($validated['email']));
+        $name = trim($validated['name']);
+
+        $existing = Waitlist::query()
+            ->where('user_id', $userDetail->user_id)
+            ->where('guest_spot_id', $guestSpot->id)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
+
+        if ($existing) {
+            if ($existing->name !== $name) {
+                $existing->update(['name' => $name]);
+            }
+
+            return response()->json([
+                'saved' => true,
+                'message' => 'You are already on this guest waitlist.',
+            ]);
+        }
+
+        Waitlist::query()->create([
+            'user_id' => $userDetail->user_id,
+            'name' => $name,
+            'email' => $email,
+            'status' => Waitlist::STATUS_PENDING,
+            'guest_spot_id' => $guestSpot->id,
+        ]);
+
+        return response()->json([
+            'saved' => true,
+            'message' => 'You have been added to the guest waitlist.',
         ]);
     }
 
@@ -1547,6 +1886,8 @@ class InkJinController extends Controller
             'booking_payload.tattoo_time' => ['nullable', 'string', 'max:20'],
             'booking_payload.consultation_date' => ['nullable', 'date'],
             'booking_payload.consultation_time' => ['nullable', 'string', 'max:20'],
+            'booking_payload.studio_id' => ['nullable', 'integer', 'min:1'],
+            'booking_payload.guest_spot_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $userDetail = UserDetail::query()
@@ -1581,6 +1922,15 @@ class InkJinController extends Controller
         }
 
         $payload = $validated['booking_payload'];
+        [$guestSpotCheck, , $guestSpotError] = $this->resolveGuestSpotBookingContext(
+            (int) $userDetail->user_id,
+            $payload
+        );
+        if ($guestSpotError) {
+            return response()->json(['message' => $guestSpotError], 422);
+        }
+        unset($guestSpotCheck);
+
         $bookingEmail = mb_strtolower(trim((string) ($payload['email'] ?? '')));
         $bookingUser = User::query()->whereRaw('LOWER(email) = ?', [$bookingEmail])->first();
 

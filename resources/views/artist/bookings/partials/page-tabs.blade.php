@@ -1,7 +1,17 @@
 @php
   $activeTab = $activeTab ?? 'bookings';
+  $requestsCount = (int) ($requestsCount ?? 0);
+  $bookingsTotalCount = (int) ($bookingsTotalCount ?? 0);
+  $paymentLinksCount = (int) ($paymentLinksCount ?? 0);
 @endphp
-<div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
-  <a href="{{ route('artist.bookings.index') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 {{ $activeTab === 'bookings' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant' }} transition-all">Bookings</a>
-  <a href="{{ route('artist.bookings.payment-links') }}" class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 {{ $activeTab === 'payment-links' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface hover:border-outline-variant' }} transition-all">Payment links</a>
+<div class="tabs">
+  <a href="{{ route('artist.requests.index') }}" class="{{ $activeTab === 'requests' ? 'on' : '' }}">
+    Requests<span class="n{{ $requestsCount === 0 ? ' zero' : '' }}">{{ $requestsCount }}</span>
+  </a>
+  <a href="{{ route('artist.bookings.index') }}" class="{{ $activeTab === 'bookings' ? 'on' : '' }}">
+    Bookings<span class="n{{ $bookingsTotalCount === 0 ? ' zero' : '' }}">{{ $bookingsTotalCount }}</span>
+  </a>
+  <a href="{{ route('artist.bookings.payment-links') }}" class="{{ $activeTab === 'payment-links' ? 'on' : '' }}">
+    Payment links<span class="n{{ $paymentLinksCount === 0 ? ' zero' : '' }}">{{ $paymentLinksCount }}</span>
+  </a>
 </div>

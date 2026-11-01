@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Artist;
 
 use App\Http\Controllers\Controller;
 use App\Models\Studio;
+use App\Models\StudioInvite;
 use App\Models\UserDetail;
+use App\Models\UserPayout;
 use App\Models\UserStudio;
 use App\Services\ArtistStudioJoinRequestNotifier;
+use App\Services\StudioArtistInviteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class StudioSettingsController extends Controller
@@ -72,6 +76,9 @@ class StudioSettingsController extends Controller
         $splitProposed = UserStudio::splitProposedForUser($userId);
         $past = UserStudio::pastLinksForUser($userId);
 
+        // Repair: invite rows that were marked on_bookpay at send-time (before accept).
+        $this->repairPendingPayoutInviteLinks($actives);
+
         $viewState = $this->resolveViewState($actives, $pending, $splitProposed);
         // Newest active is still the "primary" for single-studio edit views.
         $primary = $actives->sortByDesc('id')->first();
@@ -81,6 +88,23 @@ class StudioSettingsController extends Controller
         if (count($multiCards) > 1) {
             $viewState = 'multiple';
         }
+
+        $inviteService = app(StudioArtistInviteService::class);
+        $inviteCards = $inviteService->pendingInvitesForUser($user)
+            ->map(function (StudioInvite $invite) use ($inviteService) {
+                $card = $inviteService->presentInviteForOnboarding($invite);
+                $card['id'] = $invite->id;
+                $card['ini'] = $card['studio_initials'];
+                $card['name'] = $card['studio_name'];
+                $card['invite_line'] = implode(' · ', array_values(array_filter([
+                    $card['relationship_label'] ?? null,
+                    $card['pay_label'] ?? null,
+                    ! empty($card['address']) ? $card['address'] : null,
+                ])));
+
+                return $card;
+            })
+            ->values();
 
         return view('artist.settings.studio', [
             'user' => $user,
@@ -99,9 +123,56 @@ class StudioSettingsController extends Controller
             'pendingCard' => $pending ? $this->presentLink($pending) : null,
             'splitCard' => $splitProposed ? $this->presentLink($splitProposed) : null,
             'multiCards' => $multiCards,
+            'inviteCards' => $inviteCards,
             'pastCards' => $past->map(fn (UserStudio $link) => $this->presentPastLink($link))->values(),
             'emptyMeta' => $this->emptyStateMeta($past),
         ]);
+    }
+
+    public function acceptInvite(Request $request, StudioInvite $invite): RedirectResponse
+    {
+        $user = $request->user();
+        $inviteService = app(StudioArtistInviteService::class);
+
+        try {
+            $owned = $inviteService->pendingInvitesForUser($user)->firstWhere('id', $invite->id);
+            if (! $owned) {
+                throw ValidationException::withMessages([
+                    'invite' => 'This invitation is no longer available.',
+                ]);
+            }
+            $inviteService->accept($invite, $user);
+        } catch (ValidationException $e) {
+            return redirect()->route('settings.studio')
+                ->with('error', collect($e->errors())->flatten()->first() ?: 'Could not accept invite.');
+        }
+
+        return redirect()->route('settings.studio')
+            ->with('status', 'studio-changed')
+            ->with('success', 'Invite accepted. Your studio details are locked.');
+    }
+
+    public function declineInvite(Request $request, StudioInvite $invite): RedirectResponse
+    {
+        $user = $request->user();
+        $inviteService = app(StudioArtistInviteService::class);
+
+        try {
+            $owned = $inviteService->pendingInvitesForUser($user)->firstWhere('id', $invite->id);
+            if (! $owned) {
+                throw ValidationException::withMessages([
+                    'invite' => 'This invitation is no longer available.',
+                ]);
+            }
+            $inviteService->decline($invite, $user);
+        } catch (ValidationException $e) {
+            return redirect()->route('settings.studio')
+                ->with('error', collect($e->errors())->flatten()->first() ?: 'Could not decline invite.');
+        }
+
+        return redirect()->route('settings.studio')
+            ->with('status', 'studio-changed')
+            ->with('success', 'Invite declined.');
     }
 
     public function update(Request $request): RedirectResponse
@@ -129,6 +200,12 @@ class StudioSettingsController extends Controller
 
         $user = $request->user();
         $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+        $primary = UserStudio::activeLinksForUser((int) $user->id)->sortByDesc('id')->first();
+        if ($primary && $this->isOnBookpay($primary)) {
+            return redirect()->route('settings.studio')
+                ->with('error', 'Your studio manages these details. They stay locked.');
+        }
+
         $mode = $validated['form_mode'] ?? null;
         $relationship = $validated['relationship']
             ?? $validated['studio_relationship_type']
@@ -475,8 +552,12 @@ class StudioSettingsController extends Controller
         // Keep previous studios first (ascending id), matching 09c6.
         foreach ($actives->sortBy('id')->values() as $link) {
             $card = $this->presentLink($link);
-            $card['dashed'] = false;
-            $card['status_pill'] = ['class' => 'g', 'label' => 'Accepted'];
+            $waitingInvite = (bool) $link->payout
+                && ($link->connection_type ?? '') === UserStudio::CONNECTION_NOT_CONNECTED;
+            $card['dashed'] = $waitingInvite;
+            $card['status_pill'] = $waitingInvite
+                ? ['class' => 'a', 'label' => 'Invitation sent']
+                : ['class' => 'g', 'label' => 'Accepted'];
             $card['update_url'] = route('settings.studio.change', array_filter([
                 'mode' => 'update',
                 'from_link' => $card['id'] ?? null,
@@ -534,7 +615,9 @@ class StudioSettingsController extends Controller
     {
         $studio = $link->studio;
         $name = trim((string) ($studio?->name ?: $link->studio_name ?: 'Studio'));
+        // Artist fully linked (accepted) vs studio entity merely exists on Bookpay.
         $onBookpay = $this->isOnBookpay($link);
+        $studioEntityOnBookpay = $this->studioEntityOnBookpay($link, $studio);
         $workspace = $this->workspaceMeta($link->workspace_type, $studio?->studio_type);
         $relationship = $link->relationship;
         $relMeta = $relationship && isset(self::RELATIONSHIP_OPTIONS[$relationship])
@@ -555,7 +638,7 @@ class StudioSettingsController extends Controller
             'name' => $name,
             'ini' => $this->initials($name),
             'on_bookpay' => $onBookpay,
-            'bp_pill' => $onBookpay
+            'bp_pill' => $studioEntityOnBookpay
                 ? ['class' => 'g', 'label' => 'On Bookpay']
                 : ['class' => 'k', 'label' => 'Not on Bookpay'],
             'workspace_type' => $workspace['key'],
@@ -629,17 +712,52 @@ class StudioSettingsController extends Controller
 
     private function isOnBookpay(UserStudio $link): bool
     {
-        if ($link->connection_type === UserStudio::CONNECTION_ON_BOOKPAY) {
+        // Artist↔studio link confirmed (accept invite) — not merely because studios.user_id exists.
+        return ($link->connection_type ?? '') === UserStudio::CONNECTION_ON_BOOKPAY;
+    }
+
+    private function studioEntityOnBookpay(UserStudio $link, ?Studio $studio = null): bool
+    {
+        if ($this->isOnBookpay($link)) {
             return true;
         }
 
-        if (! empty($link->studio_id)) {
-            $studio = $link->studio ?: Studio::query()->find($link->studio_id);
+        $studio ??= $link->relationLoaded('studio')
+            ? $link->studio
+            : ($link->studio_id ? Studio::query()->find($link->studio_id) : null);
 
-            return ! empty($studio?->user_id);
+        return ! empty($studio?->user_id);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, UserStudio>|\Illuminate\Database\Eloquent\Collection<int, UserStudio>  $actives
+     */
+    private function repairPendingPayoutInviteLinks($actives): void
+    {
+        foreach ($actives as $link) {
+            if (! $link->payout) {
+                continue;
+            }
+            if (($link->connection_type ?? '') !== UserStudio::CONNECTION_ON_BOOKPAY) {
+                continue;
+            }
+
+            $studio = $link->relationLoaded('studio')
+                ? $link->studio
+                : ($link->studio_id ? Studio::query()->find($link->studio_id) : null);
+
+            $artistPayoutStatus = (string) (UserPayout::activeForUser((int) $link->user_id)?->status ?? '');
+            $studioHasStripe = filled($studio?->resolveStripeAccountId());
+
+            // Keep only links that look truly accepted (studio Stripe + artist payout approved).
+            // Invite-time rows used to be marked on_bookpay just because the studio already had a user.
+            if ($artistPayoutStatus === UserPayout::STATUS_APPROVED && $studioHasStripe) {
+                continue;
+            }
+
+            $link->connection_type = UserStudio::CONNECTION_NOT_CONNECTED;
+            $link->save();
         }
-
-        return false;
     }
 
     /**

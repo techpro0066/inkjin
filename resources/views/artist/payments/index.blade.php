@@ -1,321 +1,342 @@
-@extends('layouts.artist_dashboard_layout')
+@extends('layouts.new-artist-dashboard-layout')
 
-@section('title', 'Earnings')
+@section('title', 'Money · Earnings')
+
+@php
+  $activeNav = 'money';
+  $currency = $stats['currency_symbol'] ?? '€';
+  $payoutConnected = (bool) ($stats['payout_account_connected'] ?? false);
+  $payoutMode = in_array(($stats['payout_mode'] ?? 'automatic'), ['manual', 'automatic'], true)
+    ? ($stats['payout_mode'] ?? 'automatic')
+    : 'automatic';
+  $availableBalance = (float) ($stats['available_balance'] ?? 0);
+  $pendingSchedule = $stats['pending_schedule'] ?? [];
+  $hasPendingSchedule = count($pendingSchedule) > 0;
+  $payoutTypeLabel = (string) ($stats['payout_type_label'] ?? 'Artist payouts');
+  $nextPayoutMeta = (string) ($stats['next_payout_meta'] ?? 'Paid automatically to your bank');
+  $nextArrivalLabel = $stats['next_arrival_label'] ?? null;
+@endphp
 
 @section('styles')
 <style>
-  .status-completed { background: #f0fdf4; color: #166534; }
-  .status-completed .status-dot { background: #22c55e; }
-  .status-pending { background: #fffbeb; color: #b45309; }
-  .status-pending .status-dot { background: #f59e0b; }
-  .status-available { background: #eff6ff; color: #1d4ed8; }
-  .status-available .status-dot { background: #3b82f6; }
-  .status-cancelled { background: #fef2f2; color: #b91c1c; }
-  .status-cancelled .status-dot { background: #ef4444; }
-  .status-refunded { background: #f5f3ff; color: #6d28d9; }
-  .status-refunded .status-dot { background: #8b5cf6; }
-  .filter-pill { transition: all 0.2s; }
-  .filter-pill.active { background: #310f7a; color: #ffffff; }
-  .payments-table th { text-align: left; font-size: 12px; font-weight: 600; color: #494552; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 16px; border-bottom: 1px solid rgba(202,196,211,0.3); }
-  .payments-table td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid rgba(202,196,211,0.15); vertical-align: top; }
-  .earnings-breakdown { margin-top: 4px; }
-  .earnings-breakdown-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; color: #494552; line-height: 1.5; }
-  .earnings-breakdown-line + .earnings-breakdown-line { margin-top: 2px; }
-  .earnings-breakdown-label { color: #6b6574; }
-  .earnings-breakdown-note { font-size: 11px; color: #9b94a6; font-style: italic; }
-  .earnings-breakdown-total { font-size: 13px; font-weight: 600; color: #1c1b21; margin-bottom: 2px; }
-  .payments-table tbody tr { transition: background 0.15s; }
-  .payments-table tbody tr:hover { background: #f8f1fb; }
-  .payment-mobile-card { display: none; }
-  @media (max-width: 767px) {
-    .payments-table-wrapper { display: none; }
-    .payment-mobile-card { display: block; }
+  .money-page .help-q{
+    display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-left:8px;
+    border-radius:50%;color:#9A929E;vertical-align:middle;text-decoration:none;position:relative;top:-2px
   }
-  .page-btn { min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 14px; font-weight: 500; transition: all 0.2s; cursor: pointer; border: 1px solid rgba(202,196,211,0.3); background: white; color: #1c1b21; }
-  .page-btn:hover:not(:disabled) { background: #f8f1fb; }
-  .page-btn.active { background: #310f7a; color: white; border-color: #310f7a; }
-  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .stat-card-clickable { cursor: pointer; transition: box-shadow 0.2s, border-color 0.2s; }
-  .stat-card-clickable:hover { box-shadow: 0 4px 14px rgba(49, 15, 122, 0.08); border-color: rgba(49, 15, 122, 0.15); }
-  .pending-schedule-row + .pending-schedule-row { border-top: 1px solid rgba(202,196,211,0.2); }
+  .money-page .help-q .ms{font-size:22px}
+  .money-page .help-q:hover{color:#3E007C;background:#F3E8FF}
+  .money-page .kpi-dark{background:#1A1A1A;color:#fff;border-color:#1A1A1A}
+  .money-page .kpi-dark .lbl{color:#bdbdbd}
+  .money-page .kpi-meta{
+    margin-top:16px;gap:8px;background:#2A2A2A;border-radius:10px;padding:9px 12px;font-size:13px;color:#dedede
+  }
+  .money-page .kpi-meta .ms{font-size:18px}
+  .money-page .stat-click{cursor:pointer;border:0;background:inherit;font:inherit;color:inherit;text-align:left;width:100%;padding:0}
+  .money-page .stat-click:disabled{cursor:default;opacity:1}
+  .money-page .pay-row{cursor:pointer}
+  .money-page .pay-row:hover td{background:#FBF8FC}
+  .money-page .chip{cursor:pointer;font:inherit}
+  .money-page select.in{appearance:auto;-webkit-appearance:menulist}
+  .money-page button.btn{border:0;cursor:pointer;font:inherit}
+  .money-page .bdm{
+    position:fixed;inset:0;background:rgba(20,10,30,.45);display:none;align-items:center;justify-content:center;
+    z-index:80;padding:16px
+  }
+  .money-page .bdm.open{display:flex}
+  .money-page .bdm[hidden]{display:none!important}
+  .money-page .bdm.open:not([hidden]){display:flex!important}
+  .money-page .bdm-box{
+    background:#fff;border-radius:22px;width:440px;max-width:100%;max-height:min(86vh,640px);
+    box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column
+  }
+  .money-page .bdm-h{padding:22px 22px 14px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+  .money-page .bdm-h h2{font-size:18px;font-weight:800;letter-spacing:-.3px;flex:1}
+  .money-page .bdm-x{border:0;background:none;cursor:pointer;padding:4px;border-radius:8px;color:var(--muted)}
+  .money-page .bdm-x:hover{background:var(--chip);color:var(--ink)}
+  .money-page .bdm-b{padding:8px 22px 18px;overflow:auto}
+  .money-page .bdm-r{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #F3EEF4;font-size:13.5px}
+  .money-page .bdm-r:last-child{border-bottom:0}
+  .money-page .bdm-r span{color:var(--muted)}
+  .money-page .bdm-r b{font-weight:700;text-align:right}
+  .money-page .bdm-tot{display:flex;justify-content:space-between;gap:16px;padding:14px 0 4px;font-size:15px;font-weight:800}
+  .money-page .page-btn{
+    min-width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;
+    font-size:14px;font-weight:500;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer
+  }
+  .money-page .page-btn:hover:not(:disabled){background:var(--tint)}
+  .money-page .page-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .money-page .page-btn:disabled{opacity:.4;cursor:not-allowed}
+  @media(max-width:900px){
+    .money-page .card:has(table){overflow:visible;background:none;border:0}
+    .money-page table,.money-page tbody,.money-page tr,.money-page td{display:block;width:100%}
+    .money-page tr:has(th){display:none}
+    .money-page tbody tr{
+      position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px
+    }
+    .money-page td{
+      border:0!important;padding:5px 0!important;display:flex!important;justify-content:space-between;align-items:center;
+      gap:12px;font-size:13.5px;text-align:right
+    }
+    .money-page td::before{
+      content:attr(data-label);font-size:10.5px;font-weight:700;letter-spacing:.7px;color:var(--muted);text-align:left;flex-shrink:0
+    }
+    .money-page td:first-child{
+      padding:0 0 8px!important;margin-bottom:4px;border-bottom:1px solid #F3EEF4!important;
+      justify-content:flex-start;text-align:left
+    }
+    .money-page td:first-child::before{display:none}
+  }
 </style>
 @endsection
 
 @section('content')
-@php
-  $currency = $stats['currency_symbol'] ?? '€';
-  $payoutConnected = (bool) ($stats['payout_account_connected'] ?? false);
-  $payoutMode = in_array(($stats['payout_mode'] ?? 'manual'), ['manual', 'automatic'], true)
-    ? ($stats['payout_mode'] ?? 'manual')
-    : 'manual';
-  $availableBalance = (float) ($stats['available_balance'] ?? 0);
-  $pendingSchedule = $stats['pending_schedule'] ?? [];
-  $hasPendingSchedule = count($pendingSchedule) > 0;
-@endphp
-<main class="main-content flex-1 min-h-screen">
-  <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
-
-    <div class="mb-8">
-      <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Earnings</h2>
-      <p class="text-on-surface-variant mt-1">Track your earnings, payouts, and payment history.</p>
+<div class="money-page">
+  <div class="head">
+    <div>
+      <h1>
+        Money
+        <a class="help-q" href="https://help.inkjin.com/en/articles/17201180-dashboard-money-earnings" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
+          <span class="ms">help</span>
+        </a>
+      </h1>
+      <div class="sub">What you've earned, how clients pay you, and where your payouts go.</div>
     </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-      <div class="bg-white rounded-2xl border border-outline-variant/10 p-5">
-        <div class="flex items-start justify-between mb-3">
-          <div>
-            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Available Balance</p>
-            <p class="text-2xl font-extrabold text-on-surface">{{ $currency }}{{ number_format($payoutConnected ? $availableBalance : 0, 2) }}</p>
-          </div>
-          <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-green-700" style="font-size:20px;">credit_card</span>
-          </div>
-        </div>
-
-        @if (! $payoutConnected)
-          <p class="text-sm text-on-surface-variant mb-4 leading-relaxed">You need to set up payouts to receive your available balance.</p>
-          <a href="{{ route('settings.payment') }}" class="inline-flex items-center justify-center bg-on-surface text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:opacity-90 transition-opacity">
-            Set up payouts
-          </a>
-        @elseif ($payoutMode === 'manual')
-          <p class="text-sm text-on-surface-variant mb-4 leading-relaxed">Request a payout to receive your balance.</p>
-          <div class="flex items-center gap-4">
-            <button
-              type="button"
-              id="openRequestPayoutBtn"
-              class="inline-flex items-center justify-center bg-on-surface text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:opacity-90 transition-opacity"
-            >
-              Request payout
-            </button>
-            <a href="{{ route('settings.payment') }}" class="text-sm font-semibold text-primary hover:opacity-80 transition-opacity">Change</a>
-          </div>
-        @else
-          <p class="text-sm text-on-surface-variant mb-4 leading-relaxed">Your balance is paid out automatically. No action needed.</p>
-          <a href="{{ route('settings.payment') }}" class="text-sm font-semibold text-primary hover:opacity-80 transition-opacity">Change</a>
-        @endif
-      </div>
-
-      <button
-        type="button"
-        id="openPendingScheduleBtn"
-        class="stat-card-clickable w-full text-left bg-white rounded-2xl border border-outline-variant/10 p-5 {{ $hasPendingSchedule ? '' : 'cursor-default' }}"
-        @if (! $hasPendingSchedule) disabled @endif
-        aria-label="View pending earnings schedule"
-      >
-        <div class="flex items-start justify-between mb-3">
-          <div>
-            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Pending</p>
-            <p class="text-2xl font-extrabold text-on-surface">{{ $currency }}{{ number_format($stats['pending_total'], 2) }}</p>
-          </div>
-          <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-amber-600" style="font-size:20px;">schedule</span>
-          </div>
-        </div>
-        @if ($hasPendingSchedule)
-          <p class="text-xs text-primary font-semibold">View pending payouts by booking →</p>
-        @else
-          <p class="text-xs text-on-surface-variant">{{ $stats['pending_count'] }} {{ Str::plural('payment', $stats['pending_count']) }} processing</p>
-        @endif
-      </button>
-
-      <div class="bg-white rounded-2xl border border-outline-variant/10 p-5">
-        <div class="flex items-start justify-between mb-3">
-          <div>
-            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Total Earned</p>
-            <p class="text-2xl font-extrabold text-on-surface">{{ $currency }}{{ number_format($stats['total_earned'], 2) }}</p>
-          </div>
-          <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-purple-600" style="font-size:20px;">trending_up</span>
-          </div>
-        </div>
-        <p class="text-xs text-on-surface-variant">{{ $stats['since_label'] }}</p>
-      </div>
-    </div>
-
-    <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <div>
-          <label for="sortBy" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Sort by</label>
-          <select id="sortBy" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-            <option value="recent">Most Recent</option>
-            <option value="oldest">Oldest</option>
-            <option value="amount-high">Amount High→Low</option>
-            <option value="amount-low">Amount Low→High</option>
-          </select>
-        </div>
-        <div>
-          <label for="dateFrom" class="block text-xs font-semibold text-on-surface-variant mb-1.5">From</label>
-          <input type="date" id="dateFrom" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-        </div>
-        <div>
-          <label for="dateTo" class="block text-xs font-semibold text-on-surface-variant mb-1.5">To</label>
-          <input type="date" id="dateTo" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-        </div>
-        <div>
-          <label for="searchInput" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-            <input type="text" id="searchInput" placeholder="Search client or booking..." class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          </div>
-        </div>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <button type="button" class="filter-pill active text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="all">All</button>
-        <button type="button" class="filter-pill text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="Completed">
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>Completed
-        </button>
-        <button type="button" class="filter-pill text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="Pending">
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>Pending
-        </button>
-        <button type="button" class="filter-pill text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="Failed">
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>Failed
-        </button>
-        <button type="button" class="filter-pill text-xs font-semibold px-4 py-1.5 rounded-full border border-outline-variant/30 bg-white text-on-surface-variant" data-status="Refunded">
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>Refunded
-        </button>
-      </div>
-    </div>
-
-    <div class="bg-white rounded-2xl border border-outline-variant/10 mb-6">
-      <div class="payments-table-wrapper overflow-x-auto">
-        <table class="payments-table w-full">
-          <thead>
-            <tr>
-              <th>Client</th>
-              <th>Service</th>
-              <th>Date</th>
-              <th>Earnings</th>
-              <th>Fee</th>
-              <th>Net</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="paymentsTableBody"></tbody>
-        </table>
-      </div>
-      <div id="paymentsMobileCards"></div>
-    </div>
-
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-      <p class="text-sm text-on-surface-variant">Showing <span id="showingRange">0</span> of <span id="totalCount">0</span></p>
-      <div class="flex items-center gap-2" id="paginationButtons">
-        <button type="button" class="page-btn" id="prevBtn" disabled>
-          <span class="material-symbols-outlined text-lg">chevron_left</span>
-        </button>
-        <button type="button" class="page-btn" id="nextBtn" disabled>
-          <span class="material-symbols-outlined text-lg">chevron_right</span>
-        </button>
-      </div>
-    </div>
-
   </div>
-</main>
 
-<div id="requestPayoutModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true" aria-labelledby="requestPayoutTitle">
-  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-    <div class="flex items-start justify-between gap-3 mb-1">
-      <h5 id="requestPayoutTitle" class="text-lg font-bold text-on-surface">Request payout</h5>
-      <button type="button" id="closeRequestPayoutBtn" class="rounded-lg p-1 text-on-surface-variant hover:bg-surface-container-low transition-colors" aria-label="Close">
-        <span class="material-symbols-outlined text-[22px]">close</span>
+  @include('artist.partials.money-tabs', ['moneyTab' => 'earnings'])
+
+  <div class="grid" style="grid-template-columns:1.2fr 1fr 1fr">
+    <div class="card pad kpi-dark">
+      <div class="lbl">{{ $payoutMode === 'automatic' ? 'Next payout' : 'Available' }}</div>
+      <div style="font-size:34px;font-weight:800;margin:8px 0 4px;letter-spacing:-.6px">
+        {{ $currency }}{{ number_format($payoutConnected ? $availableBalance : 0, 2) }}
+      </div>
+      <div style="font-size:12.5px;color:#bdbdbd">{{ $nextPayoutMeta }}</div>
+      @if($nextArrivalLabel)
+        <div class="row kpi-meta">
+          <span class="ms">event</span>
+          <span>{{ $nextArrivalLabel }}</span>
+        </div>
+      @elseif(! $payoutConnected)
+        <div class="row kpi-meta">
+          <span class="ms">link</span>
+          <span>Connect payouts to receive this balance</span>
+        </div>
+      @endif
+      @if($payoutConnected && $payoutMode === 'manual' && $availableBalance > 0.009)
+        <div style="margin-top:14px">
+          <button type="button" class="btn sm" id="openRequestPayoutBtn" style="background:#fff;color:#1A1A1A">Request payout</button>
+        </div>
+      @elseif(! $payoutConnected)
+        <div style="margin-top:14px">
+          <a href="{{ route('settings.payment') }}" class="btn sm" style="background:#fff;color:#1A1A1A">Set up payouts</a>
+        </div>
+      @endif
+    </div>
+
+    <div class="card pad">
+      <button type="button" class="stat-click" id="openPendingScheduleBtn" @if(! $hasPendingSchedule) disabled @endif aria-label="View pending earnings">
+        <div class="row" style="justify-content:space-between">
+          <div class="lbl">Pending</div>
+          <span class="ms" style="color:#B86E00">schedule</span>
+        </div>
+        <div style="font-size:30px;font-weight:800;margin:8px 0 4px">{{ $currency }}{{ number_format($stats['pending_total'], 2) }}</div>
+        <div class="faint" style="font-size:12.5px">Released after each session, then paid out</div>
+        <div style="margin-top:16px;font-weight:600;font-size:13px;color:{{ $hasPendingSchedule ? 'var(--pri)' : 'var(--muted)' }}">
+          {{ $hasPendingSchedule ? 'View by booking →' : 'No pending payouts' }}
+        </div>
       </button>
     </div>
-    <p class="text-sm text-on-surface-variant mb-6">Enter how much you want to withdraw from your available balance.</p>
 
-    <form id="requestPayoutForm" class="space-y-5" novalidate>
-      <div class="rounded-xl border border-outline-variant/20 bg-surface-container-low px-4 py-3 flex items-center justify-between gap-3">
-        <span class="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Available</span>
-        <span class="text-base font-bold text-on-surface">{{ $currency }}{{ number_format($availableBalance, 2) }}</span>
+    <div class="card pad">
+      <div class="row" style="justify-content:space-between">
+        <div class="lbl">Total earned</div>
+        <span class="ms" style="color:#7A1FC4">trending_up</span>
       </div>
+      <div style="font-size:30px;font-weight:800;margin:8px 0 4px">{{ $currency }}{{ number_format($stats['total_earned'], 2) }}</div>
+      <div class="faint" style="font-size:12.5px">{{ $stats['since_label'] }}</div>
+    </div>
+  </div>
 
+  <div class="card row" style="padding:14px 20px;margin-top:14px;gap:14px;align-items:center;flex-wrap:wrap">
+    <div class="ic"><span class="ms">account_balance</span></div>
+    <div style="flex:1;min-width:200px">
+      <b>Payouts go to your bank via Stripe</b>
+      @if($payoutConnected)
+        <span class="pill g" style="margin-left:6px">Connected</span>
+      @else
+        <span class="pill a" style="margin-left:6px">Not connected</span>
+      @endif
+      <div class="faint" style="font-size:12.5px;margin-top:2px">
+        {{ $payoutTypeLabel }}
+        · {{ $payoutMode === 'automatic' ? 'Paid out automatically when funds become available' : 'Manual payouts' }}
+      </div>
+    </div>
+    <a href="{{ route('settings.payment') }}" class="btn sm ghost">Payout settings</a>
+    <a href="{{ route('settings.preferences') }}" class="btn sm ghost">Deposits &amp; rates</a>
+  </div>
+
+  <div class="row" style="justify-content:space-between;margin:28px 0 12px;gap:12px;flex-wrap:wrap">
+    <h3 style="margin:0">Payment history</h3>
+    <div class="chips" id="statusFilters">
+      <button type="button" class="chip on" data-status="all">All</button>
+      <button type="button" class="chip" data-status="Pending">Pending</button>
+      <button type="button" class="chip" data-status="Available">On the way</button>
+      <button type="button" class="chip" data-status="Completed">Paid out</button>
+      <button type="button" class="chip" data-status="Refunded">Refunded</button>
+      <button type="button" class="btn sm ghost" id="exportCsvBtn"><span class="ms" style="font-size:16px">download</span>Export CSV</button>
+    </div>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div style="padding:14px 16px;border-bottom:1px solid #F3EEF4;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px" class="money-filters">
       <div>
-        <label for="requestPayoutAmount" class="block text-sm font-semibold text-on-surface mb-2">Amount</label>
-        <div class="relative">
-          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-on-surface-variant">{{ $currency }}</span>
-          <input
-            type="number"
-            id="requestPayoutAmount"
-            name="amount"
-            inputmode="decimal"
-            min="0.01"
-            step="0.01"
-            max="{{ number_format($availableBalance, 2, '.', '') }}"
-            placeholder="0.00"
-            class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-        </div>
-        <div class="mt-2 flex items-center justify-between gap-3">
-          <p class="text-xs text-on-surface-variant">Max {{ $currency }}{{ number_format($availableBalance, 2) }}</p>
-          <button type="button" id="requestPayoutMaxBtn" class="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">
-            Withdraw all
-          </button>
-        </div>
-        <p id="requestPayoutError" class="hidden text-error text-sm mt-2"></p>
+        <label class="fl" for="sortBy">Sort by</label>
+        <select id="sortBy" class="in">
+          <option value="recent">Most recent</option>
+          <option value="oldest">Oldest</option>
+          <option value="amount-high">Amount high → low</option>
+          <option value="amount-low">Amount low → high</option>
+        </select>
       </div>
+      <div>
+        <label class="fl" for="dateFrom">From</label>
+        <input type="date" id="dateFrom" class="in">
+      </div>
+      <div>
+        <label class="fl" for="dateTo">To</label>
+        <input type="date" id="dateTo" class="in">
+      </div>
+      <div>
+        <label class="fl" for="searchInput">Search</label>
+        <input type="text" id="searchInput" class="in" placeholder="Client, service, or reference">
+      </div>
+    </div>
 
-      <div class="flex justify-end gap-3 pt-1">
-        <button type="button" id="cancelRequestPayoutBtn" class="rounded-xl px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low">
-          Cancel
-        </button>
-        <button type="submit" id="submitRequestPayoutBtn" class="rounded-xl px-5 py-2.5 text-sm font-semibold bg-on-surface text-white hover:opacity-90 disabled:opacity-60">
-          Request payout
-        </button>
-      </div>
-    </form>
+    <table>
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Service</th>
+          <th>Date</th>
+          <th>Collected</th>
+          <th>Fee</th>
+          <th>Studio gets</th>
+          <th>You get</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="paymentsTableBody"></tbody>
+    </table>
+    <div id="paymentsMobileCards" hidden></div>
+    <div class="help" style="margin:0;padding:12px 16px;border-top:1px solid #F3EEF4">
+      Booking fee is deducted from your share. With a studio split, Studio gets and You get show each side. Tap a row for the full breakdown.
+    </div>
+  </div>
+
+  <div class="row" style="justify-content:space-between;margin-top:16px;gap:12px;flex-wrap:wrap">
+    <p class="muted" style="margin:0;font-size:13px">Showing <span id="showingRange">0</span> of <span id="totalCount">0</span></p>
+    <div class="row" style="gap:8px" id="paginationButtons">
+      <button type="button" class="page-btn" id="prevBtn" disabled><span class="ms">chevron_left</span></button>
+      <button type="button" class="page-btn" id="nextBtn" disabled><span class="ms">chevron_right</span></button>
+    </div>
+  </div>
+
+{{-- Breakdown modal --}}
+<div class="bdm" id="breakdownModal" role="dialog" aria-modal="true" aria-labelledby="breakdownTitle" hidden>
+  <div class="bdm-box">
+    <div class="bdm-h">
+      <h2 id="breakdownTitle">Breakdown</h2>
+      <button type="button" class="bdm-x" id="closeBreakdownBtn" aria-label="Close"><span class="ms">close</span></button>
+    </div>
+    <div class="bdm-b" id="breakdownBody"></div>
   </div>
 </div>
 
-<div id="pendingScheduleModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true" aria-labelledby="pendingScheduleTitle">
-  <div class="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-xl">
-    <div class="flex items-start justify-between gap-3 p-6 pb-4 border-b border-outline-variant/15 shrink-0">
-      <div>
-        <h5 id="pendingScheduleTitle" class="text-lg font-bold text-on-surface">Pending earnings</h5>
-        <p class="text-sm text-on-surface-variant mt-1">When each booking becomes available to withdraw.</p>
-      </div>
-      <button type="button" id="closePendingScheduleBtn" class="rounded-lg p-1 text-on-surface-variant hover:bg-surface-container-low transition-colors" aria-label="Close">
-        <span class="material-symbols-outlined text-[22px]">close</span>
-      </button>
+{{-- Request payout modal --}}
+<div id="requestPayoutModal" class="bdm" role="dialog" aria-modal="true" aria-labelledby="requestPayoutTitle" hidden>
+  <div class="bdm-box" style="width:420px">
+    <div class="bdm-h">
+      <h2 id="requestPayoutTitle">Request payout</h2>
+      <button type="button" class="bdm-x" id="closeRequestPayoutBtn" aria-label="Close"><span class="ms">close</span></button>
     </div>
-    <div class="overflow-y-auto flex-1 px-6 py-4">
-      <div class="rounded-xl border border-outline-variant/20 bg-surface-container-low px-4 py-3 flex items-center justify-between gap-3 mb-4">
-        <span class="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Total pending</span>
-        <span class="text-base font-bold text-on-surface">{{ $currency }}{{ number_format($stats['pending_total'], 2) }}</span>
+    <div class="bdm-b">
+      <p class="muted" style="margin:0 0 16px;font-size:13.5px;line-height:1.5">Enter how much you want to withdraw from your available balance.</p>
+      <form id="requestPayoutForm" novalidate>
+        <div class="card pad" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+          <span class="lbl" style="margin:0">Available</span>
+          <b>{{ $currency }}{{ number_format($availableBalance, 2) }}</b>
+        </div>
+        <label class="fl" for="requestPayoutAmount">Amount</label>
+        <div class="in" style="padding-left:12px">
+          <span class="muted">{{ $currency }}</span>
+          <input type="number" id="requestPayoutAmount" name="amount" inputmode="decimal" min="0.01" step="0.01" max="{{ number_format($availableBalance, 2, '.', '') }}" placeholder="0.00" style="border:0;outline:0;width:100%;font:inherit;background:transparent">
+        </div>
+        <div class="row" style="justify-content:space-between;margin-top:8px">
+          <span class="help" style="margin:0">Max {{ $currency }}{{ number_format($availableBalance, 2) }}</span>
+          <button type="button" id="requestPayoutMaxBtn" class="btn sm ghost" style="padding:4px 10px">Withdraw all</button>
+        </div>
+        <p id="requestPayoutError" class="help" style="margin-top:10px;color:var(--red);display:none"></p>
+        <div class="row" style="gap:10px;margin-top:18px">
+          <button type="button" id="cancelRequestPayoutBtn" class="btn ghost" style="flex:1;justify-content:center">Cancel</button>
+          <button type="submit" id="submitRequestPayoutBtn" class="btn pri" style="flex:1;justify-content:center">Request payout</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{{-- Pending schedule modal --}}
+<div id="pendingScheduleModal" class="bdm" role="dialog" aria-modal="true" aria-labelledby="pendingScheduleTitle" hidden>
+  <div class="bdm-box" style="width:480px">
+    <div class="bdm-h">
+      <div style="flex:1">
+        <h2 id="pendingScheduleTitle">Pending earnings</h2>
+        <p class="faint" style="font-size:13px;margin-top:4px">When each booking becomes available to withdraw.</p>
       </div>
-      @if ($hasPendingSchedule)
-        <div class="rounded-xl border border-outline-variant/20 overflow-hidden">
-          @foreach ($pendingSchedule as $item)
-            <div class="pending-schedule-row px-4 py-3.5 bg-white">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <p class="text-sm font-semibold text-on-surface truncate">{{ $item['client'] }}</p>
-                  <p class="text-xs text-on-surface-variant truncate">{{ $item['service'] }}</p>
-                  <p class="text-[11px] text-outline mt-0.5">{{ $item['reference'] }}</p>
+      <button type="button" class="bdm-x" id="closePendingScheduleBtn" aria-label="Close"><span class="ms">close</span></button>
+    </div>
+    <div class="bdm-b">
+      <div class="card pad" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+        <span class="lbl" style="margin:0">Total pending</span>
+        <b>{{ $currency }}{{ number_format($stats['pending_total'], 2) }}</b>
+      </div>
+      @if($hasPendingSchedule)
+        <div class="card" style="overflow:hidden">
+          @foreach($pendingSchedule as $item)
+            <div style="padding:12px 14px;border-bottom:1px solid #F3EEF4">
+              <div class="row" style="justify-content:space-between;gap:12px;align-items:flex-start">
+                <div style="min-width:0">
+                  <b style="font-size:13.5px">{{ $item['client'] }}</b>
+                  <div class="faint" style="font-size:12.5px">{{ $item['service'] }}</div>
+                  <div class="faint" style="font-size:11.5px">{{ $item['reference'] }}</div>
                 </div>
-                <p class="text-sm font-bold text-on-surface shrink-0">{{ $currency }}{{ number_format($item['amount'], 2) }}</p>
+                <b style="font-size:13.5px;white-space:nowrap">{{ $currency }}{{ number_format($item['amount'], 2) }}</b>
               </div>
-              <div class="mt-2 flex items-center justify-between gap-3 text-xs">
-                <span class="text-on-surface-variant">{{ $item['reason'] }}</span>
-                <span class="font-semibold text-amber-700 shrink-0">{{ $item['available_label'] }}</span>
+              <div class="row" style="justify-content:space-between;margin-top:8px;gap:10px;font-size:12.5px">
+                <span class="muted">{{ $item['reason'] }}</span>
+                <span style="color:var(--amber);font-weight:700;white-space:nowrap">{{ $item['available_label'] }}</span>
               </div>
             </div>
           @endforeach
         </div>
       @else
-        <p class="text-sm text-on-surface-variant text-center py-8">No pending earnings right now.</p>
+        <p class="muted" style="text-align:center;padding:28px 0">No pending earnings right now.</p>
       @endif
-    </div>
-    <div class="p-6 pt-4 border-t border-outline-variant/15 shrink-0">
-      <button type="button" id="dismissPendingScheduleBtn" class="w-full rounded-xl px-5 py-2.5 text-sm font-semibold bg-on-surface text-white hover:opacity-90">
-        Close
-      </button>
+      <button type="button" id="dismissPendingScheduleBtn" class="btn" style="width:100%;justify-content:center;margin-top:14px">Close</button>
     </div>
   </div>
 </div>
+</div>
+@endsection
 
+@section('scripts')
 <script>
   window.inkjinArtistPayments = @json($payments);
   window.inkjinCurrencySymbol = @json($currency);
   window.inkjinAvailableBalance = @json(round($availableBalance, 2));
-
+</script>
+<script>
   (function () {
     const modal = document.getElementById('requestPayoutModal');
     const openBtn = document.getElementById('openRequestPayoutBtn');
@@ -337,22 +358,18 @@
       if (!errorEl) return;
       if (!message) {
         errorEl.textContent = '';
-        errorEl.classList.add('hidden');
+        errorEl.style.display = 'none';
         return;
       }
       errorEl.textContent = message;
-      errorEl.classList.remove('hidden');
+      errorEl.style.display = '';
     }
 
     function openModal() {
-      if (available < 0.01) {
-        if (typeof showSaveToast === 'function') {
-          showSaveToast('No available balance to withdraw yet.');
-        }
-        return;
-      }
+      if (available < 0.01) return;
       setError('');
-      modal.classList.remove('hidden');
+      modal.hidden = false;
+      modal.classList.add('open');
       if (amountInput) {
         amountInput.value = '';
         setTimeout(function () { amountInput.focus(); }, 50);
@@ -361,7 +378,8 @@
 
     function closeModal() {
       if (saving) return;
-      modal.classList.add('hidden');
+      modal.classList.remove('open');
+      modal.hidden = true;
       setError('');
     }
 
@@ -381,9 +399,7 @@
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (saving) return;
-
-      const raw = amountInput ? amountInput.value : '';
-      const amount = Number(raw);
+      const amount = Number(amountInput ? amountInput.value : '');
       if (!Number.isFinite(amount) || amount < 0.01) {
         setError('Enter an amount greater than zero.');
         return;
@@ -413,19 +429,11 @@
         .then(async function (res) {
           const data = await res.json().catch(function () { return {}; });
           if (!res.ok || !data.success) {
-            const msg = data.message
-              || (data.errors && data.errors.amount && data.errors.amount[0])
-              || 'Could not process payout request.';
-            throw new Error(msg);
+            throw new Error(data.message || (data.errors && data.errors.amount && data.errors.amount[0]) || 'Could not process payout request.');
           }
           return data;
         })
-        .then(function (data) {
-          if (typeof showSaveToast === 'function') {
-            showSaveToast(data.message || 'Payout sent.');
-          }
-          window.location.reload();
-        })
+        .then(function () { window.location.reload(); })
         .catch(function (err) {
           setError(err.message || 'Could not process payout request.');
           saving = false;
@@ -446,11 +454,12 @@
     if (!openBtn || !modal) return;
 
     function openModal() {
-      modal.classList.remove('hidden');
+      modal.hidden = false;
+      modal.classList.add('open');
     }
-
     function closeModal() {
-      modal.classList.add('hidden');
+      modal.classList.remove('open');
+      modal.hidden = true;
     }
 
     openBtn.addEventListener('click', function () {
@@ -464,5 +473,14 @@
     });
   })();
 </script>
-<script src="{{ asset('js/artist-payments.js') }}?v=3"></script>
+<script src="{{ asset('js/artist-payments.js') }}?v=4"></script>
+<style>
+  @media(max-width:900px){
+    .money-page .money-filters{grid-template-columns:1fr 1fr!important}
+  }
+  @media(max-width:560px){
+    .money-page .money-filters{grid-template-columns:1fr!important}
+    .money-page .grid[style*="1.2fr"]{grid-template-columns:1fr!important}
+  }
+</style>
 @endsection

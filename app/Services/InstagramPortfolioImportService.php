@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Portfolio;
+use App\Models\Studio;
+use App\Models\StudioPortfolio;
 use App\Models\Style;
 use App\Models\User;
 use App\Models\UserDetail;
@@ -581,5 +583,143 @@ class InstagramPortfolioImportService
             'instagram_media_id' => $mediaId,
             'instagram_media_type' => $mediaType,
         ]);
+    }
+
+    /**
+     * Import latest Instagram images into studio_portfolios (pending artist tag).
+     *
+     * @return array{imported: int, skipped: int, message: string}
+     */
+    public function importLatestForStudio(Studio $studio): array
+    {
+        $token = trim((string) ($studio->instagram_access_token ?? ''));
+        if ($token === '') {
+            return [
+                'imported' => 0,
+                'skipped' => 0,
+                'message' => 'Instagram is not connected.',
+            ];
+        }
+
+        $candidates = $this->fetchLatestImageCandidates($token, self::MAX_ITEMS);
+        if ($candidates === []) {
+            return [
+                'imported' => 0,
+                'skipped' => 0,
+                'message' => 'No Instagram images were found to import.',
+            ];
+        }
+
+        $existingIds = StudioPortfolio::query()
+            ->where('studio_id', $studio->id)
+            ->whereNotNull('instagram_media_id')
+            ->pluck('instagram_media_id')
+            ->all();
+        $existing = array_fill_keys(array_map('strval', $existingIds), true);
+
+        $toImport = [];
+        $skipped = 0;
+        foreach ($candidates as $candidate) {
+            $id = (string) ($candidate['id'] ?? '');
+            if ($id === '' || isset($existing[$id])) {
+                $skipped++;
+
+                continue;
+            }
+            $toImport[] = $candidate;
+        }
+        $toImport = array_values(array_reverse($toImport));
+
+        if ($toImport === []) {
+            return [
+                'imported' => 0,
+                'skipped' => $skipped,
+                'message' => 'No new Instagram images were imported (already imported or unavailable).',
+            ];
+        }
+
+        $imported = 0;
+        $nextOrder = (int) StudioPortfolio::query()->where('studio_id', $studio->id)->max('sort_order');
+
+        foreach ($toImport as $candidate) {
+            try {
+                $mediaId = (string) $candidate['id'];
+                $mediaUrl = (string) ($candidate['media_url'] ?? '');
+                $caption = trim((string) ($candidate['caption'] ?? ''));
+                if ($mediaUrl === '') {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $download = Http::timeout(45)->withOptions(['allow_redirects' => true])->get($mediaUrl);
+                if (! $download->successful() || $download->body() === '') {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $contentType = $download->header('Content-Type');
+                if (is_array($contentType)) {
+                    $contentType = $contentType[0] ?? 'image/jpeg';
+                }
+                $mime = strtolower(trim(explode(';', (string) ($contentType ?: 'image/jpeg'))[0]));
+                $ext = match ($mime) {
+                    'image/png' => 'png',
+                    'image/webp' => 'webp',
+                    default => 'jpg',
+                };
+
+                $destination = public_path('uploads/studio-portfolios');
+                if (! File::exists($destination)) {
+                    File::makeDirectory($destination, 0755, true);
+                }
+
+                $filename = time().'_'.uniqid('ig_', true).'.'.$ext;
+                $relative = 'uploads/studio-portfolios/'.$filename;
+                File::put(public_path($relative), $download->body());
+
+                $title = $caption !== ''
+                    ? Str::limit(preg_replace('/\s+/', ' ', $caption) ?? $caption, 80, '')
+                    : 'Instagram post';
+
+                $nextOrder++;
+                StudioPortfolio::create([
+                    'studio_id' => $studio->id,
+                    'title' => $title,
+                    'image' => $relative,
+                    'attribution' => StudioPortfolio::ATTRIBUTION_PENDING,
+                    'artist_user_id' => null,
+                    'source' => StudioPortfolio::SOURCE_INSTAGRAM,
+                    'instagram_media_id' => $mediaId,
+                    'instagram_media_type' => (string) ($candidate['media_type'] ?? 'IMAGE'),
+                    'sort_order' => $nextOrder,
+                ]);
+                $imported++;
+            } catch (\Throwable $e) {
+                Log::warning('Studio Instagram import item failed', [
+                    'studio_id' => $studio->id,
+                    'media_id' => $candidate['id'] ?? null,
+                    'message' => $e->getMessage(),
+                ]);
+                $skipped++;
+            }
+        }
+
+        if ($imported === 0) {
+            return [
+                'imported' => 0,
+                'skipped' => $skipped,
+                'message' => 'No new Instagram images were imported.',
+            ];
+        }
+
+        return [
+            'imported' => $imported,
+            'skipped' => $skipped,
+            'message' => $imported === 1
+                ? '1 Instagram image was added. Tag the artist so it can show on your page.'
+                : $imported.' Instagram images were added. Tag artists so they can show on your page.',
+        ];
     }
 }

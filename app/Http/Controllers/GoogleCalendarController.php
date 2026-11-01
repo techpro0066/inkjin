@@ -71,7 +71,10 @@ class GoogleCalendarController extends Controller
 
     private function storeCalendarReturnTo(Request $request): void
     {
-        $returnTo = $request->query('return_to') === 'settings' ? 'settings' : 'onboarding';
+        $returnTo = $request->query('return_to');
+        if (! in_array($returnTo, ['settings', 'schedule', 'onboarding'], true)) {
+            $returnTo = 'onboarding';
+        }
 
         session([self::RETURN_SESSION_KEY => $returnTo]);
     }
@@ -80,9 +83,10 @@ class GoogleCalendarController extends Controller
     {
         $returnTo ??= session(self::RETURN_SESSION_KEY, 'onboarding');
 
-        return $returnTo === 'settings'
-            ? route('settings.calendar')
-            : route('onboarding.calendar');
+        return match ($returnTo) {
+            'settings', 'schedule' => route('schedule.calendar-sync'),
+            default => route('onboarding.calendar'),
+        };
     }
 
     private function pullCalendarReturnUrl(): string
@@ -195,7 +199,7 @@ class GoogleCalendarController extends Controller
                 'google_calendar_id' => $primaryCalendarId,
             ];
 
-            if ($returnTo === 'settings') {
+            if (in_array($returnTo, ['settings', 'schedule'], true)) {
                 $updateData['scheduling_type'] = 'auto';
             }
 
@@ -203,7 +207,7 @@ class GoogleCalendarController extends Controller
 
             session()->forget(self::RETURN_SESSION_KEY);
 
-            $successMessage = $returnTo === 'settings'
+            $successMessage = in_array($returnTo, ['settings', 'schedule'], true)
                 ? 'Google Calendar connected successfully! Auto scheduling is now selected.'
                 : 'Google Calendar connected successfully!';
 

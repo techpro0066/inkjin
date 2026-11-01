@@ -32,12 +32,16 @@ class ConsentFormSetting extends Model
         'form_language',
         'other_language',
         'ask_photo',
+        'health_split_consent',
+        'retention_notice_enabled',
         'send_automatically',
     ];
 
     protected $casts = [
         'allow_younger' => 'boolean',
         'ask_photo' => 'boolean',
+        'health_split_consent' => 'boolean',
+        'retention_notice_enabled' => 'boolean',
         'send_automatically' => 'boolean',
         'age_allow' => 'integer',
     ];
@@ -135,6 +139,9 @@ class ConsentFormSetting extends Model
             'form_language' => $this->form_language ?: 'en',
             'other_language' => $this->other_language,
             'ask_photo' => (bool) $this->ask_photo,
+            // Locked required items — always on
+            'health_split_consent' => true,
+            'retention_notice_enabled' => true,
             'send_automatically' => (bool) $this->send_automatically,
             'client_languages' => $this->clientLanguages(),
         ];

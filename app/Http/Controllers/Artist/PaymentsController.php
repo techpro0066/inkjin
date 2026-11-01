@@ -45,10 +45,10 @@ class PaymentsController extends Controller
             ], 422);
         }
 
-        if (($userDetail->payout_mode ?? 'manual') === 'automatic') {
+        if (($userDetail->activePayout()?->payout_mode ?? 'automatic') === 'automatic') {
             return response()->json([
                 'success' => false,
-                'message' => 'Your payout mode is automatic. Switch to manual to request payouts.',
+                'message' => 'Your payout mode is automatic. Manual payout requests are not available.',
             ], 422);
         }
 

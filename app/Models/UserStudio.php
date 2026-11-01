@@ -16,6 +16,12 @@ class UserStudio extends Model
 
     public const STATUS_SPLIT_PROPOSED = 3;
 
+    public const JOINED_VIA_INVITE = 'invite';
+
+    public const JOINED_VIA_JOIN_REQUEST = 'join_request';
+
+    public const JOINED_VIA_DIRECT = 'direct';
+
     public const CONNECTION_NOT_ON_BOOKPAY = 'not_on_bookpay';
 
     public const CONNECTION_ON_BOOKPAY = 'on_bookpay';
@@ -51,6 +57,9 @@ class UserStudio extends Model
         'payout',
         'revenue_split',
         'proposed_revenue_split',
+        'joined_via',
+        'show_on_page',
+        'page_sort_order',
     ];
 
     protected $casts = [
@@ -58,6 +67,8 @@ class UserStudio extends Model
         'payout' => 'boolean',
         'revenue_split' => 'integer',
         'proposed_revenue_split' => 'integer',
+        'show_on_page' => 'boolean',
+        'page_sort_order' => 'integer',
     ];
 
     public static function tableReady(): bool
@@ -82,7 +93,21 @@ class UserStudio extends Model
 
     public function scopeForPayout($query)
     {
-        return $query->where('payout', true)->whereNotNull('studio_id');
+        // Studio revenue split = payout flag + studio + split % (0 is a valid artist share).
+        return $query
+            ->where('payout', true)
+            ->whereNotNull('studio_id')
+            ->whereNotNull('revenue_split');
+    }
+
+    /**
+     * Whether this workplace row is treated as studio revenue-split payout.
+     */
+    public function isRevenueSplitPayout(): bool
+    {
+        return (bool) $this->payout
+            && ! empty($this->studio_id)
+            && $this->revenue_split !== null;
     }
 
     public static function activeForUser(int $userId): ?self
@@ -390,19 +415,25 @@ class UserStudio extends Model
             'connection_type' => self::CONNECTION_NOT_CONNECTED,
         ]);
 
-        // Only one active payout link per artist.
-        static::query()
-            ->where('user_id', $userId)
-            ->where('payout', true)
-            ->when($row->exists, fn ($q) => $q->where('id', '!=', $row->id))
-            ->update(['payout' => false]);
+        // Prefer an existing active workplace row for this studio (multi-studio payouts).
+        if (! $forceNew) {
+            $forStudio = static::query()
+                ->where('user_id', $userId)
+                ->where('studio_id', $studio->id)
+                ->where('status', self::STATUS_ACTIVE)
+                ->orderByDesc('id')
+                ->first();
+            if ($forStudio) {
+                $row = $forStudio;
+            }
+        }
 
         $row->studio_id = $studio->id;
         $row->payout = true;
         $row->status = self::STATUS_ACTIVE;
-        $row->connection_type = ! empty($studio->user_id)
-            ? self::CONNECTION_ON_BOOKPAY
-            : self::CONNECTION_NOT_CONNECTED;
+        // Stay "not connected" until the studio accepts the invite / connects Stripe.
+        // Other studios keep their own payout flags (each workplace has its own setup).
+        $row->connection_type = self::CONNECTION_NOT_CONNECTED;
 
         if (self::nullableString($row->studio_name) === null) {
             $row->studio_name = self::nullableString($studio->name) ?? 'Studio';

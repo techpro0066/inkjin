@@ -273,27 +273,24 @@ class UserController extends Controller
         }
 
         if (in_array($payoutsFilter, ['connected', 'not_connected'], true)) {
-            $query->where('role', 'artist')
-                ->whereHas('userDetail', function (Builder $detailQuery) use ($payoutsFilter) {
-                    if ($payoutsFilter === 'connected') {
-                        $detailQuery->where(function (Builder $connected) {
-                            $connected->where('payment_type', 'inkjin_account')
-                                ->orWhere('payment_status', 'approved');
+            $query->where('role', 'artist');
+            if ($payoutsFilter === 'connected') {
+                $query->whereHas('payouts', function (Builder $payoutQuery) {
+                    $payoutQuery->where('is_active', true)
+                        ->where(function (Builder $connected) {
+                            $connected->where('type', 'inkjin_account')
+                                ->orWhere('status', 'approved');
                         });
-
-                        return;
-                    }
-
-                    $detailQuery->where(function (Builder $notConnected) {
-                        $notConnected->where(function (Builder $type) {
-                            $type->whereNull('payment_type')
-                                ->orWhere('payment_type', '!=', 'inkjin_account');
-                        })->where(function (Builder $status) {
-                            $status->whereNull('payment_status')
-                                ->orWhere('payment_status', '!=', 'approved');
-                        });
-                    });
                 });
+            } else {
+                $query->whereDoesntHave('payouts', function (Builder $payoutQuery) {
+                    $payoutQuery->where('is_active', true)
+                        ->where(function (Builder $connected) {
+                            $connected->where('type', 'inkjin_account')
+                                ->orWhere('status', 'approved');
+                        });
+                });
+            }
         }
 
         return $query;

@@ -1,33 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  @include('layouts.partials.google-analytics')
   <meta charset="utf-8">
-  <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>{{ $userDetail->publicDisplayName() }} - Tattoo Artist | Inkjin</title>
-  <meta name="description" content="Book tattoo designs or request custom work from {{ $userDetail->publicDisplayName() }} at {{ $userDetail->studio_name }}, {{ $userDetail->city }}, {{ $userDetail->country }}.">
-  <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <meta name="color-scheme" content="only light">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  @include('layouts.partials.google-analytics')
+  <title>{{ $userDetail->publicDisplayName() }} · Book a tattoo</title>
   @php
-    $themeMap = [
-      'default' => [ 'primary' => '#310F7A', 'bg' => '#531BC9' ],
-      'ocean' => [ 'primary' => '#1565C0', 'bg' => '#4D96E9' ],
-      'forest' => [ 'primary' => '#2E7D32', 'bg' => '#5DAB61' ],
-      'coral' => [ 'primary' => '#D84315', 'bg' => '#FF7B52' ],
-      'midnight' => [ 'primary' => '#1A1A2E', 'bg' => '#42426D' ],
-      'golden' => [ 'primary' => '#F57F17', 'bg' => '#FFAC62' ]
-    ];
-    $selectedThemeKey = $userDetail->personal_page_color ?? 'default';
-    $selectedTheme = $themeMap[$selectedThemeKey] ?? $themeMap['default'];
-    if (filled($userDetail->page_look_scheme)) {
-      $selectedTheme = \App\Support\PageLook::themeColors($userDetail);
+    $metaDescription = 'Book tattoo designs or request custom work from '.$userDetail->publicDisplayName();
+    if (trim((string) ($userDetail->studio_name ?? '')) !== '') {
+        $metaDescription .= ' at '.$userDetail->studio_name;
     }
+    if (trim((string) ($userDetail->city ?? '')) !== '') {
+        $metaDescription .= ', '.$userDetail->city;
+    }
+    $metaDescription .= '.';
+  @endphp
+  <meta name="description" content="{{ $metaDescription }}">
+  <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
+  @php
     $lookState = \App\Support\PageLook::stateFromUserDetail($userDetail);
     $isLookPreview = request()->boolean('preview');
+    [$schemePrimary, $schemeMid, $schemeTint] = \App\Support\PageLook::schemeParts(
+        (string) ($lookState['scheme'] ?? '')
+    );
+
     $displayDesigns = (bool) ($userDetail->display_designs ?? true);
     $showAvailableDesigns = $displayDesigns && in_array($userDetail->availability_status, ['design_custom', 'design_only'], true);
     $hasVisibleDesigns = $showAvailableDesigns && $artistDesigns->count() > 0;
@@ -39,293 +36,22 @@
     $guestSpots = $guestSpots ?? collect();
     $faqs = $faqs ?? collect();
     $hasFaqs = $displayFaq && $faqs->count() > 0;
+    $showTabsNav = $hasVisibleDesigns || $hasPortfolio || $displayGuestSpots || $displayPolicies || $hasFaqs;
+
     $designsTabActive = $hasVisibleDesigns;
     $portfolioTabActive = ! $hasVisibleDesigns && $hasPortfolio;
     $guestSpotsTabActive = $displayGuestSpots && ! $hasVisibleDesigns && ! $hasPortfolio;
     $policiesTabActive = $displayPolicies && ! $hasVisibleDesigns && ! $hasPortfolio && ! $displayGuestSpots;
     $faqTabActive = $hasFaqs && ! $hasVisibleDesigns && ! $hasPortfolio && ! $displayGuestSpots && ! $displayPolicies;
-    $showTabsNav = $hasVisibleDesigns || $hasPortfolio || $displayGuestSpots || $displayPolicies || $hasFaqs;
 
     $policyCopy = \App\Support\ArtistPolicyCopy::for($userDetail);
     $depositPolicyText = $policyCopy['deposit'];
     $reschedulePolicyText = $policyCopy['rescheduling'];
     $cancellationPolicyText = $policyCopy['cancellation'];
     $noShowPolicyText = $policyCopy['no_show'];
-    $portfolioForJs = $artistPortfolios->values()->map(function ($portfolio) {
-        $colorLabel = match ($portfolio->color) {
-            'color' => 'Full Color',
-            'black-grey' => 'Black & Grey',
-            'both' => 'Black & Color',
-            default => (string) $portfolio->color,
-        };
+    $policiesExtraNote = trim((string) ($userDetail->policies_extra_note ?? ''));
+    $whatsIncludedItems = $userDetail->activeDesignWhatsIncludedItems();
 
-        return [
-            'id' => $portfolio->id,
-            'title' => $portfolio->title,
-            'desc' => trim((string) ($portfolio->description ?? '')),
-            'style' => ucwords(str_replace('-', ' ', $portfolio->primary_style)),
-            'placement' => $portfolio->placement_label,
-            'colors' => $colorLabel,
-            'image' => asset($portfolio->image),
-            'tags' => collect($portfolio->tags ?? [])->map(function ($tag) {
-                $tag = trim((string) $tag);
-
-                return $tag === '' ? '' : (str_starts_with($tag, '#') ? $tag : '#'.$tag);
-            })->filter()->values()->all(),
-        ];
-    })->values();
-    $requestSimilarBaseUrl = route('public.request-custom', ['user_name' => $userDetail->user_name]);
-  @endphp
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            "primary": "#310f7a",
-            "primary-container": "#482d91",
-            "on-primary": "#ffffff",
-            "on-primary-container": "#b69fff",
-            "surface": "#fdf7ff",
-            "surface-container": "#f2ecf5",
-            "surface-container-high": "#ece6ef",
-            "surface-container-highest": "#e6e0ea",
-            "surface-container-low": "#f8f1fb",
-            "on-surface": "#1c1b21",
-            "on-surface-variant": "#494552",
-            "outline": "#7a7583",
-            "outline-variant": "#cac4d3",
-            "secondary": "#625881",
-            "secondary-container": "#ddd0ff",
-            "inverse-surface": "#322f36",
-            "inverse-on-surface": "#f5eff8",
-            "error": "#ba1a1a",
-          },
-          fontFamily: {
-            "sans": ["Plus Jakarta Sans", "system-ui", "sans-serif"],
-          },
-        },
-      },
-    }
-  </script>
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-    .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-
-    /* Smooth tab transitions */
-    .tab-content { display: none; animation: fadeIn 0.2s ease; }
-    .tab-content.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Modal backdrop */
-    .modal-backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
-
-    /* Card hover */
-    .design-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .design-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(49,15,122,0.12); }
-
-    /* Portfolio: Request similar tattoo */
-    .portfolio-card-media { position: relative; }
-    .portfolio-similar-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      padding: 0.85rem;
-      background: linear-gradient(to top, rgba(28, 27, 33, 0.72) 0%, rgba(28, 27, 33, 0.2) 45%, transparent 70%);
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      pointer-events: none;
-    }
-    .portfolio-card:hover .portfolio-similar-overlay,
-    .portfolio-card:focus-within .portfolio-similar-overlay {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    @media (hover: none) {
-      .portfolio-similar-overlay {
-        opacity: 1;
-        pointer-events: auto;
-        background: linear-gradient(to top, rgba(28, 27, 33, 0.55) 0%, transparent 55%);
-      }
-    }
-    .portfolio-similar-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.35rem;
-      width: 100%;
-      padding: 0.55rem 0.9rem;
-      border-radius: 9999px;
-      border: none;
-      background: {{ $selectedTheme['primary'] }};
-      color: #ffffff;
-      font-size: 0.8125rem;
-      font-weight: 700;
-      line-height: 1.2;
-      cursor: default;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-      transition: background 0.15s ease, transform 0.15s ease;
-    }
-    .portfolio-similar-btn:hover {
-      background: {{ $selectedTheme['bg'] }};
-    }
-    .portfolio-similar-btn-modal {
-      width: 100%;
-      padding: 0.85rem 1.25rem;
-      font-size: 0.9375rem;
-      box-shadow: 0 8px 20px rgba(49, 15, 122, 0.18);
-    }
-
-    /* Custom scrollbar for modals */
-    .modal-body::-webkit-scrollbar { width: 6px; }
-    .modal-body::-webkit-scrollbar-thumb { background: #cac4d3; border-radius: 3px; }
-
-    /* Aspect ratios */
-    .aspect-4-5 { aspect-ratio: 4/5; }
-    .aspect-1-1 { aspect-ratio: 1/1; }
-
-    .studio-name-color { 
-      color: {{ $selectedTheme['primary'] }};
-    }
-
-    #btnBrowseDesigns {
-      background-color: {{ $selectedTheme['primary'] }};
-    }
-
-    #btnBrowseDesigns:hover {
-      background-color: {{ $selectedTheme['bg'] }};
-    }
-
-    #btnRequestCustom{
-      color: {{ $selectedTheme['primary'] }};
-      border-color: {{ $selectedTheme['primary'] }};
-    }
-
-    #btnRequestCustom:hover {
-      color: white;
-      background-color: {{ $selectedTheme['bg'] }};
-    }
-
-    #tab-designs,
-    #tab-portfolio,
-    #tab-guest-spots,
-    #tab-policies,
-    #tab-faq {
-      color: {{ $selectedTheme['primary'] }};
-    }
-
-    .faq-item {
-      border-bottom: 1px solid rgba(202, 196, 211, 0.35);
-    }
-    .faq-item:last-child { border-bottom: none; }
-    .faq-trigger {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      text-align: left;
-      padding: 1rem 0;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-    }
-    .faq-trigger:hover .faq-question-text { color: {{ $selectedTheme['primary'] }}; }
-    .faq-question-text {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #1c1b21;
-      line-height: 1.4;
-      transition: color 0.15s;
-    }
-    .faq-icon {
-      flex-shrink: 0;
-      font-size: 1.35rem;
-      color: {{ $selectedTheme['primary'] }};
-      font-weight: 500;
-      line-height: 1;
-      width: 1.5rem;
-      text-align: center;
-    }
-    .faq-answer {
-      display: none;
-      padding: 0 0 1rem 0;
-      font-size: 0.875rem;
-      color: #494552;
-      line-height: 1.6;
-    }
-    .faq-item.open .faq-answer { display: block; }
-
-    .border-primary {
-      border-color: {{ $selectedTheme['primary'] }};
-    }
-
-    .price-color {
-      color: {{ $selectedTheme['primary'] }};
-    }
-
-    .border-tab-btn{
-      border-color: {{ $selectedTheme['primary'] }};
-    }
-
-    #artistDesignsSection {
-      scroll-margin-top: 1rem;
-    }
-
-    .get-this-tattoo-btn{
-      background-color: {{ $selectedTheme['primary'] }};
-      color: white;
-    }
-
-    .get-this-tattoo-btn:hover {
-      color: white;
-      background-color: {{ $selectedTheme['bg'] }};
-    }
-
-  </style>
-</head>
-<body class="bg-surface text-on-surface min-h-screen{{ $isLookPreview ? ' bp-prev' : '' }}" data-look-who="artist">
-
-  
-
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- HEADER / HERO                                   -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <header class="relative" id="artistLookHeader">
-    <!-- Banner -->
-    <div id="artistLookBanner" class="w-full h-[300px] relative overflow-hidden" data-look-std>
-      @if($userDetail->personal_page_background_image && $userDetail->personal_page_background_image != '')
-        <img id="artistLookBannerImg" src="{{ asset($userDetail->personal_page_background_image) }}" alt="Tattoo Header" class="w-full h-full object-cover object-center absolute inset-0">
-        <div id="artistLookBannerFallback" class="absolute inset-0 hidden" style="background-color: {{ $selectedTheme['bg'] }};"></div>
-      @else
-        <img id="artistLookBannerImg" src="" alt="Tattoo Header" class="w-full h-full object-cover object-center absolute inset-0 hidden">
-        <div id="artistLookBannerFallback" class="absolute inset-0" style="background-color: {{ $selectedTheme['bg'] }};"></div>
-      @endif
-    </div>
-
-    <!-- Profile Info -->
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 relative" id="artistLookProfile" data-look-std>
-      <!-- Avatar -->
-      <div class="absolute -top-12 left-4 sm:left-6">
-        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary-container border-4 border-surface shadow-lg flex items-center justify-center overflow-hidden">
-          <span class="text-white text-3xl font-bold">
-            {{-- image --}}
-            @if($userDetail->avatar && $userDetail->avatar != '')
-              <img src="{{ asset($userDetail->avatar) }}" alt="Avatar" class="w-full h-full object-cover rounded-full">
-            @else
-              <span class="text-white text-3xl font-bold">
-                {{ $userDetail->publicDisplayInitials() }}
-              </span>
-            @endif
-          </span>
-        </div>
-      </div>
-
-      <div class="pt-16 pb-6" id="artistLookProfileBody">
-        @php
           $stylesPayload = is_array($userDetail->tattoo_styles ?? null) ? $userDetail->tattoo_styles : [];
           $primaryStyleRaw = trim((string) ($stylesPayload['primary_style'] ?? ''));
           $otherStylesRaw = $stylesPayload['other_styles'] ?? [];
@@ -349,15 +75,36 @@
                   $styleLabels[] = $label;
               }
           }
-          $stylesLine = implode(', ', $styleLabels);
           $tattooingSince = trim((string) ($stylesPayload['tattooing_since'] ?? ''));
+          $extraServicesPayload = is_array($userDetail->extra_services ?? null) ? $userDetail->extra_services : [];
+          $extraServiceList = is_array($extraServicesPayload['services'] ?? null) ? $extraServicesPayload['services'] : [];
+          $extraServiceOther = trim((string) ($extraServicesPayload['other'] ?? ''));
+          $extraServiceLabels = [];
+          foreach ($extraServiceList as $svc) {
+              $svc = trim((string) $svc);
+              if ($svc === '' || $svc === 'Other') {
+                  continue;
+              }
+              $extraServiceLabels[] = $svc;
+          }
+          if (in_array('Other', array_map('strval', $extraServiceList), true) && $extraServiceOther !== '') {
+              $extraServiceLabels[] = $extraServiceOther;
+          }
+          $extraServicesLine = implode(' · ', $extraServiceLabels);
           $locationParts = array_filter([
               trim((string) ($userDetail->city ?? '')),
               trim((string) ($userDetail->country ?? '')),
           ]);
           $locationLine = implode(', ', $locationParts);
           $tagline = trim((string) ($userDetail->personal_page_tagline ?? ''));
-          $studioName = trim((string) ($userDetail->studio_name ?? ''));
+    $showTagline = ($userDetail->display_tagline ?? true) && $tagline !== '';
+    $artistPublicName = $userDetail->publicDisplayName();
+    $artistHandle = '@'.$userDetail->user_name;
+    $avatarUrl = ($userDetail->avatar && $userDetail->avatar !== '') ? asset($userDetail->avatar) : null;
+    $bannerUrl = ($userDetail->personal_page_background_image && $userDetail->personal_page_background_image !== '')
+        ? asset($userDetail->personal_page_background_image)
+        : null;
+
           $currencyCode = strtoupper(trim((string) ($userDetail->currency ?? 'EUR')));
           $currencySymbol = match ($currencyCode) {
               'EUR' => '€',
@@ -373,1164 +120,1024 @@
 
               return $currencySymbol.$number;
           };
-          $rateParts = [];
-          if ($userDetail->hourly_rate !== null && $userDetail->hourly_rate !== '') {
-              $rateParts[] = $formatRate($userDetail->hourly_rate).'/hr';
-          }
-          if ($userDetail->half_day_rate !== null && $userDetail->half_day_rate !== '') {
-              $rateParts[] = $formatRate($userDetail->half_day_rate).' half-day';
-          }
-          if ($userDetail->full_day_rate !== null && $userDetail->full_day_rate !== '') {
-              $rateParts[] = $formatRate($userDetail->full_day_rate).' full-day';
-          }
-          $ratesLine = implode(' • ', $rateParts);
-          $artistPublicName = $userDetail->publicDisplayName();
+    $hourlyRateLabel = $formatRate($userDetail->hourly_rate);
+    $halfDayRateLabel = $formatRate($userDetail->half_day_rate);
+    $fullDayRateLabel = $formatRate($userDetail->full_day_rate);
+    $hasRates = $hourlyRateLabel !== '' || $halfDayRateLabel !== '' || $fullDayRateLabel !== '';
+
+    $depositType = strtolower((string) ($userDetail->minimum_deposit_type ?? 'percentage'));
+    $depositAmountRaw = (float) ($userDetail->minimum_deposit_amount ?? 30);
+    $depositAmountLabel = rtrim(rtrim(number_format(max(0, $depositAmountRaw), 2, '.', ''), '0'), '.');
+    $depositShort = $depositType === 'amount'
+        ? $currencySymbol.$depositAmountLabel.' deposit to book. It comes off your final price.'
+        : $depositAmountLabel.'% deposit to book. It comes off your final price.';
+
+    $availability = (string) ($userDetail->availability_status ?? 'design_custom');
+    $booksClosed = $availability === 'closed';
+    $acceptsCustom = in_array($availability, ['design_custom', 'custom_only'], true);
+    $acceptsDesigns = in_array($availability, ['design_custom', 'design_only'], true);
+    $statusLabel = match ($availability) {
+        'closed' => 'Books closed',
+        'design_only' => 'Designs only',
+        'custom_only' => 'Custom only',
+        default => 'Books open',
+    };
+    $requestCustomUrl = route('public.request-custom', ['user_name' => $userDetail->user_name]);
+    $waitlistSignupMode = (string) ($userDetail->waitlist_signup_mode ?? 'name_email');
+    $waitlistUsesRequestForm = $waitlistSignupMode === 'request_form';
+    $waitlistRequestFormUrl = route('public.request-custom', [
+        'user_name' => $userDetail->user_name,
+        'waitlist' => 1,
+    ]);
+    $profileUrl = route('public.artist', ['username' => $userDetail->user_name]);
+    $profileHostPath = preg_replace('#^https?://#', '', $profileUrl);
+
+    $workplaces = collect();
+    if (\App\Models\UserStudio::tableReady()) {
+        $workplaces = $userDetail->user->userStudios()
+            ->active()
+            ->with('studio')
+            ->orderBy('id')
+            ->get();
+    }
+    $workplaceCards = $workplaces->map(function ($row) {
+        $name = trim((string) ($row->studio?->name ?? $row->studio_name ?? ''));
+        $street = trim(trim((string) ($row->street_number ?? '')).' '.trim((string) ($row->street_name ?? '')));
+        if ($street === '') {
+            $street = trim((string) ($row->studio_address ?? ''));
+        }
+        $cityLine = implode(', ', array_filter([
+            trim((string) ($row->postal_code ?? '')),
+            trim((string) ($row->city ?? '')),
+            trim((string) ($row->country ?? '')),
+        ]));
+        $address = implode(', ', array_filter([$street, $cityLine]));
+
+        return [
+            'name' => $name !== '' ? $name : 'Studio',
+            'address' => $address,
+            'maps' => trim((string) ($row->google_maps_link ?? '')),
+        ];
+    })->filter(fn ($c) => $c['name'] !== '' || $c['address'] !== '')->values();
+
+    if ($workplaceCards->isEmpty()) {
+        $studioName = trim((string) ($userDetail->studio_name ?? ''));
+        $addressLines = $userDetail->studioLocationLines();
+        array_shift($addressLines);
+        $workplaceCards = collect([[
+            'name' => $studioName !== '' ? $studioName : 'Studio',
+            'address' => implode(', ', $addressLines) ?: $locationLine,
+            'maps' => trim((string) ($userDetail->google_maps_link ?? '')),
+        ]])->filter(fn ($c) => ($c['name'] !== 'Studio' || $c['address'] !== ''));
+    }
+
+    $multiStudio = $workplaceCards->count() > 1;
+    $primaryWorkplace = $workplaceCards->first();
+
+    $nextGuest = $guestSpots->first(fn ($s) => $s->isReservable());
+    $hasAnyGuest = $displayGuestSpots && $guestSpots->count() > 0;
+    $guestNotifyAny = $displayGuestSpots && ! $nextGuest;
+
+    $portfolioForJs = $artistPortfolios->values()->map(function ($portfolio) {
+        $colorLabel = match ($portfolio->color) {
+            'color' => 'Full Color',
+            'black-grey' => 'Black & Grey',
+            'both' => 'Black & Color',
+            default => (string) $portfolio->color,
+        };
+
+        return [
+            'id' => $portfolio->id,
+            'title' => $portfolio->title,
+            'desc' => trim((string) ($portfolio->description ?? '')),
+            'style' => ucwords(str_replace('-', ' ', $portfolio->primary_style)),
+            'placement' => $portfolio->placement_label,
+            'colors' => $colorLabel,
+            'image' => asset($portfolio->image),
+            'tags' => collect($portfolio->tags ?? [])->map(function ($tag) {
+                $tag = trim((string) $tag);
+
+                return $tag === '' ? '' : (str_starts_with($tag, '#') ? $tag : '#'.$tag);
+            })->filter()->values()->all(),
+        ];
+    })->values();
+
+    $websiteHref = \App\Support\SocialLinks::publicHref('website', $userDetail->social_links['website'] ?? null);
+    $instagramHref = \App\Support\SocialLinks::publicHref('instagram', $userDetail->social_links['instagram'] ?? null);
+    $tiktokHref = \App\Support\SocialLinks::publicHref('tiktok', $userDetail->social_links['tiktok'] ?? null);
+    $youtubeHref = \App\Support\SocialLinks::publicHref('youtube', $userDetail->social_links['youtube'] ?? null);
+    $facebookHref = \App\Support\SocialLinks::publicHref('facebook', $userDetail->social_links['facebook'] ?? null);
+    $hasSocial = $websiteHref || $instagramHref || $tiktokHref || $youtubeHref || $facebookHref;
+
+    $escAttr = static fn ($v) => e((string) $v);
+    $avatarBg = $avatarUrl ? ('background-image:url('.$escAttr($avatarUrl).')') : '';
+    if ($bannerUrl) {
+        $bannerStyle = 'background-color:'.$escAttr($schemePrimary)
+            .';background-image:url('.$escAttr($bannerUrl).')'
+            .';background-position:center top;background-size:cover;background-repeat:no-repeat';
+    } else {
+        $bannerStyle = 'background-color:'.$escAttr($schemePrimary)
+            .';background-image:linear-gradient(120deg,'.$escAttr($schemePrimary).','.$escAttr($schemeMid).')'
+            .';background-position:center top;background-size:cover;background-repeat:no-repeat';
+    }
+
+    $boxHtmlAvatar = $avatarUrl
+        ? '<button type="button" class="cst-av" data-photo aria-label="Open '.e($artistPublicName).'\'s profile photo" style="background-image:url(\''.e($avatarUrl).'\')"></button>'
+        : '<button type="button" class="cst-av" data-photo aria-label="Open '.e($artistPublicName).'\'s profile photo" style="background:linear-gradient(135deg,'.e($schemePrimary).','.e($schemeMid).');display:flex;align-items:center;justify-content:center;font-weight:800;font-size:48px;color:#fff">'.e($userDetail->publicDisplayInitials()).'</button>';
+    $boxHtmlStyles = collect($styleLabels)->map(fn ($l) => '<span>'.e($l).'</span>')->implode('');
+    $boxHtmlBio = $userDetail->shouldDisplayBio()
+        ? '<p class="cst-bio" id="cbio">'.e($userDetail->personal_page_description).'</p>'
+        : '';
+    $boxHtmlTag = $showTagline ? '<div class="cst-tag" id="ctag">'.e($tagline).'</div>' : '';
+    $boxHtmlLoc = $locationLine !== '' ? '<span class="sep">&middot;</span><span>'.e($locationLine).'</span>' : '';
+    $boxHtmlSince = $tattooingSince !== '' ? '<span class="sep">&middot;</span><span>Tattooing since '.e($tattooingSince).'</span>' : '';
+    $boxHtmlStudio = $primaryWorkplace
+        ? '<span id="cstudio"></span>'
+        : '';
+    $boxHtmlSocial = '';
+    if ($hasSocial) {
+        $boxHtmlSocial = '<div class="cst-soc">';
+        if ($instagramHref) {
+            $boxHtmlSocial .= '<a href="'.e($instagramHref).'" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>';
+        }
+        if ($tiktokHref) {
+            $boxHtmlSocial .= '<a href="'.e($tiktokHref).'" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 2h-3.3v13.1a2.9 2.9 0 1 1-2.1-2.8V8.9a6.3 6.3 0 1 0 5.4 6.2V8.4a7.9 7.9 0 0 0 4.4 1.3V6.4a4.5 4.5 0 0 1-4.4-4.4z"/></svg></a>';
+        }
+        if ($youtubeHref) {
+            $boxHtmlSocial .= '<a href="'.e($youtubeHref).'" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><span class="ms">play_circle</span></a>';
+        }
+        if ($facebookHref) {
+            $boxHtmlSocial .= '<a href="'.e($facebookHref).'" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><span class="ms">public</span></a>';
+        }
+        if ($websiteHref) {
+            $boxHtmlSocial .= '<a href="'.e($websiteHref).'" target="_blank" rel="noopener noreferrer" aria-label="Website"><span class="ms">language</span></a>';
+        }
+        $boxHtmlSocial .= '</div>';
+    }
+    $lookBoxHtml = $boxHtmlAvatar
+        .'<h1>'.e($artistPublicName).'</h1>'
+        .$boxHtmlTag
+        .'<div class="cst-meta" style="position:relative">'.$boxHtmlStudio.$boxHtmlLoc.$boxHtmlSince.'<div class="cst-pop" id="cstpop" hidden></div></div>'
+        .($boxHtmlStyles !== '' ? '<div class="cst-sty">'.$boxHtmlStyles.'</div>' : '')
+        .($extraServicesLine !== '' ? '<div class="cst-svc" id="csvc"><b>Also:</b> '.e($extraServicesLine).'</div>' : '')
+        .$boxHtmlBio
+        .$boxHtmlSocial;
         @endphp
+  @include('public.partials.artist-page-css')
+  <style>
+    :root{
+      --a1: {{ $schemePrimary }};
+      --a2: {{ $schemeMid }};
+      --acc: {{ $schemePrimary }};
+      --accl: {{ $schemeTint }};
+    }
+    .bbtn.pri{background:var(--acc)}
+    .tab[aria-selected=true]{border-bottom-color:var(--acc)}
+    .tab[aria-selected=true] .n{background:var(--acc)}
+    .bar i,.chip.pri{background:var(--acc)}
+    .tg.st,.pill.pl,.gd{background:var(--accl);color:var(--acc)}
+  </style>
+</head>
+<body class="{{ $isLookPreview ? 'bp-prev' : '' }}" data-books="{{ $booksClosed ? 'closed' : 'open' }}" data-look-who="artist"><div class="banner" id="banner" style="{{ $bannerStyle }}"></div>
 
-        <!-- Name -->
-        <div class="flex flex-wrap items-baseline gap-2 mb-1">
-          <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface">{{ $artistPublicName }}</h1>
-        </div>
-
-        @if(($userDetail->display_tagline ?? true) && $tagline !== '')
-          <p class="text-base text-on-surface-variant mb-3">{{ $tagline }}</p>
+<div class="wrap" id="stdhero">
+  <div class="hero" id="herohome">
+    <div>
+      @if($avatarUrl)
+        <div class="av" data-photo role="button" tabindex="0" aria-label="Open {{ $artistPublicName }}'s profile photo" style="cursor:pointer;{{ $avatarBg }}"></div>
+          @else
+        <div class="av av-initials" data-photo role="button" tabindex="0" aria-label="Open {{ $artistPublicName }}'s profile photo" style="cursor:pointer">{{ $userDetail->publicDisplayInitials() }}</div>
+          @endif
+      <h1>{{ $artistPublicName }}</h1>
+      <div class="handle">{{ $artistHandle }}</div>
+      @if($showTagline)
+        <div class="tagline" id="tagline">{{ $tagline }}</div>
+      @endif
+      @if($userDetail->shouldDisplayBio())
+        <p class="bio" id="bio">{{ $userDetail->personal_page_description }}</p>
         @endif
 
-        <!-- Studio / location / tattooing since -->
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-on-surface-variant mb-2">
-          @if($studioName !== '')
-            <span class="flex items-center gap-1">
-              <span class="material-symbols-outlined text-[18px] studio-name-color">storefront</span>
-              <span class="font-semibold studio-name-color">{{ $studioName }}</span>
-            </span>
+      <div class="meta">
+        @if(! $multiStudio && $primaryWorkplace)
+          <div class="mi" id="st1">
+            <span class="ms">storefront</span>
+            <div>
+              <b>{{ $primaryWorkplace['name'] }}</b>
+              @if($primaryWorkplace['address'] !== '')
+                <div style="color:var(--muted);font-size:13.5px">{{ $primaryWorkplace['address'] }}</div>
           @endif
-          @if($locationLine !== '')
-            <span class="flex items-center gap-1">
-              <span class="material-symbols-outlined text-[18px]">location_on</span>
-              {{ $locationLine }}
-            </span>
+            </div>
+          </div>
+        @endif
+
+        @if($multiStudio)
+          <div class="mi" id="st2">
+            <span class="ms">storefront</span>
+            <div style="flex:1">
+              <b>Works at {{ $workplaceCards->count() }} studios</b>
+              <div class="stl">
+                @foreach($workplaceCards as $card)
+                  <div>
+                    <b>{{ $card['name'] }}</b>
+                    @if($card['address'] !== '')
+                      <small>{{ $card['address'] }}</small>
           @endif
+        </div>
+                @endforeach
+              </div>
+              <div class="stlnote">
+                <span class="ms">swap_horiz</span>
+                <span>Where you’ll be tattooed depends on the day you pick.</span>
+              </div>
+            </div>
+          </div>
+          @endif
+
           @if($tattooingSince !== '')
-            <span class="flex items-center gap-1">
-              <span class="material-symbols-outlined text-[18px]">calendar_month</span>
-              Tattooing since {{ $tattooingSince }}
-            </span>
+          <div class="mi"><span class="ms">calendar_month</span><div>Tattooing since {{ $tattooingSince }}</div></div>
           @endif
-        </div>
 
-        @if($stylesLine !== '')
-          <div class="flex flex-wrap items-start gap-1 text-sm text-on-surface-variant mb-2">
-            <span class="material-symbols-outlined text-[18px] mt-0.5 shrink-0">palette</span>
-            <span>{{ $stylesLine }}</span>
+        @if(count($styleLabels))
+          <div class="mi">
+            <span class="ms">palette</span>
+            <div class="chips">
+              @foreach($styleLabels as $i => $label)
+                <span class="chip {{ $i === 0 ? 'pri' : '' }}">{{ $label }}</span>
+              @endforeach
+            </div>
           </div>
         @endif
 
-        @if($ratesLine !== '')
-          <div class="flex flex-wrap items-center gap-1 text-sm text-on-surface-variant mb-4">
-            <span class="material-symbols-outlined text-[18px] shrink-0">payments</span>
-            <span>{{ $ratesLine }}</span>
+        @if($extraServicesLine !== '')
+          <div class="mi" id="svcline">
+            <span class="ms">add_circle</span>
+            <div><b>Also:</b> {{ $extraServicesLine }}</div>
           </div>
-        @else
-          <div class="mb-4"></div>
         @endif
+      </div>
 
-        @php
-            $websiteHref = \App\Support\SocialLinks::publicHref('website', $userDetail->social_links['website'] ?? null);
-            $instagramHref = \App\Support\SocialLinks::publicHref('instagram', $userDetail->social_links['instagram'] ?? null);
-            $tiktokHref = \App\Support\SocialLinks::publicHref('tiktok', $userDetail->social_links['tiktok'] ?? null);
-            $youtubeHref = \App\Support\SocialLinks::publicHref('youtube', $userDetail->social_links['youtube'] ?? null);
-            $facebookHref = \App\Support\SocialLinks::publicHref('facebook', $userDetail->social_links['facebook'] ?? null);
-        @endphp
-
-        <!-- Social icons -->
-        <div class="flex items-center gap-2 mb-5">
-            {{-- website --}}
-            @if($websiteHref)
-                <a href="{{ $websiteHref }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="Website">
-                    <i class="fa-solid fa-globe"></i>
-                </a>
-            @endif
-
+      @if($hasSocial)
+        <div class="soc">
             @if($instagramHref)
-                <a href="{{ $instagramHref }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="Instagram">
-                    <i class="fa-brands fa-instagram"></i>
-                </a>
+            <a href="{{ $instagramHref }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
             @endif
             @if($tiktokHref)
-                <a href="{{ $tiktokHref }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="TikTok">
-                    <i class="fa-brands fa-tiktok"></i>
-                </a>
+            <a href="{{ $tiktokHref }}" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 2h-3.3v13.1a2.9 2.9 0 1 1-2.1-2.8V8.9a6.3 6.3 0 1 0 5.4 6.2V8.4a7.9 7.9 0 0 0 4.4 1.3V6.4a4.5 4.5 0 0 1-4.4-4.4z"/></svg></a>
             @endif
             @if($youtubeHref)
-                <a href="{{ $youtubeHref }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="YouTube">
-                    <i class="fa-brands fa-youtube"></i>
-                </a>
+            <a href="{{ $youtubeHref }}" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><span class="ms">play_circle</span></a>
             @endif
             @if($facebookHref)
-                <a href="{{ $facebookHref }}" target="_blank" rel="noopener noreferrer" class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-colors" title="Facebook">
-                    <i class="fa-brands fa-facebook"></i>
-                </a>
+            <a href="{{ $facebookHref }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><span class="ms">public</span></a>
+          @endif
+          @if($websiteHref)
+            <a href="{{ $websiteHref }}" target="_blank" rel="noopener noreferrer" aria-label="Website"><span class="ms">language</span></a>
             @endif
-        </div>
-
-        @if($userDetail->availability_status == 'design_only' || $userDetail->availability_status == 'custom_only')
-            <div id="statusBadge" class="mb-4">
-                <span class="status-badge inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary-container text-secondary rounded-full text-xs font-semibold">
-                    <span class="material-symbols-outlined text-[16px]">info</span>
-                    <span id="statusBadgeText">{{ $userDetail->availability_status == 'design_only' ? 'Currently accepting available design bookings only' : 'Currently accepting custom tattoo requests only' }}</span>
-                </span>
             </div>
         @endif
-        
-        <div id="ctaButtons" class="flex flex-wrap gap-3 {{ $userDetail->availability_status == 'closed' ? 'mb-4' : '' }}">
-            @if($userDetail->availability_status != 'closed')
-                @if($userDetail->availability_status == 'design_only' || $userDetail->availability_status == 'design_custom')
-                    <button id="btnBrowseDesigns" onclick="browseDesigns()" class="px-6 py-2.5  bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors shadow-md shadow-primary/20">
-                        Browse Available Designs
-                    </button>
+    </div>
+
+    <aside class="book" id="book">
+      <div class="status {{ $booksClosed ? 'closed' : '' }}" id="status">{{ $statusLabel }}</div>
+
+      @if($hasRates)
+        <div class="rates">
+          @if($hourlyRateLabel !== '')
+            <div class="rate"><span>Hourly rate</span><b>{{ $hourlyRateLabel }}</b></div>
                 @endif
-                @if($userDetail->availability_status == 'custom_only' || $userDetail->availability_status == 'design_custom')
-                    <a id="btnRequestCustom" href="{{route('public.request-custom', ['user_name' => $userDetail->user_name])}}" class="px-6 py-2.5 border-2 border-primary text-primary rounded-full font-semibold text-sm hover:bg-primary hover:text-on-primary transition-colors inline-flex items-center">
-                        Request Custom Tattoo
-                    </a>
+          @if($halfDayRateLabel !== '')
+            <div class="rate"><span>Half day</span><b>{{ $halfDayRateLabel }}</b></div>
                 @endif
-            @endif
-            @if($displayGuestSpots)
-            <button type="button" id="btnGuestSpots" onclick="openGuestSpots()" class="px-6 py-2.5 border-2 border-outline-variant text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container transition-colors inline-flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[18px]">luggage</span>
-                Guest Spots
-            </button>
-            @endif
-            @if($displayPolicies)
-            <button type="button" id="btnPolicies" onclick="openPolicies()" class="px-6 py-2.5 border-2 border-outline-variant text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container transition-colors inline-flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[18px]">gavel</span>
-                Policies
-            </button>
-            @endif
-            @if($hasFaqs)
-            <button type="button" id="btnFaq" onclick="openFaq()" class="px-6 py-2.5 border-2 border-outline-variant text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container transition-colors inline-flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[18px]">help</span>
-                FAQ
-            </button>
+          @if($fullDayRateLabel !== '')
+            <div class="rate"><span>Full day</span><b>{{ $fullDayRateLabel }}</b></div>
             @endif
         </div>
+      @endif
 
-        <!-- Closed Banner (shown when bookings closed) -->
-        @if($userDetail->availability_status == 'closed')
-            <div id="closedBanner">
-                <div class="bg-surface-container rounded-2xl p-6 text-center">
-                    <span class="material-symbols-outlined text-4xl text-on-surface-variant mb-2">event_busy</span>
-                    <h3 class="text-lg font-bold text-on-surface mb-1">Books Closed.</h3>
-                    <p class="text-sm text-on-surface-variant mb-4">The artist is currently not accepting new bookings. Check back soon!</p>
-                    <button onclick="openModal('waitlistModal')" class="px-6 py-2.5 border-2 border-primary text-primary rounded-full font-semibold text-sm hover:bg-primary hover:text-on-primary transition-colors">
-                        Notify Me When Open
-                    </button>
-                </div>
+      <div class="dep"><span class="ms">payments</span><span>{{ $depositShort }}</span></div>
+
+      @if($multiStudio)
+        <div class="stnote" id="stnote">
+          <span class="ms">location_on</span>
+          <span>Where you’ll be tattooed depends on the day you pick.</span>
             </div>
+      @endif
+
+      <div id="openbox" @if($booksClosed) hidden @endif>
+        @if($acceptsCustom)
+          <a class="bbtn pri" href="{{ $requestCustomUrl }}"><span class="ms">brush</span>Request custom tattoo</a>
+        @elseif($acceptsDesigns && $hasVisibleDesigns)
+          <button type="button" class="bbtn pri" data-act="designs"><span class="ms">palette</span>Browse available designs</button>
         @endif
       </div>
-    </div>
-  </header>
 
-  @if($userDetail->shouldDisplayBio())
-    <!-- About Section -->
-    <div class="max-w-4xl mx-auto px-4 sm:px-6">
-      <div class="mb-6">
-        <h3 class="text-lg font-bold text-on-surface mb-3">About</h3>
-        <p class="text-on-surface-variant text-sm leading-relaxed">{{ $userDetail->personal_page_description }}</p>
+      <div id="closedbox" @if(! $booksClosed) hidden @endif>
+        <div class="closedbox">
+          <span class="ms">event_busy</span>
+          <b>Books closed</b>
+          <p>{{ $artistPublicName }} isn’t taking new bookings right now. Get an email as soon as books open.</p>
       </div>
+        <button type="button" class="bbtn pri" data-act="notify"><span class="ms">notifications</span>Notify me when open</button>
     </div>
+
+      @if($displayGuestSpots)
+        <div id="gcta">
+          @if($nextGuest)
+            @php
+              $nextCity = trim($nextGuest->city.($nextGuest->country ? ', '.$nextGuest->country : ''));
+              $nextDates = $nextGuest->from_date->format('M j').' to '.$nextGuest->to_date->format('M j Y');
+              $nextLeft = $nextGuest->listRemainingSpotsLabel();
+            @endphp
+            <a class="next" id="gnext" href="#guest-spots" data-act="guest">
+              <span class="ms">flight_takeoff</span>
+              <span>
+                <b>Next guest spot: {{ $nextCity }}</b>
+                <small>{{ $nextDates }}@if($nextLeft) · {{ $nextLeft }}@endif</small>
+              </span>
+            </a>
   @endif
+          @if($guestNotifyAny)
+            <button type="button" class="next" id="gnotify" data-act="gwl-any">
+              <span class="ms">notifications</span>
+              <span>
+                <b>Notify me for guest spots in…</b>
+                <small>Get an email when {{ $artistPublicName }} guests in your city</small>
+              </span>
+            </button>
+          @endif
+        </div>
+      @endif
+    </aside>
+  </div>
+</div>
 
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- TABS                                            -->
-  <!-- ═══════════════════════════════════════════════ -->
   @if($showTabsNav)
-  <nav id="artistDesignsSection" class="border-b border-outline-variant sticky top-0 bg-surface/95 backdrop-blur-sm z-30">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 flex gap-0 overflow-x-auto">
+<div class="tabbar" id="artistDesignsSection">
+  <div class="wrap">
+    <div class="tabs" role="tablist" id="tabs">
       @if($hasVisibleDesigns)
-        <button id="tab-designs" onclick="switchTab('designs')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $designsTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} transition-colors whitespace-nowrap">
-          Available Designs
-        </button>
+        <button type="button" class="tab" role="tab" id="tab-designs" data-tab="designs" aria-selected="{{ $designsTabActive ? 'true' : 'false' }}">Available designs <span class="n">{{ $artistDesigns->count() }}</span></button>
       @endif
       @if($hasPortfolio)
-        <button id="tab-portfolio" onclick="switchTab('portfolio')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $portfolioTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap">
-          Portfolio
-        </button>
+        <button type="button" class="tab" role="tab" id="tab-portfolio" data-tab="portfolio" aria-selected="{{ $portfolioTabActive ? 'true' : 'false' }}">Portfolio <span class="n">{{ $artistPortfolios->count() }}</span></button>
       @endif
       @if($displayGuestSpots)
-      <button id="tab-guest-spots" onclick="switchTab('guest-spots')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $guestSpotsTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap">
-        Guest spots
-      </button>
+        <button type="button" class="tab" role="tab" id="tab-guest-spots" data-tab="guest-spots" aria-selected="{{ $guestSpotsTabActive ? 'true' : 'false' }}">Guest spots @if($guestSpots->count())<span class="n">{{ $guestSpots->count() }}</span>@endif</button>
       @endif
       @if($displayPolicies)
-      <button id="tab-policies" onclick="switchTab('policies')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $policiesTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap">
-        Policies
-      </button>
+        <button type="button" class="tab" role="tab" id="tab-policies" data-tab="policies" aria-selected="{{ $policiesTabActive ? 'true' : 'false' }}">Policies</button>
       @endif
       @if($hasFaqs)
-      <button id="tab-faq" onclick="switchTab('faq')" class="tab-btn px-5 py-3.5 text-sm font-semibold border-b-2 {{ $faqTabActive ? 'border-tab-btn text-primary' : 'border-transparent text-on-surface-variant' }} hover:text-on-surface transition-colors whitespace-nowrap">
-        FAQ
-      </button>
+        <button type="button" class="tab" role="tab" id="tab-faq" data-tab="faq" aria-selected="{{ $faqTabActive ? 'true' : 'false' }}">FAQ <span class="n">{{ $faqs->count() }}</span></button>
       @endif
     </div>
-  </nav>
+  </div>
+</div>
   @endif
 
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- AVAILABLE DESIGNS TAB                           -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+<main class="wrap panel" id="panels">
     @if($hasVisibleDesigns)
-        <div id="content-designs" class="tab-content {{ $designsTabActive ? 'active' : '' }}">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div id="content-designs" class="tab-panel {{ $designsTabActive ? 'active' : '' }}" role="tabpanel">
+      <div class="ph"><div><h2>Available designs</h2><p>Flash designs ready to book. Pick one and choose a date.</p></div></div>
+      <div class="dgrid">
             @foreach($artistDesigns as $artistDesign)
-                @php $designSoldOut = $artistDesign->isSoldOut(); @endphp
-                <div class="design-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="window.location.href='{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]) }}'">
-                    <div class="aspect-4-5 bg-gradient-to-br from-violet-100 via-violet-200 to-violet-300 relative">
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <img src="{{ asset($artistDesign->image) }}" alt="Design" class="w-full h-full object-cover {{ $designSoldOut ? 'opacity-60' : '' }}">
-                        </div>
+          @php
+            $designSoldOut = $artistDesign->isSoldOut();
+            $claimed = $artistDesign->claimedBookingCount();
+            $limit = $artistDesign->effectiveRepeatLimit();
+            $remaining = $artistDesign->remainingBookingSlots();
+            $pct = $limit > 0 ? max(0, min(100, (int) round(($claimed / $limit) * 100))) : 0;
+            $designUrl = route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]);
+            $colorLabel = match ($artistDesign->color) {
+              'color' => 'Full Color',
+              'black-grey' => 'Black & Grey',
+              'both' => 'Black & Color',
+              default => (string) $artistDesign->color,
+            };
+            $priceMin = $formatRate($artistDesign->min_price);
+            $priceMax = $formatRate($artistDesign->max_price);
+          @endphp
+          <article class="dc {{ $designSoldOut ? 'off' : '' }}">
+            <div class="dimg" style="background-image:url('{{ asset($artistDesign->image) }}')">
                         @if($designSoldOut)
-                        <div class="absolute inset-0 flex items-center justify-center bg-black/40">
-                            <span class="px-3 py-1.5 rounded-full bg-white/95 text-on-surface text-xs font-bold uppercase tracking-wide">Sold Out</span>
-                        </div>
+                <span class="pill r">Sold out</span>
+              @elseif($remaining > 0 && $remaining <= 2)
+                <span class="pill g">{{ $remaining }} left</span>
                         @endif
                     </div>
-                    <div class="p-4">
-                        <h3 class="font-bold text-on-surface mb-1.5">{{ $artistDesign->title }}</h3>
-                        <div class="flex flex-wrap gap-1.5 mb-2">
-                            <span class="text-xs px-2 py-0.5 rounded-full bg-secondary-container text-secondary font-medium">{{ ucwords(str_replace('-', ' ', $artistDesign->primary_style)) }}</span>
-                            <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">{{ $artistDesign->color == 'color' ? 'Full Color' : ($artistDesign->color == 'black-grey' ? 'Black & Grey' : ($artistDesign->color == 'both' ? 'Black & Color' : $artistDesign->color)) }}</span>
+            <div class="db">
+              <h3>{{ $artistDesign->title }}</h3>
+              <div class="tags">
+                <span class="tg st">{{ ucwords(str_replace('-', ' ', $artistDesign->primary_style)) }}</span>
+                <span class="tg">{{ $colorLabel }}</span>
                         </div>
-                        <p class="text-sm font-semibold price-color mb-1">€{{ $artistDesign->min_price }} — €{{ $artistDesign->max_price }}</p>
-                        <div class="mb-3">
-                            @include('public.partials.design-booking-slots', ['design' => $artistDesign])
-                        </div>
+              <div class="price">{{ $priceMin }}@if($priceMax !== '' && $priceMax !== $priceMin) — {{ $priceMax }}@endif</div>
+              <div class="lim"><b>{{ $claimed }}/{{ $limit }}</b> booked</div>
+              <div class="bar"><i style="width:{{ $pct }}%"></i></div>
+              <div class="sp"></div>
                         @if($designSoldOut)
-                        <a href="{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]) }}" onclick="event.stopPropagation()" class="block w-full py-2 rounded-full text-sm font-semibold text-center bg-surface-container-high text-on-surface-variant hover:bg-surface-container transition-colors">
-                            Sold Out
-                        </a>
+                <div class="bbtn dis" aria-disabled="true">Sold out</div>
                         @else
-                        <a href="{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $artistDesign->slug]) }}" onclick="event.stopPropagation()" class="block w-full py-2 text-on-primary rounded-full text-sm font-semibold transition-colors text-center get-this-tattoo-btn">
-                            Get This Tattoo
-                        </a>
+                <a class="bbtn pri" href="{{ $designUrl }}">Get this tattoo</a>
                         @endif
                     </div>
-                </div>
+          </article>
             @endforeach
-
         </div>
         </div>
     @endif
 
-    <!-- ═══════════════════════════════════════════════ -->
-    <!-- PORTFOLIO TAB                                   -->
-    <!-- ═══════════════════════════════════════════════ -->
     @if($hasPortfolio)
-    <div id="content-portfolio" class="tab-content {{ $portfolioTabActive ? 'active' : '' }}">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div id="content-portfolio" class="tab-panel {{ $portfolioTabActive ? 'active' : '' }}" role="tabpanel">
+      <div class="ph"><div><h2>Portfolio</h2><p>Past work by {{ $artistPublicName }}.</p></div></div>
+      <div class="pgrid">
         @foreach($artistPortfolios as $artistPortfolio)
-            <div class="design-card portfolio-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="openPortfolioModal({{ $loop->index }})">
-            <div class="aspect-1-1 bg-gradient-to-br from-warmGray-200 via-gray-300 to-gray-500 portfolio-card-media">
-                <div class="absolute inset-0 flex items-center justify-center">
-                    <img src="{{ asset($artistPortfolio->image) }}" alt="{{ $artistPortfolio->title }}" class="w-full h-full object-cover">
-                </div>
-                <div class="portfolio-similar-overlay">
-                  <button
-                    type="button"
-                    class="portfolio-similar-btn"
-                    onclick="event.stopPropagation(); requestSimilarTattoo({{ (int) $artistPortfolio->id }});"
-                    aria-label="Request similar tattoo"
-                  >
-                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">brush</span>
-                    Request similar tattoo
-                  </button>
-                </div>
-            </div>
-            <div class="p-4">
-                <h3 class="font-bold text-on-surface mb-1.5">{{ $artistPortfolio->title }}</h3>
-                <div class="flex flex-wrap gap-1.5 mb-2">
-                <span class="text-xs px-2 py-0.5 rounded-full bg-secondary-container text-secondary font-medium">{{ ucwords(str_replace('-', ' ', $artistPortfolio->primary_style)) }}</span>
-                @if(filled($artistPortfolio->placement))
-                <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">{{ $artistPortfolio->placement }}</span>
-                @endif
-                <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">{{ $artistPortfolio->color == 'color' ? 'Full Color' : ($artistPortfolio->color == 'black-grey' ? 'Black & Grey' : ($artistPortfolio->color == 'both' ? 'Black & Color' : $artistPortfolio->color)) }}</span>
-                </div>
-                <div class="flex flex-wrap gap-1">
-                @foreach($artistPortfolio->tags as $tag)
-                    <span class="text-[11px] px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant">#{{ $tag }}</span>
-                @endforeach
-                </div>
-            </div>
-            </div>
+          <button type="button" class="pc" style="background-image:url('{{ asset($artistPortfolio->image) }}')" onclick="openPortfolioModal({{ $loop->index }})" aria-label="{{ $artistPortfolio->title }}">
+            <span class="ov">
+              <b>{{ $artistPortfolio->title }}</b>
+              <small>{{ ucwords(str_replace('-', ' ', $artistPortfolio->primary_style)) }}</small>
+              <span class="req" onclick="event.stopPropagation(); requestSimilarTattoo({{ (int) $artistPortfolio->id }});"><span class="ms">brush</span>Request similar</span>
+            </span>
+          </button>
         @endforeach
-      </div>
-    </div>
-    @endif
+                </div>
+            </div>
+  @endif
 
-    <!-- ═══════════════════════════════════════════════ -->
-    <!-- GUEST SPOTS TAB                                 -->
-    <!-- ═══════════════════════════════════════════════ -->
-    @if($displayGuestSpots)
-    <div id="content-guest-spots" class="tab-content {{ $guestSpotsTabActive ? 'active' : '' }}">
-      <div class="bg-white rounded-2xl border border-outline-variant/40 shadow-sm p-5 sm:p-6">
-        <div class="mb-5">
-          <h3 class="text-lg font-bold text-on-surface mb-1">Guest spots</h3>
-          <p class="text-sm text-on-surface-variant">Upcoming locations where this artist will be guesting.</p>
-        </div>
-
+  @if($displayGuestSpots)
+    <div id="content-guest-spots" class="tab-panel {{ $guestSpotsTabActive ? 'active' : '' }}" role="tabpanel">
+      <div class="ph"><div><h2>Guest spots</h2><p>Where {{ $artistPublicName }} is guesting next.</p></div></div>
+      <div class="gl">
         @forelse($guestSpots as $spot)
           @php
             $spot->ensureCompletedStatus();
-            $spotStatus = $spot->publicStatusLabel();
-            $spotStatusColor = $spot->publicStatusColor();
-            $spotStatusBg = $spot->publicStatusBackground();
-            $spotCountLabel = $spot->effectiveStatusKey() === 'available'
-                ? $spot->listRemainingSpotsLabel()
-                : null;
+            $key = $spot->effectiveStatusKey();
             $canReserve = $spot->isReservable();
+            $isPlanned = $key === 'planned';
+            $spotCountLabel = $key === 'available' ? $spot->listRemainingSpotsLabel() : null;
+            $cityFull = trim($spot->city.($spot->country ? ', '.$spot->country : ''));
+            $dates = $spot->from_date->format('M j').' to '.$spot->to_date->format('M j Y');
+            $hours = $key === 'available' ? $spot->listAvailabilityTimeLabel() : null;
           @endphp
-          <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 py-4 {{ ! $loop->last ? 'border-b border-outline-variant/20' : '' }}">
-            <div class="flex items-center gap-3 min-w-0 flex-1">
-              <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-primary text-xl">luggage</span>
-              </div>
-              <div class="min-w-0">
-                <p class="font-bold text-on-surface truncate">{{ $spot->city }}, {{ $spot->country }}</p>
-                <p class="text-sm text-on-surface-variant">
-                  {{ $spot->from_date->format('M j, Y') }} — {{ $spot->to_date->format('M j, Y') }}
-                  @if($spot->effectiveStatusKey() === 'available' && $spot->listAvailabilityTimeLabel())
-                    · {{ $spot->listAvailabilityTimeLabel() }}
-                  @endif
-                </p>
-                @if($spotCountLabel)
-                  <p class="text-xs font-semibold mt-1" style="color: {{ $spotStatusColor }};">
-                    {{ $spotCountLabel }}
-                  </p>
-                @endif
-              </div>
-            </div>
-            <div class="flex flex-col sm:items-end gap-2 shrink-0 self-start sm:self-center">
-              <span class="inline-flex text-xs font-semibold px-2.5 py-1 rounded-full" style="background: {{ $spotStatusBg }}; color: {{ $spotStatusColor }};">
-                {{ $spotStatus }}
-              </span>
+          <div class="gs">
+            <div class="gd">
+              <small>{{ strtoupper($spot->from_date->format('M')) }}</small>
+              <b>{{ $spot->from_date->format('j') }}</b>
+                </div>
+            <div class="gi">
+              <h3>{{ $spot->city }}@if($spot->country), {{ $spot->country }}@endif</h3>
+              <p>{{ $dates }}@if($hours) · {{ $hours }}@endif</p>
+              @if($spotCountLabel)
+                <div class="left">{{ $spotCountLabel }}</div>
+              @endif
+                </div>
+            <div class="act">
+              <span class="pill {{ $canReserve ? 'av2' : 'pl' }}">{{ $spot->publicStatusLabel() }}</span>
               @if($canReserve)
-                <a
-                  href="{{ route('public.request-custom', ['user_name' => $userDetail->user_name, 'guest_spot' => $spot->id]) }}"
-                  class="guest-spot-reserve inline-flex items-center gap-1 text-sm font-semibold hover:opacity-80 transition-opacity"
-                  style="color: {{ $selectedTheme['primary'] }};"
-                >
-                  Reserve
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_forward</span>
-                </a>
+                <a class="bbtn pri" href="{{ route('public.guest-spot', ['user_name' => $userDetail->user_name, 'guestSpotSlug' => $spot->publicSlug()]) }}">Reserve <span class="ms">arrow_forward</span></a>
+              @elseif($isPlanned)
+                <button type="button" class="bbtn sec" data-act="gwl-planned" data-c="{{ $cityFull }}" data-gs-id="{{ (int) $spot->id }}"><span class="ms">notifications</span>Notify</button>
               @endif
             </div>
-          </div>
+            </div>
         @empty
-          <div class="py-8 text-center">
-            <span class="material-symbols-outlined text-4xl text-outline/40 mb-2 block">luggage</span>
-            <p class="text-sm font-semibold text-on-surface">No guest locations listed yet</p>
-            <p class="text-xs text-on-surface-variant mt-1">Check back soon for upcoming guest spots.</p>
+          <div class="gs" style="justify-content:center;padding:36px">
+            <div class="gi" style="text-align:center">
+              <h3>No guest locations listed yet</h3>
+              <p>Check back soon for upcoming guest spots.</p>
+            </div>
           </div>
         @endforelse
       </div>
     </div>
     @endif
 
-    <!-- ═══════════════════════════════════════════════ -->
-    <!-- POLICIES TAB                                    -->
-    <!-- ═══════════════════════════════════════════════ -->
     @if($displayPolicies)
-    <div id="content-policies" class="tab-content {{ $policiesTabActive ? 'active' : '' }}">
-      <div class="bg-white rounded-2xl border border-outline-variant/40 shadow-sm p-5 sm:p-6 space-y-5">
-        <div>
-          <h3 class="text-lg font-bold text-on-surface mb-1">Policies</h3>
-          <p class="text-sm text-on-surface-variant">Booking terms for appointments with this artist.</p>
-        </div>
-        <div class="space-y-4 text-sm text-on-surface-variant leading-relaxed">
-          <p><span class="font-semibold text-on-surface">Deposit:</span> {{ $depositPolicyText }}</p>
-          <p><span class="font-semibold text-on-surface">Rescheduling:</span> {{ $reschedulePolicyText }}</p>
-          <p><span class="font-semibold text-on-surface">Cancellation:</span> {{ $cancellationPolicyText }}</p>
-          <p><span class="font-semibold text-on-surface">No-show or late cancellation:</span> {{ $noShowPolicyText }}</p>
-          @php $policiesExtraNote = trim((string) ($userDetail->policies_extra_note ?? '')); @endphp
-          @if ($policiesExtraNote !== '')
-            <p><span class="font-semibold text-on-surface">Also:</span> {{ $policiesExtraNote }}</p>
-          @endif
-        </div>
+    <div id="content-policies" class="tab-panel {{ $policiesTabActive ? 'active' : '' }}" role="tabpanel">
+      <div class="ph"><div><h2>Policies</h2><p>Booking terms for appointments with {{ $artistPublicName }}.</p></div></div>
+
+      @if(count($whatsIncludedItems))
+        <div class="inc">
+          <h3>What’s included in the session</h3>
+          <p class="s">These come with every appointment.</p>
+          <div class="incl">
+            @foreach($whatsIncludedItems as $item)
+              <div><span class="ms">check_circle</span>{{ $item }}</div>
+            @endforeach
       </div>
     </div>
     @endif
 
-    @if($hasFaqs)
-    <div id="content-faq" class="tab-content {{ $faqTabActive ? 'active' : '' }}">
-      <div class="bg-white rounded-2xl border border-outline-variant/40 shadow-sm p-5 sm:p-6">
-        <div class="mb-2">
-          <h3 class="text-lg font-bold text-on-surface mb-1">FAQ</h3>
-          <p class="text-sm text-on-surface-variant">Answers to questions clients ask most often.</p>
-        </div>
-        <div id="faqAccordion" class="divide-y divide-outline-variant/20">
-          @foreach($faqs as $faq)
-            <div class="faq-item">
-              <button type="button" class="faq-trigger" aria-expanded="false" onclick="toggleFaqItem(this)">
-                <span class="faq-question-text">{{ $faq->question }}</span>
-                <span class="faq-icon" aria-hidden="true">+</span>
-              </button>
-              <div class="faq-answer">{{ $faq->answer }}</div>
-            </div>
-          @endforeach
-        </div>
-      </div>
-    </div>
-    @endif
-  </main>
-
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- FOOTER                                          -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <footer class="border-t border-outline-variant mt-12 py-8">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div class="flex items-baseline gap-4 mb-4 justify-center md:justify-start">
-  <span class="text-3xl font-bold text-on-surface tracking-tighter leading-none" style="font-family: 'Space Grotesk', sans-serif;">bookpay</span>
-  <span class="text-[9px] font-medium text-on-surface-variant uppercase tracking-widest leading-tight">Tattoo artist platform<br>by Inkjin</span>
+      <div class="pg">
+        <div class="pr"><b>Deposit</b><p>{{ $depositPolicyText }}</p></div>
+        <div class="pr"><b>Rescheduling</b><p>{{ $reschedulePolicyText }}</p></div>
+        <div class="pr"><b>Cancellation</b><p>{{ $cancellationPolicyText }}</p></div>
+        <div class="pr"><b>No-show or late cancellation</b><p>{{ $noShowPolicyText }}</p></div>
 </div>
-      <div class="flex items-center gap-4 text-sm text-on-surface-variant">
-        <a href="https://inkjin.com/en/privacy" class="hover:text-primary transition-colors" target="_blank">Privacy</a>
-        <a href="https://inkjin.com/en/terms" class="hover:text-primary transition-colors" target="_blank">Terms</a>
+      @if($policiesExtraNote !== '')
+        <div class="pnote"><b>Also:</b> {{ $policiesExtraNote }}</div>
+      @endif
       </div>
-    </div>
-  </footer>
+  @endif
 
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- PORTFOLIO DETAIL MODAL (kept)                   -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <div id="portfolioDetailModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeModal('portfolioDetailModal')">
-    <div class="modal-backdrop absolute inset-0"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-      <button onclick="closeModal('portfolioDetailModal')" class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow transition-colors">
-        <span class="material-symbols-outlined text-[20px]">close</span>
+  @if($hasFaqs)
+    <div id="content-faq" class="tab-panel {{ $faqTabActive ? 'active' : '' }}" role="tabpanel">
+      <div class="ph"><div><h2>FAQ</h2><p>Answers to questions clients ask most often.</p></div></div>
+      <div class="faq">
+        @foreach($faqs as $faq)
+          <div class="fq">
+            <button type="button" aria-expanded="false" onclick="toggleFaqItem(this)">
+              <span>{{ $faq->question }}</span>
+              <span class="ms">add</span>
       </button>
-      <div class="modal-body overflow-y-auto">
-        <div id="portfolioModalImage" class="aspect-1-1 bg-surface-container-high relative overflow-hidden">
-          <img id="portfolioModalImageEl" src="" alt="" class="hidden w-full h-full object-cover">
-          <div id="portfolioModalImagePlaceholder" class="absolute inset-0 flex items-center justify-center">
-            <span class="material-symbols-outlined text-gray-400 text-6xl">image</span>
+            <div class="fa" hidden>{{ $faq->answer }}</div>
           </div>
+        @endforeach
         </div>
-        <div class="p-6">
-          <h2 id="portfolioModalTitle" class="text-xl font-bold text-on-surface mb-2">Piece Title</h2>
-          <p id="portfolioModalDesc" class="text-sm text-on-surface-variant mb-5 leading-relaxed">Description of this portfolio piece.</p>
-          <div class="flex flex-wrap gap-3 mb-4">
-            <div>
-              <p class="text-[11px] text-on-surface-variant uppercase tracking-wide mb-0.5">Style</p>
-              <p id="portfolioModalStyle" class="text-sm font-semibold text-on-surface">Japanese</p>
             </div>
-            <div>
-              <p class="text-[11px] text-on-surface-variant uppercase tracking-wide mb-0.5">Placement</p>
-              <p id="portfolioModalPlacement" class="text-sm font-semibold text-on-surface">Anywhere</p>
+  @endif
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="flogo">
+      <b>bookpay</b>
+      <small>Tattoo artist platform<br>by Inkjin</small>
             </div>
-            <div>
-              <p class="text-[11px] text-on-surface-variant uppercase tracking-wide mb-0.5">Colors</p>
-              <p id="portfolioModalColors" class="text-sm font-semibold text-on-surface">Full Color</p>
-            </div>
+    <nav>
+      <a href="https://inkjin.com/en/privacy" target="_blank" rel="noopener noreferrer">Privacy</a>
+      <a href="https://inkjin.com/en/terms" target="_blank" rel="noopener noreferrer">Terms</a>
+    </nav>
           </div>
-          <div id="portfolioModalTags" class="flex flex-wrap gap-1.5 mb-5">
-            <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">#tag</span>
+</footer>
+
+<div class="mcta" id="mcta"></div>
+
+{{-- Portfolio lightbox --}}
+<div class="mb" id="portfolioDetailModal" hidden>
+  <div class="lb" role="dialog" aria-modal="true" aria-label="Portfolio piece">
+    <button type="button" class="x" data-close aria-label="Close"><span class="ms">close</span></button>
+    <div class="lbimg" id="portfolioModalImage"></div>
+    <div class="lbb" id="portfolioModalBody">
+      <h2 id="portfolioModalTitle"></h2>
+      <p id="portfolioModalDesc" style="color:var(--muted);margin-top:8px;font-size:14px;line-height:1.6"></p>
+      <div class="facts">
+        <div><small>Style</small><b id="portfolioModalStyle"></b></div>
+        <div><small>Placement</small><b id="portfolioModalPlacement"></b></div>
+        <div><small>Colors</small><b id="portfolioModalColors"></b></div>
           </div>
-          <button
-            type="button"
-            id="portfolioModalSimilarBtn"
-            class="portfolio-similar-btn portfolio-similar-btn-modal"
-            aria-label="Request similar tattoo"
-          >
-            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">brush</span>
-            Request similar tattoo
-          </button>
-        </div>
+      <div class="tags" id="portfolioModalTags"></div>
+      <button type="button" class="bbtn pri" id="portfolioModalSimilarBtn"><span class="ms">brush</span>Request similar tattoo</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- WAITLIST MODAL                                  -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <div id="waitlistModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeModal('waitlistModal')">
-    <div class="modal-backdrop absolute inset-0"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 overflow-hidden flex flex-col">
-      <button onclick="closeModal('waitlistModal')" class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center shadow-sm transition-colors">
-        <span class="material-symbols-outlined text-[20px]">close</span>
-      </button>
-      
+{{-- Books waitlist: name + email --}}
+<div class="mb" id="waitlistModal" hidden>
+  <div class="nm" role="dialog" aria-modal="true" aria-labelledby="nmh">
+    <button type="button" class="x" data-close aria-label="Close" style="box-shadow:none"><span class="ms">close</span></button>
       <div id="waitlistFormView">
-        <h2 class="text-xl font-bold text-on-surface mb-2">Join the Waitlist</h2>
-        <p class="text-sm text-on-surface-variant mb-6">Enter your name and email to be the first to know when {{ $userDetail->publicDisplayName() }} opens their books.</p>
-        
-        <form id="waitlistForm" onsubmit="event.preventDefault(); submitWaitlist();" class="flex flex-col gap-4" novalidate>
-          <div>
-            <label for="waitlistName" class="block text-sm font-semibold text-on-surface mb-1">Name</label>
-            <input type="text" id="waitlistName" name="name" autocomplete="name" class="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
-            <p id="waitlistNameError" class="hidden text-xs text-error mt-1"></p>
-          </div>
-          <div>
-            <label for="waitlistEmail" class="block text-sm font-semibold text-on-surface mb-1">Email Address</label>
-            <input type="email" id="waitlistEmail" name="email" autocomplete="email" class="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
-            <p id="waitlistEmailError" class="hidden text-xs text-error mt-1"></p>
-          </div>
-          <p id="waitlistFormError" class="hidden text-sm text-error"></p>
-          <button type="submit" id="waitlistSubmitBtn" class="w-full py-3 mt-2 bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-            Notify Me
-          </button>
+      <h2 id="nmh">Join the waitlist</h2>
+      <p>Enter your name and email to be the first to know when {{ $artistPublicName }} opens their books.</p>
+      <form id="waitlistForm" onsubmit="event.preventDefault(); submitWaitlist();" novalidate>
+        <label for="waitlistName">Name</label>
+        <input type="text" id="waitlistName" name="name" autocomplete="name">
+        <p id="waitlistNameError" class="gw-err" hidden style="color:#C62828;font-size:12.5px;font-weight:600;margin-top:5px"></p>
+        <label for="waitlistEmail">Email</label>
+        <input type="email" id="waitlistEmail" name="email" autocomplete="email">
+        <p id="waitlistEmailError" hidden style="color:#C62828;font-size:12.5px;font-weight:600;margin-top:5px"></p>
+        <p id="waitlistFormError" hidden style="color:#C62828;font-size:13px;margin-top:10px"></p>
+        <button type="submit" class="bbtn pri" id="waitlistSubmitBtn" style="margin-top:18px"><span class="ms">notifications</span>Notify me</button>
         </form>
+          </div>
+    <div id="waitlistSuccessView" hidden>
+      <div style="text-align:center;padding-top:8px">
+        <span class="ms" style="font-size:48px;color:var(--green)">check_circle</span>
+        <h2 style="margin-top:10px">You’re on the list!</h2>
+        <p>We’ll email you the moment {{ $artistPublicName }}’s books open.</p>
+        <button type="button" class="bbtn sec" data-close style="margin-top:18px">Close</button>
+          </div>
       </div>
-      
-      <div id="waitlistSuccessView" class="hidden flex-col items-center text-center py-4">
-        <span class="material-symbols-outlined text-6xl text-green-500 mb-4">check_circle</span>
-        <h2 class="text-xl font-bold text-on-surface mb-2">You're on the list!</h2>
-        <p class="text-sm text-on-surface-variant mb-6">We'll email you the moment {{ $userDetail->publicDisplayName() }}'s books open.</p>
-        <button onclick="closeModal('waitlistModal')" class="w-full py-3 bg-surface-container text-on-surface rounded-full font-semibold text-sm hover:bg-surface-container-high transition-colors">
-          Close
-        </button>
       </div>
     </div>
+
+{{-- Books waitlist: request-form intro --}}
+<div class="mb" id="waitlistRequestModal" hidden>
+  <div class="nm" role="dialog" aria-modal="true" aria-labelledby="wlReqTitle">
+    <button type="button" class="x" data-close aria-label="Close" style="box-shadow:none"><span class="ms">close</span></button>
+    <h2 id="wlReqTitle">Get notified when books open</h2>
+    <p>Tell {{ $artistPublicName }} what you’d like to get. You’ll fill in a short request form, and you’ll get an email as soon as books open.</p>
+    <a href="{{ $waitlistRequestFormUrl }}" class="bbtn pri" id="waitlistRequestContinueBtn" style="margin-top:18px;text-decoration:none">
+      Continue to request form <span class="ms">arrow_forward</span>
+    </a>
+  </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/js/all.min.js" integrity="sha512-6BTOlkauINO65nLhXhthZMtepgJSghyimIalb+crKRPhvhmsCdnIuGcVbR5/aQY2A+260iC1OPy1oCdB6pSSwQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  @include('partials.bookpay-public-api')
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- JAVASCRIPT                                      -->
-  <!-- ═══════════════════════════════════════════════ -->
+@include('partials.bookpay-public-api')
+<script src="{{ asset('new-ui-design-assets/guest-waitlist.js') }}"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
   <script>
+(function () {
     const waitlistArtistUsername = @json($userDetail->user_name);
+    const waitlistUsesRequestForm = @json($waitlistUsesRequestForm);
+    const waitlistRequestFormUrl = @json($waitlistRequestFormUrl);
+  const artistDisplayName = @json($artistPublicName);
     const csrfToken = @json(csrf_token());
-
-    // ── Data ──────────────────────────────────────────
       const portfolio = @json($portfolioForJs);
-      const requestSimilarBaseUrl = @json($requestSimilarBaseUrl);
+  const requestSimilarBaseUrl = @json($requestCustomUrl);
+  const profileLink = @json($profileHostPath);
+  const avatarUrl = @json($avatarUrl);
+  const multiStudio = @json($multiStudio);
+  const workplaces = @json($workplaceCards);
+  const lookState = @json($lookState);
+  const isPreview = @json($isLookPreview);
+  const lookBoxHTML = @json($lookBoxHtml);
+  const booksClosed = @json($booksClosed);
+  const acceptsCustom = @json($acceptsCustom);
+  const hasVisibleDesigns = @json($hasVisibleDesigns);
 
-    function requestSimilarTattoo(portfolioId) {
-      const id = parseInt(portfolioId, 10);
-      if (!id || !requestSimilarBaseUrl) return;
-      const url = new URL(requestSimilarBaseUrl, window.BOOKPAY_BASE_URL || window.location.origin);
-      url.searchParams.set('portfolio', String(id));
-      window.location.href = url.toString();
+  const $ = (id) => document.getElementById(id);
+
+  try {
+    if (isPreview) {
+      /* BPLook.get already reads bp-look-artist-preview */
+    } else {
+      sessionStorage.setItem('bp-look-artist', JSON.stringify(lookState));
     }
+  } catch (e) {}
 
-    // ── Tab Switching ─────────────────────────────────
-    // Hash deep-links use these exact ids: designs | portfolio | guest-spots | policies | faq
-    const ARTIST_TAB_IDS = ['designs', 'portfolio', 'guest-spots', 'policies', 'faq'];
+  function requestSimilarTattoo(portfolioId) {
+    const id = parseInt(portfolioId, 10);
+    if (!id || !requestSimilarBaseUrl) return;
+    const url = new URL(requestSimilarBaseUrl, window.BOOKPAY_BASE_URL || window.location.origin);
+    url.searchParams.set('portfolio', String(id));
+    window.location.href = url.toString();
+  }
+  window.requestSimilarTattoo = requestSimilarTattoo;
 
-    function isValidArtistTab(tab) {
-      return ARTIST_TAB_IDS.includes(tab) && !!document.getElementById('tab-' + tab);
-    }
+  const ARTIST_TAB_IDS = ['designs', 'portfolio', 'guest-spots', 'policies', 'faq'];
 
-    function tabFromHash() {
-      const raw = (location.hash || '').replace(/^#/, '').trim().toLowerCase();
-      return isValidArtistTab(raw) ? raw : null;
-    }
+  function isValidArtistTab(tab) {
+    return ARTIST_TAB_IDS.includes(tab) && !!document.getElementById('tab-' + tab);
+  }
 
-    function setTabHash(tab) {
-      const next = '#' + tab;
-      if (location.hash === next) return;
-      history.replaceState(null, '', next);
-    }
+  function tabFromHash() {
+    const raw = (location.hash || '').replace(/^#/, '').trim().toLowerCase();
+    return isValidArtistTab(raw) ? raw : null;
+  }
 
-    function switchTab(tab, options) {
-      const opts = options || {};
-      const updateHash = opts.updateHash !== false;
-      if (!isValidArtistTab(tab)) return;
+  function setTabHash(tab) {
+    const next = '#' + tab;
+    if (location.hash === next) return;
+    history.replaceState(null, '', next);
+  }
 
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(el => {
-        el.classList.remove('border-tab-btn', 'text-primary');
-        el.classList.add('border-transparent', 'text-on-surface-variant');
-      });
+  function switchTab(tab, options) {
+    const opts = options || {};
+    const updateHash = opts.updateHash !== false;
+    if (!isValidArtistTab(tab)) return;
+
+    document.querySelectorAll('.tab-panel').forEach((el) => el.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach((el) => el.setAttribute('aria-selected', 'false'));
+
       const content = document.getElementById('content-' + tab);
       if (content) content.classList.add('active');
       const btn = document.getElementById('tab-' + tab);
-      if (btn) {
-        btn.classList.remove('border-transparent', 'text-on-surface-variant');
-        btn.classList.add('border-tab-btn', 'text-primary');
-      }
-      if (updateHash) setTabHash(tab);
-    }
+    if (btn) btn.setAttribute('aria-selected', 'true');
+    if (updateHash) setTabHash(tab);
+    syncMcta();
+  }
+  window.switchTab = switchTab;
 
-    function applyTabFromHash(options) {
-      const tab = tabFromHash();
-      if (!tab) return false;
-      switchTab(tab, Object.assign({ updateHash: false }, options || {}));
-      return true;
-    }
+  function applyTabFromHash() {
+    const tab = tabFromHash();
+    if (!tab) return false;
+    switchTab(tab, { updateHash: false });
+    return true;
+  }
 
-    window.addEventListener('hashchange', function () {
-      applyTabFromHash();
-    });
+  document.querySelectorAll('.tab[data-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
 
-    // Script is at end of body; apply hash tab immediately (and scroll once if linked).
-    if (applyTabFromHash()) {
-      const nav = document.getElementById('artistDesignsSection');
-      if (nav) {
-        requestAnimationFrame(function () {
-          nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      }
+  window.addEventListener('hashchange', applyTabFromHash);
+  if (applyTabFromHash()) {
+    const nav = $('artistDesignsSection');
+    if (nav) requestAnimationFrame(() => nav.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  function openGuestSpots() {
+    if (!isValidArtistTab('guest-spots')) return;
+    switchTab('guest-spots');
+    const target = $('artistDesignsSection') || $('content-guest-spots');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function browseDesigns() {
+    if (!isValidArtistTab('designs')) return;
       switchTab('designs');
-      const target = document.getElementById('artistDesignsSection') || document.getElementById('content-designs');
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
+    const target = $('artistDesignsSection') || $('content-designs');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
-    function openPolicies() {
-      switchTab('policies');
-      const target = document.getElementById('artistDesignsSection') || document.getElementById('content-policies');
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
+  function toggleFaqItem(btn) {
+    const item = btn.closest('.fq');
+    if (!item) return;
+    const ans = item.querySelector('.fa');
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    if (ans) ans.hidden = open;
+    const icon = btn.querySelector('.ms');
+    if (icon) icon.textContent = open ? 'add' : 'remove';
+  }
+  window.toggleFaqItem = toggleFaqItem;
 
-    function openGuestSpots() {
-      switchTab('guest-spots');
-      const target = document.getElementById('artistDesignsSection') || document.getElementById('content-guest-spots');
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-
-    function openFaq() {
-      switchTab('faq');
-      const target = document.getElementById('artistDesignsSection') || document.getElementById('content-faq');
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-
-    function toggleFaqItem(btn) {
-      const item = btn.closest('.faq-item');
-      if (!item) return;
-      const isOpen = item.classList.contains('open');
-      item.classList.toggle('open', !isOpen);
-      btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-      const icon = btn.querySelector('.faq-icon');
-      if (icon) icon.textContent = isOpen ? '+' : '−';
-    }
-
-    // ── Modal Helpers ─────────────────────────────────
     function openModal(id) {
-      const modal = document.getElementById(id);
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      document.body.style.overflow = 'hidden';
+    const modal = $(id);
+    if (!modal) return;
+    modal.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
     }
 
     function closeModal(id) {
-      const modal = document.getElementById(id);
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      document.body.style.overflow = '';
-      if (id === 'waitlistModal') {
-        resetWaitlistModal();
-      }
+    const modal = $(id);
+    if (!modal) return;
+    modal.hidden = true;
+    document.documentElement.style.overflow = '';
+    if (id === 'waitlistModal') resetWaitlistModal();
     }
 
     function resetWaitlistModal() {
-      document.getElementById('waitlistFormView')?.classList.remove('hidden');
-      const successView = document.getElementById('waitlistSuccessView');
-      if (successView) {
-        successView.classList.add('hidden');
-        successView.classList.remove('flex');
-      }
-      const form = document.getElementById('waitlistForm');
-      if (form) form.reset();
+    $('waitlistFormView')?.removeAttribute('hidden');
+    const success = $('waitlistSuccessView');
+    if (success) success.hidden = true;
+    $('waitlistForm')?.reset();
       clearWaitlistErrors();
-      const submitBtn = document.getElementById('waitlistSubmitBtn');
+    const submitBtn = $('waitlistSubmitBtn');
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Notify Me';
+      submitBtn.innerHTML = '<span class="ms">notifications</span>Notify me';
       }
     }
 
     function clearWaitlistErrors() {
       ['waitlistNameError', 'waitlistEmailError', 'waitlistFormError'].forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.textContent = '';
-          el.classList.add('hidden');
-        }
-      });
-      ['waitlistName', 'waitlistEmail'].forEach((id) => {
-        document.getElementById(id)?.classList.remove('border-error');
-      });
+      const el = $(id);
+      if (el) { el.textContent = ''; el.hidden = true; }
+    });
+    ['waitlistName', 'waitlistEmail'].forEach((id) => $(id)?.classList.remove('border-error'));
     }
 
     function showWaitlistFieldError(fieldId, errorId, message) {
-      const field = document.getElementById(fieldId);
-      const error = document.getElementById(errorId);
+    const field = $(fieldId);
+    const error = $(errorId);
       if (field) field.classList.add('border-error');
-      if (error) {
-        error.textContent = message;
-        error.classList.remove('hidden');
-      }
+    if (error) { error.textContent = message; error.hidden = false; }
     }
 
-    // ── Portfolio Detail Modal ────────────────────────
-    function openPortfolioModal(index) {
+  window.openPortfolioModal = function (index) {
       const p = portfolio[index];
-      if (!p) {
-        return;
-      }
+    if (!p) return;
+    if ($('content-portfolio')) switchTab('portfolio');
 
-      if (document.getElementById('content-portfolio')) {
-        switchTab('portfolio');
-      }
+    const img = $('portfolioModalImage');
+    if (img) img.style.backgroundImage = p.image ? "url('" + p.image + "')" : '';
+    $('portfolioModalTitle').textContent = p.title || '';
+    const desc = $('portfolioModalDesc');
+    if (desc) {
+      desc.textContent = p.desc || '';
+      desc.hidden = !p.desc;
+    }
+    $('portfolioModalStyle').textContent = p.style || '';
+    $('portfolioModalPlacement').textContent = p.placement || 'Anywhere';
+    $('portfolioModalColors').textContent = p.colors || '';
+    const tagsEl = $('portfolioModalTags');
+    const tags = Array.isArray(p.tags) ? p.tags : [];
+    tagsEl.innerHTML = tags.map((t) => '<span class="tg">' + t + '</span>').join('');
+    const similarBtn = $('portfolioModalSimilarBtn');
+    if (similarBtn) similarBtn.onclick = () => requestSimilarTattoo(p.id);
+    openModal('portfolioDetailModal');
+  };
 
-      const imageEl = document.getElementById('portfolioModalImageEl');
-      const imagePlaceholder = document.getElementById('portfolioModalImagePlaceholder');
-      if (imageEl && p.image) {
-        imageEl.src = p.image;
-        imageEl.alt = p.title || 'Portfolio piece';
-        imageEl.classList.remove('hidden');
-        imagePlaceholder?.classList.add('hidden');
-      } else if (imageEl) {
-        imageEl.src = '';
-        imageEl.alt = '';
-        imageEl.classList.add('hidden');
-        imagePlaceholder?.classList.remove('hidden');
-      }
-
-      document.getElementById('portfolioModalTitle').textContent = p.title || '';
-
-      const descEl = document.getElementById('portfolioModalDesc');
-      if (descEl) {
-        if (p.desc) {
-          descEl.textContent = p.desc;
-          descEl.classList.remove('hidden');
-        } else {
-          descEl.textContent = '';
-          descEl.classList.add('hidden');
-        }
-      }
-
-      document.getElementById('portfolioModalStyle').textContent = p.style || '';
-      document.getElementById('portfolioModalPlacement').textContent = p.placement || 'Anywhere';
-      document.getElementById('portfolioModalColors').textContent = p.colors || '';
-
-      const tagsEl = document.getElementById('portfolioModalTags');
-      const tags = Array.isArray(p.tags) ? p.tags : [];
-      tagsEl.innerHTML = tags.length
-        ? tags.map(t => `<span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">${t}</span>`).join('')
-        : '';
-
-      const similarBtn = document.getElementById('portfolioModalSimilarBtn');
-      if (similarBtn) {
-        similarBtn.onclick = function () {
-          requestSimilarTattoo(p.id);
-        };
-      }
-
-      openModal('portfolioDetailModal');
+  document.addEventListener('click', function (e) {
+    const closeBtn = e.target.closest('[data-close]');
+    if (closeBtn) {
+      const mb = closeBtn.closest('.mb');
+      if (mb) { mb.hidden = true; document.documentElement.style.overflow = ''; if (mb.id === 'waitlistModal') resetWaitlistModal(); }
+      return;
+    }
+    if (e.target.classList.contains('mb')) {
+      e.target.hidden = true;
+      document.documentElement.style.overflow = '';
+      if (e.target.id === 'waitlistModal') resetWaitlistModal();
+      return;
     }
 
-    // ── Escape Key ────────────────────────────────────
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        ['portfolioDetailModal', 'waitlistModal'].forEach(id => {
-          if (!document.getElementById(id).classList.contains('hidden')) {
-            closeModal(id);
-          }
-        });
+    const act = e.target.closest('[data-act]');
+    if (!act) return;
+    const a = act.dataset.act;
+    if (a === 'notify') {
+      if (waitlistUsesRequestForm) {
+        return openModal('waitlistRequestModal');
       }
+      return openModal('waitlistModal');
+    }
+    if (a === 'custom') return (window.location.href = requestSimilarBaseUrl);
+    if (a === 'designs') return browseDesigns();
+    if (a === 'guest') return openGuestSpots();
+    if (a === 'gwl-any' && window.bpGuestWL) return bpGuestWL.open({ artist: artistDisplayName, artistUsername: waitlistArtistUsername });
+    if (a === 'gwl-planned' && window.bpGuestWL) return bpGuestWL.open({
+      artist: artistDisplayName,
+      artistUsername: waitlistArtistUsername,
+      city: act.dataset.c,
+      guestSpotId: act.dataset.gsId ? Number(act.dataset.gsId) : null,
+      kind: 'planned',
     });
+  });
 
-    // ── Waitlist Submit ───────────────────────────────
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    ['portfolioDetailModal', 'waitlistModal', 'waitlistRequestModal'].forEach((id) => {
+      const el = $(id);
+      if (el && !el.hidden) closeModal(id);
+    });
+  });
+
     async function submitWaitlist() {
       clearWaitlistErrors();
-
-      const name = String(document.getElementById('waitlistName')?.value || '').trim();
-      const email = String(document.getElementById('waitlistEmail')?.value || '').trim();
+    const name = String($('waitlistName')?.value || '').trim();
+    const email = String($('waitlistEmail')?.value || '').trim();
       let hasError = false;
-
-      if (!name) {
-        showWaitlistFieldError('waitlistName', 'waitlistNameError', 'Please enter your name.');
-        hasError = true;
-      }
-
-      if (!email) {
-        showWaitlistFieldError('waitlistEmail', 'waitlistEmailError', 'Please enter your email address.');
-        hasError = true;
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showWaitlistFieldError('waitlistEmail', 'waitlistEmailError', 'Please enter a valid email address.');
-        hasError = true;
-      }
-
+    if (!name) { showWaitlistFieldError('waitlistName', 'waitlistNameError', 'Please enter your name.'); hasError = true; }
+    if (!email) { showWaitlistFieldError('waitlistEmail', 'waitlistEmailError', 'Please enter your email address.'); hasError = true; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showWaitlistFieldError('waitlistEmail', 'waitlistEmailError', 'Please enter a valid email address.'); hasError = true; }
       if (hasError) return;
 
-      const submitBtn = document.getElementById('waitlistSubmitBtn');
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Submitting...';
-      }
+    const submitBtn = $('waitlistSubmitBtn');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting...'; }
 
-      try {
-        const response = await fetch(bookpayUrl('/api/public/submit-waitlist'), {
+    try {
+      const response = await fetch(bookpayUrl('/api/public/submit-waitlist'), {
           method: 'POST',
-          credentials: 'include',
+        credentials: 'include',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
           },
-          body: JSON.stringify({
-            artist_username: waitlistArtistUsername,
-            name: name,
-            email: email,
-          }),
-        });
-
-        const data = await response.json();
-
+        body: JSON.stringify({ artist_username: waitlistArtistUsername, name, email }),
+      });
+      const data = await response.json().catch(() => ({}));
         if (!response.ok) {
           if (response.status === 422 && data.errors) {
-            if (data.errors.name) {
-              showWaitlistFieldError('waitlistName', 'waitlistNameError', data.errors.name[0]);
-            }
-            if (data.errors.email) {
-              showWaitlistFieldError('waitlistEmail', 'waitlistEmailError', data.errors.email[0]);
-            }
-            const formError = document.getElementById('waitlistFormError');
-            if (formError && data.message && !data.errors.name && !data.errors.email) {
-              formError.textContent = data.message;
-              formError.classList.remove('hidden');
-            }
+          if (data.errors.name) showWaitlistFieldError('waitlistName', 'waitlistNameError', data.errors.name[0]);
+          if (data.errors.email) showWaitlistFieldError('waitlistEmail', 'waitlistEmailError', data.errors.email[0]);
           } else {
-            const formError = document.getElementById('waitlistFormError');
-            if (formError) {
-              formError.textContent = (data && data.message) || 'Unable to join the waitlist. Please try again.';
-              formError.classList.remove('hidden');
-            }
+          const formError = $('waitlistFormError');
+          if (formError) { formError.textContent = (data && data.message) || 'Unable to join the waitlist. Please try again.'; formError.hidden = false; }
           }
           return;
         }
-
-        document.getElementById('waitlistFormView').classList.add('hidden');
-        document.getElementById('waitlistSuccessView').classList.remove('hidden');
-        document.getElementById('waitlistSuccessView').classList.add('flex');
+      $('waitlistFormView').hidden = true;
+      $('waitlistSuccessView').hidden = false;
       } catch (err) {
-        const formError = document.getElementById('waitlistFormError');
-        if (formError) {
-          formError.textContent = 'Unable to join the waitlist. Please try again.';
-          formError.classList.remove('hidden');
-        }
+      const formError = $('waitlistFormError');
+      if (formError) { formError.textContent = 'Unable to join the waitlist. Please try again.'; formError.hidden = false; }
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Notify Me';
-        }
+        submitBtn.innerHTML = '<span class="ms">notifications</span>Notify me';
       }
     }
+  }
+  window.submitWaitlist = submitWaitlist;
 
-    // ── Deep Linking (Hash + Query Params) ────────────
-    function handleDeepLink() {
-      const hash = window.location.hash.replace('#', '');
-      const params = new URLSearchParams(window.location.search);
-      const action = params.get('action');
-
-      // Hash takes priority
-      if (hash) {
-        if (hash === 'request-custom') {
-          window.location.href = 'request-custom.html?artist=Julian+Ink';
-          return;
-        }
-        const designMatch = hash.match(/^book-design-(\d+)$/);
-        if (designMatch) {
-          window.location.href = 'design-detail.html?design=' + designMatch[1];
-          return;
-        }
-        const portfolioMatch = hash.match(/^portfolio-(\d+)$/);
-        if (portfolioMatch) {
-          const idx = parseInt(portfolioMatch[1], 10);
-          if (idx >= 0 && idx < portfolio.length) {
-            openPortfolioModal(idx);
-          }
-          return;
-        }
-      }
-
-      // Fallback to query params
-      if (action === 'request') {
-        window.location.href = 'request-custom.html?artist=Julian+Ink';
-      } else if (action === 'book') {
-        const designIdx = params.get('design') || '0';
-        window.location.href = 'design-detail.html?design=' + designIdx;
-      } else if (action === 'portfolio') {
-        const itemIdx = parseInt(params.get('item') || '0', 10);
-        if (itemIdx >= 0 && itemIdx < portfolio.length) {
-          openPortfolioModal(itemIdx);
-        }
-      }
+  function syncMcta() {
+    const mcta = $('mcta');
+    if (!mcta) return;
+    if (booksClosed) {
+      mcta.innerHTML = '<button type="button" class="bbtn pri" data-act="notify"><span class="ms">notifications</span>Notify me when open</button>';
+    } else if (acceptsCustom) {
+      mcta.innerHTML = '<a class="bbtn pri" href="' + requestSimilarBaseUrl + '"><span class="ms">brush</span>Request custom tattoo</a>';
+    } else if (hasVisibleDesigns) {
+      mcta.innerHTML = '<button type="button" class="bbtn pri" data-act="designs"><span class="ms">palette</span>Browse designs</button>';
+    } else {
+      mcta.innerHTML = '';
     }
+  }
+  syncMcta();
 
-    // Run on page load
-    handleDeepLink();
-
-    // Also handle hash changes
-    window.addEventListener('hashchange', handleDeepLink);
-
-    // ── Booking Status Toggle ─────────────────────────
-    let currentStatus = 'open';
-
-    function setBookingStatus(status) {
-      currentStatus = status;
-
-      // Update toggle buttons
-      document.querySelectorAll('.demo-status-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.status === status);
+  const book = $('book');
+  if (book && 'IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        $('mcta')?.classList.toggle('show', !e.isIntersecting && e.boundingClientRect.top < 0);
       });
+    }).observe(book);
+  }
 
-      // Update URL
-      const url = new URL(window.location);
-      if (status === 'open') url.searchParams.delete('status');
-      else url.searchParams.set('status', status);
-      history.replaceState(null, '', url);
-
-      applyBookingStatus(status);
+  document.addEventListener('click', function (e) {
+    const t = e.target.closest('[data-photo]');
+    if (!t || !window.BPLook) return;
+    BPLook.viewer({
+      img: avatarUrl || '',
+      name: artistDisplayName,
+      link: profileLink,
+      qr: 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=' + encodeURIComponent('https://' + profileLink),
+      file: waitlistArtistUsername + '-qr-code.png',
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-photo]')) {
+      e.preventDefault();
+      e.target.closest('[data-photo]').click();
     }
+  });
 
-    function applyBookingStatus(status) {
-      const btnBrowse = document.getElementById('btnBrowseDesigns');
-      const btnCustom = document.getElementById('btnRequestCustom');
-      const ctaButtons = document.getElementById('ctaButtons');
-      const closedBanner = document.getElementById('closedBanner');
-      const statusBadge = document.getElementById('statusBadge');
-      const statusBadgeText = document.getElementById('statusBadgeText');
-      const designsContent = document.getElementById('content-designs');
-      const designCards = designsContent ? designsContent.querySelectorAll('.design-card') : [];
+  function studioLine() {
+    const el = $('cstudio');
+    if (!el || !workplaces.length) return;
+    if (workplaces.length === 1) {
+      el.innerHTML = '<span class="ms">location_on</span><span class="t">' + workplaces[0].name + '</span>';
+      return;
+    }
+    el.innerHTML = '<button type="button" class="cst-stb" aria-expanded="false" aria-controls="cstpop"><span class="ms">location_on</span><span class="t">' + workplaces[0].name + ' + ' + (workplaces.length - 1) + ' more</span><span class="ms" style="font-size:18px">expand_more</span></button>';
+  }
 
-      // Reset everything
-      if (btnBrowse) btnBrowse.style.display = '';
-      if (btnCustom) btnCustom.style.display = '';
-      if (ctaButtons) ctaButtons.classList.remove('hidden');
-      if (closedBanner) closedBanner.classList.add('hidden');
-      if (statusBadge) statusBadge.classList.add('hidden');
-
-      // Re-enable all "Get This Tattoo" buttons
-      designCards.forEach(card => {
-        const btn = card.querySelector('a[href^="design-detail"]');
-        if (btn) {
-          btn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
-          btn.removeAttribute('title');
-          btn.style.background = '';
-        }
-        card.style.opacity = '';
-        card.style.pointerEvents = '';
-      });
-
-      // Show designs tab content normally
-      const tabDesigns = document.getElementById('tab-designs');
-      if (tabDesigns) tabDesigns.style.display = '';
-      if (designsContent) designsContent.style.display = '';
-
-      switch (status) {
-        case 'open':
-          // Everything normal
-          break;
-
-        case 'flash':
-          // Hide custom button, show badge
-          if (btnCustom) btnCustom.style.display = 'none';
-          if (statusBadge) statusBadge.classList.remove('hidden');
-          if (statusBadgeText) statusBadgeText.textContent = 'Currently accepting available design bookings only';
-          break;
-
-        case 'custom':
-          // Hide browse button, disable design cards
-          if (btnBrowse) btnBrowse.style.display = 'none';
-          if (statusBadge) statusBadge.classList.remove('hidden');
-          if (statusBadgeText) statusBadgeText.textContent = 'Currently accepting custom requests only';
-          if (tabDesigns) {
-            tabDesigns.style.display = 'none';
-          }
-          if (designsContent) {
-            designsContent.style.display = 'none';
-          }
-          switchTab('portfolio');
-          break;
-
-        case 'closed':
-          // Hide booking CTAs, keep Policies, show closed banner
-          if (btnBrowse) btnBrowse.style.display = 'none';
-          if (btnCustom) btnCustom.style.display = 'none';
-          if (closedBanner) closedBanner.classList.remove('hidden');
-          if (statusBadge) statusBadge.classList.add('hidden');
-          if (tabDesigns) {
-            tabDesigns.style.display = 'none';
-          }
-          if (designsContent) {
-            designsContent.style.display = 'none';
-          }
-          switchTab('portfolio');
-          break;
+  document.addEventListener('click', function (e) {
+    const b = e.target.closest('.cst-stb');
+    const pop = $('cstpop');
+    if (b && pop) {
+      const open = pop.hidden;
+      pop.hidden = !open;
+      b.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {
+        pop.innerHTML = workplaces.map(function (w) {
+          const maps = w.maps
+            ? '<a href="' + w.maps + '" target="_blank" rel="noopener noreferrer">Map</a>'
+            : '';
+          return '<div class="it">' + maps + '<b>' + w.name + '</b><small>' + (w.address || '') + '</small></div>';
+        }).join('');
       }
+      return;
     }
+    if (pop && !e.target.closest('.cst-meta')) {
+      pop.hidden = true;
+      const stb = document.querySelector('.cst-stb');
+      if (stb) stb.setAttribute('aria-expanded', 'false');
+    }
+  });
 
-    // Init from URL param
-    (function() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const statusParam = urlParams.get('status');
-      if (statusParam && ['open', 'flash', 'custom', 'closed'].includes(statusParam)) {
-        currentStatus = statusParam;
-        document.querySelectorAll('.demo-status-btn').forEach(btn => {
-          btn.classList.toggle('active', btn.dataset.status === statusParam);
-        });
-        applyBookingStatus(statusParam);
+  if (window.BPLook) {
+    const LOOK = BPLook.publicPage({
+      who: 'artist',
+      base: '',
+      before: document.querySelector('.tabbar') || $('panels'),
+      book: $('book'),
+      bookHome: $('herohome'),
+      std: [$('banner'), $('stdhero')].filter(Boolean),
+      boxHTML: lookBoxHTML,
+      onBuild: function () { studioLine(); },
+      onMode: function (mode, S) {
+        applyScheme(S);
+        if (mode === 'standard' && S && S.banner) {
+          var b = $('banner');
+          b.style.backgroundColor = (BPLook.parseScheme ? BPLook.parseScheme(S.scheme)[0] : String(S.scheme || '').split(',')[0]) || '#1A1A2E';
+          b.style.backgroundImage = "url('" + BPLook.res(S.banner, '') + "')";
+          b.style.backgroundPosition = 'center top';
+          b.style.backgroundSize = 'cover';
+          b.style.backgroundRepeat = 'no-repeat';
+        } else if (mode === 'standard') {
+          const g = BPLook.parseScheme(S && S.scheme);
+          var b = $('banner');
+          b.style.backgroundColor = g[0] || '#1A1A2E';
+          b.style.backgroundImage = 'linear-gradient(120deg,' + (g[0] || '#1A1A2E') + ',' + (g[1] || g[0] || '#3A3A5C') + ')';
+          b.style.backgroundPosition = 'center top';
+          b.style.backgroundSize = 'cover';
+          b.style.backgroundRepeat = 'no-repeat';
+        }
+      },
+    });
+
+    function applyScheme(S) {
+      const g = BPLook.parseScheme(S && S.scheme);
+      const root = document.documentElement.style;
+      root.setProperty('--a1', g[0] || '#1A1A2E');
+      root.setProperty('--a2', g[1] || g[0] || '#3A3A5C');
+      root.setProperty('--acc', g[0] || '#1A1A2E');
+      root.setProperty('--accl', g[2] || '#ECEBF3');
+    }
+    applyScheme(LOOK.state);
+    if (LOOK.state.mode === 'standard' && LOOK.state.banner) {
+      var b = $('banner');
+      b.style.backgroundColor = BPLook.parseScheme(LOOK.state.scheme)[0] || '#1A1A2E';
+      b.style.backgroundImage = "url('" + BPLook.res(LOOK.state.banner, '') + "')";
+      b.style.backgroundPosition = 'center top';
+      b.style.backgroundSize = 'cover';
+      b.style.backgroundRepeat = 'no-repeat';
+    }
       }
     })();
   </script>
-
-  <script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
-  <script>
-  (function () {
-    if (!window.BPLook) return;
-
-    var dbLook = @json($lookState);
-    var isPreview = @json($isLookPreview);
-    var state = dbLook;
-
-    if (isPreview) {
-      try {
-        var preview = JSON.parse(sessionStorage.getItem('bp-look-artist-preview') || 'null');
-        if (preview && typeof preview === 'object') state = preview;
-      } catch (e) {}
-    }
-
-    function schemeParts(S) {
-      var g = String((S && S.scheme) || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
-      return {
-        primary: g[0] || '#310F7A',
-        mid: g[1] || g[0] || '#531BC9',
-        tint: g[2] || '#F3E8FF'
-      };
-    }
-
-    function ensureRuntimeStyle() {
-      var el = document.getElementById('look-runtime-style');
-      if (!el) {
-        el = document.createElement('style');
-        el.id = 'look-runtime-style';
-        document.head.appendChild(el);
-      }
-      return el;
-    }
-
-    function applyTheme(S) {
-      var c = schemeParts(S);
-      var st = ensureRuntimeStyle();
-      st.textContent = [
-        ':root{--look-primary:' + c.primary + ';--look-mid:' + c.mid + ';--look-tint:' + c.tint + '}',
-        '.bg-primary,#btnBrowseDesigns,.get-this-tattoo-btn{background-color:var(--look-primary)!important}',
-        '.hover\\:bg-primary-container:hover,#btnBrowseDesigns:hover,.get-this-tattoo-btn:hover{background-color:var(--look-mid)!important}',
-        '.text-primary,.price-color,.studio-name-color,.border-tab-btn{color:var(--look-primary)!important}',
-        '.border-primary,.border-tab-btn,#btnRequestCustom{border-color:var(--look-primary)!important}',
-        '#btnRequestCustom{color:var(--look-primary)!important}',
-        '#btnRequestCustom:hover{background-color:var(--look-primary)!important;color:#fff!important}',
-        '.tab-btn.border-tab-btn,.tab-btn[class*="border-tab-btn"]{border-color:var(--look-primary)!important;color:var(--look-primary)!important}',
-        'body.cst{background:var(--look-page-bg,#111)}',
-        'body.cst #artistLookBanner{display:none!important}',
-        'body.cst #artistLookCustomBg{display:block}',
-        '#artistLookCustomBg{display:none;position:fixed;inset:0;z-index:0;background-position:center top;background-size:cover;background-repeat:no-repeat;pointer-events:none;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}',
-        'body.cst #artistLookHeader,body.cst #artistLookProfile,body.cst #artistDesignsSection,body.cst main,body.cst .max-w-4xl{position:relative;z-index:1}',
-        'body.cst #artistLookProfile{background:var(--bx,#fff);backdrop-filter:var(--bxf,none);-webkit-backdrop-filter:var(--bxf,none);border:1px solid var(--bxb,transparent);border-radius:var(--bxr,18px);color:var(--bxt,#111);box-shadow:0 20px 50px rgba(0,0,0,.18);padding:24px 22px 20px;margin-top:120px}',
-        'body.cst #artistLookProfile h1,body.cst #artistLookProfile .text-on-surface{color:var(--bxtt,inherit)!important}',
-        'body.cst #artistLookProfile .text-on-surface-variant,body.cst #artistLookProfile .studio-name-color{color:var(--bxs,inherit)!important}',
-        'body.bp-prev .mk,body.bp-prev .lkm,body.bp-prev .ckbox,body.bp-prev .ckfab{display:none!important}'
-      ].join('\n');
-
-      var fallback = document.getElementById('artistLookBannerFallback');
-      if (fallback) fallback.style.backgroundColor = c.mid;
-    }
-
-    function applyBanner(S) {
-      var img = document.getElementById('artistLookBannerImg');
-      var fallback = document.getElementById('artistLookBannerFallback');
-      if (!img || !fallback) return;
-      var url = S && S.banner ? S.banner : '';
-      if (url) {
-        img.src = url;
-        img.classList.remove('hidden');
-        fallback.classList.add('hidden');
-      } else {
-        img.removeAttribute('src');
-        img.classList.add('hidden');
-        fallback.classList.remove('hidden');
-      }
-    }
-
-    function ensureCustomBg() {
-      var el = document.getElementById('artistLookCustomBg');
-      if (!el) {
-        el = document.createElement('div');
-        el.id = 'artistLookCustomBg';
-        el.setAttribute('aria-hidden', 'true');
-        document.body.insertBefore(el, document.body.firstChild);
-      }
-      return el;
-    }
-
-    function applyCustom(S) {
-      var c = (S && S.c) || {};
-      var colors = schemeParts(S);
-      var styled = BPLook.style(S);
-      var root = document.documentElement.style;
-      root.setProperty('--bx', styled.bg);
-      root.setProperty('--bxf', styled.blur);
-      root.setProperty('--bxr', styled.radius);
-      root.setProperty('--bxb', styled.border);
-      root.setProperty('--bxt', styled.text);
-      root.setProperty('--bxtt', styled.title);
-      root.setProperty('--bxs', styled.sub);
-      root.setProperty('--look-page-bg', c.bgAvg || colors.primary);
-
-      var bg = ensureCustomBg();
-      var desk = c.bgD || c.bgM;
-      var phone = c.bgM || c.bgD;
-      if (desk) {
-        bg.style.backgroundImage = 'url("' + desk + '")';
-      } else {
-        bg.style.backgroundImage = 'linear-gradient(160deg,' + colors.primary + ',' + colors.mid + ')';
-      }
-      var mq = window.matchMedia('(max-width: 780px)');
-      function syncBg() {
-        var u = mq.matches ? (phone || desk) : (desk || phone);
-        if (u) bg.style.backgroundImage = 'url("' + u + '")';
-      }
-      syncBg();
-      if (!applyCustom._boundMq) {
-        applyCustom._boundMq = true;
-        mq.addEventListener('change', syncBg);
-      }
-      document.body.classList.add('cst');
-    }
-
-    function applyStandard() {
-      document.body.classList.remove('cst');
-    }
-
-    function applyLook(S) {
-      if (!S) return;
-      applyTheme(S);
-      if (S.mode === 'custom') {
-        applyCustom(S);
-      } else {
-        applyStandard();
-        applyBanner(S);
-      }
-    }
-
-    applyLook(state);
-  })();
-  </script>
-
 </body>
 </html>

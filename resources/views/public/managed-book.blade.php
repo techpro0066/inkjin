@@ -61,12 +61,23 @@
     .question-div { display: none; min-height: 60vh; align-items: center; justify-content: center; padding: 2rem 0; }
     .question-div.active { display: flex; animation: tfSlideIn 0.4s ease-out; }
     .question-div.active.reverse { animation: tfSlideInReverse 0.4s ease-out; }
+    /* Register steps: no tall centered gap under Back */
+    #stepRegister .question-div { min-height: 0; align-items: flex-start; justify-content: flex-start; padding: 0.25rem 0 1.5rem; }
     .single-choice-radio-button { padding: 0.75rem 1.5rem; border-radius: 9999px; border: 2px solid #cac4d3; font-size: 0.95rem; font-weight: 600; color: #494552; cursor: pointer; transition: all 0.15s; background: white; }
     .single-choice-radio-button:hover { border-color: #310f7a; color: #310f7a; }
     .single-choice-radio-button.selected { background: #310f7a; color: white; border-color: #310f7a; }
     .single-choice-radio-button.option-other { background: #f2ecf5; border-color: #b69fff; color: #310f7a; }
     .single-choice-radio-button.option-other:hover { background: #e8ddff; border-color: #664db1; color: #21005e; }
     .single-choice-radio-button.option-other.selected { background: #310f7a; border-color: #310f7a; color: #ffffff; }
+    /* Studio picker (multi-studio) — matches custom request */
+    .stpick{display:grid;gap:10px}
+    .stc.single-choice-radio-button{display:flex;align-items:center;gap:12px;text-align:left;border:1.5px solid #cac4d3;background:#fff;border-radius:14px;padding:14px 16px;width:100%;box-shadow:none;font-weight:inherit;color:inherit}
+    .stc.single-choice-radio-button:hover{border-color:#310f7a;background:#FBF5FF;color:inherit}
+    .stc.single-choice-radio-button.selected{border-color:#310f7a;background:#FBF5FF;color:inherit;box-shadow:none}
+    .stc .stc-ico{color:#310f7a;font-size:20px;flex:none}
+    .stc .stc-txt{flex:1;min-width:0}.stc .stc-txt b{display:block;font-size:15px;color:#1c1b21}.stc .stc-txt small{display:block;font-size:12.5px;color:#494552;margin-top:2px}
+    .stc .stc-ck{margin-left:auto;color:#310f7a;visibility:hidden;font-variation-settings:'FILL' 1;font-size:20px}
+    .stc.single-choice-radio-button.selected .stc-ck{visibility:visible}
     .style-other-modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
     .style-other-modal.hidden { display: none !important; }
     .style-other-modal-backdrop { position: absolute; inset: 0; background: rgba(28, 27, 33, 0.55); backdrop-filter: blur(2px); }
@@ -80,13 +91,16 @@
     .style-other-result-item { display: inline-flex; align-items: center; justify-content: center; width: auto; max-width: 100%; text-align: center; padding: 0.65rem 1rem; font-size: 0.875rem; font-weight: 600; color: #494552; background: white; border: 2px solid #cac4d3; border-radius: 9999px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; line-height: 1.25; white-space: normal; word-break: break-word; }
     .style-other-result-item:hover { background: #f8f1fb; color: #310f7a; border-color: #310f7a; }
     .style-other-result-item.selected { background: #310f7a; color: #ffffff; border-color: #310f7a; }
-    .question-kicker {
-      display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.85rem; border-radius: 9999px;
-      border: 1px solid #ddd0ff; background: linear-gradient(135deg, #f8f1fb 0%, #f2ecf5 100%);
-      color: #310f7a; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; margin-bottom: 0.75rem;
-      box-shadow: 0 2px 8px rgba(49, 15, 122, 0.08);
+    /* Match client-book .chip0 / .back on questions */
+    .question-kicker,.chip0{
+      display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;
+      border:1px solid #E6D6F1;background:var(--pl,#F5ECFB);
+      color:var(--p,#3E007C);font-size:11.5px;font-weight:700;margin:0 0 10px;letter-spacing:0;
+      box-shadow:none;
     }
-    .question-kicker .dot { width: 0.45rem; height: 0.45rem; border-radius: 9999px; background: #310f7a; opacity: 0.9; }
+    .question-kicker .dot,.chip0:before{content:'';width:5px;height:5px;border-radius:999px;background:var(--p,#3E007C);display:inline-block;flex:none}
+    .q-back{font-size:12.5px;display:inline-flex;align-items:center;gap:4px;color:var(--ink,#1D1A21);text-decoration:none;margin-bottom:12px;background:none;border:0;padding:0;cursor:pointer;font-family:inherit}
+    .q-back .ms,.q-back .material-symbols-outlined{font-size:16px}
     .select2-container--default .select2-selection--single {
       height: 58px; border: 1px solid rgba(122, 117, 131, 0.35); border-radius: 1rem; background: #ffffff;
       display: flex; align-items: center; box-shadow: 0 1px 4px rgba(49, 15, 122, 0.04);
@@ -122,25 +136,37 @@
     .time-slot-card:hover { border-color: #310f7a; background: #f8f1fb; }
     .time-slot-card.selected { background: #310f7a; color: white; border-color: #310f7a; }
     .time-slot-card.booked { background: #f2ecf5; color: #cac4d3; cursor: default; border-color: transparent; pointer-events: none; }
-    .time-slot-wrap { display: flex; gap: 0.5rem; align-items: stretch; }
-    .time-slot-confirm { display: none; padding: 0.75rem 1.25rem; border-radius: 0.75rem; background: #310f7a; color: white; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-    .time-slot-wrap.selected .time-slot-confirm { display: flex; align-items: center; gap: 0.35rem; animation: tfSlideIn 0.2s ease-out; }
-    .pill-btn { padding: 0.75rem 1.5rem; border-radius: 9999px; border: 2px solid #cac4d3; font-size: 0.95rem; font-weight: 600; color: #494552; cursor: pointer; transition: all 0.15s; background: white; }
-    .pill-btn:hover { border-color: #310f7a; color: #310f7a; }
-    .pill-btn.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .time-slot-wrap { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 0.5rem; align-items: stretch; width: 100%; }
+    .time-slot-wrap > .time-slot-card { flex: 1 1 auto; min-width: 0; width: auto !important; }
+    .time-slot-confirm { display: none; flex: 0 0 auto; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #310f7a; color: white; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; border: 0; align-items: center; gap: 0.35rem; }
+    .time-slot-wrap.selected .time-slot-confirm { display: inline-flex; animation: tfSlideIn 0.2s ease-out; }
+    .pill-btn {
+      padding: 9px 18px; border-radius: 9999px; border: 1px solid #DCCFE3; font-size: 13.5px; font-weight: 500;
+      color: #1D1A21; cursor: pointer; transition: border-color .15s, background .15s; background: #fff;
+    }
+    .pill-btn:hover { border-color: #5A238E; }
+    .pill-btn.selected { border-color: #3E007C; color: #3E007C; background: #F5ECFB; box-shadow: inset 0 0 0 1px #3E007C; }
+    .in{width:100%;border:1px solid #DCCFE3;border-radius:12px;background:#fff;padding:13px 16px;font-size:14px;outline:none;box-sizing:border-box;color:#1D1A21;font:inherit}
+    .in.sm{padding:9px 12px;border-radius:9px;font-size:13px}
+    .in:focus{border-color:#3E007C;box-shadow:0 0 0 3px rgba(62,0,124,.09)}
+    .bpx-btn.in{width:100%}
     .big-choice-btn { padding: 1.25rem 2rem; border-radius: 1rem; border: 2px solid #cac4d3; font-size: 1.1rem; font-weight: 700; color: #494552; cursor: pointer; transition: all 0.15s; background: white; min-width: 140px; text-align: center; }
     .big-choice-btn:hover { border-color: #310f7a; color: #310f7a; background: #f8f1fb; }
     .big-choice-btn.selected { background: #310f7a; color: white; border-color: #310f7a; }
-    .pref-block { background: white; border: 1px solid #e6e0ea; border-radius: 1rem; padding: 1.25rem; }
-    .pref-block-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
-    .pref-remove-btn { font-size: 0.75rem; font-weight: 600; color: #7a7583; display: inline-flex; align-items: center; gap: 0.15rem; flex-shrink: 0; transition: color 0.15s; }
-    .pref-remove-btn:hover { color: #ba1a1a; }
-    .day-pill { padding: 0.5rem 1rem; border-radius: 9999px; border: 1.5px solid #cac4d3; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; background: white; }
-    .day-pill:hover { border-color: #310f7a; color: #310f7a; }
-    .day-pill.selected { background: #310f7a; color: white; border-color: #310f7a; }
-    .time-pref-pill { padding: 0.5rem 1rem; border-radius: 9999px; border: 1.5px solid #cac4d3; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; background: white; }
-    .time-pref-pill:hover { border-color: #310f7a; color: #310f7a; }
-    .time-pref-pill.selected { background: #310f7a; color: white; border-color: #310f7a; }
+    .pref-block { background: #fff; border: 1px solid #EFE3F2; border-radius: 12px; padding: 12px 14px; position: relative; }
+    .pref-block-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 8px; }
+    .pref-block-label { font-size: 10.5px; font-weight: 800; letter-spacing: .4px; color: #3E007C; text-transform: uppercase; margin: 0; }
+    .pref-remove-btn { position: absolute; top: 8px; right: 8px; font-size: 0; color: #9C92A3; display: inline-flex; align-items: center; background: none; border: 0; padding: 0; cursor: pointer; }
+    .pref-remove-btn .material-symbols-outlined { font-size: 18px; }
+    .pref-remove-btn:hover { color: #C0262D; }
+    .day-pill,.time-pref-pill {
+      padding: 6px 12px; border-radius: 9999px; border: 1px solid #DCCFE3; font-size: 12px; font-weight: 500;
+      color: #1D1A21; cursor: pointer; transition: border-color .15s, background .15s; background: #fff;
+    }
+    .day-pill:hover,.time-pref-pill:hover { border-color: #5A238E; }
+    .day-pill.selected,.time-pref-pill.selected {
+      border-color: #3E007C; color: #3E007C; background: #F5ECFB; box-shadow: inset 0 0 0 1px #3E007C;
+    }
     .social-btn { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 0.875rem 1.5rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.95rem; border: 2px solid #e6e0ea; cursor: pointer; transition: all 0.15s; background: white; width: 100%; }
     .social-btn:hover { border-color: #cac4d3; background: #f8f1fb; }
     .auth-toggle { color: #310f7a; cursor: pointer; font-weight: 600; text-decoration: underline; }
@@ -178,23 +204,43 @@
     .consult-type-card.selected .ct-icon .material-symbols-outlined { color: white; }
     .confirm-chip { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; background: #310f7a; color: white; }
     .section-disabled { opacity: 0.4; pointer-events: none; filter: grayscale(0.3); }
+
+    /* Design chrome — match client-book .dc / dcard() */
+    :root{--p:#3E007C;--p2:#5A238E;--pl:#F5ECFB;--ink:#1D1A21;--muted:#6E6475;--line:#EFE3F2;--bg:#FFF6FF}
+    .bk-top{display:block;width:100%;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
+    .bk-top .in{max-width:640px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-sizing:border-box}
+    .bk-top .logo{display:flex;align-items:center;gap:6px;font-weight:800;font-size:17px;color:var(--p);letter-spacing:-.3px;font-family:'Space Grotesk',system-ui,sans-serif;text-decoration:none}
+    .bk-top .logo i{width:22px;height:22px;border-radius:50%;background:var(--p);color:#fff;font-style:normal;font-size:11px;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:700}
+    .bk-top .back{font-size:12.5px;display:inline-flex;align-items:center;gap:4px;color:var(--ink);text-decoration:none;white-space:nowrap}
+    .bk-top .back .ms{font-size:16px}
+    .bk-prog{height:2px;background:var(--p);width:0;max-width:100%;transition:width .3s}
+    .dc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;gap:14px;align-items:center;margin-bottom:18px}
+    .dc .im{width:72px;height:72px;border-radius:6px;background:#F3F0F5 center/contain no-repeat;flex:none}
+    .dc h2{font-size:15px;margin:0 0 3px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+    .dc .m{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
+    .dc .m span{display:inline-flex;align-items:center;gap:3px}.dc .m .ms{font-size:14px}
+    .dc .w{font-size:12px;margin-top:5px;line-height:1.6;color:var(--ink)}
+    .dc .w i{width:18px;height:18px;border-radius:50%;background:var(--p);color:#fff;font-style:normal;font-size:8.5px;font-weight:700;margin-right:5px;vertical-align:middle;display:inline-flex;align-items:center;justify-content:center}
+    #bookingMainContent{max-width:640px}
+    .loc{background:var(--pl,#F5ECFB);border-radius:12px;padding:12px 14px;display:flex;gap:10px;margin:14px 0 16px;font-size:12px;align-items:flex-start}
+    .loc .ms{color:var(--p,#3E007C);font-size:17px;margin-top:1px;flex:none}
+    .loc b{display:block;font-size:12.5px;color:var(--ink,#1D1A21);font-weight:700}
+    .loc .loc-addr{display:block;color:#3F3A45;line-height:1.45}
+    .loc a{color:var(--p,#3E007C);font-weight:600;text-decoration:none;display:block;margin-top:3px}
+    .loc a:hover{text-decoration:underline}
+    .err-t{color:var(--bad,#C0262D);font-size:12.5px;margin-top:8px;display:flex;gap:5px;align-items:center}
+    .err-t .ms,.err-t .material-symbols-outlined{font-size:15px;line-height:1}
+    .js-question-input.err,.js-select2-question.err,.in.err{border-color:var(--bad,#C0262D)!important}
   </style>
 </head>
-<body class="bg-surface text-on-surface min-h-screen">
-  <div class="tf-progress" id="topProgressBar" style="width: 0%"></div>
-
-  <!-- HEADER -->
-  <header class="border-b border-outline-variant/20 bg-white/70 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-2 text-primary font-extrabold text-xl tracking-tight">
-        <img src="{{asset('design/images/logo-blue.png')}}" alt="inkjin" class="h-7">
-      </a>
-      <div class="flex items-center gap-3 flex-wrap justify-end">
-        <a href="{{route('public.artist', ['username' => $userDetail->user_name])}}" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to {{ $userDetail->publicDisplayName() }}
-        </a>
-      </div>
+<body class="bg-surface text-on-surface min-h-screen" style="background:var(--bg)">
+  <!-- HEADER — match client-book .top -->
+  <header class="bk-top">
+    <div class="in">
+      <a class="logo" href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}"><i>ij</i>inkjin</a>
+      <a class="back" href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}"><span class="material-symbols-outlined ms">arrow_back</span>Back to {{ $userDetail->publicDisplayName() }}</a>
     </div>
+    <div class="bk-prog" id="topProgressBar"></div>
   </header>
 
   <!-- BOOKINGS CLOSED OVERLAY (hidden by default) -->
@@ -211,7 +257,7 @@
     </div>
   </div>
 
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8" id="bookingMainContent">
+  <main class="mx-auto px-4 py-6" id="bookingMainContent" style="width:100%;box-sizing:border-box">
 
     <!-- STEP DOTS -->
     <div class="flex items-start justify-center mb-10" id="progressDots">
@@ -226,22 +272,18 @@
       <div class="progress-step text-center" data-step="5"><div class="step-dot mx-auto">5</div><div class="step-label" id="step5Label">Submitted</div></div>
     </div>
 
-    <div class="bg-white rounded-2xl border border-outline-variant/20 p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
-        <div class="w-full sm:w-24 h-24 sm:h-24 rounded-xl bg-surface-container flex items-center justify-center flex-shrink-0">
-          <img src="{{asset($tattoo->image)}}" alt="{{ $tattoo->title }}" class="w-full h-full object-cover">
+    {{-- Design card — match client-book dcard() for flash --}}
+    <div class="dc">
+      <div class="im" style="background-image:url('{{ asset($tattoo->image) }}')" role="img" aria-label="{{ $tattoo->title }}"></div>
+      <div>
+        <h2 class="cc-designTitle">{{ $tattoo->title }}</h2>
+        <div class="m">
+          <span><span class="material-symbols-outlined ms">brush</span><span class="cc-designStyle">{{ ucwords(str_replace('-', ' ', $tattoo->primary_style)) }}</span></span>
+          <span class="cc-designPrice">€{{ $tattoo->min_price }} – €{{ $tattoo->max_price }}</span>
+          <span><span class="material-symbols-outlined ms">schedule</span><span class="cc-designTime">{{ $tattoo->session_duration }}h</span></span>
         </div>
-        <div class="flex-1 min-w-0">
-          <h2 class="text-base sm:text-lg font-bold text-on-surface mb-1 break-words cc-designTitle">{{ $tattoo->title }}</h2>
-          <div class="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-on-surface-variant">
-            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> <span class="cc-designStyle">{{ ucwords(str_replace('-', ' ', $tattoo->primary_style)) }}</span></span>
-            <span class="flex items-center gap-1"> <span class="cc-designPrice">€{{ $tattoo->min_price }} — €{{ $tattoo->max_price }}</span></span>
-            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> <span class="cc-designTime">{{ $tattoo->session_duration }} hours</span></span>
-            </div>
-            <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
-                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0"><span class="text-white text-[10px] font-bold cc-artistAvatar">{{ $userDetail->publicDisplayInitials() }}</span></div>
-                <span class="leading-relaxed break-words">with <strong class="cc-artistName">{{ $userDetail->publicDisplayName() }}</strong> at <strong class="cc-studioName">{{ $userDetail->studio_name }}</strong></span>
-            </div>
-        </div>
+        <div class="w"><i class="cc-artistAvatar">{{ $userDetail->publicDisplayInitials() }}</i>with <b class="cc-artistName">{{ $userDetail->publicDisplayName() }}</b> at <b class="cc-studioName">{{ $userDetail->studio_name }}</b></div>
+      </div>
     </div>
 
     <!-- ══════════════════════════════════ -->
@@ -269,11 +311,21 @@
         ? (floor($consultDurationMinutes / 60) . ' hour' . (floor($consultDurationMinutes / 60) > 1 ? 's' : ''))
         : ($consultDurationMinutes . ' minutes');
       $artistDisplayName = $userDetail->publicDisplayName();
-      $studioAddressLine = trim(implode(', ', array_filter([
-        $userDetail->studio_address ?? '',
-        $userDetail->city ?? '',
-        $userDetail->country ?? '',
-      ])));
+      $guestSpot = $guestSpot ?? null;
+      $guestSpotId = $guestSpotId ?? ($guestSpot?->id);
+      if ($guestSpot) {
+          $studioNamePlain = $guestSpot->studioDisplayName() ?: 'Guest studio';
+          $studioAddressLine = $guestSpot->listLocationLabel() ?: '';
+          $studioMapsLink = trim((string) ($guestSpot->google_maps_link ?? ''));
+          $guestPrefDateMin = $guestSpot->from_date?->format('Y-m-d');
+          $guestPrefDateMax = $guestSpot->to_date?->format('Y-m-d');
+      } else {
+          $studioNamePlain = trim((string) ($userDetail->resolvedStudioName() ?: ($userDetail->studio_name ?? ''))) ?: 'Studio';
+          $studioAddressLine = $userDetail->publicStudioAddressLine();
+          $studioMapsLink = $userDetail->publicStudioMapsLink();
+          $guestPrefDateMin = null;
+          $guestPrefDateMax = null;
+      }
       $artistInitials = $userDetail->publicDisplayInitials();
       $designPriceLabel = '€' . $tattoo->min_price . ' — €' . $tattoo->max_price;
     @endphp
@@ -292,29 +344,34 @@
               <p class="text-xs font-bold text-primary uppercase tracking-wider pref-block-label">Preference 1 <span class="text-error">*</span></p>
       </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
+              <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="in sm pref-date"></div>
               <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button type="button" class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button type="button" class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button type="button" class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div>
           </div>
         </div>
       </div>
+        <p id="managedPrefError" class="hidden err-t" style="margin:-4px 0 8px"><span class="material-symbols-outlined ms">error</span><span>Pick a date and a time of day for your first preference.</span></p>
         <button type="button" id="addPrefBtn" onclick="addPreference()" class="text-sm text-primary font-semibold flex items-center gap-1 hover:underline mb-6"><span class="material-symbols-outlined text-[18px]">add</span> Add another preference</button>
         <div class="space-y-4">
-          <div data-step2-field="days"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Preferred days of the week <span class="text-error">*</span></label><div class="flex flex-wrap gap-1.5" id="dayPills"><button type="button" class="day-pill" data-value="Mon" onclick="toggleDayPref(this)">Mon</button><button type="button" class="day-pill" data-value="Tue" onclick="toggleDayPref(this)">Tue</button><button type="button" class="day-pill" data-value="Wed" onclick="toggleDayPref(this)">Wed</button><button type="button" class="day-pill" data-value="Thu" onclick="toggleDayPref(this)">Thu</button><button type="button" class="day-pill" data-value="Fri" onclick="toggleDayPref(this)">Fri</button><button type="button" class="day-pill" data-value="Sat" onclick="toggleDayPref(this)">Sat</button><button type="button" class="day-pill" data-value="Sun" onclick="toggleDayPref(this)">Sun</button></div><p id="managedDayError" class="hidden text-sm text-error mt-2">Please select at least one preferred day.</p></div>
+          <div data-step2-field="days"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Preferred days of the week <span class="text-error">*</span></label><div class="flex flex-wrap gap-1.5" id="dayPills"><button type="button" class="day-pill" data-value="Mon" onclick="toggleDayPref(this)">Mon</button><button type="button" class="day-pill" data-value="Tue" onclick="toggleDayPref(this)">Tue</button><button type="button" class="day-pill" data-value="Wed" onclick="toggleDayPref(this)">Wed</button><button type="button" class="day-pill" data-value="Thu" onclick="toggleDayPref(this)">Thu</button><button type="button" class="day-pill" data-value="Fri" onclick="toggleDayPref(this)">Fri</button><button type="button" class="day-pill" data-value="Sat" onclick="toggleDayPref(this)">Sat</button><button type="button" class="day-pill" data-value="Sun" onclick="toggleDayPref(this)">Sun</button></div><p id="managedDayError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span>Pick at least one day.</span></p></div>
           <div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Any dates to avoid?</label><input type="text" id="managedAvoid" placeholder="e.g., April 10-15, May 1st" class="w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div>
-          <div data-step2-field="flex"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How flexible are you? <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="flexPills"><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Very flexible" onclick="selectPill(this,'flexPills')">Very flexible</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Somewhat flexible" onclick="selectPill(this,'flexPills')">Somewhat flexible</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="These are my only options" onclick="selectPill(this,'flexPills')">These are my only options</button></div><p id="managedFlexError" class="hidden text-sm text-error mt-2">Please select how flexible you are.</p></div>
-          <div data-step2-field="urgency"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Urgency <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="urgencyPills"><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="No rush" onclick="selectPill(this,'urgencyPills')">No rush</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Within 2 weeks" onclick="selectPill(this,'urgencyPills')">Within 2 weeks</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Within a month" onclick="selectPill(this,'urgencyPills')">Within a month</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="ASAP" onclick="selectPill(this,'urgencyPills')">ASAP</button></div><p id="managedUrgencyError" class="hidden text-sm text-error mt-2">Please select your urgency.</p></div>
+          <div data-step2-field="flex"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How flexible are you? <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="flexPills"><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Very flexible" onclick="selectPill(this,'flexPills')">Very flexible</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Somewhat flexible" onclick="selectPill(this,'flexPills')">Somewhat flexible</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="These are my only options" onclick="selectPill(this,'flexPills')">These are my only options</button></div><p id="managedFlexError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span>Pick one.</span></p></div>
+          <div data-step2-field="urgency"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Urgency <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="urgencyPills"><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="No rush" onclick="selectPill(this,'urgencyPills')">No rush</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Within 2 weeks" onclick="selectPill(this,'urgencyPills')">Within 2 weeks</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="Within a month" onclick="selectPill(this,'urgencyPills')">Within a month</button><button type="button" class="pill-btn text-sm !py-2 !px-4" data-value="ASAP" onclick="selectPill(this,'urgencyPills')">ASAP</button></div><p id="managedUrgencyError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span>Pick one.</span></p></div>
           </div>
         </div>
-      <div class="mb-studio-location flex items-start gap-3 p-4 bg-surface-container-low rounded-xl mb-6">
-        <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+      <div class="loc">
+        <span class="material-symbols-outlined ms">location_on</span>
         <div>
-          <p class="text-sm font-semibold text-on-surface mc-studioName">{{ $userDetail->studio_name ?: 'Studio' }}</p>
-          <p class="text-xs text-on-surface-variant mc-studioAddress">{{ $studioAddressLine ?: '—' }}</p>
-          @if(!empty($userDetail->google_maps_link))
-          <a href="{{ $userDetail->google_maps_link }}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
-          @endif
+          <b class="mc-studioName">{{ $studioNamePlain }}</b>
+          <span class="loc-addr mc-studioAddress">{{ $studioAddressLine }}</span>
+          <a
+            class="mc-studioDirections"
+            href="{{ $studioMapsLink !== '' ? $studioMapsLink : '#' }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            @if($studioMapsLink === '') style="display:none" @endif
+          >Get directions →</a>
+        </div>
       </div>
-          </div>
       <button type="button" onclick="goToStep(3)" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm flex items-center justify-center gap-2">Continue to Your Details <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>
     </div>
 
@@ -351,21 +408,22 @@
               <div class="pref-block-header">
               <p class="text-xs font-bold text-primary uppercase tracking-wider pref-block-label">Preference 1 <span class="text-error">*</span></p>
             </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="mc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="in sm mc-pref-date"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div></div>
             </div>
             <div class="pref-block" data-pref="1">
               <div class="pref-block-header">
                 <p class="text-xs font-bold text-primary uppercase tracking-wider pref-block-label">Preference 2 <span class="text-error">*</span></p>
                 <button type="button" class="pref-remove-btn" onclick="removePreferenceBlock(this, 'mcPrefBlocks')" aria-label="Remove preference"><span class="material-symbols-outlined text-[16px]">close</span> Remove</button>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="mc-pref-date w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="in sm mc-pref-date"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label><div class="flex flex-wrap gap-1.5"><button class="time-pref-pill" data-value="Morning" onclick="toggleTimePref(this)">Morning</button><button class="time-pref-pill" data-value="Afternoon" onclick="toggleTimePref(this)">Afternoon</button><button class="time-pref-pill" data-value="Evening" onclick="toggleTimePref(this)">Evening</button></div></div></div>
             </div>
           </div>
+          <p id="mcPrefError" class="hidden err-t" style="margin:-4px 0 8px"><span class="material-symbols-outlined ms">error</span><span>Pick a date and a time of day for your first preference.</span></p>
           <button id="mcAddPrefBtn" onclick="addMcPreference()" class="text-sm text-primary font-semibold flex items-center gap-1 hover:underline mb-6"><span class="material-symbols-outlined text-[18px]">add</span> Add another preference</button>
           <div class="space-y-4">
-            <div data-step2-field="days"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Preferred days of the week <span class="text-error">*</span></label><div class="flex flex-wrap gap-1.5" id="mcDayPills"><button class="day-pill" data-value="Mon" onclick="toggleDayPref(this)">Mon</button><button class="day-pill" data-value="Tue" onclick="toggleDayPref(this)">Tue</button><button class="day-pill" data-value="Wed" onclick="toggleDayPref(this)">Wed</button><button class="day-pill" data-value="Thu" onclick="toggleDayPref(this)">Thu</button><button class="day-pill" data-value="Fri" onclick="toggleDayPref(this)">Fri</button><button class="day-pill" data-value="Sat" onclick="toggleDayPref(this)">Sat</button><button class="day-pill" data-value="Sun" onclick="toggleDayPref(this)">Sun</button></div><p id="mcDayError" class="hidden text-sm text-error mt-2">Please select at least one preferred day.</p></div>
-            <div data-step2-field="flex"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How flexible are you? <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="mcFlexPills"><button class="pill-btn text-sm !py-2 !px-4" data-value="Very flexible" onclick="selectPill(this,'mcFlexPills')">Very flexible</button><button class="pill-btn text-sm !py-2 !px-4" data-value="Somewhat flexible" onclick="selectPill(this,'mcFlexPills')">Somewhat flexible</button><button class="pill-btn text-sm !py-2 !px-4" data-value="These are my only options" onclick="selectPill(this,'mcFlexPills')">These are my only options</button></div><p id="mcFlexError" class="hidden text-sm text-error mt-2">Please select how flexible you are.</p></div>
-            <div data-step2-field="gap"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How soon after the consultation would you like your tattoo session? <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="mcGapPills"><button class="pill-btn text-sm !py-2 !px-4" data-value="Same week" onclick="selectPill(this,'mcGapPills')">Same week</button><button class="pill-btn text-sm !py-2 !px-4" data-value="1-2 weeks after" onclick="selectPill(this,'mcGapPills')">1-2 weeks after</button><button class="pill-btn text-sm !py-2 !px-4" data-value="2-4 weeks after" onclick="selectPill(this,'mcGapPills')">2-4 weeks after</button><button class="pill-btn text-sm !py-2 !px-4" data-value="I'm flexible" onclick="selectPill(this,'mcGapPills')">I'm flexible</button></div><p id="mcGapError" class="hidden text-sm text-error mt-2">Please select when you would like your tattoo session after the consultation.</p></div>
+            <div data-step2-field="days"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">Preferred days of the week <span class="text-error">*</span></label><div class="flex flex-wrap gap-1.5" id="mcDayPills"><button class="day-pill" data-value="Mon" onclick="toggleDayPref(this)">Mon</button><button class="day-pill" data-value="Tue" onclick="toggleDayPref(this)">Tue</button><button class="day-pill" data-value="Wed" onclick="toggleDayPref(this)">Wed</button><button class="day-pill" data-value="Thu" onclick="toggleDayPref(this)">Thu</button><button class="day-pill" data-value="Fri" onclick="toggleDayPref(this)">Fri</button><button class="day-pill" data-value="Sat" onclick="toggleDayPref(this)">Sat</button><button class="day-pill" data-value="Sun" onclick="toggleDayPref(this)">Sun</button></div><p id="mcDayError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span>Pick at least one day.</span></p></div>
+            <div data-step2-field="flex"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How flexible are you? <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="mcFlexPills"><button class="pill-btn text-sm !py-2 !px-4" data-value="Very flexible" onclick="selectPill(this,'mcFlexPills')">Very flexible</button><button class="pill-btn text-sm !py-2 !px-4" data-value="Somewhat flexible" onclick="selectPill(this,'mcFlexPills')">Somewhat flexible</button><button class="pill-btn text-sm !py-2 !px-4" data-value="These are my only options" onclick="selectPill(this,'mcFlexPills')">These are my only options</button></div><p id="mcFlexError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span>Pick one.</span></p></div>
+            <div data-step2-field="gap"><label class="text-xs font-semibold text-on-surface-variant mb-2 block">How soon after the consultation would you like your tattoo session? <span class="text-error">*</span></label><div class="flex flex-wrap gap-2" id="mcGapPills"><button class="pill-btn text-sm !py-2 !px-4" data-value="Same week" onclick="selectPill(this,'mcGapPills')">Same week</button><button class="pill-btn text-sm !py-2 !px-4" data-value="1-2 weeks after" onclick="selectPill(this,'mcGapPills')">1-2 weeks after</button><button class="pill-btn text-sm !py-2 !px-4" data-value="2-4 weeks after" onclick="selectPill(this,'mcGapPills')">2-4 weeks after</button><button class="pill-btn text-sm !py-2 !px-4" data-value="I'm flexible" onclick="selectPill(this,'mcGapPills')">I'm flexible</button></div><p id="mcGapError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span>Pick one.</span></p></div>
           </div>
         </div>
         <div class="bg-surface-container-low rounded-2xl border border-outline-variant/20 p-5 mb-6">
@@ -375,14 +433,18 @@
             <p class="text-sm font-semibold text-on-surface">🎨 Your tattoo session</p>
           </div>
         </div>
-        <div class="mb-studio-location flex items-start gap-3 mt-6 p-4 bg-surface-container-low rounded-xl">
-          <span class="material-symbols-outlined text-primary mt-0.5">location_on</span>
+        <div class="loc">
+          <span class="material-symbols-outlined ms">location_on</span>
           <div>
-            <p class="text-sm font-semibold text-on-surface mc-studioName">{{ $userDetail->studio_name ?: 'Studio' }}</p>
-            <p class="text-xs text-on-surface-variant mc-studioAddress">{{ $studioAddressLine ?: '—' }}</p>
-            @if(!empty($userDetail->google_maps_link))
-            <a href="{{ $userDetail->google_maps_link }}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary font-medium hover:underline mt-1 inline-block">Get Directions →</a>
-            @endif
+            <b class="mc-studioName">{{ $studioNamePlain }}</b>
+            <span class="loc-addr mc-studioAddress">{{ $studioAddressLine }}</span>
+            <a
+              class="mc-studioDirections"
+              href="{{ $studioMapsLink !== '' ? $studioMapsLink : '#' }}"
+              target="_blank"
+              rel="noopener noreferrer"
+              @if($studioMapsLink === '') style="display:none" @endif
+            >Get directions →</a>
           </div>
         </div>
         <button onclick="goToStep(3)" class="w-full py-3.5 rounded-xl font-bold text-white bg-primary hover:opacity-90 transition-all text-sm flex items-center justify-center gap-2 mt-4">Continue <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>
@@ -401,7 +463,7 @@
           <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your name?</h2>
           <p class="text-on-surface-variant mb-6">So the artist knows who to expect.</p>
           <input type="text" id="bdName" placeholder="Your full name" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="bdNameError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          <p id="bdNameError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text">Please enter your full name.</span></p>
           <div class="flex items-center justify-between mt-6"><button onclick="nextReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button><span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span></div>
         </div>
       </div>
@@ -413,7 +475,7 @@
           <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">What's your email?</h2>
           <p class="text-on-surface-variant mb-6">We'll send your booking confirmation here.</p>
           <input type="email" id="bdEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="bdEmailError" class="text-sm text-error mt-2 hidden">This field is required.</p>
+          <p id="bdEmailError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text">That email doesn't look right.</span></p>
           <div class="flex items-center justify-between mt-6"><button onclick="nextReg()" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button><span class="text-sm text-on-surface-variant">press <strong>Enter ↵</strong></span></div>
         </div>
       </div>
@@ -441,7 +503,7 @@
             <div class="mb-4">
               <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpCode">4-digit code</label>
               <input type="text" id="bdOtpCode" maxlength="4" inputmode="numeric" placeholder="1234" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-              <p id="bdOtpError" class="text-sm text-error mt-2 hidden">Please enter a valid 4-digit code.</p>
+              <p id="bdOtpError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text">That code isn't right. Check the email and try again.</span></p>
             </div>
             <p id="bdOtpStatus" class="hidden items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3"></p>
             <div class="mb-5">
@@ -535,12 +597,14 @@
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   @include('partials.phone-country-scripts')
   @include('partials.bookpay-public-api')
+  @include('partials.bookpay-datetime-picker')
   <script>
   (function($) {
     'use strict';
     var csrfToken = @json(csrf_token());
     var bookingArtistUsername = @json($userDetail->user_name ?? '');
     var bookingTattooSlug = @json($tattoo->slug ?? '');
+    var designDetailUrl = @json(route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug]));
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
     var hiddenStyleOptions = @json($hiddenStyleOptions ?? []);
     var hiddenPlacementOptions = @json($hiddenPlacementOptions ?? []);
@@ -551,6 +615,7 @@
       var typeMap = { text: 'input', free: 'input', images: 'image', checkbox: 'toggle' };
       var normalizedType = typeMap[q.type] || q.type || 'input';
       var opts = Array.isArray(q.options) ? q.options : [];
+      var studioOpts = Array.isArray(q.studio_options) ? q.studio_options : [];
       if (normalizedType === 'toggle' && !opts.length) opts = ['Yes', 'No'];
       return {
         id: q.id,
@@ -558,6 +623,7 @@
         subtitle: q.description || 'Please answer this question.',
         type: normalizedType,
         options: opts,
+        studio_options: studioOpts,
         placeholder: q.placeholder || '',
         required: !!q.is_required
       };
@@ -758,7 +824,19 @@
         var isFirst = idx === 0;
         var isLast = idx === questionDefinitions.length - 1;
         var body = '';
-        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
+        if (q.type === 'studio') {
+          var studioList = (q.studio_options && q.studio_options.length)
+            ? q.studio_options
+            : (q.options || []).map(function(name) { return { name: name, address: '' }; });
+          body = '<div class="stpick" role="radiogroup" aria-label="Studio">' + studioList.map(function(o) {
+            var name = typeof o === 'string' ? o : String(o.name || '');
+            var addr = typeof o === 'string' ? '' : String(o.address || '');
+            return '<button type="button" class="stc single-choice-radio-button" data-value="' + escapeHtml(name) + '" aria-pressed="false">' +
+              '<span class="material-symbols-outlined stc-ico">location_on</span>' +
+              '<span class="stc-txt"><b>' + escapeHtml(name) + '</b>' + (addr ? '<small>' + escapeHtml(addr) + '</small>' : '') + '</span>' +
+              '<span class="material-symbols-outlined stc-ck">check_circle</span></button>';
+          }).join('') + '</div>';
+        } else if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
           body = '<div class="flex flex-wrap gap-2 single-choice-group">' + q.options.map(function(opt) {
             var isOther = String(opt || '').trim().toLowerCase() === 'other';
             var optionClass = (isCatalogChoiceQuestion(q.id) && isOther) ? ' option-other' : '';
@@ -777,14 +855,17 @@
           body = '<label class="q-toggle-row"><span class="q-toggle-control"><input type="checkbox" data-question-id="' + q.id + '" class="q-toggle-input js-question-toggle"><span class="q-toggle-ui"></span></span><span class="q-toggle-label">' + escapeHtml(q.subtitle) + '</span></label>';
         }
         var navButton = isLast
-          ? '<button type="button" class="js-continue-scheduling inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Continue to Availability <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>'
+          ? '<button type="button" class="js-continue-scheduling inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Continue to availability <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>'
           : '<button type="button" class="js-next-question inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold text-sm hover:bg-primary-container transition-colors">Next <span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>';
+        var backHtml = isFirst
+          ? '<a class="q-back" href="' + escapeHtml(designDetailUrl) + '"><span class="material-symbols-outlined ms">arrow_back</span>Back to design</a>'
+          : '<button type="button" class="q-back js-prev-question"><span class="material-symbols-outlined ms">arrow_back</span>Back</button>';
         html += '<div class="question-div' + (isFirst ? ' active' : '') + '" data-q="' + idx + '" data-question-id="' + q.id + '" data-question-type="' + q.type + '" data-required="' + (q.required ? '1' : '0') + '"><div class="w-full max-w-xl mx-auto">' +
-          (isFirst ? '' : '<button type="button" class="js-prev-question flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back</button>') +
-          '<p class="question-kicker"><span class="dot"></span>Question ' + (idx + 1) + ':</p>' +
+          backHtml +
+          '<div><span class="chip0 question-kicker">Question ' + (idx + 1) + ' of ' + questionDefinitions.length + '</span></div>' +
           '<h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">' + escapeHtml(q.title) + '</h2>' +
-          '<p class="text-on-surface-variant mb-6">' + escapeHtml(q.subtitle) + (q.required ? ' <span class="text-error">*</span>' : '') + '</p>' +
-          body + '<p class="text-sm text-error hidden mt-3 js-question-error">Please answer this required question.</p>' +
+          '<p class="text-on-surface-variant mb-6">' + escapeHtml(q.subtitle) + (q.required ? ' <span class="text-error">*</span>' : ' <span style="color:#9C92A3">(optional)</span>') + '</p>' +
+          body + '<div class="err-t hidden js-question-error"><span class="material-symbols-outlined ms">error</span><span class="js-question-error-text"></span></div>' +
           '<div class="flex items-center justify-end mt-6">' + navButton + '</div></div></div>';
       });
       $('#questionsMount').html(html);
@@ -793,14 +874,26 @@
       }
     }
 
+    function questionErrorMessage(qType) {
+      if (qType === 'image') return 'Add at least one photo.';
+      if (qType === 'input' || qType === 'textarea') return 'Please answer this question.';
+      return 'Pick an answer to continue.';
+    }
+
+    function clearQuestionError($question) {
+      if (!$question || !$question.length) return;
+      $question.find('.js-question-error').addClass('hidden');
+      $question.find('.js-question-input,.js-select2-question').removeClass('err');
+    }
+
     function validateActiveQuestion() {
       var $active = $('div.question-div.active[data-q]');
       if (!$active.length) return true;
-      if (String($active.data('required')) !== '1') { $active.find('.js-question-error').addClass('hidden'); return true; }
+      if (String($active.data('required')) !== '1') { clearQuestionError($active); return true; }
       var qType = String($active.data('question-type') || '');
       var qId = $active.data('question-id');
       var hasValue = false;
-      if (qType === 'radio' || qType === 'style' || qType === 'placement' || qType === 'sizes') {
+      if (qType === 'radio' || qType === 'style' || qType === 'placement' || qType === 'sizes' || qType === 'studio') {
         var $selected = $active.find('.single-choice-radio-button.selected');
         hasValue = $selected.length > 0;
         if (hasValue && isCatalogChoiceQuestion(qId)) {
@@ -819,7 +912,15 @@
       }
       else if (qType === 'toggle') hasValue = $active.find('.js-question-toggle').is(':checked');
       else hasValue = !!questionAnswers[qId];
-      $active.find('.js-question-error').toggleClass('hidden', hasValue);
+
+      var $err = $active.find('.js-question-error');
+      $active.find('.js-question-input,.js-select2-question').toggleClass('err', !hasValue && (qType === 'input' || qType === 'textarea' || qType === 'select'));
+      if (hasValue) {
+        $err.addClass('hidden');
+      } else {
+        $err.find('.js-question-error-text').text(questionErrorMessage(qType));
+        $err.removeClass('hidden');
+      }
       return hasValue;
     }
 
@@ -870,9 +971,10 @@
         if (answer === undefined || answer === null || answer === '') return;
         var $panel = $('div.question-div[data-question-id="' + q.id + '"]');
         if (!$panel.length) return;
-        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes') {
+        if (q.type === 'radio' || q.type === 'style' || q.type === 'placement' || q.type === 'sizes' || q.type === 'studio') {
           $panel.find('.single-choice-radio-button').each(function() {
-            $(this).toggleClass('selected', String($(this).data('value')) === String(answer));
+            var on = String($(this).data('value')) === String(answer);
+            $(this).toggleClass('selected', on).attr('aria-pressed', on ? 'true' : 'false');
           });
           restoreStyleQuestionUi($panel);
         } else if (q.type === 'select') {
@@ -908,6 +1010,7 @@
 
     window.mbBuildStructuredQuestionAnswers = buildStructuredQuestionAnswers;
     window.mbGetAnswerByKeywords = getAnswerByKeywords;
+    window.mbGetQuestionAnswers = function() { return questionAnswers; };
     window.mbGetTotalQuestions = function() { return questionDefinitions.length; };
     window.nextQuestion = nextQuestion;
     window.prevQuestion = prevQuestion;
@@ -917,15 +1020,14 @@
       var main_div = $btn.closest('div.question-div');
       if (!main_div.length) return;
 
-      var current_question = parseInt(main_div.data('q'), 10);
       var qId = main_div.data('question-id');
       var value = String($btn.data('value') || '');
       var isOther = value.trim().toLowerCase() === 'other';
       var catalogQ = isCatalogChoiceQuestion(qId);
 
-      main_div.find('.single-choice-radio-button').removeClass('selected');
-      $btn.addClass('selected');
-      main_div.find('.js-question-error').addClass('hidden');
+      main_div.find('.single-choice-radio-button').removeClass('selected').attr('aria-pressed', 'false');
+      $btn.addClass('selected').attr('aria-pressed', 'true');
+      clearQuestionError(main_div);
 
       if (catalogQ && isOther) {
         delete questionAnswers[qId];
@@ -935,7 +1037,6 @@
 
       closeStyleOtherModal(false);
       if (qId) questionAnswers[qId] = value;
-      if (!isNaN(current_question)) setTimeout(function() { nextQuestion(current_question); }, 180);
     });
     $(document).on('click', '.js-style-other-close', function() {
       closeStyleOtherModal(true);
@@ -945,9 +1046,9 @@
       var ctx = styleOtherModalContext;
       if (!styleName || !ctx || ctx.qId == null) return;
       questionAnswers[ctx.qId] = styleName;
-      ctx.$questionDiv.find('.js-question-error').addClass('hidden');
+      clearQuestionError(ctx.$questionDiv);
       closeStyleOtherModal(false);
-      if (!isNaN(ctx.questionIndex)) setTimeout(function() { nextQuestion(ctx.questionIndex); }, 180);
+      restoreStyleQuestionUi(ctx.$questionDiv);
     });
     $(document).on('keydown', function(e) {
       if (e.key === 'Escape' && !getStyleOtherModal().hasClass('hidden')) {
@@ -999,6 +1100,9 @@
   (function() {
     'use strict';
 
+    const bookingArtistUsername = @json($userDetail->user_name ?? '');
+    const bookingTattooSlug = @json($tattoo->slug ?? '');
+
     // ── Design data ──
     const params = new URLSearchParams(window.location.search);
 
@@ -1014,8 +1118,16 @@
       time: @json(($tattoo->session_duration ?? '') . ' hours'),
     };
     const artistName = @json($artistDisplayName ?? 'Artist');
-    const studioName = @json($userDetail->studio_name ?? 'Studio');
+    const studioName = @json($studioNamePlain ?? 'Studio');
     const studioAddress = @json($studioAddressLine ?? '');
+    const studioMapsLink = @json($studioMapsLink ?? '');
+    const studioChoices = @json($studioChoices ?? []);
+    const guestSpotId = @json($guestSpotId ?? null);
+    const guestPrefDateMin = @json($guestPrefDateMin ?? null);
+    const guestPrefDateMax = @json($guestPrefDateMax ?? null);
+    const defaultStudio = (Array.isArray(studioChoices) && studioChoices.length === 1)
+      ? studioChoices[0]
+      : { id: null, name: studioName, address: studioAddress, maps_link: studioMapsLink };
     const initials = @json($artistInitials ?? 'AA');
 
     let currentStep = 1;
@@ -1029,6 +1141,58 @@
 
     const consultTypeLabels = { video: { emoji: '📹', label: 'Video Call', desc: 'Video Call on Inkjin' }, phone: { emoji: '📞', label: 'Phone Call', desc: 'Phone Call' }, studio: { emoji: '🏠', label: 'In-Studio Visit', desc: 'At ' + studioName + ', ' + studioAddress } };
 
+    function resolveSelectedStudio() {
+      var answers = (typeof window.mbGetQuestionAnswers === 'function')
+        ? (window.mbGetQuestionAnswers() || {})
+        : {};
+      var selectedName = String(answers.__studio__ || answers['__studio__'] || '').trim();
+      if (!selectedName && Array.isArray(studioChoices) && studioChoices.length === 1) {
+        return studioChoices[0];
+      }
+      if (selectedName && Array.isArray(studioChoices)) {
+        for (var i = 0; i < studioChoices.length; i++) {
+          if (String(studioChoices[i].name || '') === selectedName) return studioChoices[i];
+        }
+        return { id: null, name: selectedName, address: '', maps_link: '' };
+      }
+      if (Array.isArray(studioChoices) && studioChoices.length === 1) return studioChoices[0];
+      return defaultStudio;
+    }
+
+    function mapsHrefForStudio(studio) {
+      var link = String((studio && studio.maps_link) || '').trim();
+      if (link) return link;
+      var addr = String((studio && studio.address) || '').trim();
+      var name = String((studio && studio.name) || '').trim();
+      var q = addr || name;
+      if (!q) return '';
+      return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+    }
+
+    function updateStudioLocationUi() {
+      var studio = resolveSelectedStudio() || defaultStudio;
+      var name = String(studio.name || defaultStudio.name || 'Studio');
+      var addr = String(studio.address || '').trim();
+      var href = mapsHrefForStudio(studio);
+      document.querySelectorAll('.mc-studioName, .cc-studioName').forEach(function(el) { el.textContent = name; });
+      document.querySelectorAll('.mc-studioAddress, .cc-studioAddress').forEach(function(el) {
+        el.textContent = addr;
+        el.style.display = addr ? '' : 'none';
+      });
+      document.querySelectorAll('.mc-studioDirections').forEach(function(el) {
+        if (href) {
+          el.href = href;
+          el.style.display = '';
+        } else {
+          el.removeAttribute('href');
+          el.style.display = 'none';
+        }
+      });
+      if (consultTypeLabels.studio) {
+        consultTypeLabels.studio.desc = 'At ' + name + (addr ? ', ' + addr : '');
+      }
+    }
+
     // ── Populate design info ──
     function populateDesignInfo() {
       const setText = (sel, text) => document.querySelectorAll(sel).forEach(el => el.textContent = text);
@@ -1037,13 +1201,13 @@
       setText('.mc-designPrice, #qDesignPrice', design.price);
       setText('#confManagedArtist, #payManagedArtist, .mc-artistName', artistName);
       setText('.mc-artistAvatar', initials);
-      setText('.mc-studioName', studioName);
-      setText('.mc-studioAddress', studioAddress);
+      updateStudioLocationUi();
       document.title = 'Book ' + design.title + ' | Inkjin';
     }
     populateDesignInfo();
 
     function showStep2(reverse) {
+      updateStudioLocationUi();
       const panelId = consultationRequired ? 'step2ManagedConsult' : 'step2Managed';
       const el = document.getElementById(panelId);
       if (el) {
@@ -1059,9 +1223,20 @@
       return show ? el : null;
     }
 
+    function firstPrefIsValid(blocksSelector, dateInputSelector) {
+      const block = document.querySelector(blocksSelector + ' .pref-block[data-pref="0"]') ||
+        document.querySelector(blocksSelector + ' .pref-block');
+      if (!block) return false;
+      const dateVal = String((block.querySelector(dateInputSelector) || {}).value || '').trim();
+      const todSelected = !!block.querySelector('.time-pref-pill.selected');
+      const dateInput = block.querySelector(dateInputSelector);
+      if (dateInput) dateInput.classList.toggle('err', !dateVal);
+      return !!(dateVal && todSelected);
+    }
+
     function validateManagedStep2() {
       const isConsult = consultationRequired;
-      ['managedDayError', 'managedFlexError', 'managedUrgencyError', 'mcDayError', 'mcFlexError', 'mcGapError'].forEach(function(id) {
+      ['managedPrefError', 'mcPrefError', 'managedDayError', 'managedFlexError', 'managedUrgencyError', 'mcDayError', 'mcFlexError', 'mcGapError'].forEach(function(id) {
         setManagedStep2Error(id, false);
       });
       let valid = true;
@@ -1070,6 +1245,13 @@
         const el = setManagedStep2Error(errorId, true);
         valid = false;
         if (!firstInvalid && el) firstInvalid = el;
+      }
+      if (!isConsult) {
+        if (!firstPrefIsValid('#prefBlocks', '.pref-date')) fail('managedPrefError');
+      } else if (!firstPrefIsValid('#mcPrefBlocks', '.mc-pref-date')) {
+        // reuse managedPrefError markup pattern for consult if present
+        if (document.getElementById('mcPrefError')) fail('mcPrefError');
+        else fail('managedPrefError');
       }
       const daySelector = isConsult ? '#mcDayPills' : '#dayPills';
       if (!document.querySelector(daySelector + ' .day-pill.selected')) {
@@ -1327,8 +1509,23 @@
       return html + '</div>';
     }
 
+    function guestDateAttrs() {
+      var attrs = '';
+      if (guestPrefDateMin) attrs += ' min="' + guestPrefDateMin + '"';
+      if (guestPrefDateMax) attrs += ' max="' + guestPrefDateMax + '"';
+      return attrs;
+    }
+
     function prefFieldsHtml(dateInputClass) {
-      return '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="' + dateInputClass + ' w-full border border-outline-variant/30 bg-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label>' + PREF_TIME_PILLS + '</div></div>';
+      return '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end"><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Date</label><input type="date" class="in sm ' + dateInputClass + '"' + guestDateAttrs() + '></div><div><label class="text-xs font-semibold text-on-surface-variant mb-1 block">Time of day</label>' + PREF_TIME_PILLS + '</div></div>';
+    }
+
+    function applyGuestDateLimits() {
+      if (!guestPrefDateMin && !guestPrefDateMax) return;
+      document.querySelectorAll('.pref-date, .mc-pref-date').forEach(function(input) {
+        if (guestPrefDateMin) input.setAttribute('min', guestPrefDateMin);
+        if (guestPrefDateMax) input.setAttribute('max', guestPrefDateMax);
+      });
     }
 
     function buildPreferenceBlockHtml(num, containerId, dateInputClass, deletable, required) {
@@ -1442,18 +1639,33 @@
       if (typeof scheduleManagedBookDraftSave === 'function') scheduleManagedBookDraftSave();
     }
 
+    function ensureErrT(el, message) {
+      if (!el) return;
+      if (!el.classList.contains('err-t') || !el.querySelector('.js-reg-error-text')) {
+        el.className = 'err-t';
+        el.innerHTML = '<span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text"></span>';
+      }
+      var text = el.querySelector('.js-reg-error-text');
+      if (text) text.textContent = message || '';
+      el.classList.remove('hidden');
+    }
+
+    function setOtpError(message) {
+      ensureErrT(document.getElementById('bdOtpError'), message);
+    }
+
     function clearRegError(inputId, errorId) {
       const input = document.getElementById(inputId);
       const err = document.getElementById(errorId);
-      if (input) { input.classList.remove('border-error'); input.style.borderColor = ''; }
-      if (err) { err.classList.add('hidden'); err.textContent = 'This field is required.'; }
+      if (input) { input.classList.remove('border-error', 'err'); input.style.borderColor = ''; }
+      if (err) err.classList.add('hidden');
     }
 
     function setRegError(inputId, errorId, message) {
       const input = document.getElementById(inputId);
       const err = document.getElementById(errorId);
-      if (input) { input.classList.add('border-error'); input.style.borderColor = '#ba1a1a'; }
-      if (err) { err.classList.remove('hidden'); err.textContent = message; }
+      if (input) { input.classList.add('border-error', 'err'); input.style.borderColor = '#C0262D'; }
+      ensureErrT(err, message);
     }
 
     function isValidEmail(email) {
@@ -1550,11 +1762,11 @@
       const sendBtn = document.getElementById('bdSendOtpBtn');
       if (otpError) otpError.classList.add('hidden');
       if (bookingOtpResendRemaining > 0 && bookingOtpResendEmail === email.toLowerCase()) {
-        if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = 'Please wait ' + formatSecondsToMMSS(bookingOtpResendRemaining) + ' before requesting another code.'; }
+        setOtpError('Please wait ' + formatSecondsToMMSS(bookingOtpResendRemaining) + ' before requesting another code.');
         return;
       }
       if (!isValidEmail(email)) {
-        if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = 'Please enter a valid email first.'; }
+        setOtpError('That email doesn\'t look right.');
         return;
       }
       if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
@@ -1586,7 +1798,7 @@
         bookingOtpResendEmail = email.toLowerCase();
         startOtpResendCountdown(data && data.resend_available_in_seconds ? data.resend_available_in_seconds : 60);
       } catch (err) {
-        if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = err.message || 'Could not send verification code.'; }
+        setOtpError(err.message || 'Could not send verification code.');
       } finally {
         if (bookingOtpResendRemaining <= 0 && sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Resend code'; }
         else applyOtpResendUi();
@@ -1603,11 +1815,11 @@
       const verifyBtn = document.getElementById('bdVerifyOtpBtn');
       if (otpError) otpError.classList.add('hidden');
       if (!isValidEmail(email)) {
-        if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = 'Please enter a valid email.'; }
+        setOtpError('That email doesn\'t look right.');
         return;
       }
       if (!/^\d{4}$/.test(code)) {
-        if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = 'Please enter a valid 4-digit code.'; }
+        setOtpError('That code isn\'t right. Check the email and try again.');
         return;
       }
       if (verifyBtn) { verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying...'; }
@@ -1634,7 +1846,7 @@
         scheduleManagedBookDraftSave();
         window.finishRegister();
       } catch (err) {
-        if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = err.message || 'Verification failed.'; }
+        setOtpError(err.message || 'That code isn\'t right. Check the email and try again.');
       } finally {
         if (verifyBtn) { verifyBtn.disabled = false; verifyBtn.textContent = 'Verify & Continue'; }
       }
@@ -1649,12 +1861,11 @@
       clearRegError('bdPhone', 'bdPhoneError');
       if (currentReg === 0) {
         const nameVal = String(document.getElementById('bdName')?.value || '').trim();
-        if (!nameVal) { setRegError('bdName', 'bdNameError', 'This field is required.'); return; }
+        if (!nameVal || nameVal.length < 2) { setRegError('bdName', 'bdNameError', 'Please enter your full name.'); return; }
       }
       if (currentReg === 1) {
         const emailVal = String(document.getElementById('bdEmail')?.value || '').trim();
-        if (!emailVal) { setRegError('bdEmail', 'bdEmailError', 'This field is required.'); return; }
-        if (!isValidEmail(emailVal)) { setRegError('bdEmail', 'bdEmailError', 'Please enter a valid email address.'); return; }
+        if (!emailVal || !isValidEmail(emailVal)) { setRegError('bdEmail', 'bdEmailError', 'That email doesn\'t look right.'); return; }
         try {
           const allowed = await validateBookingEmailRole(emailVal);
           if (!allowed) { setRegError('bdEmail', 'bdEmailError', 'Please use another email.'); return; }
@@ -1666,13 +1877,8 @@
       if (currentReg === 2) {
         const phoneVal = (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getFullPhone('bd')) || '';
         const nationalVal = String(document.getElementById('bdPhone')?.value || '').trim();
-        if (!nationalVal) { setRegError('bdPhone', 'bdPhoneError', 'This field is required.'); return; }
-        if (!document.getElementById('bdPhoneCountry')?.value) {
-          setRegError('bdPhone', 'bdPhoneError', 'Please select a country code.');
-          return;
-        }
-        if (!isValidPhoneWithCountryCode(phoneVal)) {
-          setRegError('bdPhone', 'bdPhoneError', 'Enter a valid phone number for the selected country.');
+        if (!nationalVal || !isValidPhoneWithCountryCode(phoneVal)) {
+          setRegError('bdPhone', 'bdPhoneError', 'Please enter a valid phone number.');
           return;
         }
       }
@@ -1698,7 +1904,7 @@
     window.finishRegister = function() {
       if (!bookingOtpVerified) {
         const otpError = document.getElementById('bdOtpError');
-        if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = 'Please verify your email to continue.'; }
+        setOtpError('Please verify your email to continue.');
         return;
       }
       goToStep(4);
@@ -1756,7 +1962,13 @@
       const errorMap = { flexPills: 'managedFlexError', urgencyPills: 'managedUrgencyError', mcFlexPills: 'mcFlexError', mcGapPills: 'mcGapError' };
       if (errorMap[cid]) setManagedStep2Error(errorMap[cid], false);
     };
-    window.toggleTimePref = function(btn) { btn.classList.toggle('selected'); };
+    window.toggleTimePref = function(btn) {
+      var group = btn.parentElement;
+      if (!group) return;
+      var on = btn.classList.contains('selected');
+      group.querySelectorAll('.time-pref-pill').forEach(function(p) { p.classList.remove('selected'); });
+      if (!on) btn.classList.add('selected');
+    };
 
 
     // ══════════════════════════════
@@ -1874,10 +2086,14 @@
       const days = [];
       document.querySelectorAll((isConsult ? '#mcDayPills' : '#dayPills') + ' .day-pill.selected').forEach(function(d) { days.push(d.dataset.value); });
       const flex = document.querySelector((isConsult ? '#mcFlexPills' : '#flexPills') + ' .pill-btn.selected')?.dataset.value || '';
+      var selectedStudio = (typeof resolveSelectedStudio === 'function') ? resolveSelectedStudio() : null;
+      var selectedStudioId = selectedStudio && selectedStudio.id != null ? Number(selectedStudio.id) : null;
       const payload = {
         email: String(bookingConnectedEmail || document.getElementById('bdEmail')?.value || '').trim(),
         phone: (window.InkjinPhoneCountry && window.InkjinPhoneCountry.getFullPhone('bd')) || '',
         name: String(document.getElementById('bdName')?.value || '').trim(),
+        studio_id: (selectedStudioId && selectedStudioId > 0) ? selectedStudioId : null,
+        guest_spot_id: guestSpotId || null,
         consultation_required: consultationRequired,
         consultation_type: isConsult ? (mcConsultType || null) : null,
         questions_answers: (typeof window.mbBuildStructuredQuestionAnswers === 'function') ? window.mbBuildStructuredQuestionAnswers() : {},
@@ -1987,6 +2203,7 @@
     }
 
     if (consultationRequired) configureMcConsultTypeCards();
+    applyGuestDateLimits();
 
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState === 'hidden') saveManagedBookDraftToSession();

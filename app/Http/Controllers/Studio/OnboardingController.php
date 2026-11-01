@@ -751,11 +751,20 @@ class OnboardingController extends Controller
             $stripeConnect->finalizeStudioOwnerOnboarding($studio, $validated['account_id']);
             $studio->refresh();
 
+            if ($user && (string) ($user->on_boarding ?? '') !== 'yes') {
+                $user->on_boarding = 'yes';
+                $user->save();
+                app(\App\Services\MailcoachSubscriberService::class)
+                    ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_STUDIO);
+                app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Stripe payout setup completed.',
+                'message' => 'Stripe connected',
+                'redirect' => route('studio.dashboard'),
                 'studio' => [
-                    'stripe_account_id' => $studio->stripe_account_id,
+                    'stripe_account_id' => $studio->resolveStripeAccountId(),
                     'stripe_connected' => true,
                 ],
             ]);

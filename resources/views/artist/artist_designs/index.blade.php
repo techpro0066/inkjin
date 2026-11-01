@@ -475,10 +475,12 @@
     .mp-dg .dcard.sortable-ghost { opacity: .4; }
     .mp-dg .dcard.sortable-chosen { box-shadow: 0 0 0 2px var(--pri, #3E007C); }
     .mp-dg #designsGrid.sorted .dcard { cursor: default; }
+    /* Match public page .dimg — full 4:5 design, no crop */
     .mp-dg .dcard-img {
       position: relative;
-      height: 210px;
-      background: #EEE center/cover no-repeat;
+      aspect-ratio: 4 / 5;
+      height: auto;
+      background: #F3F0F5 center/contain no-repeat;
     }
     .mp-dg .dcard-img .pill {
       position: absolute;
@@ -1195,7 +1197,7 @@
       @endif
 
   <div class="mp-toast" id="mpToast" role="status"><span class="ms">check_circle</span><span id="mpToastText">Saved</span></div>
-</div>
+      </div>
 
   @php
     $modalPricingType = in_array(($pricingType ?? 'manual'), ['manual', 'smart'], true) ? ($pricingType ?? 'manual') : 'manual';
@@ -1210,9 +1212,9 @@
         <div>
           <h2 id="designModalTitle">New design</h2>
           <div class="muted" style="font-size:13.5px;margin-top:4px">Upload the image first. AI fills in what it can. You can edit everything.</div>
-        </div>
+                </div>
         <button type="button" class="mx" id="btnCloseNewDesign" aria-label="Close"><span class="ms">close</span></button>
-      </div>
+              </div>
       <div class="mb">
         <div id="designFormBanner" class="hidden nd-banner"></div>
         <div class="grid nd-grid">
@@ -1222,14 +1224,14 @@
                 <span class="ms">cloud_upload</span>
                 <b>Drop image here</b>
                 <span class="faint">or click to browse · PNG, JPG up to 10MB</span>
-              </div>
+                </div>
               <div id="designImageUploadPreview" class="hidden">
                 <div class="nd-img-frame">
                   <img id="designImagePreviewImg" src="" alt="Design preview">
                   <span id="designAiFilledPill" class="pill nd nd-ai-pill" hidden>
                     <span class="ms">auto_awesome</span><span id="designAiFilledText">AI filled</span>
                   </span>
-                </div>
+              </div>
               </div>
               <div class="design-ai-overlay" aria-live="polite">
                 <span class="ms">auto_awesome</span>
@@ -1250,11 +1252,11 @@
               <div class="row" style="gap:22px;flex-wrap:wrap">
                 <div class="hidden">
                   <div id="toggleVisibility" class="tog toggle-switch active on"></div>
-                </div>
+            </div>
                 <div class="row" style="gap:8px">
                   <div id="toggleAvailable" class="tog toggle-switch active on" role="switch" aria-checked="true"></div>
                   <span style="font-size:13.5px;font-weight:600">Available</span>
-                </div>
+            </div>
                 <div class="row" style="gap:8px">
                   <div id="toggleRepeatable" class="tog toggle-switch" role="switch" aria-checked="false"></div>
                   <span style="font-size:13.5px;font-weight:600">Repeatable</span>
@@ -1263,14 +1265,14 @@
                   <div id="toggleSensitive" class="tog toggle-switch" role="switch" aria-checked="false"></div>
                   <span style="font-size:13.5px;font-weight:600">Sensitive</span>
                 </div>
-              </div>
+                </div>
               <div id="repeatLimitField" class="design-field-section hidden" data-design-field="repeat_limit" style="margin-top:14px">
                 <label class="fl" for="designRepeatLimit">How many times can this be booked? <span style="color:#C62828">*</span></label>
                 <input class="in" type="number" id="designRepeatLimit" name="designRepeatLimit" min="1" max="999" step="1" placeholder="e.g. 3" style="max-width:160px">
                 <div class="help">Total number of clients who can book this design before it shows as sold out.</div>
                 <p class="hidden design-field-error" data-error-for="repeat_limit"></p>
+                </div>
               </div>
-            </div>
 
             {{-- Manual pricing (C01) --}}
             <div id="designPricingManual" class="sect design-field-section {{ $modalPricingType === 'smart' ? 'hidden' : '' }}" data-design-field="min_price" style="margin-top:16px">
@@ -1285,36 +1287,36 @@
                     <div class="in" style="flex:1;min-width:0">
                       <span class="faint">{{ $modalCurrency }}</span>
                       <input type="number" id="designPriceMin" name="designPriceMin" placeholder="Min" min="0" inputmode="decimal">
-                    </div>
+            </div>
                     <span class="faint" aria-hidden="true">–</span>
                     <div class="in" style="flex:1;min-width:0">
                       <span class="faint">{{ $modalCurrency }}</span>
                       <input type="number" id="designPriceMax" name="designPriceMax" placeholder="Max" min="0" inputmode="decimal">
-                    </div>
-                  </div>
+            </div>
+              </div>
                   <p class="hidden design-field-error" data-error-for="min_price"></p>
                   <p class="hidden design-field-error" data-error-for="max_price"></p>
-                </div>
+              </div>
                 <div id="designManualSizeSlot">
                   <div id="designSizeFieldWrap" class="design-field-section" data-design-field="min_size">
                     <span class="fl" id="designSizeLabel">Minimum size</span>
                     <div class="in">
                       <input type="number" id="size_min" name="size_min" placeholder="e.g. 10" min="1" inputmode="decimal">
                       <span class="faint" id="sizeUnitLabel" style="margin-left:auto">{{ $modalSizeUnit }}</span>
-                    </div>
+              </div>
                     <div class="help hidden" id="designSizeHelp">Required: the price comes from the size</div>
                     <p class="hidden design-field-error" data-error-for="min_size"></p>
-                  </div>
-                </div>
-              </div>
             </div>
+            </div>
+            </div>
+                </div>
 
             {{-- Smart pricing (C02) --}}
             <div id="designPricingSmart" class="sect smart design-field-section {{ $modalPricingType === 'smart' ? '' : 'hidden' }}" style="margin-top:16px">
               <div class="row" style="justify-content:space-between">
                 <div class="row" style="gap:8px"><span class="ms" style="color:#3E007C">bolt</span><b>Smart pricing</b></div>
                 <button type="button" class="lnk" id="btnChangePricingSmart">Change in Pricing</button>
-              </div>
+                </div>
               <div class="grid nd-half" style="margin-top:10px">
                 <div id="designSmartSizeSlot"></div>
                 <div>
@@ -1322,55 +1324,55 @@
                   <div class="in smart-price-lock" id="designSmartPriceDisplay" aria-live="polite">
                     <span id="designSmartPriceText">—</span>
                     <span class="ms">lock</span>
-                  </div>
-                  <div class="help">Calculated automatically</div>
-                </div>
               </div>
+                  <div class="help">Calculated automatically</div>
             </div>
+                </div>
+                </div>
 
             <div class="grid nd-half">
               <div class="design-field-section" data-design-field="max_sessions">
                 <div class="row" style="margin-top:16px;margin-bottom:6px">
                   <span class="fl" style="margin:0">Max sessions</span>
-                </div>
+              </div>
                 <input class="in" type="number" id="designSessionsMax" name="designSessionsMax" min="1" placeholder="1">
                 <div class="help">Leave blank if it's done in one session</div>
                 <p class="hidden design-field-error" data-error-for="max_sessions"></p>
-              </div>
+            </div>
               <div class="design-field-section" data-design-field="session_duration">
                 <div class="row" style="margin-top:16px;margin-bottom:6px">
                   <span class="fl" style="margin:0">Duration</span>
-                </div>
+            </div>
                 <select class="in" id="designSessionTime" name="designSessionTime">
-                  <option value="">Select…</option>
-                  <option value="30min">30 min</option>
-                  <option value="1h">1 hour</option>
-                  <option value="2h">2 hours</option>
-                  <option value="3h">3 hours</option>
-                  <option value="4h">4 hours</option>
+                <option value="">Select…</option>
+                <option value="30min">30 min</option>
+                <option value="1h">1 hour</option>
+                <option value="2h">2 hours</option>
+                <option value="3h">3 hours</option>
+                <option value="4h">4 hours</option>
                   <option value="5h">5 hours</option>
-                  <option value="6h">6 hours</option>
+                <option value="6h">6 hours</option>
                   <option value="7h">7 hours</option>
-                  <option value="8h">8 hours</option>
+                <option value="8h">8 hours</option>
                   <option value="half-day">Half day</option>
                   <option value="full-day">Full day</option>
-                </select>
+              </select>
                 <p class="hidden design-field-error" data-error-for="session_duration"></p>
-              </div>
             </div>
+          </div>
 
             <div class="design-field-section" data-design-field="title" style="margin-top:16px">
               <div class="row" style="margin-bottom:6px">
                 <label class="fl" for="designTitle" style="margin:0">Title<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
-              </div>
+        </div>
               <input class="in" type="text" id="designTitle" name="designTitle" placeholder="e.g. Baby dragon with rose" autocomplete="off">
               <p class="hidden design-field-error" data-error-for="title"></p>
-            </div>
+      </div>
 
             <div class="design-field-section" data-design-field="description" style="margin-top:16px">
               <div class="row" style="margin-bottom:6px">
                 <label class="fl" for="designDescription" style="margin:0">Description <span class="faint" style="font-weight:500">(optional)</span><span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
-              </div>
+      </div>
               <textarea class="in" id="designDescription" name="designDescription" rows="3" placeholder="Describe this design…" style="min-height:58px;align-items:flex-start;resize:vertical"></textarea>
               <p class="hidden design-field-error" data-error-for="description"></p>
             </div>

@@ -12,12 +12,20 @@ class AvailabilityOverride extends Model
         'start_date',
         'end_date',
         'reason',
+        'studio_ids',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'studio_ids' => 'array',
     ];
+
+    /** Null / empty studio_ids = blocked period; otherwise a location override. */
+    public function isLocationOverride(): bool
+    {
+        return is_array($this->studio_ids) && count($this->studio_ids) > 0;
+    }
 
     public function user(): BelongsTo
     {
