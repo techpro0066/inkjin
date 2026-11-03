@@ -64,6 +64,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('studio')
         ->whereNumber('guestSpot')
         ->name('studio.guest-spot-invite.decline');
+    Route::get('/studio/bookings', [\App\Http\Controllers\Studio\BookingsController::class, 'index'])
+        ->middleware('studio')
+        ->name('studio.bookings');
+    Route::get('/studio/bookings/requests', [\App\Http\Controllers\Studio\BookingsController::class, 'requests'])
+        ->middleware('studio')
+        ->name('studio.bookings.requests');
+    Route::get('/studio/bookings/payment-links', [\App\Http\Controllers\Studio\BookingsController::class, 'paymentLinks'])
+        ->middleware('studio')
+        ->name('studio.bookings.payment-links');
+    Route::post('/studio/bookings/requests/{studioRequest}/assign', [\App\Http\Controllers\Studio\BookingsController::class, 'assign'])
+        ->middleware('studio')
+        ->whereNumber('studioRequest')
+        ->name('studio.bookings.requests.assign');
+    Route::post('/studio/bookings/requests/{studioRequest}/withdraw', [\App\Http\Controllers\Studio\BookingsController::class, 'withdraw'])
+        ->middleware('studio')
+        ->whereNumber('studioRequest')
+        ->name('studio.bookings.requests.withdraw');
     Route::get('/studio/artists', [\App\Http\Controllers\Studio\ArtistsController::class, 'index'])
         ->middleware('studio')
         ->name('studio.artists');
@@ -120,6 +137,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/studio/page/portfolio', [\App\Http\Controllers\Studio\StudioPageController::class, 'updatePortfolio'])
         ->middleware('studio')
         ->name('studio.page.portfolio.update');
+    Route::post('/studio/page/portfolio/pieces', [\App\Http\Controllers\Studio\StudioPageController::class, 'storePiece'])
+        ->middleware('studio')
+        ->name('studio.page.portfolio.piece.store');
+    Route::put('/studio/page/portfolio/pieces/{piece}', [\App\Http\Controllers\Studio\StudioPageController::class, 'updatePiece'])
+        ->middleware('studio')
+        ->name('studio.page.portfolio.piece.update');
+    Route::delete('/studio/page/portfolio/pieces/{piece}', [\App\Http\Controllers\Studio\StudioPageController::class, 'destroyPiece'])
+        ->middleware('studio')
+        ->name('studio.page.portfolio.piece.destroy');
+    Route::post('/studio/page/portfolio/ai-suggest', [\App\Http\Controllers\Studio\StudioPageController::class, 'suggestWithAi'])
+        ->middleware('studio')
+        ->name('studio.page.portfolio.ai-suggest');
     Route::post('/studio/page/portfolio/instagram/refresh', [\App\Http\Controllers\Studio\StudioPageController::class, 'refreshInstagram'])
         ->middleware('studio')
         ->name('studio.page.portfolio.instagram.refresh');
@@ -624,6 +653,12 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::get('/guest-requests', [ArtistCustomRequestsController::class, 'index'])->name('artist.guest-requests.index');
     Route::post('/custom-requests/{customRequest}/decline', [ArtistCustomRequestsController::class, 'decline'])->name('artist.custom-requests.decline');
     Route::post('/custom-requests/{customRequest}/send-quote', [ArtistCustomRequestsController::class, 'sendQuote'])->name('artist.custom-requests.send-quote');
+    Route::post('/studio-offers/{studioRequest}/send-quote', [\App\Http\Controllers\ArtistStudioOffersController::class, 'sendQuote'])
+        ->whereNumber('studioRequest')
+        ->name('artist.studio-offers.send-quote');
+    Route::post('/studio-offers/{studioRequest}/send-back', [\App\Http\Controllers\ArtistStudioOffersController::class, 'sendBack'])
+        ->whereNumber('studioRequest')
+        ->name('artist.studio-offers.send-back');
     Route::post('/requests/{bookingRequest}/decline', [RequestsController::class, 'decline'])->name('artist.requests.decline');
     Route::post('/requests/{bookingRequest}/offer-slots', [RequestsController::class, 'offerSlots'])->name('artist.requests.offer-slots');
 
@@ -733,8 +768,12 @@ Route::post('/p/{code}/session-details/{booking}/image', [ArtistDashboardControl
     ->name('public.payment-link.session-details.image');
 Route::get('/@{username}', [InkJinController::class, 'publicArtistProfile'])->name('public.artist');
 
-// custom request (before tattoo slug catch-all)
+// studio + custom request (before tattoo slug catch-all)
+Route::get('/@{user_name}/request', [\App\Http\Controllers\StudioRequestController::class, 'show'])
+    ->name('public.studio-request');
 Route::get('/@{user_name}/request/custom', [CustomRequestController::class, 'requestCustom'])->name('public.request-custom');
+Route::post('/api/public/submit-studio-request', [\App\Http\Controllers\StudioRequestController::class, 'submit'])
+    ->name('public.studio-request.submit');
 
 Route::get('/@{user_name}/guest/{guestSpotSlug}', [InkJinController::class, 'publicGuestSpot'])
     ->where('guestSpotSlug', '[A-Za-z0-9\-]+')

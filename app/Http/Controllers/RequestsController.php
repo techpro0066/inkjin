@@ -12,6 +12,7 @@ use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Models\CustomRequest;
 use App\Models\PaymentLink;
+use App\Models\StudioRequest;
 use App\Services\ArtistPayoutService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -63,13 +64,42 @@ class RequestsController extends Controller
             ->values()
             ->all();
 
+        $studioByCustomId = StudioRequest::query()
+            ->with('studio')
+            ->whereIn('custom_request_id', $allCustomAndGuestRequests->pluck('id')->filter()->all() ?: [0])
+            ->get()
+            ->keyBy(fn (StudioRequest $r) => (int) $r->custom_request_id);
+
         $customRequestsPayload = $customAndGuestRequests
-            ->map(fn (CustomRequest $customRequest) => $customRequest->toArtistPanelArray())
+            ->map(function (CustomRequest $customRequest) use ($studioByCustomId) {
+                $payload = $customRequest->toArtistPanelArray();
+                $linked = $studioByCustomId->get((int) $customRequest->id);
+
+                return array_merge($payload, $this->studioLinkMeta($customRequest, $linked));
+            })
             ->values()
             ->all();
 
         $guestRequestsPayload = $guestRequests
-            ->map(fn (CustomRequest $customRequest) => $customRequest->toArtistPanelArray())
+            ->map(function (CustomRequest $customRequest) use ($studioByCustomId) {
+                $payload = $customRequest->toArtistPanelArray();
+                $linked = $studioByCustomId->get((int) $customRequest->id);
+
+                return array_merge($payload, $this->studioLinkMeta($customRequest, $linked));
+            })
+            ->values()
+            ->all();
+
+        $studioOffers = StudioRequest::query()
+            ->with(['studio', 'user'])
+            ->where('assigned_artist_id', $artistId)
+            ->where('status', StudioRequest::STATUS_ASSIGNED)
+            ->whereNull('custom_request_id')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $studioOffersPayload = $studioOffers
+            ->map(fn (StudioRequest $offer) => $this->studioOfferPayload($offer))
             ->values()
             ->all();
 
@@ -80,7 +110,12 @@ class RequestsController extends Controller
         }
 
         foreach ($visibleCustomAndGuestRequests as $customRequest) {
-            $feed->push($this->normalizeCustomFeedItem($customRequest));
+            $linkedStudio = $studioByCustomId->get((int) $customRequest->id);
+            $feed->push($this->normalizeCustomFeedItem($customRequest, $linkedStudio));
+        }
+
+        foreach ($studioOffers as $offer) {
+            $feed->push($this->normalizeStudioOfferFeedItem($offer));
         }
 
         $feed = $feed->sortByDesc('dateSort')->values();
@@ -88,7 +123,7 @@ class RequestsController extends Controller
         $typeCounts = [
             'all' => $feed->count(),
             'design' => $feed->where('kind', 'design')->count(),
-            'custom' => $feed->where('kind', 'custom')->count(),
+            'custom' => $feed->where('kind', 'custom')->count() + $feed->where('kind', 'studio_offer')->count(),
             'guest' => $feed->where('kind', 'guest')->count(),
         ];
 
@@ -127,6 +162,12 @@ class RequestsController extends Controller
             })
             ->count();
 
+        $studioOfferCount = StudioRequest::query()
+            ->where('assigned_artist_id', $artistId)
+            ->where('status', StudioRequest::STATUS_ASSIGNED)
+            ->whereNull('custom_request_id')
+            ->count();
+
         $requestsCount = BookingRequest::query()
             ->where('artist_id', $artistId)
             ->whereNotIn('status', ['cancelled', 'moved_to_booking'])
@@ -135,7 +176,8 @@ class RequestsController extends Controller
                 ->where('artist_id', $artistId)
                 ->visibleInArtistRequests()
                 ->whereNotIn('status', ['cancelled', 'moved_to_booking'])
-                ->count();
+                ->count()
+            + $studioOfferCount;
 
         $paymentLinksCount = PaymentLink::query()
             ->where('artist_id', $artistId)
@@ -164,6 +206,7 @@ class RequestsController extends Controller
             'requestsPayload' => $requestsPayload,
             'customRequestsPayload' => $customRequestsPayload,
             'guestRequestsPayload' => $guestRequestsPayload,
+            'studioOffersPayload' => $studioOffersPayload,
             'canOfferSlots' => $canOfferSlots,
             'canSendQuotes' => $canSendQuotes,
             'quotesBlockedMessage' => $quotesBlockedMessage,
@@ -222,12 +265,222 @@ class RequestsController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function normalizeCustomFeedItem(CustomRequest $request): array
+    private function normalizeStudioOfferFeedItem(StudioRequest $request): array
+    {
+        $studioName = trim((string) ($request->studio?->name ?? 'Studio'));
+        $clientName = trim((string) ($request->client_name ?? ''));
+        if ($clientName === '') {
+            $u = $request->user;
+            $clientName = trim(($u?->first_name ?? '').' '.($u?->last_name ?? ''))
+                ?: (string) ($request->client_email ?? 'Client');
+        }
+        $parts = preg_split('/\s+/', $clientName) ?: [];
+        $initials = strtoupper(mb_substr($parts[0] ?? 'C', 0, 1).mb_substr($parts[1] ?? ($parts[0] ?? 'L'), 0, 1));
+
+        $answers = is_array($request->questions_answers) ? $request->questions_answers : [];
+        $summaryBits = [];
+        $answerCount = 0;
+        foreach ($answers as $key => $value) {
+            if (str_starts_with((string) $key, '_')) {
+                continue;
+            }
+            $answerCount++;
+            $answer = is_array($value) ? ($value['answer'] ?? null) : $value;
+            if (is_array($answer)) {
+                $answer = implode(', ', array_filter(array_map('strval', $answer)));
+            }
+            $answer = trim((string) $answer);
+            if ($answer === '') {
+                continue;
+            }
+            $summaryBits[] = $answer;
+            if (count($summaryBits) >= 3) {
+                break;
+            }
+        }
+        $summary = implode(', ', $summaryBits);
+        $studioNote = trim((string) ($answers['_studio_assign_note'] ?? ''));
+
+        $subtitleParts = array_filter([
+            'Assigned by '.$studioName.($studioNote !== '' ? ': "'.$studioNote.'"' : ''),
+            $summary !== '' ? $summary : null,
+            $answerCount > 0 ? $answerCount.' '.($answerCount === 1 ? 'answer' : 'answers') : null,
+        ]);
+
+        return [
+            'kind' => 'studio_offer',
+            'openAs' => 'studio_offer',
+            'id' => $request->id,
+            'clientName' => $clientName,
+            'clientInitials' => $initials,
+            'typeLabel' => 'Custom',
+            'statusKey' => 'new',
+            'statusLabel' => 'New request',
+            'viaStudio' => $studioName,
+            'canSendBack' => true,
+            'sendBackUrl' => route('artist.studio-offers.send-back', $request),
+            'reference' => '#SR-'.str_pad((string) $request->id, 6, '0', STR_PAD_LEFT),
+            'subtitle' => implode(' · ', $subtitleParts),
+            'dateLabel' => $request->updated_at?->format('M j') ?? $request->created_at?->format('M j') ?? '—',
+            'dateSort' => ($request->updated_at ?? $request->created_at)?->format('Y-m-d H:i:s') ?? '',
+            'searchText' => strtolower(trim($clientName.' '.$studioName.' '.$summary)),
+            'chatUrl' => '',
+            'needsReply' => true,
+        ];
+    }
+
+    /**
+     * Panel payload shaped like CustomRequest::toArtistPanelArray() so the quote modal can open directly.
+     *
+     * @return array<string, mixed>
+     */
+    private function studioOfferPayload(StudioRequest $request): array
+    {
+        $studioName = trim((string) ($request->studio?->name ?? 'Studio'));
+        $clientName = trim((string) ($request->client_name ?? ''));
+        if ($clientName === '') {
+            $u = $request->user;
+            $clientName = trim(($u?->first_name ?? '').' '.($u?->last_name ?? ''))
+                ?: (string) ($request->client_email ?? 'Client');
+        }
+        $parts = preg_split('/\s+/', $clientName) ?: [];
+        $initials = strtoupper(mb_substr($parts[0] ?? 'C', 0, 1).mb_substr($parts[1] ?? ($parts[0] ?? 'L'), 0, 1));
+
+        $questionsAnswers = [];
+        foreach ((array) ($request->questions_answers ?? []) as $key => $value) {
+            if ($key === '_contact' || str_starts_with((string) $key, '_')) {
+                continue;
+            }
+            if (is_array($value) && isset($value['question'])) {
+                $questionsAnswers[] = $value;
+
+                continue;
+            }
+            $q = is_array($value) ? (string) ($value['question'] ?? $key) : (string) $key;
+            $a = is_array($value) ? ($value['answer'] ?? '') : $value;
+            if (is_array($a)) {
+                $a = implode(', ', array_filter(array_map('strval', $a)));
+            }
+            $a = trim((string) $a);
+            if ($a === '') {
+                continue;
+            }
+            $questionsAnswers[] = ['question' => $q, 'answer' => $a];
+        }
+
+        $qa = is_array($request->questions_answers) ? $request->questions_answers : [];
+        $studioNote = trim((string) ($qa['_studio_assign_note'] ?? ''));
+
+        $images = [];
+        foreach ((array) ($request->reference_images ?? []) as $img) {
+            $path = is_string($img) ? trim($img) : trim((string) ($img['url'] ?? $img['path'] ?? ''));
+            if ($path === '') {
+                continue;
+            }
+            $images[] = str_starts_with($path, 'http') ? $path : asset(ltrim($path, '/'));
+        }
+        foreach (\App\Support\QuestionAnswerPresenter::allImageUrls($request->questions_answers ?? []) as $url) {
+            $path = trim((string) $url);
+            if ($path === '') {
+                continue;
+            }
+            $images[] = str_starts_with($path, 'http') ? $path : asset(ltrim($path, '/'));
+        }
+        $images = array_values(array_unique($images));
+
+        $referral = null;
+        $contact = $qa['_contact'] ?? null;
+        if (is_array($contact)) {
+            $referral = trim((string) ($contact['referral_source'] ?? '')) ?: null;
+        }
+
+        return [
+            'id' => 'studio:'.$request->id,
+            'studioOfferId' => $request->id,
+            'isStudioOffer' => true,
+            'reference' => '#SR-'.str_pad((string) $request->id, 6, '0', STR_PAD_LEFT),
+            'status' => 'pending',
+            'filterStatus' => 'New request',
+            'statusBadgeClass' => 'bg-amber-100 text-amber-800',
+            'clientName' => $clientName,
+            'clientInitials' => $initials,
+            'clientEmail' => (string) ($request->client_email ?? ''),
+            'clientPhone' => (string) ($request->client_phone ?? ''),
+            'clientSearch' => strtolower($clientName),
+            'submittedAt' => $request->created_at?->format('M j, Y') ?? '—',
+            'submittedIso' => $request->created_at?->format('Y-m-d') ?? '',
+            'additionalNotes' => trim((string) ($request->anything_else_notes ?? '')) ?: '—',
+            'referralSource' => $referral ?? '—',
+            'type' => 'managed',
+            'isGuest' => false,
+            'guestSpot' => null,
+            'guestHoldExpiresAt' => null,
+            'guestHoldActive' => false,
+            'schedulingLabel' => 'Managed scheduling',
+            'availabilityDetails' => $request->availabilityStructured(),
+            'artistSessionSlots' => [],
+            'questionsAnswers' => $questionsAnswers,
+            'reasonDecline' => null,
+            'estimatedPrice' => null,
+            'estimatedTime' => null,
+            'numberOfSessions' => null,
+            'messageForClient' => null,
+            'isPending' => true,
+            'canDecline' => false,
+            'isBooked' => false,
+            'chatUrl' => '',
+            'viaStudio' => $studioName,
+            'studioNote' => $studioNote,
+            'canSendBack' => true,
+            'sendBackUrl' => route('artist.studio-offers.send-back', $request),
+            'sendQuoteUrl' => route('artist.studio-offers.send-quote', $request),
+            'studioRequestId' => $request->id,
+            'images' => $images,
+        ];
+    }
+
+    /**
+     * @return array{viaStudio: ?string, canSendBack: bool, sendBackUrl: ?string, studioRequestId: ?int, studioNote: string}
+     */
+    private function studioLinkMeta(CustomRequest $request, ?StudioRequest $linkedStudio = null): array
+    {
+        $studioName = trim((string) ($linkedStudio?->studio?->name ?? ''));
+        $studioNote = '';
+        if ($linkedStudio) {
+            $qa = is_array($linkedStudio->questions_answers) ? $linkedStudio->questions_answers : [];
+            $studioNote = trim((string) ($qa['_studio_assign_note'] ?? ''));
+        }
+
+        $canSendBack = $linkedStudio
+            && $request->status === 'pending'
+            && in_array($linkedStudio->status, [
+                StudioRequest::STATUS_MOVED_TO_CUSTOM,
+                StudioRequest::STATUS_ASSIGNED,
+            ], true);
+
+        return [
+            'viaStudio' => $studioName !== '' ? $studioName : null,
+            'canSendBack' => (bool) $canSendBack,
+            'sendBackUrl' => $canSendBack
+                ? route('artist.studio-offers.send-back', $linkedStudio)
+                : null,
+            'studioRequestId' => $linkedStudio?->id,
+            'studioNote' => $studioNote,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function normalizeCustomFeedItem(CustomRequest $request, ?StudioRequest $linkedStudio = null): array
     {
         $isGuest = $request->isGuestRequest();
         [$statusKey, $statusLabel] = $this->mapCustomStatus($request);
         $answerCount = count($request->formattedQuestionAnswers());
         $imageCount = $request->attachedImageCount();
+        $meta = $this->studioLinkMeta($request, $linkedStudio);
+        $studioName = (string) ($meta['viaStudio'] ?? '');
+        $studioNote = (string) ($meta['studioNote'] ?? '');
 
         if ($isGuest) {
             $spot = $request->guestSpot;
@@ -238,6 +491,12 @@ class RequestsController extends Controller
                 'Guest spot request',
                 $location !== '' ? $location : null,
                 $answerCount > 0 ? $answerCount.' '.($answerCount === 1 ? 'answer' : 'answers') : null,
+            ]);
+        } elseif ($studioName !== '') {
+            $parts = array_filter([
+                'Assigned by '.$studioName.($studioNote !== '' ? ': "'.$studioNote.'"' : ''),
+                $answerCount > 0 ? $answerCount.' '.($answerCount === 1 ? 'answer' : 'answers') : null,
+                $imageCount > 0 ? $imageCount.' '.($imageCount === 1 ? 'picture' : 'pictures') : null,
             ]);
         } else {
             $parts = array_filter([
@@ -256,11 +515,15 @@ class RequestsController extends Controller
             'typeLabel' => $isGuest ? 'Guest spot' : 'Custom',
             'statusKey' => $statusKey,
             'statusLabel' => $statusLabel,
+            'viaStudio' => $meta['viaStudio'],
+            'canSendBack' => $meta['canSendBack'],
+            'sendBackUrl' => $meta['sendBackUrl'],
+            'studioRequestId' => $meta['studioRequestId'],
             'reference' => $request->referenceLabel(),
             'subtitle' => implode(' · ', $parts),
             'dateLabel' => $request->created_at?->format('M j') ?? '—',
             'dateSort' => $request->created_at?->format('Y-m-d H:i:s') ?? '',
-            'searchText' => strtolower(trim($request->clientSearchKey().' '.$request->referenceLabel())),
+            'searchText' => strtolower(trim($request->clientSearchKey().' '.$request->referenceLabel().' '.$studioName)),
             'chatUrl' => $request->artistChatUrl(),
             'needsReply' => $request->status === 'pending',
         ];

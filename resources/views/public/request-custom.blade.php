@@ -14,7 +14,16 @@
   <link href="{{ asset('design/css/inkjin_bookpay.css') }}" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
   @php
-    $lookState = \App\Support\PageLook::stateFromUserDetail($userDetail);
+    $isStudioRequest = ! empty($isStudioRequest);
+    if ($isStudioRequest) {
+      // Studio request mode: no artist userDetail; use studio branding vars from StudioRequestController.
+      $artistName = (string) ($studioName ?? 'Studio');
+      $artistUsername = '';
+      $artistProfileUrl = (string) ($studioProfileUrl ?? '#');
+      $lookState = is_array($lookState ?? null) ? $lookState : [];
+    } else {
+      $lookState = \App\Support\PageLook::stateFromUserDetail($userDetail);
+    }
     [$schemePrimary, $schemeMid, $schemeTint] = \App\Support\PageLook::schemeParts(
       (string) ($lookState['scheme'] ?? ''),
       '#3E007C,#5A238E,#F5ECFB'
@@ -176,10 +185,10 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner { width: 32px; height: 32px; border: 3px solid #ece6ef; border-top-color: #310f7a; border-radius: 50%; animation: spin 0.8s linear infinite; }
 
-    .question-div { display: none; min-height: 50vh; align-items: center; justify-content: center; padding: 1rem 0 2rem; width: 100%; }
+    .question-div { display: none; min-height: 0; align-items: flex-start; justify-content: flex-start; padding: 0.25rem 0 1.5rem; width: 100%; }
     .question-div.active { display: flex; animation: tfSlideIn 0.4s ease-out; }
     .question-div.active.reverse { animation: tfSlideInReverse 0.4s ease-out; }
-    /* Register steps: keep Back → "1 →" tight (no vertical centering gap) */
+    /* Register steps: keep Back → "1 →" tight */
     #rcStepRegister .question-div { min-height: 0; align-items: flex-start; justify-content: flex-start; padding: 1rem 0 1.5rem; }
     #rcStepRegister > .flex.items-center.gap-1 { margin-bottom: 0.5rem; }
     .single-choice-radio-button { padding: 9px 18px; border-radius: 9999px; border: 1px solid var(--line2); font-size: 13.5px; font-weight: 500; color: var(--ink); cursor: pointer; transition: border-color .15s, background .15s; background: #fff; }
@@ -316,7 +325,7 @@
         <h2 class="text-2xl font-bold text-on-surface mb-2" id="customClosedTitle">Not Accepting Custom Requests</h2>
         <p class="text-on-surface-variant mb-6" id="customClosedDesc">This artist is not accepting custom requests right now. Check back soon or browse their available designs.</p>
         <a href="{{ $artistProfileUrl }}" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-semibold text-sm hover:bg-primary-container transition-colors">
-          <span class="material-symbols-outlined text-lg">arrow_back</span> Back to Artist Page
+          <span class="material-symbols-outlined text-lg">arrow_back</span> Back to {{ $isStudioRequest ? 'Studio' : 'Artist' }} Page
         </a>
       </div>
     </div>
@@ -332,7 +341,13 @@
   </header>
 
   @php
-    $rcArtistInitials = $userDetail->publicDisplayInitials();
+    if ($isStudioRequest) {
+      $rcArtistInitials = (string) ($studioInitials ?? 'ST');
+      $rcAvatarUrl = ! empty($studioLogoUrl) ? $studioLogoUrl : null;
+    } else {
+      $rcArtistInitials = $userDetail->publicDisplayInitials();
+      $rcAvatarUrl = ($userDetail->avatar && $userDetail->avatar != '') ? asset($userDetail->avatar) : null;
+    }
   @endphp
 
   <main id="rcMainContent" style="max-width:640px;width:100%;margin:0 auto;padding:22px 16px;box-sizing:border-box">
@@ -358,10 +373,10 @@
         @endif
       </div>
 
-      <div class="bg-white rounded-2xl border border-outline-variant/20 p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+      <div class="bg-white rounded-2xl border border-outline-variant/20 p-4 sm:p-5 mb-3 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
         <div class="w-full sm:w-24 h-24 sm:h-24 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0 overflow-hidden">
-          @if($userDetail->avatar && $userDetail->avatar != '')
-            <img src="{{ asset($userDetail->avatar) }}" alt="{{ $artistName }}" class="w-full h-full object-cover">
+          @if($rcAvatarUrl)
+            <img src="{{ $rcAvatarUrl }}" alt="{{ $artistName }}" class="w-full h-full object-cover">
           @else
             <span class="text-white text-2xl font-bold">{{ $rcArtistInitials }}</span>
           @endif
@@ -369,7 +384,7 @@
         <div class="flex-1 min-w-0">
           @php
             $isGuestRequestForm = ! empty($guestSpotId) && ! empty($guestSpot);
-            $requestFormStudioLabel = $studioLabel ?? '';
+            $requestFormStudioLabel = $isStudioRequest ? '' : ($studioLabel ?? '');
             $guestSpotDateLabel = null;
             if ($isGuestRequestForm && $guestSpot->from_date && $guestSpot->to_date) {
               $guestSpotDateLabel = $guestSpot->from_date->isSameMonth($guestSpot->to_date)
@@ -382,6 +397,8 @@
               Join the waitlist
             @elseif($isGuestRequestForm)
               Guest Spot Request
+            @elseif($isStudioRequest)
+              Tattoo request at {{ $artistName }}
             @else
               Custom Tattoo Request
             @endif
@@ -395,17 +412,27 @@
               @if($guestSpotDateLabel)
                 <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_month</span> {{ $guestSpotDateLabel }}</span>
               @endif
+            @elseif($isStudioRequest)
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit_note</span> Your idea · Price after quote</span>
             @else
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">brush</span> Custom design</span>
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> Artist will review &amp; reply</span>
             @endif
           </div>
           <div class="flex items-start sm:items-center gap-2 mt-2 text-xs sm:text-sm text-on-surface-variant">
-            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0">
-              <span class="text-white text-[10px] font-bold">{{ $rcArtistInitials }}</span>
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center flex-shrink-0 overflow-hidden">
+              @if($isStudioRequest && $rcAvatarUrl)
+                <img src="{{ $rcAvatarUrl }}" alt="" class="w-full h-full object-cover">
+              @else
+                <span class="text-white text-[10px] font-bold">{{ $rcArtistInitials }}</span>
+              @endif
             </div>
             <span class="leading-relaxed break-words">
-              with <strong>{{ $artistName }}</strong>@if($requestFormStudioLabel) at <strong>{{ $requestFormStudioLabel }}</strong>@endif
+              @if($isStudioRequest)
+                The studio picks the best artist for you
+              @else
+                with <strong>{{ $artistName }}</strong>@if($requestFormStudioLabel) at <strong>{{ $requestFormStudioLabel }}</strong>@endif
+              @endif
             </span>
           </div>
         </div>
@@ -420,7 +447,15 @@
       $showGuestEntry = empty($guestSpotId) && $activeGuestSpotCount > 0;
       $studioChoices = $studioChoices ?? [];
       $introAtLine = '';
-      if (! empty($guestSpotId) && ! empty($guestSpot)) {
+      $introStudioMeta = '';
+      if ($isStudioRequest) {
+          $introStudioMeta = implode(' · ', array_filter([
+              trim((string) ($studioCityLabel ?? '')),
+              ((int) ($studioArtistCount ?? 0)) > 0
+                  ? ((int) $studioArtistCount).' '.\Illuminate\Support\Str::plural('artist', (int) $studioArtistCount)
+                  : '',
+          ]));
+      } elseif (! empty($guestSpotId) && ! empty($guestSpot)) {
           $introAtLine = trim((string) ($studioLabel ?? ''));
       } elseif (count($studioChoices) > 1) {
           $names = array_values(array_filter(array_map(
@@ -447,10 +482,10 @@
     <div class="rc-intro">
       <div class="rc-ia">
         <div class="av">
-          @if($userDetail->avatar && $userDetail->avatar != '')
-            <img src="{{ asset($userDetail->avatar) }}" alt="">
+          @if($rcAvatarUrl)
+            <img src="{{ $rcAvatarUrl }}" alt="">
           @else
-            {{ $userDetail->publicDisplayInitials() }}
+            {{ $rcArtistInitials }}
           @endif
         </div>
         <div>
@@ -459,12 +494,18 @@
               You're joining the waitlist with
             @elseif(!empty($guestSpotId) && !empty($guestSpot))
               You're requesting a guest spot tattoo from
+            @elseif($isStudioRequest)
+              You're requesting a tattoo at
             @else
               You're requesting a custom tattoo from
             @endif
           </span>
           <b id="artistNameDisplay">{{ $artistName }}</b>
-          @if($introAtLine !== '')
+          @if($isStudioRequest)
+            @if($introStudioMeta !== '')
+              <small>{{ $introStudioMeta }}</small>
+            @endif
+          @elseif($introAtLine !== '')
             <small>at {{ $introAtLine }}</small>
           @endif
         </div>
@@ -536,6 +577,8 @@
       <p class="lead">
         @if(!empty($isWaitlistJoin))
           Fill in {{ $artistName }}'s request form to join the waitlist. When books open, they'll notify you and can pick up your request from there.
+        @elseif($isStudioRequest)
+          We'll ask a few questions so {{ $artistName }} can match you with the right artist. The studio reviews your request, then sends you a quote or lets you know it isn't a fit.
         @else
           We'll ask a few questions to help {{ $artistName }} understand exactly what you want. {{ $artistName }} reviews your request, then sends you a quote or lets you know it isn't a fit.
         @endif
@@ -589,10 +632,14 @@
         $guestSpot->studio_country ?? ($guestSpot->country ?? ''),
       ])));
       $rcStudioMapsLink = trim((string) ($guestSpot->google_maps_link ?? ''));
+    } elseif (! empty($isStudioRequest)) {
+      $rcStudioName = trim((string) ($studioName ?? '')) ?: 'Studio';
+      $rcStudioAddressLine = trim((string) ($studioCityLabel ?? ''));
+      $rcStudioMapsLink = '';
     } else {
-      $rcStudioName = trim((string) ($userDetail->resolvedStudioName() ?: ($userDetail->studio_name ?? ''))) ?: 'Studio';
-      $rcStudioAddressLine = $userDetail->publicStudioAddressLine();
-      $rcStudioMapsLink = $userDetail->publicStudioMapsLink();
+      $rcStudioName = trim((string) ($userDetail?->resolvedStudioName() ?: ($userDetail?->studio_name ?? ''))) ?: 'Studio';
+      $rcStudioAddressLine = $userDetail?->publicStudioAddressLine() ?? '';
+      $rcStudioMapsLink = $userDetail?->publicStudioMapsLink() ?? '';
     }
   @endphp
   <!-- Screen 9: Availability (managed scheduling) -->
@@ -896,15 +943,21 @@
               <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> The artist can then review your request and send a quote</li>
               <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Check your email for updates</li>
             @else
+            @if($isStudioRequest)
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> The studio will review your request and references</li>
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> They'll match you with an artist and may reach out with questions or a custom quote</li>
+            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Once you agree, you'll schedule a session together</li>
+            @else
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> The artist will review your request and references</li>
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> They may reach out with questions or a custom quote</li>
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Once you agree, you'll schedule a session together</li>
+            @endif
             <li class="flex items-start gap-2"><span class="text-primary mt-0.5">✦</span> Check your email for updates and messages</li>
             @endif
           </ul>
         </div>
         <a href="{{ $artistProfileUrl }}" class="block w-full py-3.5 rounded-xl font-bold text-primary border-2 border-primary hover:bg-primary/5 transition-all text-sm text-center">
-          Back to Artist Page
+          Back to {{ $isStudioRequest ? 'Studio' : 'Artist' }} Page
         </a>
       </div>
     </div>
@@ -924,6 +977,10 @@
     'use strict';
     var csrfToken = @json(csrf_token());
     var artistUsername = @json($artistUsername ?? '');
+    var isStudioRequest = @json($isStudioRequest);
+    var studioUsername = @json($studioUsername ?? '');
+    var studioPortfolioId = @json($studioPortfolioId ?? null);
+    var artistPortfolioId = @json($artistPortfolioId ?? null);
     var fallbackTattooSlug = @json($fallbackTattooSlug ?? '');
     var serverQuestions = @json($requiredBookingQuestions ?? $questions ?? []);
     var prefilledQuestionAnswers = @json($prefilledQuestionAnswers ?? new \stdClass());
@@ -1000,7 +1057,7 @@
     }
 
     async function uploadQuestionImage(file, questionId, progressCb) {
-      if (!artistUsername) throw new Error('Image upload is not available for this artist.');
+      if (isStudioRequest ? !studioUsername : !artistUsername) throw new Error('Image upload is not available for this ' + (isStudioRequest ? 'studio' : 'artist') + '.');
       var formData = new FormData();
       if (window.QuestionImageField && typeof window.QuestionImageField.appendImageToFormData === 'function') {
         window.QuestionImageField.appendImageToFormData(formData, file);
@@ -1008,8 +1065,12 @@
         formData.append('image', file, (file && file.name) || 'upload.jpg');
       }
       formData.append('question_id', String(questionId || ''));
-      formData.append('artist_username', artistUsername);
-      if (fallbackTattooSlug) {
+      if (isStudioRequest) {
+        formData.append('studio_username', studioUsername);
+      } else {
+        formData.append('artist_username', artistUsername);
+      }
+      if (!isStudioRequest && fallbackTattooSlug) {
       formData.append('tattoo_slug', fallbackTattooSlug);
       }
       return await new Promise(function(resolve, reject) {
@@ -1413,10 +1474,14 @@
   @php
     $guestPrefDateMin = $guestPrefDateMin ?? null;
     $guestPrefDateMax = $guestPrefDateMax ?? null;
-    if (! isset($rcStudioName)) {
-      $rcStudioName = trim((string) ($userDetail->resolvedStudioName() ?: ($userDetail->studio_name ?? ''))) ?: 'Studio';
-      $rcStudioAddressLine = $userDetail->publicStudioAddressLine();
-      $rcStudioMapsLink = $userDetail->publicStudioMapsLink();
+    if ($isStudioRequest) {
+      $rcStudioName = (string) ($studioName ?? 'Studio');
+      $rcStudioAddressLine = (string) ($studioCityLabel ?? '');
+      $rcStudioMapsLink = '';
+    } elseif (! isset($rcStudioName)) {
+      $rcStudioName = trim((string) ($userDetail?->resolvedStudioName() ?: ($userDetail?->studio_name ?? ''))) ?: 'Studio';
+      $rcStudioAddressLine = $userDetail?->publicStudioAddressLine() ?? '';
+      $rcStudioMapsLink = $userDetail?->publicStudioMapsLink() ?? '';
     }
   @endphp
 
@@ -1430,6 +1495,12 @@
     var isWaitlistJoin = @json(!empty($isWaitlistJoin));
     var guestPrefDateMin = @json($guestPrefDateMin);
     var guestPrefDateMax = @json($guestPrefDateMax);
+    var isStudioRequest = @json($isStudioRequest);
+    var rcStudioUsername = @json($studioUsername ?? '');
+    var studioPortfolioId = @json($studioPortfolioId ?? null);
+    var artistPortfolioId = @json($artistPortfolioId ?? null);
+    var rcStudioArtists = @json($artists ?? []);
+    var STUDIO_ARTIST_QUESTION_ID = 'studio_artist_pick';
     var isManagedScheduling = @json(!empty($isManagedScheduling));
     var rcStudioChoices = @json($studioChoices ?? []);
     var rcDefaultStudio = (Array.isArray(rcStudioChoices) && rcStudioChoices.length === 1)
@@ -1485,8 +1556,12 @@
     var RC_DRAFT_VERSION = 1;
     var rcDraftSaveTimer = null;
 
+    function rcDraftScope() {
+      return isStudioRequest ? 'studio:' + rcStudioUsername : rcArtistUsername;
+    }
+
     function rcDraftStorageKey() {
-      return 'inkjin_custom_request_draft:' + rcArtistUsername + (guestSpotId ? ':guest:' + guestSpotId : '');
+      return 'inkjin_custom_request_draft:' + rcDraftScope() + (guestSpotId ? ':guest:' + guestSpotId : '');
     }
 
     function clearRcDraftSession() {
@@ -1505,7 +1580,7 @@
         : null;
       return {
         v: RC_DRAFT_VERSION,
-        artist: rcArtistUsername,
+        artist: rcDraftScope(),
         savedAt: Date.now(),
         screen: inQuestions ? 'questions' : current,
         inQuestions: inQuestions,
@@ -1540,7 +1615,7 @@
 
     function applyRcDraftFromSession(state) {
       if (!state || typeof state !== 'object') return false;
-      if (state.artist !== rcArtistUsername) return false;
+      if (state.artist !== rcDraftScope()) return false;
       if (!state.inQuestions && typeof state.screen === 'number' && state.screen >= 14) return false;
 
       rcOtpVerified = !!state.rcOtpVerified;
@@ -1660,6 +1735,19 @@
       }
       updateProgressDots();
       updateTopProgress();
+    }
+
+    function rcResolveAssignedArtistId(pickedName) {
+      var name = String(pickedName || '').trim().toLowerCase();
+      if (!name || name === 'any available artist' || !Array.isArray(rcStudioArtists)) return null;
+      for (var i = 0; i < rcStudioArtists.length; i++) {
+        var a = rcStudioArtists[i] || {};
+        if (String(a.name || '').trim().toLowerCase() === name) {
+          var id = parseInt(a.user_id, 10);
+          return id > 0 ? id : null;
+        }
+      }
+      return null;
     }
 
     function rcResolveSelectedStudio() {
@@ -2055,7 +2143,8 @@
           body: JSON.stringify({
             email: email,
             name: String(document.getElementById('tfName')?.value || '').trim(),
-            artist_username: rcArtistUsername || artistUsername || ''
+            artist_username: isStudioRequest ? '' : (rcArtistUsername || artistUsername || ''),
+            artist_name: isStudioRequest ? artistName : ''
           })
         });
         var payload = await res.json();
@@ -2575,6 +2664,16 @@
               ? window.rcBuildStructuredQuestionAnswers()
               : {}
           };
+        if (isStudioRequest) {
+          var studioAnswers = (typeof window.rcGetQuestionAnswers === 'function') ? (window.rcGetQuestionAnswers() || {}) : {};
+          var pickedArtist = String(studioAnswers[STUDIO_ARTIST_QUESTION_ID] || '').trim();
+          requestPayload.artist_choice = pickedArtist || 'Any available artist';
+          var assignedId = rcResolveAssignedArtistId(pickedArtist);
+          if (assignedId) requestPayload.assigned_artist_id = assignedId;
+          // Artist pick is sent via artist_choice / assigned_artist_id, not as a regular answer.
+          if (requestPayload.questions_answers) delete requestPayload.questions_answers[STUDIO_ARTIST_QUESTION_ID];
+          if (studioPortfolioId) requestPayload.studio_portfolio_id = studioPortfolioId;
+        }
         if (isManagedScheduling) {
           var managedAvailability = collectRcManagedAvailabilityPayload();
           requestPayload.preferences = managedAvailability.preferences;
@@ -2589,11 +2688,13 @@
         if (isWaitlistJoin) {
           requestPayload.from_waitlist = true;
         }
-        var payload = {
-          artist_username: @json($artistUsername ?? ''),
-          request_payload: requestPayload
-        };
-        var res = await fetch(bookpayUrl('/api/public/submit-custom-request'), {
+        if (!isStudioRequest && artistPortfolioId) {
+          requestPayload.portfolio_id = artistPortfolioId;
+        }
+        var payload = isStudioRequest
+          ? { studio_username: rcStudioUsername, request_payload: requestPayload }
+          : { artist_username: @json($artistUsername ?? ''), request_payload: requestPayload };
+        var res = await fetch(bookpayUrl(isStudioRequest ? '/api/public/submit-studio-request' : '/api/public/submit-custom-request'), {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
@@ -2608,7 +2709,10 @@
           throw new Error((result && result.message) || 'Unable to submit your request. Please try again.');
         }
         var refEl = document.getElementById('successRequestRef');
-        if (refEl) refEl.textContent = result.request_reference || '—';
+        if (refEl) {
+          refEl.textContent = result.request_reference
+            || (result.studio_request_id ? '#' + result.studio_request_id : '—');
+        }
         clearRcDraftSession();
         document.getElementById('submitLoading').classList.add('hidden');
         document.getElementById('submitSuccess').classList.remove('hidden');

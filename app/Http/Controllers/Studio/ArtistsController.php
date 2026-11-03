@@ -46,12 +46,7 @@ class ArtistsController extends Controller
                 $isSplit = (bool) $link->payout && $link->revenue_split !== null;
                 $artistPct = $isSplit ? max(0, min(100, (int) $link->revenue_split)) : 100;
                 $studioPct = 100 - $artistPct;
-                $styles = collect(is_array($link->user?->userDetail?->tattoo_styles ?? null)
-                    ? $link->user->userDetail->tattoo_styles
-                    : [])
-                    ->filter()
-                    ->take(3)
-                    ->implode(', ');
+                $styles = $this->formatTattooStyles($link->user?->userDetail?->tattoo_styles);
 
                 return array_merge($base, [
                     'is_split' => $isSplit,
@@ -651,6 +646,43 @@ class ArtistsController extends Controller
             'relationship' => $labels[$link->relationship ?? ''] ?? '—',
             'relationship_key' => $link->relationship ?: 'resident',
         ];
+    }
+
+    private function formatTattooStyles(mixed $payload): string
+    {
+        if (! is_array($payload)) {
+            return '';
+        }
+
+        $labels = [];
+
+        if (array_key_exists('primary_style', $payload) || array_key_exists('other_styles', $payload)) {
+            $primary = trim((string) ($payload['primary_style'] ?? ''));
+            if ($primary !== '') {
+                $labels[] = $primary;
+            }
+            foreach ((array) ($payload['other_styles'] ?? []) as $style) {
+                if (! is_scalar($style)) {
+                    continue;
+                }
+                $style = trim((string) $style);
+                if ($style !== '') {
+                    $labels[] = $style;
+                }
+            }
+        } else {
+            foreach ($payload as $style) {
+                if (! is_scalar($style)) {
+                    continue;
+                }
+                $style = trim((string) $style);
+                if ($style !== '') {
+                    $labels[] = $style;
+                }
+            }
+        }
+
+        return implode(', ', array_slice(array_values(array_unique($labels)), 0, 3));
     }
 
     private function resolveStudio(?User $user): ?Studio

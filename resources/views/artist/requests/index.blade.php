@@ -184,6 +184,7 @@
 
 @include('artist.requests.partials.custom-detail-modals')
 @include('artist.requests.partials.design-detail-modals')
+@include('artist.requests.partials.studio-offer-modal')
 @include('artist.partials.payment-link-modal')
 @include('artist.partials.payment-link-modal-script')
 
@@ -212,17 +213,28 @@
     var needsReply = card.dataset.needsReply === '1';
     var openAs = card.dataset.openAs || (card.dataset.kind === 'design' ? 'design' : 'custom');
     var id = card.dataset.id;
-    var openFn = openAs === 'design' ? 'openRequestDetail' : 'openCustomRequestDetail';
-    var ctaLabel = needsReply
-      ? (openAs === 'design' ? 'View details & times' : 'View details & quote')
-      : 'View details';
-    var chatHtml = '';
+    var openFn = openAs === 'studio_offer'
+      ? 'openStudioOfferDetail'
+      : (openAs === 'design' ? 'openRequestDetail' : 'openCustomRequestDetail');
+    var ctaLabel = openAs === 'studio_offer'
+      ? 'View details & quote'
+      : (needsReply
+        ? (openAs === 'design' ? 'View details & times' : 'View details & quote')
+        : 'View details');
+    var html = '';
+    if (card.dataset.canSendBack === '1' && card.dataset.sendBackUrl) {
+      var studioName = card.dataset.viaStudio || '';
+      html += '<button type="button" class="btn sm ghost js-send-back-studio" data-url="' +
+        (card.dataset.sendBackUrl || '').replace(/"/g, '&quot;') +
+        '" data-studio="' + studioName.replace(/"/g, '&quot;') +
+        '" onclick="event.stopPropagation(); window.sendBackStudioRequest && window.sendBackStudioRequest(this)">Send back to studio</button>';
+    }
     var chatHref = card.dataset.chatUrl || '';
     if (!needsReply && chatHref) {
-      chatHtml = '<a href="' + chatHref + '" class="btn sm ghost" onclick="event.stopPropagation();" style="text-decoration:none"><span class="ms" style="font-size:16px">chat_bubble</span>Message</a>';
+      html += '<a href="' + chatHref + '" class="btn sm ghost" onclick="event.stopPropagation();" style="text-decoration:none"><span class="ms" style="font-size:16px">chat_bubble</span>Message</a>';
     }
-    actions.innerHTML = chatHtml +
-      '<button type="button" class="btn sm ' + (needsReply ? 'pri' : 'ghost') + '" onclick="event.stopPropagation(); ' + openFn + '(' + id + ')">' + ctaLabel + '</button>';
+    html += '<button type="button" class="btn sm ' + (needsReply ? 'pri' : 'ghost') + '" onclick="event.stopPropagation(); ' + openFn + '(' + id + ')">' + ctaLabel + '</button>';
+    actions.innerHTML = html;
     card.style.borderLeft = needsReply ? '3px solid #7A1FC4' : '';
   }
 
@@ -254,7 +266,9 @@
 
     cards.forEach(function (card) {
       placeCard(card, false);
-      var matchType = typeFilter === 'all' || card.dataset.kind === typeFilter;
+      var matchType = typeFilter === 'all'
+        || card.dataset.kind === typeFilter
+        || (typeFilter === 'custom' && card.dataset.kind === 'studio_offer');
       var matchStatus = statusFilter === 'all' || card.dataset.statusKey === statusFilter;
       var matchSearch = !search || (card.dataset.search || '').indexOf(search) !== -1;
       var show = matchType && matchStatus && matchSearch;

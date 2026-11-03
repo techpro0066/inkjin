@@ -41,10 +41,17 @@
     padding:16px 24px;background:#FCF6FE;border-top:1px solid #F0E4F5;flex-shrink:0;
   }
   #customRequestModal .mf .btn{min-width:110px;justify-content:center}
-  #customRequestModal .mf .btn-decline{
+  #customRequestModal .mf .btn-decline,
+  #customRequestModal .mf .btn-sendback{
     margin-right:auto;color:#C62828;border-color:#F3C9C9;background:#fff;
   }
-  #customRequestModal .mf .btn-decline:hover{background:#FDECEC}
+  #customRequestModal .mf .btn-decline:hover,
+  #customRequestModal .mf .btn-sendback:hover{background:#FDECEC}
+  #customRequestModal .d01-via-studio{
+    border:1px solid #E6D2F2;background:#F8F0FF;border-radius:12px;
+    padding:10px 14px;font-size:13px;color:#5B2A94;font-weight:600;
+    margin-bottom:12px;display:flex;gap:8px;align-items:center;
+  }
   #customRequestModal .mf .btn[disabled]{opacity:.45;pointer-events:none;cursor:not-allowed}
   #customRequestModal .hidden{display:none!important}
   #customRequestModal .d01-grid{
@@ -251,7 +258,8 @@
     #customRequestModal .d01-quote-grid{grid-template-columns:1fr}
     #customRequestModal .mf{flex-wrap:wrap}
     #customRequestModal .mf .btn{flex:1 1 auto}
-    #customRequestModal .mf .btn-decline{margin-right:0;order:-1;width:100%}
+    #customRequestModal .mf .btn-decline,
+    #customRequestModal .mf .btn-sendback{margin-right:0;order:-1;width:100%}
     #customRequestModal .modal.xl{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);border-radius:16px}
   }
   @media (max-width:640px){
@@ -283,6 +291,9 @@
     <div class="mf" id="customRequestDetailFooter">
       <button type="button" id="customDeclineFooterBtn" class="btn ghost btn-decline hidden" onclick="CustomRequestUI.openCustomDeclineFromFooter()">
         <span class="ms">block</span>Decline
+      </button>
+      <button type="button" id="customSendBackFooterBtn" class="btn ghost btn-sendback hidden" onclick="CustomRequestUI.openCustomSendBackFromFooter()">
+        <span class="ms">undo</span>Send back to studio
       </button>
       <button type="button" class="btn ghost" onclick="closeCustomRequestDetail()">Close</button>
       <button type="button" id="customQuoteSubmitBtn" class="btn hidden" onclick="CustomRequestUI.submitCustomQuote()">
@@ -324,6 +335,16 @@
 
   const requestScope = 'unified';
   const customRequestsById = @json(collect($customRequestsPayload ?? [])->keyBy('id'));
+  (function mergeStudioOffersIntoPanel() {
+    var offers = @json(collect($studioOffersPayload ?? [])->keyBy('studioOfferId'));
+    Object.keys(offers || {}).forEach(function (sid) {
+      var req = offers[sid];
+      if (!req) return;
+      var key = req.id || ('studio:' + sid);
+      customRequestsById[key] = req;
+      customRequestsById['studio:' + sid] = req;
+    });
+  })();
   const canSendQuotes = @json($canSendQuotes ?? true);
   const customQuotesBlockedMessage = @json($quotesBlockedMessage ?? null);
   const customPaymentSettingsUrl = @json(route('settings.payment'));
@@ -488,10 +509,22 @@
       '<div style="background:#fff;border-radius:12px;padding:12px 14px;margin-top:10px">' + lines.join('') + '</div></div>';
   }
 
+  function answerHasImages(item) {
+    if (!item) return false;
+    var type = String(item.question_type || item.type || '');
+    if (window.QuestionAnswerDisplay && typeof window.QuestionAnswerDisplay.imageUrlsFromAnswer === 'function') {
+      return window.QuestionAnswerDisplay.imageUrlsFromAnswer(item.answer, type).length > 0;
+    }
+    if (Array.isArray(item.answer) && item.answer.length && item.answer.every(isImageUrl)) return true;
+    return typeof item.answer === 'string' && isImageUrl(item.answer);
+  }
+
   function buildCustomRequestLeftHtml(req) {
     var cells = [];
     (req.questionsAnswers || []).forEach(function(item) {
       if (!item || !item.question) return;
+      // Images render as thumbnails under Reference images — skip "1 picture" text rows.
+      if (answerHasImages(item)) return;
       cells.push(qaCell(item.question, formatAnswer(item.answer, item.type)));
     });
     var questionsHtml = cells.length
@@ -520,13 +553,38 @@
       ? '<div class="faint" style="font-size:13.5px">None</div>'
       : '<div style="font-size:13.5px;line-height:1.5;white-space:pre-line">' + escapeHtml(notes) + '</div>';
 
+    var viaStudio = String(req.viaStudio || '').trim();
+    var studioNote = String(req.studioNote || '').trim();
+    var viaBanner = viaStudio
+      ? '<div class="d01-via-studio"><span class="ms" style="font-size:18px">storefront</span>' +
+        '<span>Via ' + escapeHtml(viaStudio) +
+        (studioNote ? ' · “' + escapeHtml(studioNote) + '”' : '') +
+        (req.isStudioOffer ? ' · Sending a quote takes this request' : '') +
+        '</span></div>'
+      : '';
+    var viaPill = viaStudio
+      ? '<span class="pill nd" style="background:#F3E8FF;color:#3E007C">Via ' + escapeHtml(viaStudio) + '</span>'
+      : '';
+    var imagesHtml = '';
+    if (Array.isArray(req.images) && req.images.length) {
+      imagesHtml = '<div style="padding-top:12px"><div class="lbl" style="font-size:10.5px;margin-bottom:8px">Reference images</div>' +
+        '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+        req.images.map(function (src) {
+          return '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener" style="width:72px;height:72px;border-radius:10px;overflow:hidden;border:1px solid var(--line);display:block;background:#F7F3F9">' +
+            '<img src="' + escapeHtml(src) + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></a>';
+        }).join('') +
+        '</div></div>';
+    }
+
     return '' +
+      viaBanner +
       '<div class="row" style="gap:14px">' +
         '<div class="ini" style="width:52px;height:52px;font-size:18px">' + escapeHtml(req.clientInitials) + '</div>' +
         '<div style="flex:1;min-width:0">' +
           '<b style="font-size:18px">' + escapeHtml(req.clientName) + '</b>' +
           '<div class="row" style="gap:8px;margin-top:4px;flex-wrap:wrap">' +
             '<span class="pill ' + customStatusPillClass(req) + '">' + escapeHtml(req.filterStatus) + '</span>' +
+            viaPill +
             '<span class="faint" style="font-size:12.5px">' + escapeHtml(req.submittedAt) + ' · ' + escapeHtml(req.reference) + '</span>' +
       '</div>' +
         '</div>' +
@@ -541,6 +599,7 @@
       questionsHtml +
       guestSpotHtml +
       availabilityHtml +
+      imagesHtml +
       '<div style="padding-top:10px"><div class="lbl" style="font-size:10.5px">Additional notes</div>' + notesHtml + '</div>';
   }
 
@@ -1274,12 +1333,21 @@
 
   function updateCustomDetailFooter(req) {
     var declineBtn = document.getElementById('customDeclineFooterBtn');
+    var sendBackBtn = document.getElementById('customSendBackFooterBtn');
     var sendBtn = document.getElementById('customQuoteSubmitBtn');
     var subtitle = document.getElementById('customRequestSubtitle');
     var pending = !!(req && req.status === 'pending');
     var guestSpotFull = !!(req && req.isGuest && req.guestSpot && req.guestSpot.isFull);
+    var canSendBack = !!(req && req.canSendBack && req.sendBackUrl);
 
-    if (declineBtn) declineBtn.classList.toggle('hidden', !pending);
+    if (declineBtn) declineBtn.classList.toggle('hidden', !pending || canSendBack);
+    if (sendBackBtn) {
+      sendBackBtn.classList.toggle('hidden', !canSendBack);
+      if (canSendBack) {
+        sendBackBtn.setAttribute('data-url', req.sendBackUrl || '');
+        sendBackBtn.setAttribute('data-studio', req.viaStudio || '');
+      }
+    }
 
     if (sendBtn) {
       if (pending && canSendQuotes) {
@@ -1296,13 +1364,25 @@
     }
 
     if (subtitle) {
-      if (pending && !canSendQuotes) {
+      if (pending && req.viaStudio) {
+        subtitle.textContent = 'Via ' + req.viaStudio;
+        subtitle.classList.remove('hidden');
+      } else if (pending && !canSendQuotes) {
         subtitle.textContent = 'Payouts not set up';
         subtitle.classList.remove('hidden');
       } else {
         subtitle.textContent = '';
         subtitle.classList.add('hidden');
       }
+    }
+  }
+
+  function openCustomSendBackFromFooter() {
+    var btn = document.getElementById('customSendBackFooterBtn');
+    if (!btn || btn.classList.contains('hidden')) return;
+    if (window.sendBackStudioRequest) window.sendBackStudioRequest(btn);
+    else if (window.openStudioSendBackForUrl) {
+      window.openStudioSendBackForUrl(btn.getAttribute('data-url'), btn.getAttribute('data-studio'));
     }
   }
 
@@ -1327,6 +1407,15 @@
 
   function getCustomSendQuoteUrl(id) {
     return sendQuoteUrlTemplate.replace(/\/0\/send-quote$/, '/' + id + '/send-quote');
+  }
+
+  function resolveSendQuoteUrl(req, id) {
+    if (req && req.isStudioOffer && req.sendQuoteUrl) return req.sendQuoteUrl;
+    var numericId = String(id || '').replace(/^studio:/, '');
+    if (req && req.isStudioOffer && req.studioOfferId) {
+      return null; // should have sendQuoteUrl
+    }
+    return getCustomSendQuoteUrl(numericId);
   }
 
   function parseQuotePrice(raw) {
@@ -1433,10 +1522,15 @@
       showErrorToast('All slots are full. You cannot send a quote for this guest spot.');
       return;
     }
+    const quoteUrl = resolveSendQuoteUrl(req, id);
+    if (!quoteUrl) {
+      showQuoteFormGeneralError('Could not send this quote.');
+      return;
+    }
     const btn = document.getElementById('customQuoteSubmitBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ms">hourglass_empty</span>Sending…'; }
     try {
-      const res = await fetch(getCustomSendQuoteUrl(id), {
+      const res = await fetch(quoteUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1464,6 +1558,11 @@
         var generalMsg = data.message || slotsErr || 'Could not send this quote.';
         showQuoteFormGeneralError(generalMsg);
         showErrorToast(generalMsg);
+        return;
+      }
+      if (req && req.isStudioOffer || data.reload) {
+        showSuccessToast(data.message || 'Quote sent successfully');
+        setTimeout(function () { location.reload(); }, 400);
         return;
       }
       applyQuoteResult(data.request);
@@ -1498,7 +1597,7 @@
     if (e.target === e.currentTarget) closeCustomDeclineModal();
   }
 
-    function updateCustomRequestCardFromRequest(req) {
+  function updateCustomRequestCardFromRequest(req) {
     const kind = req.isGuest ? 'guest' : 'custom';
     const card = document.querySelector('.card[data-req][data-kind="' + kind + '"][data-id="' + req.id + '"]');
     if (!card) return;
@@ -1509,6 +1608,14 @@
     else if (req.status === 'cancelled') { statusKey = 'declined'; statusLabel = 'Declined'; }
     card.dataset.statusKey = statusKey;
     card.dataset.needsReply = req.status === 'pending' ? '1' : '0';
+    var canSendBack = !!(req.canSendBack && req.sendBackUrl && req.status === 'pending');
+    card.dataset.canSendBack = canSendBack ? '1' : '0';
+    if (canSendBack) {
+      card.dataset.sendBackUrl = req.sendBackUrl || '';
+      if (req.viaStudio) card.dataset.viaStudio = req.viaStudio;
+    } else {
+      card.dataset.sendBackUrl = '';
+    }
     var pill = card.querySelector('[data-status-pill]');
     if (pill) {
       var cls = statusKey === 'new' ? 'p' : (statusKey === 'quote_sent' ? 'b' : (statusKey === 'booked' ? 'g' : 'r'));
@@ -1618,6 +1725,10 @@
     document.body.style.overflow = 'hidden';
   }
 
+  function openStudioOfferDetail(studioRequestId) {
+    openCustomRequestDetail('studio:' + studioRequestId);
+  }
+
   function closeCustomRequestDetail() {
     const modal = document.getElementById('customRequestModal');
     if (modal) modal.classList.remove('open');
@@ -1692,13 +1803,16 @@
     onArtistSlotFieldChange: onArtistSlotFieldChange,
     openCustomDeclineFromFooter: openCustomDeclineFromFooter,
     openCustomDeclineModal: openCustomDeclineModal,
+    openCustomSendBackFromFooter: openCustomSendBackFromFooter,
     openCustomRequestDetail: openCustomRequestDetail,
+    openStudioOfferDetail: openStudioOfferDetail,
     removeSlotDateBlock: removeSlotDateBlock,
     removeSlotTimeRow: removeSlotTimeRow,
     submitCustomDecline: submitCustomDecline,
     submitCustomQuote: submitCustomQuote,
   };
   window.openCustomRequestDetail = openCustomRequestDetail;
+  window.openStudioOfferDetail = openStudioOfferDetail;
   window.closeCustomRequestDetail = closeCustomRequestDetail;
   window.openCustomDeclineModal = openCustomDeclineModal;
   window.openCustomDeclineFromFooter = openCustomDeclineFromFooter;

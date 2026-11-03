@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Studio;
 
 use App\Http\Controllers\Controller;
 use App\Models\Studio;
+use App\Rules\ReservedArtistUsername;
+use App\Rules\UniquePublicUsername;
 use App\Services\LocationPreferencesService;
 use App\Support\StripeConnectCountries;
 use DateTimeZone;
@@ -27,42 +29,57 @@ class AccountController extends Controller
 
     public function updateProfile(Request $request): RedirectResponse|JsonResponse
     {
+        $user = $request->user();
+        $studio = $this->resolveStudio($user);
+
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'mobile' => ['nullable', 'string', 'max:50'],
+            'username' => [
+                'required',
+                'string',
+                'min:3',
+                'max:30',
+                'regex:/^[A-Za-z0-9._]+$/',
+                new UniquePublicUsername(ignoreStudioId: $studio?->id),
+                new ReservedArtistUsername((string) ($user->email ?? '')),
+            ],
             'avatar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp,gif', 'max:5120'],
         ], [
             'first_name.required' => 'First name is required.',
             'last_name.required' => 'Last name is required.',
+            'username.required' => 'Username is required.',
+            'username.regex' => 'Use letters, numbers, periods and underscores only.',
             'avatar.image' => 'Please choose a valid image file.',
             'avatar.max' => 'Photo must be 5MB or smaller.',
         ]);
 
-        $user = $request->user();
         $user->first_name = trim($validated['first_name']);
         $user->last_name = trim($validated['last_name']);
         $user->phone_number = trim((string) ($validated['mobile'] ?? '')) ?: null;
         $user->save();
 
-        $studio = $this->resolveStudio($user);
+        $username = ltrim(trim((string) $validated['username']), '@');
         $imagePath = trim((string) ($studio?->image_url ?? ''));
 
-        if ($request->hasFile('avatar')) {
-            if (! $studio) {
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Studio record not found.',
-                        'errors' => ['avatar' => ['Studio record not found.']],
-                    ], 422);
-                }
-
-                return redirect()
-                    ->route('studio.account.profile')
-                    ->withErrors(['avatar' => 'Studio record not found.']);
+        if (! $studio) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Studio record not found.',
+                    'errors' => ['username' => ['Studio record not found.']],
+                ], 422);
             }
 
+            return redirect()
+                ->route('studio.account.profile')
+                ->withErrors(['username' => 'Studio record not found.']);
+        }
+
+        $studio->username = $username;
+
+        if ($request->hasFile('avatar')) {
             if ($imagePath !== '' && file_exists(public_path(ltrim($imagePath, '/')))) {
                 File::delete(public_path(ltrim($imagePath, '/')));
             }
@@ -79,10 +96,13 @@ class AccountController extends Controller
             }
             $file->move($destination, $filename);
             $imagePath = 'uploads/studios/'.$filename;
-            $studio->forceFill(['image_url' => $imagePath])->save();
-            $studio->refresh();
-            $imagePath = trim((string) ($studio->image_url ?? $imagePath));
+            $studio->image_url = $imagePath;
         }
+
+        $studio->save();
+        $studio->refresh();
+        $imagePath = trim((string) ($studio->image_url ?? $imagePath));
+        $username = trim((string) ($studio->username ?? $username));
 
         $initials = strtoupper(substr(($user->first_name.$user->last_name) ?: 'ST', 0, 2));
         $avatarUrl = $imagePath !== '' ? asset(ltrim($imagePath, '/')) : null;
@@ -98,6 +118,9 @@ class AccountController extends Controller
                     'mobile' => $user->phone_number ?? '',
                     'initials' => $initials,
                     'avatar' => $avatarUrl,
+                ],
+                'studio' => [
+                    'username' => $username,
                 ],
             ]);
         }
@@ -433,6 +456,7 @@ class AccountController extends Controller
         return view('studio.account.'.$accountTab, array_merge([
             'studio' => $studio,
             'studioName' => $studioName,
+            'studioUsername' => trim((string) ($studio?->username ?? '')),
             'studioEmail' => $studio?->email ?? $user->email,
             'studioInitials' => $studioInitials,
             'ownerFirstName' => $ownerFirst,

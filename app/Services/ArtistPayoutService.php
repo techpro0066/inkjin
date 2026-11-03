@@ -1415,16 +1415,16 @@ class ArtistPayoutService
 
         $link = $userDetail->payoutUserStudio();
         $studio = $link?->studio ?? $userDetail->studio;
-        if (! $studio) {
-            return false;
-        }
+            if (! $studio) {
+                return false;
+            }
 
         if (! empty($studio->stripe_requirement)) {
-            return false;
-        }
+                return false;
+            }
 
-        return $this->isStripeAccountPayoutReady($studio->resolveStripeAccountId());
-    }
+            return $this->isStripeAccountPayoutReady($studio->resolveStripeAccountId());
+        }
 
     /**
      * Studio revenue-split booking whose studio Connect account is not ready yet.
@@ -1437,8 +1437,8 @@ class ArtistPayoutService
             : $this->resolvedArtistPaymentType($userDetail);
 
         if ($paymentType !== 'studio_account') {
-            return false;
-        }
+        return false;
+    }
 
         $artistPercent = $booking
             ? $this->resolvePayoutArtistPercent($booking, $userDetail)

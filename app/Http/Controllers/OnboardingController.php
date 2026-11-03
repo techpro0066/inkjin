@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Schema;
 use App\Rules\ReservedArtistUsername;
+use App\Rules\UniquePublicUsername;
 use App\Models\QuestionSorting;
 use App\Services\LocationPreferencesService;
 use App\Services\StripeConnectService;
@@ -1584,12 +1585,12 @@ class OnboardingController extends Controller
                 'first_name' => ['required', 'string', 'max:255'],
                 'last_name' => ['required', 'string', 'max:255'],
                 'user_name' => [
-                    'required', 
-                    'string', 
+                    'required',
+                    'string',
                     'min:1',
                     'max:30',
                     'regex:/^[A-Za-z0-9._]+$/',
-                    'unique:user_details,user_name,' . ($userDetail ? $userDetail->id : 'NULL') . ',id',
+                    new UniquePublicUsername(ignoreUserDetailId: $userDetail?->id),
                     new ReservedArtistUsername($user->email),
                 ],
                 'mobile_number' => [

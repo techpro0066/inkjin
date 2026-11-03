@@ -874,6 +874,7 @@ class CustomRequest extends Model
             'availabilityDetails' => $this->availabilityStructured(),
             'artistSessionSlots' => $this->normalizedArtistSlots(),
             'questionsAnswers' => $this->formattedQuestionAnswers(),
+            'images' => $this->artistPanelImageUrls(),
             'reasonDecline' => $this->reason_decline,
             'estimatedPrice' => $this->estimated_price,
             'estimatedTime' => $this->estimated_time,
@@ -884,6 +885,42 @@ class CustomRequest extends Model
             'isBooked' => $this->isBooked(),
             'chatUrl' => $this->artistChatUrl(),
         ];
+    }
+
+    /**
+     * Reference / portfolio images for the artist request modal thumbnails.
+     *
+     * @return list<string>
+     */
+    public function artistPanelImageUrls(): array
+    {
+        $images = [];
+        foreach ($this->attachedImageUrls() as $url) {
+            $path = trim((string) $url);
+            if ($path === '') {
+                continue;
+            }
+            $images[] = str_starts_with($path, 'http://') || str_starts_with($path, 'https://')
+                ? $path
+                : asset(ltrim($path, '/'));
+        }
+
+        $answers = is_array($this->questions_answers) ? $this->questions_answers : [];
+        $portfolioId = (int) ($answers['_portfolio_id'] ?? 0);
+        if ($portfolioId > 0) {
+            $portfolio = Portfolio::query()
+                ->whereKey($portfolioId)
+                ->where('user_id', (int) $this->artist_id)
+                ->first();
+            $imageRaw = trim((string) ($portfolio?->image ?? ''));
+            if ($imageRaw !== '') {
+                $images[] = str_starts_with($imageRaw, 'http://') || str_starts_with($imageRaw, 'https://')
+                    ? $imageRaw
+                    : asset(ltrim($imageRaw, '/'));
+            }
+        }
+
+        return array_values(array_unique($images));
     }
 
     /**

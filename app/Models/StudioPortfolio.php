@@ -20,7 +20,14 @@ class StudioPortfolio extends Model
     protected $fillable = [
         'studio_id',
         'title',
+        'description',
         'image',
+        'is_active',
+        'primary_style',
+        'other_styles',
+        'placement',
+        'color',
+        'tags',
         'attribution',
         'artist_user_id',
         'source',
@@ -30,6 +37,9 @@ class StudioPortfolio extends Model
     ];
 
     protected $casts = [
+        'is_active' => 'boolean',
+        'other_styles' => 'array',
+        'tags' => 'array',
         'sort_order' => 'integer',
     ];
 
@@ -45,6 +55,17 @@ class StudioPortfolio extends Model
 
     public function isVisibleOnPage(): bool
     {
+        if ($this->is_active === false) {
+            return false;
+        }
+
         return in_array($this->attribution, [self::ATTRIBUTION_STUDIO, self::ATTRIBUTION_ARTIST], true);
+    }
+
+    public function getPlacementLabelAttribute(): string
+    {
+        $value = trim((string) ($this->placement ?? ''));
+
+        return $value !== '' ? $value : 'Anywhere';
     }
 }

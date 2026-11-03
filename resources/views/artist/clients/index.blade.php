@@ -159,7 +159,7 @@
 @section('content')
 <div class="cl-page">
   <div class="head">
-    <div>
+        <div>
       <h1>
         Clients
         <a class="help-q" href="https://help.inkjin.com/en/articles/17201129-dashboard-clients-clients" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page">
@@ -182,8 +182,8 @@
     </div>
     <div data-clients-tab="guest-waitlist" role="button" tabindex="0">
       Guest waitlist<span class="n{{ $guestWaitlistTotal === 0 ? ' zero' : '' }}" id="guestWaitlistTabCount">{{ $guestWaitlistTotal }}</span>
-    </div>
-  </div>
+        </div>
+      </div>
 
   <div class="grid stats" id="clientsStatsGrid">
     <div class="card pad stat">
@@ -205,8 +205,8 @@
       <div class="ic"><span class="ms">autorenew</span></div>
       <div class="v">{{ $stats['returning_rate'] ?? 0 }}%</div>
       <div class="l">Returning rate</div>
-    </div>
-  </div>
+          </div>
+        </div>
 
   <div id="clientsTabPanel">
     <div class="cl-tools">
@@ -223,7 +223,7 @@
           <option value="returning">Returning clients</option>
           <option value="upcoming">With an upcoming booking</option>
         </select>
-      </div>
+          </div>
       <div class="cl-sel">
         <select class="in" id="sortSelect" aria-label="Sort clients">
           <option value="recent">Most recent</option>
@@ -264,7 +264,7 @@
         <div style="flex:1;min-width:240px">
           <b style="font-size:14.5px">Waitlist sign-up</b>
           <div class="faint" style="font-size:12.5px;margin-top:2px">What clients fill in to join your waitlist when your books are closed or a design is sold out.</div>
-        </div>
+          </div>
         <div class="wlset" role="radiogroup" aria-label="Waitlist sign-up">
           <button type="button" class="wlo{{ $wlIsRequest ? '' : ' on' }}" role="radio" aria-checked="{{ $wlIsRequest ? 'false' : 'true' }}" data-wl-mode="name_email">Name and email only</button>
           <button type="button" class="wlo{{ $wlIsRequest ? ' on' : '' }}" role="radio" aria-checked="{{ $wlIsRequest ? 'true' : 'false' }}" data-wl-mode="request_form">Require request form</button>
@@ -287,7 +287,7 @@
         <div class="muted" style="margin:0;flex:1;min-width:200px">Your books are open. Notify waitlist subscribers that they can book now.</div>
         <button type="button" class="btn" id="waitlistNotifyBtn" @if (! ($showWaitlistNotifyButton ?? false)) disabled @endif>
           <span class="ms">mail</span><span id="waitlistNotifyBtnLabel">Send email to all ({{ (int) ($waitlistPendingCount ?? 0) }})</span>
-        </button>
+      </button>
       </div>
       <div class="card pad wl-search-card">
         <span class="fl">Search</span>
@@ -320,8 +320,8 @@
       <div class="row" style="justify-content:center;margin-top:18px;gap:10px">
         <a href="{{ route('availability.index') }}" class="btn ghost">Change booking status</a>
       </div>
-    </div>
-  </div>
+          </div>
+        </div>
 
   <div id="guestWaitlistTabPanel" hidden>
     @php
@@ -420,8 +420,8 @@
             <div class="item">
               <span class="ms">photo_camera</span>
               <span class="val" id="cl-m-ig">No Instagram added</span>
-            </div>
-          </div>
+    </div>
+    </div>
 
           <div class="cl-card">
             <h4>About this client</h4>
@@ -432,7 +432,7 @@
               <div class="row"><span class="k">Deposits paid</span><span class="v" id="cl-m-deposits">€0.00</span></div>
               <div class="row"><span class="k">Outstanding</span><span class="v due" id="cl-m-outstanding">€0.00</span></div>
             </div>
-          </div>
+      </div>
 
           <div class="cl-card">
             <h4>Private notes</h4>
@@ -451,23 +451,23 @@
             <div class="cl-kpi"><b id="cl-m-cancelled" style="color:#C62828">0</b><span>Cancelled</span></div>
             <div class="cl-kpi"><b id="cl-m-noshows">0</b><span>No-shows</span></div>
             <div class="cl-kpi"><b id="cl-m-spent">€0</b><span>Total paid</span></div>
-          </div>
+      </div>
 
           <div class="cl-hist">
             <div class="cl-sec-h">Booking history</div>
             <table>
-              <thead>
+            <thead>
                 <tr>
                   <th>DATE</th>
                   <th>BOOKING</th>
                   <th>STATUS</th>
                   <th>PAID</th>
                   <th>DUE</th>
-                </tr>
-              </thead>
+              </tr>
+            </thead>
               <tbody id="cl-m-bookings-body"></tbody>
-            </table>
-          </div>
+          </table>
+        </div>
 
           <div class="cl-reqs">
             <div class="cl-sec-h">Requests</div>
@@ -483,7 +483,7 @@
         <a href="#" class="btn ghost" id="cl-m-requests-link"><span class="ms">edit_note</span>View requests</a>
         <a href="#" class="btn" id="cl-m-message-link"><span class="ms">chat</span>Send message</a>
       </div>
-    </div>
+  </div>
   </div>
 </div>
 

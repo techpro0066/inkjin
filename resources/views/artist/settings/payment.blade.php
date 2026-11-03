@@ -830,11 +830,11 @@
             >
                     <span class="ms" style="font-size:16px">check_circle</span>Activate this account
             </button>
-                </div>
+          </div>
               @endforeach
-            </div>
-      </div>
-    @endif
+              </div>
+              </div>
+            @endif
     </div>
         </div>
           </div>

@@ -185,7 +185,7 @@
       @else
         <a href="#" data-locked="Calendar"><span class="ms">calendar_month</span>Calendar<span class="ms lk">lock</span></a>
       @endif
-      <a href="#"><span class="ms">event_note</span>Bookings</a>
+      <a href="{{ route('studio.bookings') }}" class="{{ $activeNav === 'bookings' ? 'on' : '' }}"><span class="ms">event_note</span>Bookings</a>
       <a href="{{ route('studio.money.earnings') }}" class="{{ $activeNav === 'money' ? 'on' : '' }}"><span class="ms">payments</span>Money</a>
       @if ($profileComplete)
         <a href="{{ route('studio.page.about') }}" class="{{ $activeNav === 'page' ? 'on' : '' }}"><span class="ms">storefront</span>Studio Page</a>

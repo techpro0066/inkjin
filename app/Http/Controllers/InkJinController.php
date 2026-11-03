@@ -35,8 +35,12 @@ use App\Services\ArtistPayoutService;
 use App\Services\BookingCheckoutPricingService;
 use App\Models\UserDetail;
 use App\Models\GuestSpot;
+use App\Models\Studio;
+use App\Models\UserStudio;
+use App\Models\Portfolio;
 use App\Models\Waitlist;
 use App\Models\Question;
+use Illuminate\Support\Facades\Schema;
 use App\Models\QuestionSorting;
 use App\Models\Placement;
 use App\Models\Style;
@@ -522,7 +526,8 @@ class InkJinController extends Controller
 
         try {
             $validated = $request->validate([
-                'artist_username' => ['required', 'string'],
+                'artist_username' => ['required_without:studio_username', 'nullable', 'string'],
+                'studio_username' => ['nullable', 'string', 'max:100'],
                 'tattoo_slug' => ['nullable', 'string'],
                 'question_id' => ['required'],
                 // Client normalizes to JPEG; keep PNG accepted as fallback.
@@ -545,15 +550,25 @@ class InkJinController extends Controller
             ], 422);
         }
 
-        $userDetail = UserDetail::query()
-            ->where('user_name', $validated['artist_username'])
-            ->first();
+        $studioUploadKey = strtolower(trim((string) ($validated['studio_username'] ?? '')));
+        $userDetail = null;
 
-        if (! $userDetail || ! $userDetail->user || $userDetail->user->role !== 'artist') {
-            return response()->json(['success' => false, 'message' => 'Artist not found.'], 404);
+        if ($studioUploadKey !== '' && trim((string) ($validated['artist_username'] ?? '')) === '') {
+            $uploadStudio = Studio::query()->whereRaw('LOWER(username) = ?', [$studioUploadKey])->first();
+            if (! $uploadStudio || ! $uploadStudio->user || $uploadStudio->user->role !== 'studio') {
+                return response()->json(['success' => false, 'message' => 'Studio not found.'], 404);
+            }
+        } else {
+            $userDetail = UserDetail::query()
+                ->where('user_name', $validated['artist_username'])
+                ->first();
+
+            if (! $userDetail || ! $userDetail->user || $userDetail->user->role !== 'artist') {
+                return response()->json(['success' => false, 'message' => 'Artist not found.'], 404);
+            }
         }
 
-        $tattooSlug = trim((string) ($validated['tattoo_slug'] ?? ''));
+        $tattooSlug = $userDetail ? trim((string) ($validated['tattoo_slug'] ?? '')) : '';
         if ($tattooSlug !== '') {
             $design = $userDetail->user->artistDesigns()
                 ->where('slug', $tattooSlug)
@@ -725,48 +740,420 @@ class InkJinController extends Controller
 
     public function publicArtistProfile(string $userName)
     {
-        $userDetail = UserDetail::where('user_name', $userName)->first();
+        $key = strtolower(ltrim(trim($userName), '@'));
 
-        if (!$userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes') {
-            abort(404, 'Artist not found');
+        $userDetail = UserDetail::whereRaw('LOWER(user_name) = ?', [$key])->first();
+
+        if ($userDetail && $userDetail->user && $userDetail->user->role === 'artist' && $userDetail->user->on_boarding === 'yes') {
+            $displayDesigns = (bool) ($userDetail->display_designs ?? true);
+            $artistDesigns = $displayDesigns
+                ? $userDetail->user->artistDesigns()
+                    ->where('is_active', true)
+                    ->withSoldOutState()
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get()
+                : collect();
+
+            $displayPortfolio = (bool) ($userDetail->display_portfolio ?? true);
+            $artistPortfolios = $displayPortfolio
+                ? $userDetail->user->portfolios()
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get()
+                : collect();
+
+            $guestSpots = $userDetail->display_guest_spots
+                ? $userDetail->user->guestSpots()->orderBy('sort_order')->orderBy('id')->get()
+                : collect();
+
+            $guestSpots->each(fn (\App\Models\GuestSpot $spot) => $spot->ensureCompletedStatus());
+
+            $faqs = $userDetail->display_faq
+                ? $userDetail->user->artistFaqs()->active()->ordered()->get()
+                : collect();
+
+            return view('public.artist', [
+                'userDetail' => $userDetail,
+                'artistDesigns' => $artistDesigns,
+                'artistPortfolios' => $artistPortfolios,
+                'guestSpots' => $guestSpots,
+                'faqs' => $faqs,
+            ]);
         }
 
-        $displayDesigns = (bool) ($userDetail->display_designs ?? true);
-        $artistDesigns = $displayDesigns
-            ? $userDetail->user->artistDesigns()
-                ->where('is_active', true)
-                ->withSoldOutState()
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get()
-            : collect();
+        return $this->publicStudioProfile($key);
+    }
 
-        $displayPortfolio = (bool) ($userDetail->display_portfolio ?? true);
-        $artistPortfolios = $displayPortfolio
-            ? $userDetail->user->portfolios()
-                ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get()
-            : collect();
+    /**
+     * Public studio page for /@{username} when the handle belongs to a studio.
+     */
+    private function publicStudioProfile(string $usernameKey)
+    {
+        $studio = Studio::whereRaw('LOWER(username) = ?', [$usernameKey])->first();
 
-        $guestSpots = $userDetail->display_guest_spots
-            ? $userDetail->user->guestSpots()->orderBy('sort_order')->orderBy('id')->get()
-            : collect();
+        if (
+            ! $studio
+            || trim((string) ($studio->username ?? '')) === ''
+            || ! $studio->user
+            || $studio->user->role !== 'studio'
+            || $studio->user->on_boarding !== 'yes'
+        ) {
+            abort(404, 'Page not found');
+        }
 
-        $guestSpots->each(fn (\App\Models\GuestSpot $spot) => $spot->ensureCompletedStatus());
+        $relationshipLabels = [
+            'co_owner' => 'Co-owner',
+            'resident' => 'Resident',
+            'collective_member' => 'Collective member',
+            'apprentice' => 'Apprentice',
+            'other' => 'Other',
+        ];
 
-        $faqs = $userDetail->display_faq
-            ? $userDetail->user->artistFaqs()->active()->ordered()->get()
-            : collect();
+        $formatStyleLabel = static function (string $style): string {
+            return ucwords(str_replace(['-', '_'], ' ', $style));
+        };
 
-        return view('public.artist', [
-            'userDetail' => $userDetail,
-            'artistDesigns' => $artistDesigns,
-            'artistPortfolios' => $artistPortfolios,
-            'guestSpots' => $guestSpots,
-            'faqs' => $faqs,
+        $studioArtists = collect();
+        if (UserStudio::tableReady()) {
+            $query = UserStudio::query()
+                ->with(['user.userDetail'])
+                ->where('studio_id', $studio->id)
+                ->where('status', UserStudio::STATUS_ACTIVE);
+
+            if (Schema::hasColumn('user_studios', 'show_on_page')) {
+                $query->where(function ($q) {
+                    $q->whereNull('show_on_page')->orWhere('show_on_page', true);
+                });
+            }
+
+            if (Schema::hasColumn('user_studios', 'page_sort_order')) {
+                $query->orderBy('page_sort_order')->orderBy('id');
+            } else {
+                $query->orderBy('id');
+            }
+
+            $studioArtists = $query->get()->map(function (UserStudio $link) use ($relationshipLabels, $formatStyleLabel) {
+                $artistUser = $link->user;
+                $detail = $artistUser?->userDetail;
+                if (! $detail || ! $artistUser || $artistUser->role !== 'artist' || $artistUser->on_boarding !== 'yes') {
+                    return null;
+                }
+
+                $name = $detail->publicDisplayName();
+                if ($name === '' || $name === 'Artist') {
+                    $fallback = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
+                    $name = $fallback !== '' ? $fallback : (string) ($detail->user_name ?? 'Artist');
+                }
+
+                $username = trim((string) ($detail->user_name ?? ''));
+                $avatar = trim((string) ($detail->avatar ?? ''));
+                $stylesPayload = is_array($detail->tattoo_styles ?? null) ? $detail->tattoo_styles : [];
+                $styleLabels = [];
+                $primary = trim((string) ($stylesPayload['primary_style'] ?? ''));
+                if ($primary !== '') {
+                    $styleLabels[] = $formatStyleLabel($primary);
+                }
+                foreach ((array) ($stylesPayload['other_styles'] ?? []) as $style) {
+                    $style = trim((string) $style);
+                    if ($style === '') {
+                        continue;
+                    }
+                    $label = $formatStyleLabel($style);
+                    if (! in_array($label, $styleLabels, true)) {
+                        $styleLabels[] = $label;
+                    }
+                }
+
+                $displayDesigns = (bool) ($detail->display_designs ?? true);
+                $displayPortfolio = (bool) ($detail->display_portfolio ?? true);
+                $hasDesigns = $displayDesigns && in_array($detail->availability_status, ['design_custom', 'design_only'], true);
+
+                $currencyCode = strtoupper(trim((string) ($detail->currency ?? $studio->currency ?? 'EUR')));
+                $currencySymbol = match ($currencyCode) {
+                    'EUR' => '€',
+                    'GBP' => '£',
+                    'USD' => '$',
+                    default => $currencyCode !== '' ? $currencyCode.' ' : '€',
+                };
+
+                return [
+                    'user_id' => (int) $artistUser->id,
+                    'name' => $name,
+                    'initials' => $detail->publicDisplayInitials() ?: 'AR',
+                    'avatar' => $avatar !== '' ? asset(ltrim($avatar, '/')) : null,
+                    'username' => $username,
+                    'handle' => $username !== '' ? '@'.$username : '',
+                    'relationship' => $relationshipLabels[$link->relationship ?? ''] ?? 'Resident',
+                    'styles' => array_slice($styleLabels, 0, 3),
+                    'all_styles' => $styleLabels,
+                    'profile_url' => $username !== '' ? route('public.artist', ['username' => $username]) : null,
+                    'request_url' => $username !== '' ? route('public.request-custom', ['user_name' => $username]) : null,
+                    'has_designs' => $hasDesigns,
+                    'display_designs' => $displayDesigns,
+                    'display_portfolio' => $displayPortfolio,
+                    'currency_symbol' => $currencySymbol,
+                ];
+            })->filter()->values();
+        }
+
+        $showFlash = (bool) ($studio->show_artists_flash ?? true);
+        $showPort = (bool) ($studio->show_artists_portfolio ?? true);
+        $workItems = $this->studioPublicWorkItems($studio, $studioArtists, $showFlash, $showPort);
+        $guestArtists = $this->studioPublicGuestArtists($studio, $formatStyleLabel);
+
+        return view('public.studio', [
+            'studio' => $studio,
+            'studioArtists' => $studioArtists,
+            'workItems' => $workItems,
+            'guestArtists' => $guestArtists,
+            'showFlash' => $showFlash,
+            'showPort' => $showPort,
         ]);
+    }
+
+    /**
+     * Confirmed / live upcoming guest spots for the public studio “Guest artists” section (S10).
+     *
+     * @param  callable(string): string  $formatStyleLabel
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function studioPublicGuestArtists(Studio $studio, callable $formatStyleLabel)
+    {
+        if (! Schema::hasTable('guest_spots') || ! (bool) ($studio->show_guest_artists ?? true)) {
+            return collect();
+        }
+
+        $spots = GuestSpot::query()
+            ->with(['user.userDetail'])
+            ->where('studio_id', $studio->id)
+            ->where(function ($q) {
+                $q->whereNull('guest_studio_invite_status')
+                    ->orWhere('guest_studio_invite_status', '!=', GuestSpot::INVITE_REJECTED);
+            })
+            ->where(function ($q) {
+                $q->where(function ($direct) {
+                    $direct->whereNull('payout_mode')
+                        ->orWhere('payout_mode', '!=', 'split');
+                })->orWhere('guest_studio_invite_status', GuestSpot::INVITE_ACCEPTED);
+            })
+            ->whereDate('to_date', '>=', now()->toDateString())
+            ->orderBy('from_date')
+            ->orderBy('id')
+            ->get();
+
+        return $spots->map(function (GuestSpot $spot) use ($formatStyleLabel) {
+            $spot->ensureCompletedStatus();
+            if ($spot->hasEnded() || $spot->status === 'completed') {
+                return null;
+            }
+
+            $artistUser = $spot->user;
+            $detail = $artistUser?->userDetail;
+            if (! $artistUser || $artistUser->role !== 'artist' || $artistUser->on_boarding !== 'yes') {
+                return null;
+            }
+
+            $name = $detail ? $detail->publicDisplayName() : '';
+            if ($name === '' || $name === 'Artist') {
+                $fallback = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
+                $name = $fallback !== '' ? $fallback : (string) ($detail?->user_name ?? 'Artist');
+            }
+
+            $username = trim((string) ($detail?->user_name ?? ''));
+            $city = trim((string) ($detail?->city ?? $spot->city ?? ''));
+
+            $stylesPayload = is_array($detail?->tattoo_styles ?? null) ? $detail->tattoo_styles : [];
+            $styleLabels = [];
+            $primary = trim((string) ($stylesPayload['primary_style'] ?? ''));
+            if ($primary !== '') {
+                $styleLabels[] = $formatStyleLabel($primary);
+            }
+            foreach ((array) ($stylesPayload['other_styles'] ?? []) as $style) {
+                if (! is_scalar($style)) {
+                    continue;
+                }
+                $style = trim((string) $style);
+                if ($style === '') {
+                    continue;
+                }
+                $label = $formatStyleLabel($style);
+                if (! in_array($label, $styleLabels, true)) {
+                    $styleLabels[] = $label;
+                }
+            }
+
+            $metaParts = [];
+            if ($city !== '') {
+                $metaParts[] = 'From '.$city;
+            }
+            if ($spot->from_date && $spot->to_date) {
+                $metaParts[] = $spot->from_date->format('d/m').' – '.$spot->to_date->format('d/m/Y');
+            }
+            if ($styleLabels !== []) {
+                $metaParts[] = implode(', ', array_slice($styleLabels, 0, 3));
+            }
+
+            $url = null;
+            if ($username !== '' && $spot->isReservable()) {
+                $url = route('public.guest-spot', [
+                    'user_name' => $username,
+                    'guestSpotSlug' => $spot->publicSlug(),
+                ]);
+            }
+
+            return [
+                'id' => (int) $spot->id,
+                'name' => $name,
+                'month' => $spot->from_date ? strtoupper($spot->from_date->format('M')) : '',
+                'day' => $spot->from_date ? $spot->from_date->format('j') : '',
+                'meta' => implode(' · ', $metaParts),
+                'url' => $url,
+            ];
+        })->filter()->values();
+    }
+
+    /**
+     * Flash / portfolio / studio pieces for the public studio “Our work” grid.
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $studioArtists
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function studioPublicWorkItems(Studio $studio, $studioArtists, bool $showFlash, bool $showPort)
+    {
+        $items = collect();
+        $byUser = $studioArtists->keyBy('user_id');
+        $formatMoney = static function ($amount, string $symbol): string {
+            if ($amount === null || $amount === '') {
+                return '';
+            }
+            $number = number_format((float) $amount, 0, '.', '');
+
+            return $symbol.$number;
+        };
+
+        if ($showFlash) {
+            $flashArtists = $studioArtists->filter(fn ($a) => ! empty($a['display_designs']) && ! empty($a['username']));
+            $flashUserIds = $flashArtists->pluck('user_id')->all();
+            if ($flashUserIds !== []) {
+                $designs = ArtistDesign::query()
+                    ->whereIn('user_id', $flashUserIds)
+                    ->where('is_active', true)
+                    ->withSoldOutState()
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get();
+
+                foreach ($designs as $design) {
+                    if ($design->isSoldOut()) {
+                        continue;
+                    }
+                    $artist = $byUser[(int) $design->user_id] ?? null;
+                    if (! $artist) {
+                        continue;
+                    }
+                    $username = (string) ($artist['username'] ?? '');
+                    $slug = trim((string) ($design->slug ?? ''));
+                    if ($username === '' || $slug === '') {
+                        continue;
+                    }
+                    $symbol = (string) ($artist['currency_symbol'] ?? '€');
+                    $min = $formatMoney($design->min_price, $symbol);
+                    $max = $formatMoney($design->max_price, $symbol);
+                    $price = $min;
+                    if ($max !== '' && $max !== $min) {
+                        $price = $min !== '' ? $min.' – '.$max : $max;
+                    }
+                    $image = trim((string) ($design->image ?? ''));
+
+                    $items->push([
+                        'kind' => 'flash',
+                        'title' => (string) ($design->title ?: 'Untitled'),
+                        'image' => $image !== '' ? asset(ltrim($image, '/')) : null,
+                        'artist_name' => (string) ($artist['name'] ?? 'Artist'),
+                        'artist_initials' => (string) ($artist['initials'] ?? 'AR'),
+                        'artist_avatar' => $artist['avatar'] ?? null,
+                        'price_label' => $price !== '' ? $price.' · Flash' : 'Flash',
+                        'cta_url' => route('public.tattoo.book', ['user_name' => $username, 'tattoo_slug' => $slug]),
+                        'cta_label' => 'Book now',
+                        'cta_pri' => true,
+                    ]);
+                }
+            }
+        }
+
+        if ($showPort) {
+            $portArtists = $studioArtists->filter(fn ($a) => ! empty($a['display_portfolio']) && ! empty($a['username']));
+            $portUserIds = $portArtists->pluck('user_id')->all();
+            if ($portUserIds !== []) {
+                $portfolios = Portfolio::query()
+                    ->whereIn('user_id', $portUserIds)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get();
+
+                foreach ($portfolios as $portfolio) {
+                    $artist = $byUser[(int) $portfolio->user_id] ?? null;
+                    if (! $artist) {
+                        continue;
+                    }
+                    $username = (string) ($artist['username'] ?? '');
+                    if ($username === '') {
+                        continue;
+                    }
+                    $image = trim((string) ($portfolio->image ?? ''));
+                    $title = (string) ($portfolio->title ?: 'Untitled');
+
+                    $items->push([
+                        'kind' => 'port',
+                        'title' => $title,
+                        'image' => $image !== '' ? asset(ltrim($image, '/')) : null,
+                        'artist_name' => (string) ($artist['name'] ?? 'Artist'),
+                        'artist_initials' => (string) ($artist['initials'] ?? 'AR'),
+                        'artist_avatar' => $artist['avatar'] ?? null,
+                        'price_label' => null,
+                        'cta_url' => route('public.request-custom', [
+                            'user_name' => $username,
+                            'portfolio' => $portfolio->id,
+                        ]),
+                        'cta_label' => 'Request similar tattoo',
+                        'cta_pri' => false,
+                    ]);
+                }
+            }
+        }
+
+        $studioName = trim((string) ($studio->name ?? '')) ?: 'Studio';
+        $studioPieces = $studio->portfolios()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn ($p) => $p->isVisibleOnPage());
+
+        foreach ($studioPieces as $piece) {
+            $image = trim((string) ($piece->image ?? ''));
+            $items->push([
+                'kind' => 'studio',
+                'title' => trim((string) ($piece->title ?? '')) ?: 'Studio piece',
+                'image' => $image !== ''
+                    ? (str_starts_with($image, 'http') ? $image : asset(ltrim($image, '/')))
+                    : null,
+                'artist_name' => $studioName,
+                'artist_initials' => null,
+                'artist_avatar' => null,
+                'price_label' => null,
+                'cta_url' => route('public.studio-request', [
+                    'user_name' => (string) ($studio->username ?? ''),
+                    'studio_portfolio' => $piece->id,
+                ]),
+                'cta_label' => 'Request similar tattoo',
+                'cta_pri' => false,
+            ]);
+        }
+
+        return $items->values();
     }
 
     public function publicGuestSpot(string $userName, string $guestSpotSlug)

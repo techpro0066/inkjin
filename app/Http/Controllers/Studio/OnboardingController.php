@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Studio;
 
 use App\Http\Controllers\Controller;
 use App\Models\Studio;
+use App\Rules\ReservedArtistUsername;
+use App\Rules\UniquePublicUsername;
 use App\Services\StripeConnectService;
 use App\Support\StripeConnectCountries;
 use Illuminate\Http\JsonResponse;
@@ -63,7 +65,8 @@ class OnboardingController extends Controller
                 'min:3',
                 'max:30',
                 'regex:/^[A-Za-z0-9._]+$/',
-                Rule::unique('studios', 'username')->ignore($studio->id),
+                new UniquePublicUsername(ignoreStudioId: $studio->id),
+                new ReservedArtistUsername((string) ($user->email ?? '')),
             ],
             'tattooing_since' => ['nullable', 'integer', 'min:1900', 'max:'.((int) date('Y') + 1)],
             'business_phone' => ['required', 'string', 'max:50'],

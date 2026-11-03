@@ -107,8 +107,9 @@ class CustomRequestController extends Controller
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
+        $artistPortfolioId = (int) $request->query('portfolio', 0);
         $prefilledQuestionAnswers = $this->prefillAnswersFromPortfolio(
-            $request->query('portfolio'),
+            $artistPortfolioId,
             (int) $userDetail->user_id,
             $questions
         );
@@ -144,7 +145,10 @@ class CustomRequestController extends Controller
             'artistName' => $artistDisplay,
             'questions' => $questions,
             'requiredBookingQuestions' => $questions,
-            'prefilledQuestionAnswers' => $prefilledQuestionAnswers,
+            'prefilledQuestionAnswers' => $prefilledQuestionAnswers === []
+                ? new \stdClass
+                : $prefilledQuestionAnswers,
+            'artistPortfolioId' => $artistPortfolioId > 0 ? $artistPortfolioId : null,
             'hasArtistQuestions' => ! empty($questions),
             'artistUsername' => $userDetail->user_name,
             'fallbackTattooSlug' => $fallbackTattooSlug,
@@ -186,6 +190,7 @@ class CustomRequestController extends Controller
             'request_payload.questions_answers' => ['nullable', 'array'],
             'request_payload.guest_id' => ['nullable', 'integer'],
             'request_payload.from_waitlist' => ['sometimes', 'boolean'],
+            'request_payload.portfolio_id' => ['nullable', 'integer', 'min:1'],
         ];
 
         if ($isManagedScheduling) {
@@ -276,6 +281,22 @@ class CustomRequestController extends Controller
                 'phone' => $phone !== '' ? $phone : null,
                 'referral_source' => $referral !== '' ? $referral : null,
             ]);
+        }
+
+        $portfolioId = (int) ($payload['portfolio_id'] ?? 0);
+        if ($portfolioId > 0) {
+            $portfolio = Portfolio::query()
+                ->whereKey($portfolioId)
+                ->where('user_id', (int) $userDetail->user_id)
+                ->where('is_active', true)
+                ->first();
+            if ($portfolio) {
+                $questionsAnswers['_portfolio_id'] = $portfolio->id;
+                $portfolioImage = $this->portfolioImageUrl($portfolio);
+                if ($portfolioImage !== null) {
+                    $questionsAnswers = $this->ensurePortfolioImageInAnswers($questionsAnswers, $portfolioImage);
+                }
+            }
         }
 
         $schedulingType = $isManagedScheduling ? 'managed' : 'auto';
@@ -628,5 +649,71 @@ class CustomRequestController extends Controller
         }
 
         return null;
+    }
+
+    private function portfolioImageUrl(Portfolio $portfolio): ?string
+    {
+        $imageRaw = trim((string) ($portfolio->image ?? ''));
+        if ($imageRaw === '') {
+            return null;
+        }
+
+        return str_starts_with($imageRaw, 'http://') || str_starts_with($imageRaw, 'https://')
+            ? $imageRaw
+            : asset(ltrim($imageRaw, '/'));
+    }
+
+    /**
+     * Ensure the portfolio piece image is stored in answers (alongside any client uploads).
+     *
+     * @param  array<string, mixed>  $questionsAnswers
+     * @return array<string, mixed>
+     */
+    private function ensurePortfolioImageInAnswers(array $questionsAnswers, string $portfolioImage): array
+    {
+        $existing = \App\Support\QuestionAnswerPresenter::allImageUrls($questionsAnswers);
+        foreach ($existing as $url) {
+            if (trim((string) $url) === $portfolioImage) {
+                return $questionsAnswers;
+            }
+        }
+
+        // Prefer appending onto an existing reference/image answer.
+        foreach ($questionsAnswers as $key => $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+            $type = strtolower((string) ($value['question_type'] ?? $value['type'] ?? ''));
+            $widget = strtolower((string) ($value['type'] ?? ''));
+            $isImage = in_array($type, ['reference_image', 'placement_photo', 'coverup_photo', 'image', 'images'], true)
+                || in_array($widget, ['image', 'images', 'reference_image'], true);
+            if (! $isImage) {
+                continue;
+            }
+            $answer = $value['answer'] ?? [];
+            if (is_string($answer) && trim($answer) !== '') {
+                $answer = [trim($answer)];
+            }
+            if (! is_array($answer)) {
+                $answer = [];
+            }
+            array_unshift($answer, $portfolioImage);
+            $questionsAnswers[$key]['answer'] = array_values(array_unique(array_filter($answer)));
+            $questionsAnswers[$key]['type'] = $questionsAnswers[$key]['type'] ?? 'image';
+            $questionsAnswers[$key]['question_type'] = $questionsAnswers[$key]['question_type'] ?? 'reference_image';
+
+            return $questionsAnswers;
+        }
+
+        // No image question answered — store a dedicated portfolio reference entry.
+        $questionsAnswers['portfolio_reference'] = [
+            'id' => 'portfolio_reference',
+            'question' => 'Portfolio reference',
+            'type' => 'image',
+            'question_type' => 'reference_image',
+            'answer' => [$portfolioImage],
+        ];
+
+        return $questionsAnswers;
     }
 }

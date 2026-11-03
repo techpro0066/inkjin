@@ -78,6 +78,32 @@
       </div>
     </div>
 
+    @php
+      $studioUsernameValue = old('username', $studioUsername ?? '');
+    @endphp
+    <div class="card" style="margin-bottom:14px">
+      <div class="ch">
+        <div>
+          <h3>Studio username</h3>
+          <div class="faint" style="font-size:12.5px;margin-top:2px">Your public Bookpay page link</div>
+        </div>
+      </div>
+      <div style="padding:18px 22px">
+        <div class="formgrid">
+          <div class="full">
+            <label class="fl" for="username">Username <span style="color:#C62828">*</span></label>
+            <input class="in" id="username" name="username" type="text" value="{{ $studioUsernameValue }}" placeholder="e.g. openinkstudio" autocomplete="off" spellcheck="false">
+            <div class="help" style="display:flex;align-items:center;gap:5px;color:#3E007C;font-weight:600">
+              <span class="ms" style="font-size:15px">link</span>
+              <span id="un-url">inkjin.com/@{{ $studioUsernameValue !== '' ? $studioUsernameValue : 'username' }}</span>
+            </div>
+            <div class="help">Letters, numbers, periods and underscores, max 30. Must be unique across artists and studios.</div>
+            <div id="username_error" class="help" style="display:none;color:#C62828"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="pgsaverow">
       <button class="btn pgsave" id="profileSaveBtn" type="submit"><span class="ms">save</span>Save changes</button>
     </div>
@@ -112,12 +138,28 @@
   var profileImageInput = document.getElementById('profileImageInput');
   var cropperModal = document.getElementById('cropperModal');
   var cropImage = document.getElementById('cropImage');
-  var fields = ['first_name', 'last_name', 'mobile', 'avatar'];
+  var fields = ['first_name', 'last_name', 'mobile', 'username', 'avatar'];
   var defaultBtnHtml = btn ? btn.innerHTML : '';
   var cropper = null;
   var objectUrl = '';
   var croppedBlob = null;
   var previewUrl = '';
+  var usernameInput = document.getElementById('username');
+  var usernamePreview = document.getElementById('un-url');
+
+  function syncUsernamePreview() {
+    if (!usernamePreview) return;
+    var v = ((usernameInput && usernameInput.value) || '').trim().replace(/^@/, '');
+    usernamePreview.textContent = 'inkjin.com/@' + (v || 'username');
+  }
+
+  if (usernameInput) {
+    usernameInput.addEventListener('input', function () {
+      clearFieldError('username');
+      syncUsernamePreview();
+    });
+    syncUsernamePreview();
+  }
 
   function clearFieldError(name) {
     var el = document.getElementById(name + '_error');
@@ -173,7 +215,7 @@
     }
   }
 
-  fields.slice(0, 3).forEach(function (name) {
+  ['first_name', 'last_name', 'mobile'].forEach(function (name) {
     var input = document.getElementById(name);
     if (input) input.addEventListener('input', function () { clearFieldError(name); });
   });
@@ -271,6 +313,10 @@
             if (result.data.owner.avatar) {
               setAvatarPreview(result.data.owner.avatar);
             }
+          }
+          if (result.data.studio && result.data.studio.username != null && usernameInput) {
+            usernameInput.value = result.data.studio.username;
+            syncUsernamePreview();
           }
           return;
         }

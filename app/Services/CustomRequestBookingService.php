@@ -6,6 +6,7 @@ use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Mail\BookingConfirmationMail;
 use App\Models\Booking;
 use App\Models\CustomRequest;
+use App\Models\StudioRequest;
 use App\Services\CancellationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -57,6 +58,7 @@ class CustomRequestBookingService
         $existing = Booking::query()->where('payment_intent_id', $intent->id)->first();
         if ($existing) {
             $this->linkCustomRequestToBooking($customRequest, $existing);
+            $this->ensureBookingStudioLink($customRequest, $existing);
 
             return $existing;
         }
@@ -64,6 +66,8 @@ class CustomRequestBookingService
         if ($customRequest->booking_id) {
             $linked = Booking::query()->find($customRequest->booking_id);
             if ($linked) {
+                $this->ensureBookingStudioLink($customRequest, $linked);
+
                 return $linked;
             }
         }
@@ -126,13 +130,15 @@ class CustomRequestBookingService
         $clientPhone = $customRequest->user?->phone_number;
         $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice, $clientPhone);
         $guestSpotConsumed = $this->consumeGuestSpotForPayment($customRequest);
+        $studioRequest = $this->linkedStudioRequest($customRequest);
 
         $booking = Booking::create([
             'user_id' => $customRequest->user_id,
             'artist_user_id' => $customRequest->artist_id,
+            'studio_id' => $studioRequest?->studio_id,
             'tattoo_id' => null,
             'booking_type' => 'custom',
-            'custom_tattoo_details' => $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed),
+            'custom_tattoo_details' => $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed, $studioRequest),
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $sessionUtc['date'],
             'start_time_utc' => $sessionUtc['start_time_utc'],
@@ -172,7 +178,7 @@ class CustomRequestBookingService
 
         $this->createGoogleCalendarEvent($booking);
 
-        $this->linkCustomRequestToBooking($customRequest, $booking);
+        $this->linkCustomRequestToBooking($customRequest, $booking, $studioRequest);
         $this->sendConfirmationEmails($booking);
 
         return $booking;
@@ -186,6 +192,7 @@ class CustomRequestBookingService
         $existing = Booking::query()->where('viva_order_code', $orderCode)->first();
         if ($existing) {
             $this->linkCustomRequestToBooking($customRequest, $existing);
+            $this->ensureBookingStudioLink($customRequest, $existing);
 
             return $existing;
         }
@@ -193,6 +200,8 @@ class CustomRequestBookingService
         if ($customRequest->booking_id) {
             $linked = Booking::query()->find($customRequest->booking_id);
             if ($linked) {
+                $this->ensureBookingStudioLink($customRequest, $linked);
+
                 return $linked;
             }
         }
@@ -255,13 +264,15 @@ class CustomRequestBookingService
         $clientPhone = $customRequest->user?->phone_number;
         $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice, $clientPhone);
         $guestSpotConsumed = $this->consumeGuestSpotForPayment($customRequest);
+        $studioRequest = $this->linkedStudioRequest($customRequest);
 
         $booking = Booking::create([
             'user_id' => $customRequest->user_id,
             'artist_user_id' => $customRequest->artist_id,
+            'studio_id' => $studioRequest?->studio_id,
             'tattoo_id' => null,
             'booking_type' => 'custom',
-            'custom_tattoo_details' => $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed),
+            'custom_tattoo_details' => $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed, $studioRequest),
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $sessionUtc['date'],
             'start_time_utc' => $sessionUtc['start_time_utc'],
@@ -304,7 +315,7 @@ class CustomRequestBookingService
 
         $this->createGoogleCalendarEvent($booking);
 
-        $this->linkCustomRequestToBooking($customRequest, $booking);
+        $this->linkCustomRequestToBooking($customRequest, $booking, $studioRequest);
         $this->sendConfirmationEmails($booking);
 
         return $booking;
@@ -323,8 +334,11 @@ class CustomRequestBookingService
         );
     }
 
-    private function linkCustomRequestToBooking(CustomRequest $customRequest, Booking $booking): void
-    {
+    private function linkCustomRequestToBooking(
+        CustomRequest $customRequest,
+        Booking $booking,
+        ?StudioRequest $studioRequest = null,
+    ): void {
         if ($customRequest->status !== 'moved_to_booking' || (int) $customRequest->booking_id !== (int) $booking->id) {
             $customRequest->update([
                 'status' => 'moved_to_booking',
@@ -332,7 +346,59 @@ class CustomRequestBookingService
             ]);
         }
 
+        $this->linkStudioRequestToBooking($customRequest, $booking, $studioRequest);
         app(StreamChatService::class)->attachCustomRequestChannel($customRequest, $booking);
+    }
+
+    private function linkedStudioRequest(CustomRequest $customRequest): ?StudioRequest
+    {
+        return StudioRequest::query()
+            ->where('custom_request_id', $customRequest->id)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    private function ensureBookingStudioLink(CustomRequest $customRequest, Booking $booking): void
+    {
+        $studioRequest = $this->linkedStudioRequest($customRequest);
+        if (! $studioRequest) {
+            return;
+        }
+
+        if (empty($booking->studio_id) && ! empty($studioRequest->studio_id)) {
+            $details = is_array($booking->custom_tattoo_details) ? $booking->custom_tattoo_details : [];
+            $details['from_studio_page'] = true;
+            $details['studio_request_id'] = $studioRequest->id;
+            $details['studio_id'] = (int) $studioRequest->studio_id;
+            $booking->forceFill([
+                'studio_id' => $studioRequest->studio_id,
+                'custom_tattoo_details' => $details,
+            ])->save();
+        }
+
+        $this->linkStudioRequestToBooking($customRequest, $booking, $studioRequest);
+    }
+
+    private function linkStudioRequestToBooking(
+        CustomRequest $customRequest,
+        Booking $booking,
+        ?StudioRequest $studioRequest = null,
+    ): void {
+        $studioRequest ??= $this->linkedStudioRequest($customRequest);
+        if (! $studioRequest) {
+            return;
+        }
+
+        $updates = [];
+        if ((int) ($studioRequest->booking_id ?? 0) !== (int) $booking->id) {
+            $updates['booking_id'] = $booking->id;
+        }
+        if ($studioRequest->status !== StudioRequest::STATUS_MOVED_TO_BOOKING) {
+            $updates['status'] = StudioRequest::STATUS_MOVED_TO_BOOKING;
+        }
+        if ($updates !== []) {
+            $studioRequest->forceFill($updates)->save();
+        }
     }
 
     private function consumeGuestSpotForPayment(CustomRequest $customRequest): bool
@@ -343,8 +409,11 @@ class CustomRequestBookingService
     /**
      * @return array<string, mixed>
      */
-    private function customTattooDetailsPayload(CustomRequest $customRequest, bool $guestSpotConsumed): array
-    {
+    private function customTattooDetailsPayload(
+        CustomRequest $customRequest,
+        bool $guestSpotConsumed,
+        ?StudioRequest $studioRequest = null,
+    ): array {
         $details = [
             'custom_request_id' => $customRequest->id,
             'reference' => $customRequest->referenceLabel(),
@@ -352,6 +421,12 @@ class CustomRequestBookingService
             'estimated_time' => $customRequest->estimated_time,
             'number_of_sessions' => $customRequest->number_of_sessions,
         ];
+
+        if ($studioRequest) {
+            $details['from_studio_page'] = true;
+            $details['studio_request_id'] = $studioRequest->id;
+            $details['studio_id'] = (int) $studioRequest->studio_id;
+        }
 
         if ($customRequest->isGuestRequest()) {
             $details['is_guest'] = true;

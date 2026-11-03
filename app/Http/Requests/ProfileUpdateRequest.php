@@ -2,11 +2,11 @@
 
 namespace App\Http\Requests;
 
-use App\Models\User;
+use App\Models\UserDetail;
 use App\Rules\ReservedArtistUsername;
+use App\Rules\UniquePublicUsername;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Models\UserDetail;
 
 class ProfileUpdateRequest extends FormRequest
 {
@@ -31,7 +31,7 @@ class ProfileUpdateRequest extends FormRequest
                 'min:1',
                 'max:30',
                 'regex:/^[A-Za-z0-9._]+$/',
-                Rule::unique(UserDetail::class, 'user_name')->ignore($userDetail?->id),
+                new UniquePublicUsername(ignoreUserDetailId: $userDetail?->id),
                 new ReservedArtistUsername($user->email),
             ],
             'display_name' => ['sometimes', 'nullable', 'string', 'max:100'],

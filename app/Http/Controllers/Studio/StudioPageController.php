@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Studio;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\SuggestsTattooImageFieldsWithAi;
 use App\Models\ArtistDesign;
+use App\Models\Placement;
 use App\Models\Portfolio;
 use App\Models\Studio;
 use App\Models\StudioPortfolio;
@@ -24,6 +26,8 @@ use Illuminate\View\View;
 
 class StudioPageController extends Controller
 {
+    use SuggestsTattooImageFieldsWithAi;
+
     private const EXTRA_SERVICE_OPTIONS = [
         'Touch-ups',
         'Cover-ups',
@@ -141,6 +145,8 @@ class StudioPageController extends Controller
             'artistWorkPreview' => $studio ? $this->artistWorkPreviewForStudio($studio) : collect(),
             'studioPieces' => $studio ? $this->studioPiecesForStudio($studio) : collect(),
             'taggableArtists' => $taggableArtists,
+            'styles' => $this->styles(),
+            'placements' => $this->placements(),
             'instagramConnected' => filled($studio?->instagram_access_token),
             'instagramUsername' => trim((string) ($studio?->instagram_username ?? '')),
             'instagramImportCount' => $studio
@@ -150,11 +156,139 @@ class StudioPageController extends Controller
                     ->count()
                 : 0,
             'updatePortfolioUrl' => route('studio.page.portfolio.update'),
+            'storePieceUrl' => route('studio.page.portfolio.piece.store'),
+            'aiSuggestUrl' => route('studio.page.portfolio.ai-suggest'),
             'instagramConnectUrl' => route('instagram.connect', ['target' => 'studio']),
             'instagramRefreshUrl' => route('studio.page.portfolio.instagram.refresh'),
             'instagramDisconnectUrl' => route('studio.page.portfolio.instagram.disconnect'),
             'autoImportInstagram' => (bool) session()->pull('instagram_auto_import'),
         ]));
+    }
+
+    public function storePiece(Request $request): JsonResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        if (! $studio) {
+            return response()->json(['success' => false, 'message' => 'Studio not found.'], 404);
+        }
+
+        $validated = $request->validate($this->studioPieceRules(true));
+        [$other, $tags] = $this->normalizeOtherAndTags($validated);
+        $artistIds = $this->taggableArtistsForStudio($studio)->pluck('user_id')->all();
+        [$attribution, $artistUserId] = $this->normalizePieceAttribution(
+            (string) ($validated['attribution'] ?? StudioPortfolio::ATTRIBUTION_STUDIO),
+            isset($validated['artist_user_id']) ? (int) $validated['artist_user_id'] : null,
+            $artistIds
+        );
+
+        $file = $request->file('image');
+        $filename = time().'_'.uniqid('', true).'.'.strtolower($file->getClientOriginalExtension());
+        $destination = public_path('uploads/studio-portfolios');
+        if (! File::exists($destination)) {
+            File::makeDirectory($destination, 0755, true);
+        }
+        $file->move($destination, $filename);
+
+        $nextOrder = (int) StudioPortfolio::query()->where('studio_id', $studio->id)->max('sort_order') + 1;
+
+        $piece = StudioPortfolio::create([
+            'studio_id' => $studio->id,
+            'title' => $validated['title'],
+            'description' => trim((string) ($validated['description'] ?? '')),
+            'is_active' => $request->boolean('is_active', true),
+            'image' => 'uploads/studio-portfolios/'.$filename,
+            'primary_style' => $validated['primary_style'],
+            'other_styles' => $other,
+            'placement' => $validated['placement'] ?? null,
+            'color' => $validated['color'],
+            'tags' => $tags,
+            'attribution' => $attribution,
+            'artist_user_id' => $artistUserId,
+            'source' => StudioPortfolio::SOURCE_MANUAL,
+            'sort_order' => $nextOrder,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Work saved to your studio portfolio.',
+            'portfolio' => [
+                'id' => $piece->id,
+                'title' => $piece->title,
+                'image_url' => asset($piece->image),
+            ],
+        ]);
+    }
+
+    public function updatePiece(Request $request, StudioPortfolio $piece): JsonResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        if (! $studio || (int) $piece->studio_id !== (int) $studio->id) {
+            return response()->json(['success' => false, 'message' => 'Studio piece not found.'], 404);
+        }
+
+        $validated = $request->validate($this->studioPieceRules(false));
+        [$other, $tags] = $this->normalizeOtherAndTags($validated);
+        $artistIds = $this->taggableArtistsForStudio($studio)->pluck('user_id')->all();
+        [$attribution, $artistUserId] = $this->normalizePieceAttribution(
+            (string) ($validated['attribution'] ?? $piece->attribution),
+            array_key_exists('artist_user_id', $validated)
+                ? (isset($validated['artist_user_id']) ? (int) $validated['artist_user_id'] : null)
+                : ($piece->artist_user_id ? (int) $piece->artist_user_id : null),
+            $artistIds
+        );
+
+        $imagePath = $piece->image;
+        if ($request->hasFile('image')) {
+            $this->deleteStudioPortfolioImage($piece->image);
+            $file = $request->file('image');
+            $filename = time().'_'.uniqid('', true).'.'.strtolower($file->getClientOriginalExtension());
+            $destination = public_path('uploads/studio-portfolios');
+            if (! File::exists($destination)) {
+                File::makeDirectory($destination, 0755, true);
+            }
+            $file->move($destination, $filename);
+            $imagePath = 'uploads/studio-portfolios/'.$filename;
+        }
+
+        $piece->update([
+            'title' => $validated['title'],
+            'description' => trim((string) ($validated['description'] ?? '')),
+            'is_active' => $request->boolean('is_active', true),
+            'image' => $imagePath,
+            'primary_style' => $validated['primary_style'],
+            'other_styles' => $other,
+            'placement' => $validated['placement'] ?? null,
+            'color' => $validated['color'],
+            'tags' => $tags,
+            'attribution' => $attribution,
+            'artist_user_id' => $artistUserId,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Work updated.',
+            'portfolio' => [
+                'id' => $piece->id,
+                'title' => $piece->title,
+                'image_url' => asset($piece->image),
+            ],
+        ]);
+    }
+
+    public function destroyPiece(Request $request, StudioPortfolio $piece): JsonResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        if (! $studio || (int) $piece->studio_id !== (int) $studio->id) {
+            return response()->json(['success' => false, 'message' => 'Studio piece not found.'], 404);
+        }
+
+        $this->deleteStudioPortfolioImage($piece->image);
+        $piece->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Work deleted from your studio portfolio.',
+        ]);
     }
 
     public function updatePortfolio(Request $request): JsonResponse
@@ -786,14 +920,120 @@ class StudioPageController extends Controller
                 return [
                     'id' => (int) $piece->id,
                     'title' => (string) $piece->title,
+                    'description' => (string) ($piece->description ?? ''),
                     'image' => $image !== '' ? asset(ltrim($image, '/')) : null,
+                    'is_active' => (bool) ($piece->is_active ?? true),
+                    'primary_style' => (string) ($piece->primary_style ?? ''),
+                    'other_styles' => array_values(array_filter((array) ($piece->other_styles ?? []))),
+                    'placement' => (string) ($piece->placement ?? ''),
+                    'color' => (string) ($piece->color ?? ''),
+                    'tags' => array_values(array_filter((array) ($piece->tags ?? []))),
                     'attribution' => (string) $piece->attribution,
                     'artist_user_id' => $piece->artist_user_id ? (int) $piece->artist_user_id : null,
                     'source' => (string) $piece->source,
                     'from_instagram' => $piece->source === StudioPortfolio::SOURCE_INSTAGRAM,
+                    'update_url' => route('studio.page.portfolio.piece.update', $piece),
+                    'delete_url' => route('studio.page.portfolio.piece.destroy', $piece),
                 ];
             })
             ->values();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function styles(): array
+    {
+        $fromDb = Style::query()
+            ->active()
+            ->ordered()
+            ->pluck('name')
+            ->filter()
+            ->values()
+            ->all();
+
+        return $fromDb !== [] ? $fromDb : self::STYLE_FALLBACK;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function placements(): array
+    {
+        return Placement::query()
+            ->active()
+            ->ordered()
+            ->pluck('name')
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function studioPieceRules(bool $requireImage): array
+    {
+        $styleValues = $this->styles();
+        $placementValues = $this->placements();
+
+        $rules = [
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'is_active' => ['nullable', 'boolean'],
+            'primary_style' => ['required', 'string', Rule::in($styleValues)],
+            'other_styles' => ['nullable', 'array', 'max:2'],
+            'other_styles.*' => ['string', Rule::in($styleValues)],
+            'placement' => ['nullable', 'string', Rule::in($placementValues)],
+            'color' => ['required', 'string', Rule::in(['color', 'black-grey', 'both'])],
+            'tags' => ['nullable', 'array', 'max:30'],
+            'tags.*' => ['string', 'max:64'],
+            'attribution' => ['nullable', 'in:pending,studio,artist'],
+            'artist_user_id' => ['nullable', 'integer'],
+        ];
+
+        if ($requireImage) {
+            $rules['image'] = ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240'];
+        } else {
+            $rules['image'] = ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240'];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * @param  list<int>  $artistIds
+     * @return array{0: string, 1: ?int}
+     */
+    private function normalizePieceAttribution(string $attribution, ?int $artistUserId, array $artistIds): array
+    {
+        if ($attribution === StudioPortfolio::ATTRIBUTION_ARTIST) {
+            if (! $artistUserId || ! in_array($artistUserId, $artistIds, true)) {
+                return [StudioPortfolio::ATTRIBUTION_PENDING, null];
+            }
+
+            return [StudioPortfolio::ATTRIBUTION_ARTIST, $artistUserId];
+        }
+
+        if ($attribution === StudioPortfolio::ATTRIBUTION_PENDING) {
+            return [StudioPortfolio::ATTRIBUTION_PENDING, null];
+        }
+
+        return [StudioPortfolio::ATTRIBUTION_STUDIO, null];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    private function normalizeOtherAndTags(array $validated): array
+    {
+        $other = array_values(array_unique(array_filter($validated['other_styles'] ?? [])));
+        $other = array_values(array_diff($other, [$validated['primary_style']]));
+        $other = array_slice($other, 0, 2);
+        $tags = array_values(array_unique(array_filter(array_map('trim', $validated['tags'] ?? []))));
+
+        return [$other, $tags];
     }
 
     private function deleteStudioPortfolioImage(?string $relativePath): void

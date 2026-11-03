@@ -730,7 +730,7 @@
     <a href="{{ $waitlistRequestFormUrl }}" class="bbtn pri" id="waitlistRequestContinueBtn" style="margin-top:18px;text-decoration:none">
       Continue to request form <span class="ms">arrow_forward</span>
     </a>
-  </div>
+    </div>
   </div>
 
 @include('partials.bookpay-public-api')
