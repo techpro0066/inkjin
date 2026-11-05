@@ -755,6 +755,7 @@
         showCopyToast('Could not copy link. Please copy it manually.');
   });
 })();
+</script>
 
 @include('artist.partials.payment-link-modal-script')
 <script>
