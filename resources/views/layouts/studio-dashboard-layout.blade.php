@@ -72,6 +72,7 @@
     h1{font-size:30px;font-weight:800;letter-spacing:-.6px;margin:0}
     .sub{color:var(--muted);font-size:14.5px;margin-top:4px;line-height:1.45}
     .head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .help-q{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-left:8px;border-radius:50%;color:#9A929E;vertical-align:middle;text-decoration:none;position:relative;top:-2px}
     .help-q .ms{font-size:22px}.help-q:hover{color:#3E007C;background:#F3E8FF}
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--ink);color:#fff;border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:600;font-size:13.5px;text-decoration:none;cursor:pointer;white-space:nowrap}
@@ -181,11 +182,12 @@
       <a href="{{ route('studio.dashboard') }}" class="{{ $activeNav === 'home' ? 'on' : '' }}"><span class="ms">space_dashboard</span>Home</a>
       <a href="{{ route('studio.artists') }}" class="{{ $activeNav === 'artists' ? 'on' : '' }}"><span class="ms">groups</span>Artists</a>
       @if ($profileComplete)
-        <a href="#"><span class="ms">calendar_month</span>Calendar</a>
+        <a href="{{ route('studio.calendar') }}" class="{{ $activeNav === 'calendar' ? 'on' : '' }}"><span class="ms">calendar_month</span>Calendar</a>
       @else
         <a href="#" data-locked="Calendar"><span class="ms">calendar_month</span>Calendar<span class="ms lk">lock</span></a>
       @endif
       <a href="{{ route('studio.bookings') }}" class="{{ $activeNav === 'bookings' ? 'on' : '' }}"><span class="ms">event_note</span>Bookings</a>
+      <a href="{{ route('studio.chat.index') }}" class="{{ $activeNav === 'inbox' ? 'on' : '' }}"><span class="ms">forum</span>Inbox</a>
       <a href="{{ route('studio.money.earnings') }}" class="{{ $activeNav === 'money' ? 'on' : '' }}"><span class="ms">payments</span>Money</a>
       @if ($profileComplete)
         <a href="{{ route('studio.page.about') }}" class="{{ $activeNav === 'page' ? 'on' : '' }}"><span class="ms">storefront</span>Studio Page</a>

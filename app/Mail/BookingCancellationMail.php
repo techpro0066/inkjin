@@ -2,25 +2,28 @@
 
 namespace App\Mail;
 
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Stripe\PaymentIntent;
+use Stripe\Stripe;
 
 class BookingCancellationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $booking;
+
     public $isArtistEmail;
+
     public $cancellationType;
+
     public $isNoShow;
 
-    /**
-     * Create a new message instance.
-     */
     public function __construct($booking, $isArtistEmail = false, $cancellationType = 'client', $isNoShow = false)
     {
         $this->booking = $booking;
@@ -29,26 +32,29 @@ class BookingCancellationMail extends Mailable
         $this->isNoShow = $isNoShow;
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
-        $title = $this->booking->displayTitle();
-        $subject = $this->isNoShow
-            ? 'Booking Marked as No-Show - '.$title
-            : ($this->cancellationType === 'artist'
-                ? 'Booking Cancelled by Artist - '.$title
-                : 'Booking Cancelled - '.$title);
+        if ($this->isArtistEmail) {
+            $title = $this->booking->displayTitle();
+            $subject = $this->isNoShow
+                ? 'Booking Marked as No-Show - '.$title
+                : ($this->cancellationType === 'artist'
+                    ? 'Booking Cancelled by Artist - '.$title
+                    : 'Booking Cancelled - '.$title);
 
-        return new Envelope(
-            subject: $subject,
-        );
+            return new Envelope(subject: $subject);
+        }
+
+        $data = $this->clientEmailData();
+        $artist = (string) ($data['artistName'] ?? 'your artist');
+
+        if ($this->isNoShow) {
+            return new Envelope(subject: 'Your booking with '.$artist.' was marked as a no-show');
+        }
+
+        return new Envelope(subject: 'Your booking with '.$artist.' was cancelled');
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         $view = $this->isArtistEmail
@@ -57,48 +63,33 @@ class BookingCancellationMail extends Mailable
 
         return new Content(
             view: $view,
-            with: $this->getEmailData(),
+            with: $this->isArtistEmail ? $this->artistEmailData() : $this->clientEmailData(),
         );
     }
 
     /**
-     * Get email data for the view
+     * @return array<string, mixed>
      */
-    private function getEmailData(): array
+    private function artistEmailData(): array
     {
         $booking = $this->booking;
         $artist = $booking->artist;
         $customer = $booking->user;
 
-        // Format booking date and time
-        $bookingDate = \Carbon\Carbon::parse($booking->booking_date)->format('l, F j, Y');
-        $startTime = \Carbon\Carbon::createFromFormat('H:i:s', $booking->start_time_utc)
-            ->setTimezone($booking->timezone ?? 'UTC')
-            ->format('g:i A');
-        $endTime = \Carbon\Carbon::createFromFormat('H:i:s', $booking->end_time_utc)
-            ->setTimezone($booking->timezone ?? 'UTC')
-            ->format('g:i A');
-        $bookingTime = $startTime . ' - ' . $endTime;
+        $bookingDate = Carbon::parse($booking->booking_date)->format('l, F j, Y');
+        try {
+            $startTime = Carbon::createFromFormat('H:i:s', (string) $booking->start_time_utc)
+                ->setTimezone($booking->timezone ?? 'UTC')
+                ->format('g:i A');
+            $endTime = Carbon::createFromFormat('H:i:s', (string) $booking->end_time_utc)
+                ->setTimezone($booking->timezone ?? 'UTC')
+                ->format('g:i A');
+            $bookingTime = $startTime.' - '.$endTime;
+        } catch (\Throwable) {
+            $bookingTime = '';
+        }
 
-        // Currency symbol
-        $currencySymbols = [
-            'USD' => '$',
-            'EUR' => '€',
-            'GBP' => '£',
-            'AED' => 'AED ',
-            'SAR' => 'SAR ',
-            'INR' => '₹',
-            'JPY' => '¥',
-            'CAD' => 'C$',
-            'AUD' => 'A$',
-        ];
-        $currencySymbol = $currencySymbols[strtoupper($booking->currency ?? 'USD')] ?? ($booking->currency ?? 'USD') . ' ';
-
-        // Determine refund status
-        $hasRefund = $booking->refund_amount > 0;
-        $isPartialRefund = $booking->refund_status === 'partial' || ($hasRefund && $booking->refund_amount < $booking->total_amount_paid);
-        $isFullRefund = $hasRefund && $booking->refund_amount == $booking->total_amount_paid;
-        $depositForfeited = $booking->deposit_forfeited > 0;
+        $symbol = $this->currencySymbol((string) ($booking->currency ?? 'EUR'));
 
         return [
             'bookingId' => $booking->id,
@@ -115,18 +106,215 @@ class BookingCancellationMail extends Mailable
             'refundAmount' => $booking->refund_amount ?? 0,
             'depositForfeited' => $booking->deposit_forfeited ?? 0,
             'totalAmountPaid' => $booking->total_amount_paid ?? 0,
-            'currencySymbol' => $currencySymbol,
-            'hasRefund' => $hasRefund,
-            'isPartialRefund' => $isPartialRefund,
-            'isFullRefund' => $isFullRefund,
+            'currencySymbol' => $symbol,
+            'hasRefund' => ((float) ($booking->refund_amount ?? 0)) > 0,
+            'isPartialRefund' => $booking->refund_status === 'partial',
+            'isFullRefund' => ((float) ($booking->refund_amount ?? 0)) > 0
+                && (float) ($booking->refund_amount ?? 0) == (float) ($booking->total_amount_paid ?? 0),
             'refundStatus' => $booking->refund_status ?? 'completed',
             'refundReason' => $booking->refund_reason ?? '',
         ];
     }
 
     /**
-     * Get the attachments for the message.
+     * @return array<string, mixed>
      */
+    private function clientEmailData(): array
+    {
+        $booking = $this->booking;
+        $booking->loadMissing(['artist.userDetail', 'user', 'studio', 'tattoo']);
+
+        $artist = $booking->artist;
+        $customer = $booking->user;
+        $userDetail = $artist?->userDetail;
+
+        $artistName = $userDetail?->publicDisplayName()
+            ?: trim(ucfirst((string) ($artist->first_name ?? '')).' '.ucfirst((string) ($artist->last_name ?? '')));
+        if ($artistName === '') {
+            $artistName = 'your artist';
+        }
+
+        $artistFirst = trim((string) ($artist->first_name ?? ''));
+        if ($artistFirst === '') {
+            $artistFirst = trim((string) strtok($artistName, ' ')) ?: $artistName;
+        }
+
+        $clientFirst = trim((string) ($customer->first_name ?? ''));
+        if ($clientFirst === '') {
+            $clientFirst = 'there';
+        }
+
+        $timezone = trim((string) ($booking->timezone ?: $userDetail?->timezone ?: 'UTC')) ?: 'UTC';
+        $startLocal = $booking->sessionStartUtc()?->copy()->timezone($timezone);
+
+        $sessionLabel = $startLocal
+            ? $startLocal->format('D d/m/Y').', '.$startLocal->format('H:i')
+            : $this->fallbackSessionLabel($booking);
+
+        $design = trim((string) $booking->displayTitle());
+        if ($design === '') {
+            $design = 'your session';
+        }
+
+        $symbol = $this->currencySymbol((string) ($booking->currency ?? 'EUR'));
+        $refundAmount = max(0, round((float) ($booking->refund_amount ?? 0), 2));
+        $hasRefund = $refundAmount > 0;
+        $cardLabel = $this->resolveCardLabel($booking);
+
+        $reason = trim((string) ($booking->cancellation_reason ?? ''));
+
+        if ($this->isNoShow) {
+            $introText = 'Your booking with '.$artistFirst.' was marked as a no-show.';
+        } elseif ($this->cancellationType === 'artist') {
+            $introText = $artistFirst.' cancelled your booking.';
+        } else {
+            $introText = 'Your booking with '.$artistFirst.' was cancelled.';
+        }
+
+        $bookAgainUrl = $this->artistPublicUrl($userDetail);
+
+        return [
+            'clientFirstName' => $clientFirst,
+            'artistName' => $artistName,
+            'artistFirstName' => $artistFirst,
+            'artistInitials' => $this->initials($artistName),
+            'artistAvatarUrl' => $this->avatarUrl($userDetail),
+            'artistMeta' => trim($design.($sessionLabel !== '' ? ' · was '.$sessionLabel : '')),
+            'introText' => $introText,
+            'quoteMessage' => $reason,
+            'bookingReference' => $booking->referenceLabel(),
+            'hasRefund' => $hasRefund,
+            'refundLabel' => $symbol.number_format($refundAmount, 2, '.', ''),
+            'cardLabel' => $cardLabel,
+            'refundNote' => $hasRefund
+                ? 'Refunds take 5 to 10 working days to show on your card. The booking fee is refunded too.'
+                : 'No refund applies for this cancellation.',
+            'bookAgainUrl' => $bookAgainUrl,
+            'bookAgainLabel' => 'Book with '.$artistFirst.' again',
+            'cancellationType' => $this->cancellationType,
+            'isNoShow' => $this->isNoShow,
+        ];
+    }
+
+    private function artistPublicUrl($userDetail): string
+    {
+        $username = trim((string) ($userDetail?->user_name ?? ''));
+        if ($username === '') {
+            return route('user.bookings.index');
+        }
+
+        return route('public.artist', ['username' => ltrim($username, '@')]);
+    }
+
+    private function avatarUrl($userDetail): ?string
+    {
+        if (! $userDetail) {
+            return null;
+        }
+
+        $avatarPath = trim((string) ($userDetail->avatar ?? ''));
+        if ($avatarPath === '') {
+            return null;
+        }
+
+        return str_starts_with($avatarPath, 'http://') || str_starts_with($avatarPath, 'https://')
+            ? $avatarPath
+            : asset(ltrim($avatarPath, '/'));
+    }
+
+    private function fallbackSessionLabel($booking): string
+    {
+        if (! $booking->booking_date) {
+            return '';
+        }
+
+        try {
+            $date = $booking->booking_date instanceof Carbon
+                ? $booking->booking_date
+                : Carbon::parse((string) $booking->booking_date);
+
+            return $date->format('D d/m/Y');
+        } catch (\Throwable) {
+            return (string) $booking->booking_date;
+        }
+    }
+
+    private function currencySymbol(string $currency): string
+    {
+        return match (strtoupper($currency)) {
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            'AED' => 'AED ',
+            'SAR' => 'SAR ',
+            'INR' => '₹',
+            'JPY' => '¥',
+            'CAD' => 'C$',
+            'AUD' => 'A$',
+            default => strtoupper($currency).' ',
+        };
+    }
+
+    private function initials(string $name): string
+    {
+        $parts = preg_split('/\s+/', trim($name)) ?: [];
+        $initials = strtoupper(mb_substr($parts[0] ?? '', 0, 1).mb_substr($parts[1] ?? '', 0, 1));
+
+        return $initials !== '' ? $initials : '?';
+    }
+
+    private function resolveCardLabel($booking): string
+    {
+        $intentId = trim((string) ($booking->payment_intent_id ?? ''));
+        if ($intentId === '' || ! str_starts_with($intentId, 'pi_')) {
+            return '';
+        }
+
+        $secret = (string) (config('services.stripe.secret') ?: env('STRIPE_SECRET'));
+        if ($secret === '') {
+            return '';
+        }
+
+        try {
+            Stripe::setApiKey($secret);
+            $intent = PaymentIntent::retrieve($intentId, [
+                'expand' => ['latest_charge', 'payment_method'],
+            ]);
+
+            $brand = '';
+            $last4 = '';
+
+            $pm = $intent->payment_method ?? null;
+            if (is_object($pm) && isset($pm->card)) {
+                $brand = trim((string) ($pm->card->brand ?? ''));
+                $last4 = trim((string) ($pm->card->last4 ?? ''));
+            }
+
+            if (($brand === '' || $last4 === '') && isset($intent->latest_charge) && is_object($intent->latest_charge)) {
+                $card = $intent->latest_charge->payment_method_details->card ?? null;
+                if (is_object($card)) {
+                    $brand = $brand !== '' ? $brand : trim((string) ($card->brand ?? ''));
+                    $last4 = $last4 !== '' ? $last4 : trim((string) ($card->last4 ?? ''));
+                }
+            }
+
+            if ($last4 === '') {
+                return '';
+            }
+
+            $brandLabel = $brand !== '' ? ucfirst(strtolower($brand)) : 'Card';
+
+            return $brandLabel.' •••• '.$last4;
+        } catch (\Throwable $e) {
+            Log::info('Could not resolve card label for booking cancellation email', [
+                'booking_id' => $booking->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return '';
+        }
+    }
+
     public function attachments(): array
     {
         return [];

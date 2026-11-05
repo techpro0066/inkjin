@@ -28,11 +28,21 @@
     font:inherit;font-size:14px;flex:1;min-width:0;background:transparent!important;padding:10px 0;color:#1A1A1A;
     -webkit-appearance:none;appearance:none
   }
+  #m-pl .pl-fi select{
+    border:0;outline:0;font:inherit;font-size:14px;flex:1;min-width:0;background:none;padding:10px 0;color:#1A1A1A;
+    appearance:auto;cursor:pointer
+  }
   #m-pl .pl-fi .pl-cur{color:#8F8A95;font-weight:600}
   #m-pl .pl-fi.pl-bad{border-color:#C62828}
+  #m-pl .pl-fi.pl-ro{background:#F7F4F8}
+  #m-pl .pl-fi.pl-ro input,#m-pl .pl-fi.pl-ro select{color:#6F6874}
   #m-pl .pl-fi.pl-dt{cursor:pointer;justify-content:space-between}
   #m-pl .pl-fi.pl-dt .pl-ph0{color:#8F8A95;flex:1}
   #m-pl .pl-fi .ms{color:#8F8A95;font-size:19px}
+  #m-pl .pl-ph h2{display:inline}
+  #m-pl .pl-expw{font-size:13px;padding:9px 0;color:#6F6874}
+  #m-pl .pl-slots{font-size:12px;color:#8F8A95;margin-top:6px}
+  #m-pl #pl-artw>.pl-lb:first-child{margin-top:0}
   #m-pl .pl-seg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
   #m-pl .pl-seg button{font:inherit;text-align:center;padding:10px;border-radius:12px;font-weight:600;border:1px solid #E8DFEA;background:#fff;cursor:pointer;display:flex;gap:6px;align-items:center;justify-content:center;color:#1A1A1A}
   #m-pl .pl-seg button .ms{font-size:18px}

@@ -120,6 +120,10 @@ class ArtistPaymentsService
             $nextArrivalLabel = $pendingSchedule[0]['available_label'] ?? null;
         }
 
+        $outstandingArtistFee = $userDetail
+            ? $this->payoutService->outstandingArtistPlatformFee($artistUserId, $userDetail)
+            : 0.0;
+
         return [
             'payments' => $payments,
             'stats' => [
@@ -135,6 +139,7 @@ class ArtistPaymentsService
                 'payout_type_label' => $payoutTypeLabel,
                 'next_payout_meta' => $nextPayoutMeta,
                 'next_arrival_label' => $nextArrivalLabel,
+                'outstanding_artist_fee' => round($outstandingArtistFee, 2),
             ],
         ];
     }
@@ -162,13 +167,28 @@ class ArtistPaymentsService
             ];
 
         $amount = $breakdown['gross'];
-        $fee = $breakdown['booking_fee'];
+        $fullBookingFee = max(0, round((float) $breakdown['booking_fee'], 2));
         $net = $breakdown['net'];
+
+        $artistPercent = 100;
+        $paymentType = 'artist_account';
+        $studioGets = 0.0;
+        if ($userDetail) {
+            $artistPercent = $this->payoutService->resolvePayoutArtistPercent($booking, $userDetail);
+            $paymentType = $this->payoutService->resolvePayoutPaymentType($booking, $userDetail);
+            $studioGets = $this->payoutService->computeStudioPayoutAmount($booking, $userDetail);
+        }
+        $hasSplit = $paymentType === 'studio_account' && $artistPercent < 100;
+
+        // With a studio split the booking fee is shared by % — show only the artist's part.
+        $fee = $hasSplit
+            ? round($fullBookingFee * ($artistPercent / 100), 2)
+            : $fullBookingFee;
 
         $payout = $booking->artistPayout;
         if ($payout && $payout->isCompleted() && $booking->pay_artist) {
             $net = (float) $payout->amount;
-            $fee = max(0, round($amount - $net, 2));
+            // Keep $fee as the artist's booking-fee share (do not use gross − net; that includes studio share).
         }
 
         $remaining = 0.0;
@@ -179,15 +199,8 @@ class ArtistPaymentsService
         $status = $this->resolvePaymentStatus($booking, $payout, $userDetail, $remaining);
         $paidAt = $booking->created_at?->format('Y-m-d') ?? '';
 
-        $artistPercent = 100;
-        $paymentType = 'artist_account';
-        $studioGets = 0.0;
-        if ($userDetail) {
-            $artistPercent = $this->payoutService->resolvePayoutArtistPercent($booking, $userDetail);
-            $paymentType = $this->payoutService->resolvePayoutPaymentType($booking, $userDetail);
-            $studioGets = $this->payoutService->computeStudioPayoutAmount($booking, $userDetail);
-        }
-        $hasSplit = $paymentType === 'studio_account' && $artistPercent < 100 && $studioGets > 0.009;
+        // Studio column: still hide €0 studio share rows in the table sense via has_split UI.
+        $hasSplitDisplay = $hasSplit && $studioGets > 0.009;
 
         $statusLabel = match ($status) {
             'Available' => 'On the way',
@@ -227,7 +240,7 @@ class ArtistPaymentsService
             'status' => $status,
             'status_label' => $statusLabel,
             'collected_kind' => $collectedKind,
-            'has_split' => $hasSplit,
+            'has_split' => $hasSplitDisplay,
             'artist_percent' => $artistPercent,
             'deposit' => $breakdown['deposit'],
             'balance_platform' => $breakdown['balance_platform'],
@@ -277,13 +290,20 @@ class ArtistPaymentsService
         ];
 
         if ($fee > 0.009) {
-            $rows[] = ['Booking fee (deducted from your share)', -$fee];
+            $rows[] = [
+                $hasSplit
+                    ? 'Your part of the booking fee ('.$artistPercent.'%)'
+                    : 'Booking fee (deducted from your share)',
+                -$fee,
+            ];
         }
 
         if ($hasSplit) {
             $studioLabel = $studioName !== '' ? $studioName : 'studio';
             $rows[] = ['Split with '.$studioLabel, 'You '.$artistPercent.'% · Studio '.(100 - $artistPercent).'%'];
-            $rows[] = [$studioLabel.' gets', $studioGets];
+            if ($studioGets > 0.009) {
+                $rows[] = [$studioLabel.' gets', $studioGets];
+            }
         } else {
             $rows[] = ['Split', 'None · booked at your own place'];
         }

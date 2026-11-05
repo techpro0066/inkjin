@@ -21,8 +21,8 @@ class GuestSpotStudioInviteMail extends Mailable
         public string $actionUrl,
         public ?int $artistPercent = null,
         public bool $isResend = false,
-    ) {
-    }
+        public ?string $artistAvatarUrl = null,
+    ) {}
 
     public function envelope(): Envelope
     {
@@ -37,6 +37,15 @@ class GuestSpotStudioInviteMail extends Mailable
     {
         return new Content(
             view: 'emails.guest-spot-studio-invite',
+            with: [
+                'artistName' => $this->artistName,
+                'artistInitials' => $this->artistInitials,
+                'artistMeta' => $this->artistMeta,
+                'artistAvatarUrl' => $this->artistAvatarUrl,
+                'studioGreetingName' => $this->studioGreetingName,
+                'dateRangeLabel' => $this->dateRangeLabel,
+                'actionUrl' => $this->actionUrl,
+            ],
         );
     }
 }

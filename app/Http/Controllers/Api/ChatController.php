@@ -43,7 +43,15 @@ class ChatController extends Controller
 
         $channels = ChatChannel::query()
             ->forUser($user->id)
-            ->with(['client.userDetail', 'artist.userDetail', 'booking.tattoo', 'bookingRequest.tattoo', 'customRequest'])
+            ->with([
+                'client.userDetail',
+                'studioUser.ownedStudio',
+                'artist.userDetail',
+                'booking.tattoo',
+                'booking.studio',
+                'bookingRequest.tattoo',
+                'customRequest',
+            ])
             ->get();
 
         $conversations = $this->buildConversations($channels, $user);
@@ -75,6 +83,32 @@ class ChatController extends Controller
         }
 
         return $this->ensurePairResponse($clientUserId, $user->id, $user, $request);
+    }
+
+    /**
+     * Studio owner opens (or reopens) a studio ↔ artist booking thread.
+     */
+    public function ensureStudioForArtist(Request $request, int $artistUserId): JsonResponse
+    {
+        $user = $request->user();
+        if ($user->role !== 'studio') {
+            abort(403);
+        }
+
+        return $this->ensureStudioPairResponse((int) $user->id, $artistUserId, $user, $request);
+    }
+
+    /**
+     * Artist opens (or reopens) a studio ↔ artist booking thread.
+     */
+    public function ensureStudioForStudio(Request $request, int $studioUserId): JsonResponse
+    {
+        $user = $request->user();
+        if ($user->role !== 'artist') {
+            abort(403);
+        }
+
+        return $this->ensureStudioPairResponse($studioUserId, (int) $user->id, $user, $request);
     }
 
     public function unreadSummary(Request $request): JsonResponse
@@ -170,7 +204,7 @@ class ChatController extends Controller
             }
 
             if (! $booking->isOpenForChat()) {
-                $existing = ChatChannel::query()->where('booking_id', $booking->id)->first();
+                $existing = ChatChannel::query()->clientArtistForBooking((int) $booking->id)->first();
                 if (! $existing) {
                     return response()->json([
                         'message' => 'No active booking for this conversation.',
@@ -243,6 +277,61 @@ class ChatController extends Controller
                 ->exists();
     }
 
+    private function ensureStudioPairResponse(int $studioUserId, int $artistId, User $viewer, Request $request): JsonResponse
+    {
+        $bookingId = $request->integer('booking');
+        if ($bookingId < 1) {
+            return response()->json(['message' => 'Booking is required.'], 422);
+        }
+
+        $booking = Booking::query()
+            ->with('studio')
+            ->whereKey($bookingId)
+            ->where('artist_user_id', $artistId)
+            ->first();
+
+        if (! $booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+
+        $ownerId = $this->streamChat->studioOwnerUserIdForBooking($booking);
+        if ($ownerId !== $studioUserId) {
+            return response()->json(['message' => 'Booking is not linked to this studio.'], 403);
+        }
+
+        if ($booking->isOpenForChat()) {
+            $this->streamChat->ensureChannelForStudioBooking($booking);
+        } else {
+            $existing = ChatChannel::query()->studioArtistForBooking((int) $booking->id)->first();
+            if (! $existing) {
+                return response()->json(['message' => 'No active booking chat for this conversation.'], 403);
+            }
+            $this->streamChat->syncChannelFreezeState($existing);
+        }
+
+        $channels = ChatChannel::query()
+            ->forStudioPair($studioUserId, $artistId)
+            ->with([
+                'client.userDetail',
+                'studioUser.ownedStudio',
+                'artist.userDetail',
+                'booking.tattoo',
+                'booking.studio',
+            ])
+            ->get();
+
+        if ($channels->isEmpty()) {
+            return response()->json(['message' => 'Could not open studio chat channel.'], 500);
+        }
+
+        $conversation = $this->buildConversations($channels, $viewer)->first();
+
+        return response()->json([
+            'conversation' => $conversation,
+            'channels' => $this->flattenBookingThreads(collect([$conversation])),
+        ]);
+    }
+
     /**
      * @param  Collection<int, ChatChannel>  $channels
      * @return Collection<int, array<string, mixed>>
@@ -254,17 +343,36 @@ class ChatController extends Controller
             ->map(function (Collection $group) use ($viewer) {
                 /** @var ChatChannel $first */
                 $first = $group->first();
+                $isStudio = $first->isStudioArtist();
                 $otherId = $first->otherPartyUserIdFor($viewer->id);
-                $other = $otherId === $first->client_user_id ? $first->client : $first->artist;
 
+                if ($isStudio) {
+                    $other = $otherId === (int) $first->studio_user_id
+                        ? $first->studioUser
+                        : $first->artist;
+                } else {
+                    $other = $otherId === (int) $first->client_user_id
+                        ? $first->client
+                        : $first->artist;
+                }
+
+                $displayName = $this->otherPartyDisplayName($other, $isStudio && (int) ($other?->id) === (int) $first->studio_user_id);
                 $initials = '';
-                if ($other) {
-                    $initials = strtoupper(substr($other->first_name ?? '', 0, 1).substr($other->last_name ?? '', 0, 1));
+                if ($displayName !== '') {
+                    $parts = preg_split('/\s+/', trim($displayName)) ?: [];
+                    $initials = strtoupper(substr($parts[0] ?? '', 0, 1).substr($parts[1] ?? '', 0, 1));
                 }
 
                 $avatar = $other?->userDetail && filled($other->userDetail->avatar)
                     ? asset($other->userDetail->avatar)
                     : asset('design/images/icons/avatar.jpg');
+
+                if ($isStudio && (int) ($other?->id) === (int) $first->studio_user_id) {
+                    $studioImage = trim((string) ($other?->ownedStudio?->image_url ?? ''));
+                    if ($studioImage !== '') {
+                        $avatar = asset(ltrim($studioImage, '/'));
+                    }
+                }
 
                 $bookings = $group
                     ->map(fn (ChatChannel $channel) => $this->formatBookingThread($channel))
@@ -284,19 +392,39 @@ class ChatController extends Controller
                     ->all();
 
                 return [
+                    'channel_kind' => $isStudio ? ChatChannel::KIND_STUDIO_ARTIST : ChatChannel::KIND_CLIENT_ARTIST,
                     'client_user_id' => $first->client_user_id,
+                    'studio_user_id' => $first->studio_user_id,
                     'artist_user_id' => $first->artist_user_id,
                     'other_party' => [
                         'id' => $other?->id,
-                        'name' => $other ? trim($other->first_name.' '.$other->last_name) : 'Unknown',
+                        'name' => $displayName !== '' ? $displayName : 'Unknown',
                         'initials' => $initials ?: '?',
                         'avatar' => $avatar,
-                        'role' => $other?->role,
+                        'role' => $isStudio && (int) ($other?->id) === (int) $first->studio_user_id
+                            ? 'studio'
+                            : ($other?->role),
                     ],
                     'bookings' => $bookings,
                 ];
             })
             ->values();
+    }
+
+    private function otherPartyDisplayName(?User $other, bool $asStudio): string
+    {
+        if (! $other) {
+            return '';
+        }
+
+        if ($asStudio) {
+            $studioName = trim((string) ($other->ownedStudio?->name ?? ''));
+            if ($studioName !== '') {
+                return $studioName;
+            }
+        }
+
+        return trim(($other->first_name ?? '').' '.($other->last_name ?? ''));
     }
 
     private function formatBookingThread(ChatChannel $channel): array
@@ -306,6 +434,7 @@ class ChatController extends Controller
         $customRequest = $channel->customRequest;
         $bookingDate = null;
         $dateSort = '';
+        $isStudio = $channel->isStudioArtist();
 
         if ($booking?->booking_date) {
             $parsed = Carbon::parse($booking->booking_date);
@@ -343,6 +472,7 @@ class ChatController extends Controller
             'booking_id' => $booking?->id ?? $channel->booking_id,
             'booking_request_id' => $bookingRequest?->id ?? $channel->booking_request_id,
             'custom_request_id' => $customRequest?->id ?? $channel->custom_request_id,
+            'channel_kind' => $isStudio ? ChatChannel::KIND_STUDIO_ARTIST : ChatChannel::KIND_CLIENT_ARTIST,
             'thread_type' => $threadType,
             'reference' => $reference,
             'title' => $title,
@@ -353,6 +483,7 @@ class ChatController extends Controller
             'can_chat' => $channel->isChatAllowed(),
             'locked_reason' => $channel->chatLockedReason(),
             'client_user_id' => $channel->client_user_id,
+            'studio_user_id' => $channel->studio_user_id,
             'artist_user_id' => $channel->artist_user_id,
         ];
     }

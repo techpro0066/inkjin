@@ -551,25 +551,15 @@ class StudioArtistInviteService
 
     private function sendEmail(StudioInvite $invite, bool $isResend = false): void
     {
-        $studio = $invite->studio;
-        $studioName = trim((string) ($studio?->name ?? 'a studio'));
-        $relationshipLabels = [
-            'co_owner' => 'Co-owner',
-            'resident' => 'Resident',
-            'collective_member' => 'Collective member',
-            'apprentice' => 'Apprentice',
-            'other' => 'Other',
-        ];
+        // E3: email is for artists not yet on Bookpay. Existing artists see the invite in-app.
+        if ($invite->user_id) {
+            return;
+        }
 
         try {
+            $invite->loadMissing(['studio', 'user']);
             Mail::to($invite->email)->send(new StudioArtistInviteMail(
-                studioName: $studioName,
-                actionUrl: $invite->acceptUrl(),
-                relationshipLabel: $relationshipLabels[$invite->relationship ?? ''] ?? null,
-                artistPercent: $invite->payout && $invite->revenue_split !== null
-                    ? (int) $invite->revenue_split
-                    : null,
-                hasBookpayAccount: (bool) $invite->user_id,
+                invite: $invite,
                 isResend: $isResend,
             ));
         } catch (Throwable $e) {

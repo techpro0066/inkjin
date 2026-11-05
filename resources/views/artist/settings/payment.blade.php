@@ -36,7 +36,7 @@
     $studioPayoutCommitted => 'not_connected',
     default => 'email_not_sent',
   };
-  $payoutOptionLocked = (bool) ($payoutOptionLocked ?? ($artistStripeConnected || $studioPayoutCommitted));
+  $payoutOptionLocked = (bool) ($payoutOptionLocked ?? $studioPayoutCommitted);
   $studioDraftWithStripe = $artistStripeConnected
     && $pt === 'studio_account'
     && ! $studioPayoutCommitted;
@@ -109,6 +109,10 @@
     $isSplit = (bool) $link->payout && $link->revenue_split !== null;
     $isWaiting = $isSplit && ($link->connection_type ?? '') === \App\Models\UserStudio::CONNECTION_NOT_CONNECTED;
     $isConfirmed = $isSplit && ($link->connection_type ?? '') === \App\Models\UserStudio::CONNECTION_ON_BOOKPAY;
+    $hasPendingSplitAsk = $isSplit && $link->hasOpenArtistSplitProposal();
+    $proposedYou = $hasPendingSplitAsk
+      ? max(0, min(100, (int) $link->proposed_revenue_split))
+      : null;
     $you = $isSplit ? max(0, min(100, (int) $link->revenue_split)) : 100;
     $city = trim((string) ($studio?->city ?: $link->city ?: ''));
     $onBookpay = ! empty($studio?->user_id) || $isConfirmed;
@@ -136,12 +140,21 @@
       'is_split' => $isSplit,
       'is_waiting' => $isWaiting,
       'is_confirmed' => $isConfirmed,
+      'has_pending_split_ask' => $hasPendingSplitAsk,
+      'proposed_you_percent' => $proposedYou,
+      'proposed_studio_percent' => $proposedYou !== null ? 100 - $proposedYou : null,
       'you_percent' => $you,
       'studio_percent' => 100 - $you,
       'email' => $studio?->email,
     ];
   })->values();
   $hasMultiplePayoutStudios = $payoutStudioCards->count() >= 2;
+  $payoutUserStudioId = $payoutStudioLink?->id;
+  $pendingSplitAsk = $payoutStudioLink && $isStudioSplit && $payoutStudioLink->hasOpenArtistSplitProposal();
+  $pendingSplitYouPercent = $pendingSplitAsk
+    ? max(0, min(100, (int) $payoutStudioLink->proposed_revenue_split))
+    : null;
+  $pendingSplitStudioPercent = $pendingSplitYouPercent !== null ? 100 - $pendingSplitYouPercent : null;
 
   if ($isStudioSplit) {
     $howTitle = 'Studio - Revenue split';
@@ -445,9 +458,22 @@
         <div class="faint" style="font-size:12.5px;margin-top:2px">{{ $howSub }}</div>
                   </div>
       @unless ($hasMultiplePayoutStudios)
-      <button type="button" class="btn sm ghost chpo" id="changeHowPaidBtn">
-        <span class="ms" style="font-size:17px">swap_horiz</span>{{ $isStudioSplit ? 'Switch to direct payment' : 'Switch to studio revenue split' }}
-      </button>
+      <div class="row chpo" style="gap:8px;flex-wrap:wrap">
+        @if ($isStudioSplit)
+          @unless ($pendingSplitAsk)
+          <button type="button" class="btn sm ghost" id="askNewSplitBtn">
+            <span class="ms" style="font-size:17px">percent</span>Ask for a new split
+          </button>
+          @endunless
+          <button type="button" class="btn sm ghost" id="changeHowPaidBtn">
+            <span class="ms" style="font-size:17px">swap_horiz</span>Switch to direct payment
+          </button>
+        @else
+          <button type="button" class="btn sm ghost" id="changeHowPaidBtn">
+            <span class="ms" style="font-size:17px">swap_horiz</span>Switch to studio revenue split
+          </button>
+        @endif
+      </div>
       @endunless
                 </div>
     @if ($hasMultiplePayoutStudios)
@@ -466,14 +492,28 @@
               <div class="faint" style="font-size:12.5px;margin-top:2px">{{ $card['meta'] }}</div>
             </div>
             @if ($card['is_split'])
-              <button type="button" class="btn sm ghost js-p2-switch-direct" @if (! $artistStripeConnected) disabled style="opacity:.4;pointer-events:none" @endif>
-                <span class="ms" style="font-size:17px">swap_horiz</span>Switch to direct payment
-                      </button>
-                    @else
+              <div class="row" style="gap:8px;flex-wrap:wrap">
+                @unless ($card['has_pending_split_ask'])
+                <button
+                  type="button"
+                  class="btn sm ghost js-p2-ask-new-split"
+                  data-user-studio-id="{{ $card['id'] }}"
+                  data-studio-name="{{ $card['name'] }}"
+                  data-you-percent="{{ $card['you_percent'] }}"
+                  data-studio-percent="{{ $card['studio_percent'] }}"
+                >
+                  <span class="ms" style="font-size:17px">percent</span>Ask for a new split
+                </button>
+                @endunless
+                <button type="button" class="btn sm ghost js-p2-switch-direct" @if (! $artistStripeConnected) disabled style="opacity:.4;pointer-events:none" @endif>
+                  <span class="ms" style="font-size:17px">swap_horiz</span>Switch to direct payment
+                </button>
+              </div>
+            @else
               <button type="button" class="btn sm ghost js-p2-setup-split">
                 <span class="ms" style="font-size:17px">percent</span>Set up a revenue split
-                      </button>
-                    @endif
+              </button>
+            @endif
                   </div>
           <div class="p2nums">
             <div class="sect">
@@ -487,7 +527,18 @@
               </div>
                     </div>
                     </div>
-          @if ($card['is_confirmed'])
+          @if ($card['has_pending_split_ask'])
+            <div class="p2wait" style="margin-top:10px">
+              <span class="ms">hourglass_top</span>
+              <div style="flex:1;min-width:200px">
+                <b>Waiting for {{ $card['name'] }}</b>
+                <div style="font-size:12.5px;margin-top:2px">
+                  You asked for You {{ $card['proposed_you_percent'] }}% · Studio {{ $card['proposed_studio_percent'] }}%.
+                  Current split stays until they accept or decline. A new split applies only to new bookings.
+                </div>
+              </div>
+            </div>
+          @elseif ($card['is_confirmed'])
             <div class="faint" style="font-size:12.5px;margin-top:10px">Confirmed by {{ $card['name'] }}. Locked: only the studio can change it, and you accept first.</div>
           @elseif ($card['is_waiting'])
             <div class="p2wait">
@@ -537,6 +588,18 @@
                       @endif
                       </div>
                     </div>
+        @if ($pendingSplitAsk)
+          <div class="p2wait" style="margin-top:14px">
+            <span class="ms">hourglass_top</span>
+            <div style="flex:1;min-width:200px">
+              <b>Waiting for {{ $studioDisplayName !== '' ? $studioDisplayName : 'studio' }}</b>
+              <div style="font-size:12.5px;margin-top:2px">
+                You asked for You {{ $pendingSplitYouPercent }}% · Studio {{ $pendingSplitStudioPercent }}%.
+                Current split stays until they accept or decline. A new split applies only to new bookings.
+              </div>
+            </div>
+          </div>
+        @endif
         @if ($isStudioSplit && $studioPayoutCommitted && ! $studioPayoutConnected)
           <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid #E9DDF0">
             <button type="button" class="btn sm ghost" id="resendStudioInviteBtn">
@@ -1050,6 +1113,52 @@
 </div>
 @endif
 
+<div
+  id="askNewSplitModal"
+  class="pay-ov hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="askNewSplitTitle"
+  data-user-studio-id="{{ $payoutUserStudioId ?? '' }}"
+  data-studio-name="{{ $studioDisplayName !== '' ? $studioDisplayName : 'Studio' }}"
+  data-you-percent="{{ $youPercent }}"
+  data-studio-percent="{{ $studioPercent }}"
+>
+  <div class="pay-modal">
+    <div class="pay-mh">
+      <div>
+        <h2 id="askNewSplitTitle">Ask for a new split</h2>
+      </div>
+      <button type="button" class="pay-x js-close-ask-new-split" aria-label="Close">×</button>
+    </div>
+    <div class="pay-mb">
+      <div class="sect" style="margin:0 0 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="lbl" style="margin:0">Now</span>
+        <b id="askNewSplitNowLabel" style="font-size:14px;font-weight:600">You {{ $youPercent }}% · Studio {{ $studioPercent }}%</b>
+      </div>
+      <div class="row" style="gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+        <div class="pct">
+          <label class="fl" for="askNewSplitYouPct">You get</label>
+          <div class="row" style="gap:8px;align-items:center">
+            <input class="in" id="askNewSplitYouPct" type="number" min="1" max="99" value="{{ $youPercent }}" inputmode="numeric">
+            <span style="font-weight:700">%</span>
+          </div>
+        </div>
+        <div class="faint" style="font-size:14px;padding-bottom:12px" id="askNewSplitStudioGets">
+          {{ ($studioDisplayName !== '' ? $studioDisplayName : 'Studio') }} gets {{ $studioPercent }}%
+        </div>
+      </div>
+      <p class="help" id="askNewSplitHelp" style="margin:0">
+        {{ ($studioDisplayName !== '' ? $studioDisplayName : 'The studio') }} accepts or declines. Until then, the current split stays. A new split applies only to bookings made after they accept.
+      </p>
+    </div>
+    <div class="pay-mf">
+      <button type="button" class="btn ghost js-close-ask-new-split">Cancel</button>
+      <button type="button" class="btn" id="askNewSplitSendBtn" disabled>Send request</button>
+    </div>
+  </div>
+</div>
+
 @php
   $changePayoutCountries = \App\Support\StripeConnectCountries::supportedForSelect();
   $changePayoutCountryMeta = [];
@@ -1162,9 +1271,7 @@ function showArtistStripeConnectedUi(countryName, needsAction = false) {
   window.artistStripeConnected = true;
   window.stripeOnboardingComplete = true;
   window.setStripeOnboardingComplete(true);
-  if (typeof window.lockPayoutOptions === 'function') {
-    window.lockPayoutOptions('artist');
-  }
+  // Do not lock Studio out — artist can still invite a studio with Stripe connected.
 }
 
 window.lockPayoutOptions = function (activeKey) {
@@ -1832,7 +1939,6 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
         headers: { 'X-CSRF-TOKEN': @json(csrf_token()), Accept: 'application/json' },
       }).done(function (data) {
         if (data.success) {
-          if (typeof window.lockPayoutOptions === 'function') window.lockPayoutOptions('artist');
           window.location.reload();
           return;
         }
@@ -1915,6 +2021,148 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
     $('#cancelStudioEmailEditBtn').on('click', function () { setStudioEmailEditing(false); });
     $('#studio_email_not_connected').on('input', updateStudioReminderButtonLabel);
   });
+</script>
+
+<script>
+  (function () {
+    var askModal = document.getElementById('askNewSplitModal');
+    var askYou = document.getElementById('askNewSplitYouPct');
+    var askStudioGets = document.getElementById('askNewSplitStudioGets');
+    var askNowLabel = document.getElementById('askNewSplitNowLabel');
+    var askHelp = document.getElementById('askNewSplitHelp');
+    var askSendBtn = document.getElementById('askNewSplitSendBtn');
+
+    function askStudioName() {
+      return (askModal && askModal.getAttribute('data-studio-name')) || 'Studio';
+    }
+
+    function syncAskSendBtn() {
+      if (!askSendBtn || !askModal) return;
+      var current = parseInt(askModal.getAttribute('data-you-percent') || '', 10);
+      var next = askYou ? parseInt(askYou.value, 10) : NaN;
+      askSendBtn.disabled = !(next >= 1 && next <= 99) || next === current;
+    }
+
+    function updateAskStudioGets() {
+      if (!askYou || !askStudioGets) return;
+      var v = parseInt(askYou.value, 10);
+      var name = askStudioName();
+      if (v >= 0 && v <= 100) {
+        askStudioGets.textContent = name + ' gets ' + (100 - v) + '%';
+      } else {
+        askStudioGets.textContent = name + ' gets –';
+      }
+      syncAskSendBtn();
+    }
+
+    function openAskNewSplitModal(opts) {
+      if (!askModal) return;
+      opts = opts || {};
+      var name = opts.studioName != null && String(opts.studioName).trim() !== ''
+        ? String(opts.studioName).trim()
+        : (askModal.getAttribute('data-studio-name') || 'Studio');
+      var you = opts.youPercent != null ? parseInt(opts.youPercent, 10) : parseInt(askModal.getAttribute('data-you-percent') || '60', 10);
+      var studioPct = opts.studioPercent != null ? parseInt(opts.studioPercent, 10) : parseInt(askModal.getAttribute('data-studio-percent') || '40', 10);
+      if (!(you >= 0 && you <= 100)) you = 60;
+      if (!(studioPct >= 0 && studioPct <= 100)) studioPct = 100 - you;
+
+      askModal.setAttribute('data-studio-name', name);
+      if (opts.userStudioId != null && String(opts.userStudioId).trim() !== '') {
+        askModal.setAttribute('data-user-studio-id', String(opts.userStudioId));
+      }
+      askModal.setAttribute('data-you-percent', String(you));
+      askModal.setAttribute('data-studio-percent', String(studioPct));
+
+      if (askNowLabel) askNowLabel.textContent = 'You ' + you + '% · Studio ' + studioPct + '%';
+      if (askYou) askYou.value = String(you);
+      if (askHelp) {
+        askHelp.textContent = name + ' accepts or declines. Until then, the current split stays. A new split applies only to bookings made after they accept.';
+      }
+      updateAskStudioGets();
+      askModal.classList.remove('hidden');
+    }
+
+    function closeAskNewSplitModal() {
+      if (!askModal) return;
+      askModal.classList.add('hidden');
+    }
+
+    window.openAskNewSplitModal = openAskNewSplitModal;
+
+    document.getElementById('askNewSplitBtn')?.addEventListener('click', function (e) {
+      e.preventDefault();
+      openAskNewSplitModal();
+    });
+
+    if (askModal) {
+      askModal.querySelectorAll('.js-close-ask-new-split').forEach(function (el) {
+        el.addEventListener('click', closeAskNewSplitModal);
+      });
+      askModal.addEventListener('click', function (e) {
+        if (e.target === askModal) closeAskNewSplitModal();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !askModal.classList.contains('hidden')) closeAskNewSplitModal();
+      });
+      askYou?.addEventListener('input', updateAskStudioGets);
+      askYou?.addEventListener('change', updateAskStudioGets);
+      askSendBtn?.addEventListener('click', function () {
+        if (askSendBtn.disabled) return;
+        var userStudioId = askModal.getAttribute('data-user-studio-id') || '';
+        var next = askYou ? parseInt(askYou.value, 10) : NaN;
+        if (!userStudioId || !(next >= 1 && next <= 99)) return;
+
+        var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || @json(csrf_token());
+        var original = askSendBtn.innerHTML;
+        askSendBtn.disabled = true;
+        askSendBtn.textContent = 'Sending…';
+
+        fetch(@json(route('settings.payment.propose-split')), {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            user_studio_id: parseInt(userStudioId, 10),
+            artist_percent: next
+          })
+        }).then(function (r) {
+          return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+        }).then(function (res) {
+          if (!res.ok || !res.d.success) {
+            if (window.bpToast) window.bpToast((res.d && res.d.message) || 'Could not send request', true);
+            else alert((res.d && res.d.message) || 'Could not send request');
+            syncAskSendBtn();
+            askSendBtn.innerHTML = original;
+            return;
+          }
+          if (window.bpToast) window.bpToast(res.d.message || 'Request sent');
+          closeAskNewSplitModal();
+          window.location.reload();
+        }).catch(function () {
+          if (window.bpToast) window.bpToast('Could not send request', true);
+          else alert('Could not send request');
+          syncAskSendBtn();
+          askSendBtn.innerHTML = original;
+        });
+      });
+    }
+
+    document.querySelectorAll('.js-p2-ask-new-split').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        openAskNewSplitModal({
+          userStudioId: el.getAttribute('data-user-studio-id') || '',
+          studioName: el.getAttribute('data-studio-name') || '',
+          youPercent: el.getAttribute('data-you-percent'),
+          studioPercent: el.getAttribute('data-studio-percent'),
+        });
+      });
+    });
+  })();
 </script>
 
 <script>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\DesignSessionDuration;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -142,6 +143,21 @@ class ArtistDesign extends Model
         $unit = in_array($unit, ['cm', 'in'], true) ? $unit : 'cm';
 
         return $size.' '.$unit;
+    }
+
+    public function sessionDurationMinutes(int $default = 120): int
+    {
+        return DesignSessionDuration::minutes(
+            is_string($this->session_duration) ? $this->session_duration : null,
+            $default
+        );
+    }
+
+    public function sessionDurationLabel(): string
+    {
+        return DesignSessionDuration::label(
+            is_string($this->session_duration) ? $this->session_duration : null
+        );
     }
 
     public function canBeDeleted(): bool

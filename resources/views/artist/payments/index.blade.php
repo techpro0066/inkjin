@@ -15,6 +15,7 @@
   $payoutTypeLabel = (string) ($stats['payout_type_label'] ?? 'Artist payouts');
   $nextPayoutMeta = (string) ($stats['next_payout_meta'] ?? 'Paid automatically to your bank');
   $nextArrivalLabel = $stats['next_arrival_label'] ?? null;
+  $outstandingArtistFee = (float) ($stats['outstanding_artist_fee'] ?? 0);
 @endphp
 
 @section('styles')
@@ -121,6 +122,12 @@
         <div class="row kpi-meta">
           <span class="ms">link</span>
           <span>Connect payouts to receive this balance</span>
+        </div>
+      @endif
+      @if($outstandingArtistFee > 0.009)
+        <div class="row kpi-meta">
+          <span class="ms">receipt_long</span>
+          <span>{{ $currency }}{{ number_format($outstandingArtistFee, 2) }} booking fee balance will be deducted from future payouts</span>
         </div>
       @endif
       @if($payoutConnected && $payoutMode === 'manual' && $availableBalance > 0.009)
@@ -230,7 +237,7 @@
     </table>
     <div id="paymentsMobileCards" hidden></div>
     <div class="help" style="margin:0;padding:12px 16px;border-top:1px solid #F3EEF4">
-      Booking fee is deducted from your share. With a studio split, Studio gets and You get show each side. Tap a row for the full breakdown.
+      Booking fee is deducted from your share. With a studio split, the Fee column shows only your part of that fee. If a booking is smaller than the fee, the remainder is carried forward and taken from later payouts. Studio gets and You get show each side. Tap a row for the full breakdown.
     </div>
   </div>
 

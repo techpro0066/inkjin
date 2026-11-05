@@ -20,12 +20,30 @@ class ResetPasswordNotification extends ResetPassword
             'email' => $notifiable->getEmailForPasswordReset(),
         ], false));
 
+        $expireMinutes = (int) config(
+            'auth.passwords.'.config('auth.defaults.passwords').'.expire',
+            60
+        );
+
+        $firstName = trim((string) ($notifiable->first_name ?? ''));
+        if ($firstName === '') {
+            $name = trim((string) ($notifiable->name ?? ''));
+            if ($name !== '') {
+                $firstName = trim((string) strtok($name, ' ')) ?: $name;
+            }
+        }
+        if ($firstName === '') {
+            $firstName = 'there';
+        }
+
         return (new MailMessage)
+            ->subject('Reset your Bookpay password')
             ->view('emails.reset-password', [
                 'resetUrl' => $resetUrl,
                 'user' => $notifiable,
-                'count' => config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60),
+                'userFirstName' => $firstName,
+                'expireMinutes' => $expireMinutes,
+                'count' => $expireMinutes,
             ]);
     }
 }
-

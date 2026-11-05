@@ -331,22 +331,17 @@ class CustomRequestController extends Controller
         app(\App\Services\MailcoachSubscriberService::class)
             ->queueSubscribeUser($requestUser, \App\Services\MailcoachSubscriberService::TAG_USER);
 
-        $isNewUser = !empty($verifiedEntry['is_new_user']);
+        $isNewUser = ! empty($verifiedEntry['is_new_user']);
         $accessUrl = $this->makePostCustomRequestAccessUrl($requestUser, $customRequest);
-        $artistName = $userDetail->publicDisplayName() ?: 'Your artist';
-        $recipientName = trim(implode(' ', array_filter([
-            (string) ($requestUser->first_name ?? ''),
-            (string) ($requestUser->last_name ?? ''),
-        ])));
 
         $clientEmail = (string) ($requestUser->email ?? '');
         if ($clientEmail !== '') {
             try {
+                $customRequest->setRelation('user', $requestUser);
                 Mail::to($clientEmail)->send(new CustomRequestSubmittedUserMail(
+                    $customRequest,
+                    $userDetail,
                     $accessUrl,
-                    $recipientName,
-                    $artistName,
-                    $customRequest->referenceLabel(),
                     $isNewUser,
                 ));
             } catch (\Throwable $e) {
@@ -366,7 +361,10 @@ class CustomRequestController extends Controller
                 $customRequest->load(['user', 'artist']);
                 Mail::to($artistEmail)->send(new CustomRequestSubmittedArtistMail(
                     $customRequest,
-                    route('artist.custom-requests.index'),
+                    route('artist.requests.index', [
+                        'type' => 'custom',
+                        'open' => $customRequest->id,
+                    ]),
                 ));
             } catch (\Throwable $e) {
                 Log::error('Failed to send custom request artist email', [

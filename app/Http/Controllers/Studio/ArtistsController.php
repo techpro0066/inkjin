@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Studio;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ArtistStudioJoinRequestAnsweredMail;
 use App\Models\GuestSpot;
 use App\Models\Studio;
 use App\Models\StudioInvite;
 use App\Models\User;
 use App\Models\UserStudio;
 use App\Services\GuestSpotStudioInviteService;
+use App\Services\RevenueSplitChangeService;
 use App\Services\StudioArtistInviteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -22,6 +26,7 @@ class ArtistsController extends Controller
     public function __construct(
         private readonly StudioArtistInviteService $inviteService,
         private readonly GuestSpotStudioInviteService $guestSpotInvites,
+        private readonly RevenueSplitChangeService $splitChanges,
     ) {
     }
 
@@ -47,22 +52,34 @@ class ArtistsController extends Controller
                 $artistPct = $isSplit ? max(0, min(100, (int) $link->revenue_split)) : 100;
                 $studioPct = 100 - $artistPct;
                 $styles = $this->formatTattooStyles($link->user?->userDetail?->tattoo_styles);
+                $hasSplitRequest = $this->splitChanges->hasOpenArtistProposal($link);
+                $proposedArtist = $hasSplitRequest
+                    ? max(0, min(100, (int) $link->proposed_revenue_split))
+                    : null;
 
                 return array_merge($base, [
                     'is_split' => $isSplit,
                     'artist_percent' => $artistPct,
                     'studio_percent' => $studioPct,
+                    'has_split_request' => $hasSplitRequest,
+                    'proposed_artist_percent' => $proposedArtist,
+                    'proposed_studio_percent' => $proposedArtist !== null ? 100 - $proposedArtist : null,
                     'pay_label' => $isSplit ? 'Revenue split' : 'Workstation rent',
-                    'pay_detail' => $isSplit
-                        ? 'Artist '.$artistPct.'% · Studio '.$studioPct.'%'
-                        : 'Paid outside Bookpay',
-                    'status' => 'Active',
+                    'pay_detail' => $hasSplitRequest && $proposedArtist !== null
+                        ? 'Asked: Artist '.$proposedArtist.'% · Studio '.(100 - $proposedArtist).'%'
+                        : ($isSplit
+                            ? 'Artist '.$artistPct.'% · Studio '.$studioPct.'%'
+                            : 'Paid outside Bookpay'),
+                    'status' => $hasSplitRequest ? 'Waiting for you' : 'Active',
+                    'status_pill' => $hasSplitRequest ? 'a' : 'g',
                     'since' => optional($link->created_at)->format('d/m/Y') ?? '—',
                     'bookings_month' => 0,
                     'styles' => $styles,
                     'public_url' => $base['handle'] !== ''
                         ? route('public.artist', ['username' => $base['handle']])
                         : null,
+                    'accept_split_url' => route('studio.artists.accept-split', $link->id),
+                    'decline_split_url' => route('studio.artists.decline-split', $link->id),
                 ]);
             })->values();
         }
@@ -436,7 +453,10 @@ class ArtistsController extends Controller
         }
         $link->save();
 
-        $name = $this->mapArtistBase($link->loadMissing('user.userDetail'), $this->relationshipLabels())['name'];
+        $link->loadMissing(['user.userDetail', 'studio']);
+        $this->sendJoinRequestAnsweredMail($link, true);
+
+        $name = $this->mapArtistBase($link, $this->relationshipLabels())['name'];
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
@@ -459,7 +479,7 @@ class ArtistsController extends Controller
             return $this->actionFailed($request, 'Studio not found.', 404);
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'message' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -473,9 +493,19 @@ class ArtistsController extends Controller
             return $this->actionFailed($request, 'Join request not found.', 404);
         }
 
+        $currentStudioName = $this->artistCurrentStudioName($link);
+
         $link->status = UserStudio::STATUS_INACTIVE;
         $link->payout = false;
         $link->save();
+
+        $link->loadMissing(['user.userDetail', 'studio']);
+        $this->sendJoinRequestAnsweredMail(
+            $link,
+            false,
+            isset($validated['message']) ? trim((string) $validated['message']) : null,
+            $currentStudioName,
+        );
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
@@ -527,6 +557,91 @@ class ArtistsController extends Controller
         return redirect()
             ->route('studio.artists')
             ->with('success', 'Artist removed');
+    }
+
+    public function acceptSplit(Request $request, int $userStudio): JsonResponse|RedirectResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        if (! $studio || ! UserStudio::tableReady()) {
+            return $this->actionFailed($request, 'Studio not found.', 404);
+        }
+
+        $link = UserStudio::query()
+            ->with(['user.userDetail'])
+            ->where('id', $userStudio)
+            ->where('studio_id', $studio->id)
+            ->where('status', UserStudio::STATUS_ACTIVE)
+            ->first();
+
+        if (! $link) {
+            return $this->actionFailed($request, 'Artist link not found.', 404);
+        }
+
+        try {
+            $this->splitChanges->acceptByStudio($studio, $link);
+        } catch (ValidationException $e) {
+            return $this->actionFailed(
+                $request,
+                collect($e->errors())->flatten()->first() ?: 'Could not accept split request.',
+                422
+            );
+        }
+
+        $name = $this->mapArtistBase($link, $this->relationshipLabels())['name'];
+        $message = 'New split with '.$name.' accepted. It applies to new bookings.';
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'user_studio_id' => $link->id,
+                'reload' => true,
+            ]);
+        }
+
+        return redirect()->route('studio.artists')->with('success', $message);
+    }
+
+    public function declineSplit(Request $request, int $userStudio): JsonResponse|RedirectResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        if (! $studio || ! UserStudio::tableReady()) {
+            return $this->actionFailed($request, 'Studio not found.', 404);
+        }
+
+        $link = UserStudio::query()
+            ->with(['user.userDetail'])
+            ->where('id', $userStudio)
+            ->where('studio_id', $studio->id)
+            ->where('status', UserStudio::STATUS_ACTIVE)
+            ->first();
+
+        if (! $link) {
+            return $this->actionFailed($request, 'Artist link not found.', 404);
+        }
+
+        try {
+            $this->splitChanges->declineByStudio($studio, $link);
+        } catch (ValidationException $e) {
+            return $this->actionFailed(
+                $request,
+                collect($e->errors())->flatten()->first() ?: 'Could not decline split request.',
+                422
+            );
+        }
+
+        $message = 'Split request declined. The current split stays.';
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'user_studio_id' => $link->id,
+                'reload' => true,
+            ]);
+        }
+
+        return redirect()->route('studio.artists')->with('success', $message);
     }
 
     /**
@@ -717,5 +832,57 @@ class ArtistsController extends Controller
         return redirect()
             ->route('studio.artists')
             ->with('error', $message);
+    }
+
+    private function sendJoinRequestAnsweredMail(
+        UserStudio $link,
+        bool $accepted,
+        ?string $declineMessage = null,
+        ?string $currentStudioName = null,
+    ): void {
+        $email = trim((string) ($link->user?->email ?? ''));
+        if ($email === '') {
+            return;
+        }
+
+        try {
+            Mail::to($email)->send(new ArtistStudioJoinRequestAnsweredMail(
+                userStudio: $link,
+                accepted: $accepted,
+                declineMessage: $declineMessage,
+                currentStudioName: $currentStudioName,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send join-request answered email to artist', [
+                'user_studio_id' => $link->id,
+                'accepted' => $accepted,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function artistCurrentStudioName(UserStudio $pendingLink): ?string
+    {
+        $userId = (int) ($pendingLink->user_id ?? 0);
+        if ($userId < 1 || ! UserStudio::tableReady()) {
+            return null;
+        }
+
+        $active = UserStudio::query()
+            ->with('studio')
+            ->where('user_id', $userId)
+            ->where('status', UserStudio::STATUS_ACTIVE)
+            ->where('id', '!=', $pendingLink->id)
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $active) {
+            return null;
+        }
+
+        $name = trim((string) ($active->studio?->name ?? $active->studio_name ?? ''));
+
+        return $name !== '' ? $name : null;
     }
 }

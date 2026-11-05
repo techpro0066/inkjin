@@ -65,7 +65,7 @@
     $styleLabel = ucwords(str_replace(['-', '_'], ' ', (string) ($tattoo->primary_style ?? '')));
     $colorLabel = ucfirst((string) ($tattoo->color ?? ''));
     $sizeLabel = $tattoo->sizeLabel($userDetail->size_unit ?? null);
-    $hoursLabel = ((float) ($tattoo->session_duration ?? 0)).' hour(s)';
+    $hoursLabel = $tattoo->sessionDurationLabel();
     $minSessions = (int) ($tattoo->min_sessions ?? 1);
     $maxSessions = (int) ($tattoo->max_sessions ?? $minSessions);
     $sessionsLabel = $minSessions === $maxSessions
@@ -97,7 +97,7 @@
     *{box-sizing:border-box}
     html,body{margin:0;min-height:100%}
     html{height:100%}
-    body{background:var(--bg);color:var(--ink);font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+    body{background:var(--bg);color:var(--ink);font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
     button,input,select,textarea{font:inherit;color:inherit}
     button{cursor:pointer;border:0;background:none;padding:0}
     a{color:inherit;text-decoration:none}
@@ -109,9 +109,9 @@
     .back{font-size:12.5px;display:inline-flex;align-items:center;gap:4px;color:var(--ink)}
     .back .ms{font-size:16px}
     .prog{height:2px;background:var(--p);width:0}
-    .wrap{max-width:640px;margin:0 auto;padding:22px 16px;width:100%}
+    .wrap{max-width:640px;margin:0 auto;padding:22px 16px;width:100%;box-sizing:border-box}
     .wrap.wide{max-width:860px}
-    main.wrap{flex:1 0 auto}
+    main.wrap{flex:1 1 auto;display:flex;flex-direction:column;width:100%;align-self:center}
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--p);color:#fff;border-radius:999px;padding:10px 20px;font-weight:700;font-size:13.5px}
     .btn:hover{background:var(--p2)}
     .btn.full{width:100%;border-radius:10px;padding:12px}
@@ -152,7 +152,7 @@
     .tag{display:inline-block;background:var(--pl);color:var(--p);border-radius:999px;font-size:9.5px;padding:1px 7px;margin:3px 0}
     .mc .p{color:var(--p);font-weight:700}
     .mc .c{font-size:10px;color:var(--muted)}.mc .c b{color:var(--p)}
-    .ft{border-top:1px solid var(--line);margin-top:28px;padding-top:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--muted)}
+    .ft{border-top:1px solid var(--line);margin-top:auto;padding-top:28px;padding-bottom:4px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--muted)}
     .ft a:hover{color:var(--p)}
     @media (max-width:720px){
       .dp{grid-template-columns:1fr}
@@ -189,7 +189,7 @@
           @elseif($remaining > 0)
             · <b>{{ $remaining }} left</b>
           @endif
-        </div>
+          </div>
         <div class="sp"></div>
 
         @if($isSoldOut)
@@ -207,7 +207,7 @@
         @else
           <a class="btn full" href="{{ $bookUrl }}">Book now · {{ $priceRange }}</a>
           <div class="dnote">{{ $depositLabel }} deposit required to secure your booking</div>
-        @endif
+          @endif
 
         <div class="dpol">
           <button type="button" id="dpolBtn" aria-expanded="false">
@@ -239,7 +239,7 @@
           <small><span class="ms">{{ $fact[0] }}</span>{{ $fact[1] }}</small>
           <b>{{ $fact[2] }}</b>
         </div>
-      @endforeach
+        @endforeach
     </div>
 
     @if($aboutHtml !== '')
@@ -282,10 +282,10 @@
               @endif
               <div class="p">{{ $relPrice }}</div>
               <div class="c">{!! $relCount !!}</div>
+                        </div>
+                    </a>
+                @endforeach
             </div>
-          </a>
-        @endforeach
-      </div>
     @endif
 
     <div class="ft">

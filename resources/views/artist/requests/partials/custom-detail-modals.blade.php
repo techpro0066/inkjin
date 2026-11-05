@@ -1597,7 +1597,7 @@
     if (e.target === e.currentTarget) closeCustomDeclineModal();
   }
 
-  function updateCustomRequestCardFromRequest(req) {
+    function updateCustomRequestCardFromRequest(req) {
     const kind = req.isGuest ? 'guest' : 'custom';
     const card = document.querySelector('.card[data-req][data-kind="' + kind + '"][data-id="' + req.id + '"]');
     if (!card) return;

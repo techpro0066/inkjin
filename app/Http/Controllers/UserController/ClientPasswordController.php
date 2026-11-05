@@ -29,6 +29,6 @@ class ClientPasswordController extends Controller
             'must_set_password' => false,
         ])->save();
 
-        return redirect()->route('user.bookings.index')->with('status', 'password-set');
+        return redirect()->route('user.dashboard')->with('status', 'password-set');
     }
 }

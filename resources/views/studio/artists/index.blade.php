@@ -77,8 +77,7 @@
       </thead>
       <tbody>
         @forelse ($artists as $artist)
-          <tr id="row-a{{ $artist['id'] }}"
-              data-artist='@json($artist)'>
+          <tr id="row-a{{ $artist['id'] }}" data-artist='@json($artist)'>
             <td data-label="Artist">
               <div class="row" style="gap:10px">
                 <div class="avatar" @if ($artist['avatar']) style="background-image:url('{{ $artist['avatar'] }}')" @endif>
@@ -99,13 +98,18 @@
               <b style="font-weight:600">{{ $artist['pay_label'] }}</b>
               <div class="faint" style="font-size:12px">{{ $artist['pay_detail'] }}</div>
             </td>
-            <td data-label="Status" class="stcell"><span class="pill g">{{ $artist['status'] }}</span></td>
+            <td data-label="Status" class="stcell"><span class="pill {{ $artist['status_pill'] ?? 'g' }}">{{ $artist['status'] }}</span></td>
             <td data-label="Since">{{ $artist['since'] }}</td>
             <td data-label="Bookings (month)">{{ $artist['bookings_month'] }}</td>
             <td>
-              <div class="row" style="gap:6px">
-                <button type="button" class="btn ghost sm" data-open="m-artist" data-artist-id="{{ $artist['id'] }}">View</button>
-                <button type="button" class="ms faint act" data-open="m-remove" data-artist-id="{{ $artist['id'] }}" aria-label="Remove artist" title="Remove artist">person_remove</button>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                <div class="row" style="gap:6px;justify-content:flex-end">
+                  <button type="button" class="btn ghost sm" data-open="m-artist" data-artist-id="{{ $artist['id'] }}">View</button>
+                  <button type="button" class="ms faint act" data-open="m-remove" data-artist-id="{{ $artist['id'] }}" aria-label="Remove artist" title="Remove artist">person_remove</button>
+                </div>
+                @if (! empty($artist['has_split_request']))
+                  <button type="button" class="btn sm" data-open="m-split-review" data-artist-id="{{ $artist['id'] }}">Review request</button>
+                @endif
               </div>
             </td>
           </tr>
@@ -158,6 +162,35 @@
   </div>
 </div>
 
+{{-- Review split request --}}
+<div class="smodal" id="m-split-review" hidden>
+  <div class="smbox" role="dialog" aria-modal="true" aria-labelledby="m-split-review-t">
+    <div class="smh">
+      <div>
+        <h2 id="m-split-review-t">Review split request</h2>
+        <div class="muted" id="m-split-review-sub" style="font-size:13.5px;margin-top:4px"></div>
+      </div>
+      <button type="button" class="x" data-close aria-label="Close"><span class="ms">close</span></button>
+    </div>
+    <div class="smb">
+      <div style="border:1px solid #EFE8F1;border-radius:14px;padding:14px 16px;background:#FDFBFD;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <span class="lbl" style="margin:0">Now</span>
+        <b id="m-split-review-now" style="font-size:14px;font-weight:600"></b>
+      </div>
+      <div style="border:1px solid #EFE8F1;border-radius:14px;padding:14px 16px;background:#fff;margin-bottom:12px">
+        <div class="lbl" style="margin-bottom:6px">They ask for</div>
+        <b id="m-split-review-ask" style="font-size:16px;font-weight:700"></b>
+      </div>
+      <div class="help" style="margin:0">The current split stays until you accept. A new split applies only to bookings made after you accept.</div>
+    </div>
+    <div class="smf">
+      <button type="button" class="btn ghost" data-close>Cancel</button>
+      <button type="button" class="btn ghost" id="m-split-review-decline">Decline</button>
+      <button type="button" class="btn" id="m-split-review-accept">Accept split</button>
+    </div>
+  </div>
+</div>
+
 {{-- View artist --}}
 <div class="smodal" id="m-artist" hidden>
   <div class="smbox wide" role="dialog" aria-modal="true" aria-labelledby="m-artist-t">
@@ -196,6 +229,13 @@
       </div>
       <span class="fl" style="margin-top:16px">Split</span>
       <div class="faint" id="m-artist-split" style="font-size:13.5px;margin-top:4px"></div>
+      <div id="m-artist-split-request" hidden style="margin-top:14px;border:1px solid #EFE8F1;border-radius:14px;padding:14px 16px;background:#FDFBFD">
+        <div class="lbl" style="margin-bottom:6px">Pending split request</div>
+        <div id="m-artist-split-request-now" style="font-size:13.5px;margin-bottom:4px"></div>
+        <div id="m-artist-split-request-ask" style="font-size:13.5px;font-weight:700"></div>
+        <div class="help" style="margin-top:8px">Current split stays until you accept. A new split applies only to new bookings.</div>
+        <button type="button" class="btn sm" style="margin-top:12px" data-open="m-split-review" id="m-artist-open-review">Review request</button>
+      </div>
       <div class="help">The studio sees only this artist's bookings at {{ $studioName }}. Other studios and personal events show as busy.</div>
     </div>
     <div class="smf">
@@ -237,7 +277,9 @@
     var av = $('#m-artist-av');
     av.style.backgroundImage = a.avatar ? "url('" + a.avatar + "')" : '';
     av.textContent = a.avatar ? '' : a.initials;
-    $('#m-artist-status').textContent = a.status;
+    var statusEl = $('#m-artist-status');
+    statusEl.textContent = a.status;
+    statusEl.className = 'pill ' + (a.status_pill || 'g');
     $('#m-artist-rel').textContent = a.relationship;
     $('#m-artist-styles').textContent = a.styles || '';
     $('#m-artist-bookings').textContent = String(a.bookings_month || 0);
@@ -246,6 +288,16 @@
     $('#m-artist-split').textContent = a.is_split
       ? ('Artist ' + a.artist_percent + '% · Studio ' + a.studio_percent + '%')
       : 'Workstation rent · full payment to the artist';
+    var reqBox = $('#m-artist-split-request');
+    var openReview = $('#m-artist-open-review');
+    if (a.has_split_request) {
+      reqBox.hidden = false;
+      $('#m-artist-split-request-now').textContent = 'Now: Artist ' + a.artist_percent + '% · Studio ' + a.studio_percent + '%';
+      $('#m-artist-split-request-ask').textContent = 'They ask: Artist ' + a.proposed_artist_percent + '% · Studio ' + a.proposed_studio_percent + '%';
+      if (openReview) openReview.setAttribute('data-artist-id', String(a.id));
+    } else {
+      reqBox.hidden = true;
+    }
     var page = $('#m-artist-page');
     if (a.public_url) {
       page.href = a.public_url;
@@ -254,6 +306,45 @@
       page.hidden = true;
     }
     $('#rm-name').textContent = a.name;
+  }
+
+  function fillSplitReview(a) {
+    if (!a) return;
+    currentId = a.id;
+    $('#m-split-review-sub').textContent = a.name + (a.handle ? ' · @' + a.handle : '');
+    $('#m-split-review-now').textContent = 'Artist ' + a.artist_percent + '% · Studio ' + a.studio_percent + '%';
+    $('#m-split-review-ask').textContent = 'Artist ' + a.proposed_artist_percent + '% · Studio ' + a.proposed_studio_percent + '%';
+    $('#rm-name').textContent = a.name;
+  }
+
+  function postSplitAction(url, btn) {
+    if (!url) return;
+    var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    var original = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': token,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.d.success) {
+          if (window.bpToast) window.bpToast((res.d && res.d.message) || 'Could not update split', true);
+          if (btn) { btn.disabled = false; btn.innerHTML = original; }
+          return;
+        }
+        if (window.bpToast) window.bpToast(res.d.message || 'Saved');
+        window.location.reload();
+      })
+      .catch(function () {
+        if (window.bpToast) window.bpToast('Could not update split', true);
+        if (btn) { btn.disabled = false; btn.innerHTML = original; }
+      });
   }
 
   document.addEventListener('click', function (e) {
@@ -266,8 +357,14 @@
     if ((t = e.target.closest('[data-open]'))) {
       e.preventDefault();
       var id = t.getAttribute('data-artist-id') || currentId;
-      if (id && artists[String(id)]) fillArtist(artists[String(id)]);
+      var artist = id && artists[String(id)];
+      if (artist) fillArtist(artist);
       var openId = t.getAttribute('data-open');
+      if (openId === 'm-split-review') {
+        if (artist) fillSplitReview(artist);
+        var artistModal = document.getElementById('m-artist');
+        if (artistModal && !artistModal.hidden) artistModal.hidden = true;
+      }
       if (openId === 'm-remove' && document.getElementById('m-artist') && !document.getElementById('m-artist').hidden) {
         document.getElementById('m-artist').hidden = true;
       }
@@ -277,6 +374,18 @@
     if ((t = e.target.closest('.is-soon'))) {
       e.preventDefault();
       if (window.bpToast) window.bpToast('Coming soon');
+      return;
+    }
+    if ((t = e.target.closest('#m-split-review-accept'))) {
+      e.preventDefault();
+      var aa = currentId && artists[String(currentId)];
+      if (aa) postSplitAction(aa.accept_split_url, t);
+      return;
+    }
+    if ((t = e.target.closest('#m-split-review-decline'))) {
+      e.preventDefault();
+      var da = currentId && artists[String(currentId)];
+      if (da) postSplitAction(da.decline_split_url, t);
       return;
     }
   });

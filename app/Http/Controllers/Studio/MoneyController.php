@@ -3,22 +3,80 @@
 namespace App\Http\Controllers\Studio;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Studio;
 use App\Models\StudioPayout;
+use App\Services\ArtistPayoutService;
+use App\Services\ArtistReferralFeeWaiverService;
 use App\Services\StripeConnectService;
 use App\Support\StripeConnectCountries;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Stripe\Exception\ApiErrorException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MoneyController extends Controller
 {
-    public function earnings(Request $request): View
+    public function earnings(Request $request, ArtistPayoutService $payout, StripeConnectService $stripeConnect): View
     {
-        return view('studio.money.earnings', $this->viewData($request, 'earnings'));
+        $data = $this->viewData($request, 'earnings');
+        $studio = $data['studio'];
+
+        $rows = $studio
+            ? $this->studioEarningsRows($studio, $payout)
+            : collect();
+
+        return view('studio.money.earnings', array_merge($data, [
+            'earningsRows' => $rows,
+            'earningsSummary' => $this->studioEarningsSummary($rows, $studio, $stripeConnect),
+        ]));
+    }
+
+    public function exportEarnings(Request $request, ArtistPayoutService $payout): StreamedResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        abort_unless($studio, 404);
+
+        $rows = $this->studioEarningsRows($studio, $payout);
+        $filename = 'studio-earnings-'.now()->format('Y-m-d').'.csv';
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+            fputcsv($out, [
+                'Date',
+                'Booking',
+                'Artist',
+                'Paid by client',
+                'Studio share',
+                'Studio share %',
+                'Fee',
+                'Studio gets',
+                'Status',
+            ]);
+            foreach ($rows as $row) {
+                fputcsv($out, [
+                    $row['date'],
+                    $row['booking_label'],
+                    $row['artist'],
+                    number_format($row['client_paid'], 2, '.', ''),
+                    number_format($row['studio_share'], 2, '.', ''),
+                    $row['studio_percent'].'%',
+                    number_format($row['studio_fee'], 2, '.', ''),
+                    number_format($row['studio_gets'], 2, '.', ''),
+                    $row['status_label'],
+                ]);
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     public function payouts(Request $request, StripeConnectService $stripeConnect): View
@@ -598,6 +656,210 @@ class MoneyController extends Controller
                 'message' => 'Could not reconnect that bank account.',
             ], 500);
         }
+    }
+
+    /**
+     * Studio share rows for revenue-split bookings at this studio.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function studioEarningsRows(Studio $studio, ArtistPayoutService $payout): Collection
+    {
+        return Booking::query()
+            ->where('studio_id', $studio->id)
+            ->where('payment_status', 'paid')
+            ->whereNotNull('deposit_amount')
+            ->where('deposit_amount', '>', 0)
+            ->with(['artist.userDetail', 'artistPayout', 'user'])
+            ->orderByDesc('booking_date')
+            ->orderByDesc('id')
+            ->limit(300)
+            ->get()
+            ->map(fn (Booking $booking) => $this->mapStudioEarningsRow($booking, $payout))
+            ->filter()
+            ->values();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function mapStudioEarningsRow(Booking $booking, ArtistPayoutService $payout): ?array
+    {
+        $userDetail = $booking->artist?->userDetail;
+        $paymentType = $payout->resolvePayoutPaymentType($booking, $userDetail);
+        $artistPercent = $payout->resolvePayoutArtistPercent($booking, $userDetail);
+        $studioPercent = max(0, 100 - $artistPercent);
+        $hasSplit = $paymentType === 'studio_account' && $studioPercent > 0;
+
+        if (! $hasSplit) {
+            return null;
+        }
+
+        $deposit = max(0, round((float) ($booking->deposit_amount ?? 0), 2));
+        $stripeFee = $payout->estimateStripeFee($deposit);
+        $studioShare = round($deposit * ($studioPercent / 100), 2);
+        $studioStripe = round($stripeFee * ($studioPercent / 100), 2);
+
+        // Artist-paid booking fee is shared by the same split % (client-paid fee is not).
+        $artistSideFee = 0.0;
+        if ($userDetail) {
+            $feeDetail = $payout->artistFeeAllocationFor((int) $booking->artist_user_id, $userDetail)['details'][(int) $booking->id] ?? null;
+            $artistSideFee = $feeDetail
+                ? max(0, round((float) $feeDetail['fee_applied'], 2))
+                : max(0, round(app(ArtistReferralFeeWaiverService::class)
+                    ->artistFeeForBooking($booking, $userDetail), 2));
+        }
+        $artistBookingFee = round($artistSideFee * ($artistPercent / 100), 2);
+        $studioBookingFee = max(0, round($artistSideFee - $artistBookingFee, 2));
+        $studioFee = round($studioStripe + $studioBookingFee, 2);
+        $studioGets = max(0, round($studioShare - $studioFee, 2));
+
+        if ($studioGets < 0.01) {
+            return null;
+        }
+
+        $payoutRow = $booking->artistPayout;
+        $releasedStudio = ($payoutRow && $payoutRow->isCompleted())
+            ? (float) ($payoutRow->studio_amount ?? 0)
+            : 0.0;
+
+        // Share already fell through to the artist (studio wasn't Connect-ready).
+        if ($booking->pay_artist && $releasedStudio < 0.01) {
+            return null;
+        }
+
+        $deadline = $payout->cancellationDeadlineAt($booking);
+        $tz = config('app.timezone');
+        $statusKey = 'held';
+        $statusLabel = 'Held';
+        $statusPill = 'a';
+        $statusDate = null;
+
+        if ($releasedStudio >= 0.01) {
+            $statusKey = 'paid';
+            $statusPill = 'g';
+            $paidAt = $payoutRow?->updated_at ?? $booking->deposit_released_at ?? $booking->updated_at;
+            $statusDate = $paidAt?->timezone($tz);
+            $statusLabel = 'Paid'.($statusDate ? ' '.$statusDate->format('d/m') : '');
+        } elseif (($booking->status ?? '') === 'completed' && $payout->hasPassedCancellationDeadline($booking)) {
+            $statusKey = 'on_its_way';
+            $statusPill = 'b';
+            $statusLabel = 'On its way';
+        } elseif ($deadline) {
+            $statusKey = 'held';
+            $statusPill = 'a';
+            $statusDate = $deadline->copy()->timezone($tz);
+            $statusLabel = 'Held until '.$statusDate->format('d/m');
+        } else {
+            $statusKey = 'held';
+            $statusPill = 'a';
+            $statusLabel = 'Held';
+        }
+
+        $artist = $booking->artist;
+        $artistName = $artist?->userDetail?->publicDisplayName();
+        if (! $artistName) {
+            $artistName = $artist
+                ? (trim(($artist->first_name ?? '').' '.($artist->last_name ?? '')) ?: 'Artist')
+                : 'Artist';
+        }
+
+        $client = $booking->user;
+        $clientName = $client
+            ? trim(($client->first_name ?? '').' '.($client->last_name ?? ''))
+            : '';
+        if ($clientName === '') {
+            $clientName = 'Client';
+        }
+        $clientShort = $this->shortClientName($clientName);
+
+        $title = $booking->displayTitle();
+        $bookingLabel = $title.' · '.$clientShort;
+        $date = $booking->booking_date?->timezone($tz) ?? $booking->created_at?->timezone($tz);
+
+        return [
+            'id' => (int) $booking->id,
+            'date' => $date?->format('d/m/Y') ?? '—',
+            'date_sort' => $date?->timestamp ?? 0,
+            'booking_label' => $bookingLabel,
+            'artist' => $artistName,
+            'client_paid' => $deposit,
+            'studio_share' => $studioShare,
+            'studio_percent' => $studioPercent,
+            'studio_stripe' => $studioStripe,
+            'studio_booking_fee' => $studioBookingFee,
+            'studio_fee' => $studioFee,
+            'studio_gets' => $studioGets,
+            'status_key' => $statusKey,
+            'status_label' => $statusLabel,
+            'status_pill' => $statusPill,
+            'paid_at' => $statusKey === 'paid' ? $statusDate : null,
+            'held_until' => $statusKey === 'held' ? $statusDate : null,
+            'month_key' => $date?->format('Y-m') ?? '',
+        ];
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $rows
+     * @return array<string, mixed>
+     */
+    private function studioEarningsSummary(Collection $rows, ?Studio $studio, StripeConnectService $stripeConnect): array
+    {
+        $held = round((float) $rows->where('status_key', 'held')->sum('studio_gets'), 2);
+        $onItsWay = round((float) $rows->where('status_key', 'on_its_way')->sum('studio_gets'), 2);
+        $thisMonthKey = now()->format('Y-m');
+        $lastMonthKey = now()->copy()->subMonthNoOverflow()->format('Y-m');
+        $earnedThisMonth = round((float) $rows->where('month_key', $thisMonthKey)->sum('studio_gets'), 2);
+        $earnedLastMonth = round((float) $rows->where('month_key', $lastMonthKey)->sum('studio_gets'), 2);
+
+        $monthDeltaLabel = null;
+        if ($earnedLastMonth >= 0.01) {
+            $pct = round((($earnedThisMonth - $earnedLastMonth) / $earnedLastMonth) * 100);
+            $monthDeltaLabel = ($pct >= 0 ? '+' : '').$pct.'% from last month';
+        } elseif ($earnedThisMonth >= 0.01) {
+            $monthDeltaLabel = 'First earnings this month';
+        } else {
+            $monthDeltaLabel = 'No earnings yet this month';
+        }
+
+        $nextAmount = $onItsWay;
+        $nextMeta = 'Nothing queued yet';
+        if ($nextAmount >= 0.01) {
+            $nextMeta = 'After Stripe settles to your bank';
+        } elseif ($held >= 0.01) {
+            $nextAmount = 0.0;
+            $nextMeta = 'Held amounts release when each window ends';
+        }
+
+        $bankLast4 = null;
+        $accountId = $studio?->resolveStripeAccountId();
+        if ($accountId && $stripeConnect->isConfigured()) {
+            $bankLast4 = $stripeConnect->resolveBankLast4($accountId);
+        }
+        if ($bankLast4) {
+            $nextMeta = ($nextAmount >= 0.01 ? $nextMeta.' · ' : '').'bank ••• '.$bankLast4;
+        }
+
+        return [
+            'next_payout' => $nextAmount,
+            'next_payout_meta' => $nextMeta,
+            'held' => $held,
+            'earned_this_month' => $earnedThisMonth,
+            'month_delta_label' => $monthDeltaLabel,
+            'bank_last4' => $bankLast4,
+        ];
+    }
+
+    private function shortClientName(string $full): string
+    {
+        $parts = preg_split('/\s+/', trim($full)) ?: [];
+        if (count($parts) < 2) {
+            return $full;
+        }
+
+        $last = $parts[count($parts) - 1];
+
+        return $parts[0].' '.mb_strtoupper(mb_substr($last, 0, 1)).'.';
     }
 
     /**

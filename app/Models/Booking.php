@@ -228,6 +228,16 @@ class Booking extends Model
         return $this->hasOne(ConsentAnswer::class, 'booking_id');
     }
 
+    public function review(): HasOne
+    {
+        return $this->hasOne(Review::class);
+    }
+
+    public function artistClientFeedback(): HasOne
+    {
+        return $this->hasOne(ArtistClientFeedback::class);
+    }
+
     public function balanceCollections(): HasMany
     {
         return $this->hasMany(BalanceCollection::class);

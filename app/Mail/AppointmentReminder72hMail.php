@@ -5,12 +5,12 @@ namespace App\Mail;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Support\AppointmentReminderEmailPresenter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\URL;
 
 class AppointmentReminder72hMail extends Mailable
 {
@@ -20,71 +20,33 @@ class AppointmentReminder72hMail extends Mailable
         public Booking $booking,
         public User $client,
         public ?UserDetail $artistDetail,
+        public ?string $consentUrl = null,
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Your appointment with '.$this->artistName().' is coming up',
-        );
+        return new Envelope(subject: (string) ($this->viewData()['subject'] ?? 'Your session is coming up'));
     }
 
     public function content(): Content
     {
-        $local = $this->booking->sessionStartLocal();
-
         return new Content(
-            view: 'emails.appointment-reminder-72h',
-            with: [
-                'artistName' => $this->artistName(),
-                'clientFirst' => trim((string) ($this->client->first_name ?? '')) ?: 'there',
-                'appointmentDate' => $local ? $local->format('l, F j, Y') : '',
-                'appointmentTime' => $local ? $local->format('g:i A') : '',
-                'studioName' => trim((string) ($this->artistDetail?->studio_name ?? '')),
-                'studioAddress' => $this->studioAddress(),
-                'viewAppointmentUrl' => $this->viewAppointmentUrl(),
-            ],
+            view: 'emails.appointment-reminder',
+            with: $this->viewData(),
         );
     }
 
-    private function artistName(): string
+    /**
+     * @return array<string, mixed>
+     */
+    private function viewData(): array
     {
-        if ($this->artistDetail) {
-            $name = trim((string) $this->artistDetail->publicDisplayName());
-            if ($name !== '') {
-                return $name;
-            }
-        }
-
-        return 'your artist';
-    }
-
-    private function studioAddress(): string
-    {
-        if (! $this->artistDetail) {
-            return '';
-        }
-
-        $street = trim(trim((string) ($this->artistDetail->street_number ?? '')).' '.trim((string) ($this->artistDetail->street_name ?? '')));
-        if ($street === '') {
-            $street = trim((string) ($this->artistDetail->studio_address ?? ''));
-        }
-
-        $cityLine = implode(', ', array_values(array_filter([
-            trim((string) ($this->artistDetail->city ?? '')),
-            trim((string) ($this->artistDetail->postal_code ?? '')),
-            trim((string) ($this->artistDetail->country ?? '')),
-        ], fn (string $part) => $part !== '')));
-
-        return implode(', ', array_values(array_filter([$street, $cityLine], fn (string $part) => $part !== '')));
-    }
-
-    private function viewAppointmentUrl(): string
-    {
-        return URL::temporarySignedRoute(
-            'user.post-booking.access',
-            now()->addDays(14),
-            ['user' => $this->client->id, 'booking' => $this->booking->id]
+        return AppointmentReminderEmailPresenter::forBooking(
+            $this->booking,
+            $this->client,
+            $this->artistDetail,
+            '72h',
+            $this->consentUrl,
         );
     }
 }

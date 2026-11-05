@@ -28,6 +28,10 @@ class UserStudio extends Model
 
     public const CONNECTION_NOT_CONNECTED = 'not_connected';
 
+    public const SPLIT_PROPOSED_BY_ARTIST = 'artist';
+
+    public const SPLIT_PROPOSED_BY_STUDIO = 'studio';
+
     public const RELATIONSHIP_TYPES = [
         'co_owner',
         'resident',
@@ -57,6 +61,8 @@ class UserStudio extends Model
         'payout',
         'revenue_split',
         'proposed_revenue_split',
+        'split_proposed_by',
+        'split_proposed_at',
         'joined_via',
         'show_on_page',
         'page_sort_order',
@@ -67,9 +73,31 @@ class UserStudio extends Model
         'payout' => 'boolean',
         'revenue_split' => 'integer',
         'proposed_revenue_split' => 'integer',
+        'split_proposed_at' => 'datetime',
         'show_on_page' => 'boolean',
         'page_sort_order' => 'integer',
     ];
+
+    /**
+     * Open artist→studio renegotiation on an active revenue-split link.
+     * Does not cover join counter-offers (status = split_proposed).
+     */
+    public function hasOpenArtistSplitProposal(): bool
+    {
+        if ((int) $this->status !== self::STATUS_ACTIVE) {
+            return false;
+        }
+
+        if ($this->proposed_revenue_split === null) {
+            return false;
+        }
+
+        if (! Schema::hasColumn($this->getTable(), 'split_proposed_by')) {
+            return true;
+        }
+
+        return ($this->split_proposed_by ?? null) === self::SPLIT_PROPOSED_BY_ARTIST;
+    }
 
     public static function tableReady(): bool
     {

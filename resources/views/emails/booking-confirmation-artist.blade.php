@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>New booking from {{ $customerName }} - Inkjin</title>
+  <title>New booking: {{ $clientDisplayName }} — Bookpay</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
@@ -12,30 +12,36 @@
     body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
-    You have a new booking from {{ $customerName }}. Review details and prepare for the appointment.
+    {{ $clientFirstName }} booked with you and paid the deposit.
   </div>
 
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf7ff;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
     <tr>
       <td align="center" style="padding:40px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
           <tr>
-            <td align="center" style="padding:0 0 32px 0;font-size:28px;font-weight:800;color:#310f7a;letter-spacing:-0.5px;">
-              inkjin
-            </td>
-          </tr>
-
-          <tr>
-            <td style="background-color:#ffffff;border-radius:16px;padding:48px 40px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td align="center" style="padding:0 0 24px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:0 0 20px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
                       <tr>
-                        <td style="background-color:#F8F1FB;border-radius:12px;width:48px;height:48px;text-align:center;font-size:18px;font-weight:800;color:#310f7a;line-height:48px;">
-                          ij
+                        <td style="padding:12px;width:44px;vertical-align:middle;">
+                          <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
+                            {{ $clientInitials }}
+                          </div>
+                        </td>
+                        <td style="padding:12px 12px 12px 0;vertical-align:middle;">
+                          <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $clientDisplayName }}</div>
+                          <div style="font-size:13px;color:#6F6874;margin-top:2px;">New booking</div>
                         </td>
                       </tr>
                     </table>
@@ -43,34 +49,50 @@
                 </tr>
 
                 <tr>
-                  <td align="center" style="font-size:24px;font-weight:700;color:#1c1b21;line-height:1.3;padding:0 0 12px 0;">
-                    You have a new booking!
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    Hi {{ $artistFirstName }},
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 28px 0;text-align:center;">
-                    Hi {{ $artistName }}, a client has booked a session with you. Here are the details:
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
+                    {{ $clientFirstName }} booked with you and paid the deposit.
                   </td>
                 </tr>
 
                 <tr>
-                  <td style="padding:0 0 22px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#F8F1FB;border-radius:12px;">
+                  <td style="padding:0 0 8px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
                       <tr>
-                        <td style="padding:24px;">
+                        <td style="padding:4px 14px;">
                           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Client</td></tr>
-                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;padding:0 0 10px 0;">{{ $customerName }}</td></tr>
-                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Tattoo</td></tr>
-                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;padding:0 0 10px 0;">{{ $tattooTitle }}</td></tr>
-                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Date &amp; Time</td></tr>
-                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;padding:0 0 10px 0;">{{ $bookingDate }} at {{ $bookingTime }}</td></tr>
-                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Estimated Duration</td></tr>
-                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;padding:0 0 10px 0;">{{ $duration }} hour(s)</td></tr>
-                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Amount Received</td></tr>
-                            <tr><td style="font-size:18px;font-weight:700;color:#310f7a;padding:0 0 10px 0;">{{ $currencySymbol }}{{ number_format($amountReceived, 2) }}</td></tr>
-                            <tr><td style="font-size:12px;color:#494552;text-transform:uppercase;letter-spacing:.5px;padding:0 0 4px 0;">Booking ID</td></tr>
-                            <tr><td style="font-size:16px;font-weight:600;color:#1c1b21;">#{{ $bookingId }}</td></tr>
+                            <tr>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Booking</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $bookingReference }}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Design</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $tattooTitle }}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">When</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $whenLabel }}</td>
+                            </tr>
+                            @if(!empty($whereLabel))
+                              <tr>
+                                <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Where</td>
+                                <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $whereLabel }}</td>
+                              </tr>
+                            @endif
+                            <tr>
+                              <td style="padding:9px 0;@if(($balanceAmount ?? 0) > 0.009) border-bottom:1px solid #F3EEF4;@endif font-size:14px;color:#6F6874;">Paid</td>
+                              <td style="padding:9px 0;@if(($balanceAmount ?? 0) > 0.009) border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $paidLabel }}</td>
+                            </tr>
+                            @if(($balanceAmount ?? 0) > 0.009)
+                              <tr>
+                                <td style="padding:9px 0;font-size:14px;color:#6F6874;">Balance</td>
+                                <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $balanceLabel }}</td>
+                              </tr>
+                            @endif
                           </table>
                         </td>
                       </tr>
@@ -78,82 +100,23 @@
                   </td>
                 </tr>
 
-                @if(!empty($questionsAnswers))
                 <tr>
-                  <td style="padding:0 0 22px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fff8e1;border-radius:12px;">
-                      <tr>
-                        <td style="padding:20px 24px;">
-                          <p style="margin:0 0 12px 0;font-size:14px;font-weight:700;color:#7a5c00;text-transform:uppercase;letter-spacing:.5px;">Client Answers</p>
-                          @foreach($questionsAnswers as $questionId => $answer)
-                            @php
-                              $answerPayload = is_array($answer) ? $answer : ['answer' => $answer];
-                              $questionText = (string) ($answerPayload['question'] ?? ($questions[$questionId] ?? ('Question #' . $questionId)));
-                              $answerType = (string) ($answerPayload['type'] ?? '');
-                              $answerValue = $answerPayload['answer'] ?? '';
-                              $imageUrls = [];
-                              if (is_array($answerValue)) {
-                                  foreach ($answerValue as $item) {
-                                      $item = trim((string) $item);
-                                      if ($item !== '' && (str_starts_with($item, 'http://') || str_starts_with($item, 'https://') || str_starts_with($item, '/uploads/') || str_starts_with($item, 'uploads/'))) {
-                                          $imageUrls[] = $item;
-                                      }
-                                  }
-                              } elseif (is_string($answerValue)) {
-                                  $answerValue = trim($answerValue);
-                                  if ($answerValue !== '' && (str_starts_with($answerValue, 'http://') || str_starts_with($answerValue, 'https://') || str_starts_with($answerValue, '/uploads/') || str_starts_with($answerValue, 'uploads/'))) {
-                                      $imageUrls[] = $answerValue;
-                                  }
-                              }
-                              $isImageAnswer = $answerType === 'image' || $imageUrls !== [];
-                            @endphp
-                            <p style="margin:0 0 4px 0;font-size:13px;font-weight:700;color:#6a5000;">Q: {{ $questionText }}</p>
-                            @if($isImageAnswer && $imageUrls !== [])
-                              <p style="margin:0 0 8px 0;font-size:14px;color:#4d4d4d;">A:</p>
-                              @foreach($imageUrls as $imageUrl)
-                                <p style="margin:0 0 8px 0;font-size:14px;color:#4d4d4d;">
-                                  <a href="{{ str_starts_with($imageUrl, 'http') ? $imageUrl : url($imageUrl) }}" target="_blank" style="color:#310f7a;text-decoration:underline;">Photo {{ $loop->iteration }}</a>
-                                </p>
-                              @endforeach
-                            @else
-                              <p style="margin:0 0 12px 0;font-size:14px;color:#4d4d4d;">A: {{ is_array($answerValue) ? implode(', ', $answerValue) : $answerValue }}</p>
-                            @endif
-                          @endforeach
-                        </td>
-                      </tr>
-                    </table>
+                  <td style="padding:16px 0 8px 0;">
+                    @if(!empty($viewBookingUrl))
+                      <a href="{{ $viewBookingUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                        View booking
+                      </a>
+                    @endif
                   </td>
                 </tr>
-                @endif
-
-                @if(!empty($meetLink))
-                <tr>
-                  <td style="padding:0 0 22px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef8ff;border-radius:12px;">
-                      <tr>
-                        <td style="padding:20px 24px;">
-                          <p style="margin:0 0 8px 0;font-size:16px;font-weight:700;color:#0f4c81;">Video Meeting</p>
-                          <p style="margin:0 0 12px 0;font-size:14px;color:#1b3e5c;">Meeting time: {{ $meetingTime }}</p>
-                          <a href="{{ $meetLink }}" target="_blank" style="display:inline-block;background-color:#0f6bbf;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:10px 16px;border-radius:8px;">Join Google Meet</a>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                @endif
 
                 <tr>
-                  <td style="font-size:13px;color:#494552;line-height:1.5;text-align:center;">
-                    Please review this booking in your dashboard and be ready for the scheduled time.
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:28px;border-top:1px solid #EEE9F0;">
+                    You can change which emails you get in Account &gt; Notifications.<br>
+                    Bookpay by Inkjin
                   </td>
                 </tr>
               </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td align="center" style="padding:24px 0 0 0;font-size:12px;color:#494552;line-height:1.5;">
-              © {{ date('Y') }} Inkjin · All rights reserved
             </td>
           </tr>
         </table>
@@ -162,4 +125,3 @@
   </table>
 </body>
 </html>
-

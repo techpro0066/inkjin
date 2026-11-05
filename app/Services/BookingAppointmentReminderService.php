@@ -131,14 +131,16 @@ class BookingAppointmentReminderService
                     $detail->setRelation('user', $artist);
                 }
 
+                $consentUrl = $this->consentUrlForReminder($booking);
+
                 if ($kind === '72h') {
                     Mail::to($email)->send(new AppointmentReminder72hMail(
                         $booking,
                         $client,
-                        $detail
+                        $detail,
+                        $consentUrl
                     ));
                 } else {
-                    $consentUrl = $this->consentUrlForReminder($booking);
                     Mail::to($email)->send(new AppointmentReminder24hMail(
                         $booking,
                         $client,

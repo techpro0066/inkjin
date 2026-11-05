@@ -17,6 +17,7 @@ class PaymentLink extends Model
 
     protected $fillable = [
         'artist_id',
+        'studio_id',
         'status',
         'code',
         'url',
@@ -62,9 +63,19 @@ class PaymentLink extends Model
         return $this->belongsTo(User::class, 'artist_id');
     }
 
+    public function studio(): BelongsTo
+    {
+        return $this->belongsTo(Studio::class, 'studio_id');
+    }
+
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class, 'booking_id');
+    }
+
+    public function isStudioCreated(): bool
+    {
+        return (int) ($this->studio_id ?? 0) > 0;
     }
 
     public function isPaid(): bool

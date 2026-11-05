@@ -358,13 +358,8 @@ class BookingCalendarAvailabilityService
         if (! $tattoo) {
             return 120;
         }
-        $tattooDurationMinutes = (int) ($tattoo->session_duration ?? 0) * 60;
-        if ($tattooDurationMinutes <= 0) {
-            preg_match('/(\d+)/', (string) ($tattoo->session_duration ?? ''), $durationMatch);
-            $tattooDurationMinutes = isset($durationMatch[1]) ? ((int) $durationMatch[1] * 60) : 120;
-        }
 
-        return max(15, $tattooDurationMinutes);
+        return max(15, $tattoo->sessionDurationMinutes());
     }
 
     /**

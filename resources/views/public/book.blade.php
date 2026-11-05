@@ -414,7 +414,7 @@
         <div class="m">
           <span><span class="material-symbols-outlined ms">brush</span><span class="cc-designStyle">{{ ucwords(str_replace('-', ' ', $tattoo->primary_style)) }}</span></span>
           <span class="cc-designPrice">€{{ $tattoo->min_price }} – €{{ $tattoo->max_price }}</span>
-          <span><span class="material-symbols-outlined ms">schedule</span><span class="cc-designTime">{{ $tattoo->session_duration }}h</span></span>
+          <span><span class="material-symbols-outlined ms">schedule</span><span class="cc-designTime">{{ $tattoo->sessionDurationLabel() }}</span></span>
         </div>
         <div class="w"><i class="cc-artistAvatar">{{ $userDetail->publicDisplayInitials() }}</i>with <b class="cc-artistName">{{ $userDetail->publicDisplayName() }}</b> at <b class="cc-studioName">{{ $studioNameDisplay }}</b></div>
       </div>

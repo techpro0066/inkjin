@@ -646,42 +646,45 @@ class GuestSpotsController extends Controller
 
         $artist = $artist ?: $guestSpot->user;
         $detail = $artist?->userDetail;
+        if ($detail) {
+            $detail->loadMissing('user');
+            if (! $detail->relationLoaded('user') || ! $detail->user) {
+                $detail->setRelation('user', $artist);
+            }
+        }
 
-        $artistName = trim((string) ($detail?->display_name ?? ''));
-        if ($artistName === '') {
-            $artistName = trim((string) ($artist?->name ?? ''));
+        $artistName = trim((string) ($detail?->publicDisplayName() ?? ''));
+        if ($artistName === '' || $artistName === 'Artist') {
+            $artistName = trim(trim((string) ($artist?->first_name ?? '')).' '.trim((string) ($artist?->last_name ?? '')));
         }
         if ($artistName === '') {
             $artistName = 'An artist';
         }
 
-        $initials = strtoupper(substr(preg_replace('/\s+/', '', $artistName) ?: 'A', 0, 2));
+        $initials = $detail?->publicDisplayInitials()
+            ?: strtoupper(mb_substr(preg_replace('/\s+/', '', $artistName) ?: 'A', 0, 2));
 
         $username = trim((string) ($detail?->user_name ?? ''));
+        if ($username !== '' && ! str_starts_with($username, '@')) {
+            $username = '@'.$username;
+        }
         $city = trim((string) ($detail?->city ?? $guestSpot->city ?? ''));
-        $metaParts = array_values(array_filter([
-            $username !== '' ? '@'.$username : null,
-            $city !== '' ? $city : null,
-        ]));
-        $artistMeta = implode(' · ', $metaParts);
+        $artistMeta = trim(($username !== '' ? $username : '').($username !== '' && $city !== '' ? ' · ' : '').$city);
+
+        $avatarUrl = null;
+        $avatarPath = trim((string) ($detail?->avatar ?? ''));
+        if ($avatarPath !== '') {
+            $avatarUrl = str_starts_with($avatarPath, 'http://') || str_starts_with($avatarPath, 'https://')
+                ? $avatarPath
+                : asset(ltrim($avatarPath, '/'));
+        }
 
         $studioGreeting = trim((string) ($guestSpot->studio_name ?? ''));
         if ($studioGreeting === '') {
             $studioGreeting = 'there';
         }
 
-        $dateRangeLabel = '';
-        if ($guestSpot->from_date && $guestSpot->to_date) {
-            $fromLabel = $guestSpot->from_date->format('M j');
-            $toLabel = $guestSpot->to_date->format('M j');
-            if ($guestSpot->from_date->format('Y') !== $guestSpot->to_date->format('Y')) {
-                $fromLabel = $guestSpot->from_date->format('M j, Y');
-                $toLabel = $guestSpot->to_date->format('M j, Y');
-            } elseif ($guestSpot->from_date->format('Y') !== now()->format('Y')) {
-                $toLabel = $guestSpot->to_date->format('M j, Y');
-            }
-            $dateRangeLabel = $fromLabel.' to '.$toLabel;
-        }
+        $dateRangeLabel = $this->guestSpotInviteDateRangeLabel($guestSpot);
 
         $actionUrl = $actionUrl ?: app(GuestSpotStudioInviteService::class)->inviteUrl($guestSpot);
 
@@ -695,6 +698,7 @@ class GuestSpotsController extends Controller
                 actionUrl: $actionUrl,
                 artistPercent: $guestSpot->artist_percent !== null ? (int) $guestSpot->artist_percent : null,
                 isResend: $isResend,
+                artistAvatarUrl: $avatarUrl,
             ));
         } catch (\Throwable $e) {
             Log::error('Failed to send guest spot studio invite email', [
@@ -768,6 +772,37 @@ class GuestSpotsController extends Controller
     private function normalizeTime(string $time): string
     {
         return Carbon::createFromFormat('H:i', $time)->format('H:i:s');
+    }
+
+    private function guestSpotInviteDateRangeLabel(GuestSpot $guestSpot): string
+    {
+        if (! $guestSpot->from_date || ! $guestSpot->to_date) {
+            return '';
+        }
+
+        $from = $guestSpot->from_date;
+        $to = $guestSpot->to_date;
+
+        if ($from->format('Y') !== $to->format('Y')) {
+            return $from->format('M j, Y').' to '.$to->format('M j, Y');
+        }
+
+        if ($from->format('Y-m') === $to->format('Y-m')) {
+            $label = $from->format('M j').' to '.$to->format('j');
+            if ($from->format('Y') !== now()->format('Y')) {
+                $label .= ', '.$from->format('Y');
+            }
+
+            return $label;
+        }
+
+        $fromLabel = $from->format('M j');
+        $toLabel = $to->format('M j');
+        if ($from->format('Y') !== now()->format('Y')) {
+            $toLabel = $to->format('M j, Y');
+        }
+
+        return $fromLabel.' to '.$toLabel;
     }
 
     /**

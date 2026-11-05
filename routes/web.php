@@ -64,6 +64,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('studio')
         ->whereNumber('guestSpot')
         ->name('studio.guest-spot-invite.decline');
+    Route::get('/studio/calendar', [\App\Http\Controllers\Studio\BookingsController::class, 'calendar'])
+        ->middleware('studio')
+        ->name('studio.calendar');
+    Route::get('/studio/chat', [\App\Http\Controllers\Studio\ChatController::class, 'index'])
+        ->middleware('studio')
+        ->name('studio.chat.index');
     Route::get('/studio/bookings', [\App\Http\Controllers\Studio\BookingsController::class, 'index'])
         ->middleware('studio')
         ->name('studio.bookings');
@@ -73,6 +79,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/studio/bookings/payment-links', [\App\Http\Controllers\Studio\BookingsController::class, 'paymentLinks'])
         ->middleware('studio')
         ->name('studio.bookings.payment-links');
+    Route::get('/studio/bookings/payment-links/export', [\App\Http\Controllers\Studio\BookingsController::class, 'exportPaymentLinks'])
+        ->middleware('studio')
+        ->name('studio.bookings.payment-links.export');
+    Route::post('/studio/bookings/payment-links/validate', [\App\Http\Controllers\Studio\BookingsController::class, 'validatePaymentLink'])
+        ->middleware('studio')
+        ->name('studio.bookings.payment-links.validate');
+    Route::post('/studio/bookings/payment-links', [\App\Http\Controllers\Studio\BookingsController::class, 'storePaymentLink'])
+        ->middleware('studio')
+        ->name('studio.bookings.payment-links.store');
+    Route::post('/studio/bookings/payment-links/{id}/expire', [\App\Http\Controllers\Studio\BookingsController::class, 'expirePaymentLink'])
+        ->middleware('studio')
+        ->whereNumber('id')
+        ->name('studio.bookings.payment-links.expire');
     Route::post('/studio/bookings/requests/{studioRequest}/assign', [\App\Http\Controllers\Studio\BookingsController::class, 'assign'])
         ->middleware('studio')
         ->whereNumber('studioRequest')
@@ -116,6 +135,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('studio')
         ->whereNumber('userStudio')
         ->name('studio.artists.decline');
+    Route::post('/studio/artists/{userStudio}/accept-split', [\App\Http\Controllers\Studio\ArtistsController::class, 'acceptSplit'])
+        ->middleware('studio')
+        ->whereNumber('userStudio')
+        ->name('studio.artists.accept-split');
+    Route::post('/studio/artists/{userStudio}/decline-split', [\App\Http\Controllers\Studio\ArtistsController::class, 'declineSplit'])
+        ->middleware('studio')
+        ->whereNumber('userStudio')
+        ->name('studio.artists.decline-split');
     Route::get('/studio/page', fn () => redirect()->route('studio.page.about'))
         ->middleware('studio')
         ->name('studio.page');
@@ -197,6 +224,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/studio/money/earnings', [\App\Http\Controllers\Studio\MoneyController::class, 'earnings'])
         ->middleware('studio')
         ->name('studio.money.earnings');
+    Route::get('/studio/money/earnings/export', [\App\Http\Controllers\Studio\MoneyController::class, 'exportEarnings'])
+        ->middleware('studio')
+        ->name('studio.money.earnings.export');
     Route::get('/studio/money/payouts', [\App\Http\Controllers\Studio\MoneyController::class, 'payouts'])
         ->middleware('studio')
         ->name('studio.money.payouts');
@@ -356,6 +386,40 @@ Route::match(['get', 'post'], '/studio/payout-link/{userDetail}/decline', [Onboa
     ->middleware('signed')
     ->name('studio.payout-artist-link.decline');
 
+Route::get('/feedback', function () {
+    return view('public.feedback', [
+        'demo' => true,
+        'mode' => 'form',
+    ]);
+})->name('public.feedback');
+
+Route::get('/session-feedback/{review}', [\App\Http\Controllers\SessionFeedbackController::class, 'show'])
+    ->middleware(['signed', 'throttle:60,1'])
+    ->whereNumber('review')
+    ->name('public.session-feedback');
+
+Route::post('/session-feedback/{review}', [\App\Http\Controllers\SessionFeedbackController::class, 'store'])
+    ->middleware(['signed', 'throttle:30,1'])
+    ->whereNumber('review')
+    ->name('public.session-feedback.store');
+
+Route::get('/artist-session-feedback/{feedback}', [\App\Http\Controllers\ArtistClientFeedbackController::class, 'show'])
+    ->middleware(['signed', 'throttle:60,1'])
+    ->whereNumber('feedback')
+    ->name('public.artist-client-feedback');
+
+Route::post('/artist-session-feedback/{feedback}', [\App\Http\Controllers\ArtistClientFeedbackController::class, 'store'])
+    ->middleware(['signed', 'throttle:30,1'])
+    ->whereNumber('feedback')
+    ->name('public.artist-client-feedback.store');
+
+Route::get('/artist-feedback-demo', function () {
+    return view('public.artist-client-feedback', [
+        'demo' => true,
+        'mode' => 'form',
+    ]);
+})->name('public.artist-client-feedback.demo');
+
 Route::get('/user/access-from-booking/{user}/{booking}', PostBookingAccessController::class)
     ->middleware(['signed', 'throttle:20,1'])
     ->name('user.post-booking.access');
@@ -407,6 +471,8 @@ Route::middleware(['auth', 'verified', 'onboarding'])->prefix('api/chat')->group
     Route::get('/channels', [ApiChatController::class, 'channels'])->name('api.chat.channels');
     Route::post('/channels/artist/{artistUserId}/ensure', [ApiChatController::class, 'ensureForArtist'])->name('api.chat.ensure.artist');
     Route::post('/channels/client/{clientUserId}/ensure', [ApiChatController::class, 'ensureForClient'])->name('api.chat.ensure.client');
+    Route::post('/channels/studio-artist/{artistUserId}/ensure', [ApiChatController::class, 'ensureStudioForArtist'])->name('api.chat.ensure.studio-artist');
+    Route::post('/channels/studio/{studioUserId}/ensure', [ApiChatController::class, 'ensureStudioForStudio'])->name('api.chat.ensure.studio');
     Route::get('/can-send/{streamChannelId}', [ApiChatController::class, 'canSend'])->name('api.chat.can-send');
     Route::get('/unread-summary', [ApiChatController::class, 'unreadSummary'])->name('api.chat.unread-summary');
 });
@@ -547,6 +613,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
 
     Route::get('/settings/payouts', [OnboardingController::class, 'paymentSettings'])->name('settings.payment');
     Route::post('/settings/payouts', [OnboardingController::class, 'updatePayment'])->name('settings.payment.update');
+    Route::post('/settings/payouts/propose-split', [\App\Http\Controllers\Artist\RevenueSplitController::class, 'propose'])
+        ->name('settings.payment.propose-split');
     Route::post('/settings/payouts/bank-country', [OnboardingController::class, 'savePayoutBankCountry'])->name('settings.payment.bank-country');
     Route::post('/settings/payouts/change-account', [OnboardingController::class, 'changePayoutAccount'])->name('settings.payment.change-account');
     Route::post('/settings/payouts/finalize-change-account', [OnboardingController::class, 'finalizeChangePayoutAccount'])->name('settings.payment.finalize-change-account');
@@ -734,6 +802,7 @@ Route::get('/chat', function () {
         return match (Auth::user()->role) {
             'artist' => redirect()->route('artist.chat.index'),
             'user' => redirect()->route('user.chat.index'),
+            'studio' => redirect()->route('studio.chat.index'),
             default => redirect()->to(authenticated_home_url()),
         };
     }
@@ -792,6 +861,8 @@ Route::get('/api/public/booking/payment/viva/status', [InkJinController::class, 
 Route::post('/api/public/confirm-booking-payment', [InkJinController::class, 'confirmBookingAfterPayment'])->name('public.booking.payment.confirm');
 Route::get('/webhooks/viva', [\App\Http\Controllers\Webhooks\VivaWebhookController::class, 'verify'])->name('webhooks.viva.verify');
 Route::post('/webhooks/viva', [\App\Http\Controllers\Webhooks\VivaWebhookController::class, 'handle'])->name('webhooks.viva');
+Route::post('/webhooks/stream-chat', [\App\Http\Controllers\Webhooks\StreamChatWebhookController::class, 'handle'])
+    ->name('webhooks.stream-chat');
 Route::get('/viva/success', [VivaReturnController::class, 'success'])->name('viva.success');
 Route::get('/viva/fail', [VivaReturnController::class, 'fail'])->name('viva.fail');
 Route::post('/api/public/submit-managed-booking', [InkJinController::class, 'submitManagedBooking'])->name('public.booking.managed.submit');

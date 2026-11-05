@@ -2974,7 +2974,7 @@
           }
         }
         var sessionDur = $('#designSessionTime').val();
-        var allowedDur = ['30min', '1h', '2h', '3h', '4h', '6h', '8h'];
+        var allowedDur = ['30min', '1h', '2h', '3h', '4h', '5h', '6h', '7h', '8h', 'half-day', 'full-day'];
         if (!sessionDur) {
           errors.session_duration = 'Please select session time.';
         } else if (allowedDur.indexOf(sessionDur) === -1) {

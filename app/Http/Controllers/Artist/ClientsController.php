@@ -189,6 +189,7 @@ class ClientsController extends Controller
                     locationLabel: $locationLabel,
                     guestSpotUrl: $guestSpotUrl,
                     subjectLine: $subjectLine,
+                    userDetail: $userDetail,
                 ));
                 $entry->update(['status' => Waitlist::STATUS_SENT]);
                 $sent++;
@@ -270,21 +271,18 @@ class ClientsController extends Controller
             ], 422);
         }
 
-        $artistName = $artist->userDetail?->publicDisplayName()
-            ?: trim($artist->first_name.' '.$artist->last_name);
-        if ($artistName === '') {
-            $artistName = 'Your artist';
-        }
-
         $profileUrl = route('public.artist', ['username' => $userDetail->user_name]);
+        if ($userDetail && $artist) {
+            $userDetail->setRelation('user', $artist);
+        }
         $sent = 0;
         $failed = 0;
 
         foreach ($entries as $entry) {
             try {
                 Mail::to($entry->email)->send(new WaitlistBooksOpenMail(
-                    recipientName: $entry->name,
-                    artistName: $artistName,
+                    waitlist: $entry,
+                    userDetail: $userDetail,
                     profileUrl: $profileUrl,
                 ));
                 $entry->update(['status' => Waitlist::STATUS_SENT]);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\BookingCompletionCodeMail;
+use App\Mail\PaymentRequestClientMail;
 use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\BookingRequest;
@@ -294,7 +295,10 @@ class BookingsController extends Controller
 
     private function artistPaymentLinksTotalCount(int $artistId): int
     {
-        $standalone = PaymentLink::query()->where('artist_id', $artistId)->count();
+        $standalone = PaymentLink::query()
+            ->where('artist_id', $artistId)
+            ->whereNull('studio_id')
+            ->count();
         $bookingLinks = BalanceCollection::query()
             ->where('artist_user_id', $artistId)
             ->where('collection_type', BalanceCollection::TYPE_PAYMENT_LINK)
@@ -314,6 +318,7 @@ class BookingsController extends Controller
 
         $standalone = PaymentLink::query()
             ->where('artist_id', $artistId)
+            ->whereNull('studio_id')
             ->with(['booking.user'])
             ->orderByDesc('id')
             ->get()
@@ -989,13 +994,33 @@ class BookingsController extends Controller
             return $saved;
         });
 
+        $emailSent = false;
+        if ($type === BalanceCollection::TYPE_PAYMENT_LINK) {
+            $clientEmail = trim((string) ($booking->user?->email ?? ''));
+            if ($clientEmail !== '') {
+                try {
+                    Mail::to($clientEmail)->send(new PaymentRequestClientMail($record, $booking));
+                    $emailSent = true;
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send payment request email to client', [
+                        'booking_id' => $booking->id,
+                        'collection_id' => $record->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => match ($type) {
-                BalanceCollection::TYPE_PAYMENT_LINK => 'Payment link created.',
+                BalanceCollection::TYPE_PAYMENT_LINK => $emailSent
+                    ? 'Payment link created and emailed to the client.'
+                    : 'Payment link created.',
                 BalanceCollection::TYPE_PAID_IN_CASH => 'Cash payment recorded. Booking marked as completed.',
                 default => 'Reminder saved.',
             },
+            'email_sent' => $emailSent,
             'booking_completed' => $bookingCompleted,
             'collection' => [
                 'id' => $record->id,

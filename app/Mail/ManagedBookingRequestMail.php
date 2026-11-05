@@ -2,6 +2,9 @@
 
 namespace App\Mail;
 
+use App\Models\BookingRequest;
+use App\Models\UserDetail;
+use App\Support\RequestReceivedEmailPresenter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -13,26 +16,31 @@ class ManagedBookingRequestMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
+        public BookingRequest $bookingRequest,
+        public UserDetail $userDetail,
         public string $accessUrl,
-        public string $recipientName,
-        public string $artistName,
-        public string $designTitle,
-        public string $bookingReference,
         public bool $isNewUser = false,
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {
-        $subject = $this->isNewUser
-            ? 'Welcome to Inkjin — your booking request was submitted'
-            : 'Your booking request was submitted — '.$this->artistName;
+        $artistName = trim($this->userDetail->publicDisplayName()) ?: 'your artist';
 
-        return new Envelope(subject: $subject);
+        return new Envelope(
+            subject: $artistName.' got your request',
+        );
     }
 
     public function content(): Content
     {
-        return new Content(view: 'emails.managed-booking-request-user');
+        return new Content(
+            view: 'emails.request-received-user',
+            with: RequestReceivedEmailPresenter::forBookingRequest(
+                $this->bookingRequest,
+                $this->userDetail,
+                $this->accessUrl,
+                $this->bookingRequest->user,
+            ),
+        );
     }
 }

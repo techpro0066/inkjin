@@ -233,7 +233,14 @@ class ArtistStudioOffersController extends Controller
         $clientEmail = trim((string) ($user?->email ?? ''));
         if ($clientEmail !== '') {
             try {
-                Mail::to($clientEmail)->send(new CustomRequestQuoteUserMail($customRequest, $accessUrl));
+                Mail::to($clientEmail)->send(new CustomRequestQuoteUserMail(
+                    $customRequest,
+                    $accessUrl,
+                    route('user.chat.index', [
+                        'artist' => (int) $customRequest->artist_id,
+                        'custom_request' => (int) $customRequest->id,
+                    ]),
+                ));
             } catch (\Throwable $e) {
                 Log::error('Failed to send studio-offer quote email to client', [
                     'custom_request_id' => $customRequest->id,

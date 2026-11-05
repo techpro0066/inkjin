@@ -908,17 +908,21 @@ class GoogleCalendarController extends Controller
 
             // Add consultation timing info for combined mode
             if ($isCombinedConsultation) {
-                $tattooDurationHours = $tattoo?->session_time_h ?? $tattoo?->session_duration ?? 0;
+                $tattooDurationMinutes = $tattoo instanceof \App\Models\ArtistDesign
+                    ? $tattoo->sessionDurationMinutes()
+                    : (int) round(((float) ($tattoo?->session_time_h ?? 2)) * 60);
                 $consultationDurationMinutes = 0;
                 if ($booking->consultation_start_time_utc && $booking->consultation_end_time_utc) {
                     $consultationStart = \Carbon\Carbon::createFromFormat('H:i:s', $booking->consultation_start_time_utc);
                     $consultationEnd = \Carbon\Carbon::createFromFormat('H:i:s', $booking->consultation_end_time_utc);
                     $consultationDurationMinutes = $consultationStart->diffInMinutes($consultationEnd);
                 }
+                $tattooDurationLabel = \App\Support\DesignSessionDuration::formatMinutes($tattooDurationMinutes);
+                $totalDurationLabel = \App\Support\DesignSessionDuration::formatMinutes($tattooDurationMinutes + $consultationDurationMinutes);
                 $description .= "\nConsultation Timing: Combined\n";
                 $description .= "Consultation Duration: {$consultationDurationMinutes} minutes\n";
-                $description .= "Tattoo Session Duration: {$tattooDurationHours} hour(s)\n";
-                $description .= 'Total Duration: '.($tattooDurationHours + ($consultationDurationMinutes / 60))." hour(s)\n";
+                $description .= "Tattoo Session Duration: {$tattooDurationLabel}\n";
+                $description .= "Total Duration: {$totalDurationLabel}\n";
             }
             
             $description .= "\n";

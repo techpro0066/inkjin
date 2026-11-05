@@ -24,9 +24,15 @@ class ArtistCustomRequestsController extends Controller
     {
         $isGuestScope = $request->routeIs('artist.guest-requests.index');
 
-        return redirect()->route('artist.requests.index', [
+        $params = [
             'type' => $isGuestScope ? 'guest' : 'custom',
-        ]);
+        ];
+        $openId = (int) $request->query('open', 0);
+        if ($openId > 0) {
+            $params['open'] = $openId;
+        }
+
+        return redirect()->route('artist.requests.index', $params);
     }
 
     public function decline(Request $request, CustomRequest $customRequest): JsonResponse
@@ -204,6 +210,10 @@ class ArtistCustomRequestsController extends Controller
                 Mail::to($clientEmail)->send(new CustomRequestQuoteUserMail(
                     $customRequest,
                     $accessUrl,
+                    route('user.chat.index', [
+                        'artist' => (int) $customRequest->artist_id,
+                        'custom_request' => (int) $customRequest->id,
+                    ]),
                 ));
             } catch (\Throwable $e) {
                 Log::error('Failed to send custom request quote email to client', [

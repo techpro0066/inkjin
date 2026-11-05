@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('payment-links:send-expiry-reminders')->hourly();
         $schedule->command('consents:send-due')->everyFifteenMinutes();
         $schedule->command('bookings:send-appointment-reminders')->everyFifteenMinutes();
+        $schedule->command('chat:send-message-emails')->everyMinute();
         $schedule->command('guest-spots:expire-holds')->everyFiveMinutes();
         $schedule->command('stripe:sync-requirements')->everyFiveMinutes();
     })
@@ -40,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'webhooks/viva',
+            'webhooks/stream-chat',
             'auth/instagram/deauthorize',
             // Public pages may be reverse-proxied from inkjin.com while APIs hit bookpay.inkjin.com.
             // Session cookies are not shared across that hop, so CSRF tokens cannot be validated.

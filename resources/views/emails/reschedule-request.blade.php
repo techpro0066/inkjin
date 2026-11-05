@@ -1,184 +1,118 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reschedule Request</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333333;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        
-        .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        .email-header {
-            background: #482e92;
-            padding: 20px 30px;
-            text-align: center;
-        }
-        
-        .logo-text {
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: 600;
-            margin: 0;
-        }
-        
-        .email-body {
-            padding: 40px 30px;
-        }
-        
-        .greeting {
-            font-size: 18px;
-            color: #333333;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-        
-        .content {
-            font-size: 16px;
-            color: #666666;
-            margin-bottom: 30px;
-            line-height: 1.8;
-        }
-        
-        .booking-details {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 25px 0;
-            border-left: 4px solid #ff9800;
-        }
-        
-        .booking-details h3 {
-            color: #ff9800;
-            font-size: 18px;
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
-        
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-        
-        .detail-label {
-            font-weight: 600;
-            color: #333333;
-        }
-        
-        .detail-value {
-            color: #666666;
-            text-align: right;
-        }
-        
-        .button-container {
-            text-align: center;
-            margin: 30px 0;
-        }
-        
-        .button {
-            display: inline-block;
-            background-color: #482e92;
-            color: #ffffff;
-            padding: 14px 28px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        
-        .email-footer {
-            background-color: #f8f8f8;
-            padding: 1rem;
-            text-align: center;
-            border-top: 1px solid #e0e0e0;
-        }
-        
-        .footer-text {
-            font-size: 14px;
-            color: #888888;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{ $artistName }} asked to move your appointment — Bookpay</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+  </style>
 </head>
-<body>
-    <div class="email-container">
-        <div class="email-header">
-            <span class="logo-text">{{ config('app.name', 'Inkjin') }}</span>
-        </div>
-        
-        <div class="email-body">
-            <p class="greeting">Hello {{ $booking->user->name }},</p>
-            
-            <p class="content">
-                {{ $booking->artist->name }} has requested to reschedule your tattoo booking.
-            </p>
-            
-            <div class="booking-details">
-                <h3>📅 Current Booking Details</h3>
-                <div class="detail-row">
-                    <span class="detail-label">Date:</span>
-                    <span class="detail-value">{{ $booking->booking_date->format('F d, Y') }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Time:</span>
-                    <span class="detail-value">{{ $booking->booking_time['start'] ?? 'N/A' }} - {{ $booking->booking_time['end'] ?? 'N/A' }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Tattoo:</span>
-                    <span class="detail-value">{{ $booking->tattoo->title ?? 'Custom Tattoo' }}</span>
-                </div>
-                @if($reason)
-                <div class="detail-row">
-                    <span class="detail-label">Reason:</span>
-                    <span class="detail-value">{{ $reason }}</span>
-                </div>
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    {{ $introText }}
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
+          <tr>
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:0 0 20px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                      <tr>
+                        <td style="padding:12px;width:44px;vertical-align:middle;">
+                          @if(!empty($artistAvatarUrl))
+                            <img src="{{ $artistAvatarUrl }}" alt="{{ $artistName }}" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:50%;object-fit:cover;">
+                          @else
+                            <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
+                              {{ $artistInitials }}
+                            </div>
+                          @endif
+                        </td>
+                        <td style="padding:12px 12px 12px 0;vertical-align:middle;">
+                          <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $artistName }}</div>
+                          @if(!empty($artistMeta))
+                            <div style="font-size:13px;color:#6F6874;margin-top:2px;">{{ $artistMeta }}</div>
+                          @endif
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    Hi {{ $clientFirstName }},
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 16px 0;">
+                    {{ $introText }}
+                  </td>
+                </tr>
+
+                @if(!empty($quoteMessage))
+                  <tr>
+                    <td style="padding:0 0 16px 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FBF7FD;border-left:3px solid #3E007C;border-radius:0 10px 10px 0;">
+                        <tr>
+                          <td style="padding:12px 14px;font-size:14px;color:#3d3942;line-height:1.55;">
+                            “{{ $quoteMessage }}”
+                            <div style="margin-top:6px;font-size:12px;color:#6F6874;">{{ $artistName }}</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
                 @endif
-            </div>
-            
-            <p class="content">
-                Please select a new date and time by clicking the button below. This reschedule will not count against your reschedule limit.
-            </p>
-            
-            <div class="button-container">
-                <a href="{{ route('bookings.reschedule-flow', $booking->id) }}" class="button">
-                    Select New Date & Time
-                </a>
-            </div>
-            
-            <p class="content" style="font-size: 14px; color: #999;">
-                If you cannot accommodate a new time, you may cancel the booking for a full refund.
-            </p>
-        </div>
-        
-        <div class="email-footer">
-            <p class="footer-text">
-                © {{ date('Y') }} {{ config('app.name', 'Inkjin') }}. All rights reserved.
-            </p>
-        </div>
-    </div>
+
+                <tr>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 8px 0;">
+                    {{ $depositNote }}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:16px 0 28px 0;">
+                    @if(!empty($pickTimeUrl))
+                      <a href="{{ $pickTimeUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                        Pick a new time
+                      </a>
+                    @endif
+                    @if(!empty($messageUrl))
+                      <a href="{{ $messageUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;color:#3E007C;font-weight:700;text-decoration:none;font-size:15px;padding:13px 6px;margin-left:8px;">
+                        Message {{ $artistFirstName }}
+                      </a>
+                    @endif
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
+                    You got this email because you booked with {{ $artistName }} through Bookpay. Replies to this email aren’t read: message {{ $artistFirstName }} in Bookpay instead.<br>
+                    Bookpay by Inkjin
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>

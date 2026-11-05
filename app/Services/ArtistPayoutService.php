@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\InsufficientPlatformBalanceException;
+use App\Mail\ArtistPayoutSentMail;
 use App\Models\ArtistPayout;
 use App\Models\BalanceCollection;
 use App\Models\Booking;
@@ -10,11 +11,20 @@ use App\Models\UserDetail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiErrorException;
 
 class ArtistPayoutService
 {
+    /**
+     * Request-scoped cache of per-artist fee allocation
+     * (own fee + carry-forward of unpaid artist-fee shortfalls).
+     *
+     * @var array<string, array{outstanding: float, nets: array<int, float>, details: array<int, array{gross: float, fee: float, fee_applied: float, debt_recovered: float, net: float}>}>
+     */
+    private array $artistFeeAllocationCache = [];
+
     public function __construct(
         private readonly CancellationService $cancellationService,
         private readonly StripeConnectService $stripeConnect,
@@ -83,6 +93,11 @@ class ArtistPayoutService
             return false;
         }
 
+        // Nothing left for artist or studio (e.g. fee consumed the pot) — settle without a transfer.
+        if ($this->markSettledIfNothingOwed($booking, $userDetail)) {
+            return true;
+        }
+
         $manual = $this->isManualPayoutMode($userDetail);
 
         // Scheduler / auto: always release studio share; hold artist share when mode is manual.
@@ -119,6 +134,10 @@ class ArtistPayoutService
      */
     private function processStudioAutoPayout(Booking $booking, UserDetail $userDetail): bool
     {
+        if ($this->markSettledIfNothingOwed($booking, $userDetail)) {
+            return true;
+        }
+
         $studioRemaining = $this->remainingStudioPayoutAmount($booking, $userDetail);
         if ($studioRemaining < 0.01) {
             return false;
@@ -135,6 +154,67 @@ class ArtistPayoutService
             allowManualRequest: false,
             studioOnly: true,
         );
+    }
+
+    /**
+     * When platform net left for both sides is €0, mark the booking paid out so it
+     * leaves the payout queue (no Stripe transfer needed).
+     */
+    private function markSettledIfNothingOwed(Booking $booking, UserDetail $userDetail): bool
+    {
+        $artistRemaining = $this->remainingPayoutAmount($booking, $userDetail);
+        $studioRemaining = $this->remainingStudioPayoutAmount($booking, $userDetail);
+        if ($artistRemaining >= 0.01 || $studioRemaining >= 0.01) {
+            return false;
+        }
+
+        return DB::transaction(function () use ($booking, $userDetail) {
+            $locked = Booking::query()
+                ->whereKey($booking->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked || $locked->pay_artist) {
+                return false;
+            }
+
+            // Re-check under lock — another worker may have released funds.
+            if (
+                $this->remainingPayoutAmount($locked, $userDetail) >= 0.01
+                || $this->remainingStudioPayoutAmount($locked, $userDetail) >= 0.01
+            ) {
+                return false;
+            }
+
+            $releasedArtist = $this->releasedArtistAmount($locked);
+            $releasedStudio = $this->releasedStudioAmount($locked);
+            $payout = $locked->artistPayout()->first();
+            $payload = [
+                'amount' => $releasedArtist,
+                'artist_amount' => $releasedArtist,
+                'studio_amount' => $releasedStudio,
+                'currency' => strtoupper((string) ($locked->currency ?: 'EUR')),
+                'status' => ArtistPayout::STATUS_COMPLETED,
+                'failure_reason' => null,
+            ];
+
+            if ($payout) {
+                $payout->update($payload);
+            } else {
+                ArtistPayout::create([
+                    'booking_id' => $locked->id,
+                    ...$payload,
+                ]);
+            }
+
+            $locked->update([
+                'pay_artist' => true,
+                'deposit_released' => true,
+                'deposit_released_at' => now(),
+            ]);
+
+            return true;
+        });
     }
 
     /**
@@ -413,7 +493,8 @@ class ArtistPayoutService
         }
 
         if ($artistSlice < 0.01 && $studioSlice < 0.01) {
-            return false;
+            // Nothing to send — still settle if the booking owes €0 overall.
+            return $this->markSettledIfNothingOwed($booking, $userDetail);
         }
 
         $artistAccountId = null;
@@ -694,7 +775,54 @@ class ArtistPayoutService
             $completed = true;
         });
 
+        if ($completed && $artistTransfer && $artistSlice >= 0.01) {
+            $this->notifyArtistPayoutSent(
+                booking: $locked,
+                userDetail: $userDetail,
+                amount: $artistSlice,
+                currency: (string) ($artistTransfer['currency'] ?? $currency),
+                stripeAccountId: (string) ($artistTransfer['destination'] ?? ''),
+            );
+        }
+
         return $completed;
+    }
+
+    private function notifyArtistPayoutSent(
+        Booking $booking,
+        UserDetail $userDetail,
+        float $amount,
+        string $currency,
+        string $stripeAccountId,
+    ): void {
+        $userDetail->loadMissing('user');
+        $artist = $userDetail->user;
+        $email = trim((string) ($artist?->email ?? ''));
+        if (! $artist || $email === '') {
+            return;
+        }
+
+        $bankLast4 = null;
+        if ($stripeAccountId !== '') {
+            $bankLast4 = $this->stripeConnect->resolveBankLast4($stripeAccountId);
+        }
+
+        try {
+            Mail::to($email)->send(new ArtistPayoutSentMail(
+                artist: $artist,
+                booking: $booking,
+                amount: $amount,
+                currency: strtoupper($currency ?: 'EUR'),
+                bankLast4: $bankLast4,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send artist payout-sent email', [
+                'booking_id' => $booking->id,
+                'artist_user_id' => $artist->id,
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -720,8 +848,12 @@ class ArtistPayoutService
 
         $bookingFee = 0.0;
         if ($userDetail) {
-            $bookingFee = app(ArtistReferralFeeWaiverService::class)
-                ->artistFeeForBooking($booking, $userDetail);
+            $allocation = $this->artistFeeAllocationFor((int) $booking->artist_user_id, $userDetail);
+            $detail = $allocation['details'][(int) $booking->id] ?? null;
+            $bookingFee = $detail
+                ? (float) $detail['fee_applied']
+                : app(ArtistReferralFeeWaiverService::class)
+                    ->artistFeeForBooking($booking, $userDetail);
         }
 
         $net = $userDetail
@@ -771,15 +903,31 @@ class ArtistPayoutService
 
         $studioPercent = max(0, 100 - $artistPercent);
 
+        $debtRecovered = 0.0;
+        if ($userDetail && (string) ($booking->payment_status ?? '') === 'paid') {
+            $feeDetail = $this->artistFeeAllocationFor((int) $booking->artist_user_id, $userDetail)['details'][(int) $booking->id] ?? null;
+            $debtRecovered = (float) ($feeDetail['debt_recovered'] ?? 0);
+        }
+        // Artist-paid platform fee (+ prior shortfall recovery) taken from the shared pot before split.
+        $artistSideFee = round($artistFee + $debtRecovered, 2);
+
+        $yourBookingFee = 0.0;
+        $studioBookingFee = 0.0;
         if ($hasSplit) {
             $yourShare = round($deposit * ($artistPercent / 100), 2);
             $yourStripe = round($stripeFee * ($artistPercent / 100), 2);
-            $youGet = max(0, round($yourShare - $yourStripe, 2));
-            $studioGets = max(0, round(($deposit - $stripeFee) * ($studioPercent / 100), 2));
+            $yourBookingFee = round($artistSideFee * ($artistPercent / 100), 2);
+            $studioBookingFee = round($artistSideFee - $yourBookingFee, 2);
+            $youGet = max(0, round($yourShare - $yourStripe - $yourBookingFee, 2));
+            $studioGets = max(0, round(
+                ($deposit * ($studioPercent / 100)) - ($stripeFee * ($studioPercent / 100)) - $studioBookingFee,
+                2
+            ));
         } else {
             $yourShare = $deposit;
             $yourStripe = $stripeFee;
-            $youGet = max(0, round($deposit - $stripeFee - $artistFee, 2));
+            $yourBookingFee = $artistSideFee;
+            $youGet = max(0, round($deposit - $stripeFee - $artistSideFee, 2));
             $studioGets = 0.0;
         }
 
@@ -793,9 +941,17 @@ class ArtistPayoutService
         if ($clientFee > 0.009) {
             $bookingFeeLabel = $this->formatEuro($clientFee);
             $bookingFeeNote = 'paid by the client, goes to Bookpay';
-        } elseif ($artistFee > 0.009 && ! $hasSplit) {
-            $bookingFeeLabel = $this->formatEuro($artistFee);
-            $bookingFeeNote = 'deducted from your share';
+        } elseif ($artistSideFee > 0.009) {
+            $bookingFeeLabel = $this->formatEuro($artistSideFee);
+            if ($hasSplit) {
+                $bookingFeeNote = $debtRecovered > 0.009
+                    ? 'shared by your split (includes prior fee balance)'
+                    : 'shared by your split · you '.$artistPercent.'% · studio '.$studioPercent.'%';
+            } else {
+                $bookingFeeNote = $debtRecovered > 0.009
+                    ? 'deducted from your share (includes prior fee balance)'
+                    : 'deducted from your share';
+            }
         }
 
         $footnote = '';
@@ -836,6 +992,13 @@ class ArtistPayoutService
             }
         }
 
+        $yourBookingFeeLabel = null;
+        $yourBookingFeeNote = null;
+        if ($hasSplit && $yourBookingFee > 0.009) {
+            $yourBookingFeeLabel = '-'.$this->formatEuro($yourBookingFee);
+            $yourBookingFeeNote = $artistPercent.'%';
+        }
+
         if ($stKey === 'completed' || $booking->full_amount_paid) {
             $pill = 'Settled';
             $pillClass = 'g';
@@ -867,12 +1030,18 @@ class ArtistPayoutService
             'your_stripe_label' => 'Your part of the Stripe fee',
             'your_stripe_note' => $hasSplit ? $artistPercent.'%' : null,
             'your_stripe' => '-'.$this->formatEuro($yourStripe),
+            'your_booking_fee' => $yourBookingFeeLabel,
+            'your_booking_fee_note' => $yourBookingFeeNote,
             'you_get' => $this->formatEuro($youGet),
             'footnote' => $footnote,
             'balance_note_html' => $balanceNoteHtml,
             'deposit_amount' => $deposit,
             'stripe_fee_amount' => $stripeFee,
+            'artist_side_fee_amount' => $artistSideFee,
+            'your_booking_fee_amount' => $yourBookingFee,
+            'studio_booking_fee_amount' => $studioBookingFee,
             'you_get_amount' => $youGet,
+            'studio_gets_amount' => $studioGets,
         ];
     }
 
@@ -919,14 +1088,93 @@ class ArtistPayoutService
     }
 
     /**
-     * Full net held by the platform for this booking (gross − artist fee), before revenue split.
+     * Full net held by the platform for this booking (gross − artist fee −
+     * recovered unpaid artist-fee shortfalls from earlier bookings), before revenue split.
+     *
+     * Example: artist absorbs €10 fee, booking A collects €3 → net €0 and €7 remains owed.
+     * Booking B collects €50 → own fee €10 plus €7 carry-forward → net €33.
      */
     public function computePlatformNetPayoutAmount(Booking $booking, UserDetail $userDetail): float
     {
+        $artistUserId = (int) ($booking->artist_user_id ?? 0);
+        if ($artistUserId > 0 && (string) ($booking->payment_status ?? '') === 'paid') {
+            $allocation = $this->artistFeeAllocationFor($artistUserId, $userDetail);
+            $bookingId = (int) $booking->id;
+            if (array_key_exists($bookingId, $allocation['nets'])) {
+                return $allocation['nets'][$bookingId];
+            }
+        }
+
         $artistFee = app(ArtistReferralFeeWaiverService::class)
             ->artistFeeForBooking($booking, $userDetail);
 
         return max(0, round($this->collectedGrossForArtist($booking) - $artistFee, 2));
+    }
+
+    /**
+     * Unpaid artist booking-fee balance still to recover from future payouts.
+     */
+    public function outstandingArtistPlatformFee(int $artistUserId, UserDetail $userDetail): float
+    {
+        return $this->artistFeeAllocationFor($artistUserId, $userDetail)['outstanding'];
+    }
+
+    /**
+     * Walk paid bookings in order: take each booking's artist fee from its gross,
+     * then use any surplus to pay down prior shortfalls so the platform always
+     * eventually collects the full artist fee.
+     *
+     * @return array{
+     *     outstanding: float,
+     *     nets: array<int, float>,
+     *     details: array<int, array{gross: float, fee: float, fee_applied: float, debt_recovered: float, net: float}>
+     * }
+     */
+    public function artistFeeAllocationFor(int $artistUserId, UserDetail $userDetail): array
+    {
+        $cacheKey = $artistUserId.':'.spl_object_id($userDetail);
+        if (isset($this->artistFeeAllocationCache[$cacheKey])) {
+            return $this->artistFeeAllocationCache[$cacheKey];
+        }
+
+        $bookings = Booking::query()
+            ->where('artist_user_id', $artistUserId)
+            ->where('payment_status', 'paid')
+            ->with(['balanceCollections'])
+            ->orderBy('id')
+            ->get();
+
+        $debt = 0.0;
+        $nets = [];
+        $details = [];
+        $referralWaiver = app(ArtistReferralFeeWaiverService::class);
+
+        foreach ($bookings as $booking) {
+            $gross = $this->collectedGrossForArtist($booking);
+            $fee = max(0, round($referralWaiver->artistFeeForBooking($booking, $userDetail), 2));
+            $ownApplied = min($gross, $fee);
+            $shortfall = round($fee - $ownApplied, 2);
+            $surplus = round($gross - $ownApplied, 2);
+            $recovered = min($surplus, $debt);
+            $debt = round($debt + $shortfall - $recovered, 2);
+            $net = round($surplus - $recovered, 2);
+            $bookingId = (int) $booking->id;
+
+            $nets[$bookingId] = $net;
+            $details[$bookingId] = [
+                'gross' => $gross,
+                'fee' => $fee,
+                'fee_applied' => round($ownApplied + $recovered, 2),
+                'debt_recovered' => round($recovered, 2),
+                'net' => $net,
+            ];
+        }
+
+        return $this->artistFeeAllocationCache[$cacheKey] = [
+            'outstanding' => max(0, round($debt, 2)),
+            'nets' => $nets,
+            'details' => $details,
+        ];
     }
 
     /**

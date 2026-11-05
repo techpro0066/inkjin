@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\ConsentAnswer;
 use App\Models\User;
 use App\Models\UserDetail;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -23,59 +24,116 @@ class ConsentFormMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Your appointment with '.$this->artistName().' is tomorrow',
-        );
+        $data = $this->viewData();
+        $before = (string) ($data['subjectBeforeLabel'] ?? '');
+        $subject = $before !== ''
+            ? 'Fill in your consent form before '.$before
+            : 'Fill in your consent form';
+
+        return new Envelope(subject: $subject);
     }
 
     public function content(): Content
     {
-        $booking = $this->consent->booking;
-        $local = $booking?->sessionStartLocal();
-
         return new Content(
             view: 'emails.consent-form',
-            with: [
-                'artistName' => $this->artistName(),
-                'clientFirst' => trim((string) ($this->client->first_name ?? '')) ?: 'there',
-                'appointmentDate' => $local ? $local->format('l, F j, Y') : '',
-                'appointmentTime' => $local ? $local->format('g:i A') : '',
-                'studioName' => trim((string) ($this->userDetail?->studio_name ?? '')),
-                'studioAddress' => $this->studioAddress(),
-                'consentUrl' => $this->consent->publicUrl(),
-            ],
+            with: $this->viewData(),
         );
     }
 
-    private function artistName(): string
+    /**
+     * @return array<string, mixed>
+     */
+    private function viewData(): array
     {
-        if ($this->userDetail) {
-            $name = trim((string) $this->userDetail->publicDisplayName());
-            if ($name !== '') {
-                return $name;
-            }
+        $booking = $this->consent->booking;
+        $booking?->loadMissing(['artist.userDetail', 'studio', 'tattoo']);
+
+        $userDetail = $this->userDetail ?? $booking?->artist?->userDetail ?? new UserDetail;
+        $artistName = $this->artistName($userDetail);
+        $artistFirst = trim((string) ($booking?->artist?->first_name ?? ''));
+        if ($artistFirst === '') {
+            $artistFirst = trim((string) strtok($artistName, ' ')) ?: $artistName;
         }
 
-        return 'your artist';
+        $clientFirst = trim((string) ($this->client->first_name ?? ''));
+        if ($clientFirst === '') {
+            $clientFirst = 'there';
+        }
+
+        $timezone = trim((string) ($booking?->timezone ?: $userDetail->timezone ?: 'UTC')) ?: 'UTC';
+        $startLocal = $booking?->sessionStartUtc()?->copy()->timezone($timezone);
+
+        $sessionLabel = $startLocal
+            ? $startLocal->format('D d/m/Y').', '.$startLocal->format('H:i')
+            : $this->fallbackSessionLabel($booking);
+
+        $subjectBeforeLabel = $startLocal
+            ? $startLocal->format('D j M')
+            : '';
+
+        $design = trim((string) ($booking?->displayTitle() ?? ''));
+        if ($design === '') {
+            $design = 'your session';
+        }
+
+        $whoMeta = trim($design.($sessionLabel !== '' ? ' · '.$sessionLabel : ''));
+
+        return [
+            'clientFirstName' => $clientFirst,
+            'artistName' => $artistName,
+            'artistFirstName' => $artistFirst,
+            'artistInitials' => $this->initials($artistName),
+            'artistAvatarUrl' => $this->avatarUrl($userDetail),
+            'artistMeta' => $whoMeta,
+            'introText' => $artistFirst.' needs your consent form before your session. It takes about 3 minutes, and you can do it on your phone.',
+            'consentUrl' => $this->consent->publicUrl(),
+            'subjectBeforeLabel' => $subjectBeforeLabel,
+            'under18Note' => 'Under 18? A parent or guardian must sign and come to the session.',
+        ];
     }
 
-    private function studioAddress(): string
+    private function artistName(UserDetail $userDetail): string
     {
-        if (! $this->userDetail) {
+        $name = trim((string) $userDetail->publicDisplayName());
+
+        return $name !== '' ? $name : 'your artist';
+    }
+
+    private function avatarUrl(UserDetail $userDetail): ?string
+    {
+        $avatarPath = trim((string) ($userDetail->avatar ?? ''));
+        if ($avatarPath === '') {
+            return null;
+        }
+
+        return str_starts_with($avatarPath, 'http://') || str_starts_with($avatarPath, 'https://')
+            ? $avatarPath
+            : asset(ltrim($avatarPath, '/'));
+    }
+
+    private function fallbackSessionLabel($booking): string
+    {
+        if (! $booking?->booking_date) {
             return '';
         }
 
-        $street = trim(trim((string) ($this->userDetail->street_number ?? '')).' '.trim((string) ($this->userDetail->street_name ?? '')));
-        if ($street === '') {
-            $street = trim((string) ($this->userDetail->studio_address ?? ''));
+        try {
+            $date = $booking->booking_date instanceof Carbon
+                ? $booking->booking_date
+                : Carbon::parse((string) $booking->booking_date);
+
+            return $date->format('D d/m/Y');
+        } catch (\Throwable) {
+            return (string) $booking->booking_date;
         }
+    }
 
-        $cityLine = implode(', ', array_values(array_filter([
-            trim((string) ($this->userDetail->city ?? '')),
-            trim((string) ($this->userDetail->postal_code ?? '')),
-            trim((string) ($this->userDetail->country ?? '')),
-        ], fn (string $part) => $part !== '')));
+    private function initials(string $name): string
+    {
+        $parts = preg_split('/\s+/', trim($name)) ?: [];
+        $initials = strtoupper(mb_substr($parts[0] ?? '', 0, 1).mb_substr($parts[1] ?? '', 0, 1));
 
-        return implode(', ', array_values(array_filter([$street, $cityLine], fn (string $part) => $part !== '')));
+        return $initials !== '' ? $initials : '?';
     }
 }

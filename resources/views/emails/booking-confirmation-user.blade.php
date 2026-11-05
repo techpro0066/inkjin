@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Your booking with {{ $artistName }} is confirmed! - Inkjin</title>
+  <title>You're booked with {{ $artistName }} — Bookpay</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
@@ -12,70 +12,83 @@
     body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
-    Your tattoo appointment with {{ $artistName }} is confirmed. Please keep your completion code safe and share it with your artist after your session.
+    You're booked with {{ $artistName }}. Here are your booking and your receipt.
   </div>
 
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf7ff;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
     <tr>
       <td align="center" style="padding:40px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
           <tr>
-            <td align="center" style="padding:0 0 32px 0;font-size:28px;font-weight:800;color:#310f7a;letter-spacing:-0.5px;">
-              inkjin
-            </td>
-          </tr>
-
-          <tr>
-            <td style="background-color:#ffffff;border-radius:16px;padding:48px 40px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td align="center" style="padding:0 0 8px 0;font-size:48px;font-weight:800;color:#F8F1FB;letter-spacing:-2px;line-height:1;">
-                    ij
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="padding:0 0 20px 0;font-size:40px;">✅</td>
-                </tr>
-                <tr>
-                  <td align="center" style="font-size:24px;font-weight:700;color:#1c1b21;line-height:1.3;padding:0 0 12px 0;">
-                    Booking Confirmed!
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 28px 0;text-align:center;">
-                    Hi {{ $userName }}, your tattoo appointment is confirmed. Here are your booking details.
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
                   </td>
                 </tr>
 
-                @if(!empty($seeBookingUrl))
                 <tr>
-                  <td align="center" style="padding:0 0 12px 0;">
-                    <a href="{{ $seeBookingUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(135deg,#310f7a 0%,#482d91 100%);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:12px;line-height:1;">See Booking</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 28px 0;font-size:12px;color:#7a7583;line-height:1.5;text-align:center;">
-                    This link signs you in to Inkjin and opens your booking. It expires in 14 days for your security.
-                  </td>
-                </tr>
-                @endif
-
-                <tr>
-                  <td style="padding:0 0 24px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#F8F1FB;border-radius:12px;">
+                  <td style="padding:0 0 20px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
                       <tr>
-                        <td style="padding:24px;">
+                        <td style="padding:12px;width:44px;vertical-align:middle;">
+                          @if(!empty($artistAvatarUrl))
+                            <img src="{{ $artistAvatarUrl }}" alt="{{ $artistName }}" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:50%;object-fit:cover;">
+                          @else
+                            <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
+                              {{ $artistInitials }}
+                            </div>
+                          @endif
+                        </td>
+                        <td style="padding:12px 12px 12px 0;vertical-align:middle;">
+                          <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $artistName }}</div>
+                          @if(!empty($artistMeta))
+                            <div style="font-size:13px;color:#6F6874;margin-top:2px;">{{ $artistMeta }}</div>
+                          @endif
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    Hi {{ $userName }},
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
+                    You’re booked. Here are your booking and your receipt.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:0 0 18px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                      <tr>
+                        <td style="padding:4px 14px;">
                           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                            <tr><td style="font-size:14px;font-weight:700;color:#310f7a;text-transform:uppercase;letter-spacing:.5px;padding:0 0 16px 0;">Booking Details</td></tr>
-                            <tr><td style="padding:0 0 10px 0;"><strong>Artist:</strong> {{ $artistName }}</td></tr>
-                            <tr><td style="padding:0 0 10px 0;"><strong>Tattoo:</strong> {{ $tattooTitle }}</td></tr>
-                            <tr><td style="padding:0 0 10px 0;"><strong>Date:</strong> {{ $bookingDate }}</td></tr>
-                            <tr><td style="padding:0 0 10px 0;"><strong>Time:</strong> {{ $bookingTime }}</td></tr>
-                            <tr><td style="padding:0 0 10px 0;"><strong>Est. Duration:</strong> {{ $duration }} hour(s)</td></tr>
-                            <tr><td style="padding:0 0 10px 0;"><strong>Amount Paid:</strong> {{ $currencySymbol }}{{ number_format($totalAmount, 2) }}</td></tr>
-                            <tr><td><strong>Booking ID:</strong> #{{ $bookingId }}</td></tr>
+                            <tr>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Booking</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $bookingReference }}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Design</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $tattooTitle }}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding:9px 0;@if(!empty($whereLabel)) border-bottom:1px solid #F3EEF4;@endif font-size:14px;color:#6F6874;">When</td>
+                              <td style="padding:9px 0;@if(!empty($whereLabel)) border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $whenLabel }}</td>
+                            </tr>
+                            @if(!empty($whereLabel))
+                              <tr>
+                                <td style="padding:9px 0;font-size:14px;color:#6F6874;">Where</td>
+                                <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $whereLabel }}</td>
+                              </tr>
+                            @endif
                           </table>
                         </td>
                       </tr>
@@ -83,52 +96,76 @@
                   </td>
                 </tr>
 
-                @if(!empty($completionCode))
                 <tr>
-                  <td style="padding:0 0 24px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fff8e8;border:1px solid #f2dba8;border-radius:12px;">
+                  <td style="font-size:15px;font-weight:800;color:#1A1A1A;padding:0 0 10px 0;">Receipt</td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 18px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
                       <tr>
-                        <td style="padding:20px 24px;text-align:center;">
-                          <p style="margin:0 0 8px 0;font-size:13px;font-weight:700;color:#7a4a00;text-transform:uppercase;letter-spacing:.5px;">Completion Code</p>
-                          <p style="margin:0;font-size:30px;letter-spacing:4px;font-weight:800;color:#1c1b21;">{{ $completionCode }}</p>
-                          <p style="margin:10px 0 0 0;font-size:13px;line-height:1.5;color:#6b4f1d;">
-                            Share this code with your artist only when your tattoo session is finished.
-                          </p>
+                        <td style="padding:4px 14px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Deposit</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $currencySymbol }}{{ number_format($depositAmount, 2) }}</td>
+                            </tr>
+                            @if(($bookingFeeAmount ?? 0) > 0.009)
+                              <tr>
+                                <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Booking fee</td>
+                                <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $currencySymbol }}{{ number_format($bookingFeeAmount, 2) }}</td>
+                              </tr>
+                            @endif
+                            <tr>
+                              <td style="padding:9px 0;@if(($balanceAmount ?? 0) > 0.009) border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:800;color:#1A1A1A;">{{ $paidNowLabel }}</td>
+                              <td style="padding:9px 0;@if(($balanceAmount ?? 0) > 0.009) border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:800;color:#1A1A1A;text-align:right;">{{ $currencySymbol }}{{ number_format($paidNowAmount, 2) }}</td>
+                            </tr>
+                            @if(($balanceAmount ?? 0) > 0.009)
+                              <tr>
+                                <td style="padding:9px 0;font-size:14px;color:#6F6874;">Balance at the session (estimate)</td>
+                                <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $currencySymbol }}{{ number_format($balanceAmount, 2) }}</td>
+                              </tr>
+                            @endif
+                          </table>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
-                @endif
 
-                @if(!empty($meetLink))
                 <tr>
-                  <td style="padding:0 0 24px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef8ff;border-radius:12px;">
-                      <tr>
-                        <td style="padding:20px 24px;">
-                          <p style="margin:0 0 8px 0;font-size:16px;font-weight:700;color:#0f4c81;">Video Meeting</p>
-                          <p style="margin:0 0 12px 0;font-size:14px;color:#1b3e5c;">Meeting time: {{ $meetingTime }}</p>
-                          <a href="{{ $meetLink }}" target="_blank" style="display:inline-block;background-color:#0f6bbf;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:10px 16px;border-radius:8px;">Join Google Meet</a>
-                        </td>
-                      </tr>
-                    </table>
+                  <td style="font-size:15px;font-weight:800;color:#1A1A1A;padding:0 0 8px 0;">Before your appointment</td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 20px 0;font-size:14px;color:#3d3942;line-height:1.55;">
+                    <ul style="margin:0;padding-left:20px;">
+                      <li style="margin:3px 0;">We’ll send the consent form 48 hours before. It takes about 3 minutes.</li>
+                      <li style="margin:3px 0;">Bring a valid ID.</li>
+                      @if(!empty($cancelUntilLabel))
+                        <li style="margin:3px 0;">Free cancellation until {{ $cancelUntilLabel }}. After that the deposit isn’t refunded.</li>
+                      @else
+                        <li style="margin:3px 0;">Check your booking for the free cancellation deadline. After that the deposit isn’t refunded.</li>
+                      @endif
+                    </ul>
                   </td>
                 </tr>
+
+                @if(!empty($seeBookingUrl))
+                  <tr>
+                    <td style="padding:0 0 28px 0;">
+                      <a href="{{ $seeBookingUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                        View your booking
+                      </a>
+                    </td>
+                  </tr>
                 @endif
 
                 <tr>
-                  <td style="padding:0 0 6px 0;font-size:14px;color:#494552;line-height:1.6;text-align:center;">
-                    Please arrive on time. For rescheduling, contact your artist in advance.
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
+                    You got this email because you booked with {{ $artistName }} through Bookpay. Replies to this email aren’t read: message {{ $artistFirstName }} in Bookpay instead.<br>
+                    Bookpay by Inkjin
                   </td>
                 </tr>
               </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td align="center" style="padding:24px 0 0 0;font-size:12px;color:#494552;line-height:1.5;">
-              © {{ date('Y') }} Inkjin · All rights reserved
             </td>
           </tr>
         </table>
@@ -137,4 +174,3 @@
   </table>
 </body>
 </html>
-

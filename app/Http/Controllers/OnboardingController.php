@@ -9,9 +9,11 @@ use App\Models\UserStudio;
 use App\Models\UserPayout;
 use App\Models\Studio;
 use App\Models\Style;
+use App\Mail\ArtistSwitchedToDirectStudioMail;
 use App\Mail\ArtistWelcomeMail;
 use App\Mail\StudioPayoutDeclinedArtistMail;
 use App\Mail\StudioPayoutInfoRequestMail;
+use App\Services\ArtistStudioJoinRequestNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -761,10 +763,9 @@ class OnboardingController extends Controller
                 && $this->studioStripeNeedsAction($userDetail, $studioStripeStatus, $stripeConnect),
             'studioPayoutConnected' => $studioPayoutConnected,
             'studioPayoutCommitted' => $studioPayoutCommitted,
-            'payoutOptionLocked' => (
-                ($this->resolvedPaymentType($userDetail) === 'artist_account' && $artistStripeConnected)
-                || $studioPayoutCommitted
-            ),
+            // Stripe alone must not lock Studio out — artist can still invite a studio.
+            // Lock only after the studio invite is saved/sent.
+            'payoutOptionLocked' => $studioPayoutCommitted,
         ];
     }
 
@@ -2366,9 +2367,14 @@ class OnboardingController extends Controller
                         return redirect()->back()->with('error', $msg);
                     }
 
+                    $previousArtistPercent = (int) $studioLink->revenue_split;
+                    $studioLink->loadMissing(['studio', 'user.userDetail']);
+
                     $studioLink->payout = false;
                     $studioLink->connection_type = UserStudio::CONNECTION_NOT_CONNECTED;
                     $studioLink->save();
+
+                    $this->notifyStudioArtistSwitchedToDirect($studioLink, $previousArtistPercent);
 
                     $activePayout = $userDetail->activePayout();
                     $artistStripeAccountId = $activePayout?->stripe_account_id;
@@ -2421,9 +2427,27 @@ class OnboardingController extends Controller
                     return redirect()->back()->with('error', $msg);
                 }
 
+                $splitLinks = UserStudio::tableReady()
+                    ? UserStudio::query()
+                        ->where('user_id', $user->id)
+                        ->where('status', UserStudio::STATUS_ACTIVE)
+                        ->where('payout', true)
+                        ->whereNotNull('revenue_split')
+                        ->with(['studio', 'user.userDetail'])
+                        ->get()
+                    : collect();
+
                 $activePayout = $userDetail->activePayout();
                 $artistStripeAccountId = $activePayout?->stripe_account_id;
                 UserStudio::clearStudioPayout((int) $user->id);
+
+                foreach ($splitLinks as $splitLink) {
+                    $this->notifyStudioArtistSwitchedToDirect(
+                        $splitLink,
+                        (int) $splitLink->revenue_split,
+                    );
+                }
+
                 $userDetail->fill($this->onlyExistingUserDetailColumns($userDetail, [
                     'studio_id' => null,
                     'payment_type' => 'artist_account',
@@ -3273,6 +3297,16 @@ class OnboardingController extends Controller
         $paymentStatus = $this->studioPayoutInviteDecisionStatus($userDetail, $studio);
         $pendingJoin = $this->pendingJoinForPayoutInvite($userDetail);
 
+        // After Stripe (or when already done), send logged-in studio users to the dashboard.
+        if (
+            $request->boolean('completed')
+            && $paymentStatus === 'approved'
+            && Auth::check()
+            && (int) Auth::id() === (int) ($studio->user_id ?? 0)
+        ) {
+            return redirect()->route('studio.dashboard');
+        }
+
         if ($studioAlreadyConnected && $paymentStatus === 'approved' && $stripeConnect->isConfigured()) {
             try {
                 app(StripeRequirementSyncService::class)->syncStudio($studio);
@@ -3702,11 +3736,7 @@ class OnboardingController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Stripe payout setup completed successfully.',
-                'redirect' => URL::temporarySignedRoute(
-                    'studio.payout-info.show',
-                    now()->addDays(14),
-                    ['userDetail' => $userDetail->id, 'completed' => 1]
-                ),
+                'redirect' => route('studio.dashboard'),
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -3749,11 +3779,7 @@ class OnboardingController extends Controller
             return response()->json([
                 'success' => true,
                 'csrf_token' => csrf_token(),
-                'redirect' => URL::temporarySignedRoute(
-                    'studio.payout-info.show',
-                    now()->addDays(14),
-                    ['userDetail' => $userDetail->id, 'completed' => 1]
-                ),
+                'redirect' => route('studio.dashboard'),
             ]);
         }
 
@@ -3801,11 +3827,7 @@ class OnboardingController extends Controller
             return response()->json([
                 'success' => true,
                 'csrf_token' => csrf_token(),
-                'redirect' => URL::temporarySignedRoute(
-                    'studio.payout-info.show',
-                    now()->addDays(14),
-                    ['userDetail' => $userDetail->id, 'completed' => 1]
-                ),
+                'redirect' => route('studio.dashboard'),
             ]);
         }
 
@@ -4475,6 +4497,44 @@ class OnboardingController extends Controller
         $userDetail->fill($this->onlyExistingUserDetailColumns($userDetail, $legacy));
     }
 
+    /**
+     * S06 — studio notification when an artist leaves the revenue split for direct payment.
+     */
+    private function notifyStudioArtistSwitchedToDirect(UserStudio $link, int $artistPercent): void
+    {
+        $link->loadMissing(['studio', 'user.userDetail']);
+        $studio = $link->studio;
+        if (! $studio instanceof Studio) {
+            return;
+        }
+
+        $email = app(ArtistStudioJoinRequestNotifier::class)->resolveStudioEmail($studio);
+        if ($email === null) {
+            Log::warning('Artist switched-to-direct email skipped — studio has no email', [
+                'studio_id' => $studio->id,
+                'user_studio_id' => $link->id,
+                'artist_id' => $link->user_id,
+            ]);
+
+            return;
+        }
+
+        try {
+            Mail::to($email)->send(new ArtistSwitchedToDirectStudioMail(
+                userStudio: $link,
+                artistPercent: $artistPercent,
+                effectiveFrom: now(),
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send artist switched-to-direct studio email', [
+                'studio_id' => $studio->id,
+                'user_studio_id' => $link->id,
+                'artist_id' => $link->user_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     private function sendStudioPayoutDeclinedArtistEmail(
         User $artistUser,
         string $studioName,
@@ -4509,7 +4569,11 @@ class OnboardingController extends Controller
     ): void {
         $studio->refresh();
 
-        $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
+        $userDetail->loadMissing('user');
+        $artistName = trim((string) $userDetail->publicDisplayName());
+        if ($artistName === '' || $artistName === 'Artist') {
+            $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
+        }
         if ($artistName === '') {
             $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';
         }
@@ -4557,6 +4621,7 @@ class OnboardingController extends Controller
                     $userDetail->activePayout()?->studio_relationship_type
                         ?? $userDetail->studio_relationship_type
                 ),
+                $userDetail,
             ));
         } catch (\Throwable $e) {
             Log::error('Failed to send studio payout info request email', [

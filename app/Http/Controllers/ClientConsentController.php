@@ -97,8 +97,8 @@ class ClientConsentController extends Controller
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
             'date_of_birth' => ['required', 'date', 'before:today'],
-            'phone' => ['nullable', 'string', 'max:64', 'regex:/^\+[1-9]\d{7,14}$/'],
-            'emergency_contact' => ['nullable', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:64', 'regex:/^\+[1-9]\d{7,14}$/'],
+            'emergency_contact' => ['required', 'string', 'max:255'],
             'guardian_name' => ['nullable', 'string', 'max:255'],
             'guardian_relationship' => ['nullable', 'string', 'max:255'],
             'guardian_id_reference' => ['nullable', 'string', 'max:255'],
@@ -124,6 +124,23 @@ class ClientConsentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Please accept all required consent items.',
+            ], 422);
+        }
+
+        $consent->loadMissing(['booking', 'artist.consentFormSetting']);
+        $settings = $consent->artist?->consentFormSetting;
+        $allowYounger = (bool) ($settings?->allow_younger);
+        $minAge = $allowYounger && $settings?->age_allow !== null
+            ? (int) $settings->age_allow
+            : 18;
+        $dob = \Carbon\Carbon::parse($validated['date_of_birth'])->startOfDay();
+        $asOf = $consent->booking?->sessionStartLocal()?->copy()->startOfDay()
+            ?? now()->startOfDay();
+        $age = $dob->diff($asOf)->y;
+        if ($age < $minAge) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not meet the minimum age for this studio.',
             ], 422);
         }
 

@@ -34,7 +34,7 @@ class ArtistDesignsController extends Controller
 
     private function sessionDurations(): array
     {
-        return ['30min', '1h', '2h', '3h', '4h', '5h', '6h', '7h', '8h', 'half-day', 'full-day'];
+        return \App\Support\DesignSessionDuration::TOKENS;
     }
 
     /**

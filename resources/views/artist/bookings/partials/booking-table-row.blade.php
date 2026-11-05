@@ -449,13 +449,13 @@
             data-consent-url="{{ e($consentUrl ?? '') }}"
             data-resend-url="{{ e($resendUrl) }}"></button>
         @endif
-        @if($booking->status === 'confirmed')
+        @if($booking->status === 'confirmed' && ! $showBalanceDue)
           <button type="button"
             class="js-artist-mark-complete"
-            data-menu-icon="healing"
-            data-menu-label="Send aftercare"
+            data-menu-icon="task_alt"
+            data-menu-label="Complete booking"
             data-booking-id="{{ $booking->id }}"
-            data-has-balance="{{ $showBalanceDue ? '1' : '0' }}"
+            data-has-balance="0"
             data-client-name="{{ e($clientName) }}"
             data-service="{{ e($serviceTitle) }}"
             data-mark-completed-url="{{ route('api.bookings.mark-completed', $booking->id) }}"></button>

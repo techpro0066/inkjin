@@ -25,7 +25,7 @@
     $studioPayoutCommitted => 'not_connected',
     default => 'email_not_sent',
   };
-  $payoutOptionLocked = (bool) ($payoutOptionLocked ?? ($artistStripeConnected || $studioPayoutCommitted));
+  $payoutOptionLocked = (bool) ($payoutOptionLocked ?? $studioPayoutCommitted);
   $studioDraftWithStripe = $artistStripeConnected
     && $pt === 'studio_account'
     && ! $studioPayoutCommitted;
@@ -123,7 +123,7 @@
 
     <div id="payoutOptionLockBanner" class="lockbar" style="margin-bottom:14px;{{ $payoutOptionLocked ? '' : 'display:none' }}">
       <span class="ms" style="font-size:17px">info</span>
-      Your payout option is locked after setup is saved. Disconnect your current setup below before switching between Artist and Studio.
+      Your studio invite is saved. Disconnect studio below if you want to switch back to Artist direct.
     </div>
 
     <div class="card" style="margin-bottom:14px">
@@ -242,7 +242,7 @@
 
             <div id="studioPayoutDisconnectWrap" class="{{ $studioPayoutCommitted ? '' : 'hidden' }}" style="padding-top:16px;margin-top:14px;border-top:1px solid #E4D6F5">
               <button type="button" id="disconnectStudioBtn" class="btn ghost" style="color:var(--red);border-color:#F5C2C2">Disconnect studio payout</button>
-              <p class="help">Cancel this studio request to invite again. Artist payout stays locked until you disconnect.</p>
+              <p class="help">Cancel this studio request to invite again, or switch to Artist direct.</p>
             </div>
 
             <p id="studio_email_error" class="field-err hidden" role="alert"></p>
@@ -356,7 +356,7 @@
 <div id="disconnectStudioModal" class="modal-ov" role="dialog" aria-modal="true">
   <div class="modal-box">
     <h5 style="font-size:17px;font-weight:800;margin-bottom:8px">Disconnect studio payout?</h5>
-    <p class="muted" style="font-size:13.5px;margin-bottom:18px">This cancels the request to your studio. You stay on Studio payout and can invite again. Switching to Artist is only available after you disconnect.</p>
+    <p class="muted" style="font-size:13.5px;margin-bottom:18px">This cancels the request to your studio. You can invite again or switch to Artist direct.</p>
     <div class="row" style="justify-content:flex-end;gap:10px">
       <button type="button" id="cancelDisconnectStudio" class="btn ghost">Cancel</button>
       <button type="button" id="confirmDisconnectStudioBtn" class="btn" style="background:var(--red)">Disconnect</button>
@@ -475,7 +475,7 @@ async function maybeFinalizeOnboardingStripe() {
     return;
   }
 
-  window.lockPayoutOptions('artist');
+  // Keep Studio selectable after Stripe connects — invite can still be saved.
   await tryAutoFinishOnboarding();
 }
 
@@ -721,7 +721,7 @@ function alertClass(type) {
 
 function selectPayout(type) {
   if (window.payoutOptionLocked && type !== window.activePayoutKey) {
-    showPaymentAlert('Disconnect your current payout setup below before switching between Artist and Studio.', 'warning');
+    showPaymentAlert('Disconnect studio below before switching back to Artist direct.', 'warning');
     $('input[name="po"][value="' + window.activePayoutKey + '"]').prop('checked', true);
     return;
   }
@@ -1067,9 +1067,7 @@ $(function () {
         if (data.success && data.redirect) {
           const paymentType = $('#payment_type').val();
           if (typeof window.lockPayoutOptions === 'function') {
-            if (paymentType === 'artist_account') {
-              window.lockPayoutOptions('artist');
-            } else if (paymentType === 'studio_account' || data.studio_payout_committed) {
+            if (paymentType === 'studio_account' || data.studio_payout_committed) {
               window.lockPayoutOptions('studio');
               window.studioPayoutCommitted = true;
             }

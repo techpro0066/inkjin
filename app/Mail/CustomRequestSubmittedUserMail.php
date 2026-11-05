@@ -2,6 +2,9 @@
 
 namespace App\Mail;
 
+use App\Models\CustomRequest;
+use App\Models\UserDetail;
+use App\Support\RequestReceivedEmailPresenter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -13,24 +16,31 @@ class CustomRequestSubmittedUserMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
+        public CustomRequest $customRequest,
+        public UserDetail $userDetail,
         public string $accessUrl,
-        public string $recipientName,
-        public string $artistName,
-        public string $requestReference,
         public bool $isNewUser = false,
     ) {}
 
     public function envelope(): Envelope
     {
-        $subject = $this->isNewUser
-            ? 'Welcome to Inkjin — your custom request was submitted'
-            : 'Your custom tattoo request was submitted — ' . $this->artistName;
+        $artistName = trim($this->userDetail->publicDisplayName()) ?: 'your artist';
 
-        return new Envelope(subject: $subject);
+        return new Envelope(
+            subject: $artistName.' got your request',
+        );
     }
 
     public function content(): Content
     {
-        return new Content(view: 'emails.custom-request-submitted-user');
+        return new Content(
+            view: 'emails.request-received-user',
+            with: RequestReceivedEmailPresenter::forCustomRequest(
+                $this->customRequest,
+                $this->userDetail,
+                $this->accessUrl,
+                $this->customRequest->user,
+            ),
+        );
     }
 }

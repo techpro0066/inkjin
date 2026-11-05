@@ -30,6 +30,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
   <style>
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;background:#FFF6FF;color:#1A1A1A;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:14.5px;display:flex;flex-direction:column;align-items:center;padding:44px 16px 40px}
@@ -37,7 +38,8 @@
     .logo{text-align:center;margin-bottom:28px;text-decoration:none;color:inherit}
     .logo b{display:block;font-family:'Space Grotesk',system-ui,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.055em;line-height:1}
     .logo span{display:block;font-size:8.5px;letter-spacing:1.2px;margin-top:6px;line-height:1.3;color:#6F6874}
-    .card{background:#fff;border:1px solid #F0E4F5;border-radius:16px;width:100%;max-width:480px;padding:34px 34px 30px;box-shadow:0 12px 40px rgba(62,0,124,.05)}
+    .card{background:#fff;border:1px solid #F0E4F5;border-radius:16px;width:100%;max-width:480px;padding:34px 34px 30px;box-shadow:0 12px 40px rgba(62,0,124,.05);overflow:visible;min-width:0}
+    .card:has(#studioStripeStep:not(.hidden)){max-width:640px;padding:28px 18px 24px}
     h1{font-size:26px;font-weight:800;letter-spacing:-.6px;text-align:center;margin:0 0 8px}
     .sub{text-align:center;color:#3F3A43;line-height:1.5;margin:0 0 24px}
     .fl{display:block;font-size:13px;font-weight:700;margin:16px 0 7px}
@@ -73,13 +75,61 @@
     .link{background:none;border:0;font:inherit;font-weight:700;color:#1A1A1A;cursor:pointer;padding:0;text-decoration:underline}.link:disabled{color:#9A929E;cursor:default;text-decoration:none}
     .small{font-size:13px;color:#6F6874;text-align:center;line-height:1.5}
     .hidden{display:none!important}
-    #studioStripeConnectMount{min-height:420px;width:100%;max-width:100%;overflow-x:auto}
+    select.js-select2{width:100%}
+    .in:has(> select.js-select2){
+      display:block;border:0;background:transparent;box-shadow:none;padding:0
+    }
+    .in:has(> select.js-select2):focus-within{border:0;box-shadow:none}
+    .select2-container{width:100%!important;z-index:1}
+    .select2-container--open{z-index:40!important}
+    .select2-container--default .select2-selection--single{
+      min-height:46px;padding:6px 12px;border-radius:10px;border:1px solid #DCD2E0!important;background:#fff!important
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered{
+      line-height:32px;padding-left:2px;color:#1A1A1A;font-size:14.5px;font-family:inherit
+    }
+    .select2-container--default .select2-selection--single .select2-selection__placeholder{color:#9A929E}
+    .select2-container--default .select2-selection--single .select2-selection__arrow{height:44px;right:8px}
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single{
+      border-color:#3E007C!important;box-shadow:0 0 0 3px #EEE3FA
+    }
+    .select2-container--default .select2-selection--single.s2-err{
+      border-color:#C62828!important;box-shadow:0 0 0 3px #FDECEC
+    }
+    .select2-dropdown{border-radius:10px;border-color:#DCD2E0;overflow:hidden;font-family:inherit;font-size:14px}
+    .select2-container--default .select2-results__option--highlighted[aria-selected]{background-color:#3E007C!important}
+    .select2-container--default .select2-search--dropdown .select2-search__field{
+      border-radius:8px;border-color:#DCD2E0;padding:8px 10px;font:inherit
+    }
+    #studioStripeStep{width:100%;max-width:100%;min-width:0;overflow:visible}
+    .stripe-connect-shell{
+      width:100%;max-width:100%;min-width:0;margin:8px 0 0;padding:0;
+      overflow:visible;-webkit-overflow-scrolling:touch
+    }
+    #studioStripeConnectMount{
+      min-height:420px;width:100%;max-width:100%;min-width:0;
+      background:#fff;overflow:visible;box-sizing:border-box
+    }
+    #studioStripeConnectMount > *{
+      display:block;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box
+    }
+    #studioStripeConnectMount iframe{
+      width:100%!important;max-width:100%!important;min-width:0!important;border:0
+    }
     footer{margin-top:auto;padding-top:40px;text-align:center;font-size:13px}
     footer nav{display:flex;gap:28px;justify-content:center;flex-wrap:wrap}
     footer a{color:#1A1A1A;text-decoration:none}
     footer a:hover{text-decoration:underline}
     footer small{display:block;color:#6F6874;margin-top:12px;font-size:12.5px}
-    @media (max-width:480px){.card{padding:26px 20px 22px}h1{font-size:23px}.two{flex-direction:column}.split b{font-size:18px}body{padding-top:32px}}
+    @media (max-width:640px){
+      body:has(#studioStripeStep:not(.hidden)){padding-left:8px;padding-right:8px}
+      .card:has(#studioStripeStep:not(.hidden)){max-width:100%;padding:22px 10px 20px}
+    }
+    @media (max-width:480px){
+      .card{padding:26px 20px 22px}
+      h1{font-size:23px}.two{flex-direction:column}.split b{font-size:18px}body{padding-top:32px}
+    }
   </style>
 </head>
 <body>
@@ -220,34 +270,34 @@
 
           <label class="fl" for="studio_business_type">Account type</label>
           <div class="in">
-            <select id="studio_business_type" name="business_type">
-            <option value="" disabled selected>Select type</option>
-            <option value="individual">Individual</option>
-            <option value="company">Business</option>
-          </select>
-        </div>
+            <select id="studio_business_type" name="business_type" class="js-select2" data-placeholder="Select type" data-searchable="false">
+              <option value=""></option>
+              <option value="individual">Individual</option>
+              <option value="company">Business</option>
+            </select>
+          </div>
           <p id="studio_business_type_error" class="err"></p>
           <p class="hint"><b>Individual</b> — you work under your own name. <b>Business</b> — registered studio or company.</p>
 
           <label class="fl" for="studio_country">Country</label>
           <div class="in">
-            <select id="studio_country" name="country">
-            <option value="" disabled selected>Select country</option>
-            @foreach ($stripeSupportedCountries as $country)
-              <option value="{{ $country['code'] }}">{{ $country['name'] }}</option>
-            @endforeach
-          </select>
-        </div>
+            <select id="studio_country" name="country" class="js-select2" data-placeholder="Search and select country" data-searchable="true">
+              <option value=""></option>
+              @foreach ($stripeSupportedCountries as $country)
+                <option value="{{ $country['code'] }}">{{ $country['name'] }}</option>
+              @endforeach
+            </select>
+          </div>
           <p id="studio_country_error" class="err"></p>
 
           <label class="fl" for="studio_industry">What best describes you?</label>
           <div class="in">
-            <select id="studio_industry" name="industry">
-            <option value="" disabled selected>Select option</option>
-            <option value="tattoo_studio">Tattoo studio — We do tattoos and body art</option>
+            <select id="studio_industry" name="industry" class="js-select2" data-placeholder="Select option" data-searchable="false">
+              <option value=""></option>
+              <option value="tattoo_studio">Tattoo studio — We do tattoos and body art</option>
               <option value="tattoo_beauty">Tattoo &amp; beauty studio — Also beauty, piercing, or barber</option>
-            <option value="other">Other — Something else</option>
-          </select>
+              <option value="other">Other — Something else</option>
+            </select>
           </div>
           <p id="studio_industry_error" class="err"></p>
 
@@ -259,7 +309,9 @@
         <div id="studioStripeStep" class="hidden">
           <h1 style="font-size:22px;text-align:left">Complete your Stripe payout setup</h1>
           <p class="sub" style="text-align:left" id="studioStripeStepDescription">Add your details, verify your identity, and connect your bank account below.</p>
-          <div id="studioStripeConnectMount"></div>
+          <div class="stripe-connect-shell">
+            <div id="studioStripeConnectMount"></div>
+          </div>
           <p id="studio_stripe_connect_error" class="err"></p>
           <p class="hint" id="studioStripeConnectHint">Setup finishes automatically when all required steps are complete.</p>
           <button type="button" class="btn ghost" id="studioStripeStepBack">Back</button>
@@ -304,9 +356,40 @@
     <small>© {{ date('Y') }} Inkjin. All rights reserved.</small>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
   @if ($isPending)
   <script>
   (function () {
+    function initStudioInviteSelect2() {
+      if (!window.jQuery || !jQuery.fn.select2) return;
+      jQuery('#studio_business_type, #studio_country, #studio_industry').each(function () {
+        var $el = jQuery(this);
+        if ($el.hasClass('select2-hidden-accessible')) {
+          $el.trigger('change.select2');
+          return;
+        }
+        var searchable = $el.data('searchable');
+        var cfg = {
+          width: '100%',
+          placeholder: $el.data('placeholder') || 'Select',
+          allowClear: false,
+          dropdownParent: $el.closest('.card, main, body')
+        };
+        if (searchable === false || searchable === 0 || searchable === 'false') {
+          cfg.minimumResultsForSearch = Infinity;
+        }
+        $el.select2(cfg);
+        $el.on('change', function () {
+          $el.next('.select2-container').find('.select2-selection').removeClass('s2-err');
+          var err = document.getElementById('studio_' + this.name + '_error');
+          if (err) { err.classList.remove('on'); err.textContent = ''; }
+        });
+      });
+    }
+    window.initStudioInviteSelect2 = initStudioInviteSelect2;
+
     const acceptUrl = @json($acceptUrl);
     const declineUrl = @json($declineUrl);
     const studioAlreadyConnected = @json((bool) $studioAlreadyConnected);
@@ -378,6 +461,7 @@
       document.getElementById('studioSetupStep')?.classList.remove('hidden');
       document.getElementById('studioStripeStep')?.classList.add('hidden');
       document.getElementById('studioConnectPanel')?.classList.remove('hidden');
+      if (typeof window.initStudioInviteSelect2 === 'function') window.initStudioInviteSelect2();
       document.getElementById('studioConnectPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -592,11 +676,23 @@ function clearStudioSetupErrors() {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('on'); el.textContent = ''; }
   });
+  ['studio_business_type', 'studio_country', 'studio_industry'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.closest('.in')?.classList.remove('bad');
+    if (window.jQuery) {
+      jQuery(el).next('.select2-container').find('.select2-selection').removeClass('s2-err');
+    }
+  });
 }
 
 function showStudioSetupError(field, message) {
   const el = document.getElementById(`studio_${field}_error`);
   if (el) { el.textContent = message; el.classList.add('on'); }
+  const select = document.getElementById(`studio_${field}`);
+  if (select && window.jQuery) {
+    jQuery(select).next('.select2-container').find('.select2-selection').addClass('s2-err');
+  }
 }
 
 function showStripeError(message) {
@@ -724,6 +820,7 @@ async function mountStudioStripeOnboarding() {
     }
   });
     container.innerHTML = '';
+    accountOnboarding.style.cssText = 'display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box';
     container.appendChild(accountOnboarding);
     onboardingMounted = true;
 }

@@ -1457,7 +1457,11 @@
       var id = activeSlotsRequestId;
       if (!id) return;
       var btn = document.getElementById('offerSlotsSubmitBtn');
-      if (btn) btn.disabled = true;
+      var btnOriginalHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="ms">hourglass_empty</span>Sending…';
+      }
       try {
         var payload = {
           artist_session_slots: collectSlotsFromPanel('session'),
@@ -1489,8 +1493,10 @@
         showSuccessToast('Changes saved successfully');
       } catch (err) {
         showErrorToast(err.message || 'Something went wrong. Please try again.');
-      } finally {
-        if (btn) btn.disabled = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = btnOriginalHtml || '<span class="ms">send</span>Send times';
+        }
       }
     }
 

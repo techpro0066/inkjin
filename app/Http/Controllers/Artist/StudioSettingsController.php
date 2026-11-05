@@ -453,6 +453,12 @@ class StudioSettingsController extends Controller
             $proposed->revenue_split = (int) $proposed->proposed_revenue_split;
             $proposed->proposed_revenue_split = null;
         }
+        if (Schema::hasColumn($proposed->getTable(), 'split_proposed_by')) {
+            $proposed->split_proposed_by = null;
+        }
+        if (Schema::hasColumn($proposed->getTable(), 'split_proposed_at')) {
+            $proposed->split_proposed_at = null;
+        }
         $proposed->connection_type = UserStudio::CONNECTION_ON_BOOKPAY;
         $proposed->save();
 
@@ -485,6 +491,12 @@ class StudioSettingsController extends Controller
             $proposed->status = UserStudio::STATUS_INACTIVE;
             if (Schema::hasColumn($proposed->getTable(), 'proposed_revenue_split')) {
                 $proposed->proposed_revenue_split = null;
+            }
+            if (Schema::hasColumn($proposed->getTable(), 'split_proposed_by')) {
+                $proposed->split_proposed_by = null;
+            }
+            if (Schema::hasColumn($proposed->getTable(), 'split_proposed_at')) {
+                $proposed->split_proposed_at = null;
             }
             $proposed->payout = false;
             $proposed->save();

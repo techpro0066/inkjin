@@ -1424,11 +1424,7 @@ class InkJinController extends Controller
         if($userDetail->scheduling_type == 'auto'){
 
             $artistTimezone = $userDetail->timezone ?: 'UTC';
-            $tattooDurationMinutes = (int) ($tattoo->session_duration ?? 0) * 60;
-            if ($tattooDurationMinutes <= 0) {
-                preg_match('/(\d+)/', (string) ($tattoo->session_duration ?? ''), $durationMatch);
-                $tattooDurationMinutes = isset($durationMatch[1]) ? ((int) $durationMatch[1] * 60) : 120;
-            }
+            $tattooDurationMinutes = $tattoo->sessionDurationMinutes();
 
             $calendarPayload = app(\App\Services\BookingCalendarAvailabilityService::class)
                 ->calendarPayloadForArtist(
@@ -2078,23 +2074,18 @@ class InkJinController extends Controller
         app(\App\Services\MailcoachSubscriberService::class)
             ->queueSubscribeUser($bookingUser, \App\Services\MailcoachSubscriberService::TAG_USER);
 
-        $isNewUser = !empty($verifiedEntry['is_new_user']);
+        $isNewUser = ! empty($verifiedEntry['is_new_user']);
         $accessUrl = $this->makePostManagedRequestAccessUrl($bookingUser, $bookingRequest);
         $clientEmail = (string) ($bookingUser->email ?? '');
-        $artistName = $userDetail->publicDisplayName() ?: 'Your artist';
-        $recipientName = trim(implode(' ', array_filter([
-            (string) ($bookingUser->first_name ?? ''),
-            (string) ($bookingUser->last_name ?? ''),
-        ])));
 
         if ($clientEmail !== '') {
             try {
+                $bookingRequest->setRelation('user', $bookingUser);
+                $bookingRequest->setRelation('tattoo', $design);
                 Mail::to($clientEmail)->send(new ManagedBookingRequestMail(
+                    $bookingRequest,
+                    $userDetail,
                     $accessUrl,
-                    $recipientName,
-                    $artistName,
-                    (string) ($design->title ?? 'Design'),
-                    $bookingRequest->referenceLabel(),
                     $isNewUser,
                 ));
             } catch (\Throwable $e) {

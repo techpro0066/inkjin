@@ -3,24 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Guest spot open — Bookpay</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{ $artistName }} guest spot — Bookpay</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-    body { margin: 0; padding: 0; width: 100% !important; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  @php
-    $firstName = trim((string) preg_replace('/\s+.*/u', '', $recipientName)) ?: $recipientName;
-    $handleLine = trim($artistHandle);
-    if ($handleLine !== '' && ! str_starts_with($handleLine, '@')) {
-        $handleLine = '@'.$handleLine;
-    }
-    $whoMeta = trim(($handleLine !== '' ? $handleLine.' · ' : '').'Guest spot in '.$city);
-  @endphp
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
-    {{ $artistName }} is guesting in {{ $city }}{{ $dateRangeLabel !== '' ? ', '.$dateRangeLabel : '' }}.
+    {{ $introText }}
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
@@ -35,56 +29,57 @@
                     bookpay
                   </td>
                 </tr>
+
                 <tr>
                   <td style="padding:0 0 20px 0;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
                       <tr>
                         <td style="padding:12px;width:44px;vertical-align:middle;">
-                          <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
-                            {{ $artistInitials }}
-                          </div>
+                          @if(!empty($artistAvatarUrl))
+                            <img src="{{ $artistAvatarUrl }}" alt="{{ $artistName }}" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:50%;object-fit:cover;">
+                          @else
+                            <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
+                              {{ $artistInitials }}
+                            </div>
+                          @endif
                         </td>
                         <td style="padding:12px 12px 12px 0;vertical-align:middle;">
                           <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $artistName }}</div>
-                          @if($whoMeta !== '')
-                            <div style="font-size:13px;color:#6F6874;margin-top:2px;">{{ $whoMeta }}</div>
+                          @if(!empty($artistMeta))
+                            <div style="font-size:13px;color:#6F6874;margin-top:2px;">{{ $artistMeta }}</div>
                           @endif
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
+
                 <tr>
                   <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
-                    Hi {{ $firstName }},
+                    Hi {{ $clientFirstName }},
                   </td>
                 </tr>
                 <tr>
                   <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 10px 0;">
-                    You asked to hear when {{ $artistName }} guests in {{ $city }}.
-                    @if($dateRangeLabel !== '' && $locationLabel !== '')
-                      Books are open for {{ $dateRangeLabel }} at {{ $locationLabel }}.
-                    @elseif($dateRangeLabel !== '')
-                      Books are open for {{ $dateRangeLabel }}.
-                    @elseif($locationLabel !== '')
-                      Books are open at {{ $locationLabel }}.
-                    @else
-                      Books are open for this guest spot.
+                    {{ $introText }}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 8px 0;">
+                    {{ $stayOnListText }}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:16px 0 28px 0;">
+                    @if(!empty($guestSpotUrl))
+                      <a href="{{ $guestSpotUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                        Reserve your spot
+                      </a>
                     @endif
                   </td>
                 </tr>
-                <tr>
-                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 24px 0;">
-                    Spots are limited. If these dates don’t work, you stay on the list for the next {{ $city }} guest spot.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 28px 0;">
-                    <a href="{{ $guestSpotUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
-                      Reserve your spot
-                    </a>
-                  </td>
-                </tr>
+
                 <tr>
                   <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
                     Bookpay by Inkjin

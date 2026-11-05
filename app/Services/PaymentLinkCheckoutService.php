@@ -377,9 +377,12 @@ class PaymentLinkCheckoutService
             $amount = (float) $totals['base_amount'];
             $isFullPayment = $locked->payment_type === 'full';
 
+            $studioId = (int) ($locked->studio_id ?? 0);
+
             $booking = Booking::create([
                 'user_id' => $client->id,
                 'artist_user_id' => $locked->artist_id,
+                'studio_id' => $studioId > 0 ? $studioId : null,
                 'tattoo_id' => null,
                 'booking_type' => 'custom',
                 'custom_tattoo_details' => [
@@ -388,6 +391,7 @@ class PaymentLinkCheckoutService
                     'title' => $locked->title,
                     'reference' => $locked->title,
                     'source' => 'payment_link',
+                    'studio_id' => $studioId > 0 ? $studioId : null,
                     'estimated_price' => $locked->total_price !== null
                         ? (float) $locked->total_price
                         : $amount,

@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Support\AppointmentReminderEmailPresenter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -24,59 +25,28 @@ class AppointmentReminder24hMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Your appointment with '.$this->artistName().' is tomorrow',
-        );
+        return new Envelope(subject: (string) ($this->viewData()['subject'] ?? 'Your session is tomorrow'));
     }
 
     public function content(): Content
     {
-        $local = $this->booking->sessionStartLocal();
-
         return new Content(
-            view: 'emails.appointment-reminder-24h',
-            with: [
-                'artistName' => $this->artistName(),
-                'clientFirst' => trim((string) ($this->client->first_name ?? '')) ?: 'there',
-                'appointmentDate' => $local ? $local->format('l, F j, Y') : '',
-                'appointmentTime' => $local ? $local->format('g:i A') : '',
-                'studioName' => trim((string) ($this->artistDetail?->studio_name ?? '')),
-                'studioAddress' => $this->studioAddress(),
-                'consentUrl' => $this->consentUrl,
-                'showConsentCta' => filled($this->consentUrl),
-            ],
+            view: 'emails.appointment-reminder',
+            with: $this->viewData(),
         );
     }
 
-    private function artistName(): string
+    /**
+     * @return array<string, mixed>
+     */
+    private function viewData(): array
     {
-        if ($this->artistDetail) {
-            $name = trim((string) $this->artistDetail->publicDisplayName());
-            if ($name !== '') {
-                return $name;
-            }
-        }
-
-        return 'your artist';
-    }
-
-    private function studioAddress(): string
-    {
-        if (! $this->artistDetail) {
-            return '';
-        }
-
-        $street = trim(trim((string) ($this->artistDetail->street_number ?? '')).' '.trim((string) ($this->artistDetail->street_name ?? '')));
-        if ($street === '') {
-            $street = trim((string) ($this->artistDetail->studio_address ?? ''));
-        }
-
-        $cityLine = implode(', ', array_values(array_filter([
-            trim((string) ($this->artistDetail->city ?? '')),
-            trim((string) ($this->artistDetail->postal_code ?? '')),
-            trim((string) ($this->artistDetail->country ?? '')),
-        ], fn (string $part) => $part !== '')));
-
-        return implode(', ', array_values(array_filter([$street, $cityLine], fn (string $part) => $part !== '')));
+        return AppointmentReminderEmailPresenter::forBooking(
+            $this->booking,
+            $this->client,
+            $this->artistDetail,
+            '24h',
+            $this->consentUrl,
+        );
     }
 }

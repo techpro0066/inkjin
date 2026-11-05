@@ -181,6 +181,7 @@ class RequestsController extends Controller
 
         $paymentLinksCount = PaymentLink::query()
             ->where('artist_id', $artistId)
+            ->whereNull('studio_id')
             ->count()
             + BalanceCollection::query()
                 ->where('artist_user_id', $artistId)

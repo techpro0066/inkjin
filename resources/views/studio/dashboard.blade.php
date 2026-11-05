@@ -2,6 +2,10 @@
 
 @section('title', 'Home')
 
+@push('styles')
+@include('studio.bookings.partials.payment-link-modal-assets')
+@endpush
+
 @section('content')
   <div class="head">
     <div>
@@ -14,7 +18,7 @@
         @endif
       </div>
     </div>
-    <button type="button" class="btn ghost" data-locked="New booking"><span class="ms">add</span>New booking</button>
+    @include('studio.bookings.partials.new-booking-button', ['variant' => 'ghost'])
   </div>
 
   @unless ($profileComplete)
@@ -205,4 +209,24 @@
       </div>
     </div>
   </div>
+
+  @include('studio.bookings.partials.payment-link-modal')
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@include('studio.bookings.partials.payment-link-modal-script')
+<script>
+(function () {
+  // After creating a link from Home, send them to Payment links so the new row is visible.
+  document.querySelectorAll('#m-pl [data-pldone]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (document.getElementById('pl-done') && !document.getElementById('pl-done').hidden) {
+        window.location.href = @json(route('studio.bookings.payment-links'));
+      }
+    });
+  });
+})();
+</script>
+@endpush

@@ -13,12 +13,21 @@
     || $hasOpenBooking
     || request()->filled('artist')
     || request()->filled('client')
+    || request()->filled('studio')
+    || request()->filled('booking')
     || request()->filled('booking_request')
     || request()->filled('custom_request')
   );
-  $bookingsIndexUrl = $role === 'artist'
-    ? route('artist.bookings.index')
-    : route('user.bookings.index');
+  $bookingsIndexUrl = match ($role) {
+    'artist' => route('artist.bookings.index'),
+    'studio' => route('studio.bookings'),
+    default => route('user.bookings.index'),
+  };
+  $inboxPartnerLabel = match ($role) {
+    'artist' => 'clients and studios',
+    'studio' => 'artists',
+    default => 'artists',
+  };
 @endphp
 
 @if ($showChatInbox)
@@ -147,9 +156,9 @@
         <h1>Inbox</h1>
         <div class="sub">
           @if ($showChatInbox)
-            <span id="chatInboxSubtitle">Messages with your {{ $role === 'artist' ? 'clients' : 'artists' }}</span>
+            <span id="chatInboxSubtitle">Messages with your {{ $inboxPartnerLabel }}</span>
           @else
-            Messages with your {{ $role === 'artist' ? 'clients' : 'artists' }}
+            Messages with your {{ $inboxPartnerLabel }}
           @endif
         </div>
       </div>
@@ -161,9 +170,9 @@
       <h2 class="text-3xl font-extrabold text-on-surface tracking-tight">Inbox</h2>
       <p class="text-on-surface-variant mt-1">
         @if ($showChatInbox)
-          <span id="chatInboxSubtitle">Messages with your {{ $role === 'artist' ? 'clients' : 'artists' }}</span>
+          <span id="chatInboxSubtitle">Messages with your {{ $inboxPartnerLabel }}</span>
         @else
-          Messages with your {{ $role === 'artist' ? 'clients' : 'artists' }}
+          Messages with your {{ $inboxPartnerLabel }}
         @endif
       </p>
     </div>
@@ -178,7 +187,13 @@
         <div class="ic" style="margin:0 auto 16px;width:56px;height:56px;border-radius:14px"><span class="ms">forum</span></div>
         <p style="font-weight:700;font-size:16px;margin-bottom:6px">No conversation is there</p>
         <p class="faint" style="font-size:13.5px;max-width:420px;margin:0 auto">
-          You can message {{ $role === 'artist' ? 'a client' : 'your artist' }} when you have an open request or booking.
+          @if ($role === 'studio')
+            You can message an artist when you have an open booking at your studio.
+          @elseif ($role === 'artist')
+            You can message a client or studio when you have an open request or booking.
+          @else
+            You can message your artist when you have an open request or booking.
+          @endif
         </p>
       </div>
     @else
@@ -189,14 +204,13 @@
         data-user-id="{{ Auth::id() }}"
         data-open-artist="{{ request('artist', '') }}"
         data-open-client="{{ request('client', '') }}"
+        data-open-studio="{{ request('studio', '') }}"
         data-open-booking="{{ request('booking', '') }}"
         data-open-booking-request="{{ request('booking_request', '') }}"
         data-open-custom-request="{{ request('custom_request', '') }}"
         data-csrf="{{ csrf_token() }}"
         data-bookings-url="{{ $bookingsIndexUrl }}"
-        data-locked-message="{{ $role === 'artist'
-          ? 'This chat is read-only. You cannot send new messages for this booking.'
-          : 'This chat is read-only. You cannot send new messages for this booking.' }}">
+        data-locked-message="This chat is read-only. You cannot send new messages for this booking.">
 
         <div class="bp-inbox-card chat-layout" id="chatLayout">
         <div class="bp-conv-pane" id="convList">
@@ -284,7 +298,7 @@
       </div>
 
       <script src="https://cdn.jsdelivr.net/npm/stream-chat@8.40.0/dist/browser.full-bundle.min.js"></script>
-      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=22"></script>
+      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=23"></script>
     @endif
 
 @if ($isBookpay)

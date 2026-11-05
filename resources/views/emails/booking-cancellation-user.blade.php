@@ -1,347 +1,147 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking Cancellation</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333333;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        
-        .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        .email-header {
-            background: #dc3545;
-            padding: 20px 30px;
-            text-align: center;
-        }
-        
-        .logo-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        
-        .logo-text {
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: 600;
-            margin: 0;
-        }
-        
-        .email-logo {
-            max-width: 80px;
-            height: auto;
-        }
-        
-        .email-body {
-            padding: 40px 30px;
-        }
-        
-        .greeting {
-            font-size: 18px;
-            color: #333333;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-        
-        .content {
-            font-size: 16px;
-            color: #666666;
-            margin-bottom: 30px;
-            line-height: 1.8;
-        }
-        
-        .booking-details {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 25px 0;
-            border-left: 4px solid #dc3545;
-        }
-        
-        .booking-details h3 {
-            color: #dc3545;
-            font-size: 18px;
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
-        
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-        
-        .detail-label {
-            font-weight: 600;
-            color: #333333;
-        }
-        
-        .detail-value {
-            color: #666666;
-            text-align: right;
-        }
-        
-        @if($isNoShow)
-        .no-show-notice {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            border-radius: 4px;
-        }
-        
-        .no-show-notice-text {
-            font-size: 14px;
-            color: #856404;
-            line-height: 1.6;
-        }
-        @else
-        @if($hasRefund)
-        .refund-notice {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #d4edda;
-            border-left: 4px solid #28a745;
-            border-radius: 4px;
-        }
-        
-        .refund-notice-text {
-            font-size: 14px;
-            color: #155724;
-            line-height: 1.6;
-        }
-        @else
-        .no-refund-notice {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #f8d7da;
-            border-left: 4px solid #dc3545;
-            border-radius: 4px;
-        }
-        
-        .no-refund-notice-text {
-            font-size: 14px;
-            color: #721c24;
-            line-height: 1.6;
-        }
-        @endif
-        @endif
-        
-        @if($cancellationType === 'artist')
-        .artist-cancellation-notice {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #e3f2fd;
-            border-left: 4px solid #2196f3;
-            border-radius: 4px;
-        }
-        
-        .artist-cancellation-notice-text {
-            font-size: 14px;
-            color: #1565c0;
-            line-height: 1.6;
-        }
-        @endif
-        
-        .email-footer {
-            background-color: #f8f8f8;
-            padding: 1rem;
-            text-align: center;
-            border-top: 1px solid #e0e0e0;
-        }
-        
-        .footer-text {
-            font-size: 14px;
-            color: #888888;
-            line-height: 1.6;
-        }
-        
-        @media only screen and (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            
-            .email-header {
-                padding: 15px 20px;
-            }
-            
-            .logo-text {
-                font-size: 20px;
-            }
-            
-            .email-logo {
-                max-width: 60px;
-            }
-            
-            .email-body {
-                padding: 30px 20px;
-            }
-            
-            .detail-row {
-                flex-direction: column;
-            }
-            
-            .detail-value {
-                text-align: left;
-                margin-top: 5px;
-            }
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Your booking with {{ $artistName }} was cancelled — Bookpay</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+  </style>
 </head>
-<body>
-    <div class="email-container">
-        <!-- Header -->
-        <div class="email-header">
-            <div class="logo-container">
-                <img src="{{ url('assets/img/branding/logo.png') }}" alt="{{ config('app.name', 'Inkjin') }}" class="email-logo" />
-                <span class="logo-text">{{ config('app.name', 'Inkjin') }}</span>
-            </div>
-        </div>
-        
-        <!-- Body -->
-        <div class="email-body">
-            <p class="greeting">Hello {{ $customerName }},</p>
-            
-            @if($isNoShow)
-            <p class="content">
-                Your booking has been marked as a no-show. Unfortunately, you did not attend your scheduled appointment.
-            </p>
-            @elseif($cancellationType === 'artist')
-            <p class="content">
-                We regret to inform you that your booking has been cancelled by the artist. We apologize for any inconvenience this may cause.
-            </p>
-            @else
-            <p class="content">
-                Your booking has been cancelled. Please see the details below regarding your refund status.
-            </p>
-            @endif
-            
-            <!-- Booking Details -->
-            <div class="booking-details">
-                <h3>📅 Cancelled Booking Details</h3>
-                <div class="detail-row">
-                    <span class="detail-label">Tattoo:</span>
-                    <span class="detail-value">{{ $tattooTitle }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Artist:</span>
-                    <span class="detail-value">{{ $artistName }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Date:</span>
-                    <span class="detail-value">{{ $bookingDate }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Time:</span>
-                    <span class="detail-value">{{ $bookingTime }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Cancelled At:</span>
-                    <span class="detail-value">{{ $cancelledAt }}</span>
-                </div>
-                @if($cancellationReason)
-                <div class="detail-row">
-                    <span class="detail-label">Reason:</span>
-                    <span class="detail-value">{{ $cancellationReason }}</span>
-                </div>
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    {{ $introText }}
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
+          <tr>
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:0 0 20px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                      <tr>
+                        <td style="padding:12px;width:44px;vertical-align:middle;">
+                          @if(!empty($artistAvatarUrl))
+                            <img src="{{ $artistAvatarUrl }}" alt="{{ $artistName }}" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:50%;object-fit:cover;">
+                          @else
+                            <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
+                              {{ $artistInitials }}
+                            </div>
+                          @endif
+                        </td>
+                        <td style="padding:12px 12px 12px 0;vertical-align:middle;">
+                          <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $artistName }}</div>
+                          @if(!empty($artistMeta))
+                            <div style="font-size:13px;color:#6F6874;margin-top:2px;">{{ $artistMeta }}</div>
+                          @endif
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    Hi {{ $clientFirstName }},
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 16px 0;">
+                    {{ $introText }}
+                  </td>
+                </tr>
+
+                @if(!empty($quoteMessage))
+                  <tr>
+                    <td style="padding:0 0 16px 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FBF7FD;border-left:3px solid #3E007C;border-radius:0 10px 10px 0;">
+                        <tr>
+                          <td style="padding:12px 14px;font-size:14px;color:#3d3942;line-height:1.55;">
+                            “{{ $quoteMessage }}”
+                            <div style="margin-top:6px;font-size:12px;color:#6F6874;">{{ $artistName }}</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
                 @endif
-                <div class="detail-row">
-                    <span class="detail-label">Booking ID:</span>
-                    <span class="detail-value">#{{ $bookingId }}</span>
-                </div>
-            </div>
-            
-            @if($isNoShow)
-            <!-- No-Show Notice -->
-            <div class="no-show-notice">
-                <p class="no-show-notice-text">
-                    <strong>⚠️ No-Show Notice</strong><br>
-                    Your booking was marked as a no-show because you did not attend the scheduled appointment.
-                    @if($depositForfeited > 0)
-                    Your deposit of {{ $currencySymbol }}{{ number_format($depositForfeited, 2) }} has been forfeited.
-                    @else
-                    No refund will be issued.
+
+                <tr>
+                  <td style="padding:0 0 8px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                      <tr>
+                        <td style="padding:4px 14px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Booking</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $bookingReference }}</td>
+                            </tr>
+                            @if(!empty($hasRefund))
+                              <tr>
+                                <td style="padding:9px 0;@if(!empty($cardLabel))border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:800;color:#1A1A1A;">Refund</td>
+                                <td style="padding:9px 0;@if(!empty($cardLabel))border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:800;color:#1A1A1A;text-align:right;">{{ $refundLabel }}</td>
+                              </tr>
+                              @if(!empty($cardLabel))
+                                <tr>
+                                  <td style="padding:9px 0;font-size:14px;color:#6F6874;">To</td>
+                                  <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $cardLabel }}</td>
+                                </tr>
+                              @endif
+                            @else
+                              <tr>
+                                <td style="padding:9px 0;font-size:14px;font-weight:800;color:#1A1A1A;">Refund</td>
+                                <td style="padding:9px 0;font-size:14px;font-weight:800;color:#1A1A1A;text-align:right;">None</td>
+                              </tr>
+                            @endif
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:8px 0 8px 0;">
+                    {{ $refundNote }}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:16px 0 28px 0;">
+                    @if(!empty($bookAgainUrl))
+                      <a href="{{ $bookAgainUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                        {{ $bookAgainLabel }}
+                      </a>
                     @endif
-                </p>
-            </div>
-            @elseif($cancellationType === 'artist')
-            <!-- Artist Cancellation Notice -->
-            <div class="artist-cancellation-notice">
-                <p class="artist-cancellation-notice-text">
-                    <strong>ℹ️ Cancelled by Artist</strong><br>
-                    This booking was cancelled by the artist. You will receive a full refund of {{ $currencySymbol }}{{ number_format($totalAmountPaid, 2) }}.
-                    The refund will be processed within 5-10 business days and will appear in your original payment method.
-                </p>
-            </div>
-            @elseif($hasRefund)
-            <!-- Refund Notice -->
-            <div class="refund-notice">
-                <p class="refund-notice-text">
-                    <strong>✅ Refund Processed</strong><br>
-                    @if($isFullRefund)
-                    You will receive a full refund of {{ $currencySymbol }}{{ number_format($refundAmount, 2) }}.
-                    @else
-                    You will receive a partial refund of {{ $currencySymbol }}{{ number_format($refundAmount, 2) }}.
-                    @if($depositForfeited > 0)
-                    Your deposit of {{ $currencySymbol }}{{ number_format($depositForfeited, 2) }} has been forfeited as per the cancellation policy.
-                    @endif
-                    @endif
-                    The refund will be processed within 5-10 business days and will appear in your original payment method.
-                </p>
-            </div>
-            @else
-            <!-- No Refund Notice -->
-            <div class="no-refund-notice">
-                <p class="no-refund-notice-text">
-                    <strong>❌ No Refund</strong><br>
-                    This booking was cancelled after the cancellation deadline.
-                    @if($depositForfeited > 0)
-                    Your deposit of {{ $currencySymbol }}{{ number_format($depositForfeited, 2) }} has been forfeited as per the cancellation policy.
-                    @else
-                    No refund will be issued.
-                    @endif
-                </p>
-            </div>
-            @endif
-            
-            <p class="content">
-                If you have any questions or concerns, please contact the artist directly or reach out to our support team.
-            </p>
-        </div>
-        
-        <!-- Footer -->
-        <div class="email-footer">
-            <p class="footer-text" style="font-size: 12px; color: #aaaaaa;">
-                © {{ date('Y') }} {{ config('app.name', 'Inkjin') }}. All rights reserved.
-            </p>
-        </div>
-    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
+                    You got this email because you booked with {{ $artistName }} through Bookpay. Replies to this email aren’t read: message {{ $artistFirstName }} in Bookpay instead.<br>
+                    Bookpay by Inkjin
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
-

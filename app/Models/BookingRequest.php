@@ -501,13 +501,12 @@ class BookingRequest extends Model
 
     public function sessionDurationLabel(): string
     {
-        $hours = (float) ($this->tattoo?->session_duration ?? 0);
-
-        if ($hours <= 0) {
+        $tattoo = $this->tattoo;
+        if (! $tattoo) {
             return '—';
         }
 
-        return rtrim(rtrim(number_format($hours, 1), '0'), '.').' hour'.($hours == 1 ? '' : 's');
+        return $tattoo->sessionDurationLabel();
     }
 
     public function schedulingLabel(): string
@@ -624,17 +623,11 @@ class BookingRequest extends Model
     public function tattooDurationMinutes(): int
     {
         $tattoo = $this->tattoo;
-        if (!$tattoo) {
+        if (! $tattoo) {
             return 120;
         }
 
-        $minutes = (int) ($tattoo->session_duration ?? 0) * 60;
-        if ($minutes <= 0) {
-            preg_match('/(\d+)/', (string) ($tattoo->session_duration ?? ''), $match);
-            $minutes = isset($match[1]) ? ((int) $match[1] * 60) : 120;
-        }
-
-        return $minutes;
+        return $tattoo->sessionDurationMinutes();
     }
 
     public function consultationDurationMinutes(): int

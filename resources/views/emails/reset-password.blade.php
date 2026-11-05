@@ -1,220 +1,71 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Your Password</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333333;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        
-        .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        .email-header {
-            background: #482e92;
-            padding: 20px 30px;
-            text-align: center;
-        }
-        
-        .logo-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        
-        .logo-text {
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: 600;
-            margin: 0;
-        }
-        
-        .email-logo {
-            max-width: 80px;
-            height: auto;
-        }
-        
-        .email-body {
-            padding: 40px 30px;
-        }
-        
-        .greeting {
-            font-size: 18px;
-            color: #333333;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-        
-        .content {
-            font-size: 16px;
-            color: #666666;
-            margin-bottom: 30px;
-            line-height: 1.8;
-        }
-        
-        .button-container {
-            text-align: center;
-            margin: 35px 0;
-        }
-        
-        .reset-button {
-            display: inline-block;
-            padding: 16px 40px;
-            background: linear-gradient(135deg, #482d91 0%, #5a3aa3 100%);
-            color: #ffffff !important;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(72, 45, 145, 0.3);
-        }
-        
-        .reset-button:hover {
-            background: linear-gradient(135deg, #5a3aa3 0%, #6b4ab5 100%);
-            box-shadow: 0 6px 16px rgba(72, 45, 145, 0.4);
-            transform: translateY(-2px);
-        }
-        
-        .email-footer {
-            background-color: #f8f8f8;
-            padding: 1rem;
-            text-align: center;
-            border-top: 1px solid #e0e0e0;
-        }
-        
-        .footer-text {
-            font-size: 14px;
-            color: #888888;
-            line-height: 1.6;
-        }
-        
-        .security-note {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #fff8e1;
-            border-left: 4px solid #ffc107;
-            border-radius: 4px;
-            text-align: center;
-        }
-        
-        .security-note-text {
-            font-size: 13px;
-            color: #856404;
-            line-height: 1.6;
-        }
-
-        .link-fallback {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f5f5f5;
-            border-radius: 6px;
-            text-align: center;
-        }
-
-        .link-fallback-text {
-            font-size: 13px;
-            color: #666666;
-            word-break: break-all;
-        }
-        
-        @media only screen and (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            
-            .email-header {
-                padding: 15px 20px;
-            }
-            
-            .logo-text {
-                font-size: 20px;
-            }
-            
-            .email-logo {
-                max-width: 60px;
-            }
-            
-            .email-body {
-                padding: 30px 20px;
-            }
-            
-            .reset-button {
-                padding: 14px 30px;
-                font-size: 15px;
-            }
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Reset your Bookpay password</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+  </style>
 </head>
-<body>
-    <div class="email-container">
-        <!-- Header -->
-        <div class="email-header">
-            <div class="logo-container">
-                <img src="{{ url('assets/img/branding/logo.png') }}" alt="{{ config('app.name', 'Inkjin') }}" class="email-logo" />
-                <span class="logo-text">{{ config('app.name', 'Inkjin') }}</span>
-            </div>
-        </div>
-        
-        <!-- Body -->
-        <div class="email-body">
-            <p class="greeting">Hello {{ $user->name }},</p>
-            
-            <p class="content">
-                We received a request to reset your password for your <strong>{{ config('app.name', 'Inkjin') }}</strong> account.
-            </p>
-            
-            <p class="content">
-                Click the button below to reset your password. If you didn't request this, please ignore this email.
-            </p>
-            
-            <!-- Reset Button -->
-            <div class="button-container">
-                <a href="{{ $resetUrl }}" class="reset-button">Reset Password</a>
-            </div>
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    We got a request to reset your Bookpay password.
+  </div>
 
-            <!-- Link Fallback -->
-            <div class="link-fallback">
-                <p class="link-fallback-text">
-                    If the button doesn't work, copy and paste this link into your browser:<br>
-                    <a href="{{ $resetUrl }}" style="color: #482d91; text-decoration: underline;">{{ $resetUrl }}</a>
-                </p>
-            </div>
-            
-            <!-- Security Note -->
-            <div class="security-note">
-                <p class="security-note-text">
-                    <strong>Security Note:</strong> This password reset link will expire in {{ $count }} minutes. If you didn't request a password reset, please ignore this email or contact support if you have concerns.
-                </p>
-            </div>
-        </div>
-        
-        <!-- Footer -->
-        <div class="email-footer">
-            <p class="footer-text" style="font-size: 12px; color: #aaaaaa;">
-                © {{ date('Y') }} {{ config('app.name', 'Inkjin') }}. All rights reserved.
-            </p>
-        </div>
-    </div>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
+          <tr>
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    Hi {{ $userFirstName }},
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 8px 0;">
+                    We got a request to reset your Bookpay password.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:16px 0 8px 0;">
+                    <a href="{{ $resetUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                      Choose a new password
+                    </a>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:4px 0 28px 0;">
+                    The link works for {{ (int) $expireMinutes }} minutes and only once. If you didn’t ask for this, ignore this email. Your password stays the same.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
+                    Bookpay by Inkjin
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
-

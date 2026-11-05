@@ -5,9 +5,11 @@ namespace App\Observers;
 use App\Models\Booking;
 use App\Services\ArtistReferralFeeWaiverService;
 use App\Services\ArtistReferralRewardService;
+use App\Services\ArtistClientFeedbackService;
 use App\Services\BookingAftercareService;
 use App\Services\BookingConsentService;
 use App\Services\MailcoachSubscriberService;
+use App\Services\SessionFeedbackService;
 use App\Services\StreamChatService;
 use Illuminate\Support\Facades\Log;
 
@@ -20,13 +22,13 @@ class BookingObserver
         private ArtistReferralRewardService $referralRewards,
         private BookingConsentService $bookingConsents,
         private BookingAftercareService $bookingAftercare,
+        private SessionFeedbackService $sessionFeedback,
+        private ArtistClientFeedbackService $artistClientFeedback,
     ) {}
 
     public function created(Booking $booking): void
     {
-        if ($booking->isOpenForChat()) {
-            $this->streamChat->ensureChannelForBooking($booking);
-        }
+        $this->ensureChatChannels($booking);
 
         $client = $booking->user;
         if ($client) {
@@ -46,11 +48,13 @@ class BookingObserver
         }
 
         if ($booking->wasChanged('status')) {
-            $this->streamChat->syncChannelForBooking($booking);
+            $this->syncChatChannels($booking);
 
             if ((string) $booking->status === 'completed') {
                 $this->referralRewards->evaluateBooking($booking);
                 $this->sendAftercare($booking);
+                $this->sendSessionFeedback($booking);
+                $this->sendArtistClientFeedback($booking);
             }
         }
 
@@ -78,12 +82,64 @@ class BookingObserver
         }
     }
 
+    private function ensureChatChannels(Booking $booking): void
+    {
+        if (! $booking->isOpenForChat()) {
+            return;
+        }
+
+        try {
+            $this->streamChat->ensureChannelForBooking($booking);
+        } catch (\Throwable $e) {
+            Log::error('Failed to ensure chat channels after booking create', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function syncChatChannels(Booking $booking): void
+    {
+        try {
+            $this->streamChat->syncChannelForBooking($booking);
+        } catch (\Throwable $e) {
+            Log::error('Failed to sync chat channels after booking update', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     private function sendAftercare(Booking $booking): void
     {
         try {
             $this->bookingAftercare->sendForCompletedBooking($booking);
         } catch (\Throwable $e) {
             Log::error('Failed to send booking aftercare email', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function sendSessionFeedback(Booking $booking): void
+    {
+        try {
+            $this->sessionFeedback->sendForCompletedBooking($booking);
+        } catch (\Throwable $e) {
+            Log::error('Failed to send booking session feedback email', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function sendArtistClientFeedback(Booking $booking): void
+    {
+        try {
+            $this->artistClientFeedback->sendForCompletedBooking($booking);
+        } catch (\Throwable $e) {
+            Log::error('Failed to send artist client feedback email', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
             ]);

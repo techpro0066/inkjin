@@ -3,6 +3,7 @@
 @section('title', 'Bookings · Requests')
 
 @push('styles')
+@include('studio.bookings.partials.payment-link-modal-assets')
 <style>
   .bk .tabs a{display:inline-flex;align-items:center;gap:7px}
   .bk .tabs .n{background:var(--chip);color:var(--muted);border-radius:10px;font-size:11px;padding:1px 7px;font-weight:600}
@@ -54,6 +55,9 @@
     <div>
       <h1>Bookings</h1>
       <div class="sub">Bookings and requests for your artists at {{ $studioName }}.</div>
+    </div>
+    <div class="btns">
+      @include('studio.bookings.partials.new-booking-button')
     </div>
   </div>
 
@@ -187,9 +191,14 @@
     </form>
   </div>
 </div>
+
+@include('studio.bookings.partials.payment-link-modal')
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@include('studio.bookings.partials.payment-link-modal-script')
 @include('studio.partials.bp-select')
 <script>
 (function () {

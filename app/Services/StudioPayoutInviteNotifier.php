@@ -31,7 +31,11 @@ class StudioPayoutInviteNotifier
             return false;
         }
 
-        $artistName = trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''));
+        $userDetail->loadMissing('user');
+        $artistName = trim((string) $userDetail->publicDisplayName());
+        if ($artistName === '' || $artistName === 'Artist') {
+            $artistName = trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''));
+        }
         if ($artistName === '') {
             $artistName = $artist->user_name ?? $artist->email ?? 'Artist';
         }
@@ -60,6 +64,7 @@ class StudioPayoutInviteNotifier
                 $declineUrl,
                 false,
                 $this->relationshipPhrase($relationship),
+                $userDetail,
             ));
 
             return true;

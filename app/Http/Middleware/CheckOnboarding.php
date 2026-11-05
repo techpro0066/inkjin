@@ -27,6 +27,11 @@ class CheckOnboarding
                 return redirect()->route('studio.onboarding.profile');
             }
 
+            // Shared Stream chat API is used by the studio inbox.
+            if ($request->routeIs('api.chat.*')) {
+                return $next($request);
+            }
+
             return redirect()->route('studio.dashboard');
         }
 

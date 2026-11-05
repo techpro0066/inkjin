@@ -5,19 +5,144 @@ namespace App\Http\Controllers\Studio;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\CustomRequest;
+use App\Models\PaymentLink;
 use App\Models\Studio;
 use App\Models\StudioPortfolio;
 use App\Models\StudioRequest;
+use App\Models\User;
 use App\Models\UserStudio;
 use App\Services\ArtistPayoutService;
 use App\Support\QuestionAnswerPresenter;
+use App\Support\StudioPaymentLinkModalData;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingsController extends Controller
 {
+    public function calendar(Request $request): View
+    {
+        $data = $this->viewData($request, 'bookings');
+        $data['activeNav'] = 'calendar';
+        $studio = $data['studio'];
+
+        $weekStart = $this->resolveCalendarWeekStart($request->query('week'));
+        $weekEnd = $weekStart->copy()->addDays(5); // Mon–Sat (S03)
+        $prevWeek = $weekStart->copy()->subWeek()->toDateString();
+        $nextWeek = $weekStart->copy()->addWeek()->toDateString();
+        $thisWeek = now()->startOfWeek(Carbon::MONDAY)->toDateString();
+
+        $palette = [
+            ['fg' => '#4B0F8F', 'bg' => '#EDE3FA'],
+            ['fg' => '#1565C0', 'bg' => '#E3F0FC'],
+            ['fg' => '#1F7A45', 'bg' => '#E6F6EC'],
+            ['fg' => '#B86E00', 'bg' => '#FFF3DE'],
+            ['fg' => '#C62828', 'bg' => '#FDECEC'],
+            ['fg' => '#1E5BD8', 'bg' => '#E8F0FF'],
+            ['fg' => '#7A1FC4', 'bg' => '#F3E8FF'],
+        ];
+
+        $artists = [];
+        $colorByArtist = [];
+        $eventsByCell = [];
+        for ($d = 0; $d < 6; $d++) {
+            for ($h = 0; $h < 9; $h++) {
+                $eventsByCell[$d][$h] = [];
+            }
+        }
+
+        if ($studio) {
+            $studioArtists = $this->studioArtists($studio);
+            foreach ($studioArtists->values() as $i => $a) {
+                $color = $palette[$i % count($palette)];
+                $artists[] = [
+                    'id' => (int) $a['user_id'],
+                    'name' => $a['name'],
+                    'slug' => 'a'.(int) $a['user_id'],
+                    'fg' => $color['fg'],
+                    'bg' => $color['bg'],
+                ];
+                $colorByArtist[(int) $a['user_id']] = $color;
+            }
+
+            $bookings = Booking::query()
+                ->with(['user', 'artist.userDetail', 'tattoo', 'guestSpot'])
+                ->where('studio_id', $studio->id)
+                ->whereDate('booking_date', '>=', $weekStart->toDateString())
+                ->whereDate('booking_date', '<=', $weekEnd->toDateString())
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->orderBy('booking_date')
+                ->orderBy('start_time_utc')
+                ->get();
+
+            $extraColorIndex = count($artists);
+            foreach ($bookings as $booking) {
+                $mapped = $this->mapCalendarEvent($booking, $colorByArtist, $palette, $extraColorIndex);
+                if ($mapped === null) {
+                    continue;
+                }
+                if (! isset($colorByArtist[$mapped['artist_id']])) {
+                    $colorByArtist[$mapped['artist_id']] = [
+                        'fg' => $mapped['fg'],
+                        'bg' => $mapped['bg'],
+                    ];
+                    $artists[] = [
+                        'id' => $mapped['artist_id'],
+                        'name' => $mapped['artist'],
+                        'slug' => $mapped['filter'],
+                        'fg' => $mapped['fg'],
+                        'bg' => $mapped['bg'],
+                    ];
+                    $extraColorIndex++;
+                }
+                $eventsByCell[$mapped['day_index']][$mapped['hour_index']][] = $mapped;
+            }
+        }
+
+        $dayHeaders = [];
+        for ($i = 0; $i < 6; $i++) {
+            $d = $weekStart->copy()->addDays($i);
+            $dayHeaders[] = $d->format('D d/m');
+        }
+
+        $hours = [];
+        for ($h = 10; $h <= 18; $h++) {
+            $hours[] = sprintf('%02d:00', $h);
+        }
+
+        $rangeLabel = $weekStart->format('d/m').' – '.$weekEnd->format('d/m/Y');
+
+        $hasEvents = false;
+        foreach ($eventsByCell as $dayCells) {
+            foreach ($dayCells as $cellEvents) {
+                if ($cellEvents !== []) {
+                    $hasEvents = true;
+                    break 2;
+                }
+            }
+        }
+
+        return view('studio.calendar', array_merge($data, [
+            'weekStart' => $weekStart->toDateString(),
+            'prevWeek' => $prevWeek,
+            'nextWeek' => $nextWeek,
+            'thisWeek' => $thisWeek,
+            'rangeLabel' => $rangeLabel,
+            'dayHeaders' => $dayHeaders,
+            'hours' => $hours,
+            'artists' => $artists,
+            'eventsByCell' => $eventsByCell,
+            'hasEvents' => $hasEvents,
+        ]));
+    }
+
     public function index(Request $request): View
     {
         $data = $this->viewData($request, 'bookings');
@@ -111,7 +236,220 @@ class BookingsController extends Controller
 
     public function paymentLinks(Request $request): View
     {
-        return view('studio.bookings.payment-links', $this->viewData($request, 'payment-links'));
+        $data = $this->viewData($request, 'payment-links');
+        $studio = $data['studio'];
+
+        $filter = strtolower(trim((string) $request->input('filter', 'all')));
+        if (! in_array($filter, ['all', 'open', 'paid', 'expired'], true)) {
+            $filter = 'all';
+        }
+        $search = trim((string) $request->input('q', ''));
+
+        $rows = $studio
+            ? $this->studioPaymentLinkRows($studio)
+            : collect();
+
+        $filterCounts = [
+            'all' => $rows->count(),
+            'open' => $rows->where('status', 'open')->count(),
+            'paid' => $rows->where('status', 'paid')->count(),
+            'expired' => $rows->where('status', 'expired')->count(),
+        ];
+
+        $filtered = $this->filterStudioPaymentLinkRows($rows, $filter, $search);
+
+        $perPage = 20;
+        $page = max(1, (int) $request->input('page', 1));
+        $paymentLinks = new LengthAwarePaginator(
+            $filtered->forPage($page, $perPage)->values(),
+            $filtered->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
+        return view('studio.bookings.payment-links', array_merge($data, [
+            'paymentLinks' => $paymentLinks,
+            'filter' => $filter,
+            'search' => $search,
+            'filterCounts' => $filterCounts,
+            'paymentLinksCount' => $filterCounts['all'],
+        ]));
+    }
+
+    public function exportPaymentLinks(Request $request): StreamedResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        abort_unless($studio, 404);
+
+        $filter = strtolower(trim((string) $request->input('filter', 'all')));
+        if (! in_array($filter, ['all', 'open', 'paid', 'expired'], true)) {
+            $filter = 'all';
+        }
+        $search = trim((string) $request->input('q', ''));
+        $rows = $this->filterStudioPaymentLinkRows(
+            $this->studioPaymentLinkRows($studio),
+            $filter,
+            $search
+        );
+
+        $filename = 'payment-links-'.now()->format('Y-m-d').'.csv';
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+            fputcsv($out, ['Title', 'Artist', 'Client', 'Deposit', 'Total', 'Status', 'Created', 'URL']);
+            foreach ($rows as $row) {
+                fputcsv($out, [
+                    (string) ($row->title ?? ''),
+                    (string) ($row->artist ?? ''),
+                    (string) ($row->client ?? ''),
+                    number_format((float) ($row->deposit ?? 0), 2, '.', ''),
+                    number_format((float) ($row->total ?? 0), 2, '.', ''),
+                    ucfirst((string) ($row->status ?? '')),
+                    optional($row->created_at)->format('Y-m-d H:i') ?? '',
+                    (string) ($row->url ?? ''),
+                ]);
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function validatePaymentLink(Request $request): JsonResponse
+    {
+        if ($response = $this->rejectIfCannotCreateStudioPaymentLinks($request)) {
+            return $response;
+        }
+
+        $validator = $this->makeStudioPaymentLinkValidator($request);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        if ($response = $this->rejectIfArtistCannotAcceptPayments($request)) {
+            return $response;
+        }
+
+        return response()->json([
+            'success' => true,
+            'preview' => $this->studioPaymentLinkPreview($request),
+        ]);
+    }
+
+    public function storePaymentLink(Request $request): JsonResponse
+    {
+        if ($response = $this->rejectIfCannotCreateStudioPaymentLinks($request)) {
+            return $response;
+        }
+
+        $validator = $this->makeStudioPaymentLinkValidator($request);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        if ($response = $this->rejectIfArtistCannotAcceptPayments($request)) {
+            return $response;
+        }
+
+        $studio = $this->resolveStudio($request->user());
+        abort_unless($studio, 404);
+
+        $payload = $this->normalizedStudioPaymentLinkData($request);
+        $code = $this->generatePaymentLinkCode();
+        $url = route('public.payment-link', ['code' => $code]);
+        $displayUrl = preg_replace('#^https?://#', '', $url) ?? $url;
+        $clientMessage = $this->buildClientMessage($payload, $url);
+
+        $paymentLink = PaymentLink::query()->create([
+            'artist_id' => (int) $payload['artist_id'],
+            'studio_id' => (int) $studio->id,
+            'status' => PaymentLink::STATUS_ACTIVE,
+            'code' => $code,
+            'url' => $url,
+            'amount' => $payload['amount'],
+            'payment_type' => $payload['payment_type'],
+            'title' => $payload['title'],
+            'date_time' => $payload['date_time'],
+            'session_duration' => $payload['session_duration'],
+            'total_price' => $payload['total_price'],
+            'due_amount' => $payload['due_amount'],
+            'expires' => $payload['expires'],
+            'expires_at' => $payload['expires_at'],
+            'client_message' => $clientMessage,
+            'scheduling_type' => $payload['scheduling_type'],
+        ]);
+
+        $summaryParts = [$this->formatEuro((float) $payload['amount'])];
+        if ($payload['date_time_formatted']) {
+            $summaryParts[] = $payload['date_time_formatted'];
+        }
+        $summaryParts[] = $payload['session_duration_label'];
+
+        return response()->json([
+            'success' => true,
+            'payment_link' => [
+                'id' => $paymentLink->id,
+                'title' => $payload['title'],
+                'summary' => implode(' · ', $summaryParts),
+                'url' => $url,
+                'display_url' => $displayUrl,
+                'client_message' => $clientMessage,
+                'amount_formatted' => $this->formatEuro((float) $payload['amount']),
+                'expires' => $payload['expires'],
+            ],
+        ]);
+    }
+
+    public function expirePaymentLink(Request $request, int $id): JsonResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        abort_unless($studio, 404);
+
+        $link = PaymentLink::query()
+            ->whereKey($id)
+            ->where('studio_id', $studio->id)
+            ->firstOrFail();
+
+        if ($link->isPaid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This link was already paid and cannot be expired.',
+            ], 422);
+        }
+
+        if ($link->isExpired() || $link->status === PaymentLink::STATUS_EXPIRED) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Link already expired.',
+            ]);
+        }
+
+        $link->forceFill([
+            'status' => PaymentLink::STATUS_EXPIRED,
+            'expires_at' => now(),
+        ])->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Link expired.',
+        ]);
     }
 
     public function assign(Request $request, StudioRequest $studioRequest): RedirectResponse
@@ -213,6 +551,7 @@ class BookingsController extends Controller
 
         $bookingsCount = 0;
         $requestsCount = 0;
+        $paymentLinksCount = 0;
         if ($studio) {
             $bookingsCount = Booking::query()->where('studio_id', $studio->id)->count();
             $requestsCount = StudioRequest::query()
@@ -223,9 +562,22 @@ class BookingsController extends Controller
                     StudioRequest::STATUS_MOVED_TO_BOOKING,
                 ])
                 ->count();
+            $paymentLinksCount = PaymentLink::query()
+                ->where('studio_id', $studio->id)
+                ->count();
         }
 
-        return [
+        $profileComplete = (string) ($user->on_boarding ?? '') === 'yes';
+        $studioArtistsForModal = $studio
+            ? StudioPaymentLinkModalData::artists($studio)
+            : collect();
+        $paymentLinkModal = StudioPaymentLinkModalData::createGate(
+            $profileComplete,
+            $studio,
+            $studioArtistsForModal
+        );
+
+        return array_merge($paymentLinkModal, [
             'studio' => $studio,
             'studioName' => $studioName,
             'studioEmail' => $studio?->email ?? $user->email,
@@ -233,14 +585,76 @@ class BookingsController extends Controller
             'ownerAvatarUrl' => ($imagePath = trim((string) ($studio?->image_url ?? ''))) !== ''
                 ? asset(ltrim($imagePath, '/'))
                 : null,
-            'profileComplete' => (string) ($user->on_boarding ?? '') === 'yes',
+            'profileComplete' => $profileComplete,
             'stripeConnected' => (bool) ($studio?->hasStripeConnect()),
             'activeNav' => 'bookings',
             'bookingsTab' => $bookingsTab,
             'bookingsCount' => $bookingsCount,
             'requestsCount' => $requestsCount,
-            'paymentLinksCount' => 0,
-        ];
+            'paymentLinksCount' => $paymentLinksCount,
+            'studioArtistsForModal' => $studioArtistsForModal,
+            'currencySymbol' => '€',
+            'paymentLinkModalReloadOnDone' => true,
+        ]);
+    }
+
+    /**
+     * Studio-created payment links only (artist-made links stay on the artist dashboard).
+     *
+     * @return Collection<int, object>
+     */
+    private function studioPaymentLinkRows(Studio $studio): Collection
+    {
+        $now = now();
+
+        return PaymentLink::query()
+            ->where('studio_id', $studio->id)
+            ->with(['artist.userDetail', 'booking.user'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (PaymentLink $link) use ($now) {
+                $status = $link->listStatus();
+                if ($status !== 'paid' && $status !== 'expired') {
+                    $status = 'open';
+                }
+                if ($status === 'open' && $link->expires_at && $link->expires_at->lt($now) && ! $link->isPaid()) {
+                    $status = 'expired';
+                }
+
+                $clientName = trim((string) ($link->payer_name ?? ''));
+                if ($clientName === '') {
+                    $bookingUser = $link->booking?->user;
+                    if ($bookingUser) {
+                        $clientName = trim(($bookingUser->first_name ?? '').' '.($bookingUser->last_name ?? ''));
+                    }
+                }
+                if ($clientName === '') {
+                    $clientName = 'Not used yet';
+                }
+
+                $artist = $link->artist;
+                $artistName = $artist?->userDetail?->publicDisplayName();
+                if (! $artistName) {
+                    $artistName = $artist
+                        ? (trim(($artist->first_name ?? '').' '.($artist->last_name ?? '')) ?: 'Artist')
+                        : 'Artist';
+                }
+
+                return (object) [
+                    'id' => $link->id,
+                    'title' => (string) $link->title,
+                    'artist' => $artistName,
+                    'client' => $clientName,
+                    'deposit' => $link->depositAmount(),
+                    'total' => $link->totalAmount(),
+                    'status' => $status,
+                    'created_at' => $link->created_at,
+                    'url' => $link->publicUrl(),
+                    'code' => (string) $link->code,
+                    'booking_id' => $link->booking_id ? (int) $link->booking_id : null,
+                ];
+            })
+            ->values();
     }
 
     private function resolveStudio($user): ?Studio
@@ -267,17 +681,19 @@ class BookingsController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, array{user_id:int,name:string,first_name:string}>
+     * @return \Illuminate\Support\Collection<int, array{user_id:int,name:string,first_name:string,styles:string,option_label:string,pay_note:string}>
      */
     private function studioArtists(Studio $studio)
     {
+        $studioName = trim((string) ($studio->name ?? '')) ?: 'the studio';
+
         return UserStudio::query()
             ->with(['user.userDetail'])
             ->where('studio_id', $studio->id)
             ->where('status', UserStudio::STATUS_ACTIVE)
             ->orderBy('id')
             ->get()
-            ->map(function (UserStudio $link) {
+            ->map(function (UserStudio $link) use ($studioName) {
                 $artist = $link->user;
                 if (! $artist || (string) ($artist->role ?? '') !== 'artist') {
                     return null;
@@ -287,19 +703,45 @@ class BookingsController extends Controller
                 if (! $name) {
                     $name = trim(($artist->first_name ?? '').' '.($artist->last_name ?? '')) ?: 'Artist';
                 }
+                $firstName = trim((string) ($artist->first_name ?? '')) ?: explode(' ', $name)[0];
                 $styles = $this->formatTattooStyles($detail?->tattoo_styles ?? null);
-                $optionLabel = $styles !== '' ? $name.' · '.$styles : $name;
+                $relLabel = $this->relationshipLabel($link->relationship);
+                $split = $link->revenue_split;
+                $payoutType = $split !== null ? 'Revenue split' : 'Workstation rent';
+                $meta = trim(implode(' · ', array_filter([$relLabel, $payoutType])));
+                $optionLabel = $meta !== '' ? $name.' · '.$meta : ($styles !== '' ? $name.' · '.$styles : $name);
+
+                if ($split !== null) {
+                    $artistPct = max(0, min(100, (int) $split));
+                    $studioPct = 100 - $artistPct;
+                    $payNote = 'Each payment is split: '.$firstName.' '.$artistPct.'%, '.$studioName.' '.$studioPct.'%.';
+                } else {
+                    $payNote = $firstName.' gets the full payment. Nothing is split.';
+                }
 
                 return [
                     'user_id' => (int) $artist->id,
                     'name' => $name,
-                    'first_name' => trim((string) ($artist->first_name ?? '')) ?: explode(' ', $name)[0],
+                    'first_name' => $firstName,
                     'styles' => $styles,
                     'option_label' => $optionLabel,
+                    'pay_note' => $payNote,
                 ];
             })
             ->filter()
             ->values();
+    }
+
+    private function relationshipLabel(?string $relationship): string
+    {
+        return match ($relationship) {
+            'co_owner' => 'Co-owner',
+            'resident' => 'Resident',
+            'collective_member' => 'Collective member',
+            'apprentice' => 'Apprentice',
+            'other' => 'Other',
+            default => '',
+        };
     }
 
     private function formatTattooStyles(mixed $payload): string
@@ -442,24 +884,43 @@ class BookingsController extends Controller
         $hasSplit = $paymentType === 'studio_account' && $artistPercent < 100;
         $studioPercent = max(0, 100 - $artistPercent);
         $clientFee = max(0, round((float) ($booking->platform_fee ?? 0), 2));
+        $artistSideFee = max(0, round((float) ($money['artist_side_fee_amount'] ?? 0), 2));
         $firstName = trim((string) strtok($artistName, ' ')) ?: $artistName;
 
+        $artistBookingFee = 0.0;
+        $studioBookingFee = 0.0;
         if ($hasSplit) {
             $artistShare = round($deposit * ($artistPercent / 100), 2);
             $artistStripe = round($stripeFee * ($artistPercent / 100), 2);
-            $artistGets = max(0, round($artistShare - $artistStripe, 2));
+            $artistBookingFee = max(0, round((float) ($money['your_booking_fee_amount'] ?? round($artistSideFee * ($artistPercent / 100), 2)), 2));
+            $studioBookingFee = max(0, round((float) ($money['studio_booking_fee_amount'] ?? round($artistSideFee - $artistBookingFee, 2)), 2));
+            $artistGets = max(0, round($artistShare - $artistStripe - $artistBookingFee, 2));
             $studioShare = round($deposit * ($studioPercent / 100), 2);
             $studioStripe = round($stripeFee * ($studioPercent / 100), 2);
-            $studioGets = max(0, round($studioShare - $studioStripe, 2));
+            $studioGets = max(0, round($studioShare - $studioStripe - $studioBookingFee, 2));
             $splitValue = $firstName.' '.$artistPercent.'% · Studio '.$studioPercent.'%';
         } else {
             $artistShare = $deposit;
             $artistStripe = $stripeFee;
-            $artistGets = max(0, round($deposit - $stripeFee, 2));
+            $artistBookingFee = $artistSideFee;
+            $artistGets = max(0, round($deposit - $stripeFee - $artistSideFee, 2));
             $studioShare = 0.0;
             $studioStripe = 0.0;
             $studioGets = 0.0;
             $splitValue = 'Direct · no studio split';
+        }
+
+        if ($clientFee > 0.009) {
+            $bookingFeeLabel = $this->formatMoney($clientFee, $booking);
+            $bookingFeeNote = 'paid by the client, goes to Bookpay';
+        } elseif ($artistSideFee > 0.009) {
+            $bookingFeeLabel = $this->formatMoney($artistSideFee, $booking);
+            $bookingFeeNote = $hasSplit
+                ? 'shared by split · '.$firstName.' '.$artistPercent.'% · studio '.$studioPercent.'%'
+                : 'deducted from '.$firstName.'’s share';
+        } else {
+            $bookingFeeLabel = null;
+            $bookingFeeNote = null;
         }
 
         $paidAt = $booking->created_at?->timezone(config('app.timezone'))->format('d/m');
@@ -589,19 +1050,27 @@ class BookingsController extends Controller
             'money_pill_class' => (string) ($money['pill_class'] ?? 'a'),
             'deposit_money_label' => $depositMoneyLabel,
             'deposit_money' => $this->formatMoney($deposit, $booking),
-            'booking_fee' => $clientFee > 0.009 ? $this->formatMoney($clientFee, $booking) : null,
-            'booking_fee_note' => $clientFee > 0.009 ? 'paid by the client, goes to Bookpay' : null,
+            'booking_fee' => $bookingFeeLabel,
+            'booking_fee_note' => $bookingFeeNote,
             'stripe_fee' => '−'.$this->formatMoney($stripeFee, $booking),
             'has_split' => $hasSplit,
             'split_value' => $splitValue,
             'artist_gets_label' => $firstName.' gets',
-            'artist_gets_note' => 'after his part of the Stripe fee',
+            'artist_gets_note' => $artistBookingFee > 0.009
+                ? 'after Stripe + booking fee share'
+                : 'after his part of the Stripe fee',
             'artist_gets' => $this->formatMoney($artistGets, $booking),
             'studio_share_label' => 'Studio share',
             'studio_share_note' => $hasSplit ? $studioPercent.'% of '.$this->formatMoney($deposit, $booking) : null,
             'studio_share' => $this->formatMoney($studioShare, $booking),
             'studio_stripe' => '−'.$this->formatMoney($studioStripe, $booking),
             'studio_stripe_note' => $hasSplit ? (string) $studioPercent.'%' : null,
+            'studio_booking_fee' => ($hasSplit && $studioBookingFee > 0.009)
+                ? '−'.$this->formatMoney($studioBookingFee, $booking)
+                : null,
+            'studio_booking_fee_note' => ($hasSplit && $studioBookingFee > 0.009)
+                ? (string) $studioPercent.'%'
+                : null,
             'studio_gets' => $this->formatMoney($studioGets, $booking),
             'footnote' => $footnote,
             'balance_note' => $balanceNote,
@@ -613,9 +1082,32 @@ class BookingsController extends Controller
                 'fields' => $requestFields,
                 'caption' => 'What the client sent. '.$firstName.' handles their questions and references.',
             ],
-            'message_url' => $artistEmail !== '' ? 'mailto:'.$artistEmail : null,
+            'message_url' => $booking->artist_user_id
+                ? route('studio.chat.index', [
+                    'artist' => (int) $booking->artist_user_id,
+                    'booking' => (int) $booking->id,
+                ])
+                : ($artistEmail !== '' ? 'mailto:'.$artistEmail : null),
             'message_label' => 'Message '.$firstName,
+            'message_artist_id' => (int) ($booking->artist_user_id ?? 0),
+            'message_artist_name' => $artistName,
+            'message_artist_initials' => $this->initialsFromName($artistName),
+            'message_booking_id' => (int) $booking->id,
+            'message_booking_ref' => $booking->referenceLabel(),
+            'message_booking_meta' => trim($statusLabel.($through !== '' ? ' · '.$through : '')),
+            'message_can_chat' => $booking->isOpenForChat(),
         ];
+    }
+
+    private function initialsFromName(string $name): string
+    {
+        $parts = preg_split('/\s+/', trim($name)) ?: [];
+        $first = $parts[0] ?? '';
+        $second = $parts[1] ?? '';
+
+        $initials = strtoupper(mb_substr($first, 0, 1).mb_substr($second, 0, 1));
+
+        return $initials !== '' ? $initials : '?';
     }
 
     /**
@@ -1062,6 +1554,133 @@ class BookingsController extends Controller
         return QuestionAnswerPresenter::rows($public);
     }
 
+    private function resolveCalendarWeekStart(mixed $weekParam): Carbon
+    {
+        $raw = is_string($weekParam) ? trim($weekParam) : '';
+        if ($raw !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+            try {
+                return Carbon::parse($raw)->startOfWeek(Carbon::MONDAY)->startOfDay();
+            } catch (\Throwable) {
+                // fall through
+            }
+        }
+
+        return now()->startOfWeek(Carbon::MONDAY)->startOfDay();
+    }
+
+    /**
+     * Map a studio booking onto the S03 week grid (Mon–Sat, 10:00–18:00).
+     *
+     * @param  array<int, array{fg:string,bg:string}>  $colorByArtist
+     * @param  list<array{fg:string,bg:string}>  $palette
+     * @return array<string, mixed>|null
+     */
+    private function mapCalendarEvent(
+        Booking $booking,
+        array $colorByArtist,
+        array $palette,
+        int $extraColorIndex
+    ): ?array {
+        if (! $booking->booking_date) {
+            return null;
+        }
+
+        $dayIndex = (int) $booking->booking_date->dayOfWeekIso - 1; // Mon=0 … Sun=6
+        if ($dayIndex < 0 || $dayIndex > 5) {
+            return null; // Sunday is outside the S03 grid
+        }
+
+        $bt = $booking->booking_time;
+        if (! is_array($bt) || empty($bt['start']) || empty($bt['end'])) {
+            return null;
+        }
+
+        try {
+            $start = Carbon::parse((string) $bt['start']);
+            $end = Carbon::parse((string) $bt['end']);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $startMin = ((int) $start->format('H')) * 60 + (int) $start->format('i');
+        $endMin = ((int) $end->format('H')) * 60 + (int) $end->format('i');
+        if ($endMin <= $startMin) {
+            $endMin = $startMin + 60;
+        }
+
+        $gridStart = 10 * 60;
+        $gridEnd = 19 * 60; // last hour row is 18:00–19:00
+        if ($endMin <= $gridStart || $startMin >= $gridEnd) {
+            return null;
+        }
+
+        $visStart = max($startMin, $gridStart);
+        $visEnd = min($endMin, $gridEnd);
+        $hourIndex = intdiv($visStart - $gridStart, 60);
+        $hourIndex = max(0, min(8, $hourIndex));
+        $slotStart = $gridStart + ($hourIndex * 60);
+
+        $cellH = 52;
+        $top = (int) round((($visStart - $slotStart) / 60) * $cellH) + 3;
+        $height = (int) max(24, round((($visEnd - $visStart) / 60) * $cellH) - 4);
+
+        $client = $booking->user;
+        $clientName = trim(($client?->first_name ?? '').' '.($client?->last_name ?? ''));
+        if ($clientName === '') {
+            $clientName = (string) ($client?->email ?? 'Client');
+        }
+        $shortClient = $this->shortName($clientName);
+
+        $artist = $booking->artist;
+        $artistDetail = $artist?->userDetail;
+        $artistName = $artistDetail?->publicDisplayName()
+            ?: trim(($artist?->first_name ?? '').' '.($artist?->last_name ?? ''))
+            ?: 'Artist';
+        $artistId = (int) $booking->artist_user_id;
+
+        $color = $colorByArtist[$artistId] ?? $palette[$extraColorIndex % count($palette)];
+
+        $status = strtolower((string) $booking->status);
+        $statusLabel = match ($status) {
+            'confirmed' => 'Confirmed',
+            'pending' => 'Pending deposit',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            'no_show' => 'No show',
+            'rescheduled' => 'Rescheduled',
+            default => ucfirst($status ?: 'Unknown'),
+        };
+        $statusPill = match ($status) {
+            'confirmed', 'completed' => 'g',
+            'pending' => 'a',
+            'cancelled', 'no_show' => 'r',
+            default => 'k',
+        };
+        $through = $this->bookedThroughLabel($booking);
+
+        return [
+            'id' => $booking->id,
+            'day_index' => $dayIndex,
+            'hour_index' => $hourIndex,
+            'top' => $top,
+            'height' => $height,
+            'artist_id' => $artistId,
+            'artist' => $artistName,
+            'filter' => 'a'.$artistId,
+            'fg' => $color['fg'],
+            'bg' => $color['bg'],
+            'label' => $shortClient.' · '.$booking->displayTitle(),
+            'modal' => $this->bookingModalPayload(
+                $booking,
+                $clientName,
+                $artistName,
+                $statusLabel,
+                $statusPill,
+                $through,
+            ),
+        ];
+    }
+
     private function shortName(string $full): string
     {
         $parts = preg_split('/\s+/', trim($full)) ?: [];
@@ -1080,5 +1699,328 @@ class BookingsController extends Controller
         $b = mb_strtoupper(mb_substr($parts[1] ?? ($parts[0] ?? 'L'), 0, 1));
 
         return $a.$b;
+    }
+
+    /**
+     * @param  Collection<int, object>  $rows
+     * @return Collection<int, object>
+     */
+    private function filterStudioPaymentLinkRows(Collection $rows, string $filter, string $search): Collection
+    {
+        $filtered = $rows;
+        if ($filter !== 'all') {
+            $filtered = $filtered->where('status', $filter)->values();
+        }
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $filtered = $filtered->filter(function ($row) use ($needle) {
+                $hay = mb_strtolower(implode(' ', array_filter([
+                    (string) ($row->title ?? ''),
+                    (string) ($row->artist ?? ''),
+                    (string) ($row->client ?? ''),
+                    (string) ($row->code ?? ''),
+                ])));
+
+                return str_contains($hay, $needle);
+            })->values();
+        }
+
+        return $filtered;
+    }
+
+    private function rejectIfCannotCreateStudioPaymentLinks(Request $request): ?JsonResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        if (! $studio) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Studio not found.',
+            ], 422);
+        }
+
+        $user = $request->user();
+        $profileComplete = (string) ($user->on_boarding ?? '') === 'yes';
+        $artists = $this->studioArtists($studio);
+
+        if (! $profileComplete) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Complete your studio profile before creating bookings.',
+            ], 422);
+        }
+
+        if ($artists->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invite or add an artist before creating a booking payment link.',
+            ], 422);
+        }
+
+        return null;
+    }
+
+    private function rejectIfArtistCannotAcceptPayments(Request $request): ?JsonResponse
+    {
+        $artistId = (int) $request->input('artist_id');
+        $artist = User::query()->with('userDetail')->find($artistId);
+        $userDetail = $artist?->userDetail;
+        if (! $userDetail) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => ['artist_id' => ['Choose a valid artist.']],
+            ], 422);
+        }
+
+        $payoutService = app(ArtistPayoutService::class);
+        if ($payoutService->canAcceptClientPayments($userDetail)) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => $payoutService->clientPaymentsBlockedMessage($userDetail)
+                ?: 'This artist cannot accept client payments yet.',
+            'errors' => [
+                'artist_id' => ['This artist needs payout setup before you can create a payment link.'],
+            ],
+        ], 422);
+    }
+
+    private function makeStudioPaymentLinkValidator(Request $request)
+    {
+        $studio = $this->resolveStudio($request->user());
+        $artistIds = $studio
+            ? $this->studioArtists($studio)->pluck('user_id')->all()
+            : [];
+
+        $isWalk = $request->input('when') === 'walk';
+        $isDeposit = $request->input('payment_type') === 'deposit';
+
+        $rules = [
+            'artist_id' => ['required', 'integer', Rule::in($artistIds)],
+            'amount' => ['required', 'string'],
+            'payment_type' => ['required', 'in:deposit,full'],
+            'title' => ['required', 'string', 'max:255'],
+            'session_duration' => ['required', 'in:2h,3h,4h,half-day,full-day'],
+            'when' => ['required', 'in:pick,walk'],
+            'total_price' => [Rule::requiredIf($isDeposit), 'nullable', 'string'],
+        ];
+
+        if ($isWalk) {
+            $rules['expires'] = ['nullable', 'string'];
+        } else {
+            $rules['expires'] = ['required', 'in:2 days,3 days,7 days'];
+            $rules['date_time'] = ['required', 'date_format:Y-m-d H:i', 'after:now'];
+        }
+
+        $validator = Validator::make($request->all(), $rules, [
+            'artist_id.required' => 'Choose an artist.',
+            'artist_id.in' => 'Choose a valid artist.',
+            'amount.required' => 'Please enter an amount.',
+            'payment_type.required' => 'Please select a payment type.',
+            'payment_type.in' => 'Please select a valid payment type.',
+            'title.required' => 'Please enter a title.',
+            'date_time.required' => 'Please select a date and time.',
+            'date_time.date_format' => 'Please select a valid date and time.',
+            'date_time.after' => 'Please select a future date and time.',
+            'session_duration.required' => 'Please select a session duration.',
+            'session_duration.in' => 'Please select a valid session duration.',
+            'total_price.required' => 'Please enter a total price.',
+            'expires.required' => 'Please select when this link expires.',
+            'expires.in' => 'Please select a valid expiration.',
+            'when.required' => 'Please choose when this booking starts.',
+            'when.in' => 'Please choose when this booking starts.',
+        ]);
+
+        $validator->after(function ($validator) use ($request, $isDeposit) {
+            $amountRaw = trim((string) $request->input('amount', ''));
+            $amount = $this->parseMoney($amountRaw);
+
+            if ($amountRaw !== '' && $amount === null) {
+                $validator->errors()->add('amount', 'Please enter a valid amount.');
+            } elseif ($amount !== null && $amount <= 0) {
+                $validator->errors()->add('amount', 'Amount must be greater than 0.');
+            }
+
+            if (! $isDeposit) {
+                return;
+            }
+
+            $totalRaw = trim((string) $request->input('total_price', ''));
+            if ($totalRaw === '') {
+                return;
+            }
+
+            $total = $this->parseMoney($totalRaw);
+            if ($total === null) {
+                $validator->errors()->add('total_price', 'Please enter a valid total price.');
+
+                return;
+            }
+
+            if ($amountRaw === '' || $amount === null) {
+                $validator->errors()->add('total_price', 'Please enter the amount first.');
+
+                return;
+            }
+
+            if ($total <= $amount) {
+                $validator->errors()->add('total_price', 'Total price must be greater than the amount.');
+            }
+        });
+
+        return $validator;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function normalizedStudioPaymentLinkData(Request $request): array
+    {
+        $isWalk = $request->input('when') === 'walk';
+        $isDeposit = $request->input('payment_type') === 'deposit';
+        $amount = (float) $this->parseMoney((string) $request->input('amount'));
+        $total = $isDeposit ? $this->parseMoney((string) $request->input('total_price')) : null;
+        $due = ($isDeposit && $total !== null) ? round($total - $amount, 2) : 0.0;
+        $sessionDuration = (string) $request->input('session_duration');
+        $dateTime = null;
+        $dateTimeFormatted = null;
+        $expires = $isWalk ? 'end of today' : trim((string) $request->input('expires'));
+        $expiresAt = $isWalk ? now()->endOfDay() : $this->parseExpiresAt($expires);
+
+        if ($isWalk) {
+            $dateTime = now();
+            $dateTimeFormatted = 'Today, now';
+        } elseif ($request->filled('date_time')) {
+            $dateTime = Carbon::createFromFormat('Y-m-d H:i', (string) $request->input('date_time'));
+            $dateTimeFormatted = $dateTime?->format('D j M, H:i');
+        }
+
+        $title = trim((string) $request->input('title'));
+        if ($title === '') {
+            $title = $isDeposit ? 'Deposit' : 'Full payment';
+        }
+
+        return [
+            'artist_id' => (int) $request->input('artist_id'),
+            'amount' => $amount,
+            'payment_type' => (string) $request->input('payment_type'),
+            'title' => $title,
+            'date_time' => $dateTime,
+            'date_time_formatted' => $dateTimeFormatted,
+            'session_duration' => $sessionDuration,
+            'session_duration_label' => $this->paymentLinkDurationLabel($sessionDuration),
+            'total_price' => $isDeposit ? $total : null,
+            'due_amount' => $due,
+            'expires' => $expires,
+            'expires_at' => $expiresAt,
+            'scheduling_type' => 'managed',
+            'is_walk_in' => $isWalk,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function studioPaymentLinkPreview(Request $request): array
+    {
+        $payload = $this->normalizedStudioPaymentLinkData($request);
+        $isDeposit = $payload['payment_type'] === 'deposit';
+
+        return [
+            'title' => $payload['title'],
+            'payment_type' => $payload['payment_type'],
+            'amount_formatted' => $this->formatEuro($payload['amount']),
+            'due_formatted' => $isDeposit ? $this->formatEuro((float) $payload['due_amount']) : null,
+            'expires' => $payload['expires'],
+            'session_duration_label' => $payload['session_duration_label'],
+            'date_time_formatted' => $payload['date_time_formatted'],
+        ];
+    }
+
+    private function buildClientMessage(array $payload, string $displayUrl): string
+    {
+        $kind = $payload['payment_type'] === 'deposit' ? 'deposit' : 'payment';
+
+        return sprintf(
+            "Here's your secure %s link for %s — %s, valid %s: %s",
+            $kind,
+            $payload['title'],
+            $this->formatEuro((float) $payload['amount']),
+            $payload['expires'],
+            $displayUrl
+        );
+    }
+
+    private function generatePaymentLinkCode(): string
+    {
+        $chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+        do {
+            $code = '';
+            for ($i = 0; $i < 8; $i++) {
+                $code .= $chars[random_int(0, strlen($chars) - 1)];
+            }
+        } while (PaymentLink::query()->where('code', $code)->exists());
+
+        return $code;
+    }
+
+    private function parseExpiresAt(string $expires): Carbon
+    {
+        if (preg_match('/(\d+)\s*(week|weeks|w)\b/i', $expires, $match)) {
+            return now()->addWeeks((int) $match[1]);
+        }
+
+        if (preg_match('/(\d+)\s*(day|days|d)\b/i', $expires, $match)) {
+            return now()->addDays((int) $match[1]);
+        }
+
+        if (preg_match('/(\d+)\s*(hour|hours|h)\b/i', $expires, $match)) {
+            return now()->addHours((int) $match[1]);
+        }
+
+        return now()->addDays(7);
+    }
+
+    private function paymentLinkDurationLabel(string $duration): string
+    {
+        return match ($duration) {
+            'half-day' => 'Half day',
+            'full-day' => 'Full day',
+            default => $duration,
+        };
+    }
+
+    private function formatEuro(float $value): string
+    {
+        $rounded = round($value, 2);
+        if (fmod($rounded, 1.0) === 0.0) {
+            return '€'.(string) (int) $rounded;
+        }
+
+        return '€'.number_format($rounded, 2, '.', '');
+    }
+
+    private function parseMoney(?string $value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $cleaned = preg_replace('/[^\d.,-]/', '', $value) ?? '';
+        $cleaned = str_replace(',', '.', $cleaned);
+
+        if ($cleaned === '' || $cleaned === '.' || $cleaned === '-') {
+            return null;
+        }
+
+        if (! is_numeric($cleaned)) {
+            return null;
+        }
+
+        return (float) $cleaned;
     }
 }

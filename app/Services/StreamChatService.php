@@ -66,6 +66,15 @@ class StreamChatService
                     ->exists();
         }
 
+        if ($user->role === 'studio') {
+            $studioId = (int) ($user->ownedStudio?->id ?? 0);
+            if ($studioId < 1) {
+                return false;
+            }
+
+            return Booking::query()->open()->where('studio_id', $studioId)->exists();
+        }
+
         return false;
     }
 
@@ -113,7 +122,7 @@ class StreamChatService
 
     public function ensureChannelForBooking(Booking $booking): ?ChatChannel
     {
-        $existing = ChatChannel::query()->where('booking_id', $booking->id)->first();
+        $existing = ChatChannel::query()->clientArtistForBooking((int) $booking->id)->first();
         if ($existing) {
             $this->syncChannelForBooking($booking);
 
@@ -122,6 +131,8 @@ class StreamChatService
 
         $attached = $this->tryAttachExistingRequestChannel($booking);
         if ($attached) {
+            $this->ensureChannelForStudioBooking($booking);
+
             return $attached;
         }
 
@@ -129,7 +140,50 @@ class StreamChatService
             return null;
         }
 
-        return $this->createBookingChannel($booking);
+        $channel = $this->createBookingChannel($booking);
+        $this->ensureChannelForStudioBooking($booking);
+
+        return $channel;
+    }
+
+    /**
+     * Studio owner ↔ artist thread for a booking at that studio (same active/lock rules as client chat).
+     */
+    public function ensureChannelForStudioBooking(Booking $booking): ?ChatChannel
+    {
+        $studioUserId = $this->studioOwnerUserIdForBooking($booking);
+        $artistId = (int) ($booking->artist_user_id ?? 0);
+        if ($studioUserId < 1 || $artistId < 1) {
+            return null;
+        }
+
+        $existing = ChatChannel::query()->studioArtistForBooking((int) $booking->id)->first();
+        if ($existing) {
+            $this->syncChannelFreezeState($existing);
+
+            return $existing;
+        }
+
+        if (! $booking->isOpenForChat() && ! $booking->canViewChat()) {
+            return null;
+        }
+
+        if (! $booking->isOpenForChat()) {
+            return null;
+        }
+
+        return $this->createStudioBookingChannel($booking, $studioUserId, $artistId);
+    }
+
+    public function studioOwnerUserIdForBooking(Booking $booking): int
+    {
+        $booking->loadMissing('studio');
+        $studio = $booking->studio;
+        if (! $studio) {
+            return 0;
+        }
+
+        return (int) ($studio->user_id ?? 0);
     }
 
     public function ensureChannelForBookingRequest(BookingRequest $request): ?ChatChannel
@@ -159,8 +213,10 @@ class StreamChatService
         $chatChannel = ChatChannel::query()->firstOrCreate(
             ['booking_request_id' => $request->id],
             [
+                'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
                 'client_user_id' => $clientId,
                 'artist_user_id' => $artistId,
+                'studio_user_id' => null,
                 'booking_id' => null,
                 'stream_channel_id' => $channelId,
             ]
@@ -170,6 +226,7 @@ class StreamChatService
             'booking_request_id' => $request->id,
             'booking_ref' => $request->referenceLabel(),
             'thread_type' => 'booking_request',
+            'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
         ], $request->isOpenForChat());
 
         return $chatChannel;
@@ -202,8 +259,10 @@ class StreamChatService
         $chatChannel = ChatChannel::query()->firstOrCreate(
             ['custom_request_id' => $request->id],
             [
+                'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
                 'client_user_id' => $clientId,
                 'artist_user_id' => $artistId,
+                'studio_user_id' => null,
                 'booking_id' => null,
                 'stream_channel_id' => $channelId,
             ]
@@ -213,6 +272,7 @@ class StreamChatService
             'custom_request_id' => $request->id,
             'booking_ref' => $request->referenceLabel(),
             'thread_type' => 'custom_request',
+            'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
         ], $request->isOpenForChat());
 
         return $chatChannel;
@@ -221,7 +281,7 @@ class StreamChatService
     public function attachBookingRequestChannel(BookingRequest $request, Booking $booking): ?ChatChannel
     {
         $requestChannel = ChatChannel::query()->where('booking_request_id', $request->id)->first();
-        $bookingChannel = ChatChannel::query()->where('booking_id', $booking->id)->first();
+        $bookingChannel = ChatChannel::query()->clientArtistForBooking((int) $booking->id)->first();
 
         if ($requestChannel) {
             if ($bookingChannel && $bookingChannel->id !== $requestChannel->id) {
@@ -229,9 +289,11 @@ class StreamChatService
             }
 
             $requestChannel->forceFill([
+                'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
                 'booking_id' => $booking->id,
                 'client_user_id' => (int) $booking->user_id,
                 'artist_user_id' => (int) $booking->artist_user_id,
+                'studio_user_id' => null,
             ])->save();
 
             $this->updateStreamChannelMeta($requestChannel, [
@@ -239,6 +301,7 @@ class StreamChatService
                 'booking_request_id' => $request->id,
                 'booking_ref' => $booking->referenceLabel(),
                 'thread_type' => 'booking',
+                'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
             ]);
 
             $this->syncChannelForBooking($booking);
@@ -261,7 +324,7 @@ class StreamChatService
     public function attachCustomRequestChannel(CustomRequest $request, Booking $booking): ?ChatChannel
     {
         $requestChannel = ChatChannel::query()->where('custom_request_id', $request->id)->first();
-        $bookingChannel = ChatChannel::query()->where('booking_id', $booking->id)->first();
+        $bookingChannel = ChatChannel::query()->clientArtistForBooking((int) $booking->id)->first();
 
         if ($requestChannel) {
             if ($bookingChannel && $bookingChannel->id !== $requestChannel->id) {
@@ -269,9 +332,11 @@ class StreamChatService
             }
 
             $requestChannel->forceFill([
+                'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
                 'booking_id' => $booking->id,
                 'client_user_id' => (int) $booking->user_id,
                 'artist_user_id' => (int) $booking->artist_user_id,
+                'studio_user_id' => null,
             ])->save();
 
             $this->updateStreamChannelMeta($requestChannel, [
@@ -279,6 +344,7 @@ class StreamChatService
                 'custom_request_id' => $request->id,
                 'booking_ref' => $booking->referenceLabel(),
                 'thread_type' => 'booking',
+                'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
             ]);
 
             $this->syncChannelForBooking($booking);
@@ -300,17 +366,24 @@ class StreamChatService
 
     public function syncChannelForBooking(Booking $booking): void
     {
-        $chatChannel = ChatChannel::query()->where('booking_id', $booking->id)->first();
+        $clientChannel = ChatChannel::query()->clientArtistForBooking((int) $booking->id)->first();
+        $studioChannel = ChatChannel::query()->studioArtistForBooking((int) $booking->id)->first();
 
-        if (! $chatChannel) {
-            if ($booking->isOpenForChat()) {
-                $this->ensureChannelForBooking($booking);
-            }
-
-            return;
+        if (! $clientChannel && $booking->isOpenForChat()) {
+            $this->ensureChannelForBooking($booking);
+            $clientChannel = ChatChannel::query()->clientArtistForBooking((int) $booking->id)->first();
+            $studioChannel = ChatChannel::query()->studioArtistForBooking((int) $booking->id)->first();
+        } elseif ($booking->isOpenForChat() && ! $studioChannel) {
+            $this->ensureChannelForStudioBooking($booking);
+            $studioChannel = ChatChannel::query()->studioArtistForBooking((int) $booking->id)->first();
         }
 
-        $this->syncChannelFreezeState($chatChannel);
+        if ($clientChannel) {
+            $this->syncChannelFreezeState($clientChannel);
+        }
+        if ($studioChannel) {
+            $this->syncChannelFreezeState($studioChannel);
+        }
     }
 
     public function syncChannelFreezeState(ChatChannel $chatChannel): void
@@ -329,7 +402,27 @@ class StreamChatService
 
     public function syncChannelsForUser(User $user): void
     {
-        if (! in_array($user->role, ['user', 'artist'], true)) {
+        if (! in_array($user->role, ['user', 'artist', 'studio'], true)) {
+            return;
+        }
+
+        if ($user->role === 'studio') {
+            $studioId = (int) ($user->ownedStudio?->id ?? 0);
+            if ($studioId > 0) {
+                Booking::query()
+                    ->open()
+                    ->where('studio_id', $studioId)
+                    ->get()
+                    ->each(fn (Booking $booking) => $this->ensureChannelForStudioBooking($booking));
+            }
+
+            ChatChannel::query()
+                ->forUser($user->id)
+                ->where('channel_kind', ChatChannel::KIND_STUDIO_ARTIST)
+                ->with(['booking', 'bookingRequest', 'customRequest'])
+                ->get()
+                ->each(fn (ChatChannel $chatChannel) => $this->syncChannelFreezeState($chatChannel));
+
             return;
         }
 
@@ -499,10 +592,14 @@ class StreamChatService
         $channelId = ChatChannel::channelIdForBooking($clientId, $artistId, (int) $booking->id);
 
         $chatChannel = ChatChannel::query()->firstOrCreate(
-            ['booking_id' => $booking->id],
+            [
+                'booking_id' => $booking->id,
+                'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
+            ],
             [
                 'client_user_id' => $clientId,
                 'artist_user_id' => $artistId,
+                'studio_user_id' => null,
                 'stream_channel_id' => $channelId,
             ]
         );
@@ -511,6 +608,35 @@ class StreamChatService
             'booking_id' => $booking->id,
             'booking_ref' => $booking->referenceLabel(),
             'thread_type' => 'booking',
+            'channel_kind' => ChatChannel::KIND_CLIENT_ARTIST,
+        ], $booking->isOpenForChat());
+
+        return $chatChannel;
+    }
+
+    private function createStudioBookingChannel(Booking $booking, int $studioUserId, int $artistId): ChatChannel
+    {
+        $channelId = ChatChannel::channelIdForStudioBooking($studioUserId, $artistId, (int) $booking->id);
+
+        $chatChannel = ChatChannel::query()->firstOrCreate(
+            [
+                'booking_id' => $booking->id,
+                'channel_kind' => ChatChannel::KIND_STUDIO_ARTIST,
+            ],
+            [
+                'client_user_id' => null,
+                'studio_user_id' => $studioUserId,
+                'artist_user_id' => $artistId,
+                'stream_channel_id' => $channelId,
+            ]
+        );
+
+        $this->provisionStreamChannel($chatChannel, $studioUserId, $artistId, [
+            'booking_id' => $booking->id,
+            'booking_ref' => $booking->referenceLabel(),
+            'thread_type' => 'booking',
+            'channel_kind' => ChatChannel::KIND_STUDIO_ARTIST,
+            'studio_user_id' => $studioUserId,
         ], $booking->isOpenForChat());
 
         return $chatChannel;

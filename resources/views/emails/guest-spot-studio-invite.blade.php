@@ -3,11 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Guest spot invitation — Bookpay</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{ $artistName }} wants a guest spot at your studio — Bookpay</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-    body { margin: 0; padding: 0; width: 100% !important; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -27,18 +29,23 @@
                     bookpay
                   </td>
                 </tr>
+
                 <tr>
                   <td style="padding:0 0 20px 0;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
                       <tr>
                         <td style="padding:12px;width:44px;vertical-align:middle;">
-                          <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
-                            {{ $artistInitials }}
-                          </div>
+                          @if(!empty($artistAvatarUrl))
+                            <img src="{{ $artistAvatarUrl }}" alt="{{ $artistName }}" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:50%;object-fit:cover;">
+                          @else
+                            <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
+                              {{ $artistInitials }}
+                            </div>
+                          @endif
                         </td>
                         <td style="padding:12px 12px 12px 0;vertical-align:middle;">
                           <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $artistName }}</div>
-                          @if($artistMeta !== '')
+                          @if(!empty($artistMeta))
                             <div style="font-size:13px;color:#6F6874;margin-top:2px;">{{ $artistMeta }}</div>
                           @endif
                         </td>
@@ -46,6 +53,7 @@
                     </table>
                   </td>
                 </tr>
+
                 <tr>
                   <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
                     Hi {{ $studioGreetingName }},
@@ -57,20 +65,23 @@
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 10px 0;">
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 8px 0;">
                     Your share of each booking is paid to you automatically. Free for studios.
-                    @if($artistPercent !== null)
-                      Proposed split: Artist {{ (int) $artistPercent }}% · Studio {{ 100 - (int) $artistPercent }}%.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:16px 0 8px 0;">
+                    @if(!empty($actionUrl))
+                      <a href="{{ $actionUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                        See the invitation
+                      </a>
                     @endif
                   </td>
                 </tr>
+
                 <tr>
-                  <td style="padding:14px 0 0 0;">
-                    <a href="{{ $actionUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:13px 22px;border-radius:12px;">See the invitation</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-size:12px;color:#6F6874;padding:28px 0 0 0;border-top:1px solid #EEE9F0;margin-top:28px;">
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:28px;border-top:1px solid #EEE9F0;">
                     Bookpay by Inkjin
                   </td>
                 </tr>

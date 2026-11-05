@@ -801,6 +801,7 @@
           <div class="abdm-kv" id="abdmSplitRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span id="abdmSplitLabel">Split</span><span id="abdmSplitValue" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmYourShareRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your share <span id="abdmYourShareNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourShare" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmYourStripeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your part of the Stripe fee <span id="abdmYourStripeNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourStripe" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmYourBookingFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your part of the booking fee <span id="abdmYourBookingFeeNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourBookingFee" style="font-weight:600">—</span></div>
           <div class="abdm-kv" style="padding:12px 0 4px;font-size:15px;border-bottom:0"><span style="color:#1A1A1A;font-weight:700">You get</span><span id="abdmYouGet" style="font-weight:800;font-size:18px">—</span></div>
           <div id="abdmMoneyFootnote" class="abdm-faint" style="font-size:12.5px;display:none"></div>
           <div id="abdmMoneyNote" class="abdm-tint" style="margin-top:12px;display:none"></div>
@@ -2307,6 +2308,9 @@
   var yourStripeRow = document.getElementById('abdmYourStripeRow');
   var yourStripeNote = document.getElementById('abdmYourStripeNote');
   var yourStripeEl = document.getElementById('abdmYourStripe');
+  var yourBookingFeeRow = document.getElementById('abdmYourBookingFeeRow');
+  var yourBookingFeeNote = document.getElementById('abdmYourBookingFeeNote');
+  var yourBookingFeeEl = document.getElementById('abdmYourBookingFee');
   var youGetEl = document.getElementById('abdmYouGet');
   var paidRow = document.getElementById('abdmPaidRow');
   var paidEl = document.getElementById('abdmPaid');
@@ -2391,7 +2395,7 @@
       if (complete) {
         aftercareBtn._mode = 'send';
         aftercareBtn._source = complete;
-        label = 'Send aftercare';
+        label = complete.getAttribute('data-menu-label') || 'Complete booking';
       } else if (status === 'completed' || aftercareLink) {
         aftercareBtn._mode = sent ? 'sent' : 'manage';
         aftercareBtn._source = aftercareLink || null;
@@ -2404,15 +2408,15 @@
       } else if (collect) {
         aftercareBtn._mode = 'collect';
         aftercareBtn._source = collect;
-        label = 'Send aftercare';
-        aftercareBtn.title = 'Collect the balance before sending aftercare';
+        label = 'Request payment';
+        aftercareBtn.title = 'Collect the balance before completing the booking';
       } else {
         aftercareBtn._mode = 'none';
         aftercareBtn.disabled = true;
         aftercareBtn.setAttribute('aria-disabled', 'true');
         aftercareBtn.title = status === 'confirmed'
-          ? 'Collect the balance before sending aftercare'
-          : 'Aftercare is available after the booking is confirmed';
+          ? 'Collect the balance before completing the booking'
+          : 'Complete booking is available after the booking is confirmed';
       }
 
       if (aftercareLabel) aftercareLabel.textContent = label;
@@ -2532,6 +2536,15 @@
           yourStripeRow.style.display = 'none';
         }
       }
+      if (yourBookingFeeRow && yourBookingFeeEl) {
+        if (money.your_booking_fee) {
+          yourBookingFeeRow.style.display = '';
+          yourBookingFeeEl.textContent = String(money.your_booking_fee || '—').replace(/^-€/, '−€');
+          if (yourBookingFeeNote) yourBookingFeeNote.textContent = money.your_booking_fee_note || '';
+        } else {
+          yourBookingFeeRow.style.display = 'none';
+        }
+      }
       if (youGetEl) youGetEl.textContent = money.you_get || '—';
       if (moneyFootnote) {
         if (money.footnote) {
@@ -2571,6 +2584,7 @@
       if (splitRow) splitRow.style.display = 'none';
       if (yourShareRow) yourShareRow.style.display = 'none';
       if (yourStripeRow) yourStripeRow.style.display = 'none';
+      if (yourBookingFeeRow) yourBookingFeeRow.style.display = 'none';
       if (youGetEl) youGetEl.textContent = '—';
       if (moneyFootnote) {
         moneyFootnote.style.display = 'none';

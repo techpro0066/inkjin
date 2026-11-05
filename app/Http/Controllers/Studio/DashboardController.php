@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Studio;
 use App\Models\UserStudio;
 use App\Services\GuestSpotStudioInviteService;
+use App\Support\StudioPaymentLinkModalData;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -100,7 +101,16 @@ class DashboardController extends Controller
 
         $initials = strtoupper(substr(preg_replace('/\s+/', '', $studioName) ?: 'ST', 0, 2));
 
-        return view('studio.dashboard', [
+        $studioArtistsForModal = $studio
+            ? StudioPaymentLinkModalData::artists($studio)
+            : collect();
+        $paymentLinkModal = StudioPaymentLinkModalData::createGate(
+            $profileComplete,
+            $studio,
+            $studioArtistsForModal
+        );
+
+        return view('studio.dashboard', array_merge($paymentLinkModal, [
             'studio' => $studio,
             'studioName' => $studioName,
             'studioEmail' => $studio?->email ?? $user->email,
@@ -115,6 +125,9 @@ class DashboardController extends Controller
             'stripeConnectUrl' => $stripeConnectUrl,
             'profileComplete' => $profileComplete,
             'activeNav' => 'home',
-        ]);
+            'studioArtistsForModal' => $studioArtistsForModal,
+            'currencySymbol' => '€',
+            'paymentLinkModalReloadOnDone' => false,
+        ]));
     }
 }
