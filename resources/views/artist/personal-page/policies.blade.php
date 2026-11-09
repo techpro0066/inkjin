@@ -47,19 +47,6 @@
   }
   .mp-pol .rule-link:hover{background:#F7F3F9}
   .mp-pol .rule-link .ms{font-size:20px}
-  .mp-pol .ql{position:relative}
-  .mp-pol .ql-b{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:13.5px;padding:9px 12px 9px 13px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
-  .mp-pol .ql-b:hover{background:#F7F3F9}
-  .mp-pol .ql-b .ms{font-size:18px}.mp-pol .ql-b .cv{font-size:20px}
-  .mp-pol .ql-p{position:absolute;right:0;top:calc(100% + 8px);width:min(400px,calc(100vw - 32px));background:#fff;border:1px solid #EAE2EE;border-radius:16px;box-shadow:0 18px 44px rgba(20,0,40,.18);padding:6px;z-index:80}
-  .mp-pol .ql-p[hidden]{display:none}
-  .mp-pol .ql-r{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:10px}
-  .mp-pol .ql-r:hover{background:#F7F3F9}
-  .mp-pol .ql-u{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .mp-pol .ql-u b{font-weight:700}
-  .mp-pol .ql-i{width:34px;height:34px;border-radius:9px;border:0;background:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);flex-shrink:0;text-decoration:none}
-  .mp-pol .ql-i:hover{background:#EFE7F3}
-  .mp-pol .ql-i .ms{font-size:18px}.mp-pol .ql-i.done .ms{color:#1F8A4C}
   .mp-pol .mp-toast{position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));transition:opacity .25s,transform .35s;pointer-events:none}
   .mp-pol .mp-toast.on{opacity:1;transform:none}
   .mp-pol .mp-toast .ms{color:#3DD68C;font-size:20px}
@@ -70,8 +57,9 @@
   .mp-pol .mp-leave-x:hover{background:#F7F3F9;color:var(--ink)}
   .mp-pol .mp-leave-x .ms{font-size:22px}
   @media (max-width:1180px){.mp-pol-grid{grid-template-columns:minmax(0,1fr)!important}}
-  @media (max-width:900px){.mp-pol .mp-toast{left:16px;right:16px;top:74px}.mp-pol .ql-p{right:auto;left:0}}
+  @media (max-width:900px){.mp-pol .mp-toast{left:16px;right:16px;top:74px}}
 </style>
+@include('partials.page-quick-links-styles')
 @endsection
 
 @section('content')
@@ -87,31 +75,13 @@
       <div class="sub">Everything clients see on your page.</div>
     </div>
     <div class="btns">
-      @if ($publicPageUrl)
-        <div class="ql" id="quickLinks">
-          <button type="button" class="ql-b" id="quickLinksBtn" aria-haspopup="true" aria-expanded="false" aria-controls="quickLinksMenu">
-            <span class="ms">link</span>Quick links<span class="ms cv">expand_more</span>
-          </button>
-          <div class="ql-p" id="quickLinksMenu" hidden role="menu" aria-label="Quick links">
-            @foreach ($quickLinkRows as $row)
-              <div class="ql-r" role="none">
-                <div class="ql-u" title="{{ $row['label'] }}">
-                  {{ $publicPageHost }}@if($row['suffix'] !== '')<b>{{ $row['suffix'] }}</b>@endif
-                </div>
-                <button type="button" class="ql-i" data-ql-copy="{{ $publicPageUrl.$row['suffix'] }}" data-ql-label="{{ $row['label'] }}" role="menuitem" title="Copy link">
-                  <span class="ms">content_copy</span>
-                </button>
-                <a class="ql-i" href="{{ $publicPageUrl.$row['suffix'] }}" target="_blank" rel="noopener" role="menuitem" title="Open">
-                  <span class="ms">open_in_new</span>
-                </a>
-              </div>
-            @endforeach
-          </div>
-        </div>
-        <a class="btn" href="{{ $publicPageUrl }}" target="_blank" rel="noopener">
-          <span class="ms">open_in_new</span>Open my page
-        </a>
-      @endif
+      @include('partials.page-quick-links', [
+        'qlPublicUrl' => $publicPageUrl,
+        'qlDisplayHost' => $publicPageHost,
+        'qlRows' => $quickLinkRows,
+        'qlButtonLabel' => 'Open my page',
+        'qlButtonClass' => 'btn',
+      ])
     </div>
   </div>
 
@@ -281,34 +251,6 @@
     pendingReload = false;
   }
 
-  // Quick links
-  var qlWrap = document.getElementById('quickLinks');
-  var qlBtn = document.getElementById('quickLinksBtn');
-  var qlMenu = document.getElementById('quickLinksMenu');
-  if (qlWrap && qlBtn && qlMenu) {
-    function openQl(show) {
-      qlMenu.hidden = !show;
-      qlBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
-      var cv = qlBtn.querySelector('.cv');
-      if (cv) cv.textContent = show ? 'expand_less' : 'expand_more';
-    }
-    qlBtn.addEventListener('click', function (e) { e.stopPropagation(); openQl(qlMenu.hidden); });
-    qlMenu.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var c = e.target.closest('[data-ql-copy]'); if (!c) return;
-      var u = c.getAttribute('data-ql-copy') || '';
-      try { navigator.clipboard.writeText(u).catch(function () {}); } catch (x) {}
-      c.classList.add('done');
-      var icon = c.querySelector('.ms');
-      if (icon) icon.textContent = 'check';
-      setTimeout(function () { c.classList.remove('done'); if (icon) icon.textContent = 'content_copy'; }, 1600);
-      toast('Link copied: ' + (c.getAttribute('data-ql-label') || u));
-    });
-    document.addEventListener('click', function (e) {
-      if (!qlMenu.hidden && !qlWrap.contains(e.target)) openQl(false);
-    });
-  }
-
   // Toggles
   function wireTog(el, hiddenId) {
     if (!el) return;
@@ -445,4 +387,5 @@
   }, true);
 })();
 </script>
+@include('partials.page-quick-links-script')
 @endsection

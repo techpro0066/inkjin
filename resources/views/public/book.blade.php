@@ -342,7 +342,7 @@
     <div class="in">
       <a class="logo" href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}"><i>ij</i>inkjin</a>
       <a class="back" href="{{ route('public.artist', ['username' => $userDetail->user_name]) }}"><span class="material-symbols-outlined ms">arrow_back</span>Back to {{ $userDetail->publicDisplayName() }}</a>
-    </div>
+      </div>
     <div class="bk-prog" id="topProgressBar"></div>
   </header>
 
@@ -368,14 +368,14 @@
       $activeStudioLink = $userDetail->activeUserStudio();
       if ($guestSpot) {
           $studioNamePlain = $guestSpot->studioDisplayName() ?: 'Guest studio';
-          $studioCityCountry = trim(implode(', ', array_filter([
+      $studioCityCountry = trim(implode(', ', array_filter([
               trim((string) ($guestSpot->city ?? '')),
               trim((string) ($guestSpot->country ?? '')),
-          ])));
+      ])));
           $studioNameDisplay = $studioNamePlain;
-          if ($studioCityCountry !== '') {
-              $studioNameDisplay .= ' (' . $studioCityCountry . ')';
-          }
+      if ($studioCityCountry !== '') {
+          $studioNameDisplay .= ' (' . $studioCityCountry . ')';
+      }
           $studioAddressLine = $guestSpot->listLocationLabel() ?: '';
           $studioMapsLink = trim((string) ($guestSpot->google_maps_link ?? ''));
       } else {
@@ -417,8 +417,8 @@
           <span><span class="material-symbols-outlined ms">schedule</span><span class="cc-designTime">{{ $tattoo->sessionDurationLabel() }}</span></span>
         </div>
         <div class="w"><i class="cc-artistAvatar">{{ $userDetail->publicDisplayInitials() }}</i>with <b class="cc-artistName">{{ $userDetail->publicDisplayName() }}</b> at <b class="cc-studioName">{{ $studioNameDisplay }}</b></div>
-      </div>
-    </div>
+          </div>
+        </div>
 
     <!-- ================================== -->
     <!-- STEP 1: QUESTIONS (Typeform-style) -->
@@ -951,12 +951,12 @@
         <div class="text-xs text-on-surface-variant mb-2">Booking ID: <b class="text-on-surface" id="confRef">#INK-000000</b></div>
         <p class="text-[12.5px] text-[#3F3A45] mb-4">We sent a confirmation and receipt to <b id="confEmail">—</b>.</p>
         <div class="bg-white rounded-2xl border border-outline-variant/20 px-4 py-3 mb-3.5 text-left text-sm space-y-2">
-          <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Design</span><span class="book-meta-value font-semibold" id="confDesign">—</span></div>
-          <div class="book-meta-row hidden" id="confConsultRow"><span class="book-meta-label text-on-surface-variant">Consultation</span><span class="book-meta-value font-semibold" id="confConsultDateTime">—</span></div>
+            <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Design</span><span class="book-meta-value font-semibold" id="confDesign">—</span></div>
+            <div class="book-meta-row hidden" id="confConsultRow"><span class="book-meta-label text-on-surface-variant">Consultation</span><span class="book-meta-value font-semibold" id="confConsultDateTime">—</span></div>
           <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant" id="confDateTimeLabel">When</span><span class="book-meta-value font-semibold" id="confDateTime">—</span></div>
           <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Where</span><span class="book-meta-value font-semibold text-xs sm:text-sm" id="confWhere">—</span></div>
           <div class="book-meta-row"><span class="book-meta-label text-on-surface-variant">Paid now</span><span class="book-meta-value font-semibold" id="confPaidNow">—</span></div>
-        </div>
+          </div>
         <div class="rounded-xl bg-primary/5 px-4 py-3.5 mb-4 text-left">
           <h3 class="text-sm font-bold text-on-surface mb-2">Before your appointment</h3>
           <ul class="space-y-1.5 text-[12.5px] text-[#3F3A45] list-disc pl-4">
@@ -2584,12 +2584,12 @@
         }
       }
       if (Array.isArray(artistBlockedPeriods) && artistBlockedPeriods.length) {
-        for (var i = 0; i < artistBlockedPeriods.length; i++) {
-          var p = artistBlockedPeriods[i];
-          if (!p) continue;
-          var s = String(p.start_date || '');
-          var e = String(p.end_date || '');
-          if (ymd >= s && ymd <= e) return true;
+      for (var i = 0; i < artistBlockedPeriods.length; i++) {
+        var p = artistBlockedPeriods[i];
+        if (!p) continue;
+        var s = String(p.start_date || '');
+        var e = String(p.end_date || '');
+        if (ymd >= s && ymd <= e) return true;
         }
       }
       // Guest-spot bookings are locked to the guest studio — skip home-studio location overrides.
@@ -3656,7 +3656,7 @@
         ccTatCalYear = ccConsultDate.getFullYear();
         ccTatCalMonth = ccConsultDate.getMonth();
         renderCcTattooCal();
-      } else {
+    } else {
         var consultStartDt = buildDateTime(ccConsultDate, ccConsultTime);
         var tattooStartDt = addGapToDateTime(consultStartDt, consultDurationMinutes, 'minutes');
         ccTattooDate = new Date(tattooStartDt.getFullYear(), tattooStartDt.getMonth(), tattooStartDt.getDate());

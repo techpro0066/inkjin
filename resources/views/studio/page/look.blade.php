@@ -4,22 +4,9 @@
 
 @push('styles')
 <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
+@include('partials.page-quick-links-styles')
 <style>
   .studio-page .btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .studio-page .ql{position:relative}
-  .studio-page .ql-b{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:13.5px;padding:9px 12px 9px 13px;border-radius:12px;border:1px solid #E8DFEA;background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
-  .studio-page .ql-b:hover{background:#F7F3F9}
-  .studio-page .ql-b:focus-visible{outline:2px solid #3E007C;outline-offset:2px}
-  .studio-page .ql-b .ms{font-size:18px}.studio-page .ql-b .cv{font-size:20px}
-  .studio-page .ql-p{position:absolute;right:0;top:calc(100% + 8px);width:min(400px,calc(100vw - 32px));background:#fff;border:1px solid #EAE2EE;border-radius:16px;box-shadow:0 18px 44px rgba(20,0,40,.18);padding:6px;z-index:80}
-  .studio-page .ql-p[hidden]{display:none}
-  .studio-page .ql-r{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:10px}
-  .studio-page .ql-r:hover{background:#F7F3F9}
-  .studio-page .ql-u{flex:1;min-width:0;font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .studio-page .ql-u b{font-weight:700}
-  .studio-page .ql-i{width:34px;height:34px;border-radius:9px;border:0;background:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);flex-shrink:0;text-decoration:none}
-  .studio-page .ql-i:hover{background:#EFE7F3}
-  .studio-page .ql-i .ms{font-size:18px}.studio-page .ql-i.done .ms{color:#1F8A4C}
   .studio-page .btn.lk-save{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:10px;padding:10px 16px}
   .studio-page .btn.lk-save .ms{font-size:18px}
   .studio-page .btn.lk-save:disabled{cursor:default}
@@ -39,7 +26,7 @@
   .studio-page .crop-stage{width:100%;height:360px;background:#F7F2F8;border-radius:12px;overflow:hidden}
   .studio-page .crop-box.tall .crop-stage{height:min(520px,70vh)}
   .studio-page .crop-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
-  @media (max-width:900px){.studio-page .sp-toast{left:16px;right:16px;top:74px}.studio-page .ql-p{right:auto;left:0}.studio-page .crop-stage{height:280px}.studio-page .crop-box.tall .crop-stage{height:min(420px,60vh)}}
+  @media (max-width:900px){.studio-page .sp-toast{left:16px;right:16px;top:74px}.studio-page .crop-stage{height:280px}.studio-page .crop-box.tall .crop-stage{height:min(420px,60vh)}}
   @media (max-width:700px){.studio-page .head .btns{width:100%}}
 </style>
 @endpush
@@ -68,34 +55,14 @@
       <div class="sub">What clients see at {{ $pageUrl }}.</div>
     </div>
     <div class="btns">
-      <div class="ql" id="quickLinks">
-        <button type="button" class="ql-b" id="quickLinksBtn" aria-haspopup="true" aria-expanded="false" aria-controls="quickLinksMenu">
-          <span class="ms">link</span>Quick links<span class="ms cv">expand_more</span>
-        </button>
-        <div class="ql-p" id="quickLinksMenu" hidden role="menu" aria-label="Quick links">
-          @foreach ($quickLinkRows as $row)
-            @php
-              $displayPath = $pageUrl.$row['suffix'];
-              $copyUrl = $publicPageUrl.$row['suffix'];
-              $openUrl = $publicPageUrl.($row['hash'] ?? '');
-            @endphp
-            <div class="ql-r" role="none">
-              <div class="ql-u" title="{{ $displayPath }}">
-                {{ $pageUrl }}@if($row['suffix'] !== '')<b>{{ $row['suffix'] }}</b>@endif
-              </div>
-              <button type="button" class="ql-i" data-ql-copy="{{ $copyUrl }}" data-ql-label="{{ $displayPath }}" role="menuitem" title="Copy link">
-                <span class="ms">content_copy</span>
-              </button>
-              <a class="ql-i" href="{{ $openUrl }}" target="_blank" rel="noopener" role="menuitem" title="Open">
-                <span class="ms">open_in_new</span>
-              </a>
-            </div>
-          @endforeach
-        </div>
-      </div>
-      <a class="btn" href="{{ $publicPageUrl }}" target="_blank" rel="noopener">
-        <span class="ms">open_in_new</span>Open studio page
-      </a>
+      @include('partials.page-quick-links', [
+        'qlPublicUrl' => $publicPageUrl,
+        'qlDisplayHost' => $pageUrl,
+        'qlRows' => $quickLinkRows,
+        'qlButtonLabel' => 'Open studio page',
+        'qlButtonClass' => 'btn',
+        'qlFallbackUrl' => route('studio.page.about'),
+      ])
     </div>
   </div>
 
@@ -364,40 +331,6 @@
     toastEl._t = setTimeout(function () { toastEl.classList.remove('on'); }, 2600);
   }
 
-  var ql = document.getElementById('quickLinks');
-  var qlBtn = document.getElementById('quickLinksBtn');
-  var qlMenu = document.getElementById('quickLinksMenu');
-  if (ql && qlBtn && qlMenu) {
-    function openQl(show) {
-      qlMenu.hidden = !show;
-      qlBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
-      var cv = qlBtn.querySelector('.cv');
-      if (cv) cv.textContent = show ? 'expand_less' : 'expand_more';
-    }
-    qlBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      openQl(qlMenu.hidden);
-    });
-    qlMenu.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var btn = e.target.closest('[data-ql-copy]');
-      if (!btn) return;
-      var url = btn.getAttribute('data-ql-copy') || '';
-      try { navigator.clipboard.writeText(url); } catch (x) {}
-      btn.classList.add('done');
-      var icon = btn.querySelector('.ms');
-      if (icon) icon.textContent = 'check';
-      setTimeout(function () {
-        btn.classList.remove('done');
-        if (icon) icon.textContent = 'content_copy';
-      }, 1600);
-      toast('Link copied: ' + (btn.getAttribute('data-ql-label') || url));
-    });
-    document.addEventListener('click', function (e) {
-      if (!qlMenu.hidden && !ql.contains(e.target)) openQl(false);
-    });
-  }
-
   document.getElementById('spLeaveClose')?.addEventListener('click', dismissLeaveModal);
   leaveEl?.addEventListener('click', function (e) {
     if (e.target === leaveEl) dismissLeaveModal();
@@ -444,4 +377,5 @@
   }, true);
 })();
 </script>
+@include('partials.page-quick-links-script')
 @endpush

@@ -456,7 +456,7 @@
       <div>
         <h3>How you get paid</h3>
         <div class="faint" style="font-size:12.5px;margin-top:2px">{{ $howSub }}</div>
-                  </div>
+                      </div>
       @unless ($hasMultiplePayoutStudios)
       <div class="row chpo" style="gap:8px;flex-wrap:wrap">
         @if ($isStudioSplit)
@@ -467,13 +467,13 @@
           @endunless
           <button type="button" class="btn sm ghost" id="changeHowPaidBtn">
             <span class="ms" style="font-size:17px">swap_horiz</span>Switch to direct payment
-          </button>
-        @else
+                      </button>
+                    @else
           <button type="button" class="btn sm ghost" id="changeHowPaidBtn">
             <span class="ms" style="font-size:17px">swap_horiz</span>Switch to studio revenue split
-          </button>
-        @endif
-      </div>
+                      </button>
+                    @endif
+                  </div>
       @endunless
                 </div>
     @if ($hasMultiplePayoutStudios)
@@ -488,9 +488,9 @@
                 <span class="pill {{ $card['is_split'] ? ($card['is_waiting'] ? 'a' : 'g') : 'k' }}">
                   {{ $card['is_split'] ? ($card['is_waiting'] ? 'Waiting for studio' : 'Studio - Revenue split') : 'Artist - Direct payment' }}
                         </span>
-                      </div>
+              </div>
               <div class="faint" style="font-size:12.5px;margin-top:2px">{{ $card['meta'] }}</div>
-            </div>
+                    </div>
             @if ($card['is_split'])
               <div class="row" style="gap:8px;flex-wrap:wrap">
                 @unless ($card['has_pending_split_ask'])
@@ -509,24 +509,24 @@
                   <span class="ms" style="font-size:17px">swap_horiz</span>Switch to direct payment
                 </button>
               </div>
-            @else
+                      @else
               <button type="button" class="btn sm ghost js-p2-setup-split">
                 <span class="ms" style="font-size:17px">percent</span>Set up a revenue split
               </button>
-            @endif
-                  </div>
+                      @endif
+                    </div>
           <div class="p2nums">
             <div class="sect">
               <div class="lbl">You get</div>
               <div class="big">{{ $card['you_percent'] }}%</div>
-                </div>
+                      </div>
             <div class="sect">
               <div class="lbl">{{ $card['is_split'] ? 'Studio gets' : 'Revenue split' }}</div>
               <div class="big" @if (! $card['is_split']) style="color:var(--faint)" @endif>
                 {{ $card['is_split'] ? $card['studio_percent'].'%' : 'None' }}
+                  </div>
+                </div>
               </div>
-                    </div>
-                    </div>
           @if ($card['has_pending_split_ask'])
             <div class="p2wait" style="margin-top:10px">
               <span class="ms">hourglass_top</span>
@@ -535,9 +535,9 @@
                 <div style="font-size:12.5px;margin-top:2px">
                   You asked for You {{ $card['proposed_you_percent'] }}% · Studio {{ $card['proposed_studio_percent'] }}%.
                   Current split stays until they accept or decline. A new split applies only to new bookings.
-                </div>
-              </div>
-            </div>
+                    </div>
+                      </div>
+                      </div>
           @elseif ($card['is_confirmed'])
             <div class="faint" style="font-size:12.5px;margin-top:10px">Confirmed by {{ $card['name'] }}. Locked: only the studio can change it, and you accept first.</div>
           @elseif ($card['is_waiting'])
@@ -546,21 +546,21 @@
               <div style="flex:1;min-width:200px">
                 <b>Waiting for {{ $card['name'] }}</b>
                 <div style="font-size:12.5px;margin-top:2px">You keep getting paid directly until they accept. The split applies only to new bookings.</div>
-                    </div>
+                      </div>
               <button type="button" class="btn sm ghost js-p2-resend">Resend invitation</button>
                       </div>
           @elseif (! $card['is_split'])
             <div class="faint" style="font-size:12.5px;margin-top:10px">The full payment goes to you. You settle rent or fees with {{ $card['name'] }} outside Bookpay.</div>
                     @endif
-                  </div>
+                      </div>
       @endforeach
-                </div>
+                    </div>
     <div style="padding:0 22px 18px">
       <div class="lockbar">
         <span class="ms" style="font-size:17px">info</span>
         <span>Each booking uses the setup of the studio where the session is. You pick which days you work at each studio in <a href="{{ route('schedule.calendar-sync') }}" style="color:#3E007C;font-weight:600">Schedule</a>.</span>
-              </div>
-                    </div>
+                  </div>
+                </div>
     @else
     <div style="padding:18px 22px">
       <div class="picked" id="howPaidSummary" style="{{ $artistStripeConnected ? '' : 'opacity:.5' }}">
@@ -570,15 +570,15 @@
             <div class="row" style="gap:8px;flex-wrap:wrap">
               <b style="font-size:15px">{{ $howTitle }}</b>
               <span class="pill {{ $howPillClass }}">{{ $howPill }}</span>
-                      </div>
+              </div>
             <div class="faint" style="font-size:12.5px;margin-top:2px">{{ $howWhere }}</div>
-                      </div>
-                      </div>
+            </div>
+            </div>
         <div class="grid how-split" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
           <div class="sect" style="margin:0;text-align:center">
             <div class="lbl">You get</div>
             <div style="font-size:26px;font-weight:800">{{ $youPercent }}%</div>
-                      </div>
+        </div>
           <div class="sect" style="margin:0;text-align:center">
             <div class="lbl">{{ $isStudioSplit ? 'Studio gets' : 'Revenue split' }}</div>
             @if ($isStudioSplit)
@@ -586,8 +586,8 @@
                     @else
               <div style="font-size:26px;font-weight:800;color:var(--faint)">None</div>
                       @endif
-                      </div>
-                    </div>
+      </div>
+    </div>
         @if ($pendingSplitAsk)
           <div class="p2wait" style="margin-top:14px">
             <span class="ms">hourglass_top</span>
@@ -596,24 +596,24 @@
               <div style="font-size:12.5px;margin-top:2px">
                 You asked for You {{ $pendingSplitYouPercent }}% · Studio {{ $pendingSplitStudioPercent }}%.
                 Current split stays until they accept or decline. A new split applies only to new bookings.
-              </div>
-            </div>
-          </div>
+  </div>
+</div>
+      </div>
         @endif
         @if ($isStudioSplit && $studioPayoutCommitted && ! $studioPayoutConnected)
           <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid #E9DDF0">
             <button type="button" class="btn sm ghost" id="resendStudioInviteBtn">
               <span class="ms" style="font-size:16px">send</span>Resend invitation
-            </button>
+        </button>
             <span id="resendStudioInviteMsg" class="faint" style="font-size:12.5px"></span>
-                  </div>
+      </div>
         @endif
-                </div>
+    </div>
       @if ($lockText)
         <div class="lockbar" style="margin-top:12px">
           <span class="ms" style="font-size:17px">{{ $lockIcon }}</span>
           <span>{{ $lockText }}</span>
-        </div>
+  </div>
                     @endif
                     
       <div id="changePayoutPanel" class="{{ $changePanelOpen ? '' : 'hidden' }}" style="margin-top:18px">
@@ -631,7 +631,7 @@
             <div style="margin-bottom:14px">
               <h3 style="margin-bottom:4px">Studio payout</h3>
               <p class="faint" style="font-size:13px;margin:0">Invite your studio to connect their bank account. Both your account and the studio must be connected.</p>
-            </div>
+    </div>
 
             <div id="studioPayoutEmailNotSent" class="{{ $studioPayoutStatus !== 'email_not_sent' ? 'hidden' : '' }}">
               <span class="pill k" style="margin-bottom:10px">Email not sent</span>
@@ -690,7 +690,7 @@
                   <div class="lbl">Studio email</div>
                   <div style="font-weight:600;margin-top:4px">{{ $studioEmail }}</div>
       </div>
-              @endif
+    @endif
               @if ($ud->studio_revenue_artist_percent !== null)
                 <div style="margin-top:10px">
                   <div class="lbl">Revenue split</div>
@@ -721,12 +721,12 @@
             <p id="studio_email_error" class="help hidden" style="color:var(--red)"></p>
             <p id="studio_revenue_artist_percent_error" class="help hidden" style="color:var(--red)"></p>
             <p id="studio_relationship_type_error" class="help hidden" style="color:var(--red)"></p>
-  </div>
-                      </div>
-                      </div>
-                      </div>
+        </div>
+      </div>
+        </div>
+      </div>
     @endif
-  </div>
+    </div>
 
   {{-- Payment account --}}
   <div class="card" style="margin-bottom:14px">
@@ -734,11 +734,11 @@
       <div>
         <h3>Payment account</h3>
         <div class="faint" style="font-size:12.5px;margin-top:2px">Every artist connects their own Stripe account</div>
-                      </div>
+          </div>
       <button type="button" class="btn sm ghost" id="changePayoutAccountBtn">
         <span class="ms" style="font-size:17px">swap_horiz</span>Change payout account
-      </button>
-                    </div>
+            </button>
+          </div>
     <div style="padding:18px 22px" id="paymentAccountMount">
       <div id="payoutArtistBankSection">
         <p id="payoutArtistBankSubtitle" class="hidden"></p>
@@ -746,7 +746,7 @@
         @if ($payoutWaitingListCountry)
           <div class="note" style="border-style:solid;border-color:#C8E6C9;background:#E8F5E9;color:#1B5E20">
             <span class="ms">schedule</span>
-            <div>
+              <div>
               <b>Your country isn't supported yet</b>
               <div class="help" style="color:inherit;margin-top:4px">We'll notify you at <strong>{{ auth()->user()->email }}</strong> when payouts become available.</div>
                   </div>
@@ -758,8 +758,8 @@
               <b>Payout country missing</b>
               <div style="font-size:13px;margin-top:3px;line-height:1.5">We need the country you chose at signup to set up Stripe payouts. Please contact support if this looks wrong.</div>
               </div>
-            </div>
-        @else
+              </div>
+            @else
           <div id="artistPayoutNotConnected" class="{{ $artistStripeConnected ? 'hidden' : '' }}">
             @php
               $activeDisconnectedAt = $activePayout?->disconnected_at;
@@ -773,20 +773,20 @@
                 <div class="row" style="gap:8px;flex-wrap:wrap">
                   <b>Stripe · bank account</b>
                   <span class="pill r">{{ $activeDisconnectedLabel ? 'Disconnected' : 'Not connected' }}</span>
-    </div>
+              </div>
                 <div class="faint" style="font-size:12.5px;margin-top:2px">
                   @if ($activeDisconnectedLabel)
                     Disconnected on {{ $activeDisconnectedLabel }}. Connect again to get paid.
                   @else
                     Connect again to get paid.
-                  @endif
+            @endif
     </div>
               </div>
               <button type="button" class="btn sm dconn" id="connectBankAccountBtn">
                 <span class="ms" style="font-size:16px">link</span>Connect
-              </button>
+            </button>
             </div>
-        </div>
+          </div>
 
           <div id="artistPayoutConnected" class="{{ $artistStripeConnected ? '' : 'hidden' }}">
             <div class="row" style="gap:14px;flex-wrap:wrap">
@@ -795,7 +795,7 @@
                 <div class="row" style="gap:8px;flex-wrap:wrap">
                   <b>Stripe · bank account</b>
                   <span class="pill g">Connected</span>
-      </div>
+              </div>
                 <div class="faint" style="font-size:12.5px;margin-top:2px">
                   @if ($payoutMode === 'automatic')
                     Payouts are sent automatically when funds become available
@@ -820,7 +820,7 @@
               <span class="ms">assignment</span>Complete required information
             </a>
             <p id="artistStripeSavingMessage" class="help hidden">Saving your payout connection…</p>
-      </div>
+            </div>
 
           <div id="artistStripeSetupSection" class="hidden" style="margin-top:18px">
             <div id="payoutStripeStep" class="hidden">
@@ -829,12 +829,12 @@
                 <p id="payoutStripeStepDescription" class="faint" style="font-size:13px;margin:6px 0 0">
                   Add your personal details, upload an identity document (passport or ID).
                 </p>
-        </div>
+                </div>
               @if (!($stripeConnectConfigured ?? false))
                 <div class="dwarn" style="margin:0">
                   <span class="ms">error</span>
                   <div style="flex:1">Stripe is not configured. Please contact support.</div>
-      </div>
+              </div>
               @else
                 <div class="stripe-connect-shell">
                   <div id="stripeConnectMount"></div>
@@ -853,7 +853,7 @@
           <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line)">
             <div class="faint" style="font-size:12.5px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;margin-bottom:12px">
               Other accounts
-          </div>
+                </div>
             <div style="display:flex;flex-direction:column;gap:12px">
               @foreach ($disconnectedPayouts as $oldPayout)
                 @php
@@ -880,9 +880,9 @@
                     <div class="faint" style="font-size:12.5px;margin-top:2px">
                       @if ($oldWhenLabel)
                         Disconnected on {{ $oldWhenLabel }}. Bookings already paid to this account still pay out here until they finish.
-        @else
+              @else
                         Previous payout account. Bookings already paid to this account still pay out here until they finish.
-                      @endif
+              @endif
                     </div>
                   </div>
             <button
@@ -895,12 +895,12 @@
             </button>
           </div>
               @endforeach
-              </div>
-              </div>
-            @endif
-    </div>
-        </div>
+            </div>
           </div>
+        @endif
+    </div>
+      </div>
+    </div>
 
 </form>
           </div>
@@ -914,7 +914,7 @@
       <button type="button" id="confirmDisconnectStripeBtn" class="btn" style="flex:1;justify-content:center;background:#C62828;color:#fff">Disconnect</button>
               </div>
               </div>
-            </div>
+        </div>
 
 <div id="disconnectStudioModal" class="pay-ov hidden" role="dialog" aria-modal="true">
   <div style="background:#fff;border-radius:22px;width:420px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:22px">
@@ -923,9 +923,9 @@
     <div class="row" style="gap:10px">
       <button type="button" id="cancelDisconnectStudio" class="btn ghost" style="flex:1;justify-content:center">Cancel</button>
       <button type="button" id="confirmDisconnectStudioBtn" class="btn" style="flex:1;justify-content:center;background:#C62828;color:#fff">Disconnect</button>
-    </div>
-                </div>
-              </div>
+            </div>
+          </div>
+        </div>
 
 <div id="activatePayoutAccountModal" class="pay-ov hidden" role="dialog" aria-modal="true" aria-labelledby="activatePayoutAccountTitle">
   <div style="background:#fff;border-radius:22px;width:420px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:22px">
@@ -948,7 +948,7 @@
 <div id="changeHowPaidModal" class="pay-ov hidden" role="dialog" aria-modal="true" aria-labelledby="changeHowPaidTitle" data-change-mode="to-studio" data-user-studio-id="">
   <div class="pay-modal">
     <div class="pay-mh">
-      <div>
+            <div>
         <div class="ic" style="background:#F3E8FF;color:#3E007C;margin-bottom:12px"><span class="ms">swap_horiz</span></div>
         <h2 id="changeHowPaidTitle">Change how I get paid</h2>
         <div class="muted" id="changeHowPaidSub" style="font-size:13.5px;margin-top:4px">
@@ -1023,7 +1023,7 @@
       <button type="button" class="btn" id="changeHowPaidSendBtn"><span class="ms">send</span>Send invite</button>
     </div>
   </div>
-</div>
+            </div>
 @endif
 @if ($isStudioSplit && ! $hasMultiplePayoutStudios)
 <div id="changeHowPaidModal" class="pay-ov hidden" role="dialog" aria-modal="true" aria-labelledby="changeHowPaidTitle" data-change-mode="to-artist">
@@ -1157,7 +1157,7 @@
       <button type="button" class="btn" id="askNewSplitSendBtn" disabled>Send request</button>
     </div>
   </div>
-</div>
+  </div>
 
 @php
   $changePayoutCountries = \App\Support\StripeConnectCountries::supportedForSelect();

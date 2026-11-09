@@ -3,6 +3,7 @@
 @section('title', 'Home')
 
 @push('styles')
+@include('partials.page-quick-links-styles')
 @include('studio.bookings.partials.payment-link-modal-assets')
 @endpush
 
@@ -18,7 +19,17 @@
         @endif
       </div>
     </div>
-    @include('studio.bookings.partials.new-booking-button', ['variant' => 'ghost'])
+    <div class="btns">
+      @include('partials.page-quick-links', [
+        'qlPublicUrl' => $publicPageUrl ?? '',
+        'qlDisplayHost' => $publicPageHost ?? '',
+        'qlRows' => $quickLinkRows ?? [],
+        'qlButtonLabel' => 'Open studio page',
+        'qlButtonClass' => 'btn ghost',
+        'qlFallbackUrl' => route('studio.page.about'),
+      ])
+      @include('studio.bookings.partials.new-booking-button', ['variant' => 'ghost'])
+    </div>
   </div>
 
   @unless ($profileComplete)
@@ -217,6 +228,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 @include('studio.bookings.partials.payment-link-modal-script')
+@include('partials.page-quick-links-script')
 <script>
 (function () {
   // After creating a link from Home, send them to Payment links so the new row is visible.

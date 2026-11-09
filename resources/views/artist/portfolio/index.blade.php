@@ -17,6 +17,8 @@
     ['suffix' => '#faq', 'label' => $publicPageHost.'#faq'],
   ] : [];
   $displayPortfolio = (bool) ($displayPortfolio ?? ($userDetail?->display_portfolio ?? true));
+  $availabilityStatus = (string) ($userDetail?->availability_status ?? '');
+  $similarRequestsBlockedByAvailability = in_array($availabilityStatus, ['closed', 'design_only'], true);
   $igIconPath = 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266.057 1.645.069 4.849.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z';
   $instagramImportedCount = $instagramImportedCount ?? 0;
 @endphp
@@ -26,6 +28,7 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+@include('partials.page-quick-links-styles')
 <style>
 
     /* Modal */
@@ -468,19 +471,6 @@
     .mp-pf .tog:after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s}
     .mp-pf .tog.on{background:var(--pri)}.mp-pf .tog.on:after{left:19px}
     .mp-pf .tog:disabled{opacity:.55;cursor:not-allowed}
-    .mp-pf .ql{position:relative}
-    .mp-pf .ql-b{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:13.5px;padding:9px 12px 9px 13px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
-    .mp-pf .ql-b:hover{background:#F7F3F9}
-    .mp-pf .ql-b .ms{font-size:18px}.mp-pf .ql-b .cv{font-size:20px}
-    .mp-pf .ql-p{position:absolute;right:0;top:calc(100% + 8px);width:min(400px,calc(100vw - 32px));background:#fff;border:1px solid #EAE2EE;border-radius:16px;box-shadow:0 18px 44px rgba(20,0,40,.18);padding:6px;z-index:80}
-    .mp-pf .ql-p[hidden]{display:none}
-    .mp-pf .ql-r{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:10px}
-    .mp-pf .ql-r:hover{background:#F7F3F9}
-    .mp-pf .ql-u{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .mp-pf .ql-u b{font-weight:700}
-    .mp-pf .ql-i{width:34px;height:34px;border-radius:9px;border:0;background:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);flex-shrink:0;text-decoration:none}
-    .mp-pf .ql-i:hover{background:#EFE7F3}
-    .mp-pf .ql-i .ms{font-size:18px}.mp-pf .ql-i.done .ms{color:#1F8A4C}
     .mp-pf .mp-toast{position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));transition:opacity .25s,transform .35s;pointer-events:none}
     .mp-pf .mp-toast.on{opacity:1;transform:none}
     .mp-pf .mp-toast .ms{color:#3DD68C;font-size:20px}
@@ -517,7 +507,7 @@
     .mp-pf .secsw .ic{width:38px;height:38px;border-radius:10px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .mp-pf .secsw .ic .ms{font-size:20px}
     @media(max-width:1000px){.mp-pf .pgrid{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:600px){.mp-pf .pgrid{grid-template-columns:1fr}.mp-pf .igcard{flex-wrap:wrap}.mp-pf .pfhead{flex-direction:column;align-items:flex-start!important;gap:12px}.mp-pf .mp-toast{left:16px;right:16px;top:74px}.mp-pf .ql-p{right:auto;left:0}}
+    @media(max-width:600px){.mp-pf .pgrid{grid-template-columns:1fr}.mp-pf .igcard{flex-wrap:wrap}.mp-pf .pfhead{flex-direction:column;align-items:flex-start!important;gap:12px}.mp-pf .mp-toast{left:16px;right:16px;top:74px}}
 
 
     /* Add work modal (C03) */
@@ -594,31 +584,13 @@
       <div class="sub">Everything clients see on your booking page.</div>
           </div>
     <div class="btns">
-      @if ($publicPageUrl)
-        <div class="ql" id="quickLinks">
-          <button type="button" class="ql-b" id="quickLinksBtn" aria-haspopup="true" aria-expanded="false" aria-controls="quickLinksMenu">
-            <span class="ms">link</span>Quick links<span class="ms cv">expand_more</span>
-          </button>
-          <div class="ql-p" id="quickLinksMenu" hidden role="menu" aria-label="Quick links">
-            @foreach ($quickLinkRows as $row)
-              <div class="ql-r" role="none">
-                <div class="ql-u" title="{{ $row['label'] }}">
-                  {{ $publicPageHost }}@if($row['suffix'] !== '')<b>{{ $row['suffix'] }}</b>@endif
-                </div>
-                <button type="button" class="ql-i" data-ql-copy="{{ $publicPageUrl.$row['suffix'] }}" data-ql-label="{{ $row['label'] }}" role="menuitem" title="Copy link">
-                  <span class="ms">content_copy</span>
-                </button>
-                <a class="ql-i" href="{{ $publicPageUrl.$row['suffix'] }}" target="_blank" rel="noopener" role="menuitem" title="Open">
-                  <span class="ms">open_in_new</span>
-                </a>
-              </div>
-            @endforeach
-          </div>
-        </div>
-        <a class="btn" href="{{ $publicPageUrl }}#portfolio" target="_blank" rel="noopener">
-          <span class="ms">open_in_new</span>Open my page
-          </a>
-          @endif
+      @include('partials.page-quick-links', [
+        'qlPublicUrl' => $publicPageUrl,
+        'qlDisplayHost' => $publicPageHost,
+        'qlRows' => $quickLinkRows,
+        'qlButtonLabel' => 'Open my page',
+        'qlButtonClass' => 'btn',
+      ])
         </div>
       </div>
 
@@ -634,6 +606,16 @@
   @endif
   @if (session('error'))
     <div class="note" style="margin-bottom:14px;border-color:#F3C9C9;background:#FDECEC;color:#C62828">{{ session('error') }}</div>
+  @endif
+
+  @if ($similarRequestsBlockedByAvailability)
+    <div class="note" style="margin-bottom:14px" role="status">
+      <span class="ms">visibility_off</span>
+      <span style="flex:1;min-width:0;line-height:1.45">
+        Clients cannot request similar tattoos until you open your books.
+        <a href="{{ route('availability.index') }}?tab=status" style="color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px">Update Schedule &gt; Availability</a>
+      </span>
+      </div>
   @endif
 
   <div class="card secsw" style="display:flex;align-items:center;gap:14px;padding:14px 18px;margin-bottom:16px">
@@ -669,8 +651,8 @@
         </a>
       @endif
       <button type="button" id="btnAddWork" class="btn"><span class="ms">add</span>Add work</button>
-    </div>
-  </div>
+        </div>
+      </div>
 
   @if ($showInstagramUi && !empty($instagramConnected))
   <div class="card igcard" id="igcard">
@@ -680,14 +662,14 @@
         <span class="igb" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#fff" stroke="none"/></svg>
               </span>
-            </div>
-    @else
+          </div>
+              @else
       <div class="igav" aria-hidden="true">IG
         <span class="igb">
           <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#fff" stroke="none"/></svg>
         </span>
             </div>
-            @endif
+              @endif
     <div style="flex:1;min-width:180px">
       <div class="row" style="gap:8px">
         <b>Instagram</b>
@@ -698,7 +680,7 @@
         @if (!empty($instagramUsername))
           · Connected account: {{ '@'.ltrim((string) $instagramUsername, '@') }}
         @endif
-          </div>
+            </div>
         </div>
     <div class="row" style="gap:8px">
       <button type="button" class="igbtn" id="btnInstagramRefresh"
@@ -715,8 +697,8 @@
   <div class="ignote" id="ignote">
     <span class="ms">info</span>
     <span><b>Refresh brings in your new Instagram posts.</b> To keep a post off your page, turn off <b>Visible</b>. Hidden posts stay hidden after a refresh. Instagram posts can’t be deleted here, because a refresh would bring them back.</span>
-  </div>
-  @endif
+            </div>
+            @endif
 
   <div id="pflist">
     @if ($portfolios->isNotEmpty())
@@ -724,13 +706,13 @@
       <div class="faint" style="font-size:12.5px">
         <span class="ms" style="font-size:16px;vertical-align:-3px">drag_indicator</span>
         Drag pieces to change the order they appear on your page.
-      </div>
+            </div>
       <div class="pff" id="pfFilter" role="radiogroup" aria-label="Show">
         <button type="button" role="radio" data-f="all" class="on" aria-checked="true">All <span id="pfFilterAllCnt"></span></button>
         <button type="button" role="radio" data-f="vis" aria-checked="false">Visible <span id="pfFilterVisCnt"></span></button>
         <button type="button" role="radio" data-f="hid" aria-checked="false">Hidden <span id="pfFilterHidCnt"></span></button>
-      </div>
-    </div>
+          </div>
+        </div>
     @endif
 
     <div id="portfolioGrid" class="pgrid">
@@ -1034,30 +1016,6 @@
         $t.addClass('on');
         clearTimeout($t.data('t'));
         $t.data('t', setTimeout(function () { $t.removeClass('on'); }, 2400));
-      }
-
-      // Quick links
-      var $ql = $('#quickLinks'), $qlBtn = $('#quickLinksBtn'), $qlMenu = $('#quickLinksMenu');
-      if ($ql.length) {
-        function openQl(show) {
-          $qlMenu.prop('hidden', !show);
-          $qlBtn.attr('aria-expanded', show ? 'true' : 'false');
-          $qlBtn.find('.cv').text(show ? 'expand_less' : 'expand_more');
-        }
-        $qlBtn.on('click', function (e) { e.stopPropagation(); openQl($qlMenu.prop('hidden')); });
-        $qlMenu.on('click', function (e) {
-          e.stopPropagation();
-          var $c = $(e.target).closest('[data-ql-copy]');
-          if (!$c.length) return;
-          var u = $c.attr('data-ql-copy') || '';
-          try { navigator.clipboard.writeText(u); } catch (x) {}
-          $c.addClass('done').find('.ms').text('check');
-          setTimeout(function () { $c.removeClass('done').find('.ms').text('content_copy'); }, 1600);
-          mpToast('Link copied');
-        });
-        $(document).on('click', function (e) {
-          if (!$qlMenu.prop('hidden') && !$(e.target).closest('#quickLinks').length) openQl(false);
-        });
       }
 
       $('#displayPortfolioTog').on('click', function () {
@@ -2481,5 +2439,5 @@
       syncWorkPlacementsChipsFromSelect();
     });
   </script>
-
+@include('partials.page-quick-links-script')
 @endsection

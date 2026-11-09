@@ -546,7 +546,9 @@ class StudioPageController extends Controller
             'bookLine' => $artistCount === 1
                 ? '1 artist works here'
                 : ($artistCount > 1 ? $artistCount.' artists work here' : 'Artists work here'),
-            'pageUrl' => $data['publicPageUrl'] ?? url('/'),
+            'pageUrl' => ($data['publicPageUrl'] ?? '') !== ''
+                ? $data['publicPageUrl']
+                : ('https://'.($data['pageUrl'] ?? 'inkjin.com/@username')),
         ];
 
         return view('studio.page.look', array_merge($data, [
@@ -716,7 +718,7 @@ class StudioPageController extends Controller
         $username = trim((string) ($studio?->username ?? ''));
         $pageHandle = $username !== '' ? $username : 'username';
         $pageUrl = 'inkjin.com/@'.$pageHandle;
-        $publicPageUrl = 'https://'.$pageUrl;
+        $publicPageUrl = $username !== '' ? 'https://'.$pageUrl : '';
 
         $links = is_array($studio?->links) ? $studio->links : [];
         $extra = is_array($studio?->extra_services) ? $studio->extra_services : [];
@@ -740,13 +742,13 @@ class StudioPageController extends Controller
             'pageUrl' => $pageUrl,
             'pageHandle' => $pageHandle,
             'publicPageUrl' => $publicPageUrl,
-            'quickLinkRows' => [
+            'quickLinkRows' => $username !== '' ? [
                 ['suffix' => '', 'hash' => ''],
                 ['suffix' => '/artists', 'hash' => '#artists'],
                 ['suffix' => '/portfolio', 'hash' => '#work'],
                 ['suffix' => '/guest-artists', 'hash' => '#guest-artists'],
                 ['suffix' => '/find-us', 'hash' => '#findus'],
-            ],
+            ] : [],
             'description' => (string) ($studio?->description ?? ''),
             'showMap' => (bool) ($studio?->show_map ?? true),
             'showArtistStyles' => (bool) ($studio?->show_artist_styles ?? true),

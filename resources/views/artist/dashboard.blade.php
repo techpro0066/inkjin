@@ -4,6 +4,7 @@
 
 @section('styles')
 @include('artist.partials.payment-link-modal-styles')
+@include('partials.page-quick-links-styles')
 <style>
   .dash-todo-row{padding:13px 0;border-bottom:1px solid #F3EEF4}
   .dash-todo-row:last-child{border-bottom:0}
@@ -109,6 +110,15 @@
       $bookingPageUrl = $artistUsername !== ''
           ? route('public.artist', ['username' => $artistUsername])
           : '';
+  $publicPageHost = $artistUsername !== '' ? 'inkjin.com/@'.$artistUsername : '';
+  $quickLinkRows = $artistUsername !== '' ? [
+    ['suffix' => '', 'label' => $publicPageHost],
+    ['suffix' => '#designs', 'label' => $publicPageHost.'#designs'],
+    ['suffix' => '#portfolio', 'label' => $publicPageHost.'#portfolio'],
+    ['suffix' => '#guest-spots', 'label' => $publicPageHost.'#guest-spots'],
+    ['suffix' => '#policies', 'label' => $publicPageHost.'#policies'],
+    ['suffix' => '#faq', 'label' => $publicPageHost.'#faq'],
+  ] : [];
   $firstName = trim((string) ($user->first_name ?? ''));
   $canPayLinks = ! empty($canCreatePaymentLinks);
   $pendingRequests = (int) ($pendingCustomRequestsCount ?? 0);
@@ -241,7 +251,7 @@
       [
           'done' => (bool) ($checklist['banner'] ?? false),
           'label' => 'Upload a banner',
-          'url' => route('personal-page.index'),
+          'url' => route('personal-page.appearance'),
       ],
   ];
   $igBioDone = (bool) ($checklist['instagram_bio'] ?? false);
@@ -284,15 +294,14 @@
       <div class="sub">Here's what needs you today, {{ $todayLabel }}.</div>
     </div>
     <div class="btns">
-      @if ($bookingPageUrl !== '')
-        <a class="btn ghost" href="{{ $bookingPageUrl }}" target="_blank" rel="noopener">
-          <span class="ms">open_in_new</span>Open my page
-        </a>
-      @else
-        <a class="btn ghost" href="{{ route('personal-page.index') }}">
-          <span class="ms">open_in_new</span>Open my page
-        </a>
-      @endif
+      @include('partials.page-quick-links', [
+        'qlPublicUrl' => $bookingPageUrl,
+        'qlDisplayHost' => $publicPageHost,
+        'qlRows' => $quickLinkRows,
+        'qlButtonLabel' => 'Open my page',
+        'qlButtonClass' => 'btn ghost',
+        'qlFallbackUrl' => route('personal-page.index'),
+      ])
       <button type="button" class="btn" data-open-payment-link>
         <span class="ms">add</span>New payment link
       </button>
@@ -598,7 +607,7 @@
     { t: 'Add a flash design', h: @json(route('artist-designs.index')), done: @json((bool) ($wlCheck['flash'] ?? false)) },
     { t: 'Add a tagline and bio', h: @json(route('personal-page.index')), done: @json((bool) ($wlCheck['tagline_bio'] ?? false)) },
     { t: 'Add your FAQs', h: @json(route('artist.faq.index')), done: @json((bool) ($wlCheck['faq'] ?? false)) },
-    { t: 'Upload a banner', h: @json(route('personal-page.index')), done: @json((bool) ($wlCheck['banner'] ?? false)) },
+    { t: 'Upload a banner', h: @json(route('personal-page.appearance')), done: @json((bool) ($wlCheck['banner'] ?? false)) },
   ];
 
   var all = NEED.concat(MORE);
@@ -758,6 +767,7 @@
 </script>
 
 @include('artist.partials.payment-link-modal-script')
+@include('partials.page-quick-links-script')
 <script>
 (function () {
   var copyBtn = document.getElementById('igbiocopy');

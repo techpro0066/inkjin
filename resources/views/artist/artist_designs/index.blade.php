@@ -804,27 +804,15 @@
     .mp-dg .tog:after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s}
     .mp-dg .tog.on{background:var(--pri)}.mp-dg .tog.on:after{left:19px}
     .mp-dg .tog:disabled{opacity:.55;cursor:not-allowed}
-    .mp-dg .ql{position:relative}
-    .mp-dg .ql-b{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:13.5px;padding:9px 12px 9px 13px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
-    .mp-dg .ql-b:hover{background:#F7F3F9}
-    .mp-dg .ql-b .ms{font-size:18px}.mp-dg .ql-b .cv{font-size:20px}
-    .mp-dg .ql-p{position:absolute;right:0;top:calc(100% + 8px);width:min(400px,calc(100vw - 32px));background:#fff;border:1px solid #EAE2EE;border-radius:16px;box-shadow:0 18px 44px rgba(20,0,40,.18);padding:6px;z-index:80}
-    .mp-dg .ql-p[hidden]{display:none}
-    .mp-dg .ql-r{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:10px}
-    .mp-dg .ql-r:hover{background:#F7F3F9}
-    .mp-dg .ql-u{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .mp-dg .ql-u b{font-weight:700}
-    .mp-dg .ql-i{width:34px;height:34px;border-radius:9px;border:0;background:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);flex-shrink:0;text-decoration:none}
-    .mp-dg .ql-i:hover{background:#EFE7F3}
-    .mp-dg .ql-i .ms{font-size:18px}.mp-dg .ql-i.done .ms{color:#1F8A4C}
     .mp-dg .mp-toast{position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));transition:opacity .25s,transform .35s;pointer-events:none}
     .mp-dg .mp-toast.on{opacity:1;transform:none}
     .mp-dg .mp-toast .ms{color:#3DD68C;font-size:20px}
     .mp-dg .secsw .ic{width:38px;height:38px;border-radius:10px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .mp-dg .secsw .ic .ms{font-size:20px}
-    @media(max-width:600px){.mp-dg .mp-toast{left:16px;right:16px;top:74px}.mp-dg .ql-p{right:auto;left:0}}
+    @media(max-width:600px){.mp-dg .mp-toast{left:16px;right:16px;top:74px}}
 
 </style>
+@include('partials.page-quick-links-styles')
 @endsection
 
 @section('content')
@@ -842,6 +830,8 @@
     ['suffix' => '#faq', 'label' => $publicPageHost.'#faq'],
   ] : [];
   $displayDesigns = (bool) ($displayDesigns ?? ($userDetail?->display_designs ?? true));
+  $availabilityStatus = (string) ($userDetail?->availability_status ?? '');
+  $designsHiddenByAvailability = in_array($availabilityStatus, ['closed', 'custom_only'], true);
       @endphp
 <div class="mp-dg">
   <div class="head">
@@ -855,31 +845,13 @@
       <div class="sub">Everything clients see on your booking page.</div>
           </div>
     <div class="btns">
-      @if ($publicPageUrl)
-        <div class="ql" id="quickLinks">
-          <button type="button" class="ql-b" id="quickLinksBtn" aria-haspopup="true" aria-expanded="false" aria-controls="quickLinksMenu">
-            <span class="ms">link</span>Quick links<span class="ms cv">expand_more</span>
-          </button>
-          <div class="ql-p" id="quickLinksMenu" hidden role="menu" aria-label="Quick links">
-            @foreach ($quickLinkRows as $row)
-              <div class="ql-r" role="none">
-                <div class="ql-u" title="{{ $row['label'] }}">
-                  {{ $publicPageHost }}@if($row['suffix'] !== '')<b>{{ $row['suffix'] }}</b>@endif
-                </div>
-                <button type="button" class="ql-i" data-ql-copy="{{ $publicPageUrl.$row['suffix'] }}" data-ql-label="{{ $row['label'] }}" role="menuitem" title="Copy link">
-                  <span class="ms">content_copy</span>
-                </button>
-                <a class="ql-i" href="{{ $publicPageUrl.$row['suffix'] }}" target="_blank" rel="noopener" role="menuitem" title="Open">
-                  <span class="ms">open_in_new</span>
-                </a>
-              </div>
-            @endforeach
-          </div>
-        </div>
-        <a class="btn" href="{{ $publicPageUrl }}#designs" target="_blank" rel="noopener">
-          <span class="ms">open_in_new</span>Open my page
-          </a>
-          @endif
+      @include('partials.page-quick-links', [
+        'qlPublicUrl' => $publicPageUrl,
+        'qlDisplayHost' => $publicPageHost,
+        'qlRows' => $quickLinkRows,
+        'qlButtonLabel' => 'Open my page',
+        'qlButtonClass' => 'btn',
+      ])
         </div>
       </div>
 
@@ -895,6 +867,16 @@
   @endif
   @if (session('error'))
     <div class="note" style="margin-bottom:14px;border-color:#F3C9C9;background:#FDECEC;color:#C62828">{{ session('error') }}</div>
+  @endif
+
+  @if ($designsHiddenByAvailability)
+    <div class="note" style="margin-bottom:14px" role="status">
+      <span class="ms">visibility_off</span>
+      <span style="flex:1;min-width:0;line-height:1.45">
+        Your designs will not appear on your page until you open your books.
+        <a href="{{ route('availability.index') }}?tab=status" style="color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px">Update Schedule &gt; Availability</a>
+      </span>
+    </div>
   @endif
 
   <div class="card secsw" style="display:flex;align-items:center;gap:14px;padding:14px 18px;margin-bottom:16px">
@@ -1560,29 +1542,6 @@
         $t.addClass('on');
         clearTimeout($t.data('t'));
         $t.data('t', setTimeout(function () { $t.removeClass('on'); }, 2400));
-      }
-
-      var $ql = $('#quickLinks'), $qlBtn = $('#quickLinksBtn'), $qlMenu = $('#quickLinksMenu');
-      if ($ql.length) {
-        function openQl(show) {
-          $qlMenu.prop('hidden', !show);
-          $qlBtn.attr('aria-expanded', show ? 'true' : 'false');
-          $qlBtn.find('.cv').text(show ? 'expand_less' : 'expand_more');
-        }
-        $qlBtn.on('click', function (e) { e.stopPropagation(); openQl($qlMenu.prop('hidden')); });
-        $qlMenu.on('click', function (e) {
-          e.stopPropagation();
-          var $c = $(e.target).closest('[data-ql-copy]');
-          if (!$c.length) return;
-          var u = $c.attr('data-ql-copy') || '';
-          try { navigator.clipboard.writeText(u); } catch (x) {}
-          $c.addClass('done').find('.ms').text('check');
-          setTimeout(function () { $c.removeClass('done').find('.ms').text('content_copy'); }, 1600);
-          mpToast('Link copied');
-        });
-        $(document).on('click', function (e) {
-          if (!$qlMenu.prop('hidden') && !$(e.target).closest('#quickLinks').length) openQl(false);
-        });
       }
 
       $('#displayDesignsTog').on('click', function () {
@@ -3761,4 +3720,5 @@
       syncDesignPlacementsChipsFromSelect();
     });
   </script>
+@include('partials.page-quick-links-script')
 @endsection

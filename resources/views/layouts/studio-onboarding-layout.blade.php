@@ -95,6 +95,10 @@
     .mlcopy .ms{font-size:16px;color:inherit;line-height:1}
     .bpw-toast{position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:2000;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;font-family:inherit;max-width:calc(100% - 32px)}
     .bpw-toast.bad{background:#B3261E}
+    .flash{margin:0 0 18px;padding:12px 14px;border-radius:12px;font-size:13.5px;font-weight:500}
+    .flash-ok{background:#E8F8EF;color:#0B6B3A;border:1px solid #B6E5C8}
+    .flash-err{background:#FDECEC;color:#9B1C1C;border:1px solid #F5C2C2}
+    .flash-info{background:#FFF8E8;color:#7A5A00;border:1px solid #F0DFA0}
     @media(max-width:600px){.bpw-toast{left:16px;right:16px;top:74px}}
     @media (max-width:700px){
       .formgrid{grid-template-columns:minmax(0,1fr)}
@@ -193,6 +197,15 @@
 
   <main>
     <div class="wrap">
+      @if (session('success'))
+        <div class="flash flash-ok">{{ session('success') }}</div>
+      @endif
+      @if (session('error'))
+        <div class="flash flash-err" role="alert">{{ session('error') }}</div>
+      @endif
+      @if (session('info'))
+        <div class="flash flash-info">{{ session('info') }}</div>
+      @endif
       @yield('content')
     </div>
   </main>

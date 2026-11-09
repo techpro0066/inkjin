@@ -423,7 +423,10 @@
             </div>
       @endif
 
-      <div id="openbox" @if($booksClosed) hidden @endif>
+      @php
+        $hasOpenBookingCta = $acceptsCustom || ($acceptsDesigns && $hasVisibleDesigns);
+      @endphp
+      <div id="openbox" @if($booksClosed || ! $hasOpenBookingCta) hidden @endif>
         @if($acceptsCustom)
           <a class="bbtn pri" href="{{ $requestCustomUrl }}"><span class="ms">brush</span>Request custom tattoo</a>
         @elseif($acceptsDesigns && $hasVisibleDesigns)
@@ -437,10 +440,10 @@
           <b>Books closed</b>
           <p>{{ $artistPublicName }} isn’t taking new bookings right now. Get an email as soon as books open.</p>
       </div>
-        <button type="button" class="bbtn pri" data-act="notify"><span class="ms">notifications</span>Notify me when open</button>
+        <button type="button" class="bbtn pri" data-act="notify"><span class="ms">notifications</span>Books closed - Notify me</button>
     </div>
 
-      @if($displayGuestSpots)
+      @if($displayGuestSpots && ($nextGuest || $guestNotifyAny))
         <div id="gcta">
           @if($nextGuest)
             @php
@@ -455,7 +458,7 @@
                 <small>{{ $nextDates }}@if($nextLeft) · {{ $nextLeft }}@endif</small>
               </span>
             </a>
-  @endif
+          @endif
           @if($guestNotifyAny)
             <button type="button" class="next" id="gnotify" data-act="gwl-any">
               <span class="ms">notifications</span>
@@ -495,7 +498,8 @@
 </div>
   @endif
 
-<main class="wrap panel" id="panels">
+{{-- Keep #panels as BPLook insert anchor; hide chrome when there is no tab content. --}}
+<main class="wrap panel{{ $showTabsNav ? '' : ' is-empty' }}" id="panels" @if(! $showTabsNav) hidden aria-hidden="true" @endif>
     @if($hasVisibleDesigns)
     <div id="content-designs" class="tab-panel {{ $designsTabActive ? 'active' : '' }}" role="tabpanel">
       <div class="ph"><div><h2>Available designs</h2><p>Flash designs ready to book. Pick one and choose a date.</p></div></div>
@@ -556,7 +560,11 @@
             <span class="ov">
               <b>{{ $artistPortfolio->title }}</b>
               <small>{{ ucwords(str_replace('-', ' ', $artistPortfolio->primary_style)) }}</small>
-              <span class="req" onclick="event.stopPropagation(); requestSimilarTattoo({{ (int) $artistPortfolio->id }});"><span class="ms">brush</span>Request similar</span>
+              @if($booksClosed)
+                <span class="req" onclick="event.stopPropagation(); openBooksWaitlist();"><span class="ms">notifications</span>Books closed - Notify me</span>
+              @else
+                <span class="req" onclick="event.stopPropagation(); requestSimilarTattoo({{ (int) $artistPortfolio->id }});"><span class="ms">brush</span>Request similar</span>
+              @endif
             </span>
           </button>
         @endforeach
@@ -687,7 +695,11 @@
         <div><small>Colors</small><b id="portfolioModalColors"></b></div>
           </div>
       <div class="tags" id="portfolioModalTags"></div>
-      <button type="button" class="bbtn pri" id="portfolioModalSimilarBtn"><span class="ms">brush</span>Request similar tattoo</button>
+      @if($booksClosed)
+        <button type="button" class="bbtn pri" id="portfolioModalSimilarBtn"><span class="ms">notifications</span>Books closed - Notify me</button>
+      @else
+        <button type="button" class="bbtn pri" id="portfolioModalSimilarBtn"><span class="ms">brush</span>Request similar tattoo</button>
+      @endif
       </div>
     </div>
   </div>
@@ -766,7 +778,20 @@
     }
   } catch (e) {}
 
+  function openBooksWaitlist() {
+    if (waitlistUsesRequestForm) {
+      openModal('waitlistRequestModal');
+      return;
+    }
+    openModal('waitlistModal');
+  }
+  window.openBooksWaitlist = openBooksWaitlist;
+
   function requestSimilarTattoo(portfolioId) {
+    if (booksClosed) {
+      openBooksWaitlist();
+      return;
+    }
     const id = parseInt(portfolioId, 10);
     if (!id || !requestSimilarBaseUrl) return;
     const url = new URL(requestSimilarBaseUrl, window.BOOKPAY_BASE_URL || window.location.origin);
@@ -915,7 +940,13 @@
     const tags = Array.isArray(p.tags) ? p.tags : [];
     tagsEl.innerHTML = tags.map((t) => '<span class="tg">' + t + '</span>').join('');
     const similarBtn = $('portfolioModalSimilarBtn');
-    if (similarBtn) similarBtn.onclick = () => requestSimilarTattoo(p.id);
+    if (similarBtn) {
+      if (booksClosed) {
+        similarBtn.onclick = () => openBooksWaitlist();
+      } else {
+        similarBtn.onclick = () => requestSimilarTattoo(p.id);
+      }
+    }
     openModal('portfolioDetailModal');
   };
 

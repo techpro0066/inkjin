@@ -424,7 +424,7 @@
               @if($isStudioRequest && $rcAvatarUrl)
                 <img src="{{ $rcAvatarUrl }}" alt="" class="w-full h-full object-cover">
               @else
-                <span class="text-white text-[10px] font-bold">{{ $rcArtistInitials }}</span>
+              <span class="text-white text-[10px] font-bold">{{ $rcArtistInitials }}</span>
               @endif
             </div>
             <span class="leading-relaxed break-words">
@@ -1068,7 +1068,7 @@
       if (isStudioRequest) {
         formData.append('studio_username', studioUsername);
       } else {
-        formData.append('artist_username', artistUsername);
+      formData.append('artist_username', artistUsername);
       }
       if (!isStudioRequest && fallbackTattooSlug) {
       formData.append('tattoo_slug', fallbackTattooSlug);

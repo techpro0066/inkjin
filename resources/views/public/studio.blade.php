@@ -291,8 +291,6 @@
                     <span>{{ $style }}</span>
                   @endforeach
                 </div>
-              @else
-                <div class="sp-tags" style="min-height:8px"></div>
               @endif
               <div class="sp-btns">
                 @if(! empty($artist['request_url']))

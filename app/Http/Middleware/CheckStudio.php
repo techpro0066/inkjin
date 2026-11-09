@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\Studio\OnboardingController;
+use App\Models\Studio;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,7 +40,9 @@ class CheckStudio
             && ! $request->routeIs('studio.onboarding.*')
             && ! $request->routeIs('logout')
         ) {
-            return redirect()->route('studio.onboarding.profile');
+            $studio = Studio::query()->where('user_id', $user->id)->first();
+
+            return redirect()->to(OnboardingController::nextIncompleteStepRoute($user, $studio));
         }
 
         return $next($request);

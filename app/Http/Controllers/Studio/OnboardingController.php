@@ -19,8 +19,12 @@ use Stripe\Exception\ApiErrorException;
 
 class OnboardingController extends Controller
 {
-    public function profile(Request $request): View
+    public function profile(Request $request): View|RedirectResponse
     {
+        if ($redirect = $this->ensureStudioOnboardingStep($request, 'studio.onboarding.profile')) {
+            return $redirect;
+        }
+
         $user = $request->user();
         $studio = $this->resolveStudio($user);
 
@@ -170,8 +174,12 @@ class OnboardingController extends Controller
             ->with('status', 'onboarding-profile-saved');
     }
 
-    public function owner(Request $request): View
+    public function owner(Request $request): View|RedirectResponse
     {
+        if ($redirect = $this->ensureStudioOnboardingStep($request, 'studio.onboarding.owner')) {
+            return $redirect;
+        }
+
         $user = $request->user();
         $studio = $this->resolveStudio($user);
 
@@ -291,8 +299,12 @@ class OnboardingController extends Controller
             ->with('status', 'onboarding-owner-saved');
     }
 
-    public function location(Request $request): View
+    public function location(Request $request): View|RedirectResponse
     {
+        if ($redirect = $this->ensureStudioOnboardingStep($request, 'studio.onboarding.location')) {
+            return $redirect;
+        }
+
         $user = $request->user();
         $studio = $this->resolveStudio($user);
 
@@ -395,8 +407,12 @@ class OnboardingController extends Controller
             ->with('status', 'onboarding-location-saved');
     }
 
-    public function terms(Request $request): View
+    public function terms(Request $request): View|RedirectResponse
     {
+        if ($redirect = $this->ensureStudioOnboardingStep($request, 'studio.onboarding.terms')) {
+            return $redirect;
+        }
+
         $user = $request->user();
         $studio = $this->resolveStudio($user);
 
@@ -504,14 +520,12 @@ class OnboardingController extends Controller
 
     public function payouts(Request $request, StripeConnectService $stripeConnect): View|RedirectResponse
     {
+        if ($redirect = $this->ensureStudioOnboardingStep($request, 'studio.onboarding.payouts')) {
+            return $redirect;
+        }
+
         $user = $request->user();
         $studio = $this->resolveStudio($user);
-
-        // Don't skip ahead — finish earlier onboarding steps first.
-        $next = self::nextIncompleteStepRoute($user, $studio);
-        if ($next !== route('studio.onboarding.payouts')) {
-            return redirect()->to($next);
-        }
 
         $offersSplit = $studio?->offers_revenue_split;
         if ($offersSplit === null) {
@@ -849,24 +863,62 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Block skipping ahead (same idea as artist ensureOnboardingPage).
+     * Earlier completed steps stay reachable.
+     */
+    private function ensureStudioOnboardingStep(Request $request, string $routeName): ?RedirectResponse
+    {
+        $user = $request->user();
+        $studio = $this->resolveStudio($user);
+
+        $order = [
+            'studio.onboarding.profile' => 1,
+            'studio.onboarding.owner' => 2,
+            'studio.onboarding.location' => 3,
+            'studio.onboarding.terms' => 4,
+            'studio.onboarding.payouts' => 5,
+        ];
+
+        $requested = $order[$routeName] ?? 1;
+        $allowedKey = self::nextIncompleteStepKey($user, $studio);
+        $allowed = $order[$allowedKey] ?? 1;
+
+        if ($requested > $allowed) {
+            return redirect()
+                ->route($allowedKey)
+                ->with('info', 'Complete the previous steps first.');
+        }
+
+        return null;
+    }
+
+    /**
      * First unfinished studio onboarding step route (profile → owner → location → terms → payouts).
      */
     public static function nextIncompleteStepRoute($user, ?Studio $studio): string
     {
+        return route(self::nextIncompleteStepKey($user, $studio));
+    }
+
+    /**
+     * @return 'studio.onboarding.profile'|'studio.onboarding.owner'|'studio.onboarding.location'|'studio.onboarding.terms'|'studio.onboarding.payouts'
+     */
+    public static function nextIncompleteStepKey($user, ?Studio $studio): string
+    {
         if (! self::isProfileStepComplete($studio)) {
-            return route('studio.onboarding.profile');
+            return 'studio.onboarding.profile';
         }
         if (! self::isOwnerStepComplete($user, $studio)) {
-            return route('studio.onboarding.owner');
+            return 'studio.onboarding.owner';
         }
         if (! self::isLocationStepComplete($studio)) {
-            return route('studio.onboarding.location');
+            return 'studio.onboarding.location';
         }
         if (! self::isTermsStepComplete($studio)) {
-            return route('studio.onboarding.terms');
+            return 'studio.onboarding.terms';
         }
 
-        return route('studio.onboarding.payouts');
+        return 'studio.onboarding.payouts';
     }
 
     private static function isProfileStepComplete(?Studio $studio): bool

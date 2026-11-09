@@ -134,6 +134,8 @@ h1{font-size:38px;font-weight:800;letter-spacing:-1.2px;line-height:1.1;margin-t
 footer{border-top:1px solid var(--line);padding:26px 0 40px;margin-top:auto;width:100%;align-self:stretch;background:var(--bg)}
 /* custom appearance: let page bg / design show through (match studio .sp-footer) */
 body.cst footer{background:transparent;border-top-color:var(--bxl,rgba(255,255,255,.18))}
+/* No designs/portfolio/etc — don't show an empty frosted panels box in Custom look */
+body.cst #panels.is-empty,#panels.is-empty{display:none!important;margin:0!important;padding:0!important;border:0!important;background:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 footer .wrap{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
 .flogo{display:flex;align-items:center;gap:10px}.flogo b{font-weight:800;font-size:19px;letter-spacing:-.6px}.flogo small{font-size:9px;letter-spacing:1.2px;color:var(--muted);line-height:1.2;text-transform:uppercase}
 footer nav{display:flex;gap:18px;font-size:13px;color:var(--muted)}

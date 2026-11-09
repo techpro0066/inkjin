@@ -101,6 +101,19 @@ class DashboardController extends Controller
 
         $initials = strtoupper(substr(preg_replace('/\s+/', '', $studioName) ?: 'ST', 0, 2));
 
+        $studioUsername = trim((string) ($studio?->username ?? ''));
+        $publicPageHost = $studioUsername !== '' ? 'inkjin.com/@'.$studioUsername : '';
+        $publicPageUrl = $studioUsername !== ''
+            ? route('public.artist', ['username' => $studioUsername])
+            : '';
+        $quickLinkRows = $studioUsername !== '' ? [
+            ['suffix' => '', 'hash' => ''],
+            ['suffix' => '/artists', 'hash' => '#artists'],
+            ['suffix' => '/portfolio', 'hash' => '#work'],
+            ['suffix' => '/guest-artists', 'hash' => '#guest-artists'],
+            ['suffix' => '/find-us', 'hash' => '#findus'],
+        ] : [];
+
         $studioArtistsForModal = $studio
             ? StudioPaymentLinkModalData::artists($studio)
             : collect();
@@ -128,6 +141,9 @@ class DashboardController extends Controller
             'studioArtistsForModal' => $studioArtistsForModal,
             'currencySymbol' => '€',
             'paymentLinkModalReloadOnDone' => false,
+            'publicPageUrl' => $publicPageUrl,
+            'publicPageHost' => $publicPageHost,
+            'quickLinkRows' => $quickLinkRows,
         ]));
     }
 }

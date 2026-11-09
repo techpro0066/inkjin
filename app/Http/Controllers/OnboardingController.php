@@ -1586,8 +1586,8 @@ class OnboardingController extends Controller
                 'first_name' => ['required', 'string', 'max:255'],
                 'last_name' => ['required', 'string', 'max:255'],
                 'user_name' => [
-                    'required',
-                    'string',
+                    'required', 
+                    'string', 
                     'min:1',
                     'max:30',
                     'regex:/^[A-Za-z0-9._]+$/',
@@ -4572,7 +4572,7 @@ class OnboardingController extends Controller
         $userDetail->loadMissing('user');
         $artistName = trim((string) $userDetail->publicDisplayName());
         if ($artistName === '' || $artistName === 'Artist') {
-            $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
+        $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
         }
         if ($artistName === '') {
             $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';

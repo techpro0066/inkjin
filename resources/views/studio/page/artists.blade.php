@@ -3,26 +3,12 @@
 @section('title', 'Studio Page · Artists')
 
 @push('styles')
+@include('partials.page-quick-links-styles')
 <style>
   .studio-page .tog{width:38px;height:22px;border-radius:12px;background:#D9D2DD;position:relative;flex:none;cursor:pointer;display:inline-block}
   .studio-page .tog:after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px}
   .studio-page .tog.on{background:var(--pri)}.studio-page .tog.on:after{left:19px}
   .studio-page .btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .studio-page .ql{position:relative}
-  .studio-page .ql-b{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:13.5px;padding:9px 12px 9px 13px;border-radius:12px;border:1px solid #E8DFEA;background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
-  .studio-page .ql-b:hover{background:#F7F3F9}
-  .studio-page .ql-b:focus-visible{outline:2px solid #3E007C;outline-offset:2px}
-  .studio-page .ql-b .ms{font-size:18px}.studio-page .ql-b .cv{font-size:20px}
-  .studio-page .ql-p{position:absolute;right:0;top:calc(100% + 8px);width:min(400px,calc(100vw - 32px));background:#fff;border:1px solid #EAE2EE;border-radius:16px;box-shadow:0 18px 44px rgba(20,0,40,.18);padding:6px;z-index:80}
-  .studio-page .ql-p[hidden]{display:none}
-  .studio-page .ql-r{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:10px}
-  .studio-page .ql-r:hover{background:#F7F3F9}
-  .studio-page .ql-u{flex:1;min-width:0;font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .studio-page .ql-u b{font-weight:700}
-  .studio-page .ql-i{width:34px;height:34px;border-radius:9px;border:0;background:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);flex-shrink:0;text-decoration:none}
-  .studio-page .ql-i:hover{background:#EFE7F3}
-  .studio-page .ql-i:focus-visible{outline:2px solid #3E007C;outline-offset:1px}
-  .studio-page .ql-i .ms{font-size:18px}.studio-page .ql-i.done .ms{color:#1F8A4C}
   .studio-page .pgsave{opacity:.4;pointer-events:none}
   .studio-page .pgsave.is-dirty{opacity:1;pointer-events:auto}
   .studio-page .pgsave:disabled{cursor:wait}
@@ -42,9 +28,6 @@
   @media (max-width:700px){
     .studio-page .head .btns{width:100%}
     .studio-page .arow{flex-wrap:wrap}
-  }
-  @media (max-width:600px){
-    .studio-page .ql-p{right:auto;left:0}
   }
 </style>
 @endpush
@@ -73,34 +56,14 @@
       <div class="sub">What clients see at {{ $pageUrl }}.</div>
     </div>
     <div class="btns">
-      <div class="ql" id="quickLinks">
-        <button type="button" class="ql-b" id="quickLinksBtn" aria-haspopup="true" aria-expanded="false" aria-controls="quickLinksMenu">
-          <span class="ms">link</span>Quick links<span class="ms cv">expand_more</span>
-        </button>
-        <div class="ql-p" id="quickLinksMenu" hidden role="menu" aria-label="Quick links">
-          @foreach ($quickLinkRows as $row)
-            @php
-              $displayPath = $pageUrl.$row['suffix'];
-              $copyUrl = $publicPageUrl.$row['suffix'];
-              $openUrl = $publicPageUrl.($row['hash'] ?? '');
-            @endphp
-            <div class="ql-r" role="none">
-              <div class="ql-u" title="{{ $displayPath }}">
-                {{ $pageUrl }}@if($row['suffix'] !== '')<b>{{ $row['suffix'] }}</b>@endif
-              </div>
-              <button type="button" class="ql-i" data-ql-copy="{{ $copyUrl }}" data-ql-label="{{ $displayPath }}" role="menuitem" aria-label="Copy {{ $displayPath }}" title="Copy link">
-                <span class="ms">content_copy</span>
-              </button>
-              <a class="ql-i" href="{{ $openUrl }}" target="_blank" rel="noopener" role="menuitem" aria-label="Open {{ $displayPath }}" title="Open">
-                <span class="ms">open_in_new</span>
-              </a>
-            </div>
-          @endforeach
-        </div>
-      </div>
-      <a class="btn" href="{{ $publicPageUrl }}" target="_blank" rel="noopener">
-        <span class="ms">open_in_new</span>Open studio page
-      </a>
+      @include('partials.page-quick-links', [
+        'qlPublicUrl' => $publicPageUrl,
+        'qlDisplayHost' => $pageUrl,
+        'qlRows' => $quickLinkRows,
+        'qlButtonLabel' => 'Open studio page',
+        'qlButtonClass' => 'btn',
+        'qlFallbackUrl' => route('studio.page.about'),
+      ])
     </div>
   </div>
 
@@ -359,53 +322,6 @@
     });
   })();
 
-  (function quickLinks() {
-    var wrap = document.getElementById('quickLinks');
-    var btn = document.getElementById('quickLinksBtn');
-    var menu = document.getElementById('quickLinksMenu');
-    if (!wrap || !btn || !menu) return;
-
-    function openQl(show) {
-      menu.hidden = !show;
-      btn.setAttribute('aria-expanded', show ? 'true' : 'false');
-      var cv = btn.querySelector('.cv');
-      if (cv) cv.textContent = show ? 'expand_less' : 'expand_more';
-    }
-
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      openQl(menu.hidden);
-    });
-
-    menu.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var c = e.target.closest('[data-ql-copy]');
-      if (!c) return;
-      var u = c.getAttribute('data-ql-copy') || '';
-      var label = c.getAttribute('data-ql-label') || u;
-      try { navigator.clipboard.writeText(u).catch(function () {}); } catch (x) {}
-      c.classList.add('done');
-      var icon = c.querySelector('.ms');
-      if (icon) icon.textContent = 'check';
-      setTimeout(function () {
-        c.classList.remove('done');
-        if (icon) icon.textContent = 'content_copy';
-      }, 1600);
-      toast('Link copied: ' + label);
-    });
-
-    document.addEventListener('click', function (e) {
-      if (!menu.hidden && !wrap.contains(e.target)) openQl(false);
-    });
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !menu.hidden) {
-        openQl(false);
-        btn.focus();
-      }
-    });
-  })();
-
   saveBtn?.addEventListener('click', function () {
     if (!dirty || saving) return;
     saveArtists(false);
@@ -452,4 +368,5 @@
   } catch (e) {}
 })();
 </script>
+@include('partials.page-quick-links-script')
 @endpush
