@@ -809,16 +809,16 @@
         <div class="text-center mb-6">
           <span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span>
           <h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2>
-          <p class="text-on-surface-variant">We sent a secure 4-digit code to <strong id="rcOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p>
+          <p class="text-on-surface-variant">We sent a secure 6-digit code to <strong id="rcOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p>
         </div>
         <div class="mb-4 hidden">
           <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpEmail">Email</label>
           <input type="email" id="rcOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
         </div>
         <div class="mb-4" id="rcOtpCodeWrap">
-          <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpCode">4-digit code</label>
-          <input type="text" id="rcOtpCode" maxlength="4" inputmode="numeric" placeholder="1234" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <p id="rcOtpError" class="text-sm text-error mt-2 hidden">Please enter a valid 4-digit code.</p>
+          <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="rcOtpCode">6-digit code</label>
+          <input type="text" id="rcOtpCode" maxlength="6" inputmode="numeric" placeholder="123456" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <p id="rcOtpError" class="text-sm text-error mt-2 hidden">Please enter a valid 6-digit code.</p>
         </div>
         <p id="rcOtpStatus" class="hidden items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3"></p>
         <div class="mb-5">
@@ -2158,7 +2158,7 @@
         if (otpStatus) {
           otpStatus.classList.remove('hidden');
           otpStatus.classList.add('flex');
-          otpStatus.innerHTML = '<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>4-digit code sent to <strong>' + escapeHtml(email) + '</strong>.</span>';
+          otpStatus.innerHTML = '<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>6-digit code sent to <strong>' + escapeHtml(email) + '</strong>.</span>';
         }
         syncRcOtpEmailFromForm();
         rcOtpResendEmail = email.toLowerCase();
@@ -2184,8 +2184,8 @@
         if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = 'Please enter a valid email.'; }
         return;
       }
-      if (!/^\d{4}$/.test(code)) {
-        if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = 'Please enter a valid 4-digit code.'; }
+      if (!/^\d{6}$/.test(code)) {
+        if (otpError) { otpError.classList.remove('hidden'); otpError.textContent = 'Please enter a valid 6-digit code.'; }
         return;
       }
       if (verifyBtn) { verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying...'; }
@@ -2811,7 +2811,7 @@
     var otpCodeEl = document.getElementById('rcOtpCode');
     if (otpCodeEl) {
       otpCodeEl.addEventListener('input', function() {
-        this.value = String(this.value || '').replace(/\D/g, '').slice(0, 4);
+        this.value = String(this.value || '').replace(/\D/g, '').slice(0, 6);
         var otpError = document.getElementById('rcOtpError');
         if (otpError) otpError.classList.add('hidden');
         scheduleRcDraftSave();

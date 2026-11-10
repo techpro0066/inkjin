@@ -7,12 +7,13 @@ use App\Models\Studio;
 use App\Models\UserStudio;
 use App\Services\GuestSpotStudioInviteService;
 use App\Support\StudioPaymentLinkModalData;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, GuestSpotStudioInviteService $guestSpotInvites): View
+    public function __invoke(Request $request, GuestSpotStudioInviteService $guestSpotInvites): View|RedirectResponse
     {
         $user = $request->user();
         $email = strtolower(trim((string) ($user->email ?? '')));
@@ -26,6 +27,11 @@ class DashboardController extends Controller
                 $studio->user_id = $user->id;
                 $studio->save();
             }
+        }
+
+        $stripeChoiceUrl = $studio?->inviteStripeChoiceUrl();
+        if (is_string($stripeChoiceUrl) && $stripeChoiceUrl !== '') {
+            return redirect()->to($stripeChoiceUrl);
         }
 
         $studioName = trim((string) ($studio?->name ?? $user->userDetail?->resolvedStudioName() ?? ''));

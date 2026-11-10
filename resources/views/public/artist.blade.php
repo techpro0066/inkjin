@@ -284,14 +284,20 @@
         .$boxHtmlSocial;
         @endphp
   @include('public.partials.artist-page-css')
+  @php
+    $buttonTextColor = \App\Support\PageLook::buttonTextColorFromState($lookState);
+  @endphp
   <style>
     :root{
       --a1: {{ $schemePrimary }};
       --a2: {{ $schemeMid }};
       --acc: {{ $schemePrimary }};
       --accl: {{ $schemeTint }};
+      --btnt: {{ $buttonTextColor }};
     }
-    .bbtn.pri{background:var(--acc)}
+    .bbtn.pri{background:var(--acc);color:var(--btnt)}
+    .bbtn.pri .ms{color:inherit}
+    .mcta .bbtn.pri{color:var(--btnt)}
     .tab[aria-selected=true]{border-bottom-color:var(--acc)}
     .tab[aria-selected=true] .n{background:var(--acc)}
     .bar i,.chip.pri{background:var(--acc)}
@@ -1157,6 +1163,10 @@
       root.setProperty('--a2', g[1] || g[0] || '#3A3A5C');
       root.setProperty('--acc', g[0] || '#1A1A2E');
       root.setProperty('--accl', g[2] || '#ECEBF3');
+      try {
+        const st = BPLook.style(S || LOOK.state);
+        if (st && st.btn) root.setProperty('--btnt', st.btn);
+      } catch (e) {}
     }
     applyScheme(LOOK.state);
     if (LOOK.state.mode === 'standard' && LOOK.state.banner) {

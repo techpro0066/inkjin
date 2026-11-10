@@ -171,11 +171,11 @@
         <div class="text-center mb-6">
           <span class="material-symbols-outlined text-4xl text-[#1a4d9e] mb-2">mark_email_read</span>
           <h1 class="text-2xl font-extrabold text-on-surface tracking-tight mb-2">Verify your email</h1>
-          <p class="text-sm text-on-surface-variant">We sent a 4-digit code to <strong id="plOtpEmailLabel"></strong>.</p>
+          <p class="text-sm text-on-surface-variant">We sent a 6-digit code to <strong id="plOtpEmailLabel"></strong>.</p>
         </div>
         <div class="mb-4">
-          <label for="plOtpCode" class="block text-sm text-on-surface-variant mb-2">4-digit code</label>
-          <input id="plOtpCode" type="text" maxlength="4" inputmode="numeric" autocomplete="one-time-code" placeholder="1234" class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3.5 text-lg tracking-[0.3em] text-on-surface outline-none focus:ring-2 focus:ring-[#1a4d9e]/20 focus:border-[#1a4d9e]">
+          <label for="plOtpCode" class="block text-sm text-on-surface-variant mb-2">6-digit code</label>
+          <input id="plOtpCode" type="text" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" class="w-full rounded-xl border border-outline-variant/40 bg-white px-4 py-3.5 text-lg tracking-[0.3em] text-on-surface outline-none focus:ring-2 focus:ring-[#1a4d9e]/20 focus:border-[#1a4d9e]">
           <p id="plOtpError" class="hidden text-sm text-error mt-1.5"></p>
         </div>
         <p id="plOtpStatus" class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-4"></p>
@@ -783,7 +783,7 @@
           }
           if (otpEmailLabel) otpEmailLabel.textContent = contact.email;
           if (otpStatus) {
-            otpStatus.textContent = '4-digit code sent to ' + contact.email + '.';
+            otpStatus.textContent = '6-digit code sent to ' + contact.email + '.';
             otpStatus.classList.remove('hidden');
           }
           setOtpError('');
@@ -811,7 +811,7 @@
         sendOtp().then(function (result) {
           if (result.status === 200 && result.data && result.data.sent) {
             if (otpStatus) {
-              otpStatus.textContent = '4-digit code sent to ' + contact.email + '.';
+              otpStatus.textContent = '6-digit code sent to ' + contact.email + '.';
               otpStatus.classList.remove('hidden');
             }
             startResendCountdown(result.data.resend_available_in_seconds || 60);
@@ -833,8 +833,8 @@
       verifyBtn.addEventListener('click', function () {
         var code = (otpCodeInput && otpCodeInput.value || '').trim();
         setOtpError('');
-        if (!/^\d{4}$/.test(code)) {
-          setOtpError('Please enter a valid 4-digit code.');
+        if (!/^\d{6}$/.test(code)) {
+          setOtpError('Please enter a valid 6-digit code.');
           return;
         }
         verifyBtn.disabled = true;
@@ -909,7 +909,7 @@
       }
       if (otpEmailLabel) otpEmailLabel.textContent = contact.email;
       if (otpStatus) {
-        otpStatus.textContent = '4-digit code sent to ' + contact.email + '.';
+        otpStatus.textContent = '6-digit code sent to ' + contact.email + '.';
         otpStatus.classList.remove('hidden');
       }
       if (otpCodeInput) otpCodeInput.value = '';

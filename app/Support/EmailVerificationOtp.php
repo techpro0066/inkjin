@@ -13,14 +13,14 @@ class EmailVerificationOtp
     }
 
     /**
-     * Store a new code and return the plain 4-digit value for the email body only.
+     * Store a new code and return the plain 6-digit value for the email body only.
      */
     public static function issueAndReturnPlainCode(MustVerifyEmailContract $user): string
     {
         if (app()->runningUnitTests()) {
-            $plain = '4242';
+            $plain = '424242';
         } else {
-            $plain = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $plain = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         }
 
         $minutes = (int) config('auth.verification.expire', 60);
@@ -45,11 +45,11 @@ class EmailVerificationOtp
         }
 
         $digits = preg_replace('/\D/', '', $code) ?? '';
-        if (strlen($digits) !== 4) {
+        if (strlen($digits) !== 6) {
             return false;
         }
 
-        $plain = str_pad($digits, 4, '0', STR_PAD_LEFT);
+        $plain = str_pad($digits, 6, '0', STR_PAD_LEFT);
         if (! hash_equals($stored, hash('sha256', $plain))) {
             return false;
         }

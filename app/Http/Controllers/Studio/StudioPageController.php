@@ -584,7 +584,10 @@ class StudioPageController extends Controller
             'c.op' => ['nullable', 'integer', 'min:5', 'max:95'],
             'c.title' => ['nullable', 'in:auto,black,white,custom'],
             'c.titleC' => ['nullable', 'string', 'max:16'],
-            'c.text' => ['nullable', 'in:auto,black,white'],
+            'c.text' => ['nullable', 'in:auto,black,white,custom'],
+            'c.textC' => ['nullable', 'string', 'max:16'],
+            'c.btn' => ['nullable', 'in:auto,black,white,custom'],
+            'c.btnC' => ['nullable', 'string', 'max:16'],
             'c.radius' => ['nullable', 'in:none,s,m,l'],
         ]);
 

@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 class EmailVerificationCodeController extends Controller
 {
     /**
-     * Verify email using the 4-digit code sent to the user's inbox.
+     * Verify email using the 6-digit code sent to the user's inbox.
      */
     public function store(Request $request): RedirectResponse
     {
@@ -20,7 +20,7 @@ class EmailVerificationCodeController extends Controller
         }
 
         $validated = $request->validate([
-            'code' => ['required', 'string', 'regex:/^\d{4}$/'],
+            'code' => ['required', 'string', 'regex:/^\d{6}$/'],
         ]);
 
         if (! EmailVerificationOtp::verify($request->user(), $validated['code'])) {

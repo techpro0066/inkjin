@@ -713,6 +713,7 @@ class StripeConnectService
         }
 
         $this->persistStudioStripeAccount($studio, $accountId);
+        $studio->clearStripeSetupSkipped();
 
         try {
             app(\App\Services\StripeRequirementSyncService::class)->syncStudio($studio);

@@ -387,7 +387,7 @@ class InkJinController extends Controller
             ], 429);
         }
 
-        $otpCode = (string) random_int(1000, 9999);
+        $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $cooldownSeconds = $emailVerification->storeOtp($email, $otpCode);
 
         $artistName = trim((string) ($validated['artist_name'] ?? ''));
@@ -424,7 +424,7 @@ class InkJinController extends Controller
     {
         $validated = $request->validate([
             'email' => ['required', 'email'],
-            'code' => ['required', 'digits:4'],
+            'code' => ['required', 'digits:6'],
             'name' => ['nullable', 'string', 'max:255'],
             'referral_source' => ['nullable', 'string', 'max:255'],
         ]);

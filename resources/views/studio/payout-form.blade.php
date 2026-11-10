@@ -2,6 +2,8 @@
   $isApproved = ($paymentStatus ?? '') === 'approved';
   $isRejected = ($paymentStatus ?? '') === 'rejected';
   $isPending = ! $isApproved && ! $isRejected;
+  $needsStudioSignup = (bool) ($needsStudioSignup ?? ($isPending && empty($studio->user_id)));
+  $resumeStudioInvite = (bool) ($resumeStudioInvite ?? false);
   $artistPercent = (int) ($studioRevenueArtistPercent ?? 50);
   $studioPercent = (int) ($studioRevenueStudioPercent ?? (100 - $artistPercent));
   $studioDisplayName = $studioNameValue ?? ($studio->name ?? 'your studio');
@@ -151,7 +153,7 @@
       </div>
     @endif
 
-    <div id="studioDecisionPanel" class="{{ (request()->query('completed') && ! $isPending) ? 'hidden' : '' }}">
+    <div id="studioDecisionPanel" class="{{ ((request()->query('completed') && ! $isPending) || $resumeStudioInvite) ? 'hidden' : '' }}">
       <h1>Studio invitation</h1>
       <p class="sub">{{ $artistName }} invited {{ $studioDisplayName }} to Bookpay, so your share of each booking is paid to you automatically.</p>
 
@@ -198,7 +200,7 @@
         </div>
       </div>
 
-      @if ($isPending)
+      @if ($needsStudioSignup)
         <form id="studioInviteForm" novalidate>
           <div class="lbl" style="margin:20px 0 0">Your studio</div>
 
@@ -222,6 +224,13 @@
           <p class="hint">At least 8 characters.</p>
           <p id="studio_invite_password_error" class="err" role="alert"></p>
 
+          <label class="fl" for="studio_invite_password_confirmation">Confirm password</label>
+          <div class="in" id="studio_invite_password_confirmation_wrap">
+            <input type="password" id="studio_invite_password_confirmation" name="password_confirmation" autocomplete="new-password" required>
+            <button type="button" class="eye" id="toggleInvitePwConfirm" aria-label="Show confirm password"><span class="ms">visibility</span></button>
+          </div>
+          <p id="studio_invite_password_confirmation_error" class="err" role="alert"></p>
+
           <label class="ck">
             <input type="checkbox" id="studio_invite_terms" name="terms" value="1">
             <span>I agree to the <a href="https://inkjin.com/en/artist-terms" target="_blank" rel="noopener" style="color:inherit;font-weight:700">Terms of Use</a> and <a href="https://inkjin.com/en/privacy" target="_blank" rel="noopener" style="color:inherit;font-weight:700">Privacy Policy</a></span>
@@ -240,13 +249,13 @@
     </div>
 
     @if (! $studioAlreadyConnected && ($stripeConnectConfigured ?? false) && $isPending)
-      <div id="studioPayoutsPanel" class="hidden">
+      <div id="studioPayoutsPanel" class="{{ $resumeStudioInvite ? '' : 'hidden' }}">
         <h1>Get your share paid out</h1>
         <p class="sub">Connect Stripe so your <b>{{ $studioPercent }}%</b> of each of {{ $artistFirst }}'s bookings goes straight to your bank account.</p>
 
-        <div class="banner ok" id="studioPayoutsToast" hidden>
+        <div class="banner ok" id="studioPayoutsToast" @if(! $resumeStudioInvite) hidden @endif>
           <span class="ms">check_circle</span>
-          <span id="studioPayoutsToastText">Account created. Split confirmed</span>
+          <span id="studioPayoutsToastText">{{ $resumeStudioInvite ? 'Welcome back. Finish connecting Stripe to get paid.' : 'Account created. Split confirmed' }}</span>
         </div>
 
         <div class="stripe" id="studioStripeStatusRow">
@@ -359,7 +368,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-  @if ($isPending)
+  @if ($isPending && ($needsStudioSignup || $resumeStudioInvite || (! $studioAlreadyConnected && ($stripeConnectConfigured ?? false))))
   <script>
   (function () {
     function initStudioInviteSelect2() {
@@ -392,6 +401,7 @@
 
     const acceptUrl = @json($acceptUrl);
     const declineUrl = @json($declineUrl);
+    const stripeSkipUrl = @json($stripeSkipUrl ?? null);
     const studioAlreadyConnected = @json((bool) $studioAlreadyConnected);
     window.__studioInviteCsrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -409,11 +419,12 @@
     }
 
     function clearInviteErrors() {
-      ['studio_invite_password_error', 'studio_invite_terms_error', 'studio_invite_form_error'].forEach((id) => {
+      ['studio_invite_password_error', 'studio_invite_password_confirmation_error', 'studio_invite_terms_error', 'studio_invite_form_error'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) { el.textContent = ''; el.classList.remove('on'); }
       });
       document.getElementById('studio_invite_password_wrap')?.classList.remove('bad');
+      document.getElementById('studio_invite_password_confirmation_wrap')?.classList.remove('bad');
     }
 
     function showFieldError(id, message) {
@@ -425,11 +436,17 @@
       clearInviteErrors();
       let ok = true;
       const password = document.getElementById('studio_invite_password')?.value || '';
+      const passwordConfirmation = document.getElementById('studio_invite_password_confirmation')?.value || '';
       const terms = document.getElementById('studio_invite_terms')?.checked;
 
       if (password.length < 8) {
         showFieldError('studio_invite_password_error', 'Use at least 8 characters');
         document.getElementById('studio_invite_password_wrap')?.classList.add('bad');
+        ok = false;
+      }
+      if (passwordConfirmation !== password) {
+        showFieldError('studio_invite_password_confirmation_error', "Passwords don't match");
+        document.getElementById('studio_invite_password_confirmation_wrap')?.classList.add('bad');
         ok = false;
       }
       if (!terms) {
@@ -472,18 +489,26 @@
       document.getElementById('studioSkippedPanel')?.classList.remove('hidden');
     }
 
-    document.getElementById('toggleInvitePw')?.addEventListener('click', function () {
-      const input = document.getElementById('studio_invite_password');
-      const icon = this.querySelector('.ms');
-      if (!input) return;
-      const show = input.type === 'password';
-      input.type = show ? 'text' : 'password';
-      if (icon) icon.textContent = show ? 'visibility_off' : 'visibility';
-    });
+    function bindPasswordToggle(btnId, inputId) {
+      document.getElementById(btnId)?.addEventListener('click', function () {
+        const input = document.getElementById(inputId);
+        const icon = this.querySelector('.ms');
+        if (!input) return;
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        if (icon) icon.textContent = show ? 'visibility_off' : 'visibility';
+      });
+    }
+    bindPasswordToggle('toggleInvitePw', 'studio_invite_password');
+    bindPasswordToggle('toggleInvitePwConfirm', 'studio_invite_password_confirmation');
 
     document.getElementById('studio_invite_password')?.addEventListener('input', function () {
       document.getElementById('studio_invite_password_wrap')?.classList.remove('bad');
       document.getElementById('studio_invite_password_error')?.classList.remove('on');
+    });
+    document.getElementById('studio_invite_password_confirmation')?.addEventListener('input', function () {
+      document.getElementById('studio_invite_password_confirmation_wrap')?.classList.remove('bad');
+      document.getElementById('studio_invite_password_confirmation_error')?.classList.remove('on');
     });
     document.getElementById('studio_invite_terms')?.addEventListener('change', function () {
       document.getElementById('studio_invite_terms_error')?.classList.remove('on');
@@ -554,6 +579,7 @@
           },
           body: JSON.stringify({
             password: document.getElementById('studio_invite_password')?.value || '',
+            password_confirmation: document.getElementById('studio_invite_password_confirmation')?.value || '',
             terms: document.getElementById('studio_invite_terms')?.checked ? 1 : 0,
           }),
         });
@@ -565,8 +591,19 @@
 
         if (res.status === 422 && data.errors) {
           if (data.errors.password?.[0]) {
-            showFieldError('studio_invite_password_error', data.errors.password[0]);
-            document.getElementById('studio_invite_password_wrap')?.classList.add('bad');
+            const passwordMsg = data.errors.password[0];
+            const isConfirmMismatch = /match/i.test(passwordMsg);
+            showFieldError(
+              isConfirmMismatch ? 'studio_invite_password_confirmation_error' : 'studio_invite_password_error',
+              passwordMsg
+            );
+            document.getElementById(
+              isConfirmMismatch ? 'studio_invite_password_confirmation_wrap' : 'studio_invite_password_wrap'
+            )?.classList.add('bad');
+          }
+          if (data.errors.password_confirmation?.[0]) {
+            showFieldError('studio_invite_password_confirmation_error', data.errors.password_confirmation[0]);
+            document.getElementById('studio_invite_password_confirmation_wrap')?.classList.add('bad');
           }
           if (data.errors.terms?.[0]) {
             showFieldError('studio_invite_terms_error', data.errors.terms[0]);
@@ -609,8 +646,41 @@
       showConnectPanel();
     });
 
-    document.getElementById('studioPayoutsSkip')?.addEventListener('click', function () {
-      showSkippedPanel();
+    document.getElementById('studioPayoutsSkip')?.addEventListener('click', async function () {
+      const btn = this;
+      if (!stripeSkipUrl) {
+        showSkippedPanel();
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const res = await fetch(stripeSkipUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401 && data.redirect) {
+          window.location.href = data.redirect;
+          return;
+        }
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'Could not skip Stripe setup.');
+        }
+        refreshCsrfToken(data.csrf_token);
+        if (data.redirect) {
+          window.location.href = data.redirect;
+          return;
+        }
+        showSkippedPanel();
+      } catch (err) {
+        btn.disabled = false;
+        alert(err.message || 'Could not skip Stripe setup.');
+      }
     });
 
     document.getElementById('studioPayoutsContinue')?.addEventListener('click', function () {

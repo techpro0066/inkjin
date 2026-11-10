@@ -101,10 +101,11 @@ class GuestSpotStudioInviteAcceptController extends Controller
         if (! $onBookpay) {
             try {
                 $validated = $request->validate([
-                    'password' => ['required', 'string', 'min:8', 'max:255'],
+                    'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
                     'terms' => ['accepted'],
                 ], [
                     'password.min' => 'Use at least 8 characters',
+                    'password.confirmed' => "Passwords don't match",
                     'terms.accepted' => 'Tick the box to continue',
                 ]);
             } catch (ValidationException $e) {

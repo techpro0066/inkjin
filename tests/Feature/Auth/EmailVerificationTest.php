@@ -36,7 +36,7 @@ class EmailVerificationTest extends TestCase
         $user->sendEmailVerificationNotification();
 
         $response = $this->actingAs($user)->post('/email/verify-code', [
-            'code' => '4242',
+            'code' => '424242',
         ]);
 
         Event::assertDispatched(Verified::class);
@@ -55,7 +55,7 @@ class EmailVerificationTest extends TestCase
         $user->sendEmailVerificationNotification();
 
         $this->actingAs($user)->post('/email/verify-code', [
-            'code' => '9999',
+            'code' => '999999',
         ]);
 
         $this->assertFalse($user->fresh()->hasVerifiedEmail());

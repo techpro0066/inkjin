@@ -172,14 +172,21 @@
   <meta name="description" content="{{ $metaDescription }}">
   <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   @include('public.partials.studio-page-css')
+  @php
+    $buttonTextColor = \App\Support\PageLook::buttonTextColorFromState($lookState);
+  @endphp
   <style>
     :root{
       --a1: {{ $schemePrimary }};
       --a2: {{ $schemeMid }};
       --acc: {{ $schemePrimary }};
       --accl: {{ $schemeTint }};
+      --btnt: {{ $buttonTextColor }};
     }
-    .sp-b.pri,.wf button.on{background:var(--acc);border-color:var(--acc)}
+    .sp-b.pri,.wf button.on{background:var(--acc);border-color:var(--acc);color:var(--btnt)}
+    .sp-b.pri .ms,.wf button.on .ms{color:inherit}
+    .bbtn.pri{background:var(--acc);color:var(--btnt)}
+    .bbtn.pri .ms{color:inherit}
   </style>
 </head>
 <body class="{{ $isLookPreview ? 'bp-prev' : '' }}" data-look-who="studio">
@@ -507,6 +514,10 @@
           root.setProperty('--a2', g[1] || g[0] || '#3A3A5C');
           root.setProperty('--acc', g[0] || '#1A1A2E');
           root.setProperty('--accl', g[2] || '#ECEBF3');
+          try {
+            const st = BPLook.style(S || LOOK.state);
+            if (st && st.btn) root.setProperty('--btnt', st.btn);
+          } catch (e) {}
         }
 
         applyScheme(LOOK.state);

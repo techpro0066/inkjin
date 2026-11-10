@@ -49,12 +49,29 @@ function authenticated_home_url(?User $user = null): string
         return route('user.bookings.index', ['set_password' => '1'], absolute: false);
     }
 
+    if ($user->role === 'studio') {
+        if ($user->mustCompleteStudioOnboarding()) {
+            return route('studio.onboarding.profile', absolute: false);
+        }
+
+        $studio = \App\Models\Studio::query()->where('user_id', $user->id)->first();
+        if (! $studio) {
+            $email = mb_strtolower(trim((string) ($user->email ?? '')));
+            if ($email !== '') {
+                $studio = \App\Models\Studio::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+            }
+        }
+        $stripeChoiceUrl = $studio?->inviteStripeChoiceUrl();
+        if (is_string($stripeChoiceUrl) && $stripeChoiceUrl !== '') {
+            return $stripeChoiceUrl;
+        }
+
+        return route('studio.dashboard', absolute: false);
+    }
+
     return match ($user->role) {
         'admin' => route('admin.dashboard', absolute: false),
         'artist' => route('artist.dashboard', absolute: false),
-        'studio' => $user->mustCompleteStudioOnboarding()
-            ? route('studio.onboarding.profile', absolute: false)
-            : route('studio.dashboard', absolute: false),
         'user' => route('user.dashboard', absolute: false),
         default => abort(403, 'Access denied. You are not authorized to access this page.'),
     };

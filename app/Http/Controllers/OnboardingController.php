@@ -3296,15 +3296,24 @@ class OnboardingController extends Controller
         // Invite UI must follow this artist↔studio link — not the artist's global UserPayout status.
         $paymentStatus = $this->studioPayoutInviteDecisionStatus($userDetail, $studio);
         $pendingJoin = $this->pendingJoinForPayoutInvite($userDetail);
+        $studioUserId = (int) ($studio->user_id ?? 0);
+        $isStudioOwner = $studioUserId > 0 && Auth::check() && (int) Auth::id() === $studioUserId;
 
-        // After Stripe (or when already done), send logged-in studio users to the dashboard.
-        if (
-            $request->boolean('completed')
-            && $paymentStatus === 'approved'
-            && Auth::check()
-            && (int) Auth::id() === (int) ($studio->user_id ?? 0)
-        ) {
-            return redirect()->route('studio.dashboard');
+        $stripeSetupSkipped = $studio->hasSkippedStripeSetup();
+        $needsStripeChoice = $studioUserId > 0
+            && $paymentStatus === 'pending'
+            && ! $studioAlreadyConnected
+            && ! $stripeSetupSkipped;
+
+        // Account already created from this invite — require login instead of showing signup again.
+        if ($studioUserId > 0 && ! $isStudioOwner) {
+            if ($paymentStatus === 'approved' || $stripeSetupSkipped) {
+                session(['url.intended' => route('studio.dashboard')]);
+
+                return redirect()->route('login');
+            }
+
+            return redirect()->guest(route('login'));
         }
 
         if ($studioAlreadyConnected && $paymentStatus === 'approved' && $stripeConnect->isConfigured()) {
@@ -3323,6 +3332,11 @@ class OnboardingController extends Controller
             } catch (\Throwable) {
                 // Fall through to normal payout form.
             }
+        }
+
+        // Invite already accepted (or Stripe skipped) — logged-in studio goes to the dashboard.
+        if ($isStudioOwner && ($paymentStatus === 'approved' || ($paymentStatus === 'pending' && $stripeSetupSkipped))) {
+            return redirect()->route('studio.dashboard');
         }
 
         $studioProfile = null;
@@ -3380,6 +3394,9 @@ class OnboardingController extends Controller
         $avatarPath = trim((string) ($userDetail->avatar ?? ''));
         $artistHandle = trim((string) ($userDetail->user_name ?? ''));
 
+        $needsStudioSignup = $paymentStatus === 'pending' && $studioUserId === 0;
+        $resumeStudioInvite = $needsStripeChoice && $isStudioOwner;
+
         return view('studio.payout-form', [
             'userDetail' => $userDetail,
             'studio' => $studio,
@@ -3397,11 +3414,18 @@ class OnboardingController extends Controller
             'studioNameValue' => old('studio_name', $studio->name ?? $userDetail->studio_name ?? ''),
             'studioEmail' => old('email', $studio->email ?? ''),
             'studioAlreadyConnected' => $studioAlreadyConnected,
+            'needsStudioSignup' => $needsStudioSignup,
+            'resumeStudioInvite' => $resumeStudioInvite,
             'studioProfile' => $studioProfile,
             'paymentStatus' => $paymentStatus,
             'approveUrl' => $approveUrl,
             'acceptUrl' => $acceptUrl,
             'declineUrl' => $declineUrl,
+            'stripeSkipUrl' => URL::temporarySignedRoute(
+                'studio.payout-info.stripe.skip',
+                now()->addDays(14),
+                ['userDetail' => $userDetail->id]
+            ),
             'stripeConnectConfigured' => $stripeConnect->isConfigured(),
             'stripePublishableKey' => config('services.stripe.key'),
             'stripeConnectLocale' => $stripeConnect->connectLocale(),
@@ -3421,6 +3445,65 @@ class OnboardingController extends Controller
                 ['userDetail' => $userDetail->id]
             ),
             'stripeSupportedCountries' => StripeConnectCountries::supportedForSelect(),
+        ]);
+    }
+
+    /**
+     * Persist "Skip for now" on the studio invite Stripe step.
+     */
+    public function skipStudioStripeSetup(Request $request, UserDetail $userDetail)
+    {
+        if (! $request->hasValidSignature()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This link is invalid or has expired.',
+            ], 403);
+        }
+
+        if (! $this->studioPayoutInviteIsActive($userDetail)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This payout request is no longer active.',
+            ], 422);
+        }
+
+        $studio = $this->resolveStudioForPayoutInvite($userDetail);
+        if (! $studio) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Studio record was not found.',
+            ], 404);
+        }
+
+        $studioUserId = (int) ($studio->user_id ?? 0);
+        if ($studioUserId <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Accept the invitation before skipping Stripe setup.',
+            ], 422);
+        }
+
+        if (! Auth::check() || (int) Auth::id() !== $studioUserId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sign in with your studio account to continue.',
+                'redirect' => route('login'),
+            ], 401);
+        }
+
+        if ($studio->hasStripeConnect()) {
+            return response()->json([
+                'success' => true,
+                'redirect' => route('studio.dashboard'),
+            ]);
+        }
+
+        $studio->markStripeSetupSkipped();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'You can connect Stripe later from your studio dashboard.',
+            'redirect' => route('studio.dashboard'),
         ]);
     }
 
@@ -3791,11 +3874,12 @@ class OnboardingController extends Controller
         }
 
         $validated = $request->validate([
-            'password' => ['required', 'string', 'min:8', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
             'terms' => ['accepted'],
         ], [
             'password.required' => 'Create a password.',
             'password.min' => 'Use at least 8 characters',
+            'password.confirmed' => "Passwords don't match",
             'terms.accepted' => 'Tick the box to continue',
         ]);
 

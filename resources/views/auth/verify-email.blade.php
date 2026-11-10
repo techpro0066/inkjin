@@ -57,7 +57,7 @@
   <div class="icon"><span class="ms">mark_email_unread</span></div>
   <h1>Verify your email</h1>
   <p class="sub">
-    We sent a 4-digit code to <b>{{ $userEmail }}</b>. Check your inbox and your spam folder.
+    We sent a 6-digit code to <b>{{ $userEmail }}</b>. Check your inbox and your spam folder.
   </p>
 
   <div class="banner ok" id="sent-banner" role="status" hidden>
@@ -72,7 +72,7 @@
 
   <form id="verify-form" method="POST" action="{{ route('verification.verify-code') }}" novalidate>
     @csrf
-    <label class="fl" for="verification_code" style="margin-top:4px">4-digit code</label>
+    <label class="fl" for="verification_code" style="margin-top:4px">6-digit code</label>
     <div class="in{{ $codeError ? ' bad' : '' }}" id="code-wrap">
       <input
         id="verification_code"
@@ -81,12 +81,12 @@
         type="text"
         inputmode="numeric"
         autocomplete="one-time-code"
-        maxlength="4"
-        aria-label="4-digit code"
+        maxlength="6"
+        aria-label="6-digit code"
         value="{{ old('code') }}"
       >
     </div>
-    <button class="btn" id="verify-btn" type="submit" @if (strlen((string) old('code')) !== 4) disabled @endif>
+    <button class="btn" id="verify-btn" type="submit" @if (strlen((string) old('code')) !== 6) disabled @endif>
       Verify email
     </button>
   </form>
@@ -262,19 +262,19 @@
   }
 
   codeInput.addEventListener('input', function () {
-    codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 4);
-    verifyBtn.disabled = codeInput.value.length !== 4;
+    codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
+    verifyBtn.disabled = codeInput.value.length !== 6;
     codeWrap.classList.remove('bad');
     if (!badBanner.hidden && badBannerText.textContent.indexOf('code') !== -1) {
       badBanner.hidden = true;
     }
-    if (codeInput.value.length === 4) {
+    if (codeInput.value.length === 6) {
       form.requestSubmit ? form.requestSubmit() : form.submit();
     }
   });
 
   form.addEventListener('submit', function () {
-    if (codeInput.value.length !== 4) return;
+    if (codeInput.value.length !== 6) return;
     verifyBtn.disabled = true;
     verifyBtn.textContent = 'Verifying…';
   });

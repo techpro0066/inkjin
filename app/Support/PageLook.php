@@ -69,9 +69,14 @@ class PageLook
                     ? $detail->page_title_mode
                     : 'auto',
                 'titleC' => $detail->page_title_color ?: '#FFFFFF',
-                'text' => in_array($detail->page_text_mode, ['auto', 'black', 'white'], true)
+                'text' => in_array($detail->page_text_mode, ['auto', 'black', 'white', 'custom'], true)
                     ? $detail->page_text_mode
                     : 'auto',
+                'textC' => $detail->page_text_color ?: '#FFFFFF',
+                'btn' => in_array($detail->page_button_mode, ['auto', 'black', 'white', 'custom'], true)
+                    ? $detail->page_button_mode
+                    : 'auto',
+                'btnC' => $detail->page_button_color ?: '#FFFFFF',
                 'radius' => in_array($detail->page_box_radius, ['none', 's', 'm', 'l'], true)
                     ? $detail->page_box_radius
                     : 'l',
@@ -112,9 +117,14 @@ class PageLook
                     ? $studio->page_title_mode
                     : 'auto',
                 'titleC' => $studio->page_title_color ?: '#FFFFFF',
-                'text' => in_array($studio->page_text_mode, ['auto', 'black', 'white'], true)
+                'text' => in_array($studio->page_text_mode, ['auto', 'black', 'white', 'custom'], true)
                     ? $studio->page_text_mode
                     : 'auto',
+                'textC' => $studio->page_text_color ?: '#FFFFFF',
+                'btn' => in_array($studio->page_button_mode, ['auto', 'black', 'white', 'custom'], true)
+                    ? $studio->page_button_mode
+                    : 'auto',
+                'btnC' => $studio->page_button_color ?: '#FFFFFF',
                 'radius' => in_array($studio->page_box_radius, ['none', 's', 'm', 'l'], true)
                     ? $studio->page_box_radius
                     : 'l',
@@ -163,6 +173,9 @@ class PageLook
             'page_title_mode' => $look['page_title_mode'],
             'page_title_color' => $look['page_title_color'],
             'page_text_mode' => $look['page_text_mode'],
+            'page_text_color' => $look['page_text_color'],
+            'page_button_mode' => $look['page_button_mode'],
+            'page_button_color' => $look['page_button_color'],
             'page_box_radius' => $look['page_box_radius'],
         ];
     }
@@ -184,7 +197,8 @@ class PageLook
 
         $effect = in_array($c['effect'] ?? '', ['solid', 'see', 'glass'], true) ? $c['effect'] : 'glass';
         $title = in_array($c['title'] ?? '', ['auto', 'black', 'white', 'custom'], true) ? $c['title'] : 'auto';
-        $text = in_array($c['text'] ?? '', ['auto', 'black', 'white'], true) ? $c['text'] : 'auto';
+        $text = in_array($c['text'] ?? '', ['auto', 'black', 'white', 'custom'], true) ? $c['text'] : 'auto';
+        $btn = in_array($c['btn'] ?? '', ['auto', 'black', 'white', 'custom'], true) ? $c['btn'] : 'auto';
         $radius = in_array($c['radius'] ?? '', ['none', 's', 'm', 'l'], true) ? $c['radius'] : 'l';
 
         return [
@@ -200,8 +214,49 @@ class PageLook
             'page_title_mode' => $title,
             'page_title_color' => self::normalizeHex($c['titleC'] ?? '#FFFFFF'),
             'page_text_mode' => $text,
+            'page_text_color' => self::normalizeHex($c['textC'] ?? '#FFFFFF'),
+            'page_button_mode' => $btn,
+            'page_button_color' => self::normalizeHex($c['btnC'] ?? '#FFFFFF'),
             'page_box_radius' => $radius,
         ];
+    }
+
+    /**
+     * Resolve CTA / primary button label color from look state.
+     * Auto contrasts against the scheme primary (button fill).
+     */
+    public static function buttonTextColorFromState(array $state): string
+    {
+        $c = is_array($state['c'] ?? null) ? $state['c'] : [];
+        $mode = in_array($c['btn'] ?? '', ['auto', 'black', 'white', 'custom'], true) ? $c['btn'] : 'auto';
+        if ($mode === 'black') {
+            return '#111111';
+        }
+        if ($mode === 'white') {
+            return '#FFFFFF';
+        }
+        if ($mode === 'custom') {
+            return self::normalizeHex($c['btnC'] ?? '#FFFFFF') ?: '#FFFFFF';
+        }
+
+        [$primary] = self::schemeParts($state['scheme'] ?? self::DEFAULT_SCHEME);
+        $hex = ltrim($primary, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        $r = hexdec(substr($hex, 0, 2));
+        $g = hexdec(substr($hex, 2, 2));
+        $b = hexdec(substr($hex, 4, 2));
+        $toLin = static function (float $v): float {
+            $v /= 255;
+
+            return $v <= 0.04045 ? $v / 12.92 : pow(($v + 0.055) / 1.055, 2.4);
+        };
+        $L = 0.2126 * $toLin($r) + 0.7152 * $toLin($g) + 0.0722 * $toLin($b);
+        $contrastWhite = (1.0 + 0.05) / ($L + 0.05);
+        $contrastBlack = ($L + 0.05) / 0.05;
+
+        return $contrastWhite >= $contrastBlack ? '#FFFFFF' : '#111111';
     }
 
     public static function publicUrl(?string $relativePath): ?string

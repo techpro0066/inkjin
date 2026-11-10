@@ -363,6 +363,9 @@ Route::get('/studio/payout-info/{userDetail}', [OnboardingController::class, 'sh
 Route::post('/studio/payout-info/{userDetail}/accept', [OnboardingController::class, 'acceptStudioInvitation'])
     ->middleware('signed')
     ->name('studio.payout-info.accept');
+Route::post('/studio/payout-info/{userDetail}/stripe/skip', [OnboardingController::class, 'skipStudioStripeSetup'])
+    ->middleware('signed')
+    ->name('studio.payout-info.stripe.skip');
 Route::post('/studio/payout-info/{userDetail}/stripe/session', [OnboardingController::class, 'createStudioStripeSession'])
     ->middleware('signed')
     ->name('studio.payout-info.stripe.session');

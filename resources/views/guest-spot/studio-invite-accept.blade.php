@@ -216,6 +216,13 @@
             <p class="hint">At least 8 characters.</p>
             <p class="err" id="pwe">Use at least 8 characters</p>
 
+            <label class="fl" for="pwc">Confirm password</label>
+            <div class="in" id="pwcw">
+              <input id="pwc" name="password_confirmation" type="password" autocomplete="new-password" required>
+              <button type="button" class="eye" id="eyec" aria-label="Show confirm password"><span class="ms">visibility</span></button>
+            </div>
+            <p class="err" id="pwce">Passwords don't match</p>
+
             <label class="ck">
               <input type="checkbox" name="terms" value="1" id="tc" required>
               <span>I agree to the <a href="https://inkjin.com/en/artist-terms" target="_blank" rel="noopener" style="color:inherit;font-weight:700">Terms of Use</a> and <a href="https://inkjin.com/en/privacy" target="_blank" rel="noopener" style="color:inherit;font-weight:700">Privacy Policy</a></span>
@@ -452,9 +459,16 @@
         if (res.status === 419) throw new Error(data.message || 'Your session has expired. Please refresh.');
         if (res.status === 422 && data.errors) {
           if (data.errors.password?.[0]) {
-            document.getElementById('pwe').textContent = data.errors.password[0];
-            document.getElementById('pwe').classList.add('on');
-            document.getElementById('pww')?.classList.add('bad');
+            const passwordMsg = data.errors.password[0];
+            const isConfirmMismatch = /match/i.test(passwordMsg);
+            const errEl = document.getElementById(isConfirmMismatch ? 'pwce' : 'pwe');
+            if (errEl) { errEl.textContent = passwordMsg; errEl.classList.add('on'); }
+            document.getElementById(isConfirmMismatch ? 'pwcw' : 'pww')?.classList.add('bad');
+          }
+          if (data.errors.password_confirmation?.[0]) {
+            const errEl = document.getElementById('pwce');
+            if (errEl) { errEl.textContent = data.errors.password_confirmation[0]; errEl.classList.add('on'); }
+            document.getElementById('pwcw')?.classList.add('bad');
           }
           if (data.errors.terms?.[0]) {
             document.getElementById('tce').textContent = data.errors.terms[0];
@@ -478,24 +492,37 @@
       }
     }
 
-    document.getElementById('eye')?.addEventListener('click', function () {
-      const i = document.getElementById('pw');
-      if (!i) return;
-      const show = i.type === 'password';
-      i.type = show ? 'text' : 'password';
-      this.querySelector('.ms').textContent = show ? 'visibility_off' : 'visibility';
-    });
+    function bindPasswordToggle(btnId, inputId) {
+      document.getElementById(btnId)?.addEventListener('click', function () {
+        const i = document.getElementById(inputId);
+        if (!i) return;
+        const show = i.type === 'password';
+        i.type = show ? 'text' : 'password';
+        this.querySelector('.ms').textContent = show ? 'visibility_off' : 'visibility';
+      });
+    }
+    bindPasswordToggle('eye', 'pw');
+    bindPasswordToggle('eyec', 'pwc');
 
     document.getElementById('studioInviteForm')?.addEventListener('submit', function (e) {
       e.preventDefault();
       document.getElementById('pww')?.classList.remove('bad');
+      document.getElementById('pwcw')?.classList.remove('bad');
       document.getElementById('pwe')?.classList.remove('on');
+      document.getElementById('pwce')?.classList.remove('on');
       document.getElementById('tce')?.classList.remove('on');
       let ok = true;
       const pw = document.getElementById('pw')?.value || '';
+      const pwc = document.getElementById('pwc')?.value || '';
       if (pw.length < 8) {
         document.getElementById('pww')?.classList.add('bad');
         document.getElementById('pwe')?.classList.add('on');
+        ok = false;
+      }
+      if (pwc !== pw) {
+        document.getElementById('pwcw')?.classList.add('bad');
+        const pwce = document.getElementById('pwce');
+        if (pwce) { pwce.textContent = "Passwords don't match"; pwce.classList.add('on'); }
         ok = false;
       }
       if (!document.getElementById('tc')?.checked) {
@@ -503,7 +530,7 @@
         ok = false;
       }
       if (!ok) return;
-      acceptInvite({ password: pw, terms: 1 }, document.getElementById('go'));
+      acceptInvite({ password: pw, password_confirmation: pwc, terms: 1 }, document.getElementById('go'));
     });
 
     document.getElementById('goExisting')?.addEventListener('click', function () {

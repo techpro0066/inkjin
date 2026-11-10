@@ -755,14 +755,14 @@
         <div class="w-full max-w-md mx-auto">
           <button type="button" onclick="editBookingContactDetails()" class="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary mb-4 transition-colors"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to edit email or phone</button>
           <div id="bdAuthCreate">
-            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We sent a secure 4-digit code to <strong id="bdOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p></div>
+            <div class="text-center mb-6"><span class="material-symbols-outlined text-primary text-4xl mb-2">mark_email_read</span><h2 class="text-2xl sm:text-3xl font-bold text-on-surface mb-2">Verify your email</h2><p class="text-on-surface-variant">We sent a secure 6-digit code to <strong id="bdOtpSentToEmail">your email</strong>. Check your inbox (and spam). You can resend below or go back to change your email or phone.</p></div>
             <div class="mb-4 hidden">
               <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpEmail">Email</label>
               <input type="email" id="bdOtpEmail" placeholder="you@example.com" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" readonly>
             </div>
             <div class="mb-4">
-              <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpCode">4-digit code</label>
-              <input type="text" id="bdOtpCode" maxlength="4" inputmode="numeric" placeholder="1234" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <label class="text-sm font-semibold text-on-surface-variant ml-1 mb-1 inline-block" for="bdOtpCode">6-digit code</label>
+              <input type="text" id="bdOtpCode" maxlength="6" inputmode="numeric" placeholder="123456" class="w-full border border-outline-variant/30 bg-white rounded-2xl px-6 py-4 text-lg tracking-[0.3em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
               <p id="bdOtpError" class="hidden err-t"><span class="material-symbols-outlined ms">error</span><span class="js-reg-error-text">That code isn't right. Check the email and try again.</span></p>
             </div>
             
@@ -3337,7 +3337,7 @@
           }
           throw new Error((data && data.message) || 'Could not send verification code.');
         }
-        $('#bdOtpStatus').removeClass('hidden').addClass('flex').html('<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>4-digit code sent to <strong>' + $('<span>').text(email).html() + '</strong>.</span>');
+        $('#bdOtpStatus').removeClass('hidden').addClass('flex').html('<span class="material-symbols-outlined text-[18px] text-green-600">mark_email_read</span><span>6-digit code sent to <strong>' + $('<span>').text(email).html() + '</strong>.</span>');
         syncBookingOtpEmailDisplay();
         bookingOtpResendEmail = email.toLowerCase();
         startOtpResendCountdown(data && data.resend_available_in_seconds ? data.resend_available_in_seconds : 60);
@@ -3369,7 +3369,7 @@
         setOtpError('That email doesn\'t look right.');
         return;
       }
-      if (!/^\d{4}$/.test(code)) {
+      if (!/^\d{6}$/.test(code)) {
         setOtpError('That code isn\'t right. Check the email and try again.');
         return;
       }
@@ -3523,7 +3523,7 @@
       updateConnectedUi();
     });
     $('#bdOtpCode').on('input', function() {
-      this.value = String(this.value || '').replace(/\D/g, '').slice(0, 4);
+      this.value = String(this.value || '').replace(/\D/g, '').slice(0, 6);
       $('#bdOtpError').addClass('hidden');
     });
 

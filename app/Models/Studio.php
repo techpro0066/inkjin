@@ -51,6 +51,9 @@ class Studio extends Model
         'page_title_mode',
         'page_title_color',
         'page_text_mode',
+        'page_text_color',
+        'page_button_mode',
+        'page_button_color',
         'page_box_radius',
         'instagram_user_id',
         'instagram_username',
@@ -70,6 +73,7 @@ class Studio extends Model
         'size_unit',
         'use_studio_consent_form',
         'allow_artist_own_consent',
+        'stripe_setup_skipped_at',
     ];
 
     protected $casts = [
@@ -93,6 +97,7 @@ class Studio extends Model
         'instagram_connected_at' => 'datetime',
         'use_studio_consent_form' => 'boolean',
         'allow_artist_own_consent' => 'boolean',
+        'stripe_setup_skipped_at' => 'datetime',
     ];
 
     public function portfolios(): HasMany
@@ -251,6 +256,89 @@ class Studio extends Model
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    public function hasSkippedStripeSetup(): bool
+    {
+        return $this->stripe_setup_skipped_at !== null;
+    }
+
+    /**
+     * True when the studio accepted an artist payout invite but still must Connect or Skip Stripe.
+     */
+    public function needsInviteStripeChoice(): bool
+    {
+        if (! $this->user_id || $this->hasSkippedStripeSetup() || $this->hasStripeConnect()) {
+            return false;
+        }
+
+        return $this->pendingPayoutInviteUserDetail() !== null;
+    }
+
+    /**
+     * Artist user detail for the open payout invite that still needs Stripe Connect or Skip.
+     */
+    public function pendingPayoutInviteUserDetail(): ?UserDetail
+    {
+        if (! UserStudio::tableReady() || ! $this->id) {
+            return null;
+        }
+
+        $link = UserStudio::query()
+            ->with(['user.userDetail'])
+            ->where('studio_id', (int) $this->id)
+            ->where('payout', true)
+            ->where(function ($query) {
+                $query->where('status', UserStudio::STATUS_JOIN_PENDING)
+                    ->orWhere(function ($activePending) {
+                        $activePending->where('status', UserStudio::STATUS_ACTIVE)
+                            ->where('connection_type', UserStudio::CONNECTION_NOT_CONNECTED);
+                    });
+            })
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->first();
+
+        return $link?->user?->userDetail;
+    }
+
+    public function markStripeSetupSkipped(): void
+    {
+        if ($this->stripe_setup_skipped_at !== null) {
+            return;
+        }
+
+        $this->forceFill(['stripe_setup_skipped_at' => now()])->save();
+    }
+
+    public function clearStripeSetupSkipped(): void
+    {
+        if ($this->stripe_setup_skipped_at === null) {
+            return;
+        }
+
+        $this->forceFill(['stripe_setup_skipped_at' => null])->save();
+    }
+
+    /**
+     * Signed invite URL to finish Connect / Skip Stripe after accepting an artist payout invite.
+     */
+    public function inviteStripeChoiceUrl(): ?string
+    {
+        if (! $this->needsInviteStripeChoice()) {
+            return null;
+        }
+
+        $detail = $this->pendingPayoutInviteUserDetail();
+        if (! $detail) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'studio.payout-info.show',
+            now()->addDays(30),
+            ['userDetail' => $detail->id]
+        );
     }
 
     /**
