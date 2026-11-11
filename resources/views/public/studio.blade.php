@@ -16,6 +16,8 @@
 
     $lookState = \App\Support\PageLook::stateFromStudio($studio);
     $isLookPreview = request()->boolean('preview');
+    $lookIsCustom = ($lookState['mode'] ?? '') === 'custom';
+    $lookBoxStyle = \App\Support\PageLook::boxStyleFromState($lookState);
     [$schemePrimary, $schemeMid, $schemeTint] = \App\Support\PageLook::schemeParts(
         (string) ($lookState['scheme'] ?? '')
     );
@@ -187,9 +189,34 @@
     .sp-b.pri .ms,.wf button.on .ms{color:inherit}
     .bbtn.pri{background:var(--acc);color:var(--btnt)}
     .bbtn.pri .ms{color:inherit}
+    @if($lookIsCustom)
+    :root{
+      --bx: {{ $lookBoxStyle['bg'] }};
+      --bxf: {{ $lookBoxStyle['blur'] }};
+      --bxr: {{ $lookBoxStyle['radius'] }};
+      --bxb: {{ $lookBoxStyle['border'] }};
+      --bxt: {{ $lookBoxStyle['text'] }};
+      --bxtt: {{ $lookBoxStyle['title'] }};
+      --bxs: {{ $lookBoxStyle['sub'] }};
+      --bxl: {{ $lookBoxStyle['line'] }};
+      --bxc: {{ $lookBoxStyle['chip'] }};
+      --btnt: {{ $lookBoxStyle['btn'] }};
+    }
+    html.look-pending,html.look-pending body{background:{{ $lookBoxStyle['pageBg'] }}}
+    html.look-pending body{visibility:hidden}
+    html.look-ready body{visibility:visible}
+    body.cst{background:{{ $lookBoxStyle['pageBg'] }}}
+    @endif
   </style>
+  @if($lookIsCustom)
+  <script>
+    document.documentElement.classList.add('look-pending');
+    try { sessionStorage.setItem('bp-look-studio', @json($lookState)); } catch (e) {}
+  </script>
+  <script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+  @endif
 </head>
-<body class="{{ $isLookPreview ? 'bp-prev' : '' }}" data-look-who="studio">
+<body class="{{ trim(($lookIsCustom ? 'cst ' : '').($isLookPreview ? 'bp-prev' : '')) }}" data-look-who="studio">
   <div class="sp-ban" id="banner" style="{{ $bannerStyle }}"></div>
 
   <div class="sp-wrap">
@@ -434,7 +461,9 @@
     </footer>
   </div>
 
+  @if(! $lookIsCustom)
   <script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+  @endif
   <script>
     (function () {
       const $ = (id) => document.getElementById(id);
@@ -444,6 +473,7 @@
       const logoUrl = @json($logoUrl);
       const studioName = @json($studioName);
       const profilePath = @json($profileHostPath);
+      const lookIsCustom = @json($lookIsCustom);
 
       try {
         if (!isPreview) {
@@ -530,6 +560,13 @@
           b.style.backgroundRepeat = 'no-repeat';
         }
       }
+      function revealCustomLook() {
+        if (!lookIsCustom) return;
+        document.documentElement.classList.add('look-ready');
+        document.documentElement.classList.remove('look-pending');
+      }
+      revealCustomLook();
+      setTimeout(revealCustomLook, 1200);
     })();
   </script>
 </body>

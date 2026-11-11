@@ -6,12 +6,7 @@
   $ud = $userDetail;
   $st = $ud->scheduling_type ?? '';
   $gcal = !empty($ud->google_calendar_token);
-  $connectedCalendarEmail = null;
-  if (!empty($ud->google_calendar_id) && str_contains((string) $ud->google_calendar_id, '@')) {
-      $connectedCalendarEmail = (string) $ud->google_calendar_id;
-  } elseif (!empty($user?->email)) {
-      $connectedCalendarEmail = (string) $user->email;
-  }
+  $connectedCalendarEmail = $gcal ? $ud?->resolvedGoogleCalendarEmail() : null;
   $defaultSched = $st !== '' ? $st : ($gcal ? 'auto' : 'managed');
   $isAuto = $defaultSched === 'auto';
   $reqCons = (bool) ($ud->require_consultation ?? false);

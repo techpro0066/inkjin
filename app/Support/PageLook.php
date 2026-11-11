@@ -227,32 +227,125 @@ class PageLook
      */
     public static function buttonTextColorFromState(array $state): string
     {
-        $c = is_array($state['c'] ?? null) ? $state['c'] : [];
-        $mode = in_array($c['btn'] ?? '', ['auto', 'black', 'white', 'custom'], true) ? $c['btn'] : 'auto';
-        if ($mode === 'black') {
-            return '#111111';
-        }
-        if ($mode === 'white') {
-            return '#FFFFFF';
-        }
-        if ($mode === 'custom') {
-            return self::normalizeHex($c['btnC'] ?? '#FFFFFF') ?: '#FFFFFF';
-        }
+        $style = self::boxStyleFromState($state);
 
-        [$primary] = self::schemeParts($state['scheme'] ?? self::DEFAULT_SCHEME);
-        $hex = ltrim($primary, '#');
+        return $style['btn'];
+    }
+
+    /**
+     * CSS values for Custom profile box (mirrors BPLook.style).
+     *
+     * @return array{
+     *   bg:string,blur:string,radius:string,title:string,text:string,btn:string,
+     *   sub:string,line:string,chip:string,border:string,pageBg:string,bgImage:?string,bgImageMobile:?string
+     * }
+     */
+    public static function boxStyleFromState(array $state): array
+    {
+        $c = is_array($state['c'] ?? null) ? $state['c'] : [];
+        [$primary, $mid] = self::schemeParts($state['scheme'] ?? self::DEFAULT_SCHEME);
+        $boxHex = self::normalizeHex($c['box'] ?? '#FFFFFF') ?: '#FFFFFF';
+        $effect = in_array($c['effect'] ?? '', ['solid', 'see', 'glass'], true) ? $c['effect'] : 'glass';
+        $op = max(5, min(95, (int) ($c['op'] ?? 22)));
+        $opacity = $effect === 'solid' ? 1.0 : ($op / 100);
+        $radiusKey = in_array($c['radius'] ?? '', ['none', 's', 'm', 'l'], true) ? $c['radius'] : 'l';
+        $radiusMap = ['none' => 0, 's' => 10, 'm' => 18, 'l' => 28];
+        $radius = ($radiusMap[$radiusKey] ?? 28).'px';
+
+        $boxLum = self::relativeLuminance($boxHex);
+        $hasBg = filled($c['bgD'] ?? null) || filled($c['bgM'] ?? null);
+        $bgLum = $hasBg
+            ? (float) ($c['bgLum'] ?? 0.093)
+            : self::relativeLuminance($primary);
+        $L = ($opacity * $boxLum) + ((1 - $opacity) * $bgLum);
+        $auto = self::contrastPick($L);
+
+        $titleMode = in_array($c['title'] ?? '', ['auto', 'black', 'white', 'custom'], true) ? $c['title'] : 'auto';
+        $textMode = in_array($c['text'] ?? '', ['auto', 'black', 'white', 'custom'], true) ? $c['text'] : 'auto';
+        $btnMode = in_array($c['btn'] ?? '', ['auto', 'black', 'white', 'custom'], true) ? $c['btn'] : 'auto';
+
+        $title = match ($titleMode) {
+            'black' => '#111111',
+            'white' => '#FFFFFF',
+            'custom' => self::normalizeHex($c['titleC'] ?? '#FFFFFF') ?: '#FFFFFF',
+            default => $auto,
+        };
+        $text = match ($textMode) {
+            'black' => '#111111',
+            'white' => '#FFFFFF',
+            'custom' => self::normalizeHex($c['textC'] ?? '#FFFFFF') ?: '#FFFFFF',
+            default => $auto,
+        };
+        $btnFillLum = self::relativeLuminance($primary);
+        $btnAuto = self::contrastPick($btnFillLum);
+        $btn = match ($btnMode) {
+            'black' => '#111111',
+            'white' => '#FFFFFF',
+            'custom' => self::normalizeHex($c['btnC'] ?? '#FFFFFF') ?: '#FFFFFF',
+            default => $btnAuto,
+        };
+
+        $rgb = self::hexToRgb($boxHex);
+        $bg = 'rgba('.$rgb[0].','.$rgb[1].','.$rgb[2].','.$opacity.')';
+        $isWhiteText = strtoupper($text) === '#FFFFFF';
+
+        $bgD = trim((string) ($c['bgD'] ?? ''));
+        $bgM = trim((string) ($c['bgM'] ?? ''));
+        $pageBg = $hasBg
+            ? (trim((string) ($c['bgAvg'] ?? '')) ?: '#222222')
+            : $primary;
+
+        return [
+            'bg' => $bg,
+            'blur' => $effect === 'glass' ? 'blur(18px) saturate(140%)' : 'none',
+            'radius' => $radius,
+            'title' => $title,
+            'text' => $text,
+            'btn' => $btn,
+            'sub' => $isWhiteText ? 'rgba(255,255,255,.78)' : 'rgba(17,17,17,.68)',
+            'line' => $isWhiteText ? 'rgba(255,255,255,.22)' : 'rgba(17,17,17,.12)',
+            'chip' => $isWhiteText ? 'rgba(255,255,255,.16)' : 'rgba(17,17,17,.07)',
+            'border' => $effect === 'solid'
+                ? 'transparent'
+                : ($isWhiteText ? 'rgba(255,255,255,.28)' : 'rgba(255,255,255,.55)'),
+            'pageBg' => $pageBg,
+            'bgImage' => $bgD !== '' ? $bgD : ($bgM !== '' ? $bgM : null),
+            'bgImageMobile' => $bgM !== '' ? $bgM : ($bgD !== '' ? $bgD : null),
+            'schemeMid' => $mid,
+        ];
+    }
+
+    /**
+     * @return array{0:int,1:int,2:int}
+     */
+    private static function hexToRgb(string $hex): array
+    {
+        $hex = ltrim(self::normalizeHex($hex) ?: '#000000', '#');
         if (strlen($hex) === 3) {
             $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
         }
-        $r = hexdec(substr($hex, 0, 2));
-        $g = hexdec(substr($hex, 2, 2));
-        $b = hexdec(substr($hex, 4, 2));
+
+        return [
+            hexdec(substr($hex, 0, 2)),
+            hexdec(substr($hex, 2, 2)),
+            hexdec(substr($hex, 4, 2)),
+        ];
+    }
+
+    private static function relativeLuminance(string $hex): float
+    {
+        [$r, $g, $b] = self::hexToRgb($hex);
         $toLin = static function (float $v): float {
             $v /= 255;
 
             return $v <= 0.04045 ? $v / 12.92 : pow(($v + 0.055) / 1.055, 2.4);
         };
-        $L = 0.2126 * $toLin($r) + 0.7152 * $toLin($g) + 0.0722 * $toLin($b);
+
+        return 0.2126 * $toLin($r) + 0.7152 * $toLin($g) + 0.0722 * $toLin($b);
+    }
+
+    private static function contrastPick(float $L): string
+    {
         $contrastWhite = (1.0 + 0.05) / ($L + 0.05);
         $contrastBlack = ($L + 0.05) / 0.05;
 

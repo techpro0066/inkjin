@@ -124,6 +124,7 @@ class ArtistClientService
                 $hasRequest = $customRequest !== null;
                 $released = $hasRequest && $customRequest->waitlist_released_at !== null;
 
+                $requestPreview = null;
                 if ($hasRequest && $released) {
                     $requestKind = 'moved';
                     $requestLabel = 'Moved to Requests';
@@ -131,7 +132,12 @@ class ArtistClientService
                 } elseif ($hasRequest) {
                     $requestKind = 'req';
                     $requestLabel = 'View request';
-                    $requestUrl = route('artist.requests.index', ['open' => $customRequest->id]);
+                    // Held waitlist requests are hidden on Requests until notify/release —
+                    // open details in the Waitlist UI instead.
+                    $requestUrl = null;
+                    $requestPreview = $customRequest->toArtistPanelArray();
+                    $requestPreview['clientEmail'] = (string) ($entry->email ?? '');
+                    $requestPreview['clientName'] = (string) ($entry->name ?: ($requestPreview['clientName'] ?? 'Client'));
                 } else {
                     $requestKind = 'name_email';
                     $requestLabel = 'Name and email only';
@@ -152,6 +158,7 @@ class ArtistClientService
                     'request_kind' => $requestKind,
                     'request_label' => $requestLabel,
                     'request_url' => $requestUrl,
+                    'request_preview' => $requestPreview,
                     'custom_request_id' => $customRequest?->id,
                 ];
             })

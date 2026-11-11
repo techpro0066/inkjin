@@ -8,6 +8,7 @@ use App\Mail\WaitlistBooksOpenMail;
 use App\Models\GuestSpot;
 use App\Models\Waitlist;
 use App\Services\ArtistClientService;
+use App\Services\ArtistNavBadgeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -16,12 +17,18 @@ use Illuminate\View\View;
 
 class ClientsController extends Controller
 {
-    public function __construct(private ArtistClientService $clientService) {}
+    public function __construct(
+        private ArtistClientService $clientService,
+        private ArtistNavBadgeService $navBadges,
+    ) {}
 
     public function index(Request $request): View
     {
-        $payload = $this->clientService->buildForArtist((int) $request->user()->id);
-        $userDetail = $request->user()->userDetail;
+        $user = $request->user();
+        $this->navBadges->markClientsSeen($user);
+
+        $payload = $this->clientService->buildForArtist((int) $user->id);
+        $userDetail = $user->userDetail;
         $booksOpen = ($userDetail?->availability_status ?? '') !== 'closed';
         $waitlistPendingCount = collect($payload['waitlist'])
             ->where('status_key', Waitlist::STATUS_PENDING)

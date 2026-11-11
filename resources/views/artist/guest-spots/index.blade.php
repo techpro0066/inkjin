@@ -449,7 +449,7 @@
             @if ($spot->hasListDetails())
             @php
               $pageUrl = ($statusKey === 'available' && $bookingPageUsername)
-                ? url('/@'.$bookingPageUsername.'/request/custom').'?guest_spot='.$spot->id
+                ? $spot->publicPageUrl($bookingPageUsername)
                 : null;
               $pageUrlDisplay = $pageUrl
                 ? preg_replace('#^https?://#', '', $pageUrl)
@@ -581,7 +581,7 @@ function selectGuestStatus(card) {
   var reorderUrl = @json(route('guest-spots.reorder'));
   var guestSpotLinkBase = @json(
     ($bookingPageUsername ?? null)
-      ? url('/@'.$bookingPageUsername.'/request/custom')
+      ? url('/@'.$bookingPageUsername.'/guest')
       : null
   );
   var guestSpotBookingsUrl = @json(route('artist.bookings.index'));
@@ -1411,9 +1411,12 @@ function selectGuestStatus(card) {
     );
   }
 
-  function guestSpotPageUrl(spotId) {
-    if (!guestSpotLinkBase || !spotId) return '';
-    return guestSpotLinkBase + '?guest_spot=' + encodeURIComponent(spotId);
+  function guestSpotPageUrl(spot) {
+    if (!guestSpotLinkBase || !spot) return '';
+    if (spot.page_url) return String(spot.page_url);
+    var slug = String(spot.public_slug || '').trim();
+    if (!slug) return '';
+    return guestSpotLinkBase + '/' + encodeURIComponent(slug);
   }
 
   function guestSpotPageUrlDisplay(url) {
@@ -1426,7 +1429,7 @@ function selectGuestStatus(card) {
     var html = [];
 
     if (displayKey === 'available' || status === 'available') {
-      var pageUrl = guestSpotPageUrl(spot.id);
+      var pageUrl = guestSpotPageUrl(spot);
       if (pageUrl) {
         var safeUrl = $('<div>').text(pageUrl).html();
         var display = $('<div>').text(guestSpotPageUrlDisplay(pageUrl)).html();

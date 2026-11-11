@@ -214,16 +214,19 @@ class ArtistPaymentsService
             $collectedKind .= ' · €'.number_format($balanceDue, 2).' due';
         }
 
-        $studioName = trim((string) ($userDetail?->resolvedStudioName() ?? ''));
-        $breakdownRows = $this->buildBreakdownRows(
+        $moneyUi = $this->payoutService->bookingDetailsMoneyBreakdown($booking, $userDetail);
+        $breakdownRows = $this->buildBreakdownRowsFromMoneyUi(
+            moneyUi: $moneyUi,
             amount: round($amount, 2),
-            fee: round($fee, 2),
             net: round($net, 2),
-            studioGets: round($studioGets, 2),
-            hasSplit: $hasSplit,
-            artistPercent: $artistPercent,
-            studioName: $studioName,
+            artistFee: round($fee, 2),
         );
+
+        // Artist-direct: Studio gets is —. Split rows keep studio share.
+        $tableStudioGets = $hasSplitDisplay
+            ? round((float) ($moneyUi['studio_gets_amount'] ?? $studioGets), 2)
+            : 0.0;
+        $tableFee = round($fee, 2);
 
         return [
             'id' => $booking->id,
@@ -233,8 +236,8 @@ class ArtistPaymentsService
             'reference' => $booking->referenceLabel(),
             'date' => $paidAt,
             'amount' => round($amount, 2),
-            'fee' => round($fee, 2),
-            'studio_gets' => round($studioGets, 2),
+            'fee' => $tableFee,
+            'studio_gets' => $tableStudioGets,
             'net' => round($net, 2),
             'remaining' => round($remaining, 2),
             'status' => $status,
@@ -248,6 +251,7 @@ class ArtistPaymentsService
             'balance_pending' => $breakdown['balance_pending'],
             'breakdown_title' => $booking->displayTitle().' · '.$booking->referenceLabel(),
             'breakdown_rows' => $breakdownRows,
+            'breakdown_footnote' => (string) ($moneyUi['footnote'] ?? ''),
         ];
     }
 
@@ -274,41 +278,103 @@ class ArtistPaymentsService
     }
 
     /**
+     * Money modal rows. Artist-direct: Client paid → Split None → You get.
+     * Revenue split: full fee / share / studio lines (matches booking money UI).
+     *
+     * @param  array<string, mixed>  $moneyUi
      * @return list<array{0: string, 1: string|float}>
      */
-    private function buildBreakdownRows(
+    private function buildBreakdownRowsFromMoneyUi(
+        array $moneyUi,
         float $amount,
-        float $fee,
         float $net,
-        float $studioGets,
-        bool $hasSplit,
-        int $artistPercent,
-        string $studioName,
+        float $artistFee,
     ): array {
+        $hasSplit = (bool) ($moneyUi['has_split'] ?? false);
+
+        // Artist direct: Client paid → Split None → You get (no Stripe / client booking-fee lines).
+        if (! $hasSplit) {
+            $rows = [
+                ['Client paid', $amount],
+            ];
+            if ($artistFee > 0.009) {
+                $rows[] = ['Booking fee (deducted from your share)', -$artistFee];
+            }
+            $rows[] = ['Split', 'None · booked at your own place'];
+            $rows[] = ['You get', $net];
+
+            return $rows;
+        }
+
         $rows = [
             ['Client paid', $amount],
         ];
 
-        if ($fee > 0.009) {
+        $clientBookingFee = (string) ($moneyUi['booking_fee'] ?? '');
+        $clientBookingFeeNote = trim((string) ($moneyUi['booking_fee_note'] ?? ''));
+        if ($clientBookingFee !== '' && str_contains(strtolower($clientBookingFeeNote), 'client')) {
+            $label = 'Service Booking Fee';
+            if ($clientBookingFeeNote !== '') {
+                $label .= ' ('.$clientBookingFeeNote.')';
+            }
+            $rows[] = [$label, $clientBookingFee];
+        }
+
+        $stripeFee = (string) ($moneyUi['stripe_fee'] ?? '');
+        if ($stripeFee !== '') {
+            $stripeLabel = 'Stripe fee';
+            $stripeNote = trim((string) ($moneyUi['stripe_fee_note'] ?? ''));
+            if ($stripeNote !== '') {
+                $stripeLabel .= ' ('.$stripeNote.')';
+            }
+            $rows[] = [$stripeLabel, $stripeFee];
+        }
+
+        $rows[] = [
+            (string) ($moneyUi['split_label'] ?? 'Split'),
+            (string) ($moneyUi['split_value'] ?? ''),
+        ];
+
+        $yourShare = (string) ($moneyUi['your_share'] ?? '');
+        if ($yourShare !== '') {
+            $shareLabel = (string) ($moneyUi['your_share_label'] ?? 'Your share');
+            $shareNote = trim((string) ($moneyUi['your_share_note'] ?? ''));
+            if ($shareNote !== '' && preg_match('/^(\d+)%/', $shareNote, $m)) {
+                $shareLabel .= ' ('.$m[1].'%)';
+            }
+            $rows[] = [$shareLabel, $yourShare];
+        }
+
+        $yourStripe = (string) ($moneyUi['your_stripe'] ?? '');
+        if ($yourStripe !== '') {
             $rows[] = [
-                $hasSplit
-                    ? 'Your part of the booking fee ('.$artistPercent.'%)'
-                    : 'Booking fee (deducted from your share)',
-                -$fee,
+                (string) ($moneyUi['your_stripe_label'] ?? 'Your part of the Stripe fee'),
+                $yourStripe,
             ];
         }
 
-        if ($hasSplit) {
-            $studioLabel = $studioName !== '' ? $studioName : 'studio';
-            $rows[] = ['Split with '.$studioLabel, 'You '.$artistPercent.'% · Studio '.(100 - $artistPercent).'%'];
-            if ($studioGets > 0.009) {
-                $rows[] = [$studioLabel.' gets', $studioGets];
+        $yourBookingFee = (string) ($moneyUi['your_booking_fee'] ?? '');
+        if ($yourBookingFee !== '') {
+            $ybLabel = 'Your part of the booking fee';
+            $ybNote = trim((string) ($moneyUi['your_booking_fee_note'] ?? ''));
+            if ($ybNote !== '') {
+                $ybLabel .= ' ('.$ybNote.')';
             }
-        } else {
-            $rows[] = ['Split', 'None · booked at your own place'];
+            $rows[] = [$ybLabel, $yourBookingFee];
         }
 
-        $rows[] = ['You get', $net];
+        $studioGetsAmount = (float) ($moneyUi['studio_gets_amount'] ?? 0);
+        if ($studioGetsAmount > 0.009) {
+            $studioLabel = (string) ($moneyUi['split_label'] ?? 'Split with studio');
+            $studioName = trim(str_replace('Split with ', '', $studioLabel));
+            if ($studioName === '' || $studioName === 'Split') {
+                $studioName = 'Studio';
+            }
+            $rows[] = [$studioName.' gets', $studioGetsAmount];
+        }
+
+        $youGet = (float) ($moneyUi['you_get_amount'] ?? $net);
+        $rows[] = ['You get', round($youGet, 2)];
 
         return $rows;
     }

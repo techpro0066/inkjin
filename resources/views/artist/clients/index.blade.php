@@ -124,6 +124,40 @@
   .cl-page .gwtyped{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
   .cl-page .gwno{font-size:12px;color:var(--muted);white-space:nowrap;margin-top:4px}
   .cl-page .btn[disabled]{opacity:.45;cursor:default}
+  #m-wl-req{position:fixed;inset:0;background:rgba(20,10,30,.45);display:flex;align-items:center;justify-content:center;z-index:330;padding:24px}
+  #m-wl-req[hidden],#m-wl-req [hidden]{display:none!important}
+  #m-wl-req .wl-req-m{
+    background:#fff;border-radius:18px;width:760px;max-width:100%;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+    display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);font-size:13.5px;color:#1A1A1A;overflow:hidden
+  }
+  #m-wl-req .wl-req-mh{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 24px 14px;border-bottom:1px solid #EFE8F1;flex-shrink:0}
+  #m-wl-req .wl-req-mh h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.2px}
+  #m-wl-req .wl-req-mh .sub{font-size:13px;color:var(--muted);margin-top:4px}
+  #m-wl-req .wl-req-mx{border:0;background:none;cursor:pointer;color:#8F8A95;padding:2px;display:flex}
+  #m-wl-req .wl-req-mx:hover{color:#1A1A1A}
+  #m-wl-req .wl-req-mx .ms{font-size:22px}
+  #m-wl-req .wl-req-mb{padding:18px 24px;overflow:auto;flex:1;min-height:0}
+  #m-wl-req .wl-req-banner{
+    border:1px solid #E6D2F2;background:#F8F0FF;border-radius:12px;padding:10px 14px;
+    font-size:13px;color:#5B2A94;font-weight:600;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start
+  }
+  #m-wl-req .wl-req-profile{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+  #m-wl-req .wl-req-profile .ini{width:48px;height:48px;font-size:15px;flex:none;background:#111;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700}
+  #m-wl-req .wl-req-profile .nm{font-size:17px;font-weight:800;margin:0;letter-spacing:-.2px}
+  #m-wl-req .wl-req-profile .meta{color:#6F6874;font-size:12.5px;margin-top:6px}
+  #m-wl-req .wl-req-card{border:1px solid #E8DFEA;border-radius:14px;background:#fff;padding:14px 16px;margin-bottom:12px}
+  #m-wl-req .wl-req-card h4{font-size:11px;font-weight:700;letter-spacing:.7px;color:#6F6874;margin:0 0 12px;text-transform:uppercase}
+  #m-wl-req .wl-req-qa{display:grid;grid-template-columns:1fr 1fr;column-gap:20px}
+  #m-wl-req .wl-req-qa-item{padding:9px 0;border-bottom:1px solid #F3EEF4;min-width:0}
+  #m-wl-req .wl-req-qa-item .lbl{font-size:10.5px;color:#6F6874;font-weight:600}
+  #m-wl-req .wl-req-qa-item .val{font-size:14px;margin-top:3px;color:var(--ink);word-break:break-word}
+  #m-wl-req .wl-req-imgs{display:flex;gap:8px;flex-wrap:wrap}
+  #m-wl-req .wl-req-imgs a{width:72px;height:72px;border-radius:10px;overflow:hidden;border:1px solid var(--line,#E8DFEA);display:block;background:#F7F3F9}
+  #m-wl-req .wl-req-imgs img{width:100%;height:100%;object-fit:cover;display:block}
+  #m-wl-req .wl-req-mf{display:flex;gap:10px;align-items:center;justify-content:flex-end;padding:16px 24px;background:#FCF6FE;border-top:1px solid #F0E4F5;flex-shrink:0}
+  @media (max-width:700px){
+    #m-wl-req .wl-req-qa{grid-template-columns:1fr}
+  }
   @media (max-width:900px){
     .cl-page .grid.stats{grid-template-columns:repeat(2,minmax(0,1fr))}
     .cl-page .cl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -385,6 +419,22 @@
 
 @include('components.waitlist-notify-modal')
 
+<div id="m-wl-req" hidden role="dialog" aria-modal="true" aria-labelledby="wl-req-heading">
+  <div class="wl-req-m">
+    <div class="wl-req-mh">
+      <div>
+        <h2 id="wl-req-heading">Waitlist request</h2>
+        <div class="sub" id="wl-req-sub">Submitted request details</div>
+      </div>
+      <button type="button" class="wl-req-mx" id="wl-req-x" aria-label="Close"><span class="ms">close</span></button>
+    </div>
+    <div class="wl-req-mb" id="wl-req-body"></div>
+    <div class="wl-req-mf">
+      <button type="button" class="btn ghost" id="wl-req-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="m-cl" hidden role="dialog" aria-modal="true" aria-labelledby="cl-m-heading">
   <div class="cl-m">
     <div class="cl-mh">
@@ -509,6 +559,7 @@
   window.inkjinArtistId = @json((int) Auth::id());
   window.inkjinRequestsUrl = @json(route('artist.requests.index'));
 </script>
+<script src="{{ asset('js/question-answer-display.js') }}"></script>
 <script src="{{ asset('js/waitlist-notify.js') }}?v=6"></script>
-<script src="{{ asset('js/artist-clients.js') }}?v=19"></script>
+<script src="{{ asset('js/artist-clients.js') }}?v=20"></script>
 @endsection

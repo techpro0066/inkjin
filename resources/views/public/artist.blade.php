@@ -21,6 +21,8 @@
   @php
     $lookState = \App\Support\PageLook::stateFromUserDetail($userDetail);
     $isLookPreview = request()->boolean('preview');
+    $lookIsCustom = ($lookState['mode'] ?? '') === 'custom';
+    $lookBoxStyle = \App\Support\PageLook::boxStyleFromState($lookState);
     [$schemePrimary, $schemeMid, $schemeTint] = \App\Support\PageLook::schemeParts(
         (string) ($lookState['scheme'] ?? '')
     );
@@ -302,9 +304,34 @@
     .tab[aria-selected=true] .n{background:var(--acc)}
     .bar i,.chip.pri{background:var(--acc)}
     .tg.st,.pill.pl,.gd{background:var(--accl);color:var(--acc)}
+    @if($lookIsCustom)
+    :root{
+      --bx: {{ $lookBoxStyle['bg'] }};
+      --bxf: {{ $lookBoxStyle['blur'] }};
+      --bxr: {{ $lookBoxStyle['radius'] }};
+      --bxb: {{ $lookBoxStyle['border'] }};
+      --bxt: {{ $lookBoxStyle['text'] }};
+      --bxtt: {{ $lookBoxStyle['title'] }};
+      --bxs: {{ $lookBoxStyle['sub'] }};
+      --bxl: {{ $lookBoxStyle['line'] }};
+      --bxc: {{ $lookBoxStyle['chip'] }};
+      --btnt: {{ $lookBoxStyle['btn'] }};
+    }
+    html.look-pending,html.look-pending body{background:{{ $lookBoxStyle['pageBg'] }}}
+    html.look-pending body{visibility:hidden}
+    html.look-ready body{visibility:visible}
+    body.cst{background:{{ $lookBoxStyle['pageBg'] }}}
+    @endif
   </style>
+  @if($lookIsCustom)
+  <script>
+    document.documentElement.classList.add('look-pending');
+    try { sessionStorage.setItem('bp-look-artist', @json($lookState)); } catch (e) {}
+  </script>
+  <script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+  @endif
 </head>
-<body class="{{ $isLookPreview ? 'bp-prev' : '' }}" data-books="{{ $booksClosed ? 'closed' : 'open' }}" data-look-who="artist"><div class="banner" id="banner" style="{{ $bannerStyle }}"></div>
+<body class="{{ trim(($lookIsCustom ? 'cst ' : '').($isLookPreview ? 'bp-prev' : '')) }}" data-books="{{ $booksClosed ? 'closed' : 'open' }}" data-look-who="artist"><div class="banner" id="banner" style="{{ $bannerStyle }}"></div>
 
 <div class="wrap" id="stdhero">
   <div class="hero" id="herohome">
@@ -464,7 +491,7 @@
                 <small>{{ $nextDates }}@if($nextLeft) · {{ $nextLeft }}@endif</small>
               </span>
             </a>
-          @endif
+  @endif
           @if($guestNotifyAny)
             <button type="button" class="next" id="gnotify" data-act="gwl-any">
               <span class="ms">notifications</span>
@@ -753,7 +780,9 @@
 
 @include('partials.bookpay-public-api')
 <script src="{{ asset('new-ui-design-assets/guest-waitlist.js') }}"></script>
+@if(! $lookIsCustom)
 <script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+@endif
   <script>
 (function () {
     const waitlistArtistUsername = @json($userDetail->user_name);
@@ -773,6 +802,7 @@
   const booksClosed = @json($booksClosed);
   const acceptsCustom = @json($acceptsCustom);
   const hasVisibleDesigns = @json($hasVisibleDesigns);
+  const lookIsCustom = @json($lookIsCustom);
 
   const $ = (id) => document.getElementById(id);
 
@@ -949,11 +979,11 @@
     if (similarBtn) {
       if (booksClosed) {
         similarBtn.onclick = () => openBooksWaitlist();
-      } else {
+        } else {
         similarBtn.onclick = () => requestSimilarTattoo(p.id);
       }
     }
-    openModal('portfolioDetailModal');
+      openModal('portfolioDetailModal');
   };
 
   document.addEventListener('click', function (e) {
@@ -1177,7 +1207,14 @@
       b.style.backgroundSize = 'cover';
       b.style.backgroundRepeat = 'no-repeat';
     }
-      }
+  }
+  function revealCustomLook() {
+    if (!lookIsCustom) return;
+    document.documentElement.classList.add('look-ready');
+    document.documentElement.classList.remove('look-pending');
+  }
+  revealCustomLook();
+  setTimeout(revealCustomLook, 1200);
     })();
   </script>
 </body>

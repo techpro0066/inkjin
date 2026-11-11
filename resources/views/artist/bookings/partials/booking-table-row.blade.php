@@ -135,18 +135,8 @@
   }
   $consentDateShort = $booking->booking_date?->format('D, M j') ?? $dateShort;
   $consentAutoNote = '';
-  if ($consentAnswer) {
-      $anchor = $consentAnswer->sent_at ?: $consentAnswer->send_at;
-      if ($anchor) {
-          $prefix = $consentAnswer->sent_at ? 'Sent automatically on ' : 'Scheduled to send automatically on ';
-          $consentAutoNote = $prefix.$anchor->format('M j');
-          if ($booking->booking_date) {
-              $daysBefore = (int) $anchor->copy()->startOfDay()->diffInDays($booking->booking_date->copy()->startOfDay(), false);
-              if ($daysBefore > 0) {
-                  $consentAutoNote .= ' · '.$daysBefore.' day'.($daysBefore === 1 ? '' : 's').' before the session';
-              }
-          }
-      }
+  if ($consentAnswer && ($consentAnswer->sent_at || $consentAnswer->send_at)) {
+      $consentAutoNote = 'Consent form sent 48 hours before booking';
   }
 
   $paymentState = 'none';

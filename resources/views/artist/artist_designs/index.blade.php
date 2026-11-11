@@ -876,7 +876,7 @@
         Your designs will not appear on your page until you open your books.
         <a href="{{ route('availability.index') }}?tab=status" style="color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px">Update Schedule &gt; Availability</a>
       </span>
-    </div>
+      </div>
   @endif
 
   <div class="card secsw" style="display:flex;align-items:center;gap:14px;padding:14px 18px;margin-bottom:16px">

@@ -18,20 +18,27 @@
 
       <!-- Stats Cards -->
       <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 mb-10">
-        <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
+        <a href="{{ route('admin.users.index', ['role' => 'artist']) }}" class="stat-card block bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
           <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
             <span class="material-symbols-outlined text-primary text-xl">brush</span>
           </div>
           <p class="text-2xl font-extrabold text-on-surface">{{ number_format($stats['artists']) }}</p>
           <p class="text-xs font-semibold text-on-surface-variant mt-1">Total Artists</p>
-        </div>
-        <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
+        </a>
+        <a href="{{ route('admin.users.index', ['role' => 'studio']) }}" class="stat-card block bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-indigo-600 text-xl">storefront</span>
+          </div>
+          <p class="text-2xl font-extrabold text-on-surface">{{ number_format($stats['studios']) }}</p>
+          <p class="text-xs font-semibold text-on-surface-variant mt-1">Total Studios</p>
+        </a>
+        <a href="{{ route('admin.users.index', ['role' => 'user']) }}" class="stat-card block bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
           <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-3">
             <span class="material-symbols-outlined text-blue-600 text-xl">group</span>
           </div>
           <p class="text-2xl font-extrabold text-on-surface">{{ number_format($stats['clients']) }}</p>
           <p class="text-xs font-semibold text-on-surface-variant mt-1">Total Clients</p>
-        </div>
+        </a>
         <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20">
           <div class="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center mb-3">
             <span class="material-symbols-outlined text-green-600 text-xl">calendar_month</span>
@@ -108,8 +115,15 @@
                   </div>
                 </div>
                 <div class="text-right shrink-0">
-                  <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold {{ $user->role === 'artist' ? 'bg-primary/10 text-primary' : 'bg-surface-container text-on-surface-variant' }}">
-                    {{ $user->role === 'artist' ? 'Artist' : 'Client' }}
+                  @php
+                    $roleBadge = match ($user->role) {
+                      'artist' => ['label' => 'Artist', 'class' => 'bg-primary/10 text-primary'],
+                      'studio' => ['label' => 'Studio', 'class' => 'bg-indigo-500/10 text-indigo-700'],
+                      default => ['label' => 'Client', 'class' => 'bg-surface-container text-on-surface-variant'],
+                    };
+                  @endphp
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold {{ $roleBadge['class'] }}">
+                    {{ $roleBadge['label'] }}
                   </span>
                   <p class="text-[11px] text-outline mt-1">{{ $user->created_at?->diffForHumans() }}</p>
                 </div>

@@ -215,7 +215,7 @@
         </a>
       </h1>
       <div class="sub">Everything clients see on your booking page.</div>
-          </div>
+        </div>
     <div class="btns">
       @include('partials.page-quick-links', [
         'qlPublicUrl' => $publicPageUrl,
@@ -225,7 +225,7 @@
         'qlButtonClass' => 'btn',
       ])
       </div>
-  </div>
+      </div>
 
   @include('artist.partials.my-page-tabs', [
     'myPageTab' => $myPageTab,
@@ -1068,7 +1068,7 @@
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && leaveEl?.classList.contains('on')) {
-      e.preventDefault();
+        e.preventDefault();
       dismissLeaveModal();
     }
   });

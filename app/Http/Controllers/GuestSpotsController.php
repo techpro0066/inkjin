@@ -766,7 +766,12 @@ class GuestSpotsController extends Controller
      */
     private function serialize(GuestSpot $guestSpot): array
     {
-        return $guestSpot->toFormArray();
+        $data = $guestSpot->toFormArray();
+        $username = Auth::user()?->userDetail?->user_name
+            ?? Auth::user()?->userDetail()->value('user_name');
+        $data['page_url'] = $guestSpot->publicPageUrl(is_string($username) ? $username : null);
+
+        return $data;
     }
 
     private function normalizeTime(string $time): string

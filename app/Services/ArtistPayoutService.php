@@ -924,10 +924,11 @@ class ArtistPayoutService
                 2
             ));
         } else {
+            // Artist direct UI: no Stripe line; You get = client paid minus any artist booking fee.
             $yourShare = $deposit;
-            $yourStripe = $stripeFee;
+            $yourStripe = 0.0;
             $yourBookingFee = $artistSideFee;
-            $youGet = max(0, round($deposit - $stripeFee - $artistSideFee, 2));
+            $youGet = max(0, round($deposit - $artistSideFee, 2));
             $studioGets = 0.0;
         }
 
@@ -1017,8 +1018,8 @@ class ArtistPayoutService
             'deposit' => $this->formatEuro($deposit),
             'booking_fee' => $bookingFeeLabel,
             'booking_fee_note' => $bookingFeeNote,
-            'stripe_fee' => '-'.$this->formatEuro($stripeFee),
-            'stripe_fee_note' => '1.5% + €0.25',
+            'stripe_fee' => $hasSplit ? '-'.$this->formatEuro($stripeFee) : null,
+            'stripe_fee_note' => $hasSplit ? '1.5% + €0.25' : null,
             'has_split' => $hasSplit,
             'split_label' => $hasSplit ? 'Split with '.$studioName : 'Split',
             'split_value' => $hasSplit

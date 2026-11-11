@@ -22,6 +22,10 @@ class GoogleCalendarController extends Controller
 
     private const SCOPE_CALENDAR_FREEBUSY = 'https://www.googleapis.com/auth/calendar.freebusy';
 
+    private const SCOPE_OPENID = 'openid';
+
+    private const SCOPE_EMAIL = 'email';
+
     /**
      * @return list<string>
      */
@@ -30,6 +34,8 @@ class GoogleCalendarController extends Controller
         return [
             self::SCOPE_CALENDAR_EVENTS_OWNED,
             self::SCOPE_CALENDAR_FREEBUSY,
+            self::SCOPE_OPENID,
+            self::SCOPE_EMAIL,
         ];
     }
 
@@ -67,6 +73,75 @@ class GoogleCalendarController extends Controller
         }
 
         return 'primary';
+    }
+
+    /**
+     * Resolve the Google account email used for Calendar OAuth.
+     * Prefer OpenID id_token / userinfo; fall back to primary calendar id when it is an email.
+     */
+    private function resolveGoogleAccountEmail(Google_Client $client, array $accessToken, string $primaryCalendarId): ?string
+    {
+        $fromIdToken = $this->emailFromIdToken($client, $accessToken);
+        if ($fromIdToken !== null) {
+            return $fromIdToken;
+        }
+
+        $fromUserInfo = $this->emailFromOauthUserInfo($client);
+        if ($fromUserInfo !== null) {
+            return $fromUserInfo;
+        }
+
+        $calendarId = trim($primaryCalendarId);
+        if ($calendarId !== '' && str_contains($calendarId, '@')) {
+            return $calendarId;
+        }
+
+        return null;
+    }
+
+    private function emailFromIdToken(Google_Client $client, array $accessToken): ?string
+    {
+        $idToken = trim((string) ($accessToken['id_token'] ?? ''));
+        if ($idToken === '') {
+            return null;
+        }
+
+        try {
+            $payload = $client->verifyIdToken($idToken);
+            if (! is_array($payload)) {
+                return null;
+            }
+
+            $email = trim((string) ($payload['email'] ?? ''));
+
+            return ($email !== '' && str_contains($email, '@')) ? $email : null;
+        } catch (\Throwable $e) {
+            Log::info('Could not verify Google id_token for calendar email', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    private function emailFromOauthUserInfo(Google_Client $client): ?string
+    {
+        try {
+            if (! class_exists(\Google_Service_Oauth2::class)) {
+                return null;
+            }
+
+            $oauth = new \Google_Service_Oauth2($client);
+            $email = trim((string) ($oauth->userinfo->get()->getEmail() ?? ''));
+
+            return ($email !== '' && str_contains($email, '@')) ? $email : null;
+        } catch (\Throwable $e) {
+            Log::info('Could not fetch Google userinfo email for calendar connect', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     private function storeCalendarReturnTo(Request $request): void
@@ -152,6 +227,7 @@ class GoogleCalendarController extends Controller
 
             $service = new Google_Service_Calendar($client);
             $primaryCalendarId = $this->resolvePrimaryCalendarId($service);
+            $googleAccountEmail = $this->resolveGoogleAccountEmail($client, $accessToken, $primaryCalendarId);
 
             // Get authenticated user
             $user = Auth::user();
@@ -197,6 +273,7 @@ class GoogleCalendarController extends Controller
             $updateData = [
                 'google_calendar_token' => $accessToken,
                 'google_calendar_id' => $primaryCalendarId,
+                'google_calendar_email' => $googleAccountEmail,
             ];
 
             if (in_array($returnTo, ['settings', 'schedule'], true)) {
@@ -285,6 +362,7 @@ class GoogleCalendarController extends Controller
                 $userDetail->update([
                     'google_calendar_token' => null,
                     'google_calendar_id' => null,
+                    'google_calendar_email' => null,
                     'scheduling_type' => 'managed',
                 ]);
             }

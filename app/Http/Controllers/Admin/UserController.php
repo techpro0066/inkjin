@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Style;
 use App\Models\User;
+use App\Models\UserStudio;
 use App\Support\AdminListPagination;
 use App\Support\OnboardingProgress;
 use Carbon\Carbon;
@@ -50,17 +51,20 @@ class UserController extends Controller
         $stats = [
             'total' => User::query()->where('role', '!=', 'admin')->count(),
             'artists' => User::query()->where('role', 'artist')->count(),
+            'studios' => User::query()->where('role', 'studio')->count(),
             'clients' => User::query()->where('role', 'user')->count(),
         ];
 
         $pageTitle = match ($roleFilter) {
             'artist' => 'Artists',
+            'studio' => 'Studios',
             'user' => 'Clients',
             default => 'Users',
         };
 
         $pageSubtitle = match ($roleFilter) {
             'artist' => number_format($stats['artists']).' artists on the platform',
+            'studio' => number_format($stats['studios']).' studios on the platform',
             'user' => number_format($stats['clients']).' clients on the platform',
             default => number_format($stats['total']).' users on the platform',
         };
@@ -156,7 +160,7 @@ class UserController extends Controller
                         $row['name'],
                         $row['email'],
                         $row['phone'],
-                        $row['role'] === 'artist' ? 'Artist' : 'Client',
+                        $this->roleLabel($row['role'] ?? ''),
                         $row['status'],
                         ! empty($row['email_verified']) ? 'Yes' : 'No',
                         $row['location'],
@@ -168,13 +172,17 @@ class UserController extends Controller
                         $row['designs'],
                         $row['portfolio_items'],
                         $row['availability_slots'],
-                        $row['role'] === 'artist' ? ($row['acquisition_source'] ?? '—') : '',
+                        in_array($row['role'], ['artist', 'studio'], true) ? ($row['acquisition_source'] ?? '—') : '',
                         $row['role'] === 'artist' ? ($row['books_mode'] ?? '—') : '',
-                        $row['role'] === 'artist' ? (! empty($row['instagram_connected']) ? 'Yes' : 'No') : '',
+                        in_array($row['role'], ['artist', 'studio'], true) ? (! empty($row['instagram_connected']) ? 'Yes' : 'No') : '',
                         $row['role'] === 'artist' ? (! empty($row['smart_pricing_on']) ? 'On' : 'Off') : '',
                         $row['role'] === 'artist' ? (! empty($row['guest_spots_on']) ? 'On' : 'Off') : '',
                         $row['role'] === 'artist' ? (! empty($row['faq_on']) ? 'On' : 'Off') : '',
-                        $row['role'] === 'artist' ? (! empty($row['google_calendar_connected']) ? 'Connected' : 'Not connected') : '',
+                        $row['role'] === 'artist'
+                            ? (! empty($row['google_calendar_connected'])
+                                ? ('Connected'.(! empty($row['google_calendar_email']) ? ' ('.$row['google_calendar_email'].')' : ''))
+                                : 'Not connected')
+                            : '',
                         $row['payment_type'] ?? '',
                         $row['payment_status'] ?? '',
                         is_array($row['styles'] ?? null) ? implode(', ', $row['styles']) : '',
@@ -200,7 +208,19 @@ class UserController extends Controller
         $payoutsFilter = strtolower(trim((string) $request->get('payouts', 'all')));
 
         $query = User::query()
-            ->with(['userDetail', 'consentFormSetting'])
+            ->with([
+                'userDetail.studio',
+                'consentFormSetting',
+                'userStudios' => fn ($q) => $q->where('status', UserStudio::STATUS_ACTIVE)
+                    ->with('studio')
+                    ->orderBy('id'),
+                'ownedStudio' => fn ($q) => $q->withCount('portfolios')->with([
+                    'userStudios' => fn ($linkQuery) => $linkQuery
+                        ->where('status', UserStudio::STATUS_ACTIVE)
+                        ->with(['user.userDetail'])
+                        ->orderBy('id'),
+                ]),
+            ])
             ->withCount(['artistDesigns', 'portfolios', 'availabilities'])
             ->where('role', '!=', 'admin');
 
@@ -214,6 +234,12 @@ class UserController extends Controller
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('phone_number', 'like', "%{$search}%")
+                    ->orWhereHas('ownedStudio', function ($studioQuery) use ($search) {
+                        $studioQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('username', 'like', "%{$search}%")
+                            ->orWhere('city', 'like', "%{$search}%")
+                            ->orWhere('country', 'like', "%{$search}%");
+                    })
                     ->orWhereHas('userDetail', function ($detailQuery) use ($search) {
                         $detailQuery->where('user_name', 'like', "%{$search}%")
                             ->orWhere('studio_name', 'like', "%{$search}%")
@@ -230,6 +256,8 @@ class UserController extends Controller
             $query->where(function ($q) {
                 $q->where(function ($artist) {
                     $artist->where('role', 'artist')->where('on_boarding', 'yes');
+                })->orWhere(function ($studio) {
+                    $studio->where('role', 'studio')->where('on_boarding', 'yes');
                 })->orWhere(function ($client) {
                     $client->where('role', 'user')->whereNotNull('email_verified_at');
                 });
@@ -238,6 +266,10 @@ class UserController extends Controller
             $query->where(function ($q) {
                 $q->where(function ($artist) {
                     $artist->where('role', 'artist')->where(function ($onboarding) {
+                        $onboarding->whereNull('on_boarding')->orWhere('on_boarding', '!=', 'yes');
+                    });
+                })->orWhere(function ($studio) {
+                    $studio->where('role', 'studio')->where(function ($onboarding) {
                         $onboarding->whereNull('on_boarding')->orWhere('on_boarding', '!=', 'yes');
                     });
                 })->orWhere(function ($client) {
@@ -301,7 +333,7 @@ class UserController extends Controller
      */
     public function show($id): JsonResponse
     {
-        $user = User::with(['userDetail', 'availabilities'])->findOrFail($id);
+        $user = User::with(['userDetail.studio', 'ownedStudio', 'availabilities'])->findOrFail($id);
 
         if ($user->role === 'admin') {
             abort(404);
@@ -358,11 +390,12 @@ class UserController extends Controller
                 'on_boarding' => $user->on_boarding,
                 'created_at' => $user->created_at,
                 'hear_about_us' => $user->hear_about_us,
-                'acquisition_source' => $user->role === 'artist'
+                'acquisition_source' => in_array($user->role, ['artist', 'studio'], true)
                     ? $this->formatAcquisitionSource($user->hear_about_us)
                     : null,
             ],
             'userDetail' => $this->userDetailPayload($userDetail),
+            'studio' => $this->ownedStudioPayload($user->ownedStudio),
             'availabilities' => $availabilities,
         ]);
     }
@@ -375,13 +408,68 @@ class UserController extends Controller
     private function mapUserForAdminList(User $user, array $styleLabels, array $bookingStats): array
     {
         $detail = $user->userDetail;
+        $ownedStudio = $user->ownedStudio;
         $isArtist = $user->role === 'artist';
+        $isStudio = $user->role === 'studio';
         $stats = $bookingStats[$user->id] ?? ['bookings' => 0, 'revenue' => 0.0];
 
-        $locationParts = array_filter([
-            trim((string) ($detail?->city ?? '')),
-            trim((string) ($detail?->country ?? '')),
-        ]);
+        $studioLinks = [];
+        $defaultRevenueArtistPercent = null;
+
+        if ($isStudio) {
+            $locationParts = array_filter([
+                trim((string) ($ownedStudio?->city ?? '')),
+                trim((string) ($ownedStudio?->country ?? '')),
+            ]);
+            $avatar = $ownedStudio?->image_url ?: ($ownedStudio?->logo_url ?: $detail?->avatar);
+            $phone = $user->phone_number
+                ?: ($ownedStudio?->business_phone ?: ($detail?->mobile_number ?: '—'));
+            $username = $ownedStudio?->username ?: $detail?->user_name;
+            $studioName = trim((string) ($ownedStudio?->name ?? '')) ?: '—';
+            $studioAddress = trim((string) ($ownedStudio?->address ?? ''))
+                ?: trim((string) ($detail?->studio_address ?? ''));
+            $currency = $ownedStudio?->currency ?: $detail?->currency;
+            $timezone = $ownedStudio?->timezone ?: $detail?->timezone;
+            $styles = $this->resolveStyleLabels($ownedStudio?->tattoo_styles, $styleLabels);
+            $social = $this->resolveStudioSocialLinks($ownedStudio);
+            $instagramConnected = filled($ownedStudio?->instagram_access_token);
+            $paymentType = null;
+            $paymentStatus = null;
+            $payout = $ownedStudio?->activePayout();
+            if ($payout) {
+                $paymentType = 'stripe';
+                $paymentStatus = $payout->status ?? null;
+            } elseif ($ownedStudio?->hasSkippedStripeSetup()) {
+                $paymentType = 'skipped';
+                $paymentStatus = 'skipped';
+            }
+            $defaultRevenueArtistPercent = $ownedStudio?->default_revenue_artist_percent;
+            $studioLinks = $this->mapStudioArtistLinks($ownedStudio?->userStudios ?? collect());
+        } else {
+            $locationParts = array_filter([
+                trim((string) ($detail?->city ?? '')),
+                trim((string) ($detail?->country ?? '')),
+            ]);
+            $avatar = $detail?->avatar;
+            $phone = $user->phone_number ?: ($detail?->mobile_number ?: '—');
+            $username = $detail?->user_name;
+            $studioName = ($detail?->resolvedStudioName() ?: '—');
+            $studioAddress = $detail?->studio_address;
+            $currency = $detail?->currency;
+            $timezone = $detail?->timezone;
+            $styles = $isArtist ? $this->resolveStyleLabels($detail?->tattoo_styles, $styleLabels) : [];
+            $social = $isArtist ? $this->resolveSocialLinks($detail) : [];
+            $instagramConnected = $isArtist ? filled($detail?->instagram_access_token) : null;
+            $paymentType = $detail?->payment_type;
+            $paymentStatus = $detail?->payment_status;
+            if ($isArtist) {
+                $studioLinks = $this->mapArtistStudioLinks($user->userStudios);
+                if ($studioLinks !== [] && ($studioName === '—' || $studioName === '')) {
+                    $studioName = $studioLinks[0]['studio_name'] ?? '—';
+                }
+            }
+        }
+
         $location = $locationParts !== [] ? implode(', ', $locationParts) : '—';
 
         $status = $this->resolveUserStatus($user);
@@ -391,22 +479,27 @@ class UserController extends Controller
 
         return [
             'id' => $user->id,
-            'name' => $user->name ?: 'N/A',
+            'name' => $isStudio
+                ? (trim((string) ($ownedStudio?->name ?? '')) ?: ($user->name ?: 'N/A'))
+                : ($user->name ?: 'N/A'),
             'initials' => strtoupper(substr($user->first_name ?? 'U', 0, 1).substr($user->last_name ?? '', 0, 1)),
-            'avatar' => $detail?->avatar,
+            'avatar' => $avatar,
             'email' => $user->email,
-            'phone' => $user->phone_number ?: ($detail?->mobile_number ?: '—'),
+            'phone' => $phone,
             'role' => $user->role,
-            'username' => $detail?->user_name,
-            'studio' => ($detail?->resolvedStudioName() ?: '—'),
+            'role_label' => $this->roleLabel($user->role),
+            'username' => $username,
+            'studio' => $studioName,
             'location' => $location,
-            'styles' => $isArtist ? $this->resolveStyleLabels($detail?->tattoo_styles, $styleLabels) : [],
-            'social' => $isArtist ? $this->resolveSocialLinks($detail) : [],
-            'instagram' => $isArtist ? $this->resolveInstagram($detail) : null,
+            'styles' => $styles,
+            'social' => $social,
+            'instagram' => ($isArtist || $isStudio) ? $this->instagramFromSocial($social) : null,
             'bookings' => (int) $stats['bookings'],
             'revenue' => (float) $stats['revenue'],
             'designs' => $isArtist ? (int) $user->artist_designs_count : 0,
-            'portfolio_items' => $isArtist ? (int) $user->portfolios_count : 0,
+            'portfolio_items' => $isArtist
+                ? (int) $user->portfolios_count
+                : ($isStudio ? (int) ($ownedStudio?->portfolios_count ?? 0) : 0),
             'availability_slots' => $isArtist ? (int) $user->availabilities_count : 0,
             'status' => $status['label'],
             'status_key' => $status['key'],
@@ -419,24 +512,133 @@ class UserController extends Controller
             'scheduling_mode' => $isArtist ? $this->formatSchedulingMode($detail?->scheduling_type) : null,
             'books_mode' => $isArtist ? $this->formatBooksMode($detail?->availability_status) : null,
             'availability_status' => $detail?->availability_status,
-            'instagram_connected' => $isArtist ? filled($detail?->instagram_access_token) : null,
+            'instagram_connected' => $instagramConnected,
             'smart_pricing_on' => $isArtist ? (($detail?->pricing_type ?? 'manual') === 'smart') : null,
             'guest_spots_on' => $isArtist ? (bool) ($detail?->display_guest_spots ?? false) : null,
             'faq_on' => $isArtist ? (bool) ($detail?->display_faq ?? false) : null,
             'consent_form_on' => $isArtist ? (bool) ($user->consentFormSetting?->send_automatically ?? false) : null,
-            'payment_type' => $detail?->payment_type,
-            'payment_status' => $detail?->payment_status,
-            'google_calendar_connected' => ! empty($detail?->google_calendar_token),
-            'studio_address' => $detail?->studio_address,
-            'currency' => $detail?->currency,
-            'timezone' => $detail?->timezone,
-            'acquisition_source' => $isArtist
+            'payment_type' => $paymentType,
+            'payment_status' => $paymentStatus,
+            'google_calendar_connected' => $isArtist ? ! empty($detail?->google_calendar_token) : null,
+            'google_calendar_email' => $isArtist ? $this->resolveGoogleCalendarEmail($detail) : null,
+            'studio_address' => $studioAddress,
+            'studio_type' => $isStudio ? ($ownedStudio?->studio_type ?: null) : null,
+            'studio_email' => $isStudio ? ($ownedStudio?->contact_email ?: $ownedStudio?->email) : null,
+            'studio_phone' => $isStudio ? ($ownedStudio?->business_phone ?: null) : null,
+            'studio_maps' => $isStudio ? ($ownedStudio?->google_maps_link ?: null) : null,
+            'default_revenue_artist_percent' => $isStudio ? $defaultRevenueArtistPercent : null,
+            'default_revenue_split_label' => $isStudio
+                ? $this->formatRevenueSplitLabel($defaultRevenueArtistPercent)
+                : null,
+            'studio_links' => ($isArtist || $isStudio) ? $studioLinks : [],
+            'currency' => $currency,
+            'timezone' => $timezone,
+            'acquisition_source' => ($isArtist || $isStudio)
                 ? $this->formatAcquisitionSource($user->hear_about_us)
                 : null,
-            'acquisition_source_key' => $isArtist
+            'acquisition_source_key' => ($isArtist || $isStudio)
                 ? (trim((string) ($user->hear_about_us ?? '')) ?: null)
                 : null,
         ];
+    }
+
+    /**
+     * @param  Collection<int, UserStudio>|iterable<int, UserStudio>  $links
+     * @return list<array{studio_name:string,studio_id:?int,artist_percent:?int,studio_percent:?int,is_payout_split:bool,split_label:string,relationship:?string}>
+     */
+    private function mapArtistStudioLinks($links): array
+    {
+        $items = [];
+        foreach ($links as $link) {
+            if (! $link instanceof UserStudio) {
+                continue;
+            }
+            if ((int) $link->status !== UserStudio::STATUS_ACTIVE) {
+                continue;
+            }
+
+            $studioName = trim((string) ($link->studio?->name ?: $link->studio_name ?: ''));
+            $artistPercent = $link->revenue_split;
+
+            $items[] = [
+                'studio_name' => $studioName !== '' ? $studioName : '—',
+                'studio_id' => $link->studio_id ? (int) $link->studio_id : null,
+                'artist_percent' => $artistPercent !== null ? (int) $artistPercent : null,
+                'studio_percent' => $artistPercent !== null ? max(0, 100 - (int) $artistPercent) : null,
+                'is_payout_split' => $link->isRevenueSplitPayout(),
+                'split_label' => $this->formatRevenueSplitLabel($artistPercent),
+                'relationship' => $link->relationship ?: null,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param  Collection<int, UserStudio>|iterable<int, UserStudio>  $links
+     * @return list<array{artist_name:string,artist_id:?int,artist_percent:?int,studio_percent:?int,is_payout_split:bool,split_label:string,relationship:?string}>
+     */
+    private function mapStudioArtistLinks($links): array
+    {
+        $items = [];
+        foreach ($links as $link) {
+            if (! $link instanceof UserStudio) {
+                continue;
+            }
+            if ((int) $link->status !== UserStudio::STATUS_ACTIVE) {
+                continue;
+            }
+
+            $artist = $link->user;
+            $artistName = trim((string) ($artist?->name ?? ''));
+            if ($artistName === '') {
+                $artistName = trim((string) ($artist?->email ?? '')) ?: 'Artist #'.($link->user_id ?: '—');
+            }
+            $artistPercent = $link->revenue_split;
+
+            $items[] = [
+                'artist_name' => $artistName,
+                'artist_id' => $link->user_id ? (int) $link->user_id : null,
+                'artist_percent' => $artistPercent !== null ? (int) $artistPercent : null,
+                'studio_percent' => $artistPercent !== null ? max(0, 100 - (int) $artistPercent) : null,
+                'is_payout_split' => $link->isRevenueSplitPayout(),
+                'split_label' => $this->formatRevenueSplitLabel($artistPercent),
+                'relationship' => $link->relationship ?: null,
+            ];
+        }
+
+        return $items;
+    }
+
+    private function formatRevenueSplitLabel(mixed $artistPercent): string
+    {
+        if ($artistPercent === null || $artistPercent === '') {
+            return 'No revenue split';
+        }
+
+        $artist = max(0, min(100, (int) $artistPercent));
+        $studio = 100 - $artist;
+
+        return "{$artist}% artist / {$studio}% studio";
+    }
+
+    private function roleLabel(?string $role): string
+    {
+        return match ($role) {
+            'artist' => 'Artist',
+            'studio' => 'Studio',
+            'user' => 'Client',
+            default => ucfirst((string) $role),
+        };
+    }
+
+    private function resolveGoogleCalendarEmail($detail): ?string
+    {
+        if (! $detail) {
+            return null;
+        }
+
+        return $detail->resolvedGoogleCalendarEmail();
     }
 
     private function formatBooksMode(?string $availabilityStatus): string
@@ -485,7 +687,7 @@ class UserController extends Controller
      */
     private function resolveUserStatus(User $user): array
     {
-        if ($user->role === 'artist') {
+        if (in_array($user->role, ['artist', 'studio'], true)) {
             return $user->on_boarding === 'yes'
                 ? ['label' => 'Active', 'key' => 'active']
                 : ['label' => 'Pending Onboarding', 'key' => 'pending_onboarding'];
@@ -580,8 +782,17 @@ class UserController extends Controller
      */
     private function resolveInstagram($detail): ?array
     {
-        foreach ($this->resolveSocialLinks($detail) as $item) {
-            if ($item['label'] === 'Instagram') {
+        return $this->instagramFromSocial($this->resolveSocialLinks($detail));
+    }
+
+    /**
+     * @param  list<array{label:string,url:string,handle:?string}>  $social
+     * @return array{url:string,handle:string}|null
+     */
+    private function instagramFromSocial(array $social): ?array
+    {
+        foreach ($social as $item) {
+            if (($item['label'] ?? '') === 'Instagram') {
                 return [
                     'url' => $item['url'],
                     'handle' => $item['handle'] ?: $item['url'],
@@ -590,6 +801,85 @@ class UserController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @return list<array{label:string,url:string,handle:?string}>
+     */
+    private function resolveStudioSocialLinks($studio): array
+    {
+        if (! $studio) {
+            return [];
+        }
+
+        $links = is_array($studio->links) ? $studio->links : [];
+        $platforms = [
+            'website' => 'Website',
+            'instagram' => 'Instagram',
+            'tiktok' => 'TikTok',
+            'youtube' => 'YouTube',
+            'facebook' => 'Facebook',
+        ];
+
+        $items = [];
+        foreach ($platforms as $key => $label) {
+            $url = trim((string) ($links[$key] ?? ''));
+            if ($url === '') {
+                continue;
+            }
+            $items[] = [
+                'label' => $label,
+                'url' => $url,
+                'handle' => $key === 'instagram' ? $this->instagramHandleFromUrl($url) : null,
+            ];
+        }
+
+        $connectedUsername = trim((string) ($studio->instagram_username ?? ''));
+        if ($connectedUsername !== '') {
+            $alreadyHasInstagram = collect($items)->contains(fn (array $item) => $item['label'] === 'Instagram');
+            if (! $alreadyHasInstagram) {
+                $items[] = [
+                    'label' => 'Instagram',
+                    'url' => 'https://www.instagram.com/'.ltrim($connectedUsername, '@/'),
+                    'handle' => '@'.ltrim($connectedUsername, '@/'),
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function ownedStudioPayload($studio): ?array
+    {
+        if (! $studio) {
+            return null;
+        }
+
+        return [
+            'id' => $studio->id,
+            'name' => $studio->name,
+            'username' => $studio->username,
+            'email' => $studio->email,
+            'contact_email' => $studio->contact_email,
+            'business_phone' => $studio->business_phone,
+            'address' => $studio->address,
+            'city' => $studio->city,
+            'state' => $studio->state,
+            'postal_code' => $studio->postal_code,
+            'country' => $studio->country,
+            'google_maps_link' => $studio->google_maps_link,
+            'studio_type' => $studio->studio_type,
+            'currency' => $studio->currency,
+            'timezone' => $studio->timezone,
+            'default_revenue_artist_percent' => $studio->default_revenue_artist_percent,
+            'instagram_username' => $studio->instagram_username,
+            'instagram_connected' => filled($studio->instagram_access_token),
+            'stripe_skipped' => $studio->hasSkippedStripeSetup(),
+            'stripe_account_id' => $studio->resolveStripeAccountId(),
+        ];
     }
 
     private function instagramHandleFromUrl(string $url): ?string
@@ -620,7 +910,7 @@ class UserController extends Controller
 
         $stats = [];
 
-        if ($roleFilter !== 'user') {
+        if (! in_array($roleFilter, ['user', 'studio'], true)) {
             $artistRows = Booking::query()
                 ->selectRaw('artist_user_id as user_id')
                 ->selectRaw('COUNT(*) as bookings')
@@ -638,7 +928,7 @@ class UserController extends Controller
             }
         }
 
-        if ($roleFilter !== 'artist') {
+        if (! in_array($roleFilter, ['artist', 'studio'], true)) {
             $clientRows = Booking::query()
                 ->selectRaw('user_id')
                 ->selectRaw('COUNT(*) as bookings')

@@ -734,6 +734,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/requests/{bookingRequest}/offer-slots', [RequestsController::class, 'offerSlots'])->name('artist.requests.offer-slots');
 
     Route::get('/chat', [ArtistChatController::class, 'index'])->name('artist.chat.index');
+    Route::get('/nav-badges', [\App\Http\Controllers\Artist\NavBadgesController::class, 'show'])->name('artist.nav-badges');
     Route::get('/clients', [ArtistClientsController::class, 'index'])->name('artist.clients.index');
     Route::post('/clients/waitlist/notify', [ArtistClientsController::class, 'notifyWaitlist'])->name('artist.clients.waitlist.notify');
     Route::put('/clients/waitlist/signup-mode', [ArtistClientsController::class, 'updateWaitlistSignup'])->name('artist.clients.waitlist.signup-mode');

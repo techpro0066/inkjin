@@ -15,6 +15,7 @@
       ? $avatarPath
       : asset(ltrim($avatarPath, '/'));
   }
+
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -81,8 +82,12 @@
     aside nav a.on,aside nav button.navlink.on{background:#fff;color:var(--pri);font-weight:600}
     aside nav a.on .ms,aside nav button.navlink.on .ms{color:var(--pri)}
     .badge{background:#fff;color:#1A1A1A;border-radius:6px;font-size:11px;padding:2px 7px;font-weight:600}
-    .cnt{margin-left:auto;background:#3A3A3A;color:#fff;border-radius:10px;font-size:11px;padding:1px 8px;font-weight:600}
+    .cnt{margin-left:auto;background:#3A3A3A;color:#fff;border-radius:10px;font-size:11px;padding:1px 8px;font-weight:600;line-height:1.4;min-width:1.4em;text-align:center}
+    .cnt.hidden,[hidden].cnt{display:none!important}
     aside nav a.on .cnt{background:var(--pri)}
+    .ndot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:#3A3A3A;flex-shrink:0}
+    .ndot.hidden,[hidden].ndot{display:none!important}
+    aside nav a.on .ndot{background:var(--pri)}
     .sep{height:1px;background:#333;margin:10px 4px;flex-shrink:0}
 
     .foot{margin-top:auto;flex-shrink:0}
@@ -223,6 +228,7 @@
       </a>
       <a href="{{ route('artist.bookings.index') }}" class="{{ $activeNav === 'bookings' || request()->routeIs('artist.bookings.*') || request()->routeIs('artist.requests.*') || request()->routeIs('artist.custom-requests.*') || request()->routeIs('artist.guest-requests.*') ? 'on' : '' }}">
         <span class="ms">calendar_month</span>Bookings
+        <span id="bookingsNavCount" class="cnt hidden" style="display:none" aria-hidden="true"></span>
       </a>
       <a href="{{ route('availability.index') }}" class="{{ $activeNav === 'schedule' || request()->routeIs('availability.*') || request()->routeIs('guest-spots.*') || request()->routeIs('schedule.*') ? 'on' : '' }}">
         <span class="ms">schedule</span>Schedule
@@ -233,6 +239,7 @@
       </a>
       <a href="{{ route('artist.clients.index') }}" class="{{ $activeNav === 'clients' || request()->routeIs('artist.clients.*') ? 'on' : '' }}">
         <span class="ms">group</span>Clients
+        <span id="clientsNavDot" class="ndot hidden" style="display:none" aria-hidden="true"></span>
       </a>
       <a href="{{ route('artist.payments.index') }}" class="{{ $activeNav === 'money' || request()->routeIs('artist.payments.*') || request()->routeIs('settings.preferences') || request()->routeIs('settings.payment') || request()->routeIs('settings.payment.*') ? 'on' : '' }}">
         <span class="ms">payments</span>Money
@@ -294,17 +301,8 @@
   @stack('scripts')
   @yield('scripts')
   @include('layouts.partials.intercom-messenger')
-  <script src="{{ asset('js/chat-unread-badge.js') }}?v=1" defer data-api-base="{{ url('/api/chat') }}"></script>
-  <script>
-    (function () {
-      var dot = document.getElementById('inboxUnreadDot');
-      if (!dot) return;
-      var obs = new MutationObserver(function () {
-        var has = !dot.classList.contains('hidden') && (dot.textContent || '').trim() !== '';
-        dot.style.display = has ? '' : 'none';
-      });
-      obs.observe(dot, { attributes: true, childList: true, characterData: true, subtree: true });
-    })();
-  </script>
+  {{-- Badges load after paint (idle) — never computed in this Blade layout. --}}
+  <script src="{{ asset('js/artist-nav-badges.js') }}?v=2" defer data-api-url="{{ route('artist.nav-badges') }}"></script>
+  <script src="{{ asset('js/chat-unread-badge.js') }}?v=3" defer data-api-base="{{ url('/api/chat') }}"></script>
 </body>
 </html>

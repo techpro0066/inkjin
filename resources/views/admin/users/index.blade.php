@@ -44,6 +44,7 @@
           <select name="role" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
             <option value="all" {{ $roleFilter === 'all' ? 'selected' : '' }}>All users</option>
             <option value="artist" {{ $roleFilter === 'artist' ? 'selected' : '' }}>Artists</option>
+            <option value="studio" {{ $roleFilter === 'studio' ? 'selected' : '' }}>Studios</option>
             <option value="user" {{ $roleFilter === 'user' ? 'selected' : '' }}>Clients</option>
           </select>
         </div>
@@ -108,7 +109,7 @@
           <thead>
             <tr class="bg-surface-container-low/50 text-on-surface-variant text-xs uppercase tracking-wider">
               <th class="text-left px-5 py-3 font-semibold">Date</th>
-              <th class="text-left px-5 py-3 font-semibold">{{ $roleFilter === 'user' ? 'Client' : ($roleFilter === 'artist' ? 'Artist' : 'User') }}</th>
+              <th class="text-left px-5 py-3 font-semibold">{{ $roleFilter === 'user' ? 'Client' : ($roleFilter === 'artist' ? 'Artist' : ($roleFilter === 'studio' ? 'Studio' : 'User')) }}</th>
               <th class="text-left px-5 py-3 font-semibold">Email</th>
               <th class="text-left px-5 py-3 font-semibold">Location</th>
               <th class="text-left px-5 py-3 font-semibold">Bookings</th>
@@ -131,7 +132,7 @@
                     @endif
                     <div>
                       <span class="font-semibold block">{{ $user['name'] }}</span>
-                      <span class="text-[11px] text-on-surface-variant">{{ $user['role'] === 'artist' ? 'Artist' : 'Client' }}</span>
+                      <span class="text-[11px] text-on-surface-variant">{{ $user['role_label'] ?? ($user['role'] === 'artist' ? 'Artist' : ($user['role'] === 'studio' ? 'Studio' : 'Client')) }}</span>
                     </div>
                   </div>
                 </td>

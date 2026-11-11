@@ -284,6 +284,22 @@ class GuestSpot extends Model
     }
 
     /**
+     * Public guest spot page URL for a booking-page username, e.g. /@handle/guest/lahore-nov-19-26-2026.
+     */
+    public function publicPageUrl(?string $username): ?string
+    {
+        $handle = ltrim(trim((string) $username), '@');
+        if ($handle === '') {
+            return null;
+        }
+
+        return route('public.guest-spot', [
+            'user_name' => $handle,
+            'guestSpotSlug' => $this->publicSlug(),
+        ]);
+    }
+
+    /**
      * Resolvable guest spot for public design booking from that guest page.
      */
     public static function resolveReservableForArtist(mixed $guestSpotId, int $artistUserId): ?self
@@ -679,6 +695,7 @@ class GuestSpot extends Model
             'list_buffer' => $this->listBufferLabel(),
             'list_payout' => $this->listPayoutLabel(),
             'has_list_details' => $this->hasListDetails(),
+            'public_slug' => $this->publicSlug(),
         ];
     }
 

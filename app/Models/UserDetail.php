@@ -29,6 +29,7 @@ class UserDetail extends Model
         'workspace_type',
         'google_calendar_token',
         'google_calendar_id',
+        'google_calendar_email',
         'instagram_user_id',
         'instagram_username',
         'instagram_profile_picture',
@@ -99,6 +100,7 @@ class UserDetail extends Model
         'display_designs',
         'customize_page_notice_dismissed',
         'welcome_seen_at',
+        'clients_nav_seen_at',
         'instagram_bio_added_at',
         'design_whats_included',
         'design_whats_included_is_active',
@@ -125,6 +127,7 @@ class UserDetail extends Model
         'color_percent' => 'float',
         'customize_page_notice_dismissed' => 'boolean',
         'welcome_seen_at' => 'datetime',
+        'clients_nav_seen_at' => 'datetime',
         'instagram_bio_added_at' => 'datetime',
         'display_policies' => 'boolean',
         'display_tagline' => 'boolean',
@@ -168,6 +171,28 @@ class UserDetail extends Model
     public function studio(): BelongsTo
     {
         return $this->belongsTo(Studio::class);
+    }
+
+    /**
+     * Google account email for the connected calendar (not the Bookpay login email).
+     */
+    public function resolvedGoogleCalendarEmail(): ?string
+    {
+        if (empty($this->google_calendar_token)) {
+            return null;
+        }
+
+        $stored = trim((string) ($this->google_calendar_email ?? ''));
+        if ($stored !== '' && str_contains($stored, '@')) {
+            return $stored;
+        }
+
+        $calendarId = trim((string) ($this->google_calendar_id ?? ''));
+        if ($calendarId !== '' && str_contains($calendarId, '@')) {
+            return $calendarId;
+        }
+
+        return null;
     }
 
     /**

@@ -281,10 +281,10 @@
           <div class="in">
             <select id="studio_business_type" name="business_type" class="js-select2" data-placeholder="Select type" data-searchable="false">
               <option value=""></option>
-              <option value="individual">Individual</option>
-              <option value="company">Business</option>
-            </select>
-          </div>
+            <option value="individual">Individual</option>
+            <option value="company">Business</option>
+          </select>
+        </div>
           <p id="studio_business_type_error" class="err"></p>
           <p class="hint"><b>Individual</b> — you work under your own name. <b>Business</b> — registered studio or company.</p>
 
@@ -292,21 +292,21 @@
           <div class="in">
             <select id="studio_country" name="country" class="js-select2" data-placeholder="Search and select country" data-searchable="true">
               <option value=""></option>
-              @foreach ($stripeSupportedCountries as $country)
-                <option value="{{ $country['code'] }}">{{ $country['name'] }}</option>
-              @endforeach
-            </select>
-          </div>
+            @foreach ($stripeSupportedCountries as $country)
+              <option value="{{ $country['code'] }}">{{ $country['name'] }}</option>
+            @endforeach
+          </select>
+        </div>
           <p id="studio_country_error" class="err"></p>
 
           <label class="fl" for="studio_industry">What best describes you?</label>
           <div class="in">
             <select id="studio_industry" name="industry" class="js-select2" data-placeholder="Select option" data-searchable="false">
               <option value=""></option>
-              <option value="tattoo_studio">Tattoo studio — We do tattoos and body art</option>
+            <option value="tattoo_studio">Tattoo studio — We do tattoos and body art</option>
               <option value="tattoo_beauty">Tattoo &amp; beauty studio — Also beauty, piercing, or barber</option>
-              <option value="other">Other — Something else</option>
-            </select>
+            <option value="other">Other — Something else</option>
+          </select>
           </div>
           <p id="studio_industry_error" class="err"></p>
 

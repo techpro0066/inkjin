@@ -2095,6 +2095,7 @@ class OnboardingController extends Controller
                 $userDetail->update([
                     'google_calendar_token' => null,
                     'google_calendar_id' => null,
+                    'google_calendar_email' => null,
                 ]);
             }
 
@@ -2228,6 +2229,7 @@ class OnboardingController extends Controller
                 $userDetail->update([
                     'google_calendar_token' => null,
                     'google_calendar_id' => null,
+                    'google_calendar_email' => null,
                 ]);
             }
 
@@ -2698,6 +2700,7 @@ class OnboardingController extends Controller
                 $userDetail->update([
                     'google_calendar_token' => null,
                     'google_calendar_id' => null,
+                    'google_calendar_email' => null,
                 ]);
             }
 

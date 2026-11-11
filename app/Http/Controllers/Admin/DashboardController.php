@@ -30,6 +30,7 @@ class DashboardController extends Controller
 
         $stats = [
             'artists' => User::query()->where('role', 'artist')->count(),
+            'studios' => User::query()->where('role', 'studio')->count(),
             'clients' => User::query()->where('role', 'user')->count(),
             'active_bookings' => Booking::query()
                 ->where('status', 'confirmed')

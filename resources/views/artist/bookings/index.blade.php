@@ -552,6 +552,16 @@
   .bk-cal .ev-c{background:#E6F8EE;color:#0B6B37;font-size:11.5px;border-radius:6px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .bk-cal .ev-p{background:#FFF3DE;color:#8A5200;font-size:11.5px;border-radius:6px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .bk-cal .ev-k{background:#F0EDF2;color:#6F6874;font-size:11.5px;border-radius:6px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .bk-cal .cal-day-view{display:flex;flex-direction:column;min-height:28rem}
+  .bk-cal .cal-day-slot{display:grid;grid-template-columns:64px 1fr;gap:12px;min-height:56px;border-bottom:1px solid #F3EEF4;padding:8px 16px}
+  .bk-cal .cal-day-slot:last-child{border-bottom:0}
+  .bk-cal .cal-day-hour{font-size:11.5px;font-weight:600;color:#9A929E;padding-top:2px}
+  .bk-cal .cal-day-events{display:flex;flex-direction:column;gap:6px}
+  .bk-cal .cal-day-card{display:flex;align-items:center;gap:10px;border-radius:10px;padding:8px 10px;cursor:pointer}
+  .bk-cal .cal-day-card.ev-c{white-space:normal;overflow:visible;text-overflow:unset}
+  .bk-cal .cal-day-card.ev-p{white-space:normal;overflow:visible;text-overflow:unset}
+  .bk-cal .cal-day-card.ev-k{white-space:normal;overflow:visible;text-overflow:unset}
+  .bk-cal .cal-day-empty{font-size:12.5px;color:#C0B6C4;padding:4px 0}
   .bk-bpm{position:absolute;background:#fff;border:1px solid #E8DFEA;border-radius:14px;box-shadow:0 14px 40px rgba(40,10,60,.18);width:250px;padding:6px;z-index:80}
   .bk-bpm button,.bk-bpm a{display:flex;width:100%;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font:inherit;font-size:13.5px;font-weight:500;background:none;border:0;cursor:pointer;color:#1A1A1A;text-align:left;text-decoration:none}
   .bk-bpm button:hover,.bk-bpm button:focus-visible,.bk-bpm a:hover,.bk-bpm a:focus-visible{background:#F3E8FF;outline:0}
@@ -672,6 +682,7 @@
               <button type="button" id="calToday" class="ml-1 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E8DFEA] hover:bg-[#FBF8FC] text-on-surface-variant">Today</button>
             </div>
             <div class="flex items-center gap-0 border border-[#E8DFEA] rounded-[10px] overflow-hidden bg-white">
+              <button type="button" data-cal-mode="day" class="cal-mode-btn text-xs font-semibold px-3.5 py-1.5 transition-colors text-on-surface-variant">Day</button>
               <button type="button" data-cal-mode="week" class="cal-mode-btn text-xs font-semibold px-3.5 py-1.5 transition-colors text-on-surface-variant">Week</button>
               <button type="button" data-cal-mode="month" class="cal-mode-btn active text-xs font-semibold px-3.5 py-1.5 bg-[#1A1A1A] text-white transition-colors">Month</button>
             </div>
@@ -797,11 +808,12 @@
           <div class="abdm-kv" style="padding:8px 0;border-bottom:1px solid #F3EEF4"><span id="abdmMoneyDepositLabel">Client paid · deposit</span><span id="abdmMoneyDeposit" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmPaidRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Paid</span><span id="abdmPaid" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmBookingFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Service Booking Fee <span id="abdmBookingFeeNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmBookingFee" style="font-weight:600">—</span></div>
-          <div class="abdm-kv" id="abdmStripeFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4"><span>Stripe fee <span class="abdm-faint" style="font-size:12px">1.5% + €0.25</span></span><span id="abdmStripeFee" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmStripeFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Stripe fee <span class="abdm-faint" style="font-size:12px">1.5% + €0.25</span></span><span id="abdmStripeFee" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmSplitRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span id="abdmSplitLabel">Split</span><span id="abdmSplitValue" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmYourShareRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your share <span id="abdmYourShareNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourShare" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmYourStripeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your part of the Stripe fee <span id="abdmYourStripeNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourStripe" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmYourBookingFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your part of the booking fee <span id="abdmYourBookingFeeNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourBookingFee" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmStudioGetsRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span id="abdmStudioGetsLabel">Studio gets</span><span id="abdmStudioGets" style="font-weight:600">—</span></div>
           <div class="abdm-kv" style="padding:12px 0 4px;font-size:15px;border-bottom:0"><span style="color:#1A1A1A;font-weight:700">You get</span><span id="abdmYouGet" style="font-weight:800;font-size:18px">—</span></div>
           <div id="abdmMoneyFootnote" class="abdm-faint" style="font-size:12.5px;display:none"></div>
           <div id="abdmMoneyNote" class="abdm-tint" style="margin-top:12px;display:none"></div>
@@ -1639,6 +1651,13 @@
 
   function setMode(m) {
     calMode = m;
+    if (m === 'day' && selectedDay) {
+      var parts = selectedDay.split('-');
+      if (parts.length === 3) {
+        calDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        calDate.setHours(0, 0, 0, 0);
+      }
+    }
     modeBtns.forEach(function(b) {
       var on = b.getAttribute('data-cal-mode') === m;
       b.classList.toggle('active', on);
@@ -1664,7 +1683,12 @@
 
   function navigate(dir) {
     if (calMode === 'month') calDate.setMonth(calDate.getMonth() + dir);
-    else calDate.setDate(calDate.getDate() + 7 * dir);
+    else if (calMode === 'day') {
+      calDate.setDate(calDate.getDate() + dir);
+      selectedDay = fmt(calDate);
+    } else {
+      calDate.setDate(calDate.getDate() + 7 * dir);
+    }
     renderCalendar();
   }
 
@@ -1786,8 +1810,98 @@
     renderDayPanel(selectedDay);
   }
 
+  function parseHm(t) {
+    if (!t) return null;
+    var parts = String(t).split(':');
+    var h = parseInt(parts[0], 10);
+    var m = parseInt(parts[1] || '0', 10);
+    if (isNaN(h)) return null;
+    return h * 60 + (isNaN(m) ? 0 : m);
+  }
+
+  function renderDay() {
+    selectedDay = fmt(calDate);
+    calTitle.textContent = calDate.toLocaleDateString('default', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    var evts = bookingsFor(selectedDay).slice().sort(function(a, b) {
+      return (parseHm(a.time) ?? 9999) - (parseHm(b.time) ?? 9999);
+    });
+    var startHour = 8;
+    var endHour = 20;
+    evts.forEach(function(b) {
+      var s = parseHm(b.time);
+      var e = parseHm(b.end);
+      if (s !== null) startHour = Math.min(startHour, Math.floor(s / 60));
+      if (e !== null) endHour = Math.max(endHour, Math.ceil(e / 60));
+      else if (s !== null) endHour = Math.max(endHour, Math.ceil(s / 60) + 1);
+    });
+    startHour = Math.max(0, Math.min(23, startHour));
+    endHour = Math.max(startHour + 1, Math.min(24, endHour));
+
+    var byHour = {};
+    for (var h = startHour; h < endHour; h++) byHour[h] = [];
+    var untimed = [];
+    evts.forEach(function(b) {
+      var s = parseHm(b.time);
+      if (s === null) {
+        untimed.push(b);
+        return;
+      }
+      var hour = Math.floor(s / 60);
+      if (!byHour[hour]) byHour[hour] = [];
+      byHour[hour].push(b);
+    });
+
+    var html = '<div class="cal-day-view">';
+    if (untimed.length) {
+      html += '<div class="cal-day-slot"><div class="cal-day-hour">—</div><div class="cal-day-events">';
+      untimed.forEach(function(b) {
+        var cls = b.status === 'pending' ? 'ev-p' : (b.status === 'confirmed' ? 'ev-c' : 'ev-k');
+        var range = [b.time, b.end].filter(Boolean).join(' – ');
+        html += '<div class="cal-day-card js-cal-event ' + cls + '" data-cal-bid="' + esc(b.id) + '">' +
+          '<div class="flex-1 min-w-0"><b style="font-size:13px">' + esc(b.client) + '</b>' +
+          '<div style="font-size:11.5px;opacity:.85">' + esc(b.service || '') + (range ? ' · ' + esc(range) : '') + '</div></div></div>';
+      });
+      html += '</div></div>';
+    }
+    for (var hour = startHour; hour < endHour; hour++) {
+      var label = String(hour).padStart(2, '0') + ':00';
+      var slotEvts = byHour[hour] || [];
+      html += '<div class="cal-day-slot"><div class="cal-day-hour">' + label + '</div><div class="cal-day-events">';
+      if (!slotEvts.length) {
+        html += '<div class="cal-day-empty"> </div>';
+      } else {
+        slotEvts.forEach(function(b) {
+          var cls = b.status === 'pending' ? 'ev-p' : (b.status === 'confirmed' ? 'ev-c' : 'ev-k');
+          var range = [b.time, b.end].filter(Boolean).join(' – ');
+          html += '<div class="cal-day-card js-cal-event ' + cls + '" data-cal-bid="' + esc(b.id) + '">' +
+            '<div class="flex-1 min-w-0"><b style="font-size:13px">' + esc(b.client) + '</b>' +
+            '<div style="font-size:11.5px;opacity:.85">' + esc(b.service || '') + (range ? ' · ' + esc(range) : '') + '</div></div></div>';
+        });
+      }
+      html += '</div></div>';
+    }
+    if (!evts.length) {
+      html += '<div class="px-5 py-10 text-sm text-[#9A929E]">Nothing scheduled this day.</div>';
+    }
+    html += '</div>';
+    calBody.innerHTML = html;
+    renderDayPanel(selectedDay);
+  }
+
   function renderCalendar() {
-    if (calMode === 'week') renderWeek();
+    if (dayPanel) {
+      // Keep original mobile hide; only show side panel on xl in week/month.
+      dayPanel.classList.add('hidden');
+      if (calMode === 'day') dayPanel.classList.remove('xl:block');
+      else dayPanel.classList.add('xl:block');
+    }
+    if (calMode === 'day') renderDay();
+    else if (calMode === 'week') renderWeek();
     else renderMonth();
   }
 
@@ -2298,6 +2412,7 @@
   var bookingFeeRow = document.getElementById('abdmBookingFeeRow');
   var bookingFeeNote = document.getElementById('abdmBookingFeeNote');
   var bookingFeeEl = document.getElementById('abdmBookingFee');
+  var stripeFeeRow = document.getElementById('abdmStripeFeeRow');
   var stripeFeeEl = document.getElementById('abdmStripeFee');
   var splitRow = document.getElementById('abdmSplitRow');
   var splitLabel = document.getElementById('abdmSplitLabel');
@@ -2311,6 +2426,9 @@
   var yourBookingFeeRow = document.getElementById('abdmYourBookingFeeRow');
   var yourBookingFeeNote = document.getElementById('abdmYourBookingFeeNote');
   var yourBookingFeeEl = document.getElementById('abdmYourBookingFee');
+  var studioGetsRow = document.getElementById('abdmStudioGetsRow');
+  var studioGetsLabel = document.getElementById('abdmStudioGetsLabel');
+  var studioGetsEl = document.getElementById('abdmStudioGets');
   var youGetEl = document.getElementById('abdmYouGet');
   var paidRow = document.getElementById('abdmPaidRow');
   var paidEl = document.getElementById('abdmPaid');
@@ -2501,17 +2619,26 @@
         moneyPill.textContent = money.pill || 'Pending';
         moneyPill.className = 'abdm-pill ' + (money.pill_class || 'a');
       }
+      var hasSplit = !!money.has_split;
+      var feeNote = String(money.booking_fee_note || '');
+      var isClientPaidFee = /client/i.test(feeNote);
+      // Artist direct: hide client booking fee + Stripe. Split: show full fee stack.
       if (bookingFeeRow && bookingFeeEl) {
-        if (money.booking_fee) {
+        if (money.booking_fee && (hasSplit || !isClientPaidFee)) {
           bookingFeeRow.style.display = '';
           bookingFeeEl.textContent = money.booking_fee;
-          if (bookingFeeNote) bookingFeeNote.textContent = money.booking_fee_note || '';
+          if (bookingFeeNote) bookingFeeNote.textContent = feeNote;
         } else {
           bookingFeeRow.style.display = 'none';
         }
       }
-      if (stripeFeeEl) {
-        stripeFeeEl.textContent = String(money.stripe_fee || '—').replace(/^-€/, '−€');
+      if (stripeFeeRow && stripeFeeEl) {
+        if (hasSplit && money.stripe_fee) {
+          stripeFeeRow.style.display = '';
+          stripeFeeEl.textContent = String(money.stripe_fee || '—').replace(/^-€/, '−€');
+        } else {
+          stripeFeeRow.style.display = 'none';
+        }
       }
       if (splitRow) {
         splitRow.style.display = '';
@@ -2519,7 +2646,7 @@
         if (splitValue) splitValue.textContent = money.split_value || '—';
       }
       if (yourShareRow && yourShareEl) {
-        if (money.has_split) {
+        if (hasSplit) {
           yourShareRow.style.display = '';
           yourShareEl.textContent = money.your_share || '—';
           if (yourShareNote) yourShareNote.textContent = money.your_share_note || '';
@@ -2528,7 +2655,7 @@
         }
       }
       if (yourStripeRow && yourStripeEl) {
-        if (money.has_split) {
+        if (hasSplit) {
           yourStripeRow.style.display = '';
           yourStripeEl.textContent = String(money.your_stripe || '—').replace(/^-€/, '−€');
           if (yourStripeNote) yourStripeNote.textContent = money.your_stripe_note || '';
@@ -2537,12 +2664,24 @@
         }
       }
       if (yourBookingFeeRow && yourBookingFeeEl) {
-        if (money.your_booking_fee) {
+        if (hasSplit && money.your_booking_fee) {
           yourBookingFeeRow.style.display = '';
           yourBookingFeeEl.textContent = String(money.your_booking_fee || '—').replace(/^-€/, '−€');
           if (yourBookingFeeNote) yourBookingFeeNote.textContent = money.your_booking_fee_note || '';
         } else {
           yourBookingFeeRow.style.display = 'none';
+        }
+      }
+      if (studioGetsRow && studioGetsEl) {
+        var studioAmt = Number(money.studio_gets_amount || 0);
+        if (hasSplit && studioAmt > 0.009) {
+          studioGetsRow.style.display = '';
+          var studioName = String(money.split_label || '').replace(/^Split with\s+/i, '').trim();
+          if (studioGetsLabel) studioGetsLabel.textContent = (studioName || 'Studio') + ' gets';
+          studioGetsEl.textContent = money.studio_gets_label
+            || ('€' + studioAmt.toFixed(2));
+        } else {
+          studioGetsRow.style.display = 'none';
         }
       }
       if (youGetEl) youGetEl.textContent = money.you_get || '—';
@@ -2580,11 +2719,13 @@
         }
       }
       if (bookingFeeRow) bookingFeeRow.style.display = 'none';
+      if (stripeFeeRow) stripeFeeRow.style.display = 'none';
       if (stripeFeeEl) stripeFeeEl.textContent = '—';
       if (splitRow) splitRow.style.display = 'none';
       if (yourShareRow) yourShareRow.style.display = 'none';
       if (yourStripeRow) yourStripeRow.style.display = 'none';
       if (yourBookingFeeRow) yourBookingFeeRow.style.display = 'none';
+      if (studioGetsRow) studioGetsRow.style.display = 'none';
       if (youGetEl) youGetEl.textContent = '—';
       if (moneyFootnote) {
         moneyFootnote.style.display = 'none';

@@ -237,7 +237,7 @@
     </table>
     <div id="paymentsMobileCards" hidden></div>
     <div class="help" style="margin:0;padding:12px 16px;border-top:1px solid #F3EEF4">
-      Booking fee is deducted from your share. With a studio split, the Fee column shows only your part of that fee. If a booking is smaller than the fee, the remainder is carried forward and taken from later payouts. Studio gets and You get show each side. Tap a row for the full breakdown.
+      Stripe charges 1.5% + €0.25 per payment (EU cards; other cards cost more). You pay it. With a studio split, you and the studio each pay your own part, and the Stripe fee column shows yours. The €10 Service Booking Fee is paid by the client and goes to Bookpay, so it isn't in these amounts. Tap a row to see the breakdown.
     </div>
   </div>
 
@@ -257,6 +257,9 @@
       <button type="button" class="bdm-x" id="closeBreakdownBtn" aria-label="Close"><span class="ms">close</span></button>
     </div>
     <div class="bdm-b" id="breakdownBody"></div>
+    <div class="bdm-f" style="padding:0 22px 18px;display:flex;justify-content:flex-end">
+      <button type="button" class="btn" id="closeBreakdownFooterBtn" style="min-width:110px;justify-content:center">Close</button>
+    </div>
   </div>
 </div>
 
@@ -480,7 +483,7 @@
     });
   })();
 </script>
-<script src="{{ asset('js/artist-payments.js') }}?v=4"></script>
+<script src="{{ asset('js/artist-payments.js') }}?v=5"></script>
 <style>
   @media(max-width:900px){
     .money-page .money-filters{grid-template-columns:1fr 1fr!important}

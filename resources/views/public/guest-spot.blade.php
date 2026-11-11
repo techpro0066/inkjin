@@ -331,9 +331,8 @@
 
       @if($canReserve)
         <a class="bbtn pri" id="reserve" href="{{ $reserveUrl }}"><span class="ms">event_available</span>Reserve your guest spot</a>
-      @else
-        <button type="button" class="bbtn sec" id="gnotify" data-act="gwl-next" data-c="{{ $notifyCity }}" data-gs-id="{{ (int) $guestSpot->id }}"><span class="ms">notifications</span>Notify me for the next {{ $city !== '' ? $city : 'guest' }} guest spot</button>
       @endif
+      <button type="button" class="bbtn sec" id="gnotify" data-act="gwl-next" data-c="{{ $notifyCity }}" data-gs-id="{{ (int) $guestSpot->id }}"><span class="ms">notifications</span>Notify me for the next {{ $city !== '' ? $city : 'guest' }} guest spot</button>
     </aside>
   </div>
 </div>
@@ -426,7 +425,8 @@
         <div class="ph"><div><h2>Policies</h2><p>Booking terms for appointments with {{ $artistPublicName }}.</p></div></div>
         @if(count($whatsIncludedItems))
           <div class="inc">
-            <h3>What’s included</h3>
+            <h3>What’s included in the session</h3>
+            <p class="s">These come with every appointment.</p>
             <div class="incl">
               @foreach($whatsIncludedItems as $item)
                 <div><span class="ms">check_circle</span>{{ $item }}</div>
@@ -438,10 +438,10 @@
           <div class="pr"><b>Deposit</b><p>{{ $depositPolicyText }}</p></div>
           <div class="pr"><b>Rescheduling</b><p>{{ $reschedulePolicyText }}</p></div>
           <div class="pr"><b>Cancellation</b><p>{{ $cancellationPolicyText }}</p></div>
-          <div class="pr"><b>No-show</b><p>{{ $noShowPolicyText }}</p></div>
+          <div class="pr"><b>No-show or late cancellation</b><p>{{ $noShowPolicyText }}</p></div>
         </div>
         @if($policiesExtraNote !== '')
-          <div class="pnote">{{ $policiesExtraNote }}</div>
+          <div class="pnote"><b>Also:</b> {{ $policiesExtraNote }}</div>
         @endif
       </div>
     @endif
@@ -507,11 +507,17 @@
   </div>
 </footer>
 
-@if($canReserve)
-  <div class="mcta" id="mcta">
+<div class="mcta" id="mcta">
+  @if($canReserve)
     <a class="bbtn pri wide" id="mreserve" href="{{ $reserveUrl }}">Reserve your guest spot</a>
-  </div>
-@endif
+  @endif
+  <button type="button" class="bbtn sec{{ $canReserve ? '' : ' wide' }}" data-act="gwl-next" data-c="{{ $notifyCity }}" data-gs-id="{{ (int) $guestSpot->id }}" aria-label="Notify me for the next {{ $city !== '' ? $city : 'guest' }} guest spot" title="Notify me for the next {{ $city !== '' ? $city : 'guest' }} guest spot">
+    <span class="ms">notifications</span>
+    @if(! $canReserve)
+      Notify me for the next {{ $city !== '' ? $city : 'guest' }} guest spot
+    @endif
+  </button>
+</div>
 
 <div class="mb" id="lb" hidden>
   <div class="lb" role="dialog" aria-modal="true" aria-label="Portfolio piece">

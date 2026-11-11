@@ -41,7 +41,7 @@
         <span class="text-sm text-on-surface-variant shrink-0">Phone</span>
         <span class="text-sm font-semibold text-on-surface text-right">{{ $user['phone'] }}</span>
       </div>
-      @if($user['role'] === 'artist' && $user['username'])
+      @if(in_array($user['role'], ['artist', 'studio'], true) && $user['username'])
         <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Username</span>
           <span class="text-sm font-semibold text-on-surface text-right"><a href="https://inkjin.com/{{ '@' . $user['username'] }}" target="_blank">{{ '@' . $user['username'] }}</a></span>
@@ -49,9 +49,9 @@
       @endif
       <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
         <span class="text-sm text-on-surface-variant shrink-0">Role</span>
-        <span class="text-sm font-semibold text-on-surface text-right">{{ $user['role'] === 'artist' ? 'Artist' : 'Client' }}</span>
+        <span class="text-sm font-semibold text-on-surface text-right">{{ $user['role_label'] ?? ($user['role'] === 'artist' ? 'Artist' : ($user['role'] === 'studio' ? 'Studio' : 'Client')) }}</span>
       </div>
-      @if($user['role'] === 'artist')
+      @if(in_array($user['role'], ['artist', 'studio'], true))
         <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Acquisition Source</span>
           <span class="text-sm font-semibold text-on-surface text-right">{{ $user['acquisition_source'] ?? '—' }}</span>
@@ -116,7 +116,16 @@
         </div>
         <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Google Calendar</span>
-          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['google_calendar_connected'] ? 'Connected' : 'Not connected' }}</span>
+          <span class="text-sm font-semibold text-on-surface text-right">
+            @if(!empty($user['google_calendar_connected']))
+              Connected
+              @if(!empty($user['google_calendar_email']))
+                <span class="block text-xs font-medium text-on-surface-variant mt-0.5 break-all">{{ $user['google_calendar_email'] }}</span>
+              @endif
+            @else
+              Not connected
+            @endif
+          </span>
         </div>
         <div class="flex justify-between py-2 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Availability slots</span>
@@ -124,6 +133,106 @@
         </div>
       </div>
 
+      <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-0">
+        <h4 class="text-sm font-bold mb-2">Revenue split</h4>
+        @if(!empty($user['studio_links']))
+          @foreach($user['studio_links'] as $index => $link)
+            <div @class([
+              'py-2 space-y-1',
+              'border-b border-outline-variant/10' => $index < count($user['studio_links']) - 1,
+            ])>
+              <div class="flex justify-between gap-4">
+                <span class="text-sm text-on-surface-variant shrink-0">Studio</span>
+                <span class="text-sm font-semibold text-on-surface text-right">{{ $link['studio_name'] }}</span>
+              </div>
+              <div class="flex justify-between gap-4">
+                <span class="text-sm text-on-surface-variant shrink-0">Split</span>
+                <span class="text-sm font-semibold text-on-surface text-right">
+                  {{ $link['split_label'] }}
+                  @if(!empty($link['is_payout_split']))
+                    <span class="text-[11px] font-medium text-on-surface-variant">(payout)</span>
+                  @endif
+                </span>
+              </div>
+            </div>
+          @endforeach
+        @else
+          <p class="text-sm text-on-surface-variant py-1">No studio revenue split linked.</p>
+        @endif
+      </div>
+    @endif
+
+    @if($user['role'] === 'studio')
+      <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-0">
+        <h4 class="text-sm font-bold mb-2">Studio details</h4>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Studio</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['studio'] }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Type</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['studio_type'] ?: '—' }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Address</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['studio_address'] ?: '—' }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Contact email</span>
+          <span class="text-sm font-semibold text-on-surface text-right break-all">{{ $user['studio_email'] ?: '—' }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Business phone</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['studio_phone'] ?: '—' }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Connected Instagram</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ !empty($user['instagram_connected']) ? 'Yes' : 'No' }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Currency</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['currency'] ?: '—' }}</span>
+        </div>
+        <div class="flex justify-between py-2 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Timezone</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['timezone'] ?: '—' }}</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-0">
+        <h4 class="text-sm font-bold mb-2">Revenue split</h4>
+        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+          <span class="text-sm text-on-surface-variant shrink-0">Default split</span>
+          <span class="text-sm font-semibold text-on-surface text-right">{{ $user['default_revenue_split_label'] ?? 'No revenue split' }}</span>
+        </div>
+        @if(!empty($user['studio_links']))
+          @foreach($user['studio_links'] as $index => $link)
+            <div @class([
+              'py-2 space-y-1',
+              'border-b border-outline-variant/10' => $index < count($user['studio_links']) - 1,
+            ])>
+              <div class="flex justify-between gap-4">
+                <span class="text-sm text-on-surface-variant shrink-0">Artist</span>
+                <span class="text-sm font-semibold text-on-surface text-right">{{ $link['artist_name'] }}</span>
+              </div>
+              <div class="flex justify-between gap-4">
+                <span class="text-sm text-on-surface-variant shrink-0">Split</span>
+                <span class="text-sm font-semibold text-on-surface text-right">
+                  {{ $link['split_label'] }}
+                  @if(!empty($link['is_payout_split']))
+                    <span class="text-[11px] font-medium text-on-surface-variant">(payout)</span>
+                  @endif
+                </span>
+              </div>
+            </div>
+          @endforeach
+        @else
+          <p class="text-sm text-on-surface-variant py-2">No linked artists.</p>
+        @endif
+      </div>
+    @endif
+
+    @if(in_array($user['role'], ['artist', 'studio'], true))
       <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-4">
         <div>
           <h4 class="text-sm font-bold mb-2">Styles</h4>
@@ -160,11 +269,17 @@
         </div>
       </div>
 
-      <div class="flex flex-wrap gap-2 text-xs font-semibold text-primary">
-        <span>{{ number_format($user['designs']) }} designs</span>
-        <span class="text-outline">·</span>
-        <span>{{ number_format($user['portfolio_items']) }} portfolio items</span>
-      </div>
+      @if($user['role'] === 'artist')
+        <div class="flex flex-wrap gap-2 text-xs font-semibold text-primary">
+          <span>{{ number_format($user['designs']) }} designs</span>
+          <span class="text-outline">·</span>
+          <span>{{ number_format($user['portfolio_items']) }} portfolio items</span>
+        </div>
+      @else
+        <div class="flex flex-wrap gap-2 text-xs font-semibold text-primary">
+          <span>{{ number_format($user['portfolio_items']) }} portfolio items</span>
+        </div>
+      @endif
     @endif
 
     <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-0">

@@ -8,14 +8,7 @@
   $gcal = ! empty($ud->google_calendar_token);
   $defaultSched = $st !== '' ? $st : ($gcal ? 'auto' : 'managed');
   $isAuto = $defaultSched === 'auto';
-  $connectedCalendarEmail = null;
-  if ($gcal) {
-      if (! empty($ud->google_calendar_id) && str_contains((string) $ud->google_calendar_id, '@')) {
-          $connectedCalendarEmail = (string) $ud->google_calendar_id;
-      } elseif (auth()->check() && auth()->user()->email) {
-          $connectedCalendarEmail = (string) auth()->user()->email;
-      }
-  }
+  $connectedCalendarEmail = $gcal ? $ud?->resolvedGoogleCalendarEmail() : null;
 @endphp
 
 @section('styles')
