@@ -151,14 +151,32 @@
   .av-page .mp-toast.show{opacity:1;transform:none}
   .av-page .text-error{color:#C62828;font-size:12.5px;margin-top:6px}
   .av-page .hidden{display:none!important}
+  .av-page{max-width:100%;overflow-x:clip}
+  .av-page .av-grid,.av-page .bst-grid{width:100%;max-width:100%}
+  .av-page .av-grid > .card,.av-page .bst-grid > .card{min-width:0;max-width:100%}
+  .av-page .wh-pad{padding:4px 22px 16px}
+  .av-page .bd-pad{padding:16px 22px}
   @media (max-width:900px){
-    .av-page .av-grid{grid-template-columns:1fr!important}
-    .av-page .bst-grid{grid-template-columns:1fr 1fr!important}
+    .av-page .av-grid{grid-template-columns:minmax(0,1fr)!important}
+    .av-page .bst-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+    .av-page .card .ch{padding:16px}
+    .av-page .wh-pad,.av-page .bd-pad{padding-left:16px;padding-right:16px}
+    .av-page .whslot{
+      width:100%;max-width:100%;box-sizing:border-box
+    }
+    .av-page .whslot .in,.av-page .whslot .bpx-btn.in{
+      width:auto;flex:1 1 0;min-width:0;max-width:none
+    }
+    .av-page #travelbuf .row > [style*="min-width:240px"],
+    .av-page #travelbuf .row > .faint{min-width:0!important}
   }
   @media (max-width:560px){
-    .av-page .bst-grid{grid-template-columns:1fr!important}
-    .av-page .mp-toast{left:16px;right:16px;top:74px}
-      }
+    .av-page .bst-grid{grid-template-columns:minmax(0,1fr)!important}
+    .av-page .mp-toast{left:16px;right:16px;top:74px;transform:none}
+    .av-page .whday{gap:10px}
+    .av-page .whact .btn{flex:1 1 auto;justify-content:center}
+    .av-page .tabs{gap:18px;margin:20px 0 20px}
+  }
   /* Waitlist notify modal (no Tailwind on new layout) */
   #waitlistNotifyModal{position:fixed;inset:0;z-index:320;display:none;align-items:center;justify-content:center;padding:16px}
   #waitlistNotifyModal.is-open,#waitlistNotifyModal.flex{display:flex}
@@ -242,7 +260,7 @@
   <p id="bookingStatusError" class="text-error hidden" role="alert"></p>
   <input type="hidden" id="availability_status" value="{{ $savedStatus }}">
 
-  <div class="grid bst-grid" style="grid-template-columns:repeat(4,1fr)" id="statusCards" role="radiogroup" aria-label="Booking status">
+  <div class="grid bst-grid" style="grid-template-columns:repeat(4,minmax(0,1fr))" id="statusCards" role="radiogroup" aria-label="Booking status">
     @foreach ($statusCards as $card)
       @php $on = $savedStatus === $card['key']; @endphp
       <div
@@ -294,7 +312,7 @@
   </div>
   @endif
 
-  <div class="grid av-grid" style="grid-template-columns:1fr 1fr;margin-top:26px;align-items:start;gap:16px">
+  <div class="grid av-grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:26px;align-items:start;gap:16px">
     <div class="card">
       <div class="ch">
                 <div>
@@ -302,7 +320,7 @@
           <div class="faint" style="font-size:12.5px;margin-top:2px">Your regular weekly availability · {{ $tzLabel }}</div>
                   </div>
                 </div>
-      <div style="padding:4px 22px 16px">
+      <div class="wh-pad">
         @if($multiStudio)
           <div class="twonote">
             <span class="ms">storefront</span>
@@ -311,7 +329,7 @@
         @endif
         <div id="workingHoursContainer"></div>
             </div>
-      <p id="workingHoursError" class="text-error hidden" style="padding:0 22px 16px" role="alert"></p>
+      <p id="workingHoursError" class="text-error hidden" style="padding:0 16px 16px" role="alert"></p>
           </div>
 
     <div class="card">
@@ -325,7 +343,7 @@
           </div>
           </div>
                   </div>
-      <div style="padding:16px 22px">
+      <div class="bd-pad">
         <div class="row" style="justify-content:space-between;margin-bottom:12px">
           <button type="button" class="bdnav" id="bdprev" aria-label="Previous month"><span class="ms">chevron_left</span></button>
           <b id="bdmonth"></b>
