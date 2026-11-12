@@ -216,8 +216,13 @@ class UserController extends Controller
                     ->orderBy('id'),
                 'ownedStudio' => fn ($q) => $q->withCount('portfolios')->with([
                     'userStudios' => fn ($linkQuery) => $linkQuery
-                        ->where('status', UserStudio::STATUS_ACTIVE)
+                        ->whereIn('status', [
+                            UserStudio::STATUS_ACTIVE,
+                            UserStudio::STATUS_JOIN_PENDING,
+                            UserStudio::STATUS_SPLIT_PROPOSED,
+                        ])
                         ->with(['user.userDetail'])
+                        ->orderByRaw('CASE status WHEN '.UserStudio::STATUS_ACTIVE.' THEN 0 WHEN '.UserStudio::STATUS_SPLIT_PROPOSED.' THEN 1 ELSE 2 END')
                         ->orderBy('id'),
                 ]),
             ])
@@ -333,7 +338,18 @@ class UserController extends Controller
      */
     public function show($id): JsonResponse
     {
-        $user = User::with(['userDetail.studio', 'ownedStudio', 'availabilities'])->findOrFail($id);
+        $user = User::with([
+            'userDetail.studio',
+            'ownedStudio.userStudios' => fn ($q) => $q
+                ->whereIn('status', [
+                    UserStudio::STATUS_ACTIVE,
+                    UserStudio::STATUS_JOIN_PENDING,
+                    UserStudio::STATUS_SPLIT_PROPOSED,
+                ])
+                ->with(['user.userDetail'])
+                ->orderBy('id'),
+            'availabilities',
+        ])->findOrFail($id);
 
         if ($user->role === 'admin') {
             abort(404);
@@ -531,6 +547,8 @@ class UserController extends Controller
                 ? $this->formatRevenueSplitLabel($defaultRevenueArtistPercent)
                 : null,
             'studio_links' => ($isArtist || $isStudio) ? $studioLinks : [],
+            'joined_artists' => $isStudio ? $studioLinks : [],
+            'joined_artists_count' => $isStudio ? count($studioLinks) : 0,
             'currency' => $currency,
             'timezone' => $timezone,
             'acquisition_source' => ($isArtist || $isStudio)
@@ -585,7 +603,13 @@ class UserController extends Controller
             if (! $link instanceof UserStudio) {
                 continue;
             }
-            if ((int) $link->status !== UserStudio::STATUS_ACTIVE) {
+
+            $status = (int) $link->status;
+            if (! in_array($status, [
+                UserStudio::STATUS_ACTIVE,
+                UserStudio::STATUS_JOIN_PENDING,
+                UserStudio::STATUS_SPLIT_PROPOSED,
+            ], true)) {
                 continue;
             }
 
@@ -594,20 +618,52 @@ class UserController extends Controller
             if ($artistName === '') {
                 $artistName = trim((string) ($artist?->email ?? '')) ?: 'Artist #'.($link->user_id ?: '—');
             }
+            $username = trim((string) ($artist?->userDetail?->user_name ?? ''));
             $artistPercent = $link->revenue_split;
+            $relationship = trim((string) ($link->relationship ?? ''));
+            if ($relationship !== '') {
+                $relationship = str_replace('_', ' ', $relationship);
+                $relationship = ucwords($relationship);
+            }
 
             $items[] = [
                 'artist_name' => $artistName,
                 'artist_id' => $link->user_id ? (int) $link->user_id : null,
+                'artist_email' => trim((string) ($artist?->email ?? '')) ?: null,
+                'artist_username' => $username !== '' ? '@'.$username : null,
                 'artist_percent' => $artistPercent !== null ? (int) $artistPercent : null,
                 'studio_percent' => $artistPercent !== null ? max(0, 100 - (int) $artistPercent) : null,
                 'is_payout_split' => $link->isRevenueSplitPayout(),
                 'split_label' => $this->formatRevenueSplitLabel($artistPercent),
-                'relationship' => $link->relationship ?: null,
+                'relationship' => $relationship !== '' ? $relationship : null,
+                'status' => $status,
+                'status_label' => match ($status) {
+                    UserStudio::STATUS_ACTIVE => 'Joined',
+                    UserStudio::STATUS_JOIN_PENDING => 'Join pending',
+                    UserStudio::STATUS_SPLIT_PROPOSED => 'Split proposed',
+                    default => 'Linked',
+                },
+                'joined_via' => $this->formatJoinedVia($link->joined_via ?? null),
+                'connection_type' => $link->connection_type ?: null,
             ];
         }
 
         return $items;
+    }
+
+    private function formatJoinedVia(mixed $joinedVia): ?string
+    {
+        $key = trim((string) ($joinedVia ?? ''));
+        if ($key === '') {
+            return null;
+        }
+
+        return match ($key) {
+            UserStudio::JOINED_VIA_INVITE => 'Invite',
+            UserStudio::JOINED_VIA_JOIN_REQUEST => 'Join request',
+            UserStudio::JOINED_VIA_DIRECT => 'Direct',
+            default => ucwords(str_replace('_', ' ', $key)),
+        };
     }
 
     private function formatRevenueSplitLabel(mixed $artistPercent): string

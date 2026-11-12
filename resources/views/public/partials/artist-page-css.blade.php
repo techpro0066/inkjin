@@ -73,7 +73,7 @@ h1{font-size:38px;font-weight:800;letter-spacing:-1.2px;line-height:1.1;margin-t
 .tab[aria-selected=true] .n{background:var(--acc);color:#fff}
 .tab:focus-visible,.bbtn:focus-visible,.soc a:focus-visible,.pc:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
 .panel{padding:34px 0 60px;min-width:0}
-.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px}
+.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px; margin-top: 1rem;}
 .ph h2{font-size:22px;font-weight:800;letter-spacing:-.5px}.ph p{color:var(--muted);font-size:14px;margin-top:2px}
 /* designs */
 .dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;width:100%;min-width:0}
@@ -189,7 +189,7 @@ body:has(.mb:not([hidden])) .mk{display:none}
  h1{font-size:30px}.tagline{font-size:16px}
  .book{position:static;margin-top:24px;box-shadow:none}
  .tabbar{margin-top:28px}
- .dgrid{grid-template-columns:1fr 1fr;gap:12px}.pgrid{grid-template-columns:1fr 1fr;gap:8px}
+ .dgrid{grid-template-columns:1fr;gap:12px}.pgrid{grid-template-columns:1fr;gap:8px;}
  .pc .ov{opacity:1;background:linear-gradient(180deg,transparent 60%,rgba(10,5,15,.7))}.pc .req{display:none}
  .pr{grid-template-columns:1fr;gap:4px}.incl{grid-template-columns:1fr 1fr}
  .gs{flex-wrap:wrap}.gs .act{flex-direction:row;width:100%;justify-content:space-between;align-items:center}
@@ -203,9 +203,12 @@ body:has(.mb:not([hidden])) .mk{display:none}
  footer .wrap{flex-direction:column;align-items:flex-start}
 }
 @media(max-width:420px){.incl{grid-template-columns:1fr}.db{padding:12px}.db h3{font-size:14px}.db .price{font-size:14px}.price small{display:block;margin:2px 0 0}.db .bbtn{font-size:12.5px;padding:10px 6px}}
-@media(max-width:340px){.dgrid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 body{position:relative}
 .cst-svc{margin-top:10px;font-size:14px;color:var(--bxs)}.cst-svc b{color:var(--bxt)}
+
+#content-designs {
+  margin-bottom: 2rem;
+}
 </style>
 

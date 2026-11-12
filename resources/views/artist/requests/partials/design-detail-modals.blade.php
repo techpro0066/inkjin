@@ -1636,6 +1636,12 @@
     });
 
     window.openRequestDetail = openRequestDetail;
+    window.inkjinRegisterAndOpenDesignRequest = function (req) {
+      if (!req || req.id == null) return;
+      bookingRequestsById[req.id] = req;
+      bookingRequestsById[String(req.id)] = req;
+      openRequestDetail(req.id);
+    };
     window.closeRequestDetail = closeRequestDetail;
     window.closeDesignModalOnBackdrop = closeDesignModalOnBackdrop;
     window.openDesignDeclineModal = openDesignDeclineModal;

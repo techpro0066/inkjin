@@ -15,6 +15,7 @@ use App\Models\PaymentLink;
 use App\Models\StudioRequest;
 use App\Services\ArtistPayoutService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -220,6 +221,41 @@ class RequestsController extends Controller
             'paymentLinksCount' => $paymentLinksCount,
             'initialType' => $initialType,
         ]);
+    }
+
+    /**
+     * Design request panel payload for Inbox "View request".
+     */
+    public function designPanelData(BookingRequest $bookingRequest): JsonResponse
+    {
+        if ((int) $bookingRequest->artist_id !== (int) Auth::id()) {
+            abort(404);
+        }
+
+        $bookingRequest->load(['user', 'tattoo']);
+
+        return response()->json($bookingRequest->toArtistPanelArray());
+    }
+
+    /**
+     * Custom / guest request panel payload for Inbox "View request".
+     */
+    public function customPanelData(CustomRequest $customRequest): JsonResponse
+    {
+        if ((int) $customRequest->artist_id !== (int) Auth::id()) {
+            abort(404);
+        }
+
+        $customRequest->load(['user', 'guestSpot']);
+        $linked = StudioRequest::query()
+            ->with('studio')
+            ->where('custom_request_id', $customRequest->id)
+            ->first();
+
+        return response()->json(array_merge(
+            $customRequest->toArtistPanelArray(),
+            $this->studioLinkMeta($customRequest, $linked)
+        ));
     }
 
     /**

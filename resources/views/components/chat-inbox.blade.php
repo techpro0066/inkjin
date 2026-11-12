@@ -77,8 +77,9 @@
   .bp-inbox .ibsel .ms{font-size:18px;color:#9A929E;flex-shrink:0}
   .bp-inbox .ibsel.has-other-unread{border-color:#D4B8F0;background:#FBF5FF}
   .bp-inbox .ibmenu{
-    position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #E8DFEA;border-radius:12px;
-    box-shadow:0 14px 40px rgba(40,10,60,.18);width:300px;max-height:320px;overflow-y:auto;padding:6px;z-index:30
+    position:absolute;right:0;left:auto;top:calc(100% + 6px);background:#fff;border:1px solid #E8DFEA;border-radius:12px;
+    box-shadow:0 14px 40px rgba(40,10,60,.18);width:300px;max-width:min(300px, calc(100vw - 24px));
+    max-height:320px;overflow-y:auto;padding:6px;z-index:30
   }
   .bp-inbox .ibo{
     display:flex;flex-direction:column;align-items:flex-start;width:100%;border:0;background:none;font:inherit;
@@ -144,7 +145,11 @@
     #chatView.mobile-open ~ #convList,
     .chat-layout.mobile-thread #convList{display:none!important}
     #chatView.mobile-open #chatBackBtn{display:inline-flex!important}
-    .bp-inbox .ibmenu{width:260px}
+    .bp-inbox .ibwrap{position:relative;max-width:min(280px, calc(100vw - 140px))}
+    .bp-inbox .ibsel{max-width:100%}
+    .bp-inbox .ibmenu{
+      left:0;right:auto;width:min(300px, calc(100vw - 24px));max-width:calc(100vw - 24px);z-index:50
+    }
   }
 </style>
 @endif
@@ -298,7 +303,7 @@
       </div>
 
       <script src="https://cdn.jsdelivr.net/npm/stream-chat@8.40.0/dist/browser.full-bundle.min.js"></script>
-      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=23"></script>
+      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=25"></script>
     @endif
 
 @if ($isBookpay)

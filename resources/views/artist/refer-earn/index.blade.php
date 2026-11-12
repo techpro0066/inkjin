@@ -86,16 +86,33 @@
     justify-content:unset!important;text-align:left!important
   }
   .refer-page #referQrCode table td::before{display:none!important;content:none!important}
+  .refer-page{min-width:0;max-width:100%;overflow-x:hidden}
+  .refer-page .refer-link-layout{
+    display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start
+  }
+  .refer-page .refer-link-layout > *{min-width:0}
+  .refer-page .refer-stats{display:grid;gap:12px}
+  .refer-page .refer-earn-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:16px}
+  .refer-page .hero-link-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;align-items:stretch}
+  .refer-page .hero-link-row .in{flex:1 1 160px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .refer-page .hero-link-row .btn{flex:0 0 auto}
+  .refer-page .hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .refer-page .hero-actions .btn{flex:1 1 140px;justify-content:center;min-width:0}
   @media(max-width:900px){
+    .refer-page .refer-link-layout{grid-template-columns:1fr;gap:14px}
+    .refer-page .refer-earn-kpis{grid-template-columns:1fr;gap:12px}
+    .refer-page .hero-card{padding:20px}
+    .refer-page .hero-card .hero-title{font-size:22px;line-height:1.25}
+    .refer-page .hero-actions .btn{flex:1 1 calc(50% - 10px)}
     .refer-page .card:has(table){overflow:visible;background:none;border:0}
     .refer-page .card table,.refer-page .card tbody,.refer-page .card tr,.refer-page .card td{display:block;width:100%}
-    .refer-page .card tr:has(th){display:none}
+    .refer-page .card thead{display:none!important}
     .refer-page .card tbody tr{
       position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px
     }
     .refer-page .card td{
       border:0!important;padding:5px 0!important;display:flex!important;justify-content:space-between;align-items:center;
-      gap:12px;font-size:13.5px;text-align:right
+      gap:12px;font-size:13.5px;text-align:right;min-width:0
     }
     .refer-page .card td::before{
       content:attr(data-label);font-size:10.5px;font-weight:700;letter-spacing:.7px;color:var(--muted);text-align:left;flex-shrink:0
@@ -106,6 +123,9 @@
     }
     .refer-page .card td:first-child::before{display:none}
     .refer-page .card td:first-child>*{text-align:left}
+  }
+  @media(max-width:420px){
+    .refer-page .hero-actions .btn{flex:1 1 100%}
   }
 </style>
 @endsection
@@ -132,21 +152,21 @@
 
   {{-- Get your link --}}
   <div data-refer-panel="link">
-    <div class="grid" style="grid-template-columns:1.3fr 1fr;gap:16px;align-items:start">
+    <div class="refer-link-layout">
       <div>
         <div class="hero-card">
-          <div style="font-size:26px;font-weight:800;letter-spacing:-.4px">Get €20 for every artist you refer</div>
+          <div class="hero-title" style="font-size:26px;font-weight:800;letter-spacing:-.4px">Get €20 for every artist you refer</div>
           <div style="color:#D9C8F2;margin-top:6px;line-height:1.5;max-width:520px">
             When an artist you refer gets their first booking, you get €20 and their first booking fee is waived. No limit on how many artists you refer.
           </div>
           @if ($referralLink)
-            <div class="row" style="margin-top:18px;gap:10px;flex-wrap:wrap">
-              <div class="in" style="flex:1;min-width:180px" title="{{ $referralLinkDisplay }}">{{ $referralLinkDisplay }}</div>
+            <div class="hero-link-row">
+              <div class="in" title="{{ $referralLinkDisplay }}">{{ $referralLinkDisplay }}</div>
               <button type="button" class="btn refer-copy-btn" id="referCopyBtn" data-link="{{ $referralLink }}" style="background:#fff;color:#1A1A1A">
                 <span class="ms">content_copy</span><span class="refer-copy-label">Copy</span>
               </button>
             </div>
-            <div class="row" style="margin-top:10px;gap:10px;flex-wrap:wrap">
+            <div class="hero-actions">
               <button type="button" class="btn hero-ghost" id="referShareMessageBtn" data-message="{{ $shareMessage }}">
                 <span class="ms">chat</span>Share via message
               </button>
@@ -173,7 +193,7 @@
       </div>
 
       <div>
-        <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+        <div class="refer-stats">
           <div class="card pad">
             <div class="lbl">Pending</div>
             <div style="font-size:26px;font-weight:800;margin-top:6px">€{{ number_format(0, 0) }}</div>
@@ -284,7 +304,7 @@
 
   {{-- Earnings --}}
   <div data-refer-panel="earnings" hidden>
-    <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">
+    <div class="refer-earn-kpis">
       <div class="card pad">
         <div class="lbl">Total earned</div>
         <div style="font-size:28px;font-weight:800;margin-top:6px">€{{ number_format($totalEarned, 0) }}</div>

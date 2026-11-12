@@ -880,6 +880,13 @@ class ArtistPayoutService
     {
         $deposit = max(0, round((float) ($booking->deposit_amount ?? 0), 2));
         $balanceDue = max(0, round((float) $booking->remainingBalanceAmount(), 2));
+        // When deposit already covers the quote minimum, still project the upper estimated balance.
+        if ($balanceDue < 0.01) {
+            $rangeMax = max(0, round((float) ($booking->estimatedBalanceRange()['max'] ?? 0), 2));
+            if ($rangeMax > 0.009) {
+                $balanceDue = $rangeMax;
+            }
+        }
         $stKey = strtolower((string) ($booking->status ?? ''));
         $paidAt = $booking->created_at?->timezone(config('app.timezone'))->format('d/m');
 
@@ -924,11 +931,11 @@ class ArtistPayoutService
                 2
             ));
         } else {
-            // Artist direct UI: no Stripe line; You get = client paid minus any artist booking fee.
+            // Artist direct: Stripe estimate shown; You get = client paid − Stripe − any artist booking fee.
             $yourShare = $deposit;
-            $yourStripe = 0.0;
+            $yourStripe = $stripeFee;
             $yourBookingFee = $artistSideFee;
-            $youGet = max(0, round($deposit - $artistSideFee, 2));
+            $youGet = max(0, round($deposit - $stripeFee - $artistSideFee, 2));
             $studioGets = 0.0;
         }
 
@@ -1018,8 +1025,8 @@ class ArtistPayoutService
             'deposit' => $this->formatEuro($deposit),
             'booking_fee' => $bookingFeeLabel,
             'booking_fee_note' => $bookingFeeNote,
-            'stripe_fee' => $hasSplit ? '-'.$this->formatEuro($stripeFee) : null,
-            'stripe_fee_note' => $hasSplit ? '1.5% + €0.25' : null,
+            'stripe_fee' => $stripeFee > 0.009 ? '-'.$this->formatEuro($stripeFee) : null,
+            'stripe_fee_note' => $stripeFee > 0.009 ? '1.5% + €0.25' : null,
             'has_split' => $hasSplit,
             'split_label' => $hasSplit ? 'Split with '.$studioName : 'Split',
             'split_value' => $hasSplit

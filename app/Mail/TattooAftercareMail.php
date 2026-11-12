@@ -44,6 +44,14 @@ class TattooAftercareMail extends Mailable
     /**
      * @return array<string, mixed>
      */
+    public function previewViewData(): array
+    {
+        return $this->viewData();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function viewData(): array
     {
         $booking = $this->booking;

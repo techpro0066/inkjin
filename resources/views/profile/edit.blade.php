@@ -71,9 +71,18 @@
     display:flex;gap:10px;padding:16px 24px;background:#FCF6FE;border-top:1px solid #F0E4F5;flex-wrap:wrap
   }
   .acc-leave-f .btn{flex:1;justify-content:center}
+  .acc-page{min-width:0;max-width:100%;overflow-x:hidden}
+  .acc-page .acc-layout{
+    display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start
+  }
+  .acc-page .acc-layout > *{min-width:0}
+  .acc-page .acc-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media (max-width:900px){
     .acc-toast{left:16px;right:16px;top:74px}
-    }
+    .acc-page .acc-layout{grid-template-columns:1fr;gap:14px}
+    .acc-page .acc-fields{grid-template-columns:1fr}
+    .acc-page .pgsaverow{margin-top:8px}
+  }
 </style>
 @endsection
 
@@ -115,7 +124,7 @@
       @csrf
       @method('patch')
 
-      <div class="grid" style="grid-template-columns:1fr 360px;gap:24px;align-items:start">
+      <div class="acc-layout">
         <div>
           <div class="card" style="margin-bottom:14px">
             <div class="ch">
@@ -128,13 +137,13 @@
               </div>
             </div>
             <div style="padding:18px 22px">
-              <div class="grid" style="grid-template-columns:1fr 1fr">
+              <div class="acc-fields">
                 <div>
                   <span class="fl">First name</span>
                   <input class="in" id="first_name" name="first_name" type="text" value="{{ old('first_name', $user->first_name) }}" autocomplete="given-name">
                   <div class="acc-err" id="first_name_error" hidden></div>
                 </div>
-            <div>
+                <div>
                   <span class="fl">Last name</span>
                   <input class="in" id="last_name" name="last_name" type="text" value="{{ old('last_name', $user->last_name) }}" autocomplete="family-name">
                   <div class="acc-err" id="last_name_error" hidden></div>
@@ -167,14 +176,14 @@
               </div>
             </div>
             <div style="padding:18px 22px">
-              <div class="grid" style="grid-template-columns:1fr 1fr">
-            <div>
+              <div class="acc-fields">
+                <div>
                   <span class="fl">Mobile number</span>
                   <input class="in" id="mobile_number" name="mobile_number" type="tel" value="{{ old('mobile_number', $ud->mobile_number ?? '') }}" autocomplete="tel">
                   <div class="help">International format, starting with +</div>
                   <div class="acc-err" id="mobile_number_error" hidden></div>
-            </div>
-            <div>
+                </div>
+                <div>
                   <span class="fl">Email</span>
                   <div class="in ro">
                     {{ $user->email }}
@@ -198,7 +207,7 @@
             </a>
           </div>
 
-          <div class="card pad" style="margin-top:14px">
+          <div class="card pad acc-also" style="margin-top:14px">
             <h3 style="font-size:14.5px">Also in Account</h3>
             <a href="{{ route('profile.password') }}" class="row" style="color:inherit;text-decoration:none;cursor:pointer;padding:10px 0 4px">
               <span class="ms">lock</span>

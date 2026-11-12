@@ -11,8 +11,10 @@ use App\Models\CustomRequest;
 use App\Models\PaymentLink;
 use App\Services\ArtistPayoutService;
 use App\Services\BookingConsentService;
+use App\Support\ArtistBookingDetailPresenter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -192,6 +194,23 @@ class BookingsController extends Controller
             'paymentLinksBlockedMessage',
             'currency',
         ));
+    }
+
+    /**
+     * JSON payload for the artist booking detail modal (Inbox / deep links).
+     */
+    public function detailData(Booking $booking): JsonResponse
+    {
+        $artistId = (int) Auth::id();
+        if ((int) $booking->artist_user_id !== $artistId) {
+            abort(404);
+        }
+
+        $booking->load(['user.userDetail', 'tattoo', 'studio']);
+
+        return response()->json(
+            ArtistBookingDetailPresenter::forModal($booking, Auth::user()?->userDetail)
+        );
     }
 
     public function paymentLinks(Request $request, ArtistPayoutService $payoutService)

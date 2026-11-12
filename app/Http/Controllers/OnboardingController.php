@@ -3308,10 +3308,24 @@ class OnboardingController extends Controller
             && ! $studioAlreadyConnected
             && ! $stripeSetupSkipped;
 
-        // Account already created from this invite — require login instead of showing signup again.
+        // Account already created from this invite — require the studio owner to sign in.
+        // Never bounce an already-authenticated non-owner to /login (guest middleware + intended
+        // URL causes an infinite /login ⇄ /studio/payout-info loop).
         if ($studioUserId > 0 && ! $isStudioOwner) {
+            if (Auth::check()) {
+                $request->session()->forget('url.intended');
+
+                return view('studio.payout-form-result', [
+                    'success' => false,
+                    'title' => 'Sign in as the studio',
+                    'message' => 'This invite belongs to the studio account. Log out, then sign in with the studio email that accepted this invite.',
+                    'showLogout' => true,
+                ]);
+            }
+
             if ($paymentStatus === 'approved' || $stripeSetupSkipped) {
-                session(['url.intended' => route('studio.dashboard')]);
+                // Do not use redirect()->guest() — it would set intended back to this invite URL.
+                $request->session()->put('url.intended', route('studio.dashboard'));
 
                 return redirect()->route('login');
             }

@@ -450,9 +450,23 @@
             data-service="{{ e($serviceTitle) }}"
             data-mark-completed-url="{{ route('api.bookings.mark-completed', $booking->id) }}"></button>
         @elseif($stKey === 'completed')
-          <a href="{{ route('artist.aftercare.index') }}"
+          @php
+            $aftercareCanSendAgain = ! $booking->aftercare_sent_at
+              || $booking->aftercare_sent_at->lte(now()->subDay());
+            $aftercareMenuLabel = ! $booking->aftercare_sent_at
+              ? 'Send aftercare'
+              : ($aftercareCanSendAgain ? 'Send again' : 'Aftercare sent');
+          @endphp
+          <button type="button"
+            class="js-artist-send-aftercare"
             data-menu-icon="healing"
-            data-menu-label="{{ $booking->aftercare_sent_at ? 'Aftercare sent' : 'Send aftercare' }}"></a>
+            data-menu-label="{{ $aftercareMenuLabel }}"
+            data-booking-id="{{ $booking->id }}"
+            data-aftercare-sent="{{ $booking->aftercare_sent_at ? '1' : '0' }}"
+            data-client-name="{{ e($clientName) }}"
+            data-client-email="{{ e($clientEmail) }}"
+            data-service="{{ e($serviceTitle) }}"
+            data-booking-ref="{{ e($bookingRef) }}"></button>
         @endif
         @if($booking->status === 'confirmed')
           <button type="button"

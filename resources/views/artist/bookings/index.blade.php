@@ -93,7 +93,7 @@
   .artist-bdm .abdm-pill.b{background:#E8F0FF;color:#1E5BD8}
   .artist-bdm .abdm-grid2{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
   .artist-bdm .abdm-sect{margin:18px 0 0;background:#fff}
-  .artist-bdm .abdm-tint{background:#FAF0FB;border:1px solid #F1E7F3;border-radius:16px;padding:10px 12px;font-size:12.5px;line-height:1.6}
+  .artist-bdm .abdm-tint{background:#FAF0FB;border:1px solid #F1E7F3;border-radius:16px;padding:10px 12px;font-size:12.5px;line-height:1.6;color:#5B2A94}
   .artist-bdm .abdm-faint{color:#9A929E}
   .artist-bdm .abdm-muted{color:#6F6874}
   @media (max-width:900px){
@@ -152,6 +152,51 @@
   .artist-msm.amm-readonly .amm-input-wrap{display:none}
   .artist-msm.amm-readonly #ammSendBtn{display:none!important}
   .artist-msm .amm-mf{padding:14px 22px;border-top:1px solid #F0EAF2;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FCFAFD;flex-shrink:0}
+  .artist-acm{pointer-events:none;opacity:0;transition:opacity .28s cubic-bezier(.22,1,.36,1);padding:24px;align-items:center;justify-content:center;overflow:hidden}
+  .artist-acm.artist-acm-open{pointer-events:auto;opacity:1}
+  .artist-acm-backdrop{opacity:0;transition:opacity .32s cubic-bezier(.22,1,.36,1)}
+  .artist-acm.artist-acm-open .artist-acm-backdrop{opacity:1}
+  .artist-acm-panel{
+    display:flex;flex-direction:column;width:560px;max-width:100%;
+    max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+    background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;
+    opacity:0;transform:translateY(1rem) scale(.97);
+    transition:opacity .32s cubic-bezier(.22,1,.36,1),transform .36s cubic-bezier(.22,1,.36,1)
+  }
+  .artist-acm.artist-acm-open .artist-acm-panel{opacity:1;transform:translateY(0) scale(1)}
+  .artist-acm-backdrop,.artist-acm-panel{pointer-events:none}
+  .artist-acm.artist-acm-open .artist-acm-backdrop,
+  .artist-acm.artist-acm-open .artist-acm-panel{pointer-events:auto}
+  .artist-acm .acm-mh{padding:22px 24px 12px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-shrink:0}
+  .artist-acm .acm-mh h2{font-size:20px;font-weight:800;letter-spacing:-.3px;color:#1A1A1A;margin:0}
+  .artist-acm .acm-to{font-size:13px;color:#6F6874;margin-top:6px;line-height:1.45;word-break:break-word}
+  .artist-acm .acm-mb{padding:8px 24px 18px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .artist-acm .acm-preview{border:1px solid #E8DFEA;border-radius:14px;overflow:hidden;background:#fff}
+  .artist-acm .acm-banner{background:#1A1A1A;padding:18px 20px}
+  .artist-acm .acm-banner h3{margin:0;font-size:17px;font-weight:700;color:#fff;line-height:1.35}
+  .artist-acm .acm-banner p{margin:4px 0 0;font-size:12.5px;color:rgba(255,255,255,.75)}
+  .artist-acm .acm-body{padding:16px 20px 20px}
+  .artist-acm .acm-sec{margin-top:16px}
+  .artist-acm .acm-sec:first-child{margin-top:0}
+  .artist-acm .acm-sec h4{margin:0 0 6px;font-size:14.5px;font-weight:800;color:#1A1A1A}
+  .artist-acm .acm-sec ul{margin:0;padding-left:18px;font-size:13.5px;color:#3d3942;line-height:1.55}
+  .artist-acm .acm-sec li{margin:3px 0}
+  .artist-acm .acm-sec p{margin:0;font-size:13.5px;color:#3d3942;line-height:1.55}
+  .artist-acm .acm-empty{padding:40px 16px;text-align:center;color:#6F6874;font-size:13.5px}
+  .artist-acm .acm-mf{padding:14px 24px;border-top:1px solid #F0EAF2;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FCFAFD;flex-shrink:0}
+  .artist-acm .acm-btn{
+    display:inline-flex;align-items:center;gap:8px;background:#1A1A1A;color:#fff;border-radius:10px;padding:10px 16px;
+    font-weight:600;font-size:13.5px;white-space:nowrap;border:0;cursor:pointer;font:inherit
+  }
+  .artist-acm .acm-btn .material-symbols-outlined{font-size:18px}
+  .artist-acm .acm-btn.ghost{background:#fff;color:#1A1A1A;border:1px solid #E8DFEA}
+  .artist-acm .acm-btn:disabled{opacity:.45;pointer-events:none;cursor:not-allowed}
+  @media (max-width:900px){
+    .artist-acm{padding:12px}
+    .artist-acm-panel{width:100%;max-height:calc(100dvh - 24px);border-radius:16px}
+    .artist-acm .acm-mh,.artist-acm .acm-mb{padding-left:16px;padding-right:16px}
+    .artist-acm .acm-mf{padding:12px 14px;gap:8px}
+  }
   .artist-msm .amm-btn{display:inline-flex;align-items:center;gap:8px;background:#1A1A1A;color:#fff;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13.5px;white-space:nowrap;border:0;cursor:pointer;font:inherit;text-decoration:none}
   .artist-msm .amm-btn .material-symbols-outlined,.artist-msm .amm-btn .ms{font-size:18px}
   .artist-msm .amm-btn.ghost{background:#fff;color:#1A1A1A;border:1px solid #E8DFEA}
@@ -880,6 +925,36 @@
         </div>
       </div>
 
+<div id="artistAftercareSendModal"
+  class="artist-acm fixed inset-0 z-[120] flex"
+  aria-hidden="true"
+  aria-modal="true"
+  role="dialog"
+  aria-labelledby="acmTitle">
+  <div class="artist-acm-backdrop absolute inset-0" style="background:rgba(20,10,30,.45)" data-close-artist-acm></div>
+  <div class="artist-acm-panel relative z-10">
+    <div class="acm-mh">
+      <div style="min-width:0">
+        <h2 id="acmTitle">Send aftercare</h2>
+        <div class="acm-to" id="acmToLine">—</div>
+      </div>
+      <button type="button" class="inline-flex" data-close-artist-acm aria-label="Close" style="background:none;border:0;cursor:pointer;padding:0;color:#9A929E">
+        <span class="material-symbols-outlined" style="font-size:22px">close</span>
+      </button>
+    </div>
+    <div class="acm-mb" id="acmPreviewWrap">
+      <div class="acm-empty">Loading preview…</div>
+    </div>
+    <div class="acm-mf" style="flex-wrap:wrap">
+      <div id="acmCooldownNote" class="acm-faint" hidden style="flex:1;min-width:180px;font-size:12.5px;color:#6F6874;margin-right:auto"></div>
+      <button type="button" class="acm-btn ghost" data-close-artist-acm>Cancel</button>
+      <button type="button" class="acm-btn" id="acmSendBtn">
+        <span class="material-symbols-outlined">send</span><span id="acmSendLabel">Send aftercare</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="artistCancelBookingModal"
   class="artist-cbm fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4 sm:p-6"
   aria-hidden="true"
@@ -1426,6 +1501,20 @@
             window.openArtistBookingMessageModal(src);
           } else if (src.getAttribute('href')) {
             window.location.href = src.getAttribute('href');
+          }
+          return;
+        }
+        if (src.classList.contains('js-artist-send-aftercare')) {
+          if (typeof window.openArtistAftercareSendModal === 'function') {
+            window.openArtistAftercareSendModal(src.getAttribute('data-booking-id'), {
+              alreadySent: src.getAttribute('data-aftercare-sent') === '1',
+              toLine: [
+                'To ' + (src.getAttribute('data-client-name') || 'Client'),
+                src.getAttribute('data-client-email') || '',
+                src.getAttribute('data-service') || '',
+                src.getAttribute('data-booking-ref') || ''
+              ].filter(Boolean).join(' · ')
+            });
           }
           return;
         }
@@ -2483,7 +2572,7 @@
     var status = String(ds.bookingStatus || (row && row.getAttribute('data-status')) || '').toLowerCase();
     var chat = row ? row.querySelector('.js-artist-booking-menu-source .js-artist-message-client') : null;
     var complete = row ? row.querySelector('.js-artist-booking-menu-source .js-artist-mark-complete') : null;
-    var aftercareLink = row ? row.querySelector('.js-artist-booking-menu-source a[data-menu-icon="healing"]') : null;
+    var aftercareLink = row ? row.querySelector('.js-artist-booking-menu-source .js-artist-send-aftercare') : null;
     var collect = row
       ? (row.querySelector('.js-artist-booking-menu-source .js-artist-collect-payment')
         || row.querySelector('.js-artist-collect-payment'))
@@ -2515,14 +2604,10 @@
         aftercareBtn._source = complete;
         label = complete.getAttribute('data-menu-label') || 'Complete booking';
       } else if (status === 'completed' || aftercareLink) {
-        aftercareBtn._mode = sent ? 'sent' : 'manage';
+        aftercareBtn._mode = 'manage';
         aftercareBtn._source = aftercareLink || null;
-        label = sent ? 'Aftercare sent' : 'Send aftercare';
-        if (sent) {
-          aftercareBtn.disabled = true;
-          aftercareBtn.setAttribute('aria-disabled', 'true');
-          aftercareBtn.title = 'Aftercare already sent';
-        }
+        label = (aftercareLink && aftercareLink.getAttribute('data-menu-label'))
+          || (sent ? 'Send again' : 'Send aftercare');
       } else if (collect) {
         aftercareBtn._mode = 'collect';
         aftercareBtn._source = collect;
@@ -2621,10 +2706,9 @@
       }
       var hasSplit = !!money.has_split;
       var feeNote = String(money.booking_fee_note || '');
-      var isClientPaidFee = /client/i.test(feeNote);
-      // Artist direct: hide client booking fee + Stripe. Split: show full fee stack.
+      // Match earnings reference: fee + Stripe + split stack, studio share only in footnote.
       if (bookingFeeRow && bookingFeeEl) {
-        if (money.booking_fee && (hasSplit || !isClientPaidFee)) {
+        if (money.booking_fee) {
           bookingFeeRow.style.display = '';
           bookingFeeEl.textContent = money.booking_fee;
           if (bookingFeeNote) bookingFeeNote.textContent = feeNote;
@@ -2633,7 +2717,7 @@
         }
       }
       if (stripeFeeRow && stripeFeeEl) {
-        if (hasSplit && money.stripe_fee) {
+        if (money.stripe_fee) {
           stripeFeeRow.style.display = '';
           stripeFeeEl.textContent = String(money.stripe_fee || '—').replace(/^-€/, '−€');
         } else {
@@ -2672,18 +2756,8 @@
           yourBookingFeeRow.style.display = 'none';
         }
       }
-      if (studioGetsRow && studioGetsEl) {
-        var studioAmt = Number(money.studio_gets_amount || 0);
-        if (hasSplit && studioAmt > 0.009) {
-          studioGetsRow.style.display = '';
-          var studioName = String(money.split_label || '').replace(/^Split with\s+/i, '').trim();
-          if (studioGetsLabel) studioGetsLabel.textContent = (studioName || 'Studio') + ' gets';
-          studioGetsEl.textContent = money.studio_gets_label
-            || ('€' + studioAmt.toFixed(2));
-        } else {
-          studioGetsRow.style.display = 'none';
-        }
-      }
+      // Studio share stays in the footnote (reference layout) — not a separate row.
+      if (studioGetsRow) studioGetsRow.style.display = 'none';
       if (youGetEl) youGetEl.textContent = money.you_get || '—';
       if (moneyFootnote) {
         if (money.footnote) {
@@ -2819,16 +2893,28 @@
       if (aftercareBtn.disabled || aftercareBtn.getAttribute('aria-disabled') === 'true') return;
       var mode = aftercareBtn._mode || 'none';
       var src = aftercareBtn._source;
-      closeModal();
       if (mode === 'send' || mode === 'collect') {
+        closeModal();
         if (src) src.click();
         return;
       }
-      if (mode === 'manage') {
-        if (src && src.tagName === 'A' && src.getAttribute('href')) {
-          window.location.href = src.getAttribute('href');
+      if (mode === 'manage' || mode === 'sent') {
+        var bookingId = (src && src.getAttribute('data-booking-id'))
+          || (currentSourceBtn && currentSourceBtn.getAttribute('data-booking-id'));
+        if (typeof window.openArtistAftercareSendModal === 'function' && bookingId) {
+          closeModal();
+          window.openArtistAftercareSendModal(bookingId, {
+            alreadySent: mode === 'sent' || (src && src.getAttribute('data-aftercare-sent') === '1'),
+            toLine: src ? [
+              'To ' + (src.getAttribute('data-client-name') || 'Client'),
+              src.getAttribute('data-client-email') || '',
+              src.getAttribute('data-service') || '',
+              src.getAttribute('data-booking-ref') || ''
+            ].filter(Boolean).join(' · ') : ''
+          });
           return;
         }
+        closeModal();
         window.location.href = aftercareUrl;
       }
     });
@@ -4492,6 +4578,12 @@
     userId: @json((string) auth()->id()),
     inboxUrl: @json(route('artist.chat.index')),
   };
+  window.artistAftercareSendModal = {
+    csrf: @json(csrf_token()),
+    previewUrlTemplate: @json(url('/api/bookings/__ID__/aftercare-preview')),
+    sendUrlTemplate: @json(url('/api/bookings/__ID__/aftercare-send')),
+  };
 </script>
-<script src="{{ asset('js/artist-booking-message-modal.js') }}?v=2"></script>
+<script src="{{ asset('js/artist-booking-message-modal.js') }}?v=4"></script>
+<script src="{{ asset('js/artist-aftercare-send-modal.js') }}?v=2"></script>
 @endsection

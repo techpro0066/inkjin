@@ -158,6 +158,9 @@
   @media (max-width:700px){
     #m-wl-req .wl-req-qa{grid-template-columns:1fr}
   }
+  /* Desktop / tablet: keep real table rows so Send email stays in the action column. */
+  .cl-page td.wl-act{text-align:right;white-space:nowrap;vertical-align:middle}
+  .cl-page td.wl-act .btn{vertical-align:middle}
   @media (max-width:900px){
     .cl-page .grid.stats{grid-template-columns:repeat(2,minmax(0,1fr))}
     .cl-page .cl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -170,19 +173,53 @@
     .cl-page #guestWaitlistTabPanel table,.cl-page #guestWaitlistTabPanel tbody,.cl-page #guestWaitlistTabPanel tr,.cl-page #guestWaitlistTabPanel td{
       display:block;width:100%
     }
-    .cl-page tr:has(th){display:none}
+    /* ID selectors above force display:block on thead tr — beat them explicitly. */
+    .cl-page #clientsTabPanel thead,
+    .cl-page #waitlistTabPanel thead,
+    .cl-page #guestWaitlistTabPanel thead{display:none!important}
     .cl-page tbody tr.client-row,.cl-page tbody tr.wait-row{
       position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px
     }
-    .cl-page tbody tr.wait-row td.wlc{position:absolute;top:12px;left:12px;width:auto;padding:0!important;justify-content:flex-start}
-    .cl-page tbody tr.wait-row td.wlc::before{display:none}
-    .cl-page tbody tr.wait-row td:first-child + td{padding-left:28px!important}
     .cl-page td{border:0!important;padding:5px 0!important;display:flex!important;justify-content:space-between;align-items:center;gap:12px;text-align:right}
     .cl-page td::before{content:attr(data-label);font-size:10.5px;font-weight:700;letter-spacing:.7px;color:var(--muted);text-align:left;flex-shrink:0}
-    .cl-page td:first-child{padding:0 44px 8px 0!important;margin-bottom:4px;border-bottom:1px solid #F3EEF4!important;justify-content:flex-start;text-align:left}
-    .cl-page td:first-child::before{display:none}
-    .cl-page td[data-label=""]{position:absolute;top:10px;right:10px;width:auto;padding:0!important}
-    .cl-page td[data-label=""]::before{display:none}
+    /* Clients / guest rows: name is first cell — top bar with room for action. */
+    .cl-page tbody tr.client-row > td:first-child,
+    .cl-page #guestWaitlistTabPanel tbody tr.wait-row > td:first-child{
+      padding:0 120px 10px 0!important;margin-bottom:4px;border-bottom:1px solid #F3EEF4!important;justify-content:flex-start;text-align:left
+    }
+    .cl-page tbody tr.client-row > td:first-child::before,
+    .cl-page #guestWaitlistTabPanel tbody tr.wait-row > td:first-child::before{display:none}
+    /* Waitlist with checkbox: dedicated top bar, checkbox + Send email on one axis. */
+    .cl-page #waitlistTabPanel tbody tr.wait-row{padding-top:56px}
+    .cl-page #waitlistTabPanel tbody tr.wait-row::after{
+      content:'';position:absolute;left:14px;right:14px;top:48px;border-bottom:1px solid #F3EEF4;pointer-events:none
+    }
+    .cl-page #waitlistTabPanel tbody tr.wait-row td.wlc{
+      position:absolute;top:12px;left:14px;right:auto;bottom:auto;
+      width:auto!important;max-width:44px;height:32px;margin:0;padding:0!important;border:0!important;
+      display:flex!important;align-items:center;justify-content:flex-start;z-index:3;
+      pointer-events:auto
+    }
+    .cl-page #waitlistTabPanel tbody tr.wait-row td.wlc input{
+      width:20px;height:20px;min-width:20px;min-height:20px;pointer-events:auto;position:relative;z-index:4
+    }
+    .cl-page #waitlistTabPanel tbody tr.wait-row td.wlc::before{display:none}
+    /* Beat #panel td{width:100%} so the action cell does not cover the checkbox. */
+    .cl-page #waitlistTabPanel tbody tr.wait-row td.wl-act,
+    .cl-page #guestWaitlistTabPanel tbody tr.wait-row td.wl-act,
+    .cl-page #clientsTabPanel tbody tr.client-row td.wl-act,
+    .cl-page td[data-label=""]:not(.wlc){
+      position:absolute;top:12px;right:14px;left:auto!important;bottom:auto;
+      width:auto!important;max-width:calc(100% - 56px);min-height:32px;height:auto;margin:0;padding:0 0 8px!important;border:0!important;
+      display:flex!important;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;text-align:right;z-index:2;
+      pointer-events:none
+    }
+    .cl-page #waitlistTabPanel tbody tr.wait-row td.wl-act > *,
+    .cl-page #guestWaitlistTabPanel tbody tr.wait-row td.wl-act > *,
+    .cl-page #clientsTabPanel tbody tr.client-row td.wl-act > *,
+    .cl-page td[data-label=""]:not(.wlc) > *{pointer-events:auto}
+    .cl-page td.wl-act::before,
+    .cl-page td[data-label=""]:not(.wlc)::before{display:none}
   }
   @media (max-width:560px){
     .cl-page .grid.stats{grid-template-columns:1fr 1fr}
@@ -561,5 +598,5 @@
 </script>
 <script src="{{ asset('js/question-answer-display.js') }}"></script>
 <script src="{{ asset('js/waitlist-notify.js') }}?v=6"></script>
-<script src="{{ asset('js/artist-clients.js') }}?v=20"></script>
+<script src="{{ asset('js/artist-clients.js') }}?v=21"></script>
 @endsection

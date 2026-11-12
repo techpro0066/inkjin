@@ -39,8 +39,9 @@ class ChatController extends Controller
     {
         $user = $request->user();
 
-        $this->streamChat->syncChannelsForUser($user);
-
+        // Serve DB chat rows immediately. Full Stream sync (ensure + freeze per
+        // booking) was blocking Inbox for 20–30s+. Channels are created/updated
+        // when a thread is opened via /ensure.
         $channels = ChatChannel::query()
             ->forUser($user->id)
             ->with([

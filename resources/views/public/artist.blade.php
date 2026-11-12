@@ -328,7 +328,7 @@
     document.documentElement.classList.add('look-pending');
     try { sessionStorage.setItem('bp-look-artist', @json($lookState)); } catch (e) {}
   </script>
-  <script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=3"></script>
   @endif
 </head>
 <body class="{{ trim(($lookIsCustom ? 'cst ' : '').($isLookPreview ? 'bp-prev' : '')) }}" data-books="{{ $booksClosed ? 'closed' : 'open' }}" data-look-who="artist"><div class="banner" id="banner" style="{{ $bannerStyle }}"></div>
@@ -535,7 +535,7 @@
 <main class="wrap panel{{ $showTabsNav ? '' : ' is-empty' }}" id="panels" @if(! $showTabsNav) hidden aria-hidden="true" @endif>
     @if($hasVisibleDesigns)
     <div id="content-designs" class="tab-panel {{ $designsTabActive ? 'active' : '' }}" role="tabpanel">
-      <div class="ph"><div><h2>Available designs</h2><p>Flash designs ready to book. Pick one and choose a date.</p></div></div>
+      <div class="ph mt-3"><div><h2>Available designs</h2><p>Flash designs ready to book. Pick one and choose a date.</p></div></div>
       <div class="dgrid">
             @foreach($artistDesigns as $artistDesign)
           @php
@@ -781,7 +781,7 @@
 @include('partials.bookpay-public-api')
 <script src="{{ asset('new-ui-design-assets/guest-waitlist.js') }}"></script>
 @if(! $lookIsCustom)
-<script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v=3"></script>
 @endif
   <script>
 (function () {
@@ -1126,8 +1126,8 @@
     if (!el || !workplaces.length) return;
     if (workplaces.length === 1) {
       el.innerHTML = '<span class="ms">location_on</span><span class="t">' + workplaces[0].name + '</span>';
-      return;
-    }
+          return;
+        }
     el.innerHTML = '<button type="button" class="cst-stb" aria-expanded="false" aria-controls="cstpop"><span class="ms">location_on</span><span class="t">' + workplaces[0].name + ' + ' + (workplaces.length - 1) + ' more</span><span class="ms" style="font-size:18px">expand_more</span></button>';
   }
 

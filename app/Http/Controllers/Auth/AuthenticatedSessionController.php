@@ -69,6 +69,17 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('user.bookings.index', ['set_password' => '1']));
         }
 
+        // Avoid login ⇄ studio payout-info loops when intended points at an invite
+        // that does not belong to this account.
+        $intended = (string) $request->session()->get('url.intended', '');
+        if ($intended !== '' && str_contains($intended, '/studio/payout-info/')) {
+            $studioOwned = $user->role === 'studio'
+                && \App\Models\Studio::query()->where('user_id', $user->id)->exists();
+            if (! $studioOwned) {
+                $request->session()->forget('url.intended');
+            }
+        }
+
         return redirect()->intended(authenticated_home_url($user));
     }
 
@@ -83,8 +94,10 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return $request->input('to') === 'register'
-            ? redirect()->route('register')
-            : redirect('/');
+        return match ($request->input('to')) {
+            'register' => redirect()->route('register'),
+            'login' => redirect()->route('login'),
+            default => redirect('/'),
+        };
     }
 }

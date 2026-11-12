@@ -278,11 +278,11 @@ class ArtistPaymentsService
     }
 
     /**
-     * Money modal rows. Artist-direct: Client paid → Split None → You get.
+     * Money modal rows. Artist-direct: Client paid → Service Booking Fee → Stripe → Split None → You get.
      * Revenue split: full fee / share / studio lines (matches booking money UI).
      *
      * @param  array<string, mixed>  $moneyUi
-     * @return list<array{0: string, 1: string|float}>
+     * @return list<array{0: string, 1: string|float, 2?: string}>
      */
     private function buildBreakdownRowsFromMoneyUi(
         array $moneyUi,
@@ -292,16 +292,43 @@ class ArtistPaymentsService
     ): array {
         $hasSplit = (bool) ($moneyUi['has_split'] ?? false);
 
-        // Artist direct: Client paid → Split None → You get (no Stripe / client booking-fee lines).
+        // Artist direct — match earnings breakdown reference.
         if (! $hasSplit) {
             $rows = [
                 ['Client paid', $amount],
             ];
-            if ($artistFee > 0.009) {
+
+            $bookingFee = (string) ($moneyUi['booking_fee'] ?? '');
+            $bookingFeeNote = trim((string) ($moneyUi['booking_fee_note'] ?? ''));
+            if ($bookingFee !== '') {
+                if (str_contains(strtolower($bookingFeeNote), 'client')) {
+                    $rows[] = ['Service Booking Fee', $bookingFee, $bookingFeeNote];
+                } elseif ($artistFee > 0.009) {
+                    $rows[] = ['Booking fee (deducted from your share)', -$artistFee];
+                } else {
+                    $rows[] = ['Service Booking Fee', $bookingFee, $bookingFeeNote !== '' ? $bookingFeeNote : null];
+                }
+            } elseif ($artistFee > 0.009) {
                 $rows[] = ['Booking fee (deducted from your share)', -$artistFee];
             }
-            $rows[] = ['Split', 'None · booked at your own place'];
-            $rows[] = ['You get', $net];
+
+            $stripeFee = (string) ($moneyUi['stripe_fee'] ?? '');
+            if ($stripeFee !== '') {
+                $stripeLabel = 'Stripe fee';
+                $stripeNote = trim((string) ($moneyUi['stripe_fee_note'] ?? ''));
+                if ($stripeNote !== '') {
+                    $stripeLabel .= ' ('.$stripeNote.')';
+                }
+                $rows[] = [$stripeLabel, $stripeFee];
+            }
+
+            $rows[] = [
+                (string) ($moneyUi['split_label'] ?? 'Split'),
+                (string) ($moneyUi['split_value'] ?? 'None · booked at your own place'),
+            ];
+
+            $youGet = (float) ($moneyUi['you_get_amount'] ?? $net);
+            $rows[] = ['You get', round($youGet, 2)];
 
             return $rows;
         }
@@ -313,11 +340,7 @@ class ArtistPaymentsService
         $clientBookingFee = (string) ($moneyUi['booking_fee'] ?? '');
         $clientBookingFeeNote = trim((string) ($moneyUi['booking_fee_note'] ?? ''));
         if ($clientBookingFee !== '' && str_contains(strtolower($clientBookingFeeNote), 'client')) {
-            $label = 'Service Booking Fee';
-            if ($clientBookingFeeNote !== '') {
-                $label .= ' ('.$clientBookingFeeNote.')';
-            }
-            $rows[] = [$label, $clientBookingFee];
+            $rows[] = ['Service Booking Fee', $clientBookingFee, $clientBookingFeeNote];
         }
 
         $stripeFee = (string) ($moneyUi['stripe_fee'] ?? '');

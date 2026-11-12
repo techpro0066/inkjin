@@ -57,8 +57,9 @@
   .money-page .bdm-b{padding:8px 22px 18px;overflow:auto}
   .money-page .bdm-r{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #F3EEF4;font-size:13.5px}
   .money-page .bdm-r:last-child{border-bottom:0}
-  .money-page .bdm-r span{color:var(--muted)}
-  .money-page .bdm-r b{font-weight:700;text-align:right}
+  .money-page .bdm-r > span{color:var(--muted);min-width:0}
+  .money-page .bdm-r b{font-weight:700;text-align:right;white-space:nowrap}
+  .money-page .bdm-note{display:block;font-size:12px;color:var(--faint,#9A929E);margin-top:2px;line-height:1.35;font-weight:400}
   .money-page .bdm-tot{display:flex;justify-content:space-between;gap:16px;padding:14px 0 4px;font-size:15px;font-weight:800}
   .money-page .page-btn{
     min-width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;
@@ -483,7 +484,7 @@
     });
   })();
 </script>
-<script src="{{ asset('js/artist-payments.js') }}?v=5"></script>
+<script src="{{ asset('js/artist-payments.js') }}?v=6"></script>
 <style>
   @media(max-width:900px){
     .money-page .money-filters{grid-template-columns:1fr 1fr!important}

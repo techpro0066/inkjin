@@ -453,6 +453,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'client_password'])->group(
     Route::post('/api/bookings/{id}/send-completion-code', [\App\Http\Controllers\BookingsController::class, 'sendCompletionCode'])->name('api.bookings.send-completion-code');
     Route::get('/api/bookings/live-status', [\App\Http\Controllers\BookingsController::class, 'liveStatus'])->name('api.bookings.live-status');
     Route::post('/api/bookings/{id}/mark-completed', [\App\Http\Controllers\BookingsController::class, 'markCompleted'])->name('api.bookings.mark-completed');
+    Route::get('/api/bookings/{id}/aftercare-preview', [\App\Http\Controllers\ArtistAftercareController::class, 'preview'])->name('api.bookings.aftercare-preview');
+    Route::post('/api/bookings/{id}/aftercare-send', [\App\Http\Controllers\ArtistAftercareController::class, 'send'])->name('api.bookings.aftercare-send');
     Route::post('/api/bookings/{id}/balance-collections', [\App\Http\Controllers\BookingsController::class, 'storeBalanceCollection'])->name('api.bookings.balance-collections.store');
     Route::post('/api/bookings/{id}/consent/resend', [\App\Http\Controllers\BookingsController::class, 'resendConsent'])->name('api.bookings.consent.resend');
     Route::get('/api/bookings/{id}/consent/link', [\App\Http\Controllers\BookingsController::class, 'consentLink'])->name('api.bookings.consent.link');
@@ -712,6 +714,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
 
     // Booking routes
     Route::get('/bookings', [ArtistBookingsController::class, 'index'])->name('artist.bookings.index');
+    Route::get('/bookings/{booking}/detail-data', [ArtistBookingsController::class, 'detailData'])
+        ->whereNumber('booking')
+        ->name('artist.bookings.detail-data');
     Route::get('/bookings/payment-links', [ArtistBookingsController::class, 'paymentLinks'])->name('artist.bookings.payment-links');
     Route::post('/bookings/payment-links/{source}/{id}/expire', [ArtistBookingsController::class, 'expirePaymentLink'])
         ->whereIn('source', ['standalone', 'booking'])
@@ -720,8 +725,14 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
 
     // Requests
     Route::get('/requests', [RequestsController::class, 'index'])->name('artist.requests.index');
+    Route::get('/requests/{bookingRequest}/panel-data', [RequestsController::class, 'designPanelData'])
+        ->whereNumber('bookingRequest')
+        ->name('artist.requests.panel-data');
     Route::get('/custom-requests', [ArtistCustomRequestsController::class, 'index'])->name('artist.custom-requests.index');
     Route::get('/guest-requests', [ArtistCustomRequestsController::class, 'index'])->name('artist.guest-requests.index');
+    Route::get('/custom-requests/{customRequest}/panel-data', [RequestsController::class, 'customPanelData'])
+        ->whereNumber('customRequest')
+        ->name('artist.custom-requests.panel-data');
     Route::post('/custom-requests/{customRequest}/decline', [ArtistCustomRequestsController::class, 'decline'])->name('artist.custom-requests.decline');
     Route::post('/custom-requests/{customRequest}/send-quote', [ArtistCustomRequestsController::class, 'sendQuote'])->name('artist.custom-requests.send-quote');
     Route::post('/studio-offers/{studioRequest}/send-quote', [\App\Http\Controllers\ArtistStudioOffersController::class, 'sendQuote'])

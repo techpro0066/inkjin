@@ -1813,6 +1813,12 @@
   };
   window.openCustomRequestDetail = openCustomRequestDetail;
   window.openStudioOfferDetail = openStudioOfferDetail;
+  window.inkjinRegisterAndOpenCustomRequest = function (req) {
+    if (!req || req.id == null) return;
+    customRequestsById[req.id] = req;
+    customRequestsById[String(req.id)] = req;
+    openCustomRequestDetail(req.id);
+  };
   window.closeCustomRequestDetail = closeCustomRequestDetail;
   window.openCustomDeclineModal = openCustomDeclineModal;
   window.openCustomDeclineFromFooter = openCustomDeclineFromFooter;

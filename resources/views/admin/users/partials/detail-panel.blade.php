@@ -201,33 +201,64 @@
 
       <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-0">
         <h4 class="text-sm font-bold mb-2">Revenue split</h4>
-        <div class="flex justify-between py-2 border-b border-outline-variant/10 gap-4">
+        <div class="flex justify-between py-2 gap-4">
           <span class="text-sm text-on-surface-variant shrink-0">Default split</span>
           <span class="text-sm font-semibold text-on-surface text-right">{{ $user['default_revenue_split_label'] ?? 'No revenue split' }}</span>
         </div>
-        @if(!empty($user['studio_links']))
-          @foreach($user['studio_links'] as $index => $link)
+      </div>
+
+      @php
+        $joinedArtists = $user['joined_artists'] ?? ($user['studio_links'] ?? []);
+        $joinedCount = (int) ($user['joined_artists_count'] ?? count($joinedArtists));
+      @endphp
+      <div class="bg-white rounded-xl border border-outline-variant/15 p-4 space-y-0">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <h4 class="text-sm font-bold m-0">Joined artists</h4>
+          <span class="text-[11px] font-semibold text-on-surface-variant">{{ $joinedCount }}</span>
+        </div>
+        @if(!empty($joinedArtists))
+          @foreach($joinedArtists as $index => $link)
             <div @class([
-              'py-2 space-y-1',
-              'border-b border-outline-variant/10' => $index < count($user['studio_links']) - 1,
+              'py-2.5 space-y-1',
+              'border-b border-outline-variant/10' => $index < count($joinedArtists) - 1,
             ])>
-              <div class="flex justify-between gap-4">
-                <span class="text-sm text-on-surface-variant shrink-0">Artist</span>
-                <span class="text-sm font-semibold text-on-surface text-right">{{ $link['artist_name'] }}</span>
+              <div class="flex justify-between gap-4 items-start">
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-on-surface">{{ $link['artist_name'] }}</div>
+                  @if(!empty($link['artist_username']) || !empty($link['artist_email']))
+                    <div class="text-[11px] text-on-surface-variant break-all">
+                      {{ $link['artist_username'] ?? $link['artist_email'] }}
+                    </div>
+                  @endif
+                </div>
+                <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold
+                  {{ ($link['status'] ?? null) === 1 ? 'bg-green-50 text-green-700' : (($link['status'] ?? null) === 3 ? 'bg-amber-50 text-amber-800' : 'bg-surface-container text-on-surface-variant') }}">
+                  {{ $link['status_label'] ?? 'Joined' }}
+                </span>
               </div>
               <div class="flex justify-between gap-4">
-                <span class="text-sm text-on-surface-variant shrink-0">Split</span>
-                <span class="text-sm font-semibold text-on-surface text-right">
+                <span class="text-xs text-on-surface-variant shrink-0">Relationship</span>
+                <span class="text-xs font-semibold text-on-surface text-right">{{ $link['relationship'] ?: '—' }}</span>
+              </div>
+              <div class="flex justify-between gap-4">
+                <span class="text-xs text-on-surface-variant shrink-0">Split</span>
+                <span class="text-xs font-semibold text-on-surface text-right">
                   {{ $link['split_label'] }}
                   @if(!empty($link['is_payout_split']))
-                    <span class="text-[11px] font-medium text-on-surface-variant">(payout)</span>
+                    <span class="text-[10px] font-medium text-on-surface-variant">(payout)</span>
                   @endif
                 </span>
               </div>
+              @if(!empty($link['joined_via']))
+                <div class="flex justify-between gap-4">
+                  <span class="text-xs text-on-surface-variant shrink-0">Joined via</span>
+                  <span class="text-xs font-semibold text-on-surface text-right">{{ $link['joined_via'] }}</span>
+                </div>
+              @endif
             </div>
           @endforeach
         @else
-          <p class="text-sm text-on-surface-variant py-2">No linked artists.</p>
+          <p class="text-sm text-on-surface-variant py-2">No artists have joined this studio yet.</p>
         @endif
       </div>
     @endif
