@@ -1579,6 +1579,40 @@
   var liveUrl = @json(route('api.bookings.live-status'));
   var completedBadgeClass = 'js-artist-status-badge inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset bg-slate-100 text-slate-700 ring-slate-500/15';
 
+  function ensureAftercareMenuItem(source, viewBtn, bookingId) {
+    if (!source) return;
+    var aftercare = source.querySelector('.js-artist-send-aftercare');
+    if (aftercare) {
+      aftercare.classList.remove('hidden');
+      if (!aftercare.getAttribute('data-menu-label')) {
+        aftercare.setAttribute('data-menu-label', 'Send aftercare');
+      }
+      if (!aftercare.getAttribute('data-menu-icon')) {
+        aftercare.setAttribute('data-menu-icon', 'healing');
+      }
+      return;
+    }
+
+    aftercare = document.createElement('button');
+    aftercare.type = 'button';
+    aftercare.className = 'js-artist-send-aftercare';
+    aftercare.setAttribute('data-menu-icon', 'healing');
+    aftercare.setAttribute('data-menu-label', 'Send aftercare');
+    aftercare.setAttribute('data-booking-id', String(bookingId || ''));
+    aftercare.setAttribute('data-aftercare-sent', (viewBtn && viewBtn.getAttribute('data-aftercare-sent')) || '0');
+    aftercare.setAttribute('data-client-name', (viewBtn && viewBtn.getAttribute('data-client-name')) || '');
+    aftercare.setAttribute('data-client-email', (viewBtn && viewBtn.getAttribute('data-client-email')) || '');
+    aftercare.setAttribute('data-service', (viewBtn && viewBtn.getAttribute('data-service')) || '');
+    aftercare.setAttribute('data-booking-ref', (viewBtn && viewBtn.getAttribute('data-booking-ref')) || '');
+
+    var complete = source.querySelector('.js-artist-mark-complete');
+    if (complete && complete.parentNode) {
+      complete.parentNode.insertBefore(aftercare, complete);
+    } else {
+      source.appendChild(aftercare);
+    }
+  }
+
   function markSettled(bookingId, message) {
     var id = String(bookingId || '');
     if (!id) return;
@@ -1587,11 +1621,18 @@
       row.querySelectorAll('.js-artist-collect-wrap').forEach(function (el) {
         el.classList.add('hidden');
       });
+      var source = row.querySelector('.js-artist-booking-menu-source');
+      var viewBtn = source ? source.querySelector('.js-artist-booking-view') : null;
+      ensureAftercareMenuItem(source, viewBtn, id);
       row.querySelectorAll('.js-artist-booking-menu-source > *').forEach(function (child) {
         var href = child.getAttribute('href') || '';
-        var keep = child.classList.contains('js-artist-booking-view') || href.indexOf('chat') !== -1;
+        var keep = child.classList.contains('js-artist-booking-view')
+          || child.classList.contains('js-artist-send-aftercare')
+          || href.indexOf('chat') !== -1;
         if (!keep) {
           child.classList.add('hidden');
+        } else {
+          child.classList.remove('hidden');
         }
       });
       row.querySelectorAll('.js-artist-booking-view').forEach(function (btn) {
@@ -2566,17 +2607,24 @@
     return id ? document.querySelector('[data-booking-row][data-booking-id="' + id + '"]') : null;
   }
 
+  function visibleMenuEl(row, selector) {
+    if (!row) return null;
+    var nodes = row.querySelectorAll(selector);
+    for (var i = 0; i < nodes.length; i++) {
+      if (!nodes[i].classList.contains('hidden')) return nodes[i];
+    }
+    return null;
+  }
+
   function syncFooter(btn) {
     var row = rowFor(btn);
     var ds = btn && btn.dataset ? btn.dataset : {};
     var status = String(ds.bookingStatus || (row && row.getAttribute('data-status')) || '').toLowerCase();
-    var chat = row ? row.querySelector('.js-artist-booking-menu-source .js-artist-message-client') : null;
-    var complete = row ? row.querySelector('.js-artist-booking-menu-source .js-artist-mark-complete') : null;
-    var aftercareLink = row ? row.querySelector('.js-artist-booking-menu-source .js-artist-send-aftercare') : null;
-    var collect = row
-      ? (row.querySelector('.js-artist-booking-menu-source .js-artist-collect-payment')
-        || row.querySelector('.js-artist-collect-payment'))
-      : null;
+    var chat = visibleMenuEl(row, '.js-artist-booking-menu-source .js-artist-message-client');
+    var complete = visibleMenuEl(row, '.js-artist-booking-menu-source .js-artist-mark-complete');
+    var aftercareLink = visibleMenuEl(row, '.js-artist-booking-menu-source .js-artist-send-aftercare');
+    var collect = visibleMenuEl(row, '.js-artist-booking-menu-source .js-artist-collect-payment')
+      || visibleMenuEl(row, '.js-artist-collect-payment');
 
     if (messageBtn) {
       if (chat) {
@@ -2599,15 +2647,16 @@
       var sent = ds.aftercareSent === '1' || (aftercareLink && /sent/i.test(aftercareLink.getAttribute('data-menu-label') || ''));
       var label = 'Send aftercare';
 
-      if (complete) {
-        aftercareBtn._mode = 'send';
-        aftercareBtn._source = complete;
-        label = complete.getAttribute('data-menu-label') || 'Complete booking';
-      } else if (status === 'completed' || aftercareLink) {
+      // Completed bookings: aftercare first (ignore a hidden Complete button left in the DOM).
+      if (status === 'completed' || aftercareLink) {
         aftercareBtn._mode = 'manage';
         aftercareBtn._source = aftercareLink || null;
         label = (aftercareLink && aftercareLink.getAttribute('data-menu-label'))
           || (sent ? 'Send again' : 'Send aftercare');
+      } else if (complete) {
+        aftercareBtn._mode = 'send';
+        aftercareBtn._source = complete;
+        label = complete.getAttribute('data-menu-label') || 'Complete booking';
       } else if (collect) {
         aftercareBtn._mode = 'collect';
         aftercareBtn._source = collect;
@@ -2626,7 +2675,7 @@
     }
 
     if (confirmBtn) {
-      var action = collect || complete;
+      var action = (status === 'completed') ? null : (collect || complete);
       confirmBtn.style.display = action ? '' : 'none';
       confirmBtn._source = action || null;
     }
