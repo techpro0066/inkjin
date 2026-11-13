@@ -48,7 +48,7 @@ Route::get('/', function () {
         return redirect()->to(authenticated_home_url());
     }
 
-    return redirect()->route('login');
+    return redirect()->route('register');
 });
 
 // Onboarding routes (must be before other auth routes)
