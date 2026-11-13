@@ -12,9 +12,16 @@
     body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   </style>
 </head>
+@php
+  $ideaLabelSafe = trim((string) ($ideaLabel ?? ''));
+  $hasSpecificIdea = $ideaLabelSafe !== '' && $ideaLabelSafe !== 'your custom tattoo request';
+  $quoteForPhrase = $hasSpecificIdea
+    ? 'for your '.$ideaLabelSafe
+    : 'for '.($ideaLabelSafe !== '' ? $ideaLabelSafe : 'your custom tattoo request');
+@endphp
 <body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
-    {{ $artistFirstName }} sent you a quote@if(!empty($ideaLabel) && $ideaLabel !== 'your custom tattoo request') for your {{ $ideaLabel }}@endif.
+    {{ $artistFirstName }} sent you a quote {{ $quoteForPhrase }}.
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
@@ -35,7 +42,7 @@
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
                       <tr>
                         <td style="padding:12px;width:44px;vertical-align:middle;">
-                          @if(!empty($artistAvatarUrl))
+                          @if (! empty($artistAvatarUrl))
                             <img src="{{ $artistAvatarUrl }}" alt="{{ $artistName }}" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:50%;object-fit:cover;">
                           @else
                             <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
@@ -45,7 +52,7 @@
                         </td>
                         <td style="padding:12px 12px 12px 0;vertical-align:middle;">
                           <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $artistName }}</div>
-                          @if(!empty($artistMeta))
+                          @if (! empty($artistMeta))
                             <div style="font-size:13px;color:#6F6874;margin-top:2px;">{{ $artistMeta }}</div>
                           @endif
                         </td>
@@ -61,12 +68,7 @@
                 </tr>
                 <tr>
                   <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
-                    {{ $artistFirstName }} sent you a quote
-                    @if(!empty($ideaLabel) && $ideaLabel !== 'your custom tattoo request')
-                      for your {{ $ideaLabel }}
-                    @else
-                      for {{ $ideaLabel }}
-                    @endif.
+                    {{ $artistFirstName }} sent you a quote {{ $quoteForPhrase }}.
                   </td>
                 </tr>
 
@@ -80,7 +82,7 @@
                               <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Estimated price</td>
                               <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $priceLabel }}</td>
                             </tr>
-                            @if(!empty($durationLabel))
+                            @if (! empty($durationLabel))
                               <tr>
                                 <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Duration</td>
                                 <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $durationLabel }}</td>
@@ -97,7 +99,7 @@
                   </td>
                 </tr>
 
-                @if(!empty($quoteMessage))
+                @if (! empty($quoteMessage))
                   <tr>
                     <td style="padding:0 0 16px 0;">
                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FBF7FD;border-left:3px solid #3E007C;border-radius:0 10px 10px 0;">
@@ -114,12 +116,12 @@
 
                 <tr>
                   <td style="padding:8px 0 8px 0;">
-                    @if(!empty($accessUrl))
+                    @if (! empty($accessUrl))
                       <a href="{{ $accessUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
                         Accept and pay deposit
                       </a>
                     @endif
-                    @if(!empty($askQuestionUrl))
+                    @if (! empty($askQuestionUrl))
                       <a href="{{ $askQuestionUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;color:#3E007C;font-weight:700;text-decoration:none;font-size:15px;padding:13px 6px;margin-left:8px;">
                         Ask a question
                       </a>
