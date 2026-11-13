@@ -1031,7 +1031,7 @@ class ArtistPayoutService
             'split_label' => $hasSplit ? 'Split with '.$studioName : 'Split',
             'split_value' => $hasSplit
                 ? 'You '.$artistPercent.'% · Studio '.$studioPercent.'%'
-                : 'None · booked at your own place',
+                : 'None',
             'your_share_label' => 'Your share',
             'your_share_note' => $hasSplit ? $artistPercent.'% of '.$this->formatEuro($deposit) : null,
             'your_share' => $this->formatEuro($yourShare),
@@ -1045,6 +1045,7 @@ class ArtistPayoutService
             'balance_note_html' => $balanceNoteHtml,
             'deposit_amount' => $deposit,
             'stripe_fee_amount' => $stripeFee,
+            'your_stripe_amount' => $yourStripe,
             'artist_side_fee_amount' => $artistSideFee,
             'your_booking_fee_amount' => $yourBookingFee,
             'studio_booking_fee_amount' => $studioBookingFee,

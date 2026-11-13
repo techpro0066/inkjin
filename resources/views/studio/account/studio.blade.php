@@ -14,7 +14,8 @@
   .pac-container{z-index:400!important;border-radius:10px;border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.12);font-family:inherit;margin-top:4px}
   .field-err{display:none;color:#C62828;font-size:12px;margin-top:6px}
   .studio-logo{width:56px;height:56px;border-radius:14px;background:#F3E8FF;color:#3E007C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;overflow:hidden;flex:none;position:relative}
-  .studio-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2}
+  .studio-logo.has-img{background:transparent;box-shadow:inset 0 0 0 1px #E8DFEA}
+  .studio-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2;background:transparent}
   .studio-logo .ini{position:relative;z-index:1}
   .studio-logo.has-img .ini{display:none!important}
   .crop-ov{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px}
@@ -172,8 +173,8 @@
             <div id="contact_email_error" class="field-err"></div>
           </div>
           <div>
-            <label class="fl" for="tattooing_since">Tattooing since</label>
-            <input class="in" id="tattooing_since" name="tattooing_since" type="text" value="{{ old('tattooing_since', $studio?->tattooing_since ?? '') }}" placeholder="e.g. 2019" inputmode="numeric">
+            <label class="fl" for="tattooing_since">Year Established</label>
+            <input class="in" id="tattooing_since" name="tattooing_since" type="text" value="{{ old('tattooing_since', $studio?->tattooing_since ?? '') }}" placeholder="e.g. 2019" inputmode="numeric" autocomplete="off">
             <div class="help">The year the studio opened. Optional.</div>
             <div id="tattooing_since_error" class="field-err"></div>
           </div>
@@ -349,7 +350,13 @@
 
   document.getElementById('applyLogoCropBtn')?.addEventListener('click', function () {
     if (!logoCropper) return;
-    var canvas = logoCropper.getCroppedCanvas({ width: 512, height: 512, imageSmoothingQuality: 'high' });
+    // Preserve alpha for transparent PNGs (JPEG would fill with a solid bg).
+    var canvas = logoCropper.getCroppedCanvas({
+      width: 512,
+      height: 512,
+      imageSmoothingQuality: 'high',
+      fillColor: 'transparent'
+    });
     canvas.toBlob(function (blob) {
       if (!blob) {
         setFieldError('logo', 'Could not crop this image. Try another photo.');
@@ -359,7 +366,7 @@
       setLogoPreview(URL.createObjectURL(blob));
       clearFieldError('logo');
       closeLogoCropper();
-    }, 'image/jpeg', 0.92);
+    }, 'image/png');
   });
 
   function buildMapsLinkFromFields() {
@@ -486,11 +493,13 @@
 
     var body = new FormData(form);
     if (croppedLogoBlob) {
+      var logoType = croppedLogoBlob.type || 'image/png';
+      var logoName = logoType.indexOf('png') !== -1 ? 'logo.png' : 'logo.jpg';
       var logoFile = croppedLogoBlob;
       try {
-        logoFile = new File([croppedLogoBlob], 'logo.jpg', { type: croppedLogoBlob.type || 'image/jpeg' });
+        logoFile = new File([croppedLogoBlob], logoName, { type: logoType });
       } catch (err) {}
-      body.set('logo', logoFile, 'logo.jpg');
+      body.set('logo', logoFile, logoName);
     }
 
     fetch(form.action, {

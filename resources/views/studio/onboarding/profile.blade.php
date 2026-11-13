@@ -6,6 +6,10 @@
 <style>
   .field-err{display:none;color:#C62828;font-size:12px;margin-top:6px}
   .in.err{border-color:#C62828!important;box-shadow:0 0 0 3px #FDECEC}
+  /* Purple only for initials placeholder — keep uploaded logos transparent. */
+  #logoPreview{background:#3E007C;color:#fff;box-shadow:inset 0 0 0 1px transparent}
+  #logoPreview.has-img{background:transparent!important;color:transparent;box-shadow:inset 0 0 0 1px #E8DFEA}
+  #logoPreview img{background:transparent}
 </style>
 @endpush
 
@@ -41,8 +45,8 @@
             <div id="username_error" class="field-err"></div>
           </div>
           <div>
-            <span class="fl">Tattooing since</span>
-            <input class="in" id="tattooing_since" name="tattooing_since" type="number" value="{{ old('tattooing_since', $tattooingSince) }}" placeholder="e.g. 2015">
+            <span class="fl">Year Established</span>
+            <input class="in" id="tattooing_since" name="tattooing_since" type="text" inputmode="numeric" autocomplete="off" value="{{ old('tattooing_since', $tattooingSince) }}" placeholder="e.g. 2015">
             <div class="help">The year the studio opened. Optional.</div>
             <div id="tattooing_since_error" class="field-err"></div>
           </div>
@@ -59,7 +63,7 @@
       </div>
       <div style="padding:18px 22px">
         <div class="row" style="gap:16px;margin-bottom:14px">
-          <div class="ic" id="logoPreview" style="width:64px;height:64px;border-radius:14px;background:#3E007C;color:#fff;font-weight:800;font-size:18px">
+          <div class="ic{{ !empty($studioLogoUrl) ? ' has-img' : '' }}" id="logoPreview" style="width:64px;height:64px;border-radius:14px;font-weight:800;font-size:18px">
             @if (!empty($studioLogoUrl))
               <img src="{{ $studioLogoUrl }}" alt="">
             @else
@@ -142,6 +146,7 @@
       clearFieldError('logo');
       var file = fileInput.files && fileInput.files[0];
       if (!file || !logoPreview) return;
+      logoPreview.classList.add('has-img');
       logoPreview.innerHTML = '<img src="' + URL.createObjectURL(file) + '" alt="">';
       if (window.bpToast) window.bpToast('Logo selected');
     });
@@ -218,6 +223,7 @@
         if (result.ok && result.data && result.data.success) {
           if (window.bpToast) window.bpToast('Changes saved');
           if (result.data.studio && result.data.studio.logo && logoPreview) {
+            logoPreview.classList.add('has-img');
             logoPreview.innerHTML = '<img src="' + result.data.studio.logo + '" alt="">';
           }
           setTimeout(function () {

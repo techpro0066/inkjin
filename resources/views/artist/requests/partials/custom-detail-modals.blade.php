@@ -9,7 +9,9 @@
 
   /* D01 overlay modal */
   #customRequestModal.ov{
-    display:none;position:fixed;inset:0;z-index:400;
+    display:none;position:fixed!important;inset:0!important;z-index:560;
+    width:100vw!important;height:100vh!important;height:100dvh!important;
+    margin:0!important;flex:none!important;
     background:rgba(20,10,30,.45);padding:16px;
     align-items:center;justify-content:center;
   }
@@ -1721,8 +1723,12 @@
     if (!req || !modal) return;
     activeCustomRequestId = req.id;
     renderCustomRequestDetail(req);
+    if (modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
+    document.body.classList.add('inbox-detail-open');
   }
 
   function openStudioOfferDetail(studioRequestId) {
@@ -1733,6 +1739,7 @@
     const modal = document.getElementById('customRequestModal');
     if (modal) modal.classList.remove('open');
     document.body.style.overflow = '';
+    document.body.classList.remove('inbox-detail-open');
     activeCustomRequestId = null;
     // Drop rendered markup so slot ids (sessionSlotsBlocks, etc.) never linger beside the flash modal.
     var left = document.getElementById('customRequestDetailLeft');

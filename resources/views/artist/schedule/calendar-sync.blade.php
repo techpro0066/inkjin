@@ -126,6 +126,28 @@
       </div>
       <p class="field-err" id="google_calendar_connected_error" hidden></p>
     </div>
+    <script>
+    (function () {
+      function syncSchedUi() {
+        var checked = document.querySelector('input[name="sched"]:checked');
+        var type = checked ? checked.value : 'managed';
+        var auto = type === 'auto';
+        var gcal = document.getElementById('gcal');
+        if (gcal) gcal.hidden = !auto;
+        var hidden = document.getElementById('scheduling_type');
+        if (hidden) hidden.value = type;
+        document.querySelectorAll('.cs-page .po').forEach(function (po) {
+          var input = po.querySelector('input[name="sched"]');
+          po.classList.toggle('sel', !!(input && input.checked));
+        });
+      }
+      document.querySelectorAll('input[name="sched"]').forEach(function (radio) {
+        radio.addEventListener('change', syncSchedUi);
+      });
+      syncSchedUi();
+      window.__csSyncSchedUi = syncSchedUi;
+    })();
+    </script>
 
     <div class="row" style="justify-content:flex-start;margin-top:4px">
       <button type="submit" class="btn" id="btnSaveCalendarSync"><span class="ms">save</span>Save changes</button>
@@ -239,6 +261,11 @@
     syncGcalVisibility();
     clearErrors();
   });
+
+  // Sync UI to whatever is already selected (e.g. user clicked Auto before scripts loaded).
+  syncPo();
+  syncGcalVisibility();
+  if (typeof window.__csSyncSchedUi === 'function') window.__csSyncSchedUi();
 
   bindConnectButton();
   bindDisconnectButton();

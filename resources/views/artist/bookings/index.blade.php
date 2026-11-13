@@ -952,8 +952,8 @@
         <span class="material-symbols-outlined">send</span><span id="acmSendLabel">Send aftercare</span>
       </button>
     </div>
-  </div>
-</div>
+        </div>
+      </div>
 
 <div id="artistCancelBookingModal"
   class="artist-cbm fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4 sm:p-6"

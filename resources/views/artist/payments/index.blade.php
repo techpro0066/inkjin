@@ -34,6 +34,8 @@
   .money-page .kpi-meta .ms{font-size:18px}
   .money-page .stat-click{cursor:pointer;border:0;background:inherit;font:inherit;color:inherit;text-align:left;width:100%;padding:0}
   .money-page .stat-click:disabled{cursor:default;opacity:1}
+  .money-page th{text-transform:uppercase}
+  .money-page td::before{text-transform:uppercase}
   .money-page .pay-row{cursor:pointer}
   .money-page .pay-row:hover td{background:#FBF8FC}
   .money-page .chip{cursor:pointer;font:inherit}
@@ -228,7 +230,7 @@
           <th>Service</th>
           <th>Date</th>
           <th>Collected</th>
-          <th>Fee</th>
+          <th>Stripe fee</th>
           <th>Studio gets</th>
           <th>You get</th>
           <th>Status</th>
@@ -484,7 +486,7 @@
     });
   })();
 </script>
-<script src="{{ asset('js/artist-payments.js') }}?v=6"></script>
+<script src="{{ asset('js/artist-payments.js') }}?v=7"></script>
 <style>
   @media(max-width:900px){
     .money-page .money-filters{grid-template-columns:1fr 1fr!important}

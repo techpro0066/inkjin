@@ -13,6 +13,7 @@ use App\Models\BookingRequest;
 use App\Models\CustomRequest;
 use App\Models\PaymentLink;
 use App\Models\StudioRequest;
+use App\Services\ArtistNavBadgeService;
 use App\Services\ArtistPayoutService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,11 @@ class RequestsController extends Controller
 {
     public function index(Request $request)
     {
+        $artist = Auth::user();
+        if ($artist) {
+            app(ArtistNavBadgeService::class)->markBookingsSeen($artist);
+        }
+
         $artistId = (int) Auth::id();
 
         $designRequests = BookingRequest::query()

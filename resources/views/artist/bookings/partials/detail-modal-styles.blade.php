@@ -1,12 +1,16 @@
 <style>
   /* Self-contained overlay — works without Tailwind (Inbox has no Tailwind CDN). */
   .artist-bdm{
-    position:fixed;inset:0;z-index:400;
+    position:fixed!important;inset:0!important;z-index:560;
+    width:100vw!important;height:100vh!important;height:100dvh!important;
+    margin:0!important;flex:none!important;align-self:auto!important;
     display:none;align-items:center;justify-content:center;
     padding:24px;overflow:hidden;
     pointer-events:none;opacity:0;
     transition:opacity .28s cubic-bezier(.22,1,.36,1);
   }
+  /* Mobile chat thread is position:fixed;z-index:40 — keep detail above it. */
+  body.inbox-detail-open #chatView.mobile-open{z-index:1!important}
   .artist-bdm.artist-bdm-open{
     display:flex!important;pointer-events:auto;opacity:1;
   }

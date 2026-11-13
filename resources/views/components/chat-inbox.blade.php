@@ -145,8 +145,24 @@
     #chatView.mobile-open ~ #convList,
     .chat-layout.mobile-thread #convList{display:none!important}
     #chatView.mobile-open #chatBackBtn{display:inline-flex!important}
-    .bp-inbox .ibwrap{position:relative;max-width:min(280px, calc(100vw - 140px))}
-    .bp-inbox .ibsel{max-width:100%}
+    /* Booking strip: full-width row under contact, View always tappable */
+    #chatView .chat-thread-head{align-items:flex-start}
+    #chatView #chatBookingWrap{
+      flex:1 1 100%;width:100%;margin-left:0!important;min-width:0;
+      justify-content:stretch;gap:8px
+    }
+    #chatView #chatBookingStatic:not(.hidden){
+      flex:1;min-width:0;max-width:none
+    }
+    #chatView #chatBookingStatic #chatBookingDate{
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%
+    }
+    #chatView #chatViewBookingBtn:not(.hidden){
+      flex-shrink:0;min-height:36px;padding:8px 10px;align-self:center
+    }
+    .bp-inbox .ibwrap{position:relative;flex:1;min-width:0;max-width:none}
+    .bp-inbox .ibsel{max-width:100%;width:100%}
+    .bp-inbox .ibsel .ibsub{max-width:100%}
     .bp-inbox .ibmenu{
       left:0;right:auto;width:min(300px, calc(100vw - 24px));max-width:calc(100vw - 24px);z-index:50
     }
@@ -229,7 +245,7 @@
                 </div>
 
         <div class="bp-chat-pane" id="chatView">
-          <div class="row" style="padding:14px 20px;border-bottom:1px solid #E8DFEA;gap:12px;flex-wrap:wrap">
+          <div class="row chat-thread-head" style="padding:14px 20px;border-bottom:1px solid #E8DFEA;gap:12px;flex-wrap:wrap">
             <button type="button" id="chatBackBtn" class="lg:hidden" style="background:none;border:0;cursor:pointer;padding:0;color:#6F6874;display:none" aria-label="Back to conversations">
               <span class="ms">arrow_back</span>
             </button>
@@ -257,15 +273,15 @@
                   </button>
                 <div id="chatBookingSelectMenu" class="ibmenu hidden" hidden></div>
                 </div>
-              <div class="hidden" id="chatBookingStatic" style="align-items:center;gap:8px;background:#FAF0FB;border-radius:10px;padding:6px 10px">
-                <span class="ms" style="font-size:16px;color:#3E007C">calendar_today</span>
-                <div style="min-width:0">
+              <div class="hidden" id="chatBookingStatic" style="align-items:center;gap:8px;background:#FAF0FB;border-radius:10px;padding:6px 10px;min-width:0">
+                <span class="ms" style="font-size:16px;color:#3E007C;flex-shrink:0">calendar_today</span>
+                <div style="min-width:0;flex:1">
                   <div style="font-size:12.5px;font-weight:700" id="chatBookingTitle"></div>
                   <div class="faint" style="font-size:11.5px" id="chatBookingDate"></div>
                 </div>
               </div>
               <a href="#" id="chatViewBookingBtn" class="btn sm ghost hidden">
-                <span class="ms">visibility</span>View booking
+                <span class="ms">visibility</span><span id="chatViewBookingBtnLabel">View booking</span>
               </a>
             </div>
             </div>
@@ -303,7 +319,7 @@
       </div>
 
       <script src="https://cdn.jsdelivr.net/npm/stream-chat@8.40.0/dist/browser.full-bundle.min.js"></script>
-      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=25"></script>
+      <script src="{{ asset('js/stream-chat-inbox.js') }}?v=26"></script>
     @endif
 
 @if ($isBookpay)

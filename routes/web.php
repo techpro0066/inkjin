@@ -56,6 +56,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/studio', \App\Http\Controllers\Studio\DashboardController::class)
         ->middleware('studio')
         ->name('studio.dashboard');
+    Route::post('/studio/welcome-seen', [\App\Http\Controllers\Studio\DashboardController::class, 'markWelcomeSeen'])
+        ->middleware('studio')
+        ->name('studio.welcome-seen');
     Route::post('/studio/guest-spot-invites/{guestSpot}/accept', [\App\Http\Controllers\GuestSpotStudioInviteAcceptController::class, 'acceptFromDashboard'])
         ->middleware('studio')
         ->whereNumber('guestSpot')

@@ -74,6 +74,7 @@ class Studio extends Model
         'use_studio_consent_form',
         'allow_artist_own_consent',
         'stripe_setup_skipped_at',
+        'welcome_seen_at',
     ];
 
     protected $casts = [
@@ -98,6 +99,7 @@ class Studio extends Model
         'use_studio_consent_form' => 'boolean',
         'allow_artist_own_consent' => 'boolean',
         'stripe_setup_skipped_at' => 'datetime',
+        'welcome_seen_at' => 'datetime',
     ];
 
     public function portfolios(): HasMany

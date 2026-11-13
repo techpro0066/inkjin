@@ -85,9 +85,9 @@
     .cnt{margin-left:auto;background:#3A3A3A;color:#fff;border-radius:10px;font-size:11px;padding:1px 8px;font-weight:600;line-height:1.4;min-width:1.4em;text-align:center}
     .cnt.hidden,[hidden].cnt{display:none!important}
     aside nav a.on .cnt{background:var(--pri)}
-    .ndot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:#3A3A3A;flex-shrink:0}
+    .ndot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0}
     .ndot.hidden,[hidden].ndot{display:none!important}
-    aside nav a.on .ndot{background:var(--pri)}
+    aside nav a.on .ndot{background:var(--blue)}
     .sep{height:1px;background:#333;margin:10px 4px;flex-shrink:0}
 
     .foot{margin-top:auto;flex-shrink:0}

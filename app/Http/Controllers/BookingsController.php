@@ -9,6 +9,7 @@ use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Models\CustomRequest;
 use App\Models\PaymentLink;
+use App\Services\ArtistNavBadgeService;
 use App\Services\ArtistPayoutService;
 use App\Services\BookingConsentService;
 use App\Support\ArtistBookingDetailPresenter;
@@ -31,6 +32,11 @@ class BookingsController extends Controller
      */
     public function index(Request $request)
     {
+        $artist = Auth::user();
+        if ($artist) {
+            app(ArtistNavBadgeService::class)->markBookingsSeen($artist);
+        }
+
         $artistId = (int) Auth::id();
         $today = Carbon::today()->toDateString();
         $filter = strtolower(trim((string) $request->input('filter', 'upcoming')));

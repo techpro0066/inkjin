@@ -462,10 +462,10 @@ class UserController extends Controller
             $defaultRevenueArtistPercent = $ownedStudio?->default_revenue_artist_percent;
             $studioLinks = $this->mapStudioArtistLinks($ownedStudio?->userStudios ?? collect());
         } else {
-            $locationParts = array_filter([
-                trim((string) ($detail?->city ?? '')),
-                trim((string) ($detail?->country ?? '')),
-            ]);
+        $locationParts = array_filter([
+            trim((string) ($detail?->city ?? '')),
+            trim((string) ($detail?->country ?? '')),
+        ]);
             $avatar = $detail?->avatar;
             $phone = $user->phone_number ?: ($detail?->mobile_number ?: '—');
             $username = $detail?->user_name;

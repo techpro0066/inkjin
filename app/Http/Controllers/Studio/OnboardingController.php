@@ -220,6 +220,7 @@ class OnboardingController extends Controller
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'mobile' => ['required', 'string', 'max:50'],
             'owner_is_artist' => ['required', Rule::in(['yes', 'no'])],
             'avatar' => [
@@ -232,6 +233,9 @@ class OnboardingController extends Controller
         ], [
             'first_name.required' => 'First name is required.',
             'last_name.required' => 'Last name is required.',
+            'email.required' => 'Owner email is required.',
+            'email.email' => 'Enter a valid email address.',
+            'email.unique' => 'This email is already registered.',
             'mobile.required' => 'Mobile is required.',
             'owner_is_artist.required' => 'Please choose whether you also tattoo here.',
             'owner_is_artist.in' => 'Please choose whether you also tattoo here.',
@@ -242,6 +246,7 @@ class OnboardingController extends Controller
 
         $user->first_name = trim($validated['first_name']);
         $user->last_name = trim($validated['last_name']);
+        $user->email = strtolower(trim($validated['email']));
         $user->phone_number = trim($validated['mobile']);
         $user->save();
 
@@ -286,6 +291,7 @@ class OnboardingController extends Controller
                 'owner' => [
                     'first_name' => $user->first_name,
                     'last_name' => $user->last_name,
+                    'email' => $user->email,
                     'mobile' => $user->phone_number ?? '',
                     'initials' => $initials,
                     'avatar' => $avatarUrl,

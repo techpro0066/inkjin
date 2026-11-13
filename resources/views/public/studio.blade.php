@@ -153,7 +153,7 @@
     }
 
     $logoStyle = $logoUrl
-        ? 'cursor:pointer;background:#fff url('.$escAttr($logoUrl).') center/cover no-repeat;box-shadow:inset 0 0 0 1px #E8E1EC'
+        ? 'cursor:pointer;background:transparent url('.$escAttr($logoUrl).') center/cover no-repeat;box-shadow:inset 0 0 0 1px #E8E1EC'
         : 'cursor:pointer;background:linear-gradient(135deg,'.$escAttr($schemePrimary).','.$escAttr($schemeMid).')';
 
     $metaDescription = $description !== ''
@@ -253,7 +253,7 @@
             </div>
           @endif
           @if($established !== '')
-            <div class="sp-mi"><span class="ms">calendar_month</span><div>Established {{ $established }}</div></div>
+            <div class="sp-mi"><span class="ms">calendar_month</span><div>Est. {{ $established }}</div></div>
           @endif
           @if($phone !== '')
             <div class="sp-mi"><span class="ms">call</span><div><a href="tel:{{ preg_replace('/\s+/', '', $phone) }}">{{ $phone }}</a></div></div>

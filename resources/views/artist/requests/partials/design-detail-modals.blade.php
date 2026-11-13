@@ -9,7 +9,9 @@
 
   /* D02 overlay modal */
   #requestDetailModal.ov{
-    display:none;position:fixed;inset:0;z-index:400;
+    display:none;position:fixed!important;inset:0!important;z-index:560;
+    width:100vw!important;height:100vh!important;height:100dvh!important;
+    margin:0!important;flex:none!important;
     background:rgba(20,10,30,.45);padding:16px;
     align-items:center;justify-content:center;
   }
@@ -1609,13 +1611,19 @@
         renderRequestDetail(req);
         if (canOfferSlots && req.isPending) hydrateOfferedSlotsFromRequest(req);
       }
-      document.getElementById('requestDetailModal').classList.add('open');
+      const detailModal = document.getElementById('requestDetailModal');
+      if (detailModal.parentElement !== document.body) {
+        document.body.appendChild(detailModal);
+      }
+      detailModal.classList.add('open');
       document.body.style.overflow = 'hidden';
+      document.body.classList.add('inbox-detail-open');
     }
 
     function closeRequestDetail() {
       document.getElementById('requestDetailModal').classList.remove('open');
       document.body.style.overflow = '';
+      document.body.classList.remove('inbox-detail-open');
     }
 
     function closeDesignModalOnBackdrop(e) {

@@ -51,9 +51,10 @@
             <div id="last_name_error" class="field-err"></div>
           </div>
           <div>
-            <span class="fl">Email</span>
-            <input class="in" id="email" type="email" value="{{ $ownerEmail }}" placeholder="" readonly style="background:#F7F4F8;color:#6F6874">
-            <div class="help">Your login, from sign-up. Change it in Account &gt; Profile.</div>
+            <span class="fl">Owner email <span style="color:#C62828">*</span></span>
+            <input class="in" id="email" name="email" type="email" value="{{ old('email', $ownerEmail) }}" placeholder="" autocomplete="email">
+            <div class="help">Your login email. Used for account and studio messages.</div>
+            <div id="email_error" class="field-err"></div>
           </div>
           <div>
             <span class="fl">Mobile <span style="color:#C62828">*</span></span>
@@ -110,7 +111,7 @@
   var form = document.getElementById('studioOnboardingOwnerForm');
   var btn = document.getElementById('nextStepBtn');
   var defaultBtnHtml = btn ? btn.innerHTML : '';
-  var fields = ['first_name', 'last_name', 'mobile', 'owner_is_artist', 'avatar'];
+  var fields = ['first_name', 'last_name', 'email', 'mobile', 'owner_is_artist', 'avatar'];
   var artistInput = document.getElementById('owner_is_artist');
   var preview = document.getElementById('ownerAvatarPreview');
 

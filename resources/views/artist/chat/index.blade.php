@@ -14,6 +14,8 @@
     #customRequestModal.ov:not(.open),
     #customDeclineModal.ov:not(.open),
     #requestDetailModal.ov:not(.open){display:none!important}
+    /* Keep Inbox detail modals above the fixed mobile chat thread. */
+    body.inbox-detail-open #chatView.mobile-open{z-index:1!important}
   </style>
 @endsection
 
@@ -31,7 +33,7 @@
   @include('artist.requests.partials.custom-detail-modals')
   @include('artist.requests.partials.design-detail-modals')
   <script src="{{ asset('js/question-answer-display.js') }}"></script>
-  <script src="{{ asset('js/artist-booking-detail-modal.js') }}?v=4"></script>
+  <script src="{{ asset('js/artist-booking-detail-modal.js') }}?v=5"></script>
   <script>
     window.inkjinInboxDetailUrls = {
       booking: @json(url('/artist/bookings')),

@@ -207,7 +207,7 @@ body:has(.mb:not([hidden])) .mk{display:none}
 body{position:relative}
 .cst-svc{margin-top:10px;font-size:14px;color:var(--bxs)}.cst-svc b{color:var(--bxt)}
 
-#content-designs {
+#content-designs, #content-portfolio, #content-guest-spots, #content-policies, #content-faq {
   margin-bottom: 2rem;
 }
 </style>

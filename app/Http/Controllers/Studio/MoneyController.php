@@ -800,6 +800,20 @@ class MoneyController extends Controller
     }
 
     /**
+     * Snapshot for studio Home KPIs.
+     *
+     * @return array<string, mixed>
+     */
+    public function dashboardEarningsSummary(?Studio $studio, ArtistPayoutService $payout, StripeConnectService $stripeConnect): array
+    {
+        $rows = $studio
+            ? $this->studioEarningsRows($studio, $payout)
+            : collect();
+
+        return $this->studioEarningsSummary($rows, $studio, $stripeConnect);
+    }
+
+    /**
      * @param  Collection<int, array<string, mixed>>  $rows
      * @return array<string, mixed>
      */

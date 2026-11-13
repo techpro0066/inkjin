@@ -505,7 +505,7 @@ class StudioPageController extends Controller
         $since = $studio?->tattooing_since;
         $metaParts = array_filter([
             $location !== '' ? $location : null,
-            $since ? 'Established '.$since : null,
+            $since ? 'Est. '.$since : null,
         ]);
 
         $styleLabels = is_array($data['studioStyles'] ?? null) ? $data['studioStyles'] : [];
@@ -539,7 +539,7 @@ class StudioPageController extends Controller
             'avatar' => $avatarUrl,
             'initials' => $data['studioInitials'] ?? 'ST',
             'tagline' => $tagline,
-            'meta' => $metaParts !== [] ? implode(' · ', $metaParts) : 'Your city · Established year',
+            'meta' => $metaParts !== [] ? implode(' · ', $metaParts) : 'Your city · Est. year',
             'styles' => $styleLabels !== [] ? implode(' · ', $styleLabels) : 'Traditional · Neo-traditional · Fine line',
             'bio' => $bio,
             'cta' => 'Book with us',

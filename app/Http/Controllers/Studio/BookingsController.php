@@ -783,6 +783,16 @@ class BookingsController extends Controller
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Public wrapper for studio Home / other dashboards.
+     *
+     * @return array<string, mixed>
+     */
+    public function dashboardBookingRow(Booking $booking): array
+    {
+        return $this->mapBookingRow($booking);
+    }
+
     private function mapBookingRow(Booking $booking): array
     {
         $client = $booking->user;

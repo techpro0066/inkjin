@@ -186,10 +186,6 @@ class ArtistPaymentsService
             : $fullBookingFee;
 
         $payout = $booking->artistPayout;
-        if ($payout && $payout->isCompleted() && $booking->pay_artist) {
-            $net = (float) $payout->amount;
-            // Keep $fee as the artist's booking-fee share (do not use gross − net; that includes studio share).
-        }
 
         $remaining = 0.0;
         if ($userDetail && $booking->payment_status === 'paid' && ! $booking->pay_artist) {
@@ -215,6 +211,18 @@ class ArtistPaymentsService
         }
 
         $moneyUi = $this->payoutService->bookingDetailsMoneyBreakdown($booking, $userDetail);
+
+        // Listing columns: Stripe fee (artist share) + You get after Stripe/fees.
+        $tableStripeFee = round((float) ($moneyUi['your_stripe_amount'] ?? $moneyUi['stripe_fee_amount'] ?? 0), 2);
+        $tableYouGet = round((float) ($moneyUi['you_get_amount'] ?? $net), 2);
+        if ($payout && $payout->isCompleted() && $booking->pay_artist) {
+            // Actual transfer wins once paid out.
+            $tableYouGet = round((float) $payout->amount, 2);
+            $net = $tableYouGet;
+        } else {
+            $net = $tableYouGet;
+        }
+
         $breakdownRows = $this->buildBreakdownRowsFromMoneyUi(
             moneyUi: $moneyUi,
             amount: round($amount, 2),
@@ -226,7 +234,6 @@ class ArtistPaymentsService
         $tableStudioGets = $hasSplitDisplay
             ? round((float) ($moneyUi['studio_gets_amount'] ?? $studioGets), 2)
             : 0.0;
-        $tableFee = round($fee, 2);
 
         return [
             'id' => $booking->id,
@@ -236,7 +243,7 @@ class ArtistPaymentsService
             'reference' => $booking->referenceLabel(),
             'date' => $paidAt,
             'amount' => round($amount, 2),
-            'fee' => $tableFee,
+            'fee' => $tableStripeFee,
             'studio_gets' => $tableStudioGets,
             'net' => round($net, 2),
             'remaining' => round($remaining, 2),
@@ -324,7 +331,7 @@ class ArtistPaymentsService
 
             $rows[] = [
                 (string) ($moneyUi['split_label'] ?? 'Split'),
-                (string) ($moneyUi['split_value'] ?? 'None · booked at your own place'),
+                (string) ($moneyUi['split_value'] ?? 'None'),
             ];
 
             $youGet = (float) ($moneyUi['you_get_amount'] ?? $net);
