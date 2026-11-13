@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Studio;
 
 use App\Http\Controllers\Controller;
 use App\Models\Studio;
+use App\Models\UserStudio;
 use App\Rules\ReservedArtistUsername;
 use App\Rules\UniquePublicUsername;
+use App\Services\StudioArtistInviteService;
 use App\Services\StripeConnectService;
 use App\Support\StripeConnectCountries;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Stripe\Exception\ApiErrorException;
 
@@ -52,7 +55,7 @@ class OnboardingController extends Controller
             'website' => trim((string) ($links['website'] ?? '')),
             'onboardingStep' => 'profile',
             'onboardingStepNumber' => 1,
-            'onboardingStepTotal' => 5,
+            'onboardingStepTotal' => 6,
         ]);
     }
 
@@ -208,7 +211,7 @@ class OnboardingController extends Controller
             'isTattooArtist' => $isTattooArtist,
             'onboardingStep' => 'owner',
             'onboardingStepNumber' => 2,
-            'onboardingStepTotal' => 5,
+            'onboardingStepTotal' => 6,
         ]);
     }
 
@@ -333,7 +336,7 @@ class OnboardingController extends Controller
             'mapsLabel' => $mapsLabel,
             'onboardingStep' => 'location',
             'onboardingStepNumber' => 3,
-            'onboardingStepTotal' => 5,
+            'onboardingStepTotal' => 6,
         ]);
     }
 
@@ -443,7 +446,7 @@ class OnboardingController extends Controller
             'defaultRevenueArtistPercent' => $artistPercent,
             'onboardingStep' => 'terms',
             'onboardingStepNumber' => 4,
-            'onboardingStepTotal' => 5,
+            'onboardingStepTotal' => 6,
         ]);
     }
 
@@ -588,7 +591,7 @@ class OnboardingController extends Controller
             'stripeConnected' => $stripeConnected,
             'onboardingStep' => 'payouts',
             'onboardingStepNumber' => 5,
-            'onboardingStepTotal' => 5,
+            'onboardingStepTotal' => 6,
         ]);
     }
 
@@ -627,22 +630,16 @@ class OnboardingController extends Controller
 
         $studio->save();
 
-        if ($request->boolean('complete_onboarding') && $user) {
-            $user->on_boarding = 'yes';
-            $user->save();
-            app(\App\Services\MailcoachSubscriberService::class)
-                ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_STUDIO);
-            app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
-        }
+        // Payouts no longer finishes onboarding — next step is Your artists.
+        $goNext = $request->boolean('complete_onboarding') || $request->boolean('continue_to_artists');
+        $nextUrl = route('studio.onboarding.artists');
 
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Payout settings saved.',
                 'status' => 'onboarding-payouts-saved',
-                'redirect' => $request->boolean('complete_onboarding')
-                    ? route('studio.dashboard')
-                    : null,
+                'redirect' => $goNext ? $nextUrl : null,
                 'studio' => [
                     'currency' => $studio->currency,
                     'business_type' => $studio->business_type,
@@ -653,8 +650,129 @@ class OnboardingController extends Controller
         }
 
         return redirect()
-            ->route($request->boolean('complete_onboarding') ? 'studio.dashboard' : 'studio.onboarding.payouts')
+            ->route($goNext ? 'studio.onboarding.artists' : 'studio.onboarding.payouts')
             ->with('status', 'onboarding-payouts-saved');
+    }
+
+    public function artists(Request $request): View|RedirectResponse
+    {
+        if ($redirect = $this->ensureStudioOnboardingStep($request, 'studio.onboarding.artists')) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+        $studio = $this->resolveStudio($user);
+
+        $defaultSplit = max(1, min(99, (int) ($studio?->default_revenue_artist_percent ?? 60)));
+        $offersSplit = $studio?->offers_revenue_split;
+        $offersRent = $studio?->offers_workstation_rent;
+        if ($offersSplit === null) {
+            $offersSplit = true;
+        }
+        if ($offersRent === null) {
+            $offersRent = true;
+        }
+
+        return view('studio.onboarding.artists', [
+            'studio' => $studio,
+            'defaultRevenueArtistPercent' => $defaultSplit,
+            'offersRevenueSplit' => (bool) $offersSplit,
+            'offersWorkstationRent' => (bool) $offersRent,
+            'relationshipOptions' => [
+                'resident' => 'Resident',
+                'co_owner' => 'Co-owner',
+                'collective_member' => 'Collective member',
+                'apprentice' => 'Apprentice',
+                'other' => 'Other',
+            ],
+            'onboardingStep' => 'artists',
+            'onboardingStepNumber' => 6,
+            'onboardingStepTotal' => 6,
+        ]);
+    }
+
+    public function finishArtists(Request $request, StudioArtistInviteService $inviteService): RedirectResponse|JsonResponse
+    {
+        $user = $request->user();
+        $studio = $this->resolveStudio($user) ?? $this->createStudioForUser($user);
+
+        $validated = $request->validate([
+            'invites' => ['nullable', 'array', 'max:25'],
+            'invites.*.identifier' => ['nullable', 'string', 'max:255'],
+            'invites.*.relationship' => ['nullable', 'string', Rule::in(UserStudio::RELATIONSHIP_TYPES)],
+            'invites.*.payout_mode' => ['nullable', 'string', Rule::in(['split', 'direct'])],
+            'invites.*.revenue_split' => ['nullable', 'integer', 'min:0', 'max:100'],
+        ]);
+
+        $sent = 0;
+        $errors = [];
+        foreach (($validated['invites'] ?? []) as $index => $row) {
+            $identifier = trim((string) ($row['identifier'] ?? ''));
+            if ($identifier === '') {
+                continue;
+            }
+
+            try {
+                $inviteService->send($studio, $user, $identifier, [
+                    'relationship' => $row['relationship'] ?? 'resident',
+                    'payout_mode' => $row['payout_mode'] ?? 'split',
+                    'revenue_split' => $row['revenue_split'] ?? ($studio->default_revenue_artist_percent ?? 60),
+                ]);
+                $sent++;
+            } catch (ValidationException $e) {
+                $msg = collect($e->errors())->flatten()->first() ?: 'Could not send invite.';
+                $errors['invites.'.$index.'.identifier'] = [$msg];
+            } catch (\Throwable $e) {
+                Log::error('Studio onboarding invite failed', [
+                    'studio_id' => $studio->id,
+                    'identifier' => $identifier,
+                    'error' => $e->getMessage(),
+                ]);
+                $errors['invites.'.$index.'.identifier'] = ['Could not send invite.'];
+            }
+        }
+
+        if ($errors !== []) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Some invites could not be sent.',
+                    'errors' => $errors,
+                    'sent' => $sent,
+                ], 422);
+            }
+
+            return redirect()
+                ->route('studio.onboarding.artists')
+                ->withInput()
+                ->withErrors($errors);
+        }
+
+        if ($user && (string) ($user->on_boarding ?? '') !== 'yes') {
+            $user->on_boarding = 'yes';
+            $user->save();
+            app(\App\Services\MailcoachSubscriberService::class)
+                ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_STUDIO);
+            app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
+        }
+
+        $message = $sent > 0
+            ? ($sent === 1 ? 'Invitation sent. Welcome to your studio dashboard.' : $sent.' invitations sent. Welcome to your studio dashboard.')
+            : 'Welcome to your studio dashboard';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'status' => 'onboarding-artists-saved',
+                'sent' => $sent,
+                'redirect' => route('studio.dashboard'),
+            ]);
+        }
+
+        return redirect()
+            ->route('studio.dashboard')
+            ->with('success', $message);
     }
 
     public function createStripeSession(Request $request, StripeConnectService $stripeConnect): JsonResponse
@@ -774,18 +892,11 @@ class OnboardingController extends Controller
             $stripeConnect->finalizeStudioOwnerOnboarding($studio, $validated['account_id']);
             $studio->refresh();
 
-            if ($user && (string) ($user->on_boarding ?? '') !== 'yes') {
-                $user->on_boarding = 'yes';
-                $user->save();
-                app(\App\Services\MailcoachSubscriberService::class)
-                    ->queueSubscribeUser($user, \App\Services\MailcoachSubscriberService::TAG_STUDIO);
-                app(\App\Services\MailcoachSubscriberService::class)->queueSubscribeStudio($studio);
-            }
-
+            // Stripe connect does not finish studio onboarding — Your artists is next.
             return response()->json([
                 'success' => true,
                 'message' => 'Stripe connected',
-                'redirect' => route('studio.dashboard'),
+                'redirect' => route('studio.onboarding.artists'),
                 'studio' => [
                     'stripe_account_id' => $studio->resolveStripeAccountId(),
                     'stripe_connected' => true,
@@ -883,6 +994,7 @@ class OnboardingController extends Controller
             'studio.onboarding.location' => 3,
             'studio.onboarding.terms' => 4,
             'studio.onboarding.payouts' => 5,
+            'studio.onboarding.artists' => 6,
         ];
 
         $requested = $order[$routeName] ?? 1;
@@ -899,7 +1011,7 @@ class OnboardingController extends Controller
     }
 
     /**
-     * First unfinished studio onboarding step route (profile → owner → location → terms → payouts).
+     * First unfinished studio onboarding step route (profile → owner → location → terms → payouts → artists).
      */
     public static function nextIncompleteStepRoute($user, ?Studio $studio): string
     {
@@ -907,7 +1019,7 @@ class OnboardingController extends Controller
     }
 
     /**
-     * @return 'studio.onboarding.profile'|'studio.onboarding.owner'|'studio.onboarding.location'|'studio.onboarding.terms'|'studio.onboarding.payouts'
+     * @return 'studio.onboarding.profile'|'studio.onboarding.owner'|'studio.onboarding.location'|'studio.onboarding.terms'|'studio.onboarding.payouts'|'studio.onboarding.artists'
      */
     public static function nextIncompleteStepKey($user, ?Studio $studio): string
     {
@@ -923,8 +1035,11 @@ class OnboardingController extends Controller
         if (! self::isTermsStepComplete($studio)) {
             return 'studio.onboarding.terms';
         }
+        if (! self::isPayoutsStepComplete($studio)) {
+            return 'studio.onboarding.payouts';
+        }
 
-        return 'studio.onboarding.payouts';
+        return 'studio.onboarding.artists';
     }
 
     private static function isProfileStepComplete(?Studio $studio): bool
@@ -978,5 +1093,16 @@ class OnboardingController extends Controller
         // Both stay null until the terms step is saved.
         return $studio->offers_revenue_split !== null
             || $studio->offers_workstation_rent !== null;
+    }
+
+    private static function isPayoutsStepComplete(?Studio $studio): bool
+    {
+        if (! $studio) {
+            return false;
+        }
+
+        // Currency + business type are only set on the payouts step.
+        return trim((string) ($studio->currency ?? '')) !== ''
+            && trim((string) ($studio->business_type ?? '')) !== '';
     }
 }

@@ -267,12 +267,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/location', [\App\Http\Controllers\Studio\OnboardingController::class, 'updateLocation'])->name('location.update');
         Route::get('/terms', [\App\Http\Controllers\Studio\OnboardingController::class, 'terms'])->name('terms');
         Route::post('/terms', [\App\Http\Controllers\Studio\OnboardingController::class, 'updateTerms'])->name('terms.update');
-        Route::get('/payouts', [\App\Http\Controllers\Studio\OnboardingController
-        ::class, 'payouts'])->name('payouts');
+        Route::get('/payouts', [\App\Http\Controllers\Studio\OnboardingController::class, 'payouts'])->name('payouts');
         Route::post('/payouts', [\App\Http\Controllers\Studio\OnboardingController::class, 'updatePayouts'])->name('payouts.update');
         Route::post('/payouts/stripe/session', [\App\Http\Controllers\Studio\OnboardingController::class, 'createStripeSession'])->name('payouts.stripe.session');
         Route::get('/payouts/stripe/status', [\App\Http\Controllers\Studio\OnboardingController::class, 'stripeStatus'])->name('payouts.stripe.status');
         Route::post('/payouts/stripe/complete', [\App\Http\Controllers\Studio\OnboardingController::class, 'completeStripe'])->name('payouts.stripe.complete');
+        Route::get('/artists', [\App\Http\Controllers\Studio\OnboardingController::class, 'artists'])->name('artists');
+        Route::post('/artists', [\App\Http\Controllers\Studio\OnboardingController::class, 'finishArtists'])->name('artists.finish');
     });
     Route::middleware('studio')->prefix('studio/account')->name('studio.account.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Studio\AccountController::class, 'profile'])->name('profile');

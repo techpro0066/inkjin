@@ -180,7 +180,7 @@
     <a class="btn ghost" href="{{ route('studio.onboarding.terms') }}" id="onboardingBackBtn"><span class="ms">arrow_back</span>Back</a>
     <div class="row" style="gap:0">
       <button type="button" class="btn ghost" id="setupLaterBtn" @if($stripeConnected) hidden @endif>Set up later</button>
-      <button type="button" class="btn" id="goDashboardBtn" @unless($stripeConnected) hidden @endunless>Go to dashboard<span class="ms">arrow_forward</span></button>
+      <button type="button" class="btn" id="goDashboardBtn" @unless($stripeConnected) hidden @endunless>Next: Your artists<span class="ms">arrow_forward</span></button>
     </div>
   </div>
 @endsection
@@ -196,6 +196,7 @@
   var connected = @json((bool) $stripeConnected);
   var stripeConfigured = @json((bool) $stripeConnectConfigured);
   var dashboardUrl = @json(route('studio.dashboard'));
+  var artistsUrl = @json(route('studio.onboarding.artists'));
   var $ = window.jQuery;
   var setupLaterBtn = document.getElementById('setupLaterBtn');
   var setupLaterHint = document.getElementById('setupLaterHint');
@@ -283,14 +284,14 @@
     setConnectingUi(false);
   }
 
-  function goToDashboard(message) {
+  function goToArtists(message) {
     try {
       if (message) sessionStorage.setItem('bp-toast', message);
     } catch (e) {}
-    window.location.href = dashboardUrl;
+    window.location.href = artistsUrl;
   }
 
-  function completeOnboardingAndGo(message) {
+  function savePayoutsAndGoToArtists(message) {
     var setup = connected ? readSetup() : validateSetup();
     if (!setup) return;
 
@@ -315,17 +316,17 @@
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(Object.assign({}, setup, { complete_onboarding: 1 }))
+      body: JSON.stringify(Object.assign({}, setup, { continue_to_artists: 1 }))
     })
       .then(function (res) {
         return res.json().then(function (data) { return { ok: res.ok, data: data }; });
       })
       .then(function (result) {
         if (result.ok && result.data && result.data.success) {
-          goToDashboard(message || result.data.message || 'Welcome to your studio dashboard');
+          goToArtists(message || result.data.message || 'Invite your artists');
           return;
         }
-        if (window.bpToast) window.bpToast((result.data && result.data.message) || 'Could not finish onboarding.', true);
+        if (window.bpToast) window.bpToast((result.data && result.data.message) || 'Could not save payout settings.', true);
         if (btn) {
           btn.disabled = false;
           btn.classList.remove('disabled');
@@ -354,7 +355,7 @@
 
   goDashboardBtn?.addEventListener('click', function () {
     if (!goDashboardBtn || goDashboardBtn.disabled) return;
-    completeOnboardingAndGo();
+    savePayoutsAndGoToArtists();
   });
 
   function readSetup() {
@@ -412,14 +413,14 @@
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(Object.assign({}, setup || {}, { complete_onboarding: 1 }))
+      body: JSON.stringify(Object.assign({}, setup || {}, { continue_to_artists: 1 }))
     })
       .then(function (res) {
         return res.json().then(function (data) { return { ok: res.ok, data: data }; });
       })
       .then(function (result) {
         if (result.ok && result.data && result.data.success) {
-          window.location.href = (result.data.redirect || dashboardUrl);
+          window.location.href = (result.data.redirect || artistsUrl);
           return;
         }
         if (window.bpToast) window.bpToast((result.data && result.data.message) || 'Could not save.', true);
@@ -446,10 +447,12 @@
     updateStripeDescription: updateStripeDescription,
     showConnected: showConnected,
     setConnectingUi: setConnectingUi,
-    goToDashboard: goToDashboard,
+    goToArtists: goToArtists,
+    goToDashboard: goToArtists,
     stripeConfigured: stripeConfigured,
     csrf: csrf,
-    dashboardUrl: dashboardUrl
+    dashboardUrl: artistsUrl,
+    artistsUrl: artistsUrl
   };
 })();
 </script>

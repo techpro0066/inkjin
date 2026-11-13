@@ -1,7 +1,7 @@
 @php
   $onboardingStep = $onboardingStep ?? 'profile';
   $onboardingStepNumber = $onboardingStepNumber ?? 1;
-  $onboardingStepTotal = $onboardingStepTotal ?? 5;
+  $onboardingStepTotal = $onboardingStepTotal ?? 6;
   $progressPct = max(0, min(100, (int) round(($onboardingStepNumber / $onboardingStepTotal) * 100)));
 @endphp
 <!DOCTYPE html>
@@ -175,6 +175,14 @@
           <span class="ms">payments</span>
         @endif
         Payouts
+      </a>
+      <a href="{{ route('studio.onboarding.artists') }}" class="{{ $onboardingStep === 'artists' ? 'on' : '' }}">
+        @if ($onboardingStepNumber > 6)
+          <span class="ms done">check_circle</span>
+        @else
+          <span class="ms">groups</span>
+        @endif
+        Your artists
       </a>
       <div class="sep"></div>
       <form method="POST" action="{{ route('logout') }}">
