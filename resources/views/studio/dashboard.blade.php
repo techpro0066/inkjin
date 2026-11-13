@@ -7,12 +7,63 @@
 @include('studio.bookings.partials.payment-link-modal-assets')
 @include('studio.bookings.partials.booking-detail-modal-styles')
 <style>
-  .dash-todo-row{padding:13px 0;border-bottom:1px solid #F3EEF4}
+  .dash-todo-row{padding:13px 0;border-bottom:1px solid #F3EEF4;gap:12px;align-items:center}
   .dash-todo-row:last-child{border-bottom:0}
+  .dash-todo-row > div:nth-child(2){flex:1;min-width:0}
+  .dash-todo-row .btn{flex-shrink:0}
+  .dash-top{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:16px;margin-top:26px}
+  .dash-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:16px}
+  .dash-stats .card.pad{min-width:0}
+  .dash-stats .lbl{line-height:1.2}
+  .dash-check .ch{align-items:flex-start;gap:10px}
+  .dash-check .ch h3{min-width:0;flex:1;line-height:1.25}
+  .dash-check .ch b{flex-shrink:0;white-space:nowrap;padding-top:2px}
+  .dash-up{margin-top:16px;overflow:hidden}
   .pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;margin-right:5px}
   .pill.nd:before{display:none}
   .pill{gap:0}
   .card.pad{padding:20px 22px}
+  @media (max-width:900px){
+    .dash-top{grid-template-columns:minmax(0,1fr)}
+    .dash-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .dash-stats .card.pad{padding:16px}
+    .dash-stats .card.pad > div[style*="font-size:26px"]{font-size:24px!important;margin-top:8px!important}
+    .dash-up{overflow:visible;background:none;border:0}
+    .dash-up > .ch{padding:0 2px 12px;border-bottom:0;margin-bottom:2px}
+    .dash-up > .faint{padding:20px 2px!important}
+    .dash-up table,.dash-up tbody,.dash-up tr,.dash-up td{display:block;width:100%}
+    .dash-up thead{display:none}
+    .dash-up tbody tr{
+      display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;
+      background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px
+    }
+    .dash-up td{
+      border:0!important;padding:8px 0!important;display:flex!important;
+      justify-content:space-between;align-items:center;gap:12px;text-align:right;min-width:0
+    }
+    .dash-up td::before{
+      content:attr(data-label);font-size:10.5px;font-weight:700;letter-spacing:.7px;
+      color:var(--muted);text-align:left;flex-shrink:0;text-transform:uppercase
+    }
+    .dash-up td:first-child{
+      grid-column:1;grid-row:1;padding:0 0 10px!important;margin:0;
+      border-bottom:1px solid #F3EEF4!important;justify-content:flex-start;text-align:left
+    }
+    .dash-up td:first-child::before{display:none}
+    .dash-up td:last-child{
+      grid-column:2;grid-row:1;padding:0 0 10px!important;margin:0;
+      border-bottom:1px solid #F3EEF4!important;justify-content:flex-end;align-items:center
+    }
+    .dash-up td:last-child::before{display:none}
+    .dash-up td:not(:first-child):not(:last-child){
+      grid-column:1 / -1;border-bottom:1px solid #F3EEF4!important
+    }
+    .dash-up td:nth-last-child(2){border-bottom:0!important;padding-bottom:0!important}
+  }
+  @media (max-width:600px){
+    .dash-todo-row{flex-wrap:wrap}
+    .dash-todo-row .btn{margin-left:50px}
+  }
   .studio-gsb{
     display:flex;align-items:center;gap:16px;flex-wrap:wrap;
     background:linear-gradient(135deg,#F3E8FF,#FFF6FF);border:1px solid #E6D6F2;border-radius:16px;
@@ -141,24 +192,24 @@
     </button>
   </div>
 
-  <div class="grid" style="grid-template-columns:1.65fr 1fr;gap:16px;margin-top:26px">
+  <div class="dash-top">
     <div class="card">
       <div class="ch">
-        <div class="row" style="gap:10px">
+        <div class="row" style="gap:10px;min-width:0;flex:1">
           <h3>To do</h3>
           @if (count($todos) > 0)
             <span class="pill nd p" style="background:#F3E8FF;color:#7A1FC4">{{ count($todos) }}</span>
           @endif
         </div>
-        <span class="faint" style="font-size:12.5px">Items clear when they're done</span>
+        <span class="faint" style="font-size:12.5px;flex-shrink:0">Items clear when they're done</span>
       </div>
       <div style="padding:4px 22px 6px">
         @forelse ($todos as $todo)
           <div class="row dash-todo-row">
             <div class="ic" style="background:{{ $todo['icon_bg'] }};color:{{ $todo['icon_color'] }}"><span class="ms">{{ $todo['icon'] }}</span></div>
-            <div style="flex:1;min-width:0">
+            <div>
               <b style="font-size:14px">{{ $todo['title'] }}</b>
-              <div class="faint" style="font-size:12px;margin-top:2px">{{ $todo['detail'] }}</div>
+              <div class="faint" style="font-size:12px;margin-top:2px;overflow-wrap:anywhere">{{ $todo['detail'] }}</div>
             </div>
             <a class="btn sm ghost" href="{{ $todo['url'] }}">{{ $todo['cta'] }}</a>
           </div>
@@ -168,7 +219,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card dash-check">
       <div class="ch">
         <h3>Complete your studio</h3>
         <b style="font-size:13px">{{ $checklistDone }} of {{ $checklistTotal }}</b>
@@ -216,7 +267,7 @@
     </div>
   </div>
 
-  <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px">
+  <div class="dash-stats">
     <div class="card pad">
       <div class="row" style="gap:10px"><div class="ic"><span class="ms">event_available</span></div><span class="lbl">Bookings this month</span></div>
       <div style="font-size:26px;font-weight:800;margin-top:10px">{{ $bookingsThisMonth }}</div>
@@ -239,7 +290,7 @@
     </div>
   </div>
 
-  <div class="card" style="overflow:hidden;margin-top:16px">
+  <div class="card dash-up">
     <div class="ch">
       <h3>Upcoming at your studio</h3>
       <a class="l" href="{{ route('studio.bookings', ['f' => 'upcoming']) }}" style="font-weight:600;font-size:13px;text-decoration:none;color:var(--pri)">View all <span class="ms" style="font-size:16px;vertical-align:-3px">arrow_forward</span></a>

@@ -42,7 +42,7 @@
     <div style="padding:18px 22px">
       <div id="invlist"></div>
       <button type="button" class="btn ghost sm" id="addInviteRowBtn" style="margin-top:12px"><span class="ms">add</span>Add another artist</button>
-      <div class="help">The choices come from How you work with artists. Artists already on Bookpay get a request in their dashboard. Others get an email to join.</div>
+      <div class="help">The choices come from How you work with artists. Everyone gets an invite email; artists already on Bookpay also see it in their dashboard.</div>
     </div>
   </div>
 

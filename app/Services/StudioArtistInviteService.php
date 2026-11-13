@@ -551,11 +551,7 @@ class StudioArtistInviteService
 
     private function sendEmail(StudioInvite $invite, bool $isResend = false): void
     {
-        // E3: email is for artists not yet on Bookpay. Existing artists see the invite in-app.
-        if ($invite->user_id) {
-            return;
-        }
-
+        // Always email — existing Bookpay artists also get the invite (plus in-app).
         try {
             $invite->loadMissing(['studio', 'user']);
             Mail::to($invite->email)->send(new StudioArtistInviteMail(

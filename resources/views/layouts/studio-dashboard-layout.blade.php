@@ -148,8 +148,8 @@
     .bpw-toast.bad{background:#B3261E}
     @media(max-width:600px){.bpw-toast{left:16px;right:16px;top:74px}}
     @media (max-width:600px){
-      .lp{align-items:flex-end;padding:0}
-      .lp .lb{border-radius:18px 18px 0 0;max-height:92vh}
+      .lp{align-items:center;justify-content:center;padding:16px}
+      .lp .lb{border-radius:18px;max-height:min(92vh,92dvh);width:100%;max-width:460px}
       .lp .lbt .btn{flex:1 1 100%}
     }
     @media (max-width:900px){
@@ -165,7 +165,10 @@
       main{height:auto;overflow:visible;padding:22px 16px 48px}
       h1{font-size:25px}
       .grid[style*="repeat(3"]{grid-template-columns:1fr!important}
-      .grid[style*="1fr 1.5fr"]{grid-template-columns:1fr!important}
+      .grid[style*="repeat(4"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+      .grid[style*="1fr 1.5fr"],
+      .grid[style*="1.65fr"],
+      .grid[style*="1.7fr"]{grid-template-columns:1fr!important}
       table{display:block;overflow-x:auto}
     }
   </style>
