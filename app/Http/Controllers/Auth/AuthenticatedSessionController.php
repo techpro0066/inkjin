@@ -58,7 +58,7 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
 
         if (! $user->hasVerifiedEmail()) {
-            return redirect()->route('verification.notice');
+            return $this->loginRedirect($request, route('verification.notice'));
         }
 
         if (! in_array($user->role, ['admin', 'artist', 'user', 'studio'], true)) {
@@ -66,7 +66,10 @@ class AuthenticatedSessionController extends Controller
         }
 
         if ($user->role === 'user' && $user->must_set_password) {
-            return redirect()->intended(route('user.bookings.index', ['set_password' => '1']));
+            return $this->loginRedirect(
+                $request,
+                redirect()->intended(route('user.bookings.index', ['set_password' => '1']))->getTargetUrl()
+            );
         }
 
         // Avoid login ⇄ studio payout-info loops when intended points at an invite
@@ -80,7 +83,20 @@ class AuthenticatedSessionController extends Controller
             }
         }
 
-        return redirect()->intended(authenticated_home_url($user));
+        // Studio→artist invite email: after login, honor invite intended (Studio page via invite show).
+        return $this->loginRedirect(
+            $request,
+            redirect()->intended(authenticated_home_url($user))->getTargetUrl()
+        );
+    }
+
+    private function loginRedirect(Request $request, string $url): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['redirect' => $url]);
+        }
+
+        return redirect()->to($url);
     }
 
     /**
@@ -96,8 +112,7 @@ class AuthenticatedSessionController extends Controller
 
         return match ($request->input('to')) {
             'register' => redirect()->route('register'),
-            'login' => redirect()->route('login'),
-            default => redirect('/'),
+            default => redirect()->route('login'),
         };
     }
 }

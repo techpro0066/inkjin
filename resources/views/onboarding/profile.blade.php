@@ -11,7 +11,8 @@
   button.btn{border:0;cursor:pointer;font:inherit}
   button.btn:disabled{opacity:.6;cursor:not-allowed}
   .avatar-wrap{width:170px;height:170px;border-radius:50%;border:1.5px dashed #D6C9DB;background:#FBF3FC;margin:0 auto;display:flex;align-items:center;justify-content:center;position:relative;overflow:visible;cursor:pointer}
-  .avatar-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;z-index:0}
+  .avatar-wrap.has-img{background:#fff;border-style:solid;border-color:#E8DFEA}
+  .avatar-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;z-index:0;background:#fff}
   .avatar-wrap .upload-fab{position:absolute;right:6px;bottom:6px;background:#1A1A1A;color:#fff;border-radius:50%;padding:8px;font-size:18px;border:0;cursor:pointer;line-height:1;z-index:3;box-shadow:0 1px 4px rgba(0,0,0,.2)}
   .avatar-wrap .ph{font-size:40px;color:#9A929E;position:relative;z-index:1}
   .crop-ov{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px}
@@ -70,7 +71,7 @@
       </div>
 
       <div style="text-align:center">
-        <div class="avatar-wrap" id="avatarWrap">
+        <div class="avatar-wrap{{ $userDetail->avatar ? ' has-img' : '' }}" id="avatarWrap">
           <img id="profilePreview" src="{{ $userDetail->avatar ? asset($userDetail->avatar) : '' }}" alt="" style="{{ $userDetail->avatar ? '' : 'display:none' }}">
           <span id="uploadPlaceholder" class="ms ph" style="{{ $userDetail->avatar ? 'display:none' : '' }}">photo_camera</span>
           <button type="button" class="upload-fab ms" id="openUploadBtn" aria-label="Upload photo">upload</button>
@@ -188,11 +189,17 @@ $(function () {
 
   $('#applyCropBtn').on('click', function () {
     if (!cropper) return;
-    var canvas = cropper.getCroppedCanvas({ width: 512, height: 512, imageSmoothingQuality: 'high' });
+    var canvas = cropper.getCroppedCanvas({
+      width: 512,
+      height: 512,
+      imageSmoothingQuality: 'high',
+      fillColor: '#ffffff'
+    });
     canvas.toBlob(function (blob) {
       croppedBlob = blob;
       $profilePreview.attr('src', URL.createObjectURL(blob)).show();
       $uploadPlaceholder.hide();
+      $('#avatarWrap').addClass('has-img');
       if (typeof window.clearOnboardingFieldError === 'function') {
         window.clearOnboardingFieldError('avatar');
       }

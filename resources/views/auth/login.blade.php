@@ -272,7 +272,7 @@
     }).then(function (result) {
       if (result.status >= 200 && result.status < 300) {
         markReturningUser();
-        if (result.data.country_not_available && result.data.redirect) {
+        if (result.data.redirect) {
           window.location.href = result.data.redirect;
           return;
         }

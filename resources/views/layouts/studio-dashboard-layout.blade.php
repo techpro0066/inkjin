@@ -63,7 +63,8 @@
     .foot{margin-top:auto;flex-shrink:0}
     .foot .user{display:flex;gap:10px;align-items:center;padding:14px 8px 0;border-top:1px solid #333;margin-top:10px;text-decoration:none;color:inherit}
     .foot .user .av{width:36px;height:36px;border-radius:50%;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;overflow:hidden;position:relative}
-    .foot .user .av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2}
+    .foot .user .av.has-img{background:#fff!important}
+    .foot .user .av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2;background:#fff}
     .foot .user .av .ini{position:relative;z-index:1}
     .foot .user .av.has-img .ini{display:none}
     .foot .user b{display:block;font-size:13px;color:#fff}.foot .user span{display:block;font-size:11.5px;color:#9a9a9a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}

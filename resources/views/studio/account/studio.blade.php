@@ -14,8 +14,8 @@
   .pac-container{z-index:400!important;border-radius:10px;border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.12);font-family:inherit;margin-top:4px}
   .field-err{display:none;color:#C62828;font-size:12px;margin-top:6px}
   .studio-logo{width:56px;height:56px;border-radius:14px;background:#F3E8FF;color:#3E007C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;overflow:hidden;flex:none;position:relative}
-  .studio-logo.has-img{background:transparent;box-shadow:inset 0 0 0 1px #E8DFEA}
-  .studio-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2;background:transparent}
+  .studio-logo.has-img{background:#fff;box-shadow:inset 0 0 0 1px #E8DFEA}
+  .studio-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2;background:#fff}
   .studio-logo .ini{position:relative;z-index:1}
   .studio-logo.has-img .ini{display:none!important}
   .crop-ov{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px}
@@ -350,12 +350,12 @@
 
   document.getElementById('applyLogoCropBtn')?.addEventListener('click', function () {
     if (!logoCropper) return;
-    // Preserve alpha for transparent PNGs (JPEG would fill with a solid bg).
+    // Flatten transparent areas onto white so logos read clearly on any page bg.
     var canvas = logoCropper.getCroppedCanvas({
       width: 512,
       height: 512,
       imageSmoothingQuality: 'high',
-      fillColor: 'transparent'
+      fillColor: '#ffffff'
     });
     canvas.toBlob(function (blob) {
       if (!blob) {

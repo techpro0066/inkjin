@@ -58,7 +58,7 @@
     </div>
 
     @if (!empty($needsAuth))
-      <a class="btn" href="{{ route('login') }}">Log in to accept</a>
+      <a class="btn" href="{{ $loginUrl ?? route('login') }}">Log in to accept</a>
       <a class="btn ghost" href="{{ route('register', ['invite' => $invite->token, 'as' => 'artist']) }}">Create Bookpay account</a>
       <form method="post" action="{{ route('studio.artist-invite.decline', ['token' => $invite->token]) }}">
         @csrf

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Studio;
 
 use App\Http\Controllers\Controller;
 use App\Models\StudioInvite;
+use App\Models\User;
 use App\Services\StudioArtistInviteService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class StudioArtistInviteAcceptController extends Controller
     ) {
     }
 
-    public function show(string $token): View
+    public function show(string $token): View|RedirectResponse
     {
         $invite = $this->findInvite($token);
         if (! $invite) {
@@ -39,8 +40,17 @@ class StudioArtistInviteAcceptController extends Controller
 
         $this->invites->rememberToken($token);
 
-        if (! auth()->check()) {
-            session(['url.intended' => route('studio.artist-invite.show', ['token' => $token])]);
+        $inviteShowUrl = route('studio.artist-invite.show', ['token' => $token]);
+
+        if (auth()->check()) {
+            $user = auth()->user();
+            if ($this->matchesInvite($user, $invite)) {
+                // Logged-in invited artist → Studio page (settings or onboarding).
+                return redirect()->to($this->artistStudioDestination($user));
+            }
+        } else {
+            // After login, return here then bounce to Studio page.
+            session(['url.intended' => $inviteShowUrl]);
         }
 
         return view('studio.artist-invite-accept', [
@@ -52,6 +62,7 @@ class StudioArtistInviteAcceptController extends Controller
                 : null,
             'needsAuth' => ! auth()->check(),
             'wrongAccount' => auth()->check() && ! $this->matchesInvite(auth()->user(), $invite),
+            'loginUrl' => route('login'),
         ]);
     }
 
@@ -66,9 +77,10 @@ class StudioArtistInviteAcceptController extends Controller
         }
 
         if (! $request->user()) {
-            return redirect()->guest(route('login', [
-                'redirect' => route('studio.artist-invite.show', ['token' => $token]),
-            ]));
+            session(['url.intended' => route('studio.artist-invite.show', ['token' => $token])]);
+            $this->invites->rememberToken($token);
+
+            return redirect()->guest(route('login'));
         }
 
         try {
@@ -80,17 +92,10 @@ class StudioArtistInviteAcceptController extends Controller
         }
 
         $user = $request->user();
-        if ($user && (string) ($user->on_boarding ?? '') !== 'yes' && ($user->role ?? '') === 'artist') {
-            // Stay on their current onboarding step (don't jump to Studio).
-            return redirect()
-                ->route('onboarding.index')
-                ->with('success', 'Invite accepted. Your studio details are locked from '.$this->studioName($invite).'.');
-        }
 
-        return view('studio.artist-invite-result', [
-            'status' => 'accepted',
-            'studioName' => $this->studioName($invite->fresh('studio')),
-        ]);
+        return redirect()
+            ->to($this->artistStudioDestination($user))
+            ->with('success', 'Invite accepted. You are linked with '.$this->studioName($invite->fresh('studio')).'.');
     }
 
     public function decline(Request $request, string $token): View|RedirectResponse
@@ -165,5 +170,14 @@ class StudioArtistInviteAcceptController extends Controller
         $inviteEmail = strtolower(trim((string) $invite->email));
 
         return $email !== '' && $email === $inviteEmail;
+    }
+
+    private function artistStudioDestination(?User $user): string
+    {
+        if ($user && ($user->role ?? '') === 'artist' && (string) ($user->on_boarding ?? '') !== 'yes') {
+            return route('onboarding.studio');
+        }
+
+        return route('settings.studio');
     }
 }

@@ -6,10 +6,10 @@
 <style>
   .field-err{display:none;color:#C62828;font-size:12px;margin-top:6px}
   .in.err{border-color:#C62828!important;box-shadow:0 0 0 3px #FDECEC}
-  /* Purple only for initials placeholder — keep uploaded logos transparent. */
+  /* Purple only for initials placeholder — white behind uploaded/transparent logos. */
   #logoPreview{background:#3E007C;color:#fff;box-shadow:inset 0 0 0 1px transparent}
-  #logoPreview.has-img{background:transparent!important;color:transparent;box-shadow:inset 0 0 0 1px #E8DFEA}
-  #logoPreview img{background:transparent}
+  #logoPreview.has-img{background:#fff!important;color:transparent;box-shadow:inset 0 0 0 1px #E8DFEA}
+  #logoPreview img{background:#fff}
 </style>
 @endpush
 

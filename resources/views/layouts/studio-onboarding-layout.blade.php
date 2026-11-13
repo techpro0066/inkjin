@@ -72,9 +72,11 @@
     .obfoot>.row{display:flex;align-items:center;gap:0;margin-left:auto}
     .obfoot .btn{white-space:nowrap;flex:none}
     .ic{width:38px;height:38px;border-radius:10px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;position:relative}
-    .ic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .ic.has-img{background:#fff}
+    .ic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#fff}
     .avatar{width:36px;height:36px;border-radius:50%;background:#EDE6F0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#1A1A1A;flex-shrink:0;overflow:hidden;position:relative}
-    .avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .avatar:has(img){background:#fff}
+    .avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#fff}
     .opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;background:#fff;min-width:0}
     .opt.on{border:2px solid #3E007C;padding:13px 15px}
     .opt .rad{color:#C8BFCC;flex:none}.opt.on .rad{color:#3E007C;font-variation-settings:'FILL' 1}

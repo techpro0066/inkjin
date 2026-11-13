@@ -232,7 +232,7 @@
     $hasSocial = $websiteHref || $instagramHref || $tiktokHref || $youtubeHref || $facebookHref;
 
     $escAttr = static fn ($v) => e((string) $v);
-    $avatarBg = $avatarUrl ? ('background-image:url('.$escAttr($avatarUrl).')') : '';
+    $avatarBg = $avatarUrl ? ('background-color:#fff;background-image:url('.$escAttr($avatarUrl).')') : '';
     if ($bannerUrl) {
         $bannerStyle = 'background-color:'.$escAttr($schemePrimary)
             .';background-image:url('.$escAttr($bannerUrl).')'
@@ -244,7 +244,7 @@
     }
 
     $boxHtmlAvatar = $avatarUrl
-        ? '<button type="button" class="cst-av" data-photo aria-label="Open '.e($artistPublicName).'\'s profile photo" style="background-image:url(\''.e($avatarUrl).'\')"></button>'
+        ? '<button type="button" class="cst-av" data-photo aria-label="Open '.e($artistPublicName).'\'s profile photo" style="background-color:#fff;background-image:url(\''.e($avatarUrl).'\')"></button>'
         : '<button type="button" class="cst-av" data-photo aria-label="Open '.e($artistPublicName).'\'s profile photo" style="background:linear-gradient(135deg,'.e($schemePrimary).','.e($schemeMid).');display:flex;align-items:center;justify-content:center;font-weight:800;font-size:48px;color:#fff">'.e($userDetail->publicDisplayInitials()).'</button>';
     $boxHtmlStyles = collect($styleLabels)->map(fn ($l) => '<span>'.e($l).'</span>')->implode('');
     $boxHtmlBio = $userDetail->shouldDisplayBio()

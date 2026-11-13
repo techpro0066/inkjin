@@ -55,7 +55,7 @@
     $hasBannerImage = (bool) $bannerUrl;
 
     $avatarUrl = ($userDetail->avatar && $userDetail->avatar !== '') ? asset($userDetail->avatar) : null;
-    $avatarBg = $avatarUrl ? "background-image:url('".e($avatarUrl)."')" : '';
+    $avatarBg = $avatarUrl ? "background-color:#fff;background-image:url('".e($avatarUrl)."')" : '';
 
     $stylesPayload = is_array($userDetail->tattoo_styles ?? null) ? $userDetail->tattoo_styles : [];
     $primaryStyleRaw = trim((string) ($stylesPayload['primary_style'] ?? ''));

@@ -6,7 +6,8 @@
 <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
 <style>
   .owner-av{width:56px;height:56px;border-radius:50%;background:#F3E8FF;color:#3E007C;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex:none;position:relative}
-  .owner-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2}
+  .owner-av.has-img{background:#fff}
+  .owner-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2;background:#fff}
   .owner-av .ini{position:relative;z-index:1}
   .owner-av.has-img .ini{display:none!important}
   #avatar_error{display:none;color:#C62828}
@@ -256,7 +257,12 @@
 
   document.getElementById('applyCropBtn').addEventListener('click', function () {
     if (!cropper) return;
-    var canvas = cropper.getCroppedCanvas({ width: 512, height: 512, imageSmoothingQuality: 'high' });
+    var canvas = cropper.getCroppedCanvas({
+      width: 512,
+      height: 512,
+      imageSmoothingQuality: 'high',
+      fillColor: '#ffffff'
+    });
     canvas.toBlob(function (blob) {
       if (!blob) {
         setFieldError('avatar', 'Could not crop this image. Try another photo.');

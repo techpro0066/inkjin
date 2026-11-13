@@ -153,7 +153,7 @@
     }
 
     $logoStyle = $logoUrl
-        ? 'cursor:pointer;background:transparent url('.$escAttr($logoUrl).') center/cover no-repeat;box-shadow:inset 0 0 0 1px #E8E1EC'
+        ? 'cursor:pointer;background:#fff url('.$escAttr($logoUrl).') center/cover no-repeat;box-shadow:inset 0 0 0 1px #E8E1EC'
         : 'cursor:pointer;background:linear-gradient(135deg,'.$escAttr($schemePrimary).','.$escAttr($schemeMid).')';
 
     $metaDescription = $description !== ''
@@ -162,7 +162,7 @@
 
     $boxHtmlStyles = collect($styleLabels)->map(fn ($l) => '<span>'.e($l).'</span>')->implode('');
     $lookBoxHtml = ($logoUrl
-            ? '<button type="button" class="cst-av sq" data-photo aria-label="Open '.e($studioName).'\'s logo" style="background-image:url(\''.e($logoUrl).'\')"></button>'
+            ? '<button type="button" class="cst-av sq" data-photo aria-label="Open '.e($studioName).'\'s logo" style="background-color:#fff;background-image:url(\''.e($logoUrl).'\')"></button>'
             : '<button type="button" class="cst-av sq" data-photo aria-label="Open '.e($studioName).'\'s logo" style="background:linear-gradient(135deg,'.e($schemePrimary).','.e($schemeMid).');display:flex;align-items:center;justify-content:center;font-weight:800;font-size:40px;color:#fff">'.e($studioInitials).'</button>')
         .'<h1>'.e($studioName).'</h1>'
         .($studioHandle !== '' ? '<div class="cst-tag">'.e($studioHandle).'</div>' : '')
@@ -313,7 +313,7 @@
           @foreach($studioArtists as $artist)
             <article class="sp-card">
               @if(! empty($artist['avatar']))
-                <div class="sp-av" style="background-image:url('{{ $artist['avatar'] }}')"></div>
+                <div class="sp-av" style="background-color:#fff;background-image:url('{{ $artist['avatar'] }}')"></div>
               @else
                 <div class="sp-av">{{ $artist['initials'] }}</div>
               @endif
@@ -364,7 +364,7 @@
                   @if(($item['kind'] ?? '') === 'studio')
                     <span class="ms">storefront</span>{{ $item['artist_name'] }}
                   @else
-                    <span class="wav" @if(! empty($item['artist_avatar'])) style="background-image:url('{{ $item['artist_avatar'] }}')" @endif>@if(empty($item['artist_avatar'])){{ $item['artist_initials'] }}@endif</span>by {{ $item['artist_name'] }}
+                    <span class="wav" @if(! empty($item['artist_avatar'])) style="background-color:#fff;background-image:url('{{ $item['artist_avatar'] }}')" @endif>@if(empty($item['artist_avatar'])){{ $item['artist_initials'] }}@endif</span>by {{ $item['artist_name'] }}
                   @endif
                 </span>
                 @if(! empty($item['price_label']))

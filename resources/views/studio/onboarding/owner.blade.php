@@ -25,7 +25,7 @@
       </div>
       <div style="padding:18px 22px">
         <div class="row" style="gap:16px;margin-bottom:16px">
-          <div class="avatar" id="ownerAvatarPreview" style="width:64px;height:64px;border-radius:50%;background:#F3E8FF;color:#3E007C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px">
+          <div class="avatar" id="ownerAvatarPreview" style="width:64px;height:64px;border-radius:50%;background:{{ !empty($ownerAvatarUrl) ? '#fff' : '#F3E8FF' }};color:#3E007C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px">
             @if (!empty($ownerAvatarUrl))
               <img src="{{ $ownerAvatarUrl }}" alt="">
             @else
@@ -126,6 +126,7 @@
       clearFieldError('avatar');
       var file = fileInput.files && fileInput.files[0];
       if (!file || !preview) return;
+      preview.style.background = '#fff';
       preview.innerHTML = '<img src="' + URL.createObjectURL(file) + '" alt="">';
       if (window.bpToast) window.bpToast('Photo selected');
     });
@@ -223,6 +224,7 @@
         if (result.ok && result.data && result.data.success) {
           if (window.bpToast) window.bpToast('Changes saved');
           if (result.data.owner && result.data.owner.avatar && preview) {
+            preview.style.background = '#fff';
             preview.innerHTML = '<img src="' + result.data.owner.avatar + '" alt="">';
           }
           setTimeout(function () {

@@ -107,7 +107,8 @@
       display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;
       flex:none;overflow:hidden;position:relative
     }
-    .av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2}
+    .av.has-img{background:#fff}
+    .av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:2;background:#fff}
     .av .ini{position:relative;z-index:1}
     .av.has-img .ini{display:none}
     .user b{font-size:13px;font-weight:700;color:#fff;display:block}

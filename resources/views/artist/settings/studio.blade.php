@@ -113,6 +113,8 @@
 
   @include('artist.partials.profile-settings-tabs', ['activeProfileTab' => 'studio'])
 
+  @include('artist.settings.partials.pending-studio-invites', ['inviteCards' => $inviteCards])
+
   @if($viewState === 'join_pending' && $pendingCard)
     @include('artist.settings.partials.banner-join-pending', ['pendingCard' => $pendingCard])
   @endif
@@ -144,7 +146,6 @@
     @include('artist.settings.partials.on-bookpay-studio', ['card' => $primaryCard])
   @endif
 
-  @include('artist.settings.partials.pending-studio-invites', ['inviteCards' => $inviteCards])
   @include('artist.settings.partials.past-studios', ['pastCards' => $pastCards])
     </div>
 

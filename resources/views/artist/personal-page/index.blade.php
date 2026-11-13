@@ -120,7 +120,7 @@
     display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;
     overflow:hidden;position:relative;flex-shrink:0
   }
-  .mp-page .av-lg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .mp-page .av-lg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#fff}
   .mp-page .nmopt{flex:1;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;cursor:pointer}
   .mp-page .nmopt.on{border:2px solid #3E007C;padding:11px 13px;background:#FDFAFF}
   .mp-page .svcs{display:flex;flex-wrap:wrap;gap:8px}
@@ -804,7 +804,12 @@
     });
     document.getElementById('applyCropBtn')?.addEventListener('click', function () {
       if (!cropper) return;
-      var canvas = cropper.getCroppedCanvas({ width: 512, height: 512, imageSmoothingQuality: 'high' });
+      var canvas = cropper.getCroppedCanvas({
+        width: 512,
+        height: 512,
+        imageSmoothingQuality: 'high',
+        fillColor: '#ffffff'
+      });
       if (!canvas) {
         toast('Could not crop this image. Try another photo.');
         return;
