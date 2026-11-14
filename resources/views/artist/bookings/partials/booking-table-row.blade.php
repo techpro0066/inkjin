@@ -173,6 +173,7 @@
   $moneyBreakdown = app(\App\Services\ArtistPayoutService::class)
       ->bookingDetailsMoneyBreakdown($booking, $artistUserDetail);
   $moneyBreakdownAttr = base64_encode(json_encode($moneyBreakdown, JSON_THROW_ON_ERROR));
+  $locationLabel = trim((string) $booking->whereLabelForClient());
 @endphp
 <tr class="booking-group border-t border-outline-variant/10 hover:bg-[#FBF8FC]"
     data-booking-row
@@ -251,6 +252,7 @@
         data-time-range="{{ e($startEnd) }}"
         data-duration="{{ e($duration) }}"
         data-timezone="{{ e($booking->timezone ?: 'UTC') }}"
+        data-location="{{ e($locationLabel) }}"
         data-status-label="{{ e($label) }}"
         data-status-badge-class="{{ e($badgeCls) }}"
         data-booking-type="{{ e(ucfirst((string) ($booking->booking_type ?? ''))) }}"
@@ -338,6 +340,7 @@
           data-time-range="{{ e($startEnd) }}"
           data-duration="{{ e($duration) }}"
           data-timezone="{{ e($booking->timezone ?: 'UTC') }}"
+          data-location="{{ e($locationLabel) }}"
           data-status-label="{{ e($label) }}"
           data-status-badge-class="{{ e($badgeCls) }}"
           data-booking-type="{{ e(ucfirst((string) ($booking->booking_type ?? ''))) }}"

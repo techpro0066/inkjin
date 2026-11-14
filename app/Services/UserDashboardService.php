@@ -382,7 +382,7 @@ class UserDashboardService
                         : (($panel['canPay'] ?? false) ? 'Pay now' : 'View details'),
                     'action_url' => $panel['confirmTimesUrl']
                         ?? $panel['paymentUrl']
-                        ?? route('user.requests.index', ['tab' => 'custom']),
+                        ?? route('user.requests.index', ['type' => 'custom']),
                     'sort_at' => $request->created_at?->timestamp ?? 0,
                     'type' => 'custom',
                 ];

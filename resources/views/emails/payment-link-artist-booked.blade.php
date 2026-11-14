@@ -51,6 +51,9 @@
                         <td style="padding:20px 24px;font-size:15px;color:#1c1b21;line-height:1.8;">
                           Session: {{ $sessionDate }}@if($sessionTime !== '') at {{ $sessionTime }}@endif
                           ({{ $duration }})<br>
+                          @if(!empty($locationLabel))
+                          Location: {{ $locationLabel }}<br>
+                          @endif
                           Paid: {{ $paidAmount }}<br>
                           Due at session: {{ $dueAmount }}
                         </td>

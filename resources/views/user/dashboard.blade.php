@@ -184,7 +184,7 @@
         <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15">
           <h3 class="text-lg font-bold text-on-surface">Active Requests</h3>
           <div class="flex items-center gap-4">
-            <a href="{{ route('user.requests.index', ['tab' => 'custom']) }}" class="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Custom</a>
+            <a href="{{ route('user.requests.index', ['type' => 'custom']) }}" class="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Custom</a>
             <a href="{{ route('user.requests.index') }}" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
               View all <span class="material-symbols-outlined text-base">arrow_forward</span>
             </a>
@@ -226,7 +226,7 @@
             <p class="font-bold text-on-surface text-sm">Find an Artist</p>
             <p class="text-xs text-on-surface-variant mt-1">Browse tattoo artists near you</p>
           </a>
-          <a href="{{ route('user.requests.index', ['tab' => 'custom']) }}" class="quick-action bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20 text-left group block">
+          <a href="{{ route('user.requests.index', ['type' => 'custom']) }}" class="quick-action bg-white rounded-2xl p-5 shadow-sm border border-outline-variant/20 text-left group block">
             <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
               <span class="material-symbols-outlined text-primary">edit</span>
             </div>

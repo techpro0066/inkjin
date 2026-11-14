@@ -212,6 +212,24 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
             return;
         }
 
+        $calendar = app(BookingCalendarAvailabilityService::class);
+        $selectedStudioId = isset($payload['selectedStudioId']) ? (int) $payload['selectedStudioId'] : null;
+        if ($selectedStudioId !== null && $selectedStudioId <= 0) {
+            $selectedStudioId = null;
+        }
+        $isGuest = (bool) ($payload['customRequest']['isGuest'] ?? false);
+
+        if ($calendar->isDateBlockedForStudio(
+            $date,
+            is_array($payload['artistLocationOverrides'] ?? null) ? $payload['artistLocationOverrides'] : [],
+            $selectedStudioId,
+            $isGuest
+        )) {
+            $validator->errors()->add($key, 'This date is not available at the selected studio.');
+
+            return;
+        }
+
         try {
             $start = Carbon::createFromFormat('Y-m-d H:i', $date.' '.$from, $timezone);
             $end = Carbon::createFromFormat('Y-m-d H:i', $date.' '.$to, $timezone);
@@ -228,7 +246,38 @@ class StoreCustomRequestAutoSlotRequest extends FormRequest
             return;
         }
 
+        $weekday = strtolower($start->format('l'));
+        $dayRanges = $calendar->rangesForStudio(
+            is_array($payload['artistAvailabilitySchedule'][$weekday] ?? null)
+                ? $payload['artistAvailabilitySchedule'][$weekday]
+                : [],
+            $selectedStudioId
+        );
+        if ($dayRanges === []) {
+            $validator->errors()->add($key, 'The artist is not available at this studio on that day.');
+
+            return;
+        }
+
         $startMinutes = $start->hour * 60 + $start->minute;
+        $endMinutes = $startMinutes + $durationMinutes;
+        $fitsRange = false;
+        foreach ($dayRanges as $range) {
+            $startParts = explode(':', (string) ($range['start'] ?? '0:0'));
+            $endParts = explode(':', (string) ($range['end'] ?? '0:0'));
+            $rangeStart = ((int) ($startParts[0] ?? 0) * 60) + (int) ($startParts[1] ?? 0);
+            $rangeEnd = ((int) ($endParts[0] ?? 0) * 60) + (int) ($endParts[1] ?? 0);
+            if ($startMinutes >= $rangeStart && $endMinutes <= $rangeEnd) {
+                $fitsRange = true;
+                break;
+            }
+        }
+        if (! $fitsRange) {
+            $validator->errors()->add($key, 'Selected time is outside the artist’s hours at this studio.');
+
+            return;
+        }
+
         if ($this->slotOverlapsBusy($payload['artistBusyIntervalsByDate'][$date] ?? [], $startMinutes, $durationMinutes)) {
             $validator->errors()->add($key, 'This time conflicts with another booking. Please choose another slot.');
         }

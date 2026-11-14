@@ -83,6 +83,7 @@ class StudioRequestController extends Controller
             // Studio mode flags (request-custom.blade.php branches on these).
             'isStudioRequest' => true,
             'isManagedScheduling' => true,
+            'showAvailabilityStep' => true,
             'isWaitlistJoin' => false,
             'guestSpotId' => null,
             'guestSpot' => null,

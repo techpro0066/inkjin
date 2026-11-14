@@ -124,12 +124,15 @@ class PaymentRequestClientMail extends Mailable
             $handle = '@'.$handle;
         }
 
-        $studio = trim((string) ($booking->studio?->name ?? ''));
+        $studio = trim((string) $booking->studioNameForClient());
         if ($studio === '') {
-            $studio = trim((string) $userDetail->studioNameWithCityCountry());
+            $studio = trim((string) ($booking->studio?->name ?? ''));
         }
         if ($studio === '') {
-            $studio = trim((string) $userDetail->resolvedStudioName());
+            $studio = trim((string) $userDetail->studioNameWithCityCountry($booking->selectedStudioId()));
+        }
+        if ($studio === '') {
+            $studio = trim((string) $userDetail->resolvedStudioName($booking->selectedStudioId()));
         }
 
         return trim(($handle !== '' ? $handle : '').($handle !== '' && $studio !== '' ? ' · ' : '').$studio);

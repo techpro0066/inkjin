@@ -845,6 +845,7 @@
             <div class="abdm-kv"><span>Balance (est.)</span><span id="abdmBalance">—</span></div>
         </div>
         </div>
+        <div class="abdm-kv" id="abdmLocationRow" style="display:none"><span>Location</span><span id="abdmLocation">—</span></div>
         <div class="abdm-sect" id="abdmMoney">
           <div class="flex items-center justify-between">
             <div class="lbl" style="margin:0;font-size:11px;letter-spacing:.8px;font-weight:700;color:#6F6874;text-transform:uppercase">Money for this booking</div>
@@ -2532,6 +2533,8 @@
   var timeEl = document.getElementById('abdmTime');
   var durEl = document.getElementById('abdmDuration');
   var tzEl = document.getElementById('abdmTimezone');
+  var locationRow = document.getElementById('abdmLocationRow');
+  var locationEl = document.getElementById('abdmLocation');
   var depEl = document.getElementById('abdmDeposit');
   var balEl = document.getElementById('abdmBalance');
   var moneyPill = document.getElementById('abdmMoneyPill');
@@ -2714,6 +2717,11 @@
     if (timeEl) timeEl.textContent = ds.timeRange || '—';
     if (durEl) durEl.textContent = ds.duration || '—';
     if (tzEl) tzEl.textContent = ds.timezone || 'UTC';
+    if (locationRow && locationEl) {
+      var loc = (ds.location || '').trim();
+      locationRow.style.display = loc ? '' : 'none';
+      locationEl.textContent = loc || '—';
+    }
     if (depEl) depEl.textContent = ds.deposit || '—';
     if (balEl) balEl.textContent = ds.balance || '—';
 

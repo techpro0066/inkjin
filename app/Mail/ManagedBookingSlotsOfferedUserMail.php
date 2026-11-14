@@ -80,7 +80,8 @@ class ManagedBookingSlotsOfferedUserMail extends Mailable
             ? $this->formatWhenLabel($slot['date'], $slot['from'], $slot['to'])
             : 'See offered times';
 
-        $whereLabel = $this->whereLabel($userDetail);
+        $studioId = $request->selectedStudioId();
+        $whereLabel = $this->whereLabel($userDetail, $studioId);
         $currency = strtoupper((string) ($userDetail->currency ?: 'EUR'));
         $symbol = $this->currencySymbol($currency);
         $deposit = $this->depositAmount($request, $userDetail);
@@ -102,7 +103,7 @@ class ManagedBookingSlotsOfferedUserMail extends Mailable
             'artistFirstName' => $artistFirst,
             'artistInitials' => $this->initials($artistName),
             'artistAvatarUrl' => $this->avatarUrl($userDetail),
-            'artistMeta' => $this->artistMeta($userDetail),
+            'artistMeta' => $this->artistMeta($userDetail, $studioId),
             'introHtml' => $introText,
             'bookingReference' => $request->referenceLabel(),
             'designTitle' => $design,
@@ -233,19 +234,19 @@ class ManagedBookingSlotsOfferedUserMail extends Mailable
         }
     }
 
-    private function whereLabel(UserDetail $userDetail): string
+    private function whereLabel(UserDetail $userDetail, ?int $studiosTableId = null): string
     {
-        $lines = $userDetail->studioLocationLines();
+        $lines = $userDetail->studioLocationLines($studiosTableId);
         if ($lines !== []) {
             return implode(', ', $lines);
         }
 
-        $compact = trim((string) $userDetail->studioNameWithCityCountry());
+        $compact = trim((string) $userDetail->studioNameWithCityCountry($studiosTableId));
         if ($compact !== '') {
             return $compact;
         }
 
-        $resolved = trim((string) $userDetail->resolvedStudioName());
+        $resolved = trim((string) $userDetail->resolvedStudioName($studiosTableId));
 
         return $resolved !== '' ? $resolved : '';
     }
@@ -262,16 +263,16 @@ class ManagedBookingSlotsOfferedUserMail extends Mailable
         return $fallback !== '' ? $fallback : 'your artist';
     }
 
-    private function artistMeta(UserDetail $userDetail): string
+    private function artistMeta(UserDetail $userDetail, ?int $studiosTableId = null): string
     {
         $handle = trim((string) ($userDetail->user_name ?? ''));
         if ($handle !== '' && ! str_starts_with($handle, '@')) {
             $handle = '@'.$handle;
         }
 
-        $studio = trim((string) $userDetail->studioNameWithCityCountry());
+        $studio = trim((string) $userDetail->studioNameWithCityCountry($studiosTableId));
         if ($studio === '') {
-            $studio = trim((string) $userDetail->resolvedStudioName());
+            $studio = trim((string) $userDetail->resolvedStudioName($studiosTableId));
         }
 
         return trim(($handle !== '' ? $handle : '').($handle !== '' && $studio !== '' ? ' · ' : '').$studio);

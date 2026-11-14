@@ -739,7 +739,12 @@
         if (typeof answer === 'string') answer = answer.trim();
         if (answer === undefined || answer === null || answer === '') return;
         if (Array.isArray(answer) && answer.length === 0) return;
-        output[String(q.id)] = { id: q.id, question: String(q.title || ''), type: String(q.type || 'input'), answer: answer };
+        var entry = { id: q.id, question: String(q.title || ''), type: String(q.type || 'input'), answer: answer };
+        if (String(q.type || '') === 'studio' || String(q.id) === '__studio__') {
+          var sid = parseInt(questionAnswers.__studio_id__ || 0, 10) || 0;
+          if (sid > 0) entry.studio_id = sid;
+        }
+        output[String(q.id)] = entry;
       });
       return output;
     }
@@ -830,8 +835,10 @@
             : (q.options || []).map(function(name) { return { name: name, address: '' }; });
           body = '<div class="stpick" role="radiogroup" aria-label="Studio">' + studioList.map(function(o) {
             var name = typeof o === 'string' ? o : String(o.name || '');
+            var label = typeof o === 'string' ? o : String(o.label || o.name || '');
             var addr = typeof o === 'string' ? '' : String(o.address || '');
-            return '<button type="button" class="stc single-choice-radio-button" data-value="' + escapeHtml(name) + '" aria-pressed="false">' +
+            var sid = (typeof o === 'object' && o && o.id != null) ? String(o.id) : '';
+            return '<button type="button" class="stc single-choice-radio-button" data-value="' + escapeHtml(label) + '"' + (sid ? ' data-studio-id="' + escapeHtml(sid) + '"' : '') + ' aria-pressed="false">' +
               '<span class="material-symbols-outlined stc-ico">location_on</span>' +
               '<span class="stc-txt"><b>' + escapeHtml(name) + '</b>' + (addr ? '<small>' + escapeHtml(addr) + '</small>' : '') + '</span>' +
               '<span class="material-symbols-outlined stc-ck">check_circle</span></button>';
@@ -1037,6 +1044,12 @@
 
       closeStyleOtherModal(false);
       if (qId) questionAnswers[qId] = value;
+      if (String(qId) === '__studio__') {
+        var sid = parseInt($btn.attr('data-studio-id') || $btn.data('studioId') || 0, 10) || 0;
+        if (sid > 0) questionAnswers.__studio_id__ = sid;
+        else delete questionAnswers.__studio_id__;
+        if (typeof updateStudioLocationUi === 'function') updateStudioLocationUi();
+      }
     });
     $(document).on('click', '.js-style-other-close', function() {
       closeStyleOtherModal(true);
@@ -1146,14 +1159,24 @@
         ? (window.mbGetQuestionAnswers() || {})
         : {};
       var selectedName = String(answers.__studio__ || answers['__studio__'] || '').trim();
-      if (!selectedName && Array.isArray(studioChoices) && studioChoices.length === 1) {
+      var selectedId = parseInt(answers.__studio_id__ || answers['__studio_id__'] || 0, 10) || 0;
+      if (!selectedName && !selectedId && Array.isArray(studioChoices) && studioChoices.length === 1) {
         return studioChoices[0];
       }
-      if (selectedName && Array.isArray(studioChoices)) {
-        for (var i = 0; i < studioChoices.length; i++) {
-          if (String(studioChoices[i].name || '') === selectedName) return studioChoices[i];
+      if (Array.isArray(studioChoices)) {
+        if (selectedId > 0) {
+          for (var i = 0; i < studioChoices.length; i++) {
+            if (Number(studioChoices[i].id) === selectedId) return studioChoices[i];
+          }
         }
-        return { id: null, name: selectedName, address: '', maps_link: '' };
+        if (selectedName) {
+          for (var j = 0; j < studioChoices.length; j++) {
+            var label = String(studioChoices[j].label || studioChoices[j].name || '');
+            var name = String(studioChoices[j].name || '');
+            if (label === selectedName || name === selectedName) return studioChoices[j];
+          }
+          return { id: null, name: selectedName, label: selectedName, address: '', maps_link: '' };
+        }
       }
       if (Array.isArray(studioChoices) && studioChoices.length === 1) return studioChoices[0];
       return defaultStudio;

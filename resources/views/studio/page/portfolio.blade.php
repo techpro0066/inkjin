@@ -14,13 +14,20 @@
   .studio-page .pgsave.is-dirty{opacity:1;pointer-events:auto}
   .studio-page .pgsave:disabled{cursor:wait}
   .studio-page .tabs a.is-soon{opacity:.55;cursor:default}
-  .studio-page .smodal{position:fixed;inset:0;background:rgba(20,10,30,.45);display:flex;align-items:center;justify-content:center;padding:24px;z-index:200}
-  .studio-page .smodal[hidden]{display:none!important}
-  .studio-page .smbox{background:#fff;border-radius:18px;width:460px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column}
-  .studio-page .smh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 12px}
-  .studio-page .smh h2{margin:0;font-size:19px;font-weight:800}
-  .studio-page .smh .x{border:0;background:none;cursor:pointer;color:var(--faint);padding:2px}
-  .studio-page .smf{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:14px 22px;border-top:1px solid var(--line)}
+  /* Leave-guard sits outside .studio-page — keep selectors unscoped so overlay centers */
+  #leaveguard.smodal{position:fixed;inset:0;background:rgba(20,10,30,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:520}
+  #leaveguard.smodal[hidden]{display:none!important}
+  #leaveguard .smbox{background:#fff;border-radius:22px;width:420px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;position:relative;display:flex;flex-direction:column}
+  #leaveguard .sm-x{position:absolute;top:14px;right:14px;width:36px;height:36px;border:0;border-radius:10px;background:none;color:var(--muted,#9A929E);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;z-index:1}
+  #leaveguard .sm-x:hover{background:#F7F3F9;color:var(--ink,#1A1A1A)}
+  #leaveguard .sm-x .ms{font-size:22px}
+  #leaveguard .smb{padding:24px 24px 16px}
+  #leaveguard .sm-ic{width:48px;height:48px;border-radius:12px;background:#FFF3DC;color:#B7791F;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+  #leaveguard .sm-ic .ms{font-size:26px}
+  #leaveguard .smb h2{font-size:20px;font-weight:800;margin:0 0 8px;padding-right:28px;letter-spacing:-.2px;color:#1A1A1A}
+  #leaveguard .smb p{color:#3a3a3a;line-height:1.55;margin:0;font-size:14.5px}
+  #leaveguard .smf{display:flex;gap:10px;padding:16px 24px;background:#FCF6FE;border-top:1px solid #F0E4F5;flex-wrap:wrap}
+  #leaveguard .smf .btn{flex:1;justify-content:center;min-width:140px}
   .studio-page .spg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
   .studio-page .spf{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
   .studio-page .spi{aspect-ratio:4/5;background:#F3F0F5 center/contain no-repeat}
@@ -308,16 +315,15 @@
 
 <div class="smodal" id="leaveguard" hidden>
   <div class="smbox" role="dialog" aria-modal="true" aria-labelledby="leaveguardTitle">
-    <div class="smh">
-      <div>
-        <h2 id="leaveguardTitle">Your changes are not saved</h2>
-        <div class="muted" style="font-size:13.5px;margin-top:4px">Save them before you leave this page?</div>
-      </div>
-      <button type="button" class="x" data-close aria-label="Close"><span class="ms">close</span></button>
+    <button type="button" class="sm-x" data-close aria-label="Close"><span class="ms">close</span></button>
+    <div class="smb">
+      <div class="sm-ic" aria-hidden="true"><span class="ms">warning</span></div>
+      <h2 id="leaveguardTitle">Your changes are not saved</h2>
+      <p>Save them before you leave, or leave without saving and lose them.</p>
     </div>
     <div class="smf">
       <button type="button" class="btn ghost" id="lg-leave">Leave without saving</button>
-      <button type="button" class="btn" id="lg-save">Save and leave</button>
+      <button type="button" class="btn" id="lg-save"><span class="ms">save</span>Save and leave</button>
     </div>
   </div>
 </div>
@@ -1058,15 +1064,32 @@
   saveBtn?.addEventListener('click', function () { if (!dirty || saving) return; savePortfolio(false); });
 
   document.addEventListener('click', function (e) {
-    if (e.target.closest('[data-close]') || e.target.id === 'leaveguard') { closeLeave(); return; }
-    if (e.target.closest('#lg-leave')) { dirty = false; if (pendingHref) location.href = pendingHref; return; }
-    if (e.target.closest('#lg-save')) { closeLeave(); savePortfolio(true); return; }
+    var leaveBtn = e.target.closest('#lg-leave');
+    if (leaveBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      dirty = false;
+      closeLeave();
+      if (pendingHref) location.href = pendingHref;
+      return;
+    }
+    if (e.target.closest('#lg-save')) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeLeave();
+      savePortfolio(true);
+      return;
+    }
+    if (e.target.closest('#leaveguard [data-close]') || e.target.id === 'leaveguard') {
+      closeLeave();
+      return;
+    }
     var soon = e.target.closest('.tabs a.is-soon');
     if (soon) { e.preventDefault(); return; }
     var link = e.target.closest('a[href]');
     if (link && dirty && !link.closest('#leaveguard') && !link.closest('#quickLinks') && !link.getAttribute('href').startsWith('#') && !link.target) {
       e.preventDefault();
-      pendingHref = link.getAttribute('href');
+      pendingHref = link.href || link.getAttribute('href');
       openLeave();
     }
   });

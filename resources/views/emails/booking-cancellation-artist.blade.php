@@ -239,6 +239,12 @@
                     <span class="detail-label">Tattoo:</span>
                     <span class="detail-value">{{ $tattooTitle }}</span>
                 </div>
+                @if(!empty($locationLabel))
+                <div class="detail-row">
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">{{ $locationLabel }}</span>
+                </div>
+                @endif
                 <div class="detail-row">
                     <span class="detail-label">Date:</span>
                     <span class="detail-value">{{ $bookingDate }}</span>

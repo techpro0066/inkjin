@@ -287,6 +287,7 @@ class ManagedRequestBookingService
 
         $clientPhone = $bookingRequest->user?->phone_number;
         $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, $clientPhone);
+        $workplaceDetails = $this->workplaceDetailsForRequest($bookingRequest, $studioId);
 
         $booking = Booking::create([
             'user_id' => $bookingRequest->user_id,
@@ -295,6 +296,7 @@ class ManagedRequestBookingService
             'guest_spot_id' => $guestSpot?->id,
             'tattoo_id' => $tattoo->id,
             'booking_type' => 'flash',
+            'custom_tattoo_details' => $workplaceDetails,
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $sessionUtc['date'],
             'start_time_utc' => $sessionUtc['start_time_utc'],
@@ -432,6 +434,7 @@ class ManagedRequestBookingService
 
         $clientPhone = $bookingRequest->user?->phone_number;
         $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, $clientPhone);
+        $workplaceDetails = $this->workplaceDetailsForRequest($bookingRequest, $studioId);
 
         $booking = Booking::create([
             'user_id' => $bookingRequest->user_id,
@@ -440,6 +443,7 @@ class ManagedRequestBookingService
             'guest_spot_id' => $guestSpot?->id,
             'tattoo_id' => $tattoo->id,
             'booking_type' => 'flash',
+            'custom_tattoo_details' => $workplaceDetails,
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $sessionUtc['date'],
             'start_time_utc' => $sessionUtc['start_time_utc'],
@@ -547,23 +551,28 @@ class ManagedRequestBookingService
 
     private function resolveStudioIdForRequest(BookingRequest $bookingRequest): ?int
     {
-        $details = $this->consultationDetailsArray($bookingRequest);
+        return ArtistStudioChoices::resolveStudiosTableIdFromBookingRequest($bookingRequest);
+    }
 
-        $fromDetails = $details['studio_id'] ?? null;
-        if ($fromDetails) {
-            $resolved = ArtistStudioChoices::resolveStudiosTableId((int) $bookingRequest->artist_id, $fromDetails);
-            if ($resolved) {
-                return $resolved;
-            }
-            // Already a studios.id stored at request time
-            if (is_numeric($fromDetails) && (int) $fromDetails > 0) {
-                return (int) $fromDetails;
-            }
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function workplaceDetailsForRequest(BookingRequest $bookingRequest, ?int $studioId): ?array
+    {
+        $details = [];
+        $linkId = ArtistStudioChoices::resolveUserStudioLinkIdFromBookingRequest($bookingRequest);
+        if ($linkId) {
+            $details['user_studio_id'] = $linkId;
+        }
+        if ($studioId) {
+            $details['studio_id'] = (int) $studioId;
+        }
+        $label = trim((string) $bookingRequest->clientStudioLabel());
+        if ($label !== '') {
+            $details['studio_label'] = $label;
         }
 
-        return ArtistStudioChoices::resolveStudiosTableIdFromPayload((int) $bookingRequest->artist_id, [
-            'questions_answers' => is_array($bookingRequest->questions_answers) ? $bookingRequest->questions_answers : [],
-        ]);
+        return $details !== [] ? $details : null;
     }
 
     private function resolveGuestSpotForRequest(BookingRequest $bookingRequest): ?GuestSpot

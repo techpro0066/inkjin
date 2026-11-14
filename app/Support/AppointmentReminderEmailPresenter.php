@@ -188,32 +188,19 @@ class AppointmentReminderEmailPresenter
 
     private static function locationLine(Booking $booking, UserDetail $userDetail): string
     {
-        $studio = $booking->studio;
-        if ($studio) {
-            $street = trim(trim((string) ($studio->street_number ?? '')).' '.trim((string) ($studio->street_name ?? '')));
-            if ($street === '') {
-                $street = trim((string) ($studio->address ?? ''));
-            }
-            $parts = array_values(array_filter([
-                trim((string) ($studio->name ?? '')),
-                $street,
-                trim(implode(' ', array_filter([
-                    trim((string) ($studio->postal_code ?? '')),
-                    trim((string) ($studio->city ?? '')),
-                ]))),
-            ], fn (string $part) => $part !== ''));
-
-            if ($parts !== []) {
-                return implode(', ', $parts);
-            }
+        $where = trim((string) $booking->whereLabelForClient());
+        if ($where !== '') {
+            return $where;
         }
 
-        $lines = $userDetail->studioLocationLines();
-        if ($lines !== []) {
-            return implode(', ', $lines);
+        $studioId = $booking->selectedStudioId();
+        $name = trim((string) $userDetail->resolvedStudioName($studioId));
+        $address = trim((string) $userDetail->publicStudioAddressLine($studioId));
+        if ($name !== '' && $address !== '') {
+            return $name.', '.$address;
         }
 
-        return trim((string) $userDetail->studioNameWithCityCountry());
+        return $name !== '' ? $name : $address;
     }
 
     private static function studioShortName(Booking $booking, UserDetail $userDetail, string $locationLine): string
@@ -225,7 +212,7 @@ class AppointmentReminderEmailPresenter
             return $city !== '' ? $name.', '.$city : $name;
         }
 
-        $resolved = trim((string) $userDetail->resolvedStudioName());
+        $resolved = trim((string) $userDetail->resolvedStudioName($booking->selectedStudioId()));
         if ($resolved !== '') {
             return $resolved;
         }
@@ -239,12 +226,17 @@ class AppointmentReminderEmailPresenter
 
     private static function mapsUrl(Booking $booking, UserDetail $userDetail, string $whereLabel): string
     {
+        $fromBooking = trim((string) $booking->googleMapsLinkForClient());
+        if ($fromBooking !== '') {
+            return $fromBooking;
+        }
+
         $studioUrl = trim((string) ($booking->studio?->google_maps_link ?? ''));
         if ($studioUrl !== '') {
             return $studioUrl;
         }
 
-        $artistUrl = trim((string) $userDetail->publicStudioMapsLink());
+        $artistUrl = trim((string) $userDetail->publicStudioMapsLink($booking->selectedStudioId()));
         if ($artistUrl !== '') {
             return $artistUrl;
         }

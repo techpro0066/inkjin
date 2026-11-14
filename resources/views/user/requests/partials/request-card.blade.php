@@ -5,6 +5,7 @@
 @endphp
 <div class="request-card bg-white rounded-2xl shadow-sm border border-outline-variant/20 p-5 cursor-pointer"
      data-request-id="{{ $request->id }}"
+     data-type="design"
      data-status="{{ $filterKey }}"
      data-artist="{{ $request->artistSearchKey() }}"
      data-date="{{ $request->created_at?->format('Y-m-d') ?? '' }}"

@@ -210,6 +210,131 @@ class UserDetail extends Model
     }
 
     /**
+     * Prefer a specific studios.id (or user_studios.id) when the artist has multiple workplaces.
+     * Falls back to the newest active workplace when $studiosTableId is null/unknown.
+     */
+    public function userStudioForStudiosId(?int $studiosTableId = null): ?UserStudio
+    {
+        if (! $this->user_id || ! UserStudio::tableReady()) {
+            return null;
+        }
+
+        $studiosTableId = $studiosTableId && $studiosTableId > 0 ? (int) $studiosTableId : null;
+        if ($studiosTableId === null) {
+            return $this->activeUserStudio();
+        }
+
+        // booking.studio_id / studios.id first — do not confuse with user_studios.id.
+        $byStudio = UserStudio::query()
+            ->with('studio')
+            ->where('user_id', (int) $this->user_id)
+            ->where('status', UserStudio::STATUS_ACTIVE)
+            ->where('studio_id', $studiosTableId)
+            ->orderByDesc('id')
+            ->first();
+        if ($byStudio) {
+            return $byStudio;
+        }
+
+        $byLink = UserStudio::query()
+            ->with('studio')
+            ->where('user_id', (int) $this->user_id)
+            ->where('status', UserStudio::STATUS_ACTIVE)
+            ->whereKey($studiosTableId)
+            ->first();
+        if ($byLink) {
+            return $byLink;
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve an active workplace by user_studios.id (public studio picker).
+     */
+    public function userStudioByLinkId(?int $userStudioLinkId): ?UserStudio
+    {
+        if (! $this->user_id || ! UserStudio::tableReady()) {
+            return null;
+        }
+
+        $userStudioLinkId = $userStudioLinkId && $userStudioLinkId > 0 ? (int) $userStudioLinkId : null;
+        if ($userStudioLinkId === null) {
+            return null;
+        }
+
+        return UserStudio::query()
+            ->with('studio')
+            ->where('user_id', (int) $this->user_id)
+            ->where('status', UserStudio::STATUS_ACTIVE)
+            ->whereKey($userStudioLinkId)
+            ->first();
+    }
+
+    /**
+     * Compact label from a workplace link: "Studio Name, City, Country".
+     */
+    public function workplaceNameWithCityCountry(UserStudio $link): string
+    {
+        $name = trim((string) ($link->studio?->name ?? $link->studio_name ?? ''));
+        if ($name === '') {
+            $name = 'Studio';
+        }
+
+        return implode(', ', array_values(array_filter([
+            $name,
+            trim((string) ($link->city ?? '')),
+            trim((string) ($link->country ?? '')),
+        ], fn (string $part) => $part !== '')));
+    }
+
+    /**
+     * Full "Where" line: "Studio Name, street, postal, city, country".
+     */
+    public function workplaceWhereLabel(UserStudio $link): string
+    {
+        $name = trim((string) ($link->studio?->name ?? $link->studio_name ?? ''));
+        if ($name === '') {
+            $name = 'Studio';
+        }
+
+        $street = trim(trim((string) ($link->street_number ?? '')).' '.trim((string) ($link->street_name ?? '')));
+        if ($street === '') {
+            $street = trim((string) ($link->studio_address ?? ''));
+        }
+        $cityLine = implode(', ', array_filter([
+            trim((string) ($link->postal_code ?? '')),
+            trim((string) ($link->city ?? '')),
+            trim((string) ($link->country ?? '')),
+        ]));
+        $address = implode(', ', array_filter([$street, $cityLine]));
+
+        return $address !== '' ? $name.', '.$address : $name;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function workplaceLocationLines(UserStudio $link): array
+    {
+        $street = trim(trim((string) ($link->street_number ?? '')).' '.trim((string) ($link->street_name ?? '')));
+        if ($street === '') {
+            $street = trim((string) ($link->studio_address ?? ''));
+        }
+
+        return array_values(array_filter([
+            $this->workplaceNameWithCityCountry($link),
+            $street,
+            trim((string) ($link->postal_code ?? '')),
+        ], fn (string $line) => $line !== ''));
+    }
+
+    public function workplaceMapsLink(UserStudio $link): string
+    {
+        return trim((string) ($link->google_maps_link ?? ''));
+    }
+
+    /**
      * Studio membership used for payout (payout=true + studio_id + revenue_split).
      */
     public function payoutUserStudio(): ?UserStudio
@@ -286,9 +411,26 @@ class UserDetail extends Model
 
     /**
      * Canonical studio display name: studios.name when linked, else user_studios / user_details name.
+     * Pass $studiosTableId (studios.id or user_studios.id) when the client picked a specific workplace.
      */
-    public function resolvedStudioName(): string
+    public function resolvedStudioName(?int $studiosTableId = null): string
     {
+        $studiosTableId = $studiosTableId && $studiosTableId > 0 ? (int) $studiosTableId : null;
+
+        if ($studiosTableId !== null) {
+            $link = $this->userStudioForStudiosId($studiosTableId);
+            $fromLinkStudio = trim((string) ($link?->studio?->name ?? $link?->studio_name ?? ''));
+            if ($fromLinkStudio !== '') {
+                return $fromLinkStudio;
+            }
+
+            $studio = Studio::query()->find($studiosTableId);
+            $fromStudio = trim((string) ($studio?->name ?? ''));
+            if ($fromStudio !== '') {
+                return $fromStudio;
+            }
+        }
+
         $studioId = $this->resolvedStudioId();
         if ($studioId) {
             $studio = $this->relationLoaded('studio') && (int) ($this->studio?->id ?? 0) === $studioId
@@ -352,10 +494,29 @@ class UserDetail extends Model
      *
      * @return list<string>
      */
-    public function studioLocationLines(): array
+    public function studioLocationLines(?int $studiosTableId = null): array
     {
-        $link = $this->activeUserStudio();
-        $studioLine = $this->studioNameWithCityCountry();
+        $studiosTableId = $studiosTableId && $studiosTableId > 0 ? (int) $studiosTableId : null;
+        $link = $this->userStudioForStudiosId($studiosTableId);
+        if ($studiosTableId !== null && ! $link) {
+            $studio = Studio::query()->find($studiosTableId);
+            if ($studio) {
+                $studioLine = $this->studioNameWithCityCountry($studiosTableId);
+                $street = trim(trim((string) ($studio->street_number ?? '')).' '.trim((string) ($studio->street_name ?? '')));
+                if ($street === '') {
+                    $street = trim((string) ($studio->address ?? ''));
+                }
+                $postalCode = trim((string) ($studio->postal_code ?? ''));
+
+                return array_values(array_filter([
+                    $studioLine,
+                    $street,
+                    $postalCode,
+                ], fn (string $line) => $line !== ''));
+            }
+        }
+
+        $studioLine = $this->studioNameWithCityCountry($studiosTableId);
 
         $streetNumber = $link?->street_number ?? ($this->attributes['street_number'] ?? null);
         $streetName = $link?->street_name ?? ($this->attributes['street_name'] ?? null);
@@ -378,24 +539,38 @@ class UserDetail extends Model
 
     /**
      * Compact studio label: "Studio Name, City, Country".
+     * Pass $studiosTableId when the client selected a specific workplace.
      */
-    public function studioNameWithCityCountry(): string
+    public function studioNameWithCityCountry(?int $studiosTableId = null): string
     {
-        $link = $this->activeUserStudio();
+        $studiosTableId = $studiosTableId && $studiosTableId > 0 ? (int) $studiosTableId : null;
+        $link = $this->userStudioForStudiosId($studiosTableId);
+
+        $city = trim((string) ($link?->city ?? ''));
+        $country = trim((string) ($link?->country ?? ''));
+        if ($studiosTableId !== null && ! $link) {
+            $studio = Studio::query()->find($studiosTableId);
+            $city = trim((string) ($studio?->city ?? ''));
+            $country = trim((string) ($studio?->country ?? ''));
+        } elseif ($studiosTableId === null) {
+            $city = $city !== '' ? $city : trim((string) ($this->attributes['city'] ?? ''));
+            $country = $country !== '' ? $country : trim((string) ($this->attributes['country'] ?? ''));
+        }
 
         return implode(', ', array_values(array_filter([
-            $this->resolvedStudioName(),
-            trim((string) ($link?->city ?? $this->attributes['city'] ?? '')),
-            trim((string) ($link?->country ?? $this->attributes['country'] ?? '')),
+            $this->resolvedStudioName($studiosTableId),
+            $city,
+            $country,
         ], fn (string $part) => $part !== '')));
     }
 
     /**
      * Full public address line for booking UIs (UserStudio preferred — same as custom request).
      */
-    public function publicStudioAddressLine(): string
+    public function publicStudioAddressLine(?int $studiosTableId = null): string
     {
-        $link = $this->activeUserStudio();
+        $studiosTableId = $studiosTableId && $studiosTableId > 0 ? (int) $studiosTableId : null;
+        $link = $this->userStudioForStudiosId($studiosTableId);
         if ($link) {
             $street = trim(trim((string) ($link->street_number ?? '')).' '.trim((string) ($link->street_name ?? '')));
             if ($street === '') {
@@ -410,6 +585,23 @@ class UserDetail extends Model
             return trim(implode(', ', array_filter([$street, $cityLine])));
         }
 
+        if ($studiosTableId !== null) {
+            $studio = Studio::query()->find($studiosTableId);
+            if ($studio) {
+                $street = trim(trim((string) ($studio->street_number ?? '')).' '.trim((string) ($studio->street_name ?? '')));
+                if ($street === '') {
+                    $street = trim((string) ($studio->address ?? ''));
+                }
+                $cityLine = implode(', ', array_filter([
+                    trim((string) ($studio->postal_code ?? '')),
+                    trim((string) ($studio->city ?? '')),
+                    trim((string) ($studio->country ?? '')),
+                ]));
+
+                return trim(implode(', ', array_filter([$street, $cityLine])));
+            }
+        }
+
         return trim(implode(', ', array_filter([
             trim((string) ($this->attributes['studio_address'] ?? '')),
             trim((string) ($this->attributes['city'] ?? '')),
@@ -420,25 +612,29 @@ class UserDetail extends Model
     /**
      * Google Maps link for public booking UIs; falls back to a maps search for the address.
      */
-    public function publicStudioMapsLink(): string
+    public function publicStudioMapsLink(?int $studiosTableId = null): string
     {
-        $link = $this->activeUserStudio();
+        $studiosTableId = $studiosTableId && $studiosTableId > 0 ? (int) $studiosTableId : null;
+        $link = $this->userStudioForStudiosId($studiosTableId);
         $url = trim((string) ($link?->google_maps_link ?? ''));
         if ($url === '' && $link?->studio_id) {
             $url = trim((string) ($link->studio?->google_maps_link
                 ?? Studio::query()->whereKey($link->studio_id)->value('google_maps_link')
                 ?? ''));
         }
-        if ($url === '') {
+        if ($url === '' && $studiosTableId !== null) {
+            $url = trim((string) (Studio::query()->whereKey($studiosTableId)->value('google_maps_link') ?? ''));
+        }
+        if ($url === '' && $studiosTableId === null) {
             $url = trim((string) ($this->attributes['google_maps_link'] ?? ''));
         }
         if ($url !== '') {
             return $url;
         }
 
-        $query = $this->publicStudioAddressLine();
+        $query = $this->publicStudioAddressLine($studiosTableId);
         if ($query === '') {
-            $query = $this->resolvedStudioName();
+            $query = $this->resolvedStudioName($studiosTableId);
         }
         if ($query === '') {
             return '';

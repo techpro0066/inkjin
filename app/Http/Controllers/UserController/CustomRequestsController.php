@@ -53,7 +53,7 @@ class CustomRequestsController extends Controller
                 ?: 'This request is not ready for scheduling yet.';
 
             return redirect()->route('user.requests.index', [
-                'tab' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
+                'type' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
             ])->with('error', $blockMessage);
         }
 
@@ -88,7 +88,7 @@ class CustomRequestsController extends Controller
                 ?: 'This request is not ready for scheduling yet.';
 
             return redirect()->route('user.requests.index', [
-                'tab' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
+                'type' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
             ])->with('error', $blockMessage);
         }
 
@@ -143,7 +143,7 @@ class CustomRequestsController extends Controller
             $blockMessage = $customRequest->guestActionBlockMessage();
             if ($blockMessage) {
                 return redirect()->route('user.requests.index', [
-                    'tab' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
+                    'type' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
                 ])->with('error', $blockMessage);
             }
 
@@ -162,7 +162,7 @@ class CustomRequestsController extends Controller
             }
 
             return redirect()->route('user.requests.index', [
-                'tab' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
+                'type' => $customRequest->isGuestRequest() ? 'guest' : 'custom',
             ])->with('error', 'Please choose your appointment time before paying.');
         }
 

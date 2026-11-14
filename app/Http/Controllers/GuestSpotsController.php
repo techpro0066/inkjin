@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\GuestSpotStudioDirectNotifyMail;
 use App\Mail\GuestSpotStudioInviteMail;
 use App\Models\ArtistDesign;
 use App\Models\GuestSpot;
 use App\Models\Portfolio;
+use App\Models\Studio;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserStudio;
 use App\Models\Waitlist;
+use App\Services\ArtistStudioJoinRequestNotifier;
 use App\Services\GuestSpotStudioInviteService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -108,12 +111,12 @@ class GuestSpotsController extends Controller
             ]
         ));
 
-        $this->dispatchGuestStudioInvite($guestSpot, Auth::user(), false);
+        $this->dispatchGuestStudioNotify($guestSpot, Auth::user(), false);
 
         return response()->json([
             'success' => true,
             'message' => 'Guest location added.',
-            'guest_spot' => $this->serialize($guestSpot),
+            'guest_spot' => $this->serialize($guestSpot->fresh() ?? $guestSpot),
         ]);
     }
 
@@ -124,6 +127,8 @@ class GuestSpotsController extends Controller
         $previousStatus = (string) ($guestSpot->status ?? '');
         $previousEmail = strtolower(trim((string) ($guestSpot->guest_studio_invite_email ?? '')));
         $previousMode = (string) ($guestSpot->payout_mode ?? 'direct');
+        $previousStudioId = (int) ($guestSpot->studio_id ?? 0);
+        $previousStudioKey = $this->guestStudioIdentityKey($guestSpot);
 
         $validated = $this->validatedPayload($request);
         $this->assertNoOverlappingGuestSpots($validated, $guestSpot->id);
@@ -135,17 +140,27 @@ class GuestSpotsController extends Controller
         $newEmail = strtolower(trim((string) ($guestSpot->guest_studio_invite_email ?? '')));
         $newMode = (string) ($guestSpot->payout_mode ?? 'direct');
         $invitePending = ($guestSpot->guest_studio_invite_status ?? null) === GuestSpot::INVITE_PENDING;
-        // Send when newly split, email changed, or still pending (retry after a failed send).
-        $shouldSend = $newMode === 'split'
-            && $newEmail !== ''
-            && ($previousMode !== 'split' || $previousEmail !== $newEmail || $invitePending);
+        $newStudioKey = $this->guestStudioIdentityKey($guestSpot);
+        // Split: send when newly split, email changed, or still pending (retry after a failed send).
+        // Direct: send when newly direct or the chosen studio identity changed.
+        $shouldSend = false;
+        $isResend = false;
+        if ($newMode === 'split') {
+            $shouldSend = $newEmail !== ''
+                && ($previousMode !== 'split' || $previousEmail !== $newEmail || $invitePending);
+            $isResend = $previousMode === 'split' && $previousEmail === $newEmail;
+        } elseif ($newMode === 'direct') {
+            $guestSpot = app(GuestSpotStudioInviteService::class)->prepareDirectStudioLink($guestSpot);
+            $newStudioId = (int) ($guestSpot->studio_id ?? 0);
+            $identityChanged = $previousStudioKey !== $newStudioKey;
+            $studioChanged = $newStudioId > 0 && $previousStudioId !== $newStudioId;
+            $shouldSend = $newStudioId > 0
+                && ($previousMode !== 'direct' || $identityChanged || $studioChanged);
+        }
 
         if ($shouldSend) {
-            $this->dispatchGuestStudioInvite(
-                $guestSpot,
-                Auth::user(),
-                $previousMode === 'split' && $previousEmail === $newEmail
-            );
+            $this->dispatchGuestStudioNotify($guestSpot, Auth::user(), $isResend);
+            $guestSpot = $guestSpot->fresh() ?? $guestSpot;
         }
 
         return response()->json([
@@ -602,6 +617,21 @@ class GuestSpotsController extends Controller
     }
 
     /**
+     * Notify the chosen studio for split invites or artist-direct listings.
+     */
+    private function dispatchGuestStudioNotify(GuestSpot $guestSpot, ?User $artist, bool $isResend = false): void
+    {
+        $mode = $guestSpot->payout_mode ?: 'direct';
+        if ($mode === 'split') {
+            $this->dispatchGuestStudioInvite($guestSpot, $artist, $isResend);
+
+            return;
+        }
+
+        $this->dispatchGuestStudioDirectNotify($guestSpot, $artist, $isResend);
+    }
+
+    /**
      * Prepare invite token / studio link, then email only when the studio is not already on Bookpay.
      */
     private function dispatchGuestStudioInvite(GuestSpot $guestSpot, ?User $artist, bool $isResend = false): void
@@ -627,6 +657,45 @@ class GuestSpotsController extends Controller
     }
 
     /**
+     * Artist-direct guest spot: link a matching Bookpay studio and email them.
+     */
+    private function dispatchGuestStudioDirectNotify(GuestSpot $guestSpot, ?User $artist, bool $isResend = false): void
+    {
+        if (($guestSpot->payout_mode ?: 'direct') !== 'direct') {
+            return;
+        }
+
+        $invites = app(GuestSpotStudioInviteService::class);
+        $guestSpot = $invites->prepareDirectStudioLink($guestSpot);
+        $studio = $invites->matchBookpayStudioFromGuestSpot($guestSpot);
+        if (! $studio) {
+            return;
+        }
+
+        $email = app(ArtistStudioJoinRequestNotifier::class)->resolveStudioEmail($studio);
+        if ($email === null) {
+            Log::warning('Guest spot direct studio notify skipped — studio has no email', [
+                'guest_spot_id' => $guestSpot->id,
+                'studio_id' => $studio->id,
+            ]);
+
+            return;
+        }
+
+        $this->sendGuestStudioDirectNotifyEmail($guestSpot, $artist, $studio, $email, $isResend);
+    }
+
+    private function guestStudioIdentityKey(GuestSpot $guestSpot): string
+    {
+        return mb_strtolower(implode('|', [
+            trim((string) ($guestSpot->studio_name ?? '')),
+            trim((string) ($guestSpot->studio_city ?? $guestSpot->city ?? '')),
+            trim((string) ($guestSpot->google_maps_link ?? '')),
+            trim((string) ($guestSpot->studio_address ?? '')),
+        ]));
+    }
+
+    /**
      * Email the guest studio when revenue split + invite email are set (E2 template).
      */
     private function sendGuestStudioInviteEmail(
@@ -644,6 +713,79 @@ class GuestSpotsController extends Controller
             return;
         }
 
+        $profile = $this->guestStudioNotifyArtistProfile($guestSpot, $artist);
+        $actionUrl = $actionUrl ?: app(GuestSpotStudioInviteService::class)->inviteUrl($guestSpot);
+
+        try {
+            Mail::to($inviteEmail)->send(new GuestSpotStudioInviteMail(
+                artistName: $profile['artistName'],
+                artistInitials: $profile['artistInitials'],
+                artistMeta: $profile['artistMeta'],
+                studioGreetingName: $profile['studioGreeting'],
+                dateRangeLabel: $profile['dateRangeLabel'],
+                actionUrl: $actionUrl,
+                artistPercent: $guestSpot->artist_percent !== null ? (int) $guestSpot->artist_percent : null,
+                isResend: $isResend,
+                artistAvatarUrl: $profile['artistAvatarUrl'],
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send guest spot studio invite email', [
+                'guest_spot_id' => $guestSpot->id,
+                'email' => $inviteEmail,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Informational email when artist-direct guest spot is listed at a Bookpay studio.
+     */
+    private function sendGuestStudioDirectNotifyEmail(
+        GuestSpot $guestSpot,
+        ?User $artist,
+        Studio $studio,
+        string $email,
+        bool $isResend = false,
+    ): void {
+        $profile = $this->guestStudioNotifyArtistProfile($guestSpot, $artist);
+        $studioGreeting = trim((string) ($studio->name ?: $profile['studioGreeting']));
+        if ($studioGreeting === '') {
+            $studioGreeting = 'there';
+        }
+
+        try {
+            Mail::to($email)->send(new GuestSpotStudioDirectNotifyMail(
+                artistName: $profile['artistName'],
+                artistInitials: $profile['artistInitials'],
+                artistMeta: $profile['artistMeta'],
+                studioGreetingName: $studioGreeting,
+                dateRangeLabel: $profile['dateRangeLabel'],
+                actionUrl: route('studio.artists.guests'),
+                isResend: $isResend,
+                artistAvatarUrl: $profile['artistAvatarUrl'],
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send guest spot direct studio notify email', [
+                'guest_spot_id' => $guestSpot->id,
+                'studio_id' => $studio->id,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * @return array{
+     *   artistName: string,
+     *   artistInitials: string,
+     *   artistMeta: string,
+     *   artistAvatarUrl: ?string,
+     *   studioGreeting: string,
+     *   dateRangeLabel: string
+     * }
+     */
+    private function guestStudioNotifyArtistProfile(GuestSpot $guestSpot, ?User $artist): array
+    {
         $artist = $artist ?: $guestSpot->user;
         $detail = $artist?->userDetail;
         if ($detail) {
@@ -684,29 +826,14 @@ class GuestSpotsController extends Controller
             $studioGreeting = 'there';
         }
 
-        $dateRangeLabel = $this->guestSpotInviteDateRangeLabel($guestSpot);
-
-        $actionUrl = $actionUrl ?: app(GuestSpotStudioInviteService::class)->inviteUrl($guestSpot);
-
-        try {
-            Mail::to($inviteEmail)->send(new GuestSpotStudioInviteMail(
-                artistName: $artistName,
-                artistInitials: $initials,
-                artistMeta: $artistMeta,
-                studioGreetingName: $studioGreeting,
-                dateRangeLabel: $dateRangeLabel,
-                actionUrl: $actionUrl,
-                artistPercent: $guestSpot->artist_percent !== null ? (int) $guestSpot->artist_percent : null,
-                isResend: $isResend,
-                artistAvatarUrl: $avatarUrl,
-            ));
-        } catch (\Throwable $e) {
-            Log::error('Failed to send guest spot studio invite email', [
-                'guest_spot_id' => $guestSpot->id,
-                'email' => $inviteEmail,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        return [
+            'artistName' => $artistName,
+            'artistInitials' => $initials,
+            'artistMeta' => $artistMeta,
+            'artistAvatarUrl' => $avatarUrl,
+            'studioGreeting' => $studioGreeting,
+            'dateRangeLabel' => $this->guestSpotInviteDateRangeLabel($guestSpot),
+        ];
     }
 
     /**

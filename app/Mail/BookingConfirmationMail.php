@@ -251,34 +251,23 @@ class BookingConfirmationMail extends Mailable
 
     private function locationLine($booking, $userDetail): string
     {
-        $studio = $booking->studio;
-        if ($studio) {
-            $street = trim(trim((string) ($studio->street_number ?? '')).' '.trim((string) ($studio->street_name ?? '')));
-            if ($street === '') {
-                $street = trim((string) ($studio->address ?? ''));
-            }
-            $parts = array_values(array_filter([
-                trim((string) ($studio->name ?? '')),
-                $street,
-                trim(implode(' ', array_filter([
-                    trim((string) ($studio->postal_code ?? '')),
-                    trim((string) ($studio->city ?? '')),
-                ]))),
-            ], fn (string $part) => $part !== ''));
-
-            if ($parts !== []) {
-                return implode(', ', $parts);
-            }
+        $where = trim((string) $booking->whereLabelForClient());
+        if ($where !== '') {
+            return $where;
         }
 
+        $studioId = $booking->selectedStudioId();
         if ($userDetail) {
-            $lines = $userDetail->studioLocationLines();
-            if ($lines !== []) {
-                return implode(', ', $lines);
+            $name = trim((string) $userDetail->resolvedStudioName($studioId));
+            $address = trim((string) $userDetail->publicStudioAddressLine($studioId));
+            if ($name !== '' && $address !== '') {
+                return $name.', '.$address;
             }
-            $compact = trim((string) $userDetail->studioNameWithCityCountry());
-            if ($compact !== '') {
-                return $compact;
+            if ($name !== '') {
+                return $name;
+            }
+            if ($address !== '') {
+                return $address;
             }
         }
 
@@ -295,7 +284,7 @@ class BookingConfirmationMail extends Mailable
         }
 
         if ($userDetail) {
-            $resolved = trim((string) $userDetail->resolvedStudioName());
+            $resolved = trim((string) $userDetail->resolvedStudioName($booking->selectedStudioId()));
             if ($resolved !== '') {
                 return $resolved;
             }

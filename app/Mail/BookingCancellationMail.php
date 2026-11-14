@@ -99,6 +99,7 @@ class BookingCancellationMail extends Mailable
             'customerEmail' => $customer->email ?? '',
             'bookingDate' => $bookingDate,
             'bookingTime' => $bookingTime,
+            'locationLabel' => trim((string) $booking->studioNameForClient()),
             'cancellationReason' => $booking->cancellation_reason,
             'cancellationType' => $this->cancellationType,
             'isNoShow' => $this->isNoShow,

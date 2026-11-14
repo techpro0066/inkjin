@@ -131,14 +131,17 @@ class CustomRequestBookingService
         $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice, $clientPhone);
         $guestSpotConsumed = $this->consumeGuestSpotForPayment($customRequest);
         $studioRequest = $this->linkedStudioRequest($customRequest);
+        $tattooDetails = $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed, $studioRequest);
+        $bookingStudioId = $studioRequest?->studio_id
+            ?? ($tattooDetails['studio_id'] ?? null);
 
         $booking = Booking::create([
             'user_id' => $customRequest->user_id,
             'artist_user_id' => $customRequest->artist_id,
-            'studio_id' => $studioRequest?->studio_id,
+            'studio_id' => $bookingStudioId,
             'tattoo_id' => null,
             'booking_type' => 'custom',
-            'custom_tattoo_details' => $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed, $studioRequest),
+            'custom_tattoo_details' => $tattooDetails,
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $sessionUtc['date'],
             'start_time_utc' => $sessionUtc['start_time_utc'],
@@ -265,14 +268,17 @@ class CustomRequestBookingService
         $totals = $this->pricing->checkoutTotals($userDetail, $quotePrice, $clientPhone);
         $guestSpotConsumed = $this->consumeGuestSpotForPayment($customRequest);
         $studioRequest = $this->linkedStudioRequest($customRequest);
+        $tattooDetails = $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed, $studioRequest);
+        $bookingStudioId = $studioRequest?->studio_id
+            ?? ($tattooDetails['studio_id'] ?? null);
 
         $booking = Booking::create([
             'user_id' => $customRequest->user_id,
             'artist_user_id' => $customRequest->artist_id,
-            'studio_id' => $studioRequest?->studio_id,
+            'studio_id' => $bookingStudioId,
             'tattoo_id' => null,
             'booking_type' => 'custom',
-            'custom_tattoo_details' => $this->customTattooDetailsPayload($customRequest, $guestSpotConsumed, $studioRequest),
+            'custom_tattoo_details' => $tattooDetails,
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $sessionUtc['date'],
             'start_time_utc' => $sessionUtc['start_time_utc'],
@@ -426,6 +432,18 @@ class CustomRequestBookingService
             $details['from_studio_page'] = true;
             $details['studio_request_id'] = $studioRequest->id;
             $details['studio_id'] = (int) $studioRequest->studio_id;
+        }
+
+        $userStudioId = $customRequest->selectedStudioId();
+        if ($userStudioId) {
+            $details['user_studio_id'] = $userStudioId;
+            $studiosTableId = \App\Support\ArtistStudioChoices::resolveStudiosTableIdFromPayload(
+                (int) $customRequest->artist_id,
+                ['questions_answers' => is_array($customRequest->questions_answers) ? $customRequest->questions_answers : []]
+            );
+            if ($studiosTableId) {
+                $details['studio_id'] = $studiosTableId;
+            }
         }
 
         if ($customRequest->isGuestRequest()) {

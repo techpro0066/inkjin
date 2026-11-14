@@ -136,6 +136,10 @@ class BookingCalendarAvailabilityService
             'artistBusyIntervalsByDate' => $artistBusyIntervalsByDate,
             'allowedDateRange' => $allowedDateRange,
             'tattooDurationMinutes' => $tattooDurationMinutes,
+            // user_studios.id — same key as availability studio_ids / public calendar
+            'selectedStudioId' => $customRequest->isGuestRequest()
+                ? null
+                : $customRequest->selectedStudioId(),
             'artistConsultationSettings' => [
                 'required' => $customRequest->isGuestRequest()
                     ? false
@@ -153,6 +157,76 @@ class BookingCalendarAvailabilityService
                 'isGuest' => $customRequest->isGuestRequest(),
             ],
         ];
+    }
+
+    /**
+     * Keep only ranges that apply to the client-selected workplace (user_studios.id).
+     * Empty studio_ids = legacy / all studios (same as public booking calendar).
+     *
+     * @param  list<array{start?:string,end?:string,studio_ids?:list<int>}>  $dayRanges
+     * @return list<array{start?:string,end?:string,studio_ids?:list<int>}>
+     */
+    public function rangesForStudio(array $dayRanges, ?int $selectedStudioId): array
+    {
+        if ($dayRanges === [] || ! $selectedStudioId || $selectedStudioId <= 0) {
+            return $dayRanges;
+        }
+
+        return array_values(array_filter(
+            $dayRanges,
+            static function (array $range) use ($selectedStudioId): bool {
+                $ids = array_values(array_unique(array_filter(array_map(
+                    static fn ($id) => ((int) $id) > 0 ? (int) $id : null,
+                    is_array($range['studio_ids'] ?? null) ? $range['studio_ids'] : []
+                ))));
+
+                return $ids === [] || in_array($selectedStudioId, $ids, true);
+            }
+        ));
+    }
+
+    /**
+     * Location-override days: only listed studios are bookable (public calendar parity).
+     *
+     * @param  list<array{start_date?:string,end_date?:string,studio_ids?:list<int>}>  $overrides
+     */
+    public function isDateBlockedForStudio(
+        string $ymd,
+        array $overrides,
+        ?int $selectedStudioId,
+        bool $skipForGuest = false
+    ): bool {
+        if ($skipForGuest || ! $selectedStudioId || $selectedStudioId <= 0 || $overrides === []) {
+            return false;
+        }
+
+        $covering = [];
+        foreach ($overrides as $loc) {
+            if (! is_array($loc)) {
+                continue;
+            }
+            $start = (string) ($loc['start_date'] ?? '');
+            $end = (string) ($loc['end_date'] ?? '');
+            if ($start !== '' && $end !== '' && $ymd >= $start && $ymd <= $end) {
+                $covering[] = $loc;
+            }
+        }
+
+        if ($covering === []) {
+            return false;
+        }
+
+        foreach ($covering as $loc) {
+            $ids = array_values(array_unique(array_filter(array_map(
+                static fn ($id) => ((int) $id) > 0 ? (int) $id : null,
+                is_array($loc['studio_ids'] ?? null) ? $loc['studio_ids'] : []
+            ))));
+            if (in_array($selectedStudioId, $ids, true)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

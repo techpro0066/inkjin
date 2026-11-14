@@ -48,6 +48,7 @@
             <div class="abdm-kv"><span>Balance (est.)</span><span id="abdmBalance">—</span></div>
           </div>
         </div>
+        <div class="abdm-kv" id="abdmLocationRow" style="display:none"><span>Location</span><span id="abdmLocation">—</span></div>
         <div class="abdm-sect" id="abdmMoney">
           <div class="flex items-center justify-between">
             <div class="lbl" style="margin:0;font-size:11px;letter-spacing:.8px;font-weight:700;color:#6F6874;text-transform:uppercase">Money for this booking</div>

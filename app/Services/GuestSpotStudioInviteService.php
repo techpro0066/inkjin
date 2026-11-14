@@ -48,6 +48,91 @@ class GuestSpotStudioInviteService
         return $guestSpot->fresh() ?? $guestSpot;
     }
 
+    /**
+     * Link a Bookpay studio on artist-direct guest spots when name/address match.
+     */
+    public function prepareDirectStudioLink(GuestSpot $guestSpot): GuestSpot
+    {
+        if (($guestSpot->payout_mode ?: 'direct') !== 'direct') {
+            return $guestSpot;
+        }
+
+        $studio = $this->matchBookpayStudioFromGuestSpot($guestSpot);
+        if (! $studio) {
+            if ((int) ($guestSpot->studio_id ?? 0) > 0) {
+                $guestSpot->studio_id = null;
+                $guestSpot->save();
+            }
+
+            return $guestSpot->fresh() ?? $guestSpot;
+        }
+
+        if ((int) ($guestSpot->studio_id ?? 0) !== (int) $studio->id) {
+            $guestSpot->studio_id = $studio->id;
+            $guestSpot->save();
+        }
+
+        return $guestSpot->fresh() ?? $guestSpot;
+    }
+
+    /**
+     * Resolve a Bookpay studio from guest-spot location fields (no invite email required).
+     */
+    public function matchBookpayStudioFromGuestSpot(GuestSpot $guestSpot): ?Studio
+    {
+        $existingId = (int) ($guestSpot->studio_id ?? 0);
+        if ($existingId > 0) {
+            $existing = Studio::query()
+                ->whereKey($existingId)
+                ->whereNotNull('user_id')
+                ->where('user_id', '>', 0)
+                ->first();
+            if ($existing) {
+                return $existing;
+            }
+        }
+
+        $maps = trim((string) ($guestSpot->google_maps_link ?? ''));
+        if ($maps !== '') {
+            $byMaps = Studio::query()
+                ->whereNotNull('user_id')
+                ->where('user_id', '>', 0)
+                ->where('google_maps_link', $maps)
+                ->orderBy('id')
+                ->first();
+            if ($byMaps) {
+                return $byMaps;
+            }
+        }
+
+        $name = mb_strtolower(trim((string) ($guestSpot->studio_name ?? '')));
+        if ($name === '') {
+            return null;
+        }
+
+        $city = mb_strtolower(trim((string) (
+            $guestSpot->studio_city
+            ?? $guestSpot->city
+            ?? ''
+        )));
+
+        $query = Studio::query()
+            ->whereNotNull('user_id')
+            ->where('user_id', '>', 0)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$name]);
+
+        if ($city !== '') {
+            $query->whereRaw('LOWER(TRIM(city)) = ?', [$city]);
+        }
+
+        $matches = $query->orderBy('id')->limit(2)->get();
+        if ($matches->count() === 1) {
+            return $matches->first();
+        }
+
+        return null;
+    }
+
     public function inviteUrl(GuestSpot $guestSpot): string
     {
         $token = trim((string) ($guestSpot->guest_studio_invite_token ?? ''));

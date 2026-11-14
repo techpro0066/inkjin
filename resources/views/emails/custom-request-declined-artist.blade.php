@@ -15,6 +15,7 @@
     $clientName = $customRequest->clientArtistFacingName();
     $reference = $customRequest->referenceLabel();
     $reason = trim((string) ($customRequest->reason_decline ?? ''));
+    $locationLabel = trim((string) $customRequest->clientWhereLabel());
   @endphp
 
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
@@ -36,6 +37,9 @@
                 <tr>
                   <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;text-align:center;">
                     This email confirms you declined the custom tattoo request from <strong>{{ $clientName }}</strong> ({{ $reference }}).
+                    @if($locationLabel !== '')
+                      <br><br>Location: <strong>{{ $locationLabel }}</strong>
+                    @endif
                   </td>
                 </tr>
                 @if($reason !== '')

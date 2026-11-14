@@ -15,6 +15,7 @@
     $clientName = $bookingRequest->clientArtistFacingName();
     $designTitle = (string) ($bookingRequest->tattoo?->title ?? 'Design');
     $reference = $bookingRequest->referenceLabel();
+    $locationLabel = trim((string) $bookingRequest->clientStudioLabel());
     $sessionCount = count($bookingRequest->normalizedArtistSlots($bookingRequest->artist_session_slots));
     $consultCount = count($bookingRequest->normalizedArtistSlots($bookingRequest->artist_consultation_slots ?? []));
   @endphp
@@ -48,6 +49,9 @@
                         Tattoo session day(s) offered: <strong>{{ $sessionCount }}</strong><br>
                         @if($consultCount > 0)
                         Consultation day(s) offered: <strong>{{ $consultCount }}</strong><br>
+                        @endif
+                        @if($locationLabel !== '')
+                        Location: <strong>{{ $locationLabel }}</strong><br>
                         @endif
                       </td></tr>
                     </table>

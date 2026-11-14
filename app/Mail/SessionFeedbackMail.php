@@ -64,6 +64,13 @@ class SessionFeedbackMail extends Mailable
         }
 
         $studioName = trim((string) ($booking->studio?->name ?? ''));
+        if ($studioName === '') {
+            $studioName = trim((string) ($booking->artist?->userDetail?->resolvedStudioName($booking->selectedStudioId()) ?? ''));
+        }
+        if ($studioName === '') {
+            $full = trim((string) $booking->studioNameForClient());
+            $studioName = $full !== '' ? trim((string) strtok($full, ',')) : '';
+        }
         $dateLabel = $this->sessionDateLabel($booking);
         $metaParts = array_values(array_filter([
             $design,

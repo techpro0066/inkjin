@@ -334,10 +334,11 @@ class ChangeStudioController extends Controller
         $workspaceType = $validated['workspace_type'] ?? $this->mapStudioType($studio->studio_type);
         $fromLinkId = ! empty($validated['from_link']) ? (int) $validated['from_link'] : null;
 
-        // Update an existing active workplace in place — no new row / no join email.
+        // Update an existing active workplace in place — notify when the Bookpay studio changes.
         if ($mode === 'update') {
             $row = $this->resolveUpdateLink((int) $user->id, $fromLinkId);
             if ($row) {
+                $previousStudioId = (int) ($row->studio_id ?? 0);
                 $row->fill([
                     'studio_id' => $studio->id,
                     // Split invite waits for accept; workplace-only can show On Bookpay if studio has an account.
@@ -371,6 +372,10 @@ class ChangeStudioController extends Controller
                     $row->revenue_split !== null ? (int) $row->revenue_split : null
                 );
                 $userDetail->save();
+
+                if ($previousStudioId !== (int) $studio->id) {
+                    app(ArtistStudioJoinRequestNotifier::class)->send($user, $row, $studio, false);
+                }
 
                 return;
             }
@@ -562,11 +567,26 @@ class ChangeStudioController extends Controller
                 $row = UserStudio::syncWorkplace((int) $user->id, $workplace, false, true);
             }
             if ($row) {
-                $row->studio_id = null;
-                $row->payout = false;
-                $row->connection_type = UserStudio::CONNECTION_NOT_ON_BOOKPAY;
-                $row->status = UserStudio::STATUS_ACTIVE;
-                $row->save();
+                $previousStudioId = (int) ($row->studio_id ?? 0);
+                $matched = $this->matchBookpayStudioFromWorkplace($workplace);
+                if ($matched) {
+                    $row->studio_id = $matched->id;
+                    $row->payout = false;
+                    $row->connection_type = UserStudio::CONNECTION_ON_BOOKPAY;
+                    $row->status = UserStudio::STATUS_JOIN_PENDING;
+                    $row->studio_name = $matched->name ?: $row->studio_name;
+                    $row->save();
+
+                    if ($previousStudioId !== (int) $matched->id) {
+                        $invited = app(ArtistStudioJoinRequestNotifier::class)->send($user, $row, $matched, false);
+                    }
+                } else {
+                    $row->studio_id = null;
+                    $row->payout = false;
+                    $row->connection_type = UserStudio::CONNECTION_NOT_ON_BOOKPAY;
+                    $row->status = UserStudio::STATUS_ACTIVE;
+                    $row->save();
+                }
             }
         }
 
@@ -581,6 +601,44 @@ class ChangeStudioController extends Controller
         }
 
         return $invited;
+    }
+
+    /**
+     * @param  array<string, mixed>  $workplace
+     */
+    private function matchBookpayStudioFromWorkplace(array $workplace): ?Studio
+    {
+        $maps = trim((string) ($workplace['google_maps_link'] ?? ''));
+        if ($maps !== '') {
+            $byMaps = Studio::query()
+                ->whereNotNull('user_id')
+                ->where('user_id', '>', 0)
+                ->where('google_maps_link', $maps)
+                ->orderBy('id')
+                ->first();
+            if ($byMaps) {
+                return $byMaps;
+            }
+        }
+
+        $name = mb_strtolower(trim((string) ($workplace['studio_name'] ?? '')));
+        if ($name === '') {
+            return null;
+        }
+
+        $city = mb_strtolower(trim((string) ($workplace['city'] ?? '')));
+        $query = Studio::query()
+            ->whereNotNull('user_id')
+            ->where('user_id', '>', 0)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$name]);
+
+        if ($city !== '') {
+            $query->whereRaw('LOWER(TRIM(city)) = ?', [$city]);
+        }
+
+        $matches = $query->orderBy('id')->limit(2)->get();
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     /**

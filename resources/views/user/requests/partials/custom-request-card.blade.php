@@ -17,6 +17,7 @@
 @endphp
 <div class="custom-request-card request-card bg-white rounded-2xl shadow-sm border border-outline-variant/20 p-5 cursor-pointer"
      data-request-id="{{ $customRequest->id }}"
+     data-type="{{ $isGuestCard ? 'guest' : 'custom' }}"
      data-status="{{ $filterKey }}"
      data-artist="{{ $customRequest->artistSearchKey() }}"
      data-date="{{ $customRequest->created_at?->format('Y-m-d') ?? '' }}"

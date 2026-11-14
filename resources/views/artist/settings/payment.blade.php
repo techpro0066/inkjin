@@ -558,7 +558,7 @@
     <div style="padding:0 22px 18px">
       <div class="lockbar">
         <span class="ms" style="font-size:17px">info</span>
-        <span>Each booking uses the setup of the studio where the session is. You pick which days you work at each studio in <a href="{{ route('schedule.calendar-sync') }}" style="color:#3E007C;font-weight:600">Schedule</a>.</span>
+        <span>Each booking uses the setup of the studio where the session is. You pick which days you work at each studio in <a href="{{ route('availability.index') }}" style="color:#3E007C;font-weight:600">Schedule &gt; Availability</a>.</span>
                   </div>
                 </div>
     @else

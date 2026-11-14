@@ -121,8 +121,8 @@
       <nav class="flex flex-col gap-1">
         <a href="{{ route('user.dashboard') }}" class="nav-item"><span class="material-symbols-outlined">dashboard</span> Dashboard</a>
         <a href="{{ route('public.chat') }}" class="nav-item active"><span class="material-symbols-outlined">mail</span> Inbox <span class="ml-auto bg-primary/30 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">3</span></a>
-        <a href="{{ route('user.requests.index') }}" class="nav-item"><span class="material-symbols-outlined">edit_note</span> My Requests</a>
-        <a href="{{ route('user.bookings.index') }}" class="nav-item"><span class="material-symbols-outlined">calendar_today</span> My Bookings</a>
+        <a href="{{ route('user.requests.index') }}" class="nav-item"><span class="material-symbols-outlined">edit_note</span> Requests</a>
+        <a href="{{ route('user.bookings.index') }}" class="nav-item"><span class="material-symbols-outlined">calendar_today</span> Bookings</a>
         <a href="{{ route('user.settings') }}" class="nav-item"><span class="material-symbols-outlined">settings</span> Settings</a>
       </nav>
     </div>

@@ -175,15 +175,13 @@
                             <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-on-surface-variant mb-3">
                             <span><strong class="text-on-surface">Deposit paid:</strong> €{{ $booking->deposit_amount }}</span>
                             <span><strong class="text-on-surface">Remaining:</strong> €{{ number_format($booking->remainingBalanceAmount(), 2) }}</span>
+                            @if (filled($booking->completion_code))
+                              <span class="w-full"><strong class="text-on-surface">Completion code:</strong> <span class="font-mono font-semibold tracking-wide text-on-surface">{{ $booking->completion_code }}</span> <span class="text-on-surface-variant">(Share this with your artist after your session so they can mark the booking completed.)</span></span>
+                            @endif
                             </div>
                             @php
                                 $re = $rescheduleEligibility[$booking->id] ?? ['can_reschedule' => false, 'message' => ''];
                             @endphp
-                            <div class="flex items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2 mb-3">
-                            <span class="text-sm">📲</span>
-                            <p class="text-xs text-on-surface-variant">Not sure about placement? Try it in AR first</p>
-                            <a href="#" class="text-xs font-semibold text-primary hover:underline ml-auto whitespace-nowrap">Open App →</a>
-                            </div>
                             <div class="rounded-2xl border p-5 mb-3 text-sm overflow-hidden {{ $canFullRefund ? 'border-green-200/90 bg-gradient-to-br from-green-50 via-white to-emerald-50/80 shadow-sm shadow-green-900/[0.06]' : 'border-outline-variant/40 bg-surface-container-low shadow-sm' }}">
                                 <div class="flex gap-4">
                                     <div class="flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center {{ $canFullRefund ? 'bg-green-100 text-green-700 ring-1 ring-green-200/60' : 'bg-surface-container-highest text-on-surface-variant ring-1 ring-outline-variant/20' }}">
@@ -297,6 +295,9 @@
                                     <span class="text-green-700 font-medium">Paid in full</span>
                                 @elseif ($booking->remainingBalanceAmount() > 0.009)
                                     <span><strong class="text-on-surface">Remaining:</strong> €{{ number_format($booking->remainingBalanceAmount(), 2) }}</span>
+                                @endif
+                                @if (filled($booking->completion_code))
+                                  <span class="w-full"><strong class="text-on-surface">Completion code:</strong> <span class="font-mono font-semibold tracking-wide text-on-surface">{{ $booking->completion_code }}</span> <span class="text-on-surface-variant">(Share this with your artist after your session so they can mark the booking completed.)</span></span>
                                 @endif
                             </div>
                             @if ($booking->completed_at)
@@ -432,12 +433,6 @@
                 <span><strong class="text-on-surface">Deposit paid:</strong> €240</span>
                 <span><strong class="text-on-surface">Remaining:</strong> €710</span>
               </div>
-              <!-- AR prompt -->
-              <div class="flex items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2 mb-3">
-                <span class="text-sm">📲</span>
-                <p class="text-xs text-on-surface-variant">Not sure about placement? Try it in AR first</p>
-                <a href="#" class="text-xs font-semibold text-primary hover:underline ml-auto whitespace-nowrap">Open App →</a>
-              </div>
               <div class="flex flex-wrap gap-2">
                 <a href="#" class="text-sm font-semibold text-primary hover:underline">View Details</a>
                 <span class="text-outline">·</span>
@@ -533,12 +528,6 @@
               <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-on-surface-variant mb-3">
                 <span><strong class="text-on-surface">Deposit paid:</strong> €180</span>
                 <span><strong class="text-on-surface">Remaining:</strong> €270</span>
-              </div>
-              <!-- AR prompt -->
-              <div class="flex items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2 mb-3">
-                <span class="text-sm">📲</span>
-                <p class="text-xs text-on-surface-variant">Not sure about placement? Try it in AR first</p>
-                <a href="#" class="text-xs font-semibold text-primary hover:underline ml-auto whitespace-nowrap">Open App →</a>
               </div>
               <div class="flex flex-wrap gap-2">
                 <a href="#" class="text-sm font-semibold text-primary hover:underline">View Details</a>
@@ -748,7 +737,7 @@
         </div>
         <div id="bdmCompletionRow" class="hidden mb-6 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-4">
           <p class="text-xs font-bold text-primary uppercase tracking-wide mb-1">Completion code</p>
-          <p class="text-xs text-on-surface-variant mb-3 leading-snug">Share this with your artist after your session so they can mark the booking complete.</p>
+          <p class="text-xs text-on-surface-variant mb-3 leading-snug">Share this with your artist after your session so they can mark the booking completed.</p>
           <p id="bdmCompletionCode" class="font-mono text-xl sm:text-2xl font-extrabold tracking-[0.2em] text-on-surface text-center py-2 break-all"></p>
           <p id="bdmCompletionUsedNote" class="hidden text-xs text-on-surface-variant text-center mt-2">This code was already verified with your artist.</p>
         </div>

@@ -127,6 +127,17 @@
                           {{ $booking->tattoo->title ?? 'Tattoo Session' }}
                         </td>
                       </tr>
+                      @php $locationLabel = trim((string) $booking->studioNameForClient()); @endphp
+                      @if($locationLabel !== '')
+                      <tr>
+                        <td style="font-size: 13px; color: #494552; line-height: 1.4; width: 140px; vertical-align: top; padding-top: 10px;">
+                          Location
+                        </td>
+                        <td style="font-size: 15px; color: #1c1b21; font-weight: 600; line-height: 1.4; vertical-align: top; padding-top: 10px;">
+                          {{ $locationLabel }}
+                        </td>
+                      </tr>
+                      @endif
                     </table>
                   </td>
                 </tr>

@@ -1,0 +1,50 @@
+<?php
+
+namespace App\Mail;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
+
+class GuestSpotStudioDirectNotifyMail extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    public function __construct(
+        public string $artistName,
+        public string $artistInitials,
+        public string $artistMeta,
+        public string $studioGreetingName,
+        public string $dateRangeLabel,
+        public string $actionUrl,
+        public bool $isResend = false,
+        public ?string $artistAvatarUrl = null,
+    ) {}
+
+    public function envelope(): Envelope
+    {
+        $prefix = $this->isResend ? 'Reminder: ' : '';
+
+        return new Envelope(
+            subject: $prefix.$this->artistName.' listed a guest spot at your studio',
+        );
+    }
+
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.guest-spot-studio-direct-notify',
+            with: [
+                'artistName' => $this->artistName,
+                'artistInitials' => $this->artistInitials,
+                'artistMeta' => $this->artistMeta,
+                'artistAvatarUrl' => $this->artistAvatarUrl,
+                'studioGreetingName' => $this->studioGreetingName,
+                'dateRangeLabel' => $this->dateRangeLabel,
+                'actionUrl' => $this->actionUrl,
+            ],
+        );
+    }
+}

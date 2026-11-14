@@ -18,6 +18,7 @@
     $designTitle = (string) ($bookingRequest->tattoo?->title ?? 'Design');
     $reference = $bookingRequest->referenceLabel();
     $submittedAt = $bookingRequest->created_at?->format('M j, Y \a\t g:i A') ?? now()->format('M j, Y \a\t g:i A');
+    $locationLabel = trim((string) $bookingRequest->clientStudioLabel());
   @endphp
 
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
@@ -76,6 +77,9 @@
                             <tr><td style="font-size:14px;font-weight:700;color:#310f7a;text-transform:uppercase;letter-spacing:.5px;padding:0 0 16px 0;">Request details</td></tr>
                             <tr><td style="padding:0 0 10px 0;font-size:15px;color:#1c1b21;"><strong>Client:</strong> {{ $clientName }}</td></tr>
                             <tr><td style="padding:0 0 10px 0;font-size:15px;color:#1c1b21;"><strong>Design:</strong> {{ $designTitle }}</td></tr>
+                            @if($locationLabel !== '')
+                              <tr><td style="padding:0 0 10px 0;font-size:15px;color:#1c1b21;"><strong>Location:</strong> {{ $locationLabel }}</td></tr>
+                            @endif
                             <tr><td style="padding:0 0 10px 0;font-size:15px;color:#1c1b21;"><strong>Reference:</strong> {{ $reference }}</td></tr>
                             <tr><td style="font-size:15px;color:#1c1b21;"><strong>Submitted:</strong> {{ $submittedAt }}</td></tr>
                           </table>

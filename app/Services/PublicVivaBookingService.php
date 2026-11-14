@@ -153,6 +153,18 @@ class PublicVivaBookingService
         $taxAmount = (float) $totals['tax_amount'];
         $totalPaid = (float) $totals['total_due'];
 
+        $userStudioLinkId = ArtistStudioChoices::resolveUserStudioLinkIdFromPayload(
+            (int) $userDetail->user_id,
+            $payload
+        );
+        $workplaceDetails = [];
+        if ($userStudioLinkId) {
+            $workplaceDetails['user_studio_id'] = $userStudioLinkId;
+        }
+        if ($studioId) {
+            $workplaceDetails['studio_id'] = (int) $studioId;
+        }
+
         $booking = Booking::create([
             'user_id' => $bookingUser->id,
             'artist_user_id' => $userDetail->user_id,
@@ -160,6 +172,7 @@ class PublicVivaBookingService
             'guest_spot_id' => $guestSpot?->id,
             'tattoo_id' => $design->id,
             'booking_type' => 'flash',
+            'custom_tattoo_details' => $workplaceDetails !== [] ? $workplaceDetails : null,
             'cancellation_window_hours' => CancellationService::hoursFromArtistWindow($userDetail->cancellation_window ?? '48h'),
             'booking_date' => $bookingDate,
             'start_time_utc' => $startUtc,

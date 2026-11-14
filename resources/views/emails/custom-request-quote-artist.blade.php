@@ -15,6 +15,7 @@
     $clientName = $customRequest->clientArtistFacingName();
     $reference = $customRequest->referenceLabel();
     $message = trim((string) ($customRequest->message_for_client ?? ''));
+    $locationLabel = trim((string) $customRequest->clientWhereLabel());
   @endphp
 
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
@@ -43,9 +44,12 @@
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#F8F1FB;border-radius:12px;">
                       <tr><td style="padding:20px;font-size:14px;color:#1c1b21;line-height:1.6;">
                         <strong style="color:#310f7a;">Summary sent:</strong><br><br>
+                        @if($locationLabel !== '')
+                        <strong>Location:</strong> {{ $locationLabel }}<br>
+                        @endif
                         <strong>Price:</strong> {{ $customRequest->estimatedPriceLabel() }}<br>
-                        <strong>Duration:</strong> {{ $customRequest->estimated_time ?: '—' }}<br>
-                        <strong>Sessions:</strong> {{ $customRequest->number_of_sessions ?: '—' }}
+                        <strong>Duration:</strong> {{ $customRequest->estimatedTimeLabel() ?: '—' }}<br>
+                        <strong>Sessions:</strong> {{ $customRequest->numberOfSessionsLabel() ?: '—' }}
                         @if($message !== '')
                         <br><br><strong>Message:</strong><br>{{ $message }}
                         @endif

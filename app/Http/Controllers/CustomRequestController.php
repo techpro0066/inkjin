@@ -123,6 +123,8 @@ class CustomRequestController extends Controller
             ->value('slug') ?? '');
 
         $isManagedScheduling = ($userDetail->scheduling_type ?? '') === 'managed';
+        // Custom requests always collect preferred availability, regardless of auto/managed.
+        $showAvailabilityStep = ! $isWaitlistJoin;
 
         $hiddenStyleOptions = Style::query()
             ->active()
@@ -154,6 +156,7 @@ class CustomRequestController extends Controller
             'fallbackTattooSlug' => $fallbackTattooSlug,
             'artistProfileUrl' => route('public.artist', ['username' => $userDetail->user_name]),
             'isManagedScheduling' => $isManagedScheduling,
+            'showAvailabilityStep' => $showAvailabilityStep,
             'hiddenStyleOptions' => $hiddenStyleOptions,
             'hiddenPlacementOptions' => $hiddenPlacementOptions,
             'guestSpotId' => $guestSpotId,
@@ -193,7 +196,8 @@ class CustomRequestController extends Controller
             'request_payload.portfolio_id' => ['nullable', 'integer', 'min:1'],
         ];
 
-        if ($isManagedScheduling) {
+        $wantsWaitlistPreview = (bool) $request->input('request_payload.from_waitlist', false);
+        if (! $wantsWaitlistPreview) {
             $rules['request_payload.preferences'] = ['nullable', 'array'];
             $rules['request_payload.preferred_days'] = ['required', 'array', 'min:1'];
             $rules['request_payload.how_much_flexible'] = ['required', 'string', 'max:255'];
@@ -228,7 +232,7 @@ class CustomRequestController extends Controller
             return response()->json(['message' => 'This guest spot is no longer available.'], 422);
         }
 
-        if ($isGuestRequest && $isManagedScheduling) {
+        if ($isGuestRequest && ! $isWaitlistJoin) {
             $preferences = is_array($payload['preferences'] ?? null) ? $payload['preferences'] : [];
             foreach ($preferences as $pref) {
                 $ymd = trim((string) ($pref['date'] ?? ''));
@@ -300,6 +304,7 @@ class CustomRequestController extends Controller
         }
 
         $schedulingType = $isManagedScheduling ? 'managed' : 'auto';
+        $storeAvailability = ! $isWaitlistJoin;
 
         $customRequest = CustomRequest::create([
             'user_id' => $requestUser->id,
@@ -312,11 +317,11 @@ class CustomRequestController extends Controller
             'questions_answers' => $questionsAnswers,
             'anything_else_notes' => trim((string) ($payload['notes'] ?? '')) ?: null,
             'status' => 'pending',
-            'preferences' => $isManagedScheduling ? ($payload['preferences'] ?? []) : null,
-            'preferred_days' => $isManagedScheduling ? ($payload['preferred_days'] ?? []) : null,
-            'avoid_dates' => $isManagedScheduling ? (trim((string) ($payload['avoid_dates'] ?? '')) ?: null) : null,
-            'how_much_flexible' => $isManagedScheduling ? trim((string) ($payload['how_much_flexible'] ?? '')) : null,
-            'urgency' => $isManagedScheduling ? trim((string) ($payload['urgency'] ?? '')) : null,
+            'preferences' => $storeAvailability ? ($payload['preferences'] ?? []) : null,
+            'preferred_days' => $storeAvailability ? ($payload['preferred_days'] ?? []) : null,
+            'avoid_dates' => $storeAvailability ? (trim((string) ($payload['avoid_dates'] ?? '')) ?: null) : null,
+            'how_much_flexible' => $storeAvailability ? trim((string) ($payload['how_much_flexible'] ?? '')) : null,
+            'urgency' => $storeAvailability ? trim((string) ($payload['urgency'] ?? '')) : null,
         ]);
 
         if ($isWaitlistJoin) {

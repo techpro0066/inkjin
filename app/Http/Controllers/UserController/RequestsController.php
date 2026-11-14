@@ -70,8 +70,20 @@ class RequestsController extends Controller
             ->values()
             ->all();
 
-        $tab = request()->query('tab');
-        $activeTab = in_array($tab, ['custom', 'guest'], true) ? $tab : 'design';
+        // Prefer ?type= (artist-style chips). Legacy ?tab=custom|guest|design still works.
+        $type = strtolower(trim((string) request()->query('type', '')));
+        if ($type === '') {
+            $legacyTab = strtolower(trim((string) request()->query('tab', '')));
+            $type = in_array($legacyTab, ['design', 'custom', 'guest'], true) ? $legacyTab : 'all';
+        }
+        $initialType = in_array($type, ['design', 'custom', 'guest'], true) ? $type : 'all';
+
+        $typeCounts = [
+            'all' => $requests->count() + $customRequests->count() + $guestRequests->count(),
+            'design' => $requests->count(),
+            'custom' => $customRequests->count(),
+            'guest' => $guestRequests->count(),
+        ];
 
         return view('user.requests.index', [
             'requests' => $requests,
@@ -80,7 +92,8 @@ class RequestsController extends Controller
             'customRequestsPayload' => $customRequestsPayload,
             'guestRequests' => $guestRequests,
             'guestRequestsPayload' => $guestRequestsPayload,
-            'activeTab' => $activeTab,
+            'initialType' => $initialType,
+            'typeCounts' => $typeCounts,
         ]);
     }
 

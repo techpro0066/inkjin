@@ -45,6 +45,7 @@ class PaymentLinkArtistBookedMail extends Mailable
                 'sessionTime' => $this->sessionTime(),
                 'duration' => $this->durationLabel(),
                 'dueAmount' => $this->dueAmount(),
+                'locationLabel' => trim((string) $this->booking->studioNameForClient()),
                 'viewBookingUrl' => route('artist.bookings.index', ['booking' => $this->booking->id]),
             ],
         );

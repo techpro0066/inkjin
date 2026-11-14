@@ -354,9 +354,10 @@
 
     <div id="rcBookingChrome" class="hidden">
       <div class="flex items-start justify-center mb-10" id="progressDots">
+        @php $showAvailabilityStep = !empty($showAvailabilityStep) || !empty($isManagedScheduling); @endphp
         <div class="progress-step text-center" data-step="1"><div class="step-dot mx-auto">1</div><div class="step-label">Questions</div></div>
         <div class="progress-line mt-4" data-line="1"></div>
-        @if(!empty($isManagedScheduling))
+        @if($showAvailabilityStep)
         <div class="progress-step text-center" data-step="2"><div class="step-dot mx-auto">2</div><div class="step-label">Availability</div></div>
         <div class="progress-line mt-4" data-line="2"></div>
         <div class="progress-step text-center" data-step="3"><div class="step-dot mx-auto">3</div><div class="step-label">Register</div></div>
@@ -431,7 +432,7 @@
               @if($isStudioRequest)
                 The studio picks the best artist for you
               @else
-                with <strong>{{ $artistName }}</strong>@if($requestFormStudioLabel) at <strong>{{ $requestFormStudioLabel }}</strong>@endif
+                with <strong>{{ $artistName }}</strong><span id="rcHeaderStudioWrap"@if($requestFormStudioLabel === '') style="display:none"@endif> at <strong id="rcHeaderStudioLabel">{{ $requestFormStudioLabel }}</strong></span>
               @endif
             </span>
           </div>
@@ -459,7 +460,7 @@
           $introAtLine = trim((string) ($studioLabel ?? ''));
       } elseif (count($studioChoices) > 1) {
           $names = array_values(array_filter(array_map(
-              static fn ($c) => trim((string) ($c['name'] ?? '')),
+              static fn ($c) => trim((string) ($c['label'] ?? $c['name'] ?? '')),
               $studioChoices
           )));
           if (count($names) === 2) {
@@ -470,11 +471,7 @@
           } else {
               $joined = $names[0] ?? '';
           }
-          $locBits = array_filter([
-              trim((string) ($userDetail->city ?? '')),
-              trim((string) ($userDetail->country ?? '')),
-          ]);
-          $introAtLine = trim($joined.($locBits ? ', '.implode(', ', $locBits) : ''));
+          $introAtLine = $joined;
       } else {
           $introAtLine = trim((string) ($studioLabel ?? ''));
       }
@@ -607,7 +604,8 @@
     </div>
   </div>
 
-  @if(!empty($isManagedScheduling))
+  @php $showAvailabilityStep = ! empty($showAvailabilityStep) || ! empty($isManagedScheduling); @endphp
+  @if($showAvailabilityStep)
   @php
     $isGuestAvailability = ! empty($guestSpotId) && ! empty($guestSpot);
     $guestPrefDateMin = null;
@@ -931,7 +929,7 @@
           @if(!empty($isWaitlistJoin))
             We'll email you when <span id="successArtistName">{{ $artistName }}</span> opens their books. Your request is saved so they can follow up then.
           @else
-          <span id="successArtistName">{{ $artistName }}</span> will review your request @if(!empty($isManagedScheduling)) and confirm a time that works for both of you @endif. You'll receive updates via email.
+          <span id="successArtistName">{{ $artistName }}</span> will review your request and confirm a time that works for both of you. You'll receive updates via email.
           @endif
         </p>
         <div class="bg-surface-container-low rounded-2xl p-5 mb-8">
@@ -1045,13 +1043,18 @@
         if (typeof answer === 'string') answer = answer.trim();
         if (answer === undefined || answer === null || answer === '') return;
         if (Array.isArray(answer) && answer.length === 0) return;
-        output[String(q.id)] = {
+        var entry = {
           id: q.id,
           question: String(q.title || ''),
           type: String(q.type || 'input'),
           question_type: String(q.question_type || 'other'),
           answer: answer
         };
+        if (String(q.type || '') === 'studio' || String(q.id) === '__studio__') {
+          var sid = parseInt(questionAnswers.__studio_id__ || 0, 10) || 0;
+          if (sid > 0) entry.studio_id = sid;
+        }
+        output[String(q.id)] = entry;
       });
       return output;
     }
@@ -1227,8 +1230,10 @@
             : (q.options || []).map(function(name) { return { name: name, address: '' }; });
           body = '<div class="stpick" role="radiogroup" aria-label="Studio">' + studioList.map(function(o) {
             var name = typeof o === 'string' ? o : String(o.name || '');
+            var label = typeof o === 'string' ? o : String(o.label || o.name || '');
             var addr = typeof o === 'string' ? '' : String(o.address || '');
-            return '<button type="button" class="stc single-choice-radio-button" data-value="' + escapeHtml(name) + '" aria-pressed="false">' +
+            var sid = (typeof o === 'object' && o && o.id != null) ? String(o.id) : '';
+            return '<button type="button" class="stc single-choice-radio-button" data-value="' + escapeHtml(label) + '"' + (sid ? ' data-studio-id="' + escapeHtml(sid) + '"' : '') + ' aria-pressed="false">' +
               '<span class="material-symbols-outlined stc-ico">location_on</span>' +
               '<span class="stc-txt"><b>' + escapeHtml(name) + '</b>' + (addr ? '<small>' + escapeHtml(addr) + '</small>' : '') + '</span>' +
               '<span class="material-symbols-outlined stc-ck">check_circle</span></button>';
@@ -1384,6 +1389,7 @@
       questionAnswers = draft.questionAnswers && typeof draft.questionAnswers === 'object'
         ? draft.questionAnswers
         : {};
+      if (typeof window.rcUpdateAvailLocation === 'function') window.rcUpdateAvailLocation();
       if (opts.answersOnly) return;
       restoreQuestionAnswersToDom();
       showQuestion(parseInt(draft.currentQuestionIndex, 10) || 0);
@@ -1417,6 +1423,12 @@
 
       closeStyleOtherModal(false);
       if (qId) questionAnswers[qId] = value;
+      if (String(qId) === '__studio__') {
+        var sid = parseInt($btn.attr('data-studio-id') || $btn.data('studioId') || 0, 10) || 0;
+        if (sid > 0) questionAnswers.__studio_id__ = sid;
+        else delete questionAnswers.__studio_id__;
+        if (typeof window.rcUpdateAvailLocation === 'function') window.rcUpdateAvailLocation();
+      }
     });
     $(document).on('click', '.js-style-other-close', function() {
       closeStyleOtherModal(true);
@@ -1502,6 +1514,7 @@
     var rcStudioArtists = @json($artists ?? []);
     var STUDIO_ARTIST_QUESTION_ID = 'studio_artist_pick';
     var isManagedScheduling = @json(!empty($isManagedScheduling));
+    var showAvailabilityStep = @json(!empty($showAvailabilityStep) || !empty($isManagedScheduling));
     var rcStudioChoices = @json($studioChoices ?? []);
     var rcDefaultStudio = (Array.isArray(rcStudioChoices) && rcStudioChoices.length === 1)
       ? rcStudioChoices[0]
@@ -1512,9 +1525,9 @@
           maps_link: @json($rcStudioMapsLink ?? '')
         };
     var questionCount = (typeof window.rcGetTotalQuestions === 'function') ? window.rcGetTotalQuestions() : 0;
-    var postScreens = isManagedScheduling ? [9, 10, 14, 15, 16] : [10, 14, 15, 16];
+    var postScreens = showAvailabilityStep ? [9, 10, 14, 15, 16] : [10, 14, 15, 16];
     var currentReg = 0;
-    var rcMaxStep = isManagedScheduling ? 5 : 4;
+    var rcMaxStep = showAvailabilityStep ? 5 : 4;
     var rcCurrentQuestion = 0;
 
     if (questionCount === 0) {
@@ -1692,10 +1705,10 @@
     function rcResolveStep() {
       if (current === 0) return 0;
       if (inQuestions) return 1;
-      if (isManagedScheduling && current === 9) return 2;
-      if (current === 10) return isManagedScheduling ? 3 : 2;
-      if (current === 14 || current === 15) return isManagedScheduling ? 4 : 3;
-      if (current === 16) return isManagedScheduling ? 5 : 4;
+      if (showAvailabilityStep && current === 9) return 2;
+      if (current === 10) return showAvailabilityStep ? 3 : 2;
+      if (current === 14 || current === 15) return showAvailabilityStep ? 4 : 3;
+      if (current === 16) return showAvailabilityStep ? 5 : 4;
       return 0;
     }
 
@@ -1756,14 +1769,24 @@
         ? (window.rcGetQuestionAnswers() || {})
         : {};
       var selectedName = String(answers.__studio__ || answers['__studio__'] || '').trim();
-      if (!selectedName && Array.isArray(rcStudioChoices) && rcStudioChoices.length === 1) {
+      var selectedId = parseInt(answers.__studio_id__ || answers['__studio_id__'] || 0, 10) || 0;
+      if (!selectedName && !selectedId && Array.isArray(rcStudioChoices) && rcStudioChoices.length === 1) {
         return rcStudioChoices[0];
       }
-      if (selectedName && Array.isArray(rcStudioChoices)) {
-        for (var i = 0; i < rcStudioChoices.length; i++) {
-          if (String(rcStudioChoices[i].name || '') === selectedName) return rcStudioChoices[i];
+      if (Array.isArray(rcStudioChoices)) {
+        if (selectedId > 0) {
+          for (var i = 0; i < rcStudioChoices.length; i++) {
+            if (Number(rcStudioChoices[i].id) === selectedId) return rcStudioChoices[i];
+          }
         }
-        return { name: selectedName, address: '', maps_link: '' };
+        if (selectedName) {
+          for (var j = 0; j < rcStudioChoices.length; j++) {
+            var label = String(rcStudioChoices[j].label || rcStudioChoices[j].name || '');
+            var name = String(rcStudioChoices[j].name || '');
+            if (label === selectedName || name === selectedName) return rcStudioChoices[j];
+          }
+          return { name: selectedName, label: selectedName, address: '', maps_link: '' };
+        }
       }
       return rcDefaultStudio;
     }
@@ -1778,7 +1801,35 @@
       return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
     }
 
+    function rcHeaderStudioCompactLabel(studio) {
+      var name = String((studio && studio.name) || rcDefaultStudio.name || 'Studio').trim();
+      var city = String((studio && studio.city) || '').trim();
+      var country = String((studio && studio.country) || '').trim();
+      if (city || country) {
+        return [name, city, country].filter(Boolean).join(', ');
+      }
+      var addr = String((studio && studio.address) || '').trim();
+      if (!addr) return name;
+      var parts = addr.split(',').map(function(p) { return p.trim(); }).filter(Boolean);
+      if (parts.length >= 2) return name + ', ' + parts.slice(-2).join(', ');
+      return name + ', ' + addr;
+    }
+
+    function rcUpdateHeaderStudio() {
+      if (guestSpotId) return;
+      var wrap = document.getElementById('rcHeaderStudioWrap');
+      var labelEl = document.getElementById('rcHeaderStudioLabel');
+      if (!wrap || !labelEl) return;
+      var studio = (typeof rcResolveSelectedStudio === 'function')
+        ? rcResolveSelectedStudio()
+        : rcDefaultStudio;
+      var label = rcHeaderStudioCompactLabel(studio || rcDefaultStudio);
+      labelEl.textContent = label;
+      wrap.style.display = label ? '' : 'none';
+    }
+
     function rcUpdateAvailLocation() {
+      rcUpdateHeaderStudio();
       var root = document.getElementById('rcAvailLoc');
       if (!root || root.getAttribute('data-guest') === '1') return;
       var studio = rcResolveSelectedStudio() || rcDefaultStudio;
@@ -1802,6 +1853,8 @@
         }
       }
     }
+    window.rcUpdateAvailLocation = rcUpdateAvailLocation;
+    window.rcUpdateHeaderStudio = rcUpdateHeaderStudio;
 
     function showScreen(screenId, reverse) {
       document.querySelectorAll('.tf-screen').forEach(function(s) {
@@ -1840,7 +1893,7 @@
 
     window.rcLeaveRegisterStep = function() {
       collectData();
-      if (isManagedScheduling) {
+      if (showAvailabilityStep) {
         showScreen(9, true);
         current = 9;
         return;
@@ -1899,7 +1952,7 @@
     };
 
     window.rcLeaveQuestionsToContact = function() {
-      if (isManagedScheduling) {
+      if (showAvailabilityStep) {
         showScreen(9, false);
         current = 9;
       } else {
@@ -2369,7 +2422,7 @@
     }
 
     function validateRcManagedAvailability() {
-      if (!isManagedScheduling) return true;
+      if (!showAvailabilityStep) return true;
       ['rcManagedDayError', 'rcManagedFlexError', 'rcManagedUrgencyError', 'rcManagedPrefDateError'].forEach(function(id) {
         setRcManagedError(id, false);
       });
@@ -2417,7 +2470,7 @@
     });
 
     function buildRcManagedAvailabilityReviewLines() {
-      if (!isManagedScheduling) return [];
+      if (!showAvailabilityStep) return [];
       var avail = collectRcManagedAvailabilityPayload();
       var lines = [];
       (avail.preferences || []).forEach(function(pref, idx) {
@@ -2444,7 +2497,7 @@
           showQuestionsPhase(false);
           return;
         }
-        if (isManagedScheduling) {
+        if (showAvailabilityStep) {
           showScreen(9, false);
           current = 9;
         } else {
@@ -2674,7 +2727,7 @@
           if (requestPayload.questions_answers) delete requestPayload.questions_answers[STUDIO_ARTIST_QUESTION_ID];
           if (studioPortfolioId) requestPayload.studio_portfolio_id = studioPortfolioId;
         }
-        if (isManagedScheduling) {
+        if (showAvailabilityStep) {
           var managedAvailability = collectRcManagedAvailabilityPayload();
           requestPayload.preferences = managedAvailability.preferences;
           requestPayload.preferred_days = managedAvailability.preferred_days;

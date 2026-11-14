@@ -327,6 +327,7 @@
 
     function buildDesignQuestionsGridHtml(req) {
       var cells = [];
+      cells.push(designQaPlain('Location', req.locationLabel));
       cells.push(designQaPlain('Placement', req.placement));
       cells.push(designQaPlain('Scheduling', req.schedulingLabel));
       cells.push(designQaPlain('Consultation', req.consultationLabel));
@@ -334,6 +335,11 @@
 
       (req.questionsAnswers || []).forEach(function(item) {
         if (!item || !item.question) return;
+        var type = String(item.question_type || item.type || '').toLowerCase();
+        var q = String(item.question || '').toLowerCase();
+        if (type === 'studio' || type === 'studio_location' || q.indexOf('where do you want to get tattooed') !== -1 || q === 'location') {
+          return;
+        }
         var answerHtml;
         if (window.QuestionAnswerDisplay) {
           var imageUrls = window.QuestionAnswerDisplay.imageUrlsFromAnswer(item.answer, item.type);

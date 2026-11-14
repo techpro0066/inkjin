@@ -5,8 +5,12 @@
   var artistAvailabilitySchedule = CAL.artistAvailabilitySchedule || {};
   var artistTimezone = CAL.artistTimezone || 'UTC';
   var artistBlockedPeriods = CAL.artistBlockedPeriods || [];
+  var artistLocationOverrides = CAL.artistLocationOverrides || [];
   var artistBusyIntervalsByDate = CAL.artistBusyIntervalsByDate || {};
   var allowedDateRange = CAL.allowedDateRange || null;
+  var selectedStudioId = CAL.selectedStudioId ? Number(CAL.selectedStudioId) : null;
+  if (!selectedStudioId || selectedStudioId <= 0) selectedStudioId = null;
+  var isGuestRequest = !!(CAL.customRequest && CAL.customRequest.isGuest);
   var tattooDurationMinutes = parseInt(CAL.tattooDurationMinutes || @json($durationMinutes), 10) || 120;
   var weekdayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -62,14 +66,46 @@
     }
   }
 
+  function rangesForSelectedStudio(dayRanges) {
+    if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
+    if (!selectedStudioId) return dayRanges;
+    return dayRanges.filter(function(r) {
+      var ids = Array.isArray(r.studio_ids) ? r.studio_ids.map(Number) : [];
+      // Empty studio_ids = legacy / all studios
+      if (!ids.length) return true;
+      return ids.indexOf(selectedStudioId) !== -1;
+    });
+  }
+
   function isArtistDateBlocked(ymd) {
-    if (!ymd || !Array.isArray(artistBlockedPeriods) || !artistBlockedPeriods.length) return false;
-    for (var i = 0; i < artistBlockedPeriods.length; i++) {
-      var p = artistBlockedPeriods[i];
-      if (!p) continue;
-      var s = String(p.start_date || '');
-      var e = String(p.end_date || '');
-      if (ymd >= s && ymd <= e) return true;
+    if (!ymd) return false;
+    if (Array.isArray(artistBlockedPeriods) && artistBlockedPeriods.length) {
+      for (var i = 0; i < artistBlockedPeriods.length; i++) {
+        var p = artistBlockedPeriods[i];
+        if (!p) continue;
+        var s = String(p.start_date || '');
+        var e = String(p.end_date || '');
+        if (ymd >= s && ymd <= e) return true;
+      }
+    }
+    // Guest-spot bookings skip home-studio location overrides (public calendar parity).
+    if (isGuestRequest) return false;
+    if (selectedStudioId && Array.isArray(artistLocationOverrides) && artistLocationOverrides.length) {
+      var covering = [];
+      for (var j = 0; j < artistLocationOverrides.length; j++) {
+        var loc = artistLocationOverrides[j];
+        if (!loc) continue;
+        var ls = String(loc.start_date || '');
+        var le = String(loc.end_date || '');
+        if (ymd >= ls && ymd <= le) covering.push(loc);
+      }
+      if (covering.length) {
+        var allowed = covering.some(function(loc) {
+          var ids = Array.isArray(loc.studio_ids) ? loc.studio_ids.map(Number) : [];
+          return ids.indexOf(selectedStudioId) !== -1;
+        });
+        if (!allowed) return true;
+      }
     }
     return false;
   }
@@ -149,7 +185,7 @@
     if (ymdArtist && isDateOutsideAllowedRange(ymdArtist)) return [];
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
     var weekdayKey = weekdayKeys[dateObj.getDay()];
-    var dayRanges = artistAvailabilitySchedule[weekdayKey];
+    var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
     if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
     var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
     if (dayStart.getTime() === todayStart.getTime()) {
@@ -177,7 +213,7 @@
     if (ymdArtist && isDateOutsideAllowedRange(ymdArtist)) return [];
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
     var weekdayKey = weekdayKeys[dateObj.getDay()];
-    var dayRanges = artistAvailabilitySchedule[weekdayKey];
+    var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
     if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
     var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
     if (dayStart.getTime() === todayStart.getTime()) {

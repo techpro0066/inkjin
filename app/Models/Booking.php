@@ -468,8 +468,130 @@ class Booking extends Model
     }
 
     /**
-     * Studio label for client UIs: guest-spot studio when applicable, else artist studio.
-     * Prefer snapshot stored at booking time; fall back to live guest spot / artist profile.
+     * studios.id chosen for this booking (column, snapshot, or guest spot).
+     */
+    public function selectedStudioId(): ?int
+    {
+        $id = (int) ($this->studio_id ?? 0);
+        if ($id > 0) {
+            return $id;
+        }
+
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $fromDetails = (int) ($details['studio_id'] ?? 0);
+        if ($fromDetails > 0) {
+            return $fromDetails;
+        }
+
+        if ($this->isGuestCustomRequestBooking() && $this->guestSpotId()) {
+            $spotStudio = (int) (GuestSpot::query()->whereKey($this->guestSpotId())->value('studio_id') ?? 0);
+            if ($spotStudio > 0) {
+                return $spotStudio;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * user_studios.id snapshot when the client picked a workplace (incl. Not-on-Bookpay).
+     */
+    public function selectedUserStudioLinkId(): ?int
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $id = (int) ($details['user_studio_id'] ?? 0);
+
+        return $id > 0 ? $id : null;
+    }
+
+    /**
+     * Full "Where" line for emails / confirmation: "Name, street, postal, city, country".
+     * Avoids concatenating compact "Name, City" with a street from a different workplace.
+     */
+    public function whereLabelForClient(): string
+    {
+        $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $this->loadMissing(['studio', 'artist.userDetail']);
+        $detail = $this->artist?->userDetail;
+
+        $linkId = $this->selectedUserStudioLinkId();
+        if ($detail && $linkId) {
+            $link = $detail->userStudioByLinkId($linkId);
+            if ($link) {
+                return $detail->workplaceWhereLabel($link);
+            }
+        }
+
+        if ($this->isGuestCustomRequestBooking() && $this->guestSpotId()) {
+            $spot = GuestSpot::query()->find($this->guestSpotId());
+            $label = $spot?->studioNameWithCityCountry();
+            if ($label) {
+                return $label;
+            }
+        }
+
+        $studioId = $this->selectedStudioId();
+        if ($detail) {
+            $name = trim((string) $detail->resolvedStudioName($studioId));
+            if ($name === '') {
+                $name = trim((string) ($this->studio?->name ?? ''));
+            }
+            $address = trim((string) $detail->publicStudioAddressLine($studioId));
+            if ($name !== '' && $address !== '') {
+                return $name.', '.$address;
+            }
+            if ($name !== '') {
+                return $name;
+            }
+            if ($address !== '') {
+                return $address;
+            }
+        }
+
+        $studio = $this->studio;
+        if ($studio) {
+            $street = trim(trim((string) ($studio->street_number ?? '')).' '.trim((string) ($studio->street_name ?? '')));
+            if ($street === '') {
+                $street = trim((string) ($studio->address ?? ''));
+            }
+            $parts = array_values(array_filter([
+                trim((string) ($studio->name ?? '')),
+                $street,
+                implode(', ', array_filter([
+                    trim((string) ($studio->postal_code ?? '')),
+                    trim((string) ($studio->city ?? '')),
+                    trim((string) ($studio->country ?? '')),
+                ])),
+            ], fn (string $part) => $part !== ''));
+
+            if ($parts !== []) {
+                return implode(', ', $parts);
+            }
+        }
+
+        $snapLabel = trim((string) ($details['studio_label'] ?? ''));
+        $snapLines = $details['studio_location_lines'] ?? null;
+        if (is_array($snapLines) && $snapLines !== []) {
+            $streetParts = array_slice(array_values(array_filter($snapLines, fn ($l) => trim((string) $l) !== '')), 1);
+            $nameOnly = $snapLabel !== '' ? trim((string) strtok($snapLabel, ',')) : '';
+            if ($nameOnly === '' && isset($snapLines[0])) {
+                $nameOnly = trim((string) strtok((string) $snapLines[0], ','));
+            }
+            $address = implode(', ', $streetParts);
+            if ($nameOnly !== '' && $address !== '') {
+                return $nameOnly.', '.$address;
+            }
+            if ($snapLabel !== '') {
+                return $snapLabel;
+            }
+        }
+
+        return $snapLabel;
+    }
+
+    /**
+     * Studio label for client UIs: guest-spot studio when applicable, else booking studio / artist studio.
+     * Prefer snapshot stored at booking time; fall back to live guest spot / selected studio / artist profile.
      */
     public function studioNameForClient(): string
     {
@@ -487,15 +609,60 @@ class Booking extends Model
             }
         }
 
-        $this->loadMissing('artist.userDetail');
+        $this->loadMissing(['studio', 'artist.userDetail']);
+        $detail = $this->artist?->userDetail;
+        $linkId = $this->selectedUserStudioLinkId();
+        if ($detail && $linkId) {
+            $link = $detail->userStudioByLinkId($linkId);
+            if ($link) {
+                return $detail->workplaceNameWithCityCountry($link);
+            }
+        }
 
-        return $this->artist?->userDetail?->studioNameWithCityCountry()
-            ?: trim((string) ($this->artist?->userDetail?->studio_name ?? ''));
+        $studioId = $this->selectedStudioId();
+        if ($studioId) {
+            $fromBookingStudio = implode(', ', array_values(array_filter([
+                trim((string) ($this->studio?->name ?? '')),
+                trim((string) ($this->studio?->city ?? '')),
+                trim((string) ($this->studio?->country ?? '')),
+            ], fn (string $part) => $part !== '')));
+            if ($fromBookingStudio !== '') {
+                return $fromBookingStudio;
+            }
+
+            $fromDetail = trim((string) ($detail?->studioNameWithCityCountry($studioId) ?? ''));
+            if ($fromDetail !== '') {
+                return $fromDetail;
+            }
+        }
+
+        return $detail?->studioNameWithCityCountry()
+            ?: trim((string) ($detail?->studio_name ?? ''));
     }
 
     public function studioAddressForClient(): string
     {
         $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
+        $this->loadMissing(['studio', 'artist.userDetail']);
+        $detail = $this->artist?->userDetail;
+        $linkId = $this->selectedUserStudioLinkId();
+        if ($detail && $linkId) {
+            $link = $detail->userStudioByLinkId($linkId);
+            if ($link) {
+                $street = trim(trim((string) ($link->street_number ?? '')).' '.trim((string) ($link->street_name ?? '')));
+                if ($street === '') {
+                    $street = trim((string) ($link->studio_address ?? ''));
+                }
+                $cityLine = implode(', ', array_filter([
+                    trim((string) ($link->postal_code ?? '')),
+                    trim((string) ($link->city ?? '')),
+                    trim((string) ($link->country ?? '')),
+                ]));
+
+                return trim(implode(', ', array_filter([$street, $cityLine])));
+            }
+        }
+
         $lines = $details['studio_location_lines'] ?? null;
         if (is_array($lines) && $lines !== []) {
             $withoutFirst = array_slice(array_values(array_filter($lines, fn ($l) => trim((string) $l) !== '')), 1);
@@ -515,9 +682,15 @@ class Booking extends Model
             }
         }
 
-        $this->loadMissing('artist.userDetail');
+        $studioId = $this->selectedStudioId();
+        if ($studioId && $detail) {
+            $address = trim((string) $detail->publicStudioAddressLine($studioId));
+            if ($address !== '') {
+                return $address;
+            }
+        }
 
-        return trim((string) ($this->artist?->userDetail?->studio_address ?? ''));
+        return trim((string) ($detail?->publicStudioAddressLine() ?? ''));
     }
 
     public function googleMapsLinkForClient(): string
@@ -536,9 +709,21 @@ class Booking extends Model
             }
         }
 
-        $this->loadMissing('artist.userDetail');
+        $this->loadMissing(['studio', 'artist.userDetail']);
+        $studioUrl = trim((string) ($this->studio?->google_maps_link ?? ''));
+        if ($studioUrl !== '') {
+            return $studioUrl;
+        }
 
-        return trim((string) ($this->artist?->userDetail?->google_maps_link ?? ''));
+        $studioId = $this->selectedStudioId();
+        if ($studioId && $this->artist?->userDetail) {
+            $maps = trim((string) $this->artist->userDetail->publicStudioMapsLink($studioId));
+            if ($maps !== '') {
+                return $maps;
+            }
+        }
+
+        return trim((string) ($this->artist?->userDetail?->publicStudioMapsLink() ?? ''));
     }
 
     public function quoteAmount(): float

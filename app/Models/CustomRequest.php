@@ -609,9 +609,62 @@ class CustomRequest extends Model
 
     public function checkoutDurationLabel(): string
     {
-        $label = trim((string) ($this->estimated_time ?? ''));
+        $label = $this->estimatedTimeLabel();
 
         return $label !== '' ? $label : $this->sessionDurationMinutes().' min';
+    }
+
+    /**
+     * Human-readable estimated duration for emails/UI (e.g. "6" → "6 hours").
+     */
+    public function estimatedTimeLabel(): string
+    {
+        $raw = trim((string) ($this->estimated_time ?? ''));
+        if ($raw === '') {
+            return '';
+        }
+
+        if (preg_match('/^(?P<num>\d+(?:\.\d+)?)\s*$/', $raw, $m)) {
+            $num = $m['num'];
+            $n = (float) $num;
+            if ($n == 1.0) {
+                return '1 hour';
+            }
+
+            return $num.' hours';
+        }
+
+        return $raw;
+    }
+
+    /**
+     * Human-readable session count (e.g. "1" → "1 session").
+     */
+    public function numberOfSessionsLabel(): string
+    {
+        $sessions = trim((string) ($this->number_of_sessions ?? ''));
+        if ($sessions === '') {
+            return '';
+        }
+
+        if (str_contains(strtolower($sessions), 'session')) {
+            return $sessions;
+        }
+
+        return $sessions === '1' ? '1 session' : $sessions.' sessions';
+    }
+
+    /**
+     * Combined duration + sessions for emails: "6 hours · 1 session".
+     */
+    public function quoteDurationSessionsLabel(): string
+    {
+        $parts = array_filter([
+            $this->estimatedTimeLabel(),
+            $this->numberOfSessionsLabel(),
+        ]);
+
+        return implode(' · ', $parts);
     }
 
     /**
@@ -668,6 +721,37 @@ class CustomRequest extends Model
         }
 
         return array_values($output);
+    }
+
+    /**
+     * Q&A rows for the artist dashboard detail modal.
+     * Always includes Location (even when the artist has only one studio).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function artistPanelQuestionAnswers(): array
+    {
+        $rows = [];
+        foreach ($this->formattedQuestionAnswers() as $entry) {
+            $type = strtolower(trim((string) ($entry['question_type'] ?? $entry['type'] ?? '')));
+            $question = strtolower(trim((string) ($entry['question'] ?? '')));
+            if ($type === 'studio' || str_contains($question, 'where do you want to get tattooed')) {
+                continue;
+            }
+            $rows[] = $entry;
+        }
+
+        $location = trim((string) $this->clientWhereLabel());
+        if ($location !== '') {
+            array_unshift($rows, [
+                'question' => 'Location',
+                'answer' => $location,
+                'type' => 'text',
+                'question_type' => 'studio_location',
+            ]);
+        }
+
+        return array_values($rows);
     }
 
     /**
@@ -873,7 +957,8 @@ class CustomRequest extends Model
             'schedulingLabel' => $this->schedulingLabel(),
             'availabilityDetails' => $this->availabilityStructured(),
             'artistSessionSlots' => $this->normalizedArtistSlots(),
-            'questionsAnswers' => $this->formattedQuestionAnswers(),
+            'questionsAnswers' => $this->artistPanelQuestionAnswers(),
+            'locationLabel' => trim((string) $this->clientWhereLabel()),
             'images' => $this->artistPanelImageUrls(),
             'reasonDecline' => $this->reason_decline,
             'estimatedPrice' => $this->estimated_price,
@@ -955,8 +1040,19 @@ class CustomRequest extends Model
     }
 
     /**
+     * Workplace key for the client-selected studio (user_studios.id preferred).
+     * Works for Not-on-Bookpay workplaces that have no studios.id.
+     */
+    public function selectedStudioId(): ?int
+    {
+        return \App\Support\ArtistStudioChoices::resolveUserStudioLinkIdFromPayload((int) $this->artist_id, [
+            'questions_answers' => is_array($this->questions_answers) ? $this->questions_answers : [],
+        ]);
+    }
+
+    /**
      * Compact studio label for clients: "Studio Name, City, Country".
-     * Guest requests use the guest-spot studio; regular custom uses the artist's studio.
+     * Guest requests use the guest-spot studio; regular custom uses the selected / artist studio.
      */
     public function clientStudioLabel(): string
     {
@@ -969,8 +1065,17 @@ class CustomRequest extends Model
         }
 
         $this->loadMissing('artist.userDetail');
+        $detail = $this->artist?->userDetail;
+        if (! $detail) {
+            return '';
+        }
 
-        return $this->artist?->userDetail?->studioNameWithCityCountry() ?? '';
+        $link = $detail->userStudioByLinkId($this->selectedStudioId());
+        if ($link) {
+            return $detail->workplaceNameWithCityCountry($link);
+        }
+
+        return $detail->studioNameWithCityCountry($this->selectedStudioId()) ?? '';
     }
 
     /**
@@ -987,8 +1092,17 @@ class CustomRequest extends Model
         }
 
         $this->loadMissing('artist.userDetail');
+        $detail = $this->artist?->userDetail;
+        if (! $detail) {
+            return [];
+        }
 
-        return $this->artist?->userDetail?->studioLocationLines() ?? [];
+        $link = $detail->userStudioByLinkId($this->selectedStudioId());
+        if ($link) {
+            return $detail->workplaceLocationLines($link);
+        }
+
+        return $detail->studioLocationLines($this->selectedStudioId()) ?? [];
     }
 
     public function clientGoogleMapsLink(): string
@@ -1002,7 +1116,52 @@ class CustomRequest extends Model
         }
 
         $this->loadMissing('artist.userDetail');
+        $detail = $this->artist?->userDetail;
+        if (! $detail) {
+            return '';
+        }
 
-        return trim((string) ($this->artist?->userDetail?->google_maps_link ?? ''));
+        $link = $detail->userStudioByLinkId($this->selectedStudioId());
+        if ($link) {
+            $maps = $detail->workplaceMapsLink($link);
+            if ($maps !== '') {
+                return $maps;
+            }
+        }
+
+        return trim((string) ($detail->publicStudioMapsLink($this->selectedStudioId()) ?? ''));
+    }
+
+    /**
+     * Full confirmation "Where" line for the selected workplace.
+     */
+    public function clientWhereLabel(): string
+    {
+        if ($this->isGuestRequest()) {
+            $this->loadMissing('guestSpot');
+            $label = $this->guestSpot?->studioNameWithCityCountry();
+            if ($label) {
+                return $label;
+            }
+        }
+
+        $this->loadMissing('artist.userDetail');
+        $detail = $this->artist?->userDetail;
+        if (! $detail) {
+            return '';
+        }
+
+        $link = $detail->userStudioByLinkId($this->selectedStudioId());
+        if ($link) {
+            return $detail->workplaceWhereLabel($link);
+        }
+
+        $name = trim((string) $detail->resolvedStudioName($this->selectedStudioId()));
+        $address = trim((string) $detail->publicStudioAddressLine($this->selectedStudioId()));
+        if ($name !== '' && $address !== '') {
+            return $name.', '.$address;
+        }
+
+        return $name !== '' ? $name : $address;
     }
 }

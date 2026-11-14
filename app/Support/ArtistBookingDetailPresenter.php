@@ -88,6 +88,7 @@ class ArtistBookingDetailPresenter
             'time_range' => $startEnd,
             'duration' => $duration,
             'timezone' => $booking->timezone ?: 'UTC',
+            'location' => trim((string) $booking->whereLabelForClient()),
             'status_label' => $label,
             'booking_type' => ucfirst((string) ($booking->booking_type ?? '')),
             'deposit' => '€'.number_format((float) ($booking->deposit_amount ?? 0), 2),

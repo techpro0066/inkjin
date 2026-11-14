@@ -107,24 +107,27 @@
     font-size: 0.875rem;
     color: #1c1b21;
   }
-  .request-tab {
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    white-space: nowrap;
-    border-bottom: 2px solid transparent;
-    color: #7a7583;
-    transition: color 0.15s, border-color 0.15s;
+  .req-type-chip, .req-status-chip {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.4rem 0.85rem; border-radius: 9999px; border: 1px solid rgba(202,196,211,0.45);
+    background: #fff; color: #7a7583; font-size: 0.8125rem; font-weight: 600;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
   }
-  .request-tab.active {
-    color: #310f7a;
-    border-bottom-color: #310f7a;
+  .req-type-chip b, .req-status-chip b { font-weight: 800; color: inherit; }
+  .req-type-chip.on, .req-status-chip.on {
+    background: #310f7a; color: #fff; border-color: #310f7a;
   }
-  .request-tab:hover:not(.active) { color: #1c1b21; }
+  .req-type-chip:hover:not(.on), .req-status-chip:hover:not(.on) {
+    color: #1c1b21; border-color: rgba(49,15,122,0.35);
+  }
 </style>
 @endsection
 
 @section('content')
+@php
+  $initialType = $initialType ?? 'all';
+  $typeCounts = $typeCounts ?? ['all' => 0, 'design' => 0, 'custom' => 0, 'guest' => 0];
+@endphp
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-6xl">
     <div class="mb-6">
@@ -132,22 +135,15 @@
       <p class="text-sm text-on-surface-variant mt-1">Track design, custom, and guest spot requests</p>
     </div>
 
-    <div class="flex items-center gap-1 mb-6 border-b border-outline-variant/20 pb-0 overflow-x-auto">
-      <button type="button" id="tabDesignRequests" class="request-tab {{ ($activeTab ?? 'design') === 'design' ? 'active' : '' }}" onclick="switchRequestsTab('design')">Design requests</button>
-      <button type="button" id="tabCustomRequests" class="request-tab {{ ($activeTab ?? 'design') === 'custom' ? 'active' : '' }}" onclick="switchRequestsTab('custom')">Custom requests</button>
-      <button type="button" id="tabGuestRequests" class="request-tab {{ ($activeTab ?? 'design') === 'guest' ? 'active' : '' }}" onclick="switchRequestsTab('guest')">Guest requests</button>
-    </div>
-
-    <div id="panelDesignRequests" class="{{ in_array(($activeTab ?? 'design'), ['custom', 'guest'], true) ? 'hidden' : '' }}">
-    <div class="flex flex-wrap gap-2 mb-6 filter-pills" id="designFilterPills">
-      <button type="button" class="filter-pill active text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30" data-status="all" onclick="filterByStatus('all', this)">All</button>
-      <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="pending" onclick="filterByStatus('pending', this)">Pending</button>
-      <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterByStatus('confirmed', this)">Dates sent</button>
-      <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="declined" onclick="filterByStatus('declined', this)">Declined</button>
-    </div>
-
     <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label for="searchArtist" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+            <input type="text" id="searchArtist" placeholder="Search artist name…" oninput="applyFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white">
+          </div>
+        </div>
         <div>
           <label for="sortBy" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Sort by</label>
           <select id="sortBy" onchange="applyFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white">
@@ -155,11 +151,24 @@
             <option value="oldest">Oldest first</option>
           </select>
         </div>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-5 sm:gap-10">
         <div>
-          <label for="searchArtist" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-            <input type="text" id="searchArtist" placeholder="Search artist name…" oninput="applyFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">Type</div>
+          <div class="flex flex-wrap gap-2" id="reqTypeChips">
+            <button type="button" class="req-type-chip{{ $initialType === 'all' ? ' on' : '' }}" data-type="all">All <b>{{ $typeCounts['all'] }}</b></button>
+            <button type="button" class="req-type-chip{{ $initialType === 'design' ? ' on' : '' }}" data-type="design">Design <b>{{ $typeCounts['design'] }}</b></button>
+            <button type="button" class="req-type-chip{{ $initialType === 'custom' ? ' on' : '' }}" data-type="custom">Custom <b>{{ $typeCounts['custom'] }}</b></button>
+            <button type="button" class="req-type-chip{{ $initialType === 'guest' ? ' on' : '' }}" data-type="guest">Guest spot <b>{{ $typeCounts['guest'] }}</b></button>
+          </div>
+        </div>
+        <div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">Status</div>
+          <div class="flex flex-wrap gap-2" id="reqStatusChips">
+            <button type="button" class="req-status-chip on" data-status="all">All</button>
+            <button type="button" class="req-status-chip" data-status="pending">Pending</button>
+            <button type="button" class="req-status-chip" data-status="confirmed">Quote / dates sent</button>
+            <button type="button" class="req-status-chip" data-status="declined">Declined</button>
           </div>
         </div>
       </div>
@@ -169,93 +178,18 @@
       @foreach ($requests as $request)
         @include('user.requests.partials.request-card', ['request' => $request])
       @endforeach
+      @foreach ($customRequests as $customRequest)
+        @include('user.requests.partials.custom-request-card', ['customRequest' => $customRequest])
+      @endforeach
+      @foreach ($guestRequests as $customRequest)
+        @include('user.requests.partials.custom-request-card', ['customRequest' => $customRequest])
+      @endforeach
     </div>
 
     <div id="requestsEmpty" class="hidden bg-white rounded-2xl border border-outline-variant/20 p-12 text-center">
       <span class="material-symbols-outlined text-outline text-5xl mb-4">inbox</span>
       <p class="font-bold text-on-surface text-lg mb-2">No requests found</p>
-      <p id="requestsEmptyHint" class="text-sm text-on-surface-variant max-w-md mx-auto">When you submit a managed booking request, it will appear here so you can track the artist's response.</p>
-    </div>
-    </div>
-
-    <div id="panelCustomRequests" class="{{ ($activeTab ?? 'design') === 'custom' ? '' : 'hidden' }}">
-      <div class="flex flex-wrap gap-2 mb-6 filter-pills" id="customFilterPills">
-        <button type="button" class="filter-pill active text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30" data-status="all" onclick="filterCustomByStatus('all', this)">All</button>
-        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="pending" onclick="filterCustomByStatus('pending', this)">Pending</button>
-        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterCustomByStatus('confirmed', this)">Quote sent</button>
-        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="declined" onclick="filterCustomByStatus('declined', this)">Declined</button>
-      </div>
-
-      <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label for="customSortBy" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Sort by</label>
-            <select id="customSortBy" onchange="applyCustomFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white">
-              <option value="recent">Most recent</option>
-              <option value="oldest">Oldest first</option>
-            </select>
-          </div>
-          <div>
-            <label for="customSearchArtist" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-              <input type="text" id="customSearchArtist" placeholder="Search artist name…" oninput="applyCustomFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="customRequestsList" class="space-y-4 mb-8">
-        @foreach ($customRequests as $customRequest)
-          @include('user.requests.partials.custom-request-card', ['customRequest' => $customRequest])
-        @endforeach
-      </div>
-
-      <div id="customRequestsEmpty" class="hidden bg-white rounded-2xl border border-outline-variant/20 p-12 text-center">
-        <span class="material-symbols-outlined text-outline text-5xl mb-4">brush</span>
-        <p class="font-bold text-on-surface text-lg mb-2">No custom requests found</p>
-        <p id="customRequestsEmptyHint" class="text-sm text-on-surface-variant max-w-md mx-auto">When you submit a custom tattoo request to an artist, it will appear here.</p>
-      </div>
-    </div>
-
-    <div id="panelGuestRequests" class="{{ ($activeTab ?? 'design') === 'guest' ? '' : 'hidden' }}">
-      <div class="flex flex-wrap gap-2 mb-6 filter-pills" id="guestFilterPills">
-        <button type="button" class="filter-pill active text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30" data-status="all" onclick="filterGuestByStatus('all', this)">All</button>
-        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="pending" onclick="filterGuestByStatus('pending', this)">Pending</button>
-        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="confirmed" onclick="filterGuestByStatus('confirmed', this)">Quote sent</button>
-        <button type="button" class="filter-pill text-sm font-semibold px-4 py-2 rounded-full border border-outline-variant/30 text-on-surface-variant" data-status="declined" onclick="filterGuestByStatus('declined', this)">Declined</button>
-      </div>
-
-      <div class="bg-surface-container-low rounded-2xl p-5 mb-6 border border-outline-variant/20">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label for="guestSortBy" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Sort by</label>
-            <select id="guestSortBy" onchange="applyGuestFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl px-3 py-2 bg-white">
-              <option value="recent">Most recent</option>
-              <option value="oldest">Oldest first</option>
-            </select>
-          </div>
-          <div>
-            <label for="guestSearchArtist" class="block text-xs font-semibold text-on-surface-variant mb-1.5">Search</label>
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-              <input type="text" id="guestSearchArtist" placeholder="Search artist name…" oninput="applyGuestFilters()" class="w-full text-sm border border-outline-variant/30 rounded-xl pl-9 pr-3 py-2 bg-white">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="guestRequestsList" class="space-y-4 mb-8">
-        @foreach ($guestRequests as $customRequest)
-          @include('user.requests.partials.custom-request-card', ['customRequest' => $customRequest])
-        @endforeach
-      </div>
-
-      <div id="guestRequestsEmpty" class="hidden bg-white rounded-2xl border border-outline-variant/20 p-12 text-center">
-        <span class="material-symbols-outlined text-outline text-5xl mb-4">luggage</span>
-        <p class="font-bold text-on-surface text-lg mb-2">No guest requests found</p>
-        <p id="guestRequestsEmptyHint" class="text-sm text-on-surface-variant max-w-md mx-auto">When you reserve a guest spot with an artist, it will appear here.</p>
-      </div>
+      <p id="requestsEmptyHint" class="text-sm text-on-surface-variant max-w-md mx-auto">Try adjusting your filters or search. When you send a design, custom, or guest spot request, it will appear here.</p>
     </div>
   </div>
 </main>
@@ -300,121 +234,46 @@
 <script>
   const userRequestsById = @json(collect($requestsPayload)->keyBy('id'));
   const userCustomRequestsById = @json(collect($customRequestsPayload)->merge($guestRequestsPayload)->keyBy('id'));
-  let currentRequestsTab = @json($activeTab ?? 'design');
+  let currentTypeFilter = @json($initialType ?? 'all');
   let currentStatusFilter = 'all';
-  let currentCustomStatusFilter = 'all';
-  let currentGuestStatusFilter = 'all';
 
   function escapeHtml(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function switchRequestsTab(tab) {
-    currentRequestsTab = tab;
-    var designPanel = document.getElementById('panelDesignRequests');
-    var customPanel = document.getElementById('panelCustomRequests');
-    var guestPanel = document.getElementById('panelGuestRequests');
-    var tabDesign = document.getElementById('tabDesignRequests');
-    var tabCustom = document.getElementById('tabCustomRequests');
-    var tabGuest = document.getElementById('tabGuestRequests');
-    if (designPanel) designPanel.classList.toggle('hidden', tab !== 'design');
-    if (customPanel) customPanel.classList.toggle('hidden', tab !== 'custom');
-    if (guestPanel) guestPanel.classList.toggle('hidden', tab !== 'guest');
-    if (tabDesign) tabDesign.classList.toggle('active', tab === 'design');
-    if (tabCustom) tabCustom.classList.toggle('active', tab === 'custom');
-    if (tabGuest) tabGuest.classList.toggle('active', tab === 'guest');
+  function syncTypeUrl(type) {
     var url = new URL(window.location.href);
-    if (tab === 'custom' || tab === 'guest') url.searchParams.set('tab', tab);
-    else url.searchParams.delete('tab');
+    url.searchParams.delete('tab');
+    if (type && type !== 'all') url.searchParams.set('type', type);
+    else url.searchParams.delete('type');
     history.replaceState(null, '', url.pathname + (url.search || ''));
-    if (tab === 'design') applyFilters();
-    else if (tab === 'guest') applyGuestFilters();
-    else applyCustomFilters();
   }
 
-  function filterByStatus(status, btn) {
-    currentStatusFilter = status;
-    document.querySelectorAll('#designFilterPills .filter-pill').forEach(function(pill) {
-      pill.classList.toggle('active', pill === btn);
-      pill.classList.toggle('text-on-surface-variant', pill !== btn);
+  function setTypeFilter(type) {
+    currentTypeFilter = type || 'all';
+    document.querySelectorAll('#reqTypeChips .req-type-chip').forEach(function(chip) {
+      chip.classList.toggle('on', chip.getAttribute('data-type') === currentTypeFilter);
+    });
+    syncTypeUrl(currentTypeFilter);
+    applyFilters();
+  }
+
+  function setStatusFilter(status) {
+    currentStatusFilter = status || 'all';
+    document.querySelectorAll('#reqStatusChips .req-status-chip').forEach(function(chip) {
+      chip.classList.toggle('on', chip.getAttribute('data-status') === currentStatusFilter);
     });
     applyFilters();
   }
 
-  function filterCustomByStatus(status, btn) {
-    currentCustomStatusFilter = status;
-    document.querySelectorAll('#customFilterPills .filter-pill').forEach(function(pill) {
-      pill.classList.toggle('active', pill === btn);
-      pill.classList.toggle('text-on-surface-variant', pill !== btn);
-    });
-    applyCustomFilters();
-  }
-
-  function filterGuestByStatus(status, btn) {
-    currentGuestStatusFilter = status;
-    document.querySelectorAll('#guestFilterPills .filter-pill').forEach(function(pill) {
-      pill.classList.toggle('active', pill === btn);
-      pill.classList.toggle('text-on-surface-variant', pill !== btn);
-    });
-    applyGuestFilters();
-  }
-
-  function applyListFilters(options) {
-    const search = (document.getElementById(options.searchId)?.value || '').trim().toLowerCase();
-    const sortBy = document.getElementById(options.sortId)?.value || 'recent';
-    const cards = Array.from(document.querySelectorAll(options.cardSelector));
-    const statusFilter = options.statusFilter;
-    let visible = 0;
-
-    cards.sort(function(a, b) {
-      const da = a.dataset.date || '';
-      const db = b.dataset.date || '';
-      return sortBy === 'oldest' ? da.localeCompare(db) : db.localeCompare(da);
-    });
-
-    const list = document.getElementById(options.listId);
-    if (list) cards.forEach(function(card) { list.appendChild(card); });
-
-    cards.forEach(function(card) {
-      const statusOk = statusFilter === 'all' || card.dataset.status === statusFilter;
-      const searchOk = !search || (card.dataset.artist || '').includes(search);
-      const show = statusOk && searchOk;
-      card.classList.toggle('hidden', !show);
-      if (show) visible++;
-    });
-
-    const emptyEl = document.getElementById(options.emptyId);
-    const listEl = document.getElementById(options.listId);
-    if (emptyEl) emptyEl.classList.toggle('hidden', visible > 0 || cards.length === 0);
-    if (listEl) listEl.classList.toggle('hidden', cards.length === 0);
-  }
-
-  function applyCustomFilters() {
-    applyListFilters({
-      searchId: 'customSearchArtist',
-      sortId: 'customSortBy',
-      cardSelector: '#customRequestsList .custom-request-card',
-      listId: 'customRequestsList',
-      emptyId: 'customRequestsEmpty',
-      statusFilter: currentCustomStatusFilter
-    });
-  }
-
-  function applyGuestFilters() {
-    applyListFilters({
-      searchId: 'guestSearchArtist',
-      sortId: 'guestSortBy',
-      cardSelector: '#guestRequestsList .custom-request-card',
-      listId: 'guestRequestsList',
-      emptyId: 'guestRequestsEmpty',
-      statusFilter: currentGuestStatusFilter
-    });
-  }
-
   function applyFilters() {
-    const search = (document.getElementById('searchArtist').value || '').trim().toLowerCase();
-    const sortBy = document.getElementById('sortBy').value;
-    const cards = Array.from(document.querySelectorAll('#requestsList .request-card'));
+    const search = (document.getElementById('searchArtist')?.value || '').trim().toLowerCase();
+    const sortBy = document.getElementById('sortBy')?.value || 'recent';
+    const list = document.getElementById('requestsList');
+    const emptyEl = document.getElementById('requestsEmpty');
+    if (!list) return;
+
+    const cards = Array.from(list.querySelectorAll('.request-card'));
     let visible = 0;
 
     cards.sort(function(a, b) {
@@ -422,21 +281,32 @@
       const db = b.dataset.date || '';
       return sortBy === 'oldest' ? da.localeCompare(db) : db.localeCompare(da);
     });
-
-    const list = document.getElementById('requestsList');
     cards.forEach(function(card) { list.appendChild(card); });
 
     cards.forEach(function(card) {
+      const typeOk = currentTypeFilter === 'all' || card.dataset.type === currentTypeFilter;
       const statusOk = currentStatusFilter === 'all' || card.dataset.status === currentStatusFilter;
       const searchOk = !search || (card.dataset.artist || '').includes(search);
-      const show = statusOk && searchOk;
+      const show = typeOk && statusOk && searchOk;
       card.classList.toggle('hidden', !show);
       if (show) visible++;
     });
 
-    document.getElementById('requestsEmpty').classList.toggle('hidden', visible > 0 || cards.length === 0);
-    document.getElementById('requestsList').classList.toggle('hidden', cards.length === 0);
+    if (emptyEl) emptyEl.classList.toggle('hidden', visible > 0);
+    list.classList.toggle('hidden', cards.length === 0);
   }
+
+  document.getElementById('reqTypeChips')?.addEventListener('click', function(e) {
+    var chip = e.target.closest('.req-type-chip');
+    if (!chip) return;
+    setTypeFilter(chip.getAttribute('data-type') || 'all');
+  });
+
+  document.getElementById('reqStatusChips')?.addEventListener('click', function(e) {
+    var chip = e.target.closest('.req-status-chip');
+    if (!chip) return;
+    setStatusFilter(chip.getAttribute('data-status') || 'all');
+  });
 
   function formatOfferDate(dateStr) {
     if (!dateStr) return '—';
@@ -773,26 +643,16 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     applyFilters();
-    applyCustomFilters();
-    applyGuestFilters();
-    @if($requests->isEmpty())
-    document.getElementById('requestsEmpty').classList.remove('hidden');
-    document.getElementById('requestsList').classList.add('hidden');
-    var designHint = document.getElementById('requestsEmptyHint');
-    if (designHint) designHint.textContent = 'You have not submitted any booking requests yet. Browse artists and submit a managed booking request to get started.';
-    @endif
-    @if($customRequests->isEmpty())
-    document.getElementById('customRequestsEmpty').classList.remove('hidden');
-    document.getElementById('customRequestsList').classList.add('hidden');
-    @endif
-    @if($guestRequests->isEmpty())
-    document.getElementById('guestRequestsEmpty').classList.remove('hidden');
-    document.getElementById('guestRequestsList').classList.add('hidden');
+    @if(($typeCounts['all'] ?? 0) === 0)
+    var emptyHint = document.getElementById('requestsEmptyHint');
+    if (emptyHint) {
+      emptyHint.textContent = 'You have not submitted any requests yet. Browse artists to send a design, custom, or guest spot request.';
+    }
     @endif
     var openCustomId = parseInt(new URLSearchParams(window.location.search).get('open') || '', 10);
     if (!isNaN(openCustomId) && userCustomRequestsById[openCustomId]) {
       var openReq = userCustomRequestsById[openCustomId];
-      switchRequestsTab(openReq.isGuest ? 'guest' : 'custom');
+      setTypeFilter(openReq.isGuest ? 'guest' : 'custom');
       openUserCustomRequestDetail(openCustomId);
       var url = new URL(window.location.href);
       url.searchParams.delete('open');

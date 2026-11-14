@@ -9,8 +9,8 @@
 @section('content')
 @php
   $isGuestRequest = !empty($isGuestRequest) || $customRequest->isGuestRequest();
-  $requestsTab = $isGuestRequest ? 'guest' : 'custom';
-  $requestsTabLabel = $isGuestRequest ? 'Guest requests' : 'Custom requests';
+  $requestsType = $isGuestRequest ? 'guest' : 'custom';
+  $requestsBackLabel = 'My Requests';
 @endphp
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-4xl mx-auto">
@@ -20,8 +20,8 @@
           <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to payment
         </a>
       @endif
-      <a href="{{ route('user.requests.index', ['tab' => $requestsTab]) }}" class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
-        <span class="material-symbols-outlined text-[18px]">arrow_back</span> {{ $requestsTabLabel }}
+      <a href="{{ route('user.requests.index', ['type' => $requestsType]) }}" class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-[18px]">arrow_back</span> {{ $requestsBackLabel }}
       </a>
     </div>
 
@@ -32,7 +32,10 @@
       <div class="flex-1">
         <h1 class="text-xl font-extrabold text-on-surface">Pick your appointment times</h1>
         <p class="text-sm text-on-surface-variant mt-1">{{ $artistName }} · {{ $customRequest->referenceLabel() }} · {{ $isGuestRequest ? 'Guest spot' : 'Auto scheduling' }}</p>
-        <p class="text-xs text-on-surface-variant mt-2">Session length: ~{{ $durationMinutes }} minutes (from artist quote)</p>
+        @php $durationSessionsLabel = $customRequest->quoteDurationSessionsLabel(); @endphp
+        @if ($durationSessionsLabel !== '')
+          <p class="text-xs text-on-surface-variant mt-2">Duration: {{ $durationSessionsLabel }}</p>
+        @endif
         @if (!empty($guestWindowLabel))
           <p class="text-xs text-primary font-semibold mt-2 flex items-center gap-1">
             <span class="material-symbols-outlined text-[16px]">event</span>

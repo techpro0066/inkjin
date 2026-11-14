@@ -523,17 +523,26 @@
 
   function buildCustomRequestLeftHtml(req) {
     var cells = [];
+    var locationLabel = String(req.locationLabel || '').trim();
+    if (locationLabel) {
+      cells.push(qaPlain('Location', locationLabel));
+    }
     (req.questionsAnswers || []).forEach(function(item) {
       if (!item || !item.question) return;
       // Images render as thumbnails under Reference images — skip "1 picture" text rows.
       if (answerHasImages(item)) return;
+      var type = String(item.question_type || item.type || '').toLowerCase();
+      var q = String(item.question || '').toLowerCase();
+      if (type === 'studio' || type === 'studio_location' || q.indexOf('where do you want to get tattooed') !== -1 || q === 'location') {
+        return;
+      }
       cells.push(qaCell(item.question, formatAnswer(item.answer, item.type)));
     });
     var questionsHtml = cells.length
       ? '<div class="d01-qa">' + cells.join('') + '</div>'
       : '<p class="faint" style="font-size:13px;font-style:italic;margin:10px 0">No question answers recorded.</p>';
 
-    var availabilityHtml = (req.type === 'managed' && !req.isGuest) ? buildAvailabilityHtml(req.availabilityDetails || {}) : '';
+    var availabilityHtml = (!req.isGuest && hasCustomAvailabilityDetails(req)) ? buildAvailabilityHtml(req.availabilityDetails || {}) : '';
     var guestSpotHtml = req.isGuest ? buildGuestSpotHtml(req.guestSpot || null) : '';
     var requestTitle = req.isGuest ? 'Guest spot request' : 'Custom tattoo request';
     var requestIcon = req.isGuest ? 'luggage' : 'brush';
@@ -607,6 +616,18 @@
 
   function isManagedCustomRequest(req) {
     return req && req.type === 'managed';
+  }
+
+  function hasCustomAvailabilityDetails(req) {
+    if (!req) return false;
+    if (req.type === 'managed') return true;
+    var a = req.availabilityDetails || {};
+    if (Array.isArray(a.preferredDays) && a.preferredDays.length) return true;
+    if (Array.isArray(a.preferences) && a.preferences.length) return true;
+    if (String(a.flexibility || '').trim()) return true;
+    if (String(a.urgency || '').trim()) return true;
+    if (String(a.avoidDates || '').trim()) return true;
+    return false;
   }
 
   function needsQuoteSessionSlots(req) {

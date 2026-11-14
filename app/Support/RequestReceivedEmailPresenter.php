@@ -18,7 +18,7 @@ class RequestReceivedEmailPresenter
         string $accessUrl,
         ?User $client = null,
     ): array {
-        $artist = self::artistCard($userDetail);
+        $artist = self::artistCard($userDetail, $customRequest->selectedStudioId());
         $clientUser = $client ?: $customRequest->user;
         $clientFirst = self::firstName($clientUser, 'there');
 
@@ -71,7 +71,7 @@ class RequestReceivedEmailPresenter
         ?User $client = null,
     ): array {
         $bookingRequest->loadMissing(['tattoo', 'user']);
-        $artist = self::artistCard($userDetail);
+        $artist = self::artistCard($userDetail, $bookingRequest->selectedStudioId());
         $clientUser = $client ?: $bookingRequest->user;
         $clientFirst = self::firstName($clientUser, 'there');
 
@@ -80,6 +80,11 @@ class RequestReceivedEmailPresenter
             ['label' => 'Request', 'value' => $bookingRequest->referenceLabel()],
             ['label' => 'Design', 'value' => $designTitle !== '' ? $designTitle : 'Design'],
         ];
+
+        $studioLabel = trim((string) $bookingRequest->clientStudioLabel());
+        if ($studioLabel !== '') {
+            $summary[] = ['label' => 'Location', 'value' => $studioLabel];
+        }
 
         $prefCount = 0;
         foreach ((array) ($bookingRequest->preferences ?? []) as $pref) {
@@ -118,24 +123,13 @@ class RequestReceivedEmailPresenter
             $userDetail = new UserDetail;
         }
 
-        $artist = self::artistCard($userDetail);
+        $artist = self::artistCard($userDetail, $customRequest->selectedStudioId());
         $clientFirst = self::firstName($customRequest->user, 'there');
         $ideaLabel = self::ideaLabelFromAnswers($customRequest->questions_answers);
         $price = max(0, round((float) ($customRequest->estimated_price ?? 0), 2));
         $priceLabel = $customRequest->estimatedPriceLabel();
 
-        $durationParts = [];
-        $estimatedTime = trim((string) ($customRequest->estimated_time ?? ''));
-        if ($estimatedTime !== '') {
-            $durationParts[] = $estimatedTime;
-        }
-        $sessions = trim((string) ($customRequest->number_of_sessions ?? ''));
-        if ($sessions !== '') {
-            $durationParts[] = str_contains(strtolower($sessions), 'session')
-                ? $sessions
-                : ($sessions === '1' ? '1 session' : $sessions.' sessions');
-        }
-        $durationLabel = implode(' · ', $durationParts);
+        $durationLabel = $customRequest->quoteDurationSessionsLabel();
 
         $depositLabel = '—';
         try {
@@ -185,7 +179,7 @@ class RequestReceivedEmailPresenter
      *     artistMeta: string
      * }
      */
-    private static function artistCard(UserDetail $userDetail): array
+    private static function artistCard(UserDetail $userDetail, ?int $studiosTableId = null): array
     {
         $userDetail->loadMissing('user');
         $artistName = trim($userDetail->publicDisplayName()) ?: 'your artist';
@@ -199,9 +193,23 @@ class RequestReceivedEmailPresenter
             $handle = '@'.$handle;
         }
 
-        $studio = trim((string) $userDetail->studioNameWithCityCountry());
+        $studio = '';
+        $link = $studiosTableId ? $userDetail->userStudioByLinkId($studiosTableId) : null;
+        if ($link) {
+            $studio = trim((string) $userDetail->workplaceWhereLabel($link));
+        }
         if ($studio === '') {
-            $studio = trim((string) $userDetail->resolvedStudioName());
+            $name = trim((string) $userDetail->resolvedStudioName($studiosTableId));
+            $address = trim((string) $userDetail->publicStudioAddressLine($studiosTableId));
+            if ($name !== '' && $address !== '') {
+                $studio = $name.', '.$address;
+            } elseif ($name !== '') {
+                $studio = $name;
+            } elseif ($address !== '') {
+                $studio = $address;
+            } else {
+                $studio = trim((string) $userDetail->studioNameWithCityCountry($studiosTableId));
+            }
         }
 
         $meta = trim(($handle !== '' ? $handle : '').($handle !== '' && $studio !== '' ? ' · ' : '').$studio);
@@ -231,6 +239,11 @@ class RequestReceivedEmailPresenter
         $summary = [
             ['label' => 'Request', 'value' => $customRequest->referenceLabel()],
         ];
+
+        $studioLabel = trim((string) $customRequest->clientWhereLabel());
+        if ($studioLabel !== '') {
+            $summary[] = ['label' => 'Location', 'value' => $studioLabel];
+        }
 
         foreach (self::customSummaryFromAnswers($customRequest->questions_answers) as $row) {
             $summary[] = $row;

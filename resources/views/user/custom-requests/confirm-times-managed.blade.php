@@ -19,7 +19,7 @@
           <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to payment
         </a>
       @endif
-      <a href="{{ route('user.requests.index', ['tab' => 'custom']) }}" class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
+      <a href="{{ route('user.requests.index', ['type' => 'custom']) }}" class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
         <span class="material-symbols-outlined text-[18px]">arrow_back</span> Custom requests
       </a>
     </div>

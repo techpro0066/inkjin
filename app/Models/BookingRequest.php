@@ -162,6 +162,72 @@ class BookingRequest extends Model
         return $id > 0 ? $id : null;
     }
 
+    /**
+     * Workplace key for the client-selected studio (user_studios.id preferred).
+     */
+    public function selectedStudioId(): ?int
+    {
+        return \App\Support\ArtistStudioChoices::resolveUserStudioLinkIdFromBookingRequest($this);
+    }
+
+    /**
+     * Compact studio label for client-selected workplace: "Studio Name, City, Country".
+     */
+    public function clientStudioLabel(): string
+    {
+        if ($this->isGuestSpotRequest()) {
+            $label = $this->guestSpot()?->studioNameWithCityCountry();
+            if ($label) {
+                return $label;
+            }
+        }
+
+        $this->loadMissing('artist.userDetail');
+        $detail = $this->artist?->userDetail;
+        if (! $detail) {
+            return '';
+        }
+
+        $link = $detail->userStudioByLinkId($this->selectedStudioId());
+        if ($link) {
+            return $detail->workplaceNameWithCityCountry($link);
+        }
+
+        return trim((string) ($detail->studioNameWithCityCountry($this->selectedStudioId()) ?? ''));
+    }
+
+    /**
+     * Full "Where" line: "Studio Name, street, postal, city, country".
+     */
+    public function clientWhereLabel(): string
+    {
+        if ($this->isGuestSpotRequest()) {
+            $label = $this->guestSpot()?->studioNameWithCityCountry();
+            if ($label) {
+                return $label;
+            }
+        }
+
+        $this->loadMissing('artist.userDetail');
+        $detail = $this->artist?->userDetail;
+        if (! $detail) {
+            return '';
+        }
+
+        $link = $detail->userStudioByLinkId($this->selectedStudioId());
+        if ($link) {
+            return $detail->workplaceWhereLabel($link);
+        }
+
+        $name = trim((string) $detail->resolvedStudioName($this->selectedStudioId()));
+        $address = trim((string) $detail->publicStudioAddressLine($this->selectedStudioId()));
+        if ($name !== '' && $address !== '') {
+            return $name.', '.$address;
+        }
+
+        return $name !== '' ? $name : $address;
+    }
+
     public function isGuestSpotRequest(): bool
     {
         return $this->guestSpotId() !== null;
@@ -928,12 +994,48 @@ class BookingRequest extends Model
             'consultDurationMinutes' => $this->consultationDurationMinutes(),
             'tattooDurationLabel' => self::formatDurationMinutes($this->tattooDurationMinutes()),
             'consultDurationLabel' => self::formatDurationMinutes($this->consultationDurationMinutes()),
-            'questionsAnswers' => is_array($this->questions_answers) ? array_values($this->questions_answers) : [],
+            'questionsAnswers' => $this->artistPanelQuestionAnswers(),
+            'locationLabel' => trim((string) $this->clientWhereLabel()),
             'isGuest' => $isGuest,
             'guestSpotId' => $this->guestSpotId(),
             'guestSpot' => $isGuest ? $this->artistGuestSpotSummary() : null,
             'type' => 'managed',
         ];
+    }
+
+    /**
+     * Q&A rows for the artist dashboard detail modal.
+     * Always includes Location (even when the artist has only one studio).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function artistPanelQuestionAnswers(): array
+    {
+        $raw = is_array($this->questions_answers) ? $this->questions_answers : [];
+        $rows = [];
+        foreach ($raw as $key => $entry) {
+            if ($key === '_contact' || ! is_array($entry)) {
+                continue;
+            }
+            $type = strtolower(trim((string) ($entry['question_type'] ?? $entry['type'] ?? '')));
+            $question = strtolower(trim((string) ($entry['question'] ?? '')));
+            if ($type === 'studio' || str_contains($question, 'where do you want to get tattooed')) {
+                continue;
+            }
+            $rows[] = $entry;
+        }
+
+        $location = trim((string) $this->clientWhereLabel());
+        if ($location !== '') {
+            array_unshift($rows, [
+                'question' => 'Location',
+                'answer' => $location,
+                'type' => 'text',
+                'question_type' => 'studio_location',
+            ]);
+        }
+
+        return array_values($rows);
     }
 
     /**

@@ -29,7 +29,7 @@ class PostCustomRequestAccessController extends Controller
         }
 
         return redirect()->route('user.requests.index', [
-            'tab' => 'custom',
+            'type' => 'custom',
             'open' => $customRequest->id,
         ]);
     }
