@@ -313,6 +313,7 @@ class InstagramPortfolioImportService
         }
 
         $existingIds = Portfolio::query()
+            ->withDeleted()
             ->where('user_id', $user->id)
             ->whereNotNull('instagram_media_id')
             ->pluck('instagram_media_id')
@@ -476,6 +477,7 @@ class InstagramPortfolioImportService
         array $styles
     ): ?Portfolio {
         $exists = Portfolio::query()
+            ->withDeleted()
             ->where('user_id', $user->id)
             ->where('instagram_media_id', $mediaId)
             ->exists();

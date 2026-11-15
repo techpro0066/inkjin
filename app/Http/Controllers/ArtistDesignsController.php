@@ -650,11 +650,14 @@ class ArtistDesignsController extends Controller
     {
         $this->assertOwns($artistDesign);
 
-        if (! $artistDesign->canBeDeleted()) {
+        if ($artistDesign->hasLinkedBookingsOrRequests()) {
+            $artistDesign->markDeleted();
+
             return response()->json([
-                'success' => false,
-                'message' => 'This design has bookings or requests linked to it. Mark it unavailable instead of deleting.',
-            ], 422);
+                'success' => true,
+                'soft_deleted' => true,
+                'message' => 'Design removed from your dashboard.',
+            ]);
         }
 
         $this->deleteUploadIfSafe($artistDesign->image);
@@ -663,6 +666,7 @@ class ArtistDesignsController extends Controller
 
         return response()->json([
             'success' => true,
+            'soft_deleted' => false,
             'message' => 'Design removed.',
         ]);
     }

@@ -54,7 +54,8 @@ class BookingRequest extends Model
 
     public function tattoo(): BelongsTo
     {
-        return $this->belongsTo(ArtistDesign::class, 'tattoo_id');
+        return $this->belongsTo(ArtistDesign::class, 'tattoo_id')
+            ->withoutGlobalScope(\App\Models\Scopes\NotDeletedScope::class);
     }
 
     public function booking(): BelongsTo

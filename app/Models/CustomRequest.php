@@ -994,6 +994,7 @@ class CustomRequest extends Model
         $portfolioId = (int) ($answers['_portfolio_id'] ?? 0);
         if ($portfolioId > 0) {
             $portfolio = Portfolio::query()
+                ->withDeleted()
                 ->whereKey($portfolioId)
                 ->where('user_id', (int) $this->artist_id)
                 ->first();

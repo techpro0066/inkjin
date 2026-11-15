@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\NotDeletedScope;
 use App\Support\DesignSessionDuration;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,6 +18,7 @@ class ArtistDesign extends Model
         'image',
         'original_image',
         'is_active',
+        'is_deleted',
         'is_visible',
         'is_repeatable',
         'repeat_limit',
@@ -40,6 +43,7 @@ class ArtistDesign extends Model
     {
         return [
             'is_active' => 'boolean',
+            'is_deleted' => 'boolean',
             'is_visible' => 'boolean',
             'is_repeatable' => 'boolean',
             'repeat_limit' => 'integer',
@@ -48,6 +52,11 @@ class ArtistDesign extends Model
             'suggested_placements' => 'array',
             'tags' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new NotDeletedScope);
     }
 
     /**
@@ -160,14 +169,48 @@ class ArtistDesign extends Model
         );
     }
 
-    public function canBeDeleted(): bool
+    public function scopeWithDeleted(Builder $query): Builder
     {
-        if ($this->relationLoaded('booking_requests_count') || $this->relationLoaded('bookings_count')) {
-            return ($this->booking_requests_count ?? 0) === 0
-                && ($this->bookings_count ?? 0) === 0;
+        return $query->withoutGlobalScope(NotDeletedScope::class);
+    }
+
+    public function scopeOnlyDeleted(Builder $query): Builder
+    {
+        return $query->withoutGlobalScope(NotDeletedScope::class)
+            ->where($this->getTable().'.is_deleted', true);
+    }
+
+    /**
+     * True when any booking or request still references this design (hard-delete unsafe).
+     */
+    public function hasLinkedBookingsOrRequests(): bool
+    {
+        if ($this->offsetExists('booking_requests_count') || $this->offsetExists('bookings_count')) {
+            return ((int) ($this->booking_requests_count ?? 0)) > 0
+                || ((int) ($this->bookings_count ?? 0)) > 0;
         }
 
-        return ! $this->bookingRequests()->exists()
-            && ! $this->bookings()->exists();
+        return $this->bookingRequests()->exists()
+            || $this->bookings()->exists();
+    }
+
+    /**
+     * @deprecated Use !hasLinkedBookingsOrRequests() — kept for older call sites.
+     */
+    public function canBeDeleted(): bool
+    {
+        return ! $this->hasLinkedBookingsOrRequests();
+    }
+
+    /**
+     * Soft-delete: hide from dashboard / public, keep row for history.
+     */
+    public function markDeleted(): void
+    {
+        $this->forceFill([
+            'is_active' => false,
+            'is_visible' => false,
+            'is_deleted' => true,
+        ])->save();
     }
 }

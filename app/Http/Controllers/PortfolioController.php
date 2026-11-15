@@ -250,11 +250,22 @@ class PortfolioController extends Controller
     {
         $this->assertOwnsPortfolio($portfolio);
 
+        if ($portfolio->hasLinkedBookingsOrRequests()) {
+            $portfolio->markDeleted();
+
+            return response()->json([
+                'success' => true,
+                'soft_deleted' => true,
+                'message' => 'Portfolio piece removed from your dashboard.',
+            ]);
+        }
+
         $this->deletePublicUploadIfSafe($portfolio->image);
         $portfolio->delete();
 
         return response()->json([
             'success' => true,
+            'soft_deleted' => false,
             'message' => 'Portfolio piece removed.',
         ]);
     }

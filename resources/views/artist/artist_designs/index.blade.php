@@ -1089,7 +1089,6 @@
               $styleLabel.' '.
               $colorLabel
           );
-          $canDeleteDesign = ($design->booking_requests_count ?? 0) === 0 && ($design->bookings_count ?? 0) === 0;
           $isSoldOut = $design->isSoldOut();
           if ($isSoldOut) {
               $statusLabel = 'Sold';
@@ -1130,16 +1129,14 @@
                 <button type="button" class="pic btn-edit-design" title="Edit" aria-label="Edit" data-design-id="{{ $design->id }}">
                   <span class="ms">edit</span>
                 </button>
-                @if ($canDeleteDesign)
-                  <button
-                    type="button"
-                    class="pic pdel btn-delete-design"
-                    title="Delete"
-                    aria-label="Delete"
-                    data-delete-url="{{ route('artist-designs.destroy', $design) }}"
-                    data-design-id="{{ $design->id }}"
-                  ><span class="ms">delete</span></button>
-            @endif
+                <button
+                  type="button"
+                  class="pic pdel btn-delete-design"
+                  title="Delete"
+                  aria-label="Delete"
+                  data-delete-url="{{ route('artist-designs.destroy', $design) }}"
+                  data-design-id="{{ $design->id }}"
+                ><span class="ms">delete</span></button>
             </div>
               <div class="row" style="gap:8px">
                 <span class="faint" style="font-size:12.5px;font-weight:600">Bookable</span>
