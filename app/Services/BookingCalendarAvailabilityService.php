@@ -8,6 +8,7 @@ use App\Models\Availability;
 use App\Models\CustomRequest;
 use App\Models\Booking;
 use App\Models\UserDetail;
+use App\Support\ArtistStudioChoices;
 use Carbon\Carbon;
 
 /**
@@ -53,6 +54,8 @@ class BookingCalendarAvailabilityService
             $timing = 'combined';
         }
 
+        $isGuest = $booking->isGuestCustomRequestBooking();
+
         return [
             'artistAvailabilitySchedule' => $artistAvailabilitySchedule,
             'artistTimezone' => $artistTimezone,
@@ -60,6 +63,8 @@ class BookingCalendarAvailabilityService
             'artistLocationOverrides' => $artistLocationOverrides,
             'artistBusyIntervalsByDate' => $artistBusyIntervalsByDate,
             'tattooDurationMinutes' => $tattooDurationMinutes,
+            // user_studios.id — same key as availability studio_ids / auto-scheduling
+            'selectedStudioId' => $isGuest ? null : $this->availabilityStudioLinkIdForBooking($booking),
             'artistConsultationSettings' => [
                 'required' => (bool) ($userDetail->require_consultation ?? false),
                 'timing' => $userDetail->consultation_timing ?: 'combined',
@@ -74,8 +79,95 @@ class BookingCalendarAvailabilityService
                 'has_consultation' => (bool) $booking->has_consultation,
                 'consultation_timing_type' => $timing,
                 'consultation_booking_id' => $booking->consultation_booking_id,
+                'isGuest' => $isGuest,
             ],
         ];
+    }
+
+    /**
+     * Workplace key used by weekly availability studio_ids (user_studios.id).
+     */
+    public function availabilityStudioLinkIdForBooking(Booking $booking): ?int
+    {
+        if ($booking->isGuestCustomRequestBooking()) {
+            return null;
+        }
+
+        $linkId = $booking->selectedUserStudioLinkId();
+        if ($linkId) {
+            return $linkId;
+        }
+
+        $artistUserId = (int) ($booking->artist_user_id ?? $booking->artist?->id ?? 0);
+        if ($artistUserId <= 0) {
+            return null;
+        }
+
+        return ArtistStudioChoices::resolveUserStudioLinkIdFromPayload($artistUserId, [
+            'studio_id' => $booking->selectedStudioId(),
+        ]);
+    }
+
+    /**
+     * Ensure a reschedule slot fits the booking's studio-scoped hours (auto-scheduling parity).
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function assertRescheduleSlotFitsStudio(
+        Booking $booking,
+        string $artistLocalDateYmd,
+        string $artistLocalStartHi,
+        int $durationMinutes
+    ): void {
+        if ($booking->isGuestCustomRequestBooking()) {
+            return;
+        }
+
+        $selectedStudioId = $this->availabilityStudioLinkIdForBooking($booking);
+        if (! $selectedStudioId) {
+            return;
+        }
+
+        $booking->loadMissing(['artist.userDetail']);
+        $artistUserId = (int) ($booking->artist_user_id ?? $booking->artist?->id ?? 0);
+        $artistTimezone = $booking->timezone
+            ?: ($booking->artist?->userDetail?->timezone ?: 'UTC');
+
+        $managed = app(ManagedRequestBookingService::class);
+        $overrides = $managed->artistLocationOverrides($artistUserId);
+        if ($this->isDateBlockedForStudio($artistLocalDateYmd, $overrides, $selectedStudioId, false)) {
+            throw new \InvalidArgumentException('This date is not available at the selected studio.');
+        }
+
+        try {
+            $start = Carbon::createFromFormat('Y-m-d H:i', $artistLocalDateYmd.' '.$artistLocalStartHi, $artistTimezone);
+        } catch (\Throwable) {
+            throw new \InvalidArgumentException('Invalid date or time.');
+        }
+
+        $weekday = strtolower($start->format('l'));
+        $schedule = $this->weeklyAvailabilitySchedule($artistUserId, $artistTimezone);
+        $dayRanges = $this->rangesForStudio(
+            is_array($schedule[$weekday] ?? null) ? $schedule[$weekday] : [],
+            $selectedStudioId
+        );
+        if ($dayRanges === []) {
+            throw new \InvalidArgumentException('The artist is not available at this studio on that day.');
+        }
+
+        $startMinutes = $start->hour * 60 + $start->minute;
+        $endMinutes = $startMinutes + max(1, $durationMinutes);
+        foreach ($dayRanges as $range) {
+            $startParts = explode(':', (string) ($range['start'] ?? '0:0'));
+            $endParts = explode(':', (string) ($range['end'] ?? '0:0'));
+            $rangeStart = ((int) ($startParts[0] ?? 0) * 60) + (int) ($startParts[1] ?? 0);
+            $rangeEnd = ((int) ($endParts[0] ?? 0) * 60) + (int) ($endParts[1] ?? 0);
+            if ($startMinutes >= $rangeStart && $endMinutes <= $rangeEnd) {
+                return;
+            }
+        }
+
+        throw new \InvalidArgumentException('Selected time is outside the artist’s hours at this studio.');
     }
 
     /**

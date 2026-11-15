@@ -85,7 +85,10 @@
   var artistTimezone = 'UTC';
   var artistAvailabilitySchedule = {};
   var artistBlockedPeriods = [];
+  var artistLocationOverrides = [];
   var artistBusyIntervalsByDate = {};
+  var selectedStudioId = null;
+  var isGuestBooking = false;
   var tattooDurationMinutes = 120;
   var artistConsultationSettings = {};
   var consultationRequired = false;
@@ -115,14 +118,46 @@
     }
   }
 
+  function rangesForSelectedStudio(dayRanges) {
+    if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
+    if (!selectedStudioId) return dayRanges;
+    return dayRanges.filter(function (r) {
+      var ids = Array.isArray(r.studio_ids) ? r.studio_ids.map(Number) : [];
+      // Empty studio_ids = legacy / all studios
+      if (!ids.length) return true;
+      return ids.indexOf(selectedStudioId) !== -1;
+    });
+  }
+
   function isArtistDateBlocked(ymd) {
-    if (!ymd || !Array.isArray(artistBlockedPeriods) || !artistBlockedPeriods.length) return false;
-    for (var i = 0; i < artistBlockedPeriods.length; i++) {
-      var p = artistBlockedPeriods[i];
-      if (!p) continue;
-      var s = String(p.start_date || '');
-      var e = String(p.end_date || '');
-      if (ymd >= s && ymd <= e) return true;
+    if (!ymd) return false;
+    if (Array.isArray(artistBlockedPeriods) && artistBlockedPeriods.length) {
+      for (var i = 0; i < artistBlockedPeriods.length; i++) {
+        var p = artistBlockedPeriods[i];
+        if (!p) continue;
+        var s = String(p.start_date || '');
+        var e = String(p.end_date || '');
+        if (ymd >= s && ymd <= e) return true;
+      }
+    }
+    // Guest-spot bookings skip home-studio location overrides (auto-scheduling parity).
+    if (isGuestBooking) return false;
+    if (selectedStudioId && Array.isArray(artistLocationOverrides) && artistLocationOverrides.length) {
+      var covering = [];
+      for (var j = 0; j < artistLocationOverrides.length; j++) {
+        var loc = artistLocationOverrides[j];
+        if (!loc) continue;
+        var ls = String(loc.start_date || '');
+        var le = String(loc.end_date || '');
+        if (ymd >= ls && ymd <= le) covering.push(loc);
+      }
+      if (covering.length) {
+        var allowed = covering.some(function (loc) {
+          var ids = Array.isArray(loc.studio_ids) ? loc.studio_ids.map(Number) : [];
+          return ids.indexOf(selectedStudioId) !== -1;
+        });
+        if (!allowed) return true;
+      }
     }
     return false;
   }
@@ -177,7 +212,7 @@
     var ymdArtist = formatYmdArtistLocal(dateObj);
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
     var weekdayKey = weekdayKeys[dateObj.getDay()];
-    var dayRanges = artistAvailabilitySchedule[weekdayKey];
+    var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
     if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
     var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
     if (dayStart.getTime() === todayStart.getTime()) {
@@ -204,7 +239,7 @@
     var ymdArtist = formatYmdArtistLocal(dateObj);
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
     var weekdayKey = weekdayKeys[dateObj.getDay()];
-    var dayRanges = artistAvailabilitySchedule[weekdayKey];
+    var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
     if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
     var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
     if (dayStart.getTime() === todayStart.getTime()) {
@@ -414,6 +449,9 @@
 
   function resetState() {
     rsmBookingId = null;
+    selectedStudioId = null;
+    isGuestBooking = false;
+    artistLocationOverrides = [];
     mainSelDate = mainSelTime = null;
     ccSelDate = ccSelTime = tatSelDate = tatSelTime = null;
     mainYear = ccYear = tatYear = today.getFullYear();
@@ -451,12 +489,16 @@
         artistTimezone = d.artistTimezone || 'UTC';
         artistAvailabilitySchedule = d.artistAvailabilitySchedule || {};
         artistBlockedPeriods = d.artistBlockedPeriods || [];
+        artistLocationOverrides = d.artistLocationOverrides || [];
         artistBusyIntervalsByDate = d.artistBusyIntervalsByDate || {};
+        selectedStudioId = d.selectedStudioId ? Number(d.selectedStudioId) : null;
+        if (!selectedStudioId || selectedStudioId <= 0) selectedStudioId = null;
         tattooDurationMinutes = parseInt(d.tattooDurationMinutes, 10) || 120;
         artistConsultationSettings = d.artistConsultationSettings || {};
         consultDurationMinutes = parseInt(artistConsultationSettings.session_duration_minutes || 30, 10) || 30;
         consultGapValue = parseInt(artistConsultationSettings.gap_value || 0, 10) || 0;
         var b = d.booking || {};
+        isGuestBooking = !!b.isGuest;
         consultationRequired = !!b.has_consultation;
         consultationTiming = String(b.consultation_timing_type || 'combined').toLowerCase();
         if (consultationTiming !== 'separate') consultationTiming = 'combined';

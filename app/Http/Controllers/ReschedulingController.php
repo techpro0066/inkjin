@@ -241,7 +241,16 @@ class ReschedulingController extends Controller
                     ], 422);
                 }
             }
-            
+
+            try {
+                $this->assertRescheduleFitsStudioAvailability($request, $booking, $timing);
+            } catch (\InvalidArgumentException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+
             if ($isArtistRequested) {
                 // Process artist-requested reschedule (doesn't count against limit)
                 $result = $this->reschedulingService->processArtistRescheduleResponse(
@@ -650,6 +659,107 @@ class ReschedulingController extends Controller
             'isArtistRequested' => $isArtistRequested,
             'consultationBooking' => $consultationBooking,
         ]);
+    }
+
+    /**
+     * Studio-scoped hours / location overrides (same rules as auto-scheduling).
+     */
+    private function assertRescheduleFitsStudioAvailability(Request $request, Booking $booking, string $timing): void
+    {
+        if ($booking->isGuestCustomRequestBooking()) {
+            return;
+        }
+
+        $booking->loadMissing(['tattoo', 'artist.userDetail']);
+        $ud = $booking->artist?->userDetail;
+        $tz = $booking->timezone ?: ($ud?->timezone ?: 'UTC');
+        $tattooMin = $this->bookingCalendarAvailability->resolveTattooDurationMinutes($booking->tattoo);
+        $consultMin = (int) ($ud?->session_duration_minutes ?: 30);
+        $hasC = (bool) $booking->has_consultation;
+
+        $tattooDuration = $tattooMin;
+        if ($hasC && $timing === 'combined') {
+            $tattooDuration = $tattooMin + $consultMin;
+        }
+
+        $dateYmd = trim((string) $request->input('new_date', ''));
+        $startLocal = trim((string) $request->input('new_start_local', ''));
+        if ($dateYmd === '') {
+            return;
+        }
+
+        if ($startLocal === '') {
+            try {
+                $startUtc = Carbon::createFromFormat(
+                    'Y-m-d H:i:s',
+                    $dateYmd.' '.$request->input('new_start_time_utc'),
+                    'UTC'
+                )->setTimezone($tz);
+                $startLocal = $startUtc->format('H:i');
+                $dateYmd = $startUtc->format('Y-m-d');
+            } catch (\Throwable) {
+                return;
+            }
+        } else {
+            try {
+                $startLocal = Carbon::createFromFormat('g:i A', $startLocal)->format('H:i');
+            } catch (\Throwable) {
+                try {
+                    $startLocal = Carbon::createFromFormat('H:i', substr($startLocal, 0, 5))->format('H:i');
+                } catch (\Throwable) {
+                    return;
+                }
+            }
+        }
+
+        $this->bookingCalendarAvailability->assertRescheduleSlotFitsStudio(
+            $booking,
+            $dateYmd,
+            $startLocal,
+            $tattooDuration
+        );
+
+        if (
+            $hasC
+            && $timing === 'separate'
+            && ! $booking->consultation_booking_id
+            && $request->filled('consultation_date')
+        ) {
+            $cDate = trim((string) $request->input('consultation_date'));
+            $cStartLocal = trim((string) $request->input('consultation_start_local', ''));
+            if ($cStartLocal === '' && $request->filled('consultation_start_time_utc')) {
+                try {
+                    $cStartUtc = Carbon::createFromFormat(
+                        'Y-m-d H:i:s',
+                        $cDate.' '.$request->input('consultation_start_time_utc'),
+                        'UTC'
+                    )->setTimezone($tz);
+                    $cStartLocal = $cStartUtc->format('H:i');
+                    $cDate = $cStartUtc->format('Y-m-d');
+                } catch (\Throwable) {
+                    return;
+                }
+            } elseif ($cStartLocal !== '') {
+                try {
+                    $cStartLocal = Carbon::createFromFormat('g:i A', $cStartLocal)->format('H:i');
+                } catch (\Throwable) {
+                    try {
+                        $cStartLocal = Carbon::createFromFormat('H:i', substr($cStartLocal, 0, 5))->format('H:i');
+                    } catch (\Throwable) {
+                        return;
+                    }
+                }
+            } else {
+                return;
+            }
+
+            $this->bookingCalendarAvailability->assertRescheduleSlotFitsStudio(
+                $booking,
+                $cDate,
+                $cStartLocal,
+                $consultMin
+            );
+        }
     }
 
     /**
