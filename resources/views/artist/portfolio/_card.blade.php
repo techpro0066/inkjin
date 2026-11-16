@@ -67,17 +67,16 @@
       ><span class="ms">edit</span></button>
       @if ($fromInstagram)
         <span class="faint igonly" style="font-size:12px;margin-left:auto">From Instagram</span>
-      @else
-        <button
-          type="button"
-          class="pic pdel btn-delete-portfolio"
-          aria-label="Delete"
-          title="Delete"
-          style="color:#C62828"
-          data-delete-url="{{ route('portfolio.destroy', $portfolio) }}"
-          data-portfolio-id="{{ $portfolio->id }}"
-        ><span class="ms">delete</span></button>
       @endif
+      <button
+        type="button"
+        class="pic pdel btn-delete-portfolio"
+        aria-label="Delete"
+        title="Delete"
+        style="color:#C62828{{ $fromInstagram ? '' : ';margin-left:auto' }}"
+        data-delete-url="{{ route('portfolio.destroy', $portfolio) }}"
+        data-portfolio-id="{{ $portfolio->id }}"
+      ><span class="ms">delete</span></button>
     </div>
   </div>
 </div>

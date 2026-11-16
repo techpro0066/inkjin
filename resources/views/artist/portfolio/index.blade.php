@@ -696,7 +696,7 @@
   </div>
   <div class="ignote" id="ignote">
     <span class="ms">info</span>
-    <span><b>Refresh brings in your new Instagram posts.</b> To keep a post off your page, turn off <b>Visible</b>. Hidden posts stay hidden after a refresh. Instagram posts can’t be deleted here, because a refresh would bring them back.</span>
+    <span><b>Refresh brings in your new Instagram posts.</b> To keep a post off your page, turn off <b>Visible</b> or delete it. Hidden posts stay hidden after a refresh. Deleted posts may come back if you refresh from Instagram again.</span>
             </div>
             @endif
 

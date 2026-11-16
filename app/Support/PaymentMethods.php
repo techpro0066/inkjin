@@ -2,17 +2,61 @@
 
 namespace App\Support;
 
+use App\Models\Studio;
 use App\Models\UserDetail;
+use Illuminate\Support\Facades\Schema;
 
 class PaymentMethods
 {
+    /**
+     * Artist (or studio-linked) payout bank country is Greece.
+     * Source of truth is user_payouts; legacy user_details.payout_bank_country is fallback only.
+     */
     public static function isGreekArtist(?UserDetail $artist): bool
     {
         if (! $artist) {
             return false;
         }
 
-        return strtoupper((string) $artist->payout_bank_country) === 'GR';
+        return self::artistPayoutBankCountry($artist) === 'GR';
+    }
+
+    /**
+     * Resolved ISO-2 payout bank country for IRIS / checkout.
+     */
+    public static function artistPayoutBankCountry(?UserDetail $artist): ?string
+    {
+        if (! $artist) {
+            return null;
+        }
+
+        $payout = $artist->activePayout();
+        $fromPayout = strtoupper(trim((string) ($payout?->payout_bank_country ?? '')));
+        if (strlen($fromPayout) === 2) {
+            return $fromPayout;
+        }
+
+        // Studio-account artists: fall back to the linked studio's country when set.
+        if (($artist->resolvedPayoutPaymentType() === 'studio_account'
+                || ($artist->payment_type ?? null) === 'studio_account')
+            && ($studioId = (int) ($artist->resolvedStudioId() ?? 0)) > 0
+        ) {
+            $studioCountry = strtoupper(trim((string) (
+                Studio::query()->whereKey($studioId)->value('country') ?? ''
+            )));
+            if (strlen($studioCountry) === 2) {
+                return $studioCountry;
+            }
+        }
+
+        if (Schema::hasColumn($artist->getTable(), 'payout_bank_country')) {
+            $legacy = strtoupper(trim((string) ($artist->getAttribute('payout_bank_country') ?? '')));
+            if (strlen($legacy) === 2) {
+                return $legacy;
+            }
+        }
+
+        return null;
     }
 
     public static function normalizePhone(?string $phone): string
