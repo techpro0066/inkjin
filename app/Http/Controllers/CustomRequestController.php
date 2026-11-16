@@ -35,8 +35,8 @@ class CustomRequestController extends Controller
         if (
             !$userDetail
             || !$userDetail->user
+            || ! $userDetail->user->isPubliclyVisible()
             || $userDetail->user->role !== 'artist'
-            || $userDetail->user->on_boarding !== 'yes'
         ) {
             abort(404, 'User not found');
         }
@@ -174,8 +174,8 @@ class CustomRequestController extends Controller
         if (
             !$userDetail
             || !$userDetail->user
+            || ! $userDetail->user->isPubliclyVisible()
             || $userDetail->user->role !== 'artist'
-            || $userDetail->user->on_boarding !== 'yes'
         ) {
             return response()->json(['message' => 'Artist not found.'], 404);
         }

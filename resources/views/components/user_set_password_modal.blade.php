@@ -31,26 +31,46 @@
         @csrf
         <div>
           <label for="client_initial_password" class="block text-xs font-bold text-on-surface-variant mb-1.5">New password</label>
-          <input
-            type="password"
-            name="password"
-            id="client_initial_password"
-            required
-            autofocus
-            autocomplete="new-password"
-            class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+          <div class="relative">
+            <input
+              type="password"
+              name="password"
+              id="client_initial_password"
+              required
+              autofocus
+              autocomplete="new-password"
+              class="w-full text-sm border border-outline-variant/30 rounded-xl pl-4 pr-11 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant hover:text-on-surface-variant client-pw-eye"
+              data-target="#client_initial_password"
+              aria-label="Show password"
+            >
+              <span class="material-symbols-outlined text-[20px]">visibility</span>
+            </button>
+          </div>
         </div>
         <div>
           <label for="client_initial_password_confirmation" class="block text-xs font-bold text-on-surface-variant mb-1.5">Confirm password</label>
-          <input
-            type="password"
-            name="password_confirmation"
-            id="client_initial_password_confirmation"
-            required
-            autocomplete="new-password"
-            class="w-full text-sm border border-outline-variant/30 rounded-xl px-4 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+          <div class="relative">
+            <input
+              type="password"
+              name="password_confirmation"
+              id="client_initial_password_confirmation"
+              required
+              autocomplete="new-password"
+              class="w-full text-sm border border-outline-variant/30 rounded-xl pl-4 pr-11 py-3 bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant hover:text-on-surface-variant client-pw-eye"
+              data-target="#client_initial_password_confirmation"
+              aria-label="Show confirm password"
+            >
+              <span class="material-symbols-outlined text-[20px]">visibility</span>
+            </button>
+          </div>
         </div>
         <button
           type="submit"
@@ -63,4 +83,19 @@
     </div>
   </div>
 </div>
+<script>
+(function () {
+  document.querySelectorAll('#clientInitialPasswordModal .client-pw-eye').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var target = document.querySelector(btn.getAttribute('data-target'));
+      if (!target) return;
+      var icon = btn.querySelector('.material-symbols-outlined');
+      var show = target.getAttribute('type') === 'password';
+      target.setAttribute('type', show ? 'text' : 'password');
+      if (icon) icon.textContent = show ? 'visibility_off' : 'visibility';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+  });
+})();
+</script>
 @endif

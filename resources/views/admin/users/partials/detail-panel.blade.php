@@ -343,5 +343,49 @@
         </table>
       </div>
     </div>
+
+    @if(in_array($user['role'], ['artist', 'studio'], true))
+      <div class="bg-white rounded-xl border {{ !empty($user['is_deactivated']) ? 'border-green-200' : 'border-red-200' }} p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h4 class="text-sm font-bold {{ !empty($user['is_deactivated']) ? 'text-green-700' : 'text-red-700' }} mb-0.5">{{ !empty($user['is_deactivated']) ? 'Activate account' : 'Deactivate account' }}</h4>
+          <p class="text-xs text-on-surface-variant">
+            @if(!empty($user['is_deactivated']))
+              Make this {{ strtolower($user['role_label'] ?? 'account') }} visible on the public site again and allow login.
+            @else
+              Hide this {{ strtolower($user['role_label'] ?? 'account') }} from clients and block login. Reversible anytime.
+            @endif
+          </p>
+        </div>
+        <button
+          type="button"
+          class="js-admin-deactivate-user inline-flex items-center justify-center min-w-[120px] px-5 py-3 rounded-xl font-semibold text-sm transition-colors shadow-sm shrink-0 {{ !empty($user['is_deactivated']) ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700' }}"
+          data-user-id="{{ $user['id'] }}"
+          data-user-name="{{ $user['name'] }}"
+          data-user-email="{{ $user['email'] }}"
+          data-user-role="{{ $user['role'] }}"
+          data-is-deactivated="{{ !empty($user['is_deactivated']) ? '1' : '0' }}"
+        >
+          {{ !empty($user['is_deactivated']) ? 'Activate' : 'Deactivate' }}
+        </button>
+      </div>
+    @endif
+
+    <div class="bg-white rounded-xl border border-error/20 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h4 class="text-sm font-bold text-error mb-0.5">Delete account</h4>
+        <p class="text-xs text-on-surface-variant">Closes this {{ strtolower($user['role_label'] ?? 'user') }} account and emails them a notice. Bookings and payouts are kept. Cannot be undone.</p>
+      </div>
+      <button
+        type="button"
+        class="js-admin-delete-user inline-flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-red-700 transition-colors shadow-sm shrink-0"
+        data-user-id="{{ $user['id'] }}"
+        data-user-name="{{ $user['name'] }}"
+        data-user-email="{{ $user['email'] }}"
+        data-delete-block-reason="{{ $user['delete_block_reason'] ?? '' }}"
+      >
+        <span class="material-symbols-outlined text-lg">delete</span>
+        Delete user
+      </button>
+    </div>
   </div>
 </div>

@@ -250,8 +250,8 @@ class StudioRequestController extends Controller
             ! $studio
             || trim((string) ($studio->username ?? '')) === ''
             || ! $studio->user
+            || ! $studio->user->isPubliclyVisible()
             || $studio->user->role !== 'studio'
-            || $studio->user->on_boarding !== 'yes'
         ) {
             abort(404, 'Studio not found');
         }
@@ -282,7 +282,7 @@ class StudioRequestController extends Controller
         return $query->orderBy('id')->get()->map(function (UserStudio $link) {
             $artistUser = $link->user;
             $detail = $artistUser?->userDetail;
-            if (! $detail || ! $artistUser || $artistUser->role !== 'artist' || $artistUser->on_boarding !== 'yes') {
+            if (! $detail || ! $artistUser || ! $artistUser->isPubliclyVisible() || $artistUser->role !== 'artist') {
                 return null;
             }
 

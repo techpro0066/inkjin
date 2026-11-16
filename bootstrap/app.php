@@ -30,6 +30,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(fn (Request $request) => authenticated_home_url($request->user()));
         $middleware->authenticateSessions();
 
+        $middleware->web(append: [
+            \App\Http\Middleware\EnsureAccountIsActive::class,
+        ]);
+
         $middleware->alias([
             'onboarding' => \App\Http\Middleware\CheckOnboarding::class,
             'artist' => \App\Http\Middleware\CheckArtist::class,

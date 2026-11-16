@@ -546,6 +546,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     Route::get('/users', [AdminUserController::class, 'index'])->name('admin.users.index');
     Route::get('/users/export', [AdminUserController::class, 'export'])->name('admin.users.export');
     Route::get('/users/{id}', [AdminUserController::class, 'show'])->name('admin.users.show');
+    Route::post('/users/{id}/deactivate', [AdminUserController::class, 'toggleDeactivated'])->name('admin.users.deactivate');
+    Route::delete('/users/{id}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
     Route::get('/referrals', [AdminReferralsController::class, 'index'])->name('admin.referrals.index');
     Route::post('/referrals/{referral}/send-reward', [AdminReferralsController::class, 'sendReward'])->name('admin.referrals.send-reward');
     Route::post('/referrals/{referral}/reject', [AdminReferralsController::class, 'reject'])->name('admin.referrals.reject');

@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Style;
 use App\Models\User;
 use App\Models\UserStudio;
+use App\Services\AdminUserDeletionService;
 use App\Support\AdminListPagination;
 use App\Support\OnboardingProgress;
 use Carbon\Carbon;
@@ -14,7 +15,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class UserController extends Controller
 {
@@ -37,22 +40,30 @@ class UserController extends Controller
 
         $paginator = $query->paginate($perPage)->withQueryString();
         $styleLabels = Style::query()->pluck('name', 'name')->all();
+        $pageUsers = $paginator->getCollection();
         $bookingStats = $this->bookingStatsForUsers(
-            $paginator->getCollection()->pluck('id')->all(),
+            $pageUsers->pluck('id')->all(),
             $roleFilter
         );
+        $deleteBlockReasons = app(AdminUserDeletionService::class)
+            ->deleteBlockReasonsForUsers($pageUsers);
 
         $paginator->setCollection(
-            $paginator->getCollection()
-            ->map(fn (User $user) => $this->mapUserForAdminList($user, $styleLabels, $bookingStats))
+            $pageUsers
+                ->map(fn (User $user) => $this->mapUserForAdminList(
+                    $user,
+                    $styleLabels,
+                    $bookingStats,
+                    $deleteBlockReasons[(int) $user->id] ?? null
+                ))
                 ->values()
         );
 
         $stats = [
-            'total' => User::query()->where('role', '!=', 'admin')->count(),
-            'artists' => User::query()->where('role', 'artist')->count(),
-            'studios' => User::query()->where('role', 'studio')->count(),
-            'clients' => User::query()->where('role', 'user')->count(),
+            'total' => User::query()->notDeleted()->where('role', '!=', 'admin')->count(),
+            'artists' => User::query()->notDeleted()->where('role', 'artist')->count(),
+            'studios' => User::query()->notDeleted()->where('role', 'studio')->count(),
+            'clients' => User::query()->notDeleted()->where('role', 'user')->count(),
         ];
 
         $pageTitle = match ($roleFilter) {
@@ -208,6 +219,7 @@ class UserController extends Controller
         $payoutsFilter = strtolower(trim((string) $request->get('payouts', 'all')));
 
         $query = User::query()
+            ->notDeleted()
             ->with([
                 'userDetail.studio',
                 'consentFormSetting',
@@ -334,6 +346,93 @@ class UserController extends Controller
     }
 
     /**
+     * Deactivate or reactivate an artist/studio public presence.
+     */
+    public function toggleDeactivated(Request $request, int $id): JsonResponse
+    {
+        $user = User::query()->notDeleted()->findOrFail($id);
+
+        if (! in_array($user->role, ['artist', 'studio'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only artist and studio accounts can be deactivated.',
+            ], 422);
+        }
+
+        $shouldDeactivate = $request->boolean('deactivate', ! $user->isDeactivated());
+
+        $user->forceFill([
+            'deactivated_at' => $shouldDeactivate ? now() : null,
+            'remember_token' => $shouldDeactivate ? null : $user->remember_token,
+        ])->save();
+
+        if ($shouldDeactivate && \Illuminate\Support\Facades\Schema::hasTable('sessions')) {
+            \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
+
+        $label = $user->role === 'studio' ? 'Studio' : 'Artist';
+
+        return response()->json([
+            'success' => true,
+            'deactivated' => $user->isDeactivated(),
+            'message' => $shouldDeactivate
+                ? $label.' deactivated. Public page is hidden and login is blocked.'
+                : $label.' reactivated. Public page and login are available again.',
+        ]);
+    }
+
+    /**
+     * Close a user account (non-admin) and email them a notice.
+     */
+    public function destroy(int $id, AdminUserDeletionService $deletionService): JsonResponse
+    {
+        $user = User::query()->findOrFail($id);
+
+        if ($user->role === 'admin') {
+            abort(404);
+        }
+
+        if ((int) auth()->id() === (int) $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot delete your own account.',
+            ], 422);
+        }
+
+        if ($user->isDeleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This account is already deleted.',
+            ], 422);
+        }
+
+        try {
+            $deleted = $deletionService->delete($user);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (Throwable $e) {
+            Log::error('Admin user delete failed', [
+                'user_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not delete this user. Please try again.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Account closed. Bookings and payouts were kept. A notification email was sent to '.$deleted['email'].'.',
+            'user' => $deleted,
+        ]);
+    }
+
+    /**
      * Get user details for modal/API.
      */
     public function show($id): JsonResponse
@@ -421,8 +520,13 @@ class UserController extends Controller
      * @param  array<int, array{bookings:int,revenue:float}>  $bookingStats
      * @return array<string, mixed>
      */
-    private function mapUserForAdminList(User $user, array $styleLabels, array $bookingStats): array
-    {
+    private function mapUserForAdminList(
+        User $user,
+        array $styleLabels,
+        array $bookingStats,
+        ?string $deleteBlockReason = null
+    ): array {
+
         $detail = $user->userDetail;
         $ownedStudio = $user->ownedStudio;
         $isArtist = $user->role === 'artist';
@@ -557,6 +661,9 @@ class UserController extends Controller
             'acquisition_source_key' => ($isArtist || $isStudio)
                 ? (trim((string) ($user->hear_about_us ?? '')) ?: null)
                 : null,
+            'delete_block_reason' => $deleteBlockReason,
+            'is_deactivated' => $user->isDeactivated(),
+            'deactivated_at' => $user->deactivated_at?->toIso8601String(),
         ];
     }
 
@@ -743,6 +850,10 @@ class UserController extends Controller
      */
     private function resolveUserStatus(User $user): array
     {
+        if ($user->isDeactivated() && in_array($user->role, ['artist', 'studio'], true)) {
+            return ['label' => 'Deactivated', 'key' => 'deactivated'];
+        }
+
         if (in_array($user->role, ['artist', 'studio'], true)) {
             return $user->on_boarding === 'yes'
                 ? ['label' => 'Active', 'key' => 'active']

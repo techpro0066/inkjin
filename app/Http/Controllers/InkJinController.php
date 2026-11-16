@@ -563,7 +563,7 @@ class InkJinController extends Controller
                 ->where('user_name', $validated['artist_username'])
                 ->first();
 
-            if (! $userDetail || ! $userDetail->user || $userDetail->user->role !== 'artist') {
+            if (! $userDetail || ! $userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist') {
                 return response()->json(['success' => false, 'message' => 'Artist not found.'], 404);
             }
         }
@@ -744,7 +744,7 @@ class InkJinController extends Controller
 
         $userDetail = UserDetail::whereRaw('LOWER(user_name) = ?', [$key])->first();
 
-        if ($userDetail && $userDetail->user && $userDetail->user->role === 'artist' && $userDetail->user->on_boarding === 'yes') {
+        if ($userDetail && $userDetail->user && $userDetail->user->isPubliclyVisible() && $userDetail->user->role === 'artist') {
             $displayDesigns = (bool) ($userDetail->display_designs ?? true);
             $artistDesigns = $displayDesigns
                 ? $userDetail->user->artistDesigns()
@@ -797,8 +797,8 @@ class InkJinController extends Controller
             ! $studio
             || trim((string) ($studio->username ?? '')) === ''
             || ! $studio->user
+            || ! $studio->user->isPubliclyVisible()
             || $studio->user->role !== 'studio'
-            || $studio->user->on_boarding !== 'yes'
         ) {
             abort(404, 'Page not found');
         }
@@ -837,7 +837,7 @@ class InkJinController extends Controller
             $studioArtists = $query->get()->map(function (UserStudio $link) use ($relationshipLabels, $formatStyleLabel) {
                 $artistUser = $link->user;
                 $detail = $artistUser?->userDetail;
-                if (! $detail || ! $artistUser || $artistUser->role !== 'artist' || $artistUser->on_boarding !== 'yes') {
+                if (! $detail || ! $artistUser || ! $artistUser->isPubliclyVisible() || $artistUser->role !== 'artist') {
                     return null;
                 }
 
@@ -951,7 +951,7 @@ class InkJinController extends Controller
 
             $artistUser = $spot->user;
             $detail = $artistUser?->userDetail;
-            if (! $artistUser || $artistUser->role !== 'artist' || $artistUser->on_boarding !== 'yes') {
+            if (! $artistUser || ! $artistUser->isPubliclyVisible() || $artistUser->role !== 'artist') {
                 return null;
             }
 
@@ -1160,7 +1160,7 @@ class InkJinController extends Controller
     {
         $userDetail = UserDetail::where('user_name', $userName)->first();
 
-        if (! $userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes') {
+        if (! $userDetail || ! $userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist') {
             abort(404, 'Artist not found');
         }
 
@@ -1228,7 +1228,7 @@ class InkJinController extends Controller
         $artistsQuery = UserDetail::query()
             ->with([
                 'user' => function ($q) {
-                    $q->select('id', 'first_name', 'last_name', 'role', 'on_boarding');
+                    $q->select('id', 'first_name', 'last_name', 'role', 'on_boarding', 'deleted_at', 'deactivated_at');
                 },
                 'user.artistDesigns' => function ($q) {
                     $q->select('id', 'user_id');
@@ -1236,7 +1236,7 @@ class InkJinController extends Controller
             ])
             ->whereNotNull('user_name')
             ->whereHas('user', function ($q) {
-                $q->where('role', 'artist')->where('on_boarding', 'yes');
+                $q->where('role', 'artist')->publiclyVisible();
             });
 
         if ($search !== '') {
@@ -1291,7 +1291,7 @@ class InkJinController extends Controller
 
         $availabilities = Availability::where('user_id', $userDetail->user_id)->get();
 
-        if (! $userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes' || $availabilities->count() === 0 || in_array($userDetail->availability_status, ['closed', 'custom_only'], true)) {
+        if (! $userDetail || ! $userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist' || $availabilities->count() === 0 || in_array($userDetail->availability_status, ['closed', 'custom_only'], true)) {
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
@@ -1341,7 +1341,7 @@ class InkJinController extends Controller
     {
         $userDetail = UserDetail::where('user_name', $userName)->first();
 
-        if (! $userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes' || in_array($userDetail->availability_status, ['closed', 'custom_only'], true)) {
+        if (! $userDetail || ! $userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist' || in_array($userDetail->availability_status, ['closed', 'custom_only'], true)) {
             return redirect()->route('public.artist', ['username' => $userName]);
         }
 
@@ -1554,7 +1554,7 @@ class InkJinController extends Controller
             ->where('user_name', $validated['artist_username'])
             ->first();
 
-        if (!$userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes') {
+        if (!$userDetail || ! $userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist') {
             return response()->json(['message' => 'Artist not found.'], 404);
         }
 
@@ -1685,7 +1685,7 @@ class InkJinController extends Controller
 
         $payload = $validated['booking_payload'];
         $userDetail = UserDetail::query()->where('user_name', $validated['artist_username'])->first();
-        if (!$userDetail || !$userDetail->user || $userDetail->user->role !== 'artist') {
+        if (!$userDetail || !$userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist') {
             return response()->json(['message' => 'Artist not found.'], 404);
         }
 
@@ -2001,8 +2001,8 @@ class InkJinController extends Controller
         if (
             !$userDetail
             || !$userDetail->user
+            || ! $userDetail->user->isPubliclyVisible()
             || $userDetail->user->role !== 'artist'
-            || $userDetail->user->on_boarding !== 'yes'
         ) {
             return response()->json(['message' => 'Artist not found.'], 404);
         }
@@ -2154,7 +2154,7 @@ class InkJinController extends Controller
             ->where('user_name', $validated['artist_username'])
             ->first();
 
-        if (! $userDetail || ! $userDetail->user || $userDetail->user->role !== 'artist') {
+        if (! $userDetail || ! $userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist') {
             return response()->json(['message' => 'Artist not found.'], 404);
         }
 
@@ -2213,7 +2213,7 @@ class InkJinController extends Controller
             ->where('user_name', $validated['artist_username'])
             ->first();
 
-        if (! $userDetail || ! $userDetail->user || $userDetail->user->role !== 'artist') {
+        if (! $userDetail || ! $userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist') {
             return response()->json(['message' => 'Artist not found.'], 404);
         }
 
@@ -2290,7 +2290,7 @@ class InkJinController extends Controller
             ->where('user_name', $validated['artist_username'])
             ->first();
 
-        if (! $userDetail || $userDetail->user->role !== 'artist' || $userDetail->user->on_boarding !== 'yes') {
+        if (! $userDetail || ! $userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist') {
             return response()->json(['message' => 'Artist not found.'], 404);
         }
 

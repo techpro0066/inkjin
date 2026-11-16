@@ -53,10 +53,66 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'deleted_at' => 'datetime',
+            'deactivated_at' => 'datetime',
             'password' => 'hashed',
             'must_set_password' => 'boolean',
             'on_app' => 'boolean',
         ];
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->deleted_at !== null;
+    }
+
+    public function isDeactivated(): bool
+    {
+        return $this->deactivated_at !== null;
+    }
+
+    /**
+     * Artist/studio accounts that clients can see on public pages.
+     */
+    public function isPubliclyVisible(): bool
+    {
+        if (! in_array($this->role, ['artist', 'studio'], true)) {
+            return false;
+        }
+
+        return $this->on_boarding === 'yes'
+            && ! $this->isDeleted()
+            && ! $this->isDeactivated();
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<User>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<User>
+     */
+    public function scopeNotDeleted($query)
+    {
+        return $query->whereNull($query->getModel()->getTable().'.deleted_at');
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<User>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<User>
+     */
+    public function scopeNotDeactivated($query)
+    {
+        return $query->whereNull($query->getModel()->getTable().'.deactivated_at');
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<User>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<User>
+     */
+    public function scopePubliclyVisible($query)
+    {
+        return $query->notDeleted()
+            ->notDeactivated()
+            ->where('on_boarding', 'yes')
+            ->whereIn('role', ['artist', 'studio']);
     }
 
     /**
