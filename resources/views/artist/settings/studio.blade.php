@@ -123,8 +123,27 @@
     @include('artist.settings.partials.banner-split-proposed', ['splitCard' => $splitCard, 'primaryCard' => $primaryCard])
   @endif
 
-  @if($viewState === 'not_on_bookpay' && $primaryCard && ($primary?->connection_type ?? null) === \App\Models\UserStudio::CONNECTION_NOT_CONNECTED)
-    @include('artist.settings.partials.banner-invite', ['name' => $primaryCard['name']])
+  @php
+    $primaryConnection = (string) ($primary?->connection_type ?? $primaryCard['connection_type'] ?? '');
+    $primaryWorkplaceInviteSent = ! empty($primaryCard)
+      && empty($primaryCard['payout'])
+      && $primaryConnection === \App\Models\UserStudio::CONNECTION_NOT_CONNECTED;
+    $primaryNeedsWorkplaceInvite = ! empty($primaryCard)
+      && empty($primaryCard['payout'])
+      && $primaryConnection !== \App\Models\UserStudio::CONNECTION_ON_BOOKPAY
+      && $primaryConnection !== \App\Models\UserStudio::CONNECTION_NOT_CONNECTED
+      && in_array($bodyState, ['not_on_bookpay'], true);
+  @endphp
+
+  @if($bodyState === 'not_on_bookpay' && $primaryWorkplaceInviteSent)
+    @include('artist.settings.partials.banner-invite', [
+      'name' => $primaryCard['name'] ?? 'the studio',
+      'linkId' => $primaryCard['id'] ?? 0,
+      'noSplit' => true,
+      'sentOn' => $primaryCard['created_at'] ?? null,
+    ])
+  @elseif($primaryNeedsWorkplaceInvite)
+    @include('artist.settings.partials.banner-not-on-bookpay', ['card' => $primaryCard])
   @endif
 
   @if($bodyState === 'none')
@@ -406,7 +425,150 @@
     });
   }
 
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+  }
+
+  function postStudioInvite(url, payload, btn, loadingText) {
+    var body = new URLSearchParams();
+    body.set('_token', @json(csrf_token()));
+    Object.keys(payload || {}).forEach(function (key) {
+      if (payload[key] !== undefined && payload[key] !== null) {
+        body.set(key, String(payload[key]));
+      }
+    });
+
+    var prevHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = loadingText || 'Sending…';
+    }
+
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': @json(csrf_token()),
+      },
+      body: body,
+      credentials: 'same-origin',
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        return { ok: res.ok, data: data || {} };
+      }).catch(function () {
+        return { ok: res.ok, data: {} };
+      });
+    }).finally(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = prevHtml;
+      }
+    });
+  }
+
+  var nobarInviteBtn = document.getElementById('nobarInviteBtn');
+  var nobarForm = document.getElementById('nobarForm');
+  var nobarSend = document.getElementById('nobarSend');
+  var nobarError = document.getElementById('nobarError');
+
+  if (nobarInviteBtn && nobarForm) {
+    nobarInviteBtn.addEventListener('click', function () {
+      nobarForm.hidden = false;
+      nobarInviteBtn.hidden = true;
+      var email = document.getElementById('nobarStudioEmail');
+      if (email) email.focus();
+    });
+  }
+  if (nobarSend) {
+    nobarSend.addEventListener('click', function () {
+      var nameEl = document.getElementById('nobarStudioName');
+      var emailEl = document.getElementById('nobarStudioEmail');
+      var name = nameEl ? String(nameEl.value || '').trim() : '';
+      var email = emailEl ? String(emailEl.value || '').trim() : '';
+      if (nobarError) {
+        nobarError.style.display = 'none';
+        nobarError.textContent = '';
+      }
+      if (!email || !isValidEmail(email)) {
+        if (nobarError) {
+          nobarError.textContent = 'Enter a valid studio email to send the invite.';
+          nobarError.style.display = 'block';
+        }
+        if (emailEl) emailEl.focus();
+        return;
+      }
+      postStudioInvite(
+        @json(route('settings.studio.invite-bookpay')),
+        {
+          user_studio_id: nobarSend.getAttribute('data-user-studio-id'),
+          studio_name: name,
+          studio_email: email,
+        },
+        nobarSend,
+        'Sending…'
+      ).then(function (result) {
+        var ok = result.ok && result.data && result.data.success;
+        if (!ok) {
+          var msg = (result.data && result.data.message)
+            || (result.data && result.data.errors && result.data.errors.studio_email && result.data.errors.studio_email[0])
+            || 'Could not send the invite.';
+          if (nobarError) {
+            nobarError.textContent = msg;
+            nobarError.style.display = 'block';
+          }
+          showStudioToast(msg, true);
+          return;
+        }
+        showStudioToast((result.data && result.data.message) || 'Invitation sent.');
+        window.location.reload();
+      }).catch(function () {
+        showStudioToast('Could not send the invite.', true);
+      });
+    });
+  }
+
   document.addEventListener('click', function (e) {
+    var resendWorkplace = e.target.closest('.js-studio-resend-workplace-invite');
+    if (resendWorkplace) {
+      e.preventDefault();
+      postStudioAction(
+        @json(route('settings.studio.resend-workplace-invite')),
+        resendWorkplace.getAttribute('data-user-studio-id'),
+        resendWorkplace,
+        'Sending…'
+      ).then(function (result) {
+        showStudioToast(
+          (result.data && result.data.message) || (result.ok ? 'Invitation email resent.' : 'Could not resend the email.'),
+          !(result.ok && result.data && result.data.success)
+        );
+      }).catch(function () {
+        showStudioToast('Could not resend the email.', true);
+      });
+      return;
+    }
+
+    var cancelWorkplace = e.target.closest('.js-studio-cancel-workplace-invite');
+    if (cancelWorkplace) {
+      e.preventDefault();
+      postStudioAction(
+        @json(route('settings.studio.cancel-workplace-invite')),
+        cancelWorkplace.getAttribute('data-user-studio-id'),
+        cancelWorkplace,
+        'Cancelling…'
+      ).then(function (result) {
+        var ok = result.ok && result.data && result.data.success;
+        showStudioToast(
+          (result.data && result.data.message) || (ok ? 'Invitation cancelled.' : 'Could not cancel the invite.'),
+          !ok
+        );
+        if (ok) window.location.reload();
+      }).catch(function () {
+        showStudioToast('Could not cancel the invite.', true);
+      });
+      return;
+    }
+
     var resend = e.target.closest('.js-studio-resend-join');
     if (resend) {
       e.preventDefault();

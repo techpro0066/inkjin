@@ -4,7 +4,8 @@
   $isPending = ! $isApproved && ! $isRejected;
   $needsStudioSignup = (bool) ($needsStudioSignup ?? ($isPending && empty($studio->user_id)));
   $resumeStudioInvite = (bool) ($resumeStudioInvite ?? false);
-  $artistPercent = (int) ($studioRevenueArtistPercent ?? 50);
+  $workplaceOnlyInvite = (bool) ($workplaceOnlyInvite ?? false);
+  $artistPercent = (int) ($studioRevenueArtistPercent ?? ($workplaceOnlyInvite ? 100 : 50));
   $studioPercent = (int) ($studioRevenueStudioPercent ?? (100 - $artistPercent));
   $studioDisplayName = $studioNameValue ?? ($studio->name ?? 'your studio');
   $artistFirst = explode(' ', trim((string) $artistName))[0] ?: $artistName;
@@ -155,7 +156,13 @@
 
     <div id="studioDecisionPanel" class="{{ ((request()->query('completed') && ! $isPending) || $resumeStudioInvite) ? 'hidden' : '' }}">
       <h1>Studio invitation</h1>
-      <p class="sub">{{ $artistName }} invited {{ $studioDisplayName }} to Bookpay, so your share of each booking is paid to you automatically.</p>
+      <p class="sub">
+        @if ($workplaceOnlyInvite)
+          {{ $artistName }} invited {{ $studioDisplayName }} to Bookpay so you can list them on your studio page. They keep direct payment — there’s no revenue split.
+        @else
+          {{ $artistName }} invited {{ $studioDisplayName }} to Bookpay, so your share of each booking is paid to you automatically.
+        @endif
+      </p>
 
       <div class="ac">
         <div class="av" @if(!empty($artistAvatarUrl)) style="background-image:url('{{ $artistAvatarUrl }}')" @endif>
@@ -179,24 +186,32 @@
         @if (!empty($studioRelationshipLabel))
           <div class="kv"><span>Relationship</span><b>{{ $studioRelationshipLabel }}</b></div>
         @endif
-        <div class="kv" style="margin-top:12px"><span>Revenue split</span></div>
-        <div class="split">
+        @if ($workplaceOnlyInvite)
+          <div class="kv" style="margin-top:12px"><span>Payment</span><b>Artist direct — no split</b></div>
+        @else
+          <div class="kv" style="margin-top:12px"><span>Revenue split</span></div>
+          <div class="split">
+            <div>
+              <small>{{ $artistFirst }} gets</small>
+              <b>{{ $artistPercent }}%</b>
+            </div>
           <div>
-            <small>{{ $artistFirst }} gets</small>
-            <b>{{ $artistPercent }}%</b>
+              <small>Your studio gets</small>
+              <b>{{ $studioPercent }}%</b>
+            </div>
           </div>
-          <div>
-            <small>Your studio gets</small>
-            <b>{{ $studioPercent }}%</b>
-          </div>
-        </div>
+        @endif
       </div>
 
       <div class="free">
         <span class="ms" style="font-variation-settings:'FILL' 1">verified</span>
-        <div>
+          <div>
           <b>Free for studios. No monthly fee, no setup fee, no commission.</b>
-          <small>Stripe's processing fee is shared with {{ $artistFirst }} by the same split.</small>
+          @if ($workplaceOnlyInvite)
+            <small>{{ $artistFirst }} is paid directly. You don’t need Stripe for this invite.</small>
+          @else
+            <small>Stripe's processing fee is shared with {{ $artistFirst }} by the same split.</small>
+          @endif
         </div>
       </div>
 
@@ -220,7 +235,7 @@
           <div class="in" id="studio_invite_password_wrap">
             <input type="password" id="studio_invite_password" name="password" autocomplete="new-password" required>
             <button type="button" class="eye" id="toggleInvitePw" aria-label="Show password"><span class="ms">visibility</span></button>
-          </div>
+        </div>
           <p class="hint">At least 8 characters.</p>
           <p id="studio_invite_password_error" class="err" role="alert"></p>
 
@@ -228,7 +243,7 @@
           <div class="in" id="studio_invite_password_confirmation_wrap">
             <input type="password" id="studio_invite_password_confirmation" name="password_confirmation" autocomplete="new-password" required>
             <button type="button" class="eye" id="toggleInvitePwConfirm" aria-label="Show confirm password"><span class="ms">visibility</span></button>
-          </div>
+        </div>
           <p id="studio_invite_password_confirmation_error" class="err" role="alert"></p>
 
           <label class="ck">
@@ -248,7 +263,7 @@
       @endif
     </div>
 
-    @if (! $studioAlreadyConnected && ($stripeConnectConfigured ?? false) && $isPending)
+    @if (! $workplaceOnlyInvite && ! $studioAlreadyConnected && ($stripeConnectConfigured ?? false) && $isPending)
       <div id="studioPayoutsPanel" class="{{ $resumeStudioInvite ? '' : 'hidden' }}">
         <h1>Get your share paid out</h1>
         <p class="sub">Connect Stripe so your <b>{{ $studioPercent }}%</b> of each of {{ $artistFirst }}'s bookings goes straight to your bank account.</p>

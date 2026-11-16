@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Artist;
 use App\Http\Controllers\Controller;
 use App\Models\Studio;
 use App\Models\StudioInvite;
+use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserPayout;
 use App\Models\UserStudio;
@@ -289,6 +290,215 @@ class StudioSettingsController extends Controller
         return redirect()->route('settings.studio')
             ->with('status', 'studio-changed')
             ->with('success', 'Join request cancelled.');
+    }
+
+    /**
+     * Account > Studio (09c2): invite a not-on-Bookpay workplace with no revenue split.
+     */
+    public function inviteStudioToBookpay(Request $request): JsonResponse|RedirectResponse
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'user_studio_id' => ['required', 'integer'],
+            'studio_name' => ['nullable', 'string', 'max:255'],
+            'studio_email' => ['required', 'email', 'max:255'],
+        ], [
+            'studio_email.required' => 'Enter a valid studio email to send the invite.',
+            'studio_email.email' => 'Enter a valid studio email to send the invite.',
+        ]);
+
+        $email = strtolower(trim((string) $validated['studio_email']));
+        if (User::emailBlockedForStudioInvite($email)) {
+            throw ValidationException::withMessages([
+                'studio_email' => ['This email is already registered with a Bookpay account. Use a different studio email.'],
+            ]);
+        }
+
+        $link = UserStudio::query()
+            ->where('id', (int) $validated['user_studio_id'])
+            ->where('user_id', (int) $user->id)
+            ->where('status', UserStudio::STATUS_ACTIVE)
+            ->first();
+
+        if (! $link || (bool) $link->payout) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Studio workplace not found.',
+                ], 404);
+            }
+
+            return redirect()->route('settings.studio')->with('error', 'Studio workplace not found.');
+        }
+
+        if (($link->connection_type ?? '') === UserStudio::CONNECTION_ON_BOOKPAY) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This studio is already on Bookpay.',
+                ], 422);
+            }
+
+            return redirect()->route('settings.studio')->with('error', 'This studio is already on Bookpay.');
+        }
+
+        $name = trim((string) ($validated['studio_name'] ?? ''));
+        if ($name === '') {
+            $name = trim((string) ($link->studio_name ?: 'Studio'));
+        }
+
+        $studio = Studio::query()->firstOrCreate(
+            ['email' => $email],
+            ['name' => $name !== '' ? $name : 'Studio']
+        );
+        if ($name !== '' && $name !== 'Studio' && (blank($studio->name) || $studio->name === 'Studio')) {
+            $studio->name = $name;
+            $studio->save();
+        }
+        if (empty($studio->email)) {
+            $studio->email = $email;
+            $studio->save();
+        }
+
+        $link->studio_id = $studio->id;
+        $link->studio_name = $name !== '' ? $name : ($studio->name ?: $link->studio_name);
+        $link->payout = false;
+        $link->revenue_split = null;
+        $link->status = UserStudio::STATUS_ACTIVE;
+        $link->connection_type = UserStudio::CONNECTION_NOT_CONNECTED;
+        if (Schema::hasColumn($link->getTable(), 'joined_via')) {
+            $link->joined_via = UserStudio::JOINED_VIA_INVITE;
+        }
+        $link->save();
+
+        $sent = app(ArtistStudioJoinRequestNotifier::class)->send($user, $link, $studio, false);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $sent
+                    ? 'Invitation sent to '.$studio->name.'.'
+                    : 'Invite saved, but the email could not be sent. Try Resend.',
+                'user_studio_id' => $link->id,
+                'reload' => true,
+            ]);
+        }
+
+        return redirect()->route('settings.studio')
+            ->with('status', 'studio-changed')
+            ->with('success', $sent ? 'Invitation sent.' : 'Invite saved, but the email could not be sent.');
+    }
+
+    /**
+     * Cancel a no-split Bookpay invite; keep the workplace and restore the invite CTA.
+     */
+    public function cancelWorkplaceInvite(Request $request): JsonResponse|RedirectResponse
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'user_studio_id' => ['required', 'integer'],
+        ]);
+
+        $link = UserStudio::query()
+            ->where('id', (int) $validated['user_studio_id'])
+            ->where('user_id', (int) $user->id)
+            ->where('status', UserStudio::STATUS_ACTIVE)
+            ->first();
+
+        if (! $link || (bool) $link->payout) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invite not found.',
+                ], 404);
+            }
+
+            return redirect()->route('settings.studio')->with('error', 'Invite not found.');
+        }
+
+        if (($link->connection_type ?? '') !== UserStudio::CONNECTION_NOT_CONNECTED) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No pending studio invite to cancel.',
+                ], 422);
+            }
+
+            return redirect()->route('settings.studio')->with('error', 'No pending studio invite to cancel.');
+        }
+
+        $link->connection_type = UserStudio::CONNECTION_NOT_ON_BOOKPAY;
+        $link->studio_id = null;
+        $link->payout = false;
+        $link->save();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Invitation cancelled.',
+                'user_studio_id' => $link->id,
+                'reload' => true,
+            ]);
+        }
+
+        return redirect()->route('settings.studio')
+            ->with('status', 'studio-changed')
+            ->with('success', 'Invitation cancelled.');
+    }
+
+    public function resendWorkplaceInvite(Request $request): JsonResponse|RedirectResponse
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'user_studio_id' => ['required', 'integer'],
+        ]);
+
+        $link = UserStudio::query()
+            ->with('studio')
+            ->where('id', (int) $validated['user_studio_id'])
+            ->where('user_id', (int) $user->id)
+            ->where('status', UserStudio::STATUS_ACTIVE)
+            ->first();
+
+        if (! $link
+            || (bool) $link->payout
+            || ($link->connection_type ?? '') !== UserStudio::CONNECTION_NOT_CONNECTED
+            || ! $link->studio_id
+        ) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No pending studio invite found.',
+                ], 404);
+            }
+
+            return redirect()->route('settings.studio')->with('error', 'No pending studio invite found.');
+        }
+
+        $studio = $link->studio ?: Studio::query()->find($link->studio_id);
+        if (! $studio) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Studio record was not found.',
+                ], 404);
+            }
+
+            return redirect()->route('settings.studio')->with('error', 'Studio record was not found.');
+        }
+
+        $sent = app(ArtistStudioJoinRequestNotifier::class)->send($user, $link, $studio, true);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => $sent,
+                'message' => $sent ? 'Invitation email resent.' : 'Could not resend the email.',
+                'user_studio_id' => $link->id,
+            ], $sent ? 200 : 500);
+        }
+
+        return redirect()->route('settings.studio')
+            ->with($sent ? 'success' : 'error', $sent ? 'Invitation email resent.' : 'Could not resend the email.');
     }
 
     public function leaveStudio(Request $request): JsonResponse|RedirectResponse
@@ -650,6 +860,7 @@ class StudioSettingsController extends Controller
             'name' => $name,
             'ini' => $this->initials($name),
             'on_bookpay' => $onBookpay,
+            'connection_type' => $link->connection_type,
             'bp_pill' => $studioEntityOnBookpay
                 ? ['class' => 'g', 'label' => 'On Bookpay']
                 : ['class' => 'k', 'label' => 'Not on Bookpay'],

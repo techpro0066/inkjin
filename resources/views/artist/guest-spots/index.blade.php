@@ -693,7 +693,10 @@ function selectGuestStatus(card) {
     guest_studio_country: { error: '#guest_studio_country_error', input: '#guest_studio_country' },
     guest_google_maps_link: { error: '#guest_google_maps_link_error', input: '#guest_google_maps_link' },
     google_maps_link: { error: '#guest_google_maps_link_error', input: '#guest_google_maps_link' },
-    guest_studio_invite_email: { error: '#guest_studio_invite_email_error', input: '#guest_studio_invite_email' },
+    guest_studio_invite_email: {
+      error: '#guest_studio_invite_email_error, #guest_direct_invite_studio_email_error',
+      input: '#guest_studio_invite_email, #guest_direct_invite_studio_email',
+    },
     artist_percent: { error: '#guest_you_pct', input: '#guest_you_pct' },
   };
 
@@ -1103,10 +1106,19 @@ function selectGuestStatus(card) {
       });
     }
 
+    var inviteStudio = payoutMode === 'direct' && $('#guestDirectInviteToggle').hasClass('on');
+    var inviteEmail = '';
+    if (payoutMode === 'split') {
+      inviteEmail = $.trim($('#guest_studio_invite_email').val());
+    } else if (inviteStudio) {
+      inviteEmail = $.trim($('#guest_direct_invite_studio_email').val());
+    }
+
     var payload = {
       payout_mode: payoutMode,
+      invite_studio: inviteStudio ? 1 : 0,
       artist_percent: payoutMode === 'split' ? String(parsePositiveInt($('#guest_you_pct').val(), 60)) : '',
-      guest_studio_invite_email: payoutMode === 'split' ? $.trim($('#guest_studio_invite_email').val()) : '',
+      guest_studio_invite_email: inviteEmail,
       show_designs: showDesigns ? 1 : 0,
       show_portfolio: showPortfolio ? 1 : 0,
       show_rates: $('#gsTogRates').hasClass('on') ? 1 : 0,
@@ -1132,6 +1144,15 @@ function selectGuestStatus(card) {
       syncGuestThemPct();
     }
     $('#guest_studio_invite_email').val(spot.guest_studio_invite_email || '');
+    var inviteStudioOn = payoutMode === 'direct' && (!!spot.invite_studio || !!spot.guest_studio_invite_email);
+    setGuestToggle($('#guestDirectInviteToggle'), inviteStudioOn);
+    syncGuestDirectInviteFields();
+    if (inviteStudioOn) {
+      $('#guest_direct_invite_studio_email').val(spot.guest_studio_invite_email || '');
+      var inviteName = $.trim(spot.guest_studio_name || '') || guestStudioLabel();
+      $('#guest_direct_invite_studio_name').val(inviteName === 'the guest studio' ? '' : inviteName).data('touched', true);
+      $('#guestDirectInviteStudioLabel').text(inviteName === 'the guest studio' ? 'the guest studio' : inviteName);
+    }
 
     setGuestToggle($('#gsTogDesigns'), !!spot.show_designs);
     setGuestToggle($('#gsTogPortfolio'), !!spot.show_portfolio);
@@ -1203,16 +1224,40 @@ function selectGuestStatus(card) {
 
   $('#guestSpotFormCard').on('click', '.tog[role="switch"]', function (e) {
     e.preventDefault();
+    e.stopPropagation();
     var $tog = $(this);
     var on = !$tog.hasClass('on');
     setGuestToggle($tog, on);
     if ($tog.attr('id') === 'gsTogDesigns') $('#gsDesignsWrap').prop('hidden', !on);
     if ($tog.attr('id') === 'gsTogPortfolio') $('#gsPortfolioWrap').prop('hidden', !on);
+    if ($tog.attr('id') === 'guestDirectInviteToggle') syncGuestDirectInviteFields();
   }).on('keydown', '.tog[role="switch"]', function (e) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       $(this).trigger('click');
     }
+  });
+
+  // Bind directly — parent stopPropagation must not block the switch.
+  $('#guestPayoutBlock').on('click', '#guestDirectInviteToggle', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var $tog = $(this);
+    var on = !$tog.hasClass('on');
+    setGuestToggle($tog, on);
+    syncGuestDirectInviteFields();
+  }).on('keydown', '#guestDirectInviteToggle', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      $(this).trigger('click');
+    }
+  });
+
+  $('#guest_direct_invite_studio_name').on('input', function () {
+    $(this).data('touched', true);
+    var label = $.trim($(this).val() || '') || guestStudioLabel();
+    $('#guestDirectInviteStudioLabel').text(label === 'the guest studio' ? 'the guest studio' : label);
   });
 
   bindGuestPickGrid({
@@ -1290,6 +1335,12 @@ function selectGuestStatus(card) {
   function syncGuestPayoutStudioNames() {
     var name = guestStudioLabel();
     var cap = name.charAt(0).toUpperCase() + name.slice(1);
+    var inviteLabel = name === 'the guest studio' ? 'the guest studio' : name;
+    $('#guestDirectInviteStudioLabel').text(inviteLabel);
+    var $directName = $('#guest_direct_invite_studio_name');
+    if ($directName.length && (!$directName.data('touched') || !$.trim($directName.val() || ''))) {
+      $directName.val(name === 'the guest studio' ? '' : name);
+    }
     $('#guestSplitHelpOn').html(
       '<span class="gs-studio-name">' + $('<div>').text(name).html() + '</span> is on Bookpay, so they confirm the split in their dashboard. No invite needed.'
     );
@@ -1299,6 +1350,12 @@ function selectGuestStatus(card) {
     $('#guestSplitInvite .help').html(
       '<span class="gs-studio-name">' + $('<div>').text(cap === 'The guest studio' ? cap : name).html() + '</span> isn’t on Bookpay yet — we’ll email them an invite to join. You’re paid directly until they join and confirm the split.'
     );
+  }
+
+  function syncGuestDirectInviteFields() {
+    var on = $('#guestDirectInviteToggle').hasClass('on');
+    $('#guestDirectInviteToggle').attr('aria-checked', on ? 'true' : 'false');
+    $('#guestDirectInviteFields').prop('hidden', !on);
   }
 
   function syncGuestThemPct() {
@@ -1315,6 +1372,8 @@ function selectGuestStatus(card) {
     });
     var box = document.getElementById('guestSplitbox');
     if (box) box.hidden = mode !== 'split';
+    var directInvite = document.getElementById('guestDirectInviteBox');
+    if (directInvite) directInvite.hidden = mode !== 'direct';
     // Ask for studio email whenever revenue split is selected (invite flow).
     var invite = document.getElementById('guestSplitInvite');
     if (invite) invite.hidden = mode !== 'split';
@@ -1326,6 +1385,8 @@ function selectGuestStatus(card) {
     } else {
       $('#guest_studio_invite_email_error').addClass('hidden').text('');
       $('#guest_studio_invite_email').removeClass('border-error');
+      syncGuestPayoutStudioNames();
+      syncGuestDirectInviteFields();
     }
   }
 
@@ -1336,6 +1397,10 @@ function selectGuestStatus(card) {
     $('#guest_studio_invite_email').val('');
     $('#guest_studio_invite_email_error').addClass('hidden').text('');
     $('#guest_studio_invite_email').removeClass('border-error');
+    setGuestToggle($('#guestDirectInviteToggle'), false);
+    $('#guest_direct_invite_studio_name').val('').removeData('touched');
+    $('#guest_direct_invite_studio_email').val('');
+    syncGuestDirectInviteFields();
     syncGuestPayoutStudioNames();
   }
 
@@ -1898,6 +1963,25 @@ function selectGuestStatus(card) {
       });
       showGuestTab('d');
       return;
+    }
+
+    if (payload.payout_mode === 'direct' && Number(payload.invite_studio) === 1) {
+      var directEmail = $.trim(payload.guest_studio_invite_email || '');
+      if (!directEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(directEmail)) {
+        setFieldErrors({
+          guest_studio_invite_email: ['Enter a valid studio email to send the invite.'],
+        });
+        var $directEmail = $('#guest_direct_invite_studio_email');
+        if ($directEmail.length) {
+          $directEmail.addClass('border-error');
+        }
+        showGuestTab('d');
+        return;
+      }
+      var directName = $.trim($('#guest_direct_invite_studio_name').val() || '');
+      if (directName) {
+        payload.guest_studio_name = payload.guest_studio_name || directName;
+      }
     }
 
     if (isEdit) {

@@ -35,9 +35,11 @@ class GuestSpotStudioInviteAcceptController extends Controller
 
         $guestSpot->loadMissing(['user.userDetail']);
 
-        if (($guestSpot->payout_mode ?: 'direct') !== 'split'
-            || ($guestSpot->guest_studio_invite_status ?? null) !== GuestSpot::INVITE_PENDING
-        ) {
+        $mode = $guestSpot->payout_mode ?: 'direct';
+        $isDirectInvite = $mode === 'direct' && (bool) ($guestSpot->invite_studio ?? false);
+        $inviteOpen = ($guestSpot->guest_studio_invite_status ?? null) === GuestSpot::INVITE_PENDING
+            && ($mode === 'split' || $isDirectInvite);
+        if (! $inviteOpen) {
             $status = ($guestSpot->guest_studio_invite_status ?? null) === GuestSpot::INVITE_ACCEPTED
                 ? 'accepted'
                 : 'unavailable';
@@ -68,6 +70,7 @@ class GuestSpotStudioInviteAcceptController extends Controller
             'wrongAccount' => $wrongAccount,
             'onBookpay' => $onBookpay,
             'showSignup' => ! $onBookpay,
+            'noSplitInvite' => $isDirectInvite,
             'studioAlreadyConnected' => $studioAlreadyConnected,
             'stripeConnectConfigured' => $stripeConnect->isConfigured(),
             'stripePublishableKey' => config('services.stripe.key'),
@@ -151,9 +154,12 @@ class GuestSpotStudioInviteAcceptController extends Controller
         $guestSpot->loadMissing('studio');
         $studio = $guestSpot->studio;
         $alreadyConnected = (bool) ($studio?->hasStripeConnect());
+        $isDirectInvite = (($guestSpot->payout_mode ?: 'direct') === 'direct')
+            && (bool) ($guestSpot->invite_studio ?? false);
 
         if ($request->expectsJson()) {
-            if ($alreadyConnected || ! $stripeConnect->isConfigured()) {
+            // Direct / no-split guest invites never require studio Stripe.
+            if ($isDirectInvite || $alreadyConnected || ! $stripeConnect->isConfigured()) {
                 return response()->json([
                     'success' => true,
                     'csrf_token' => csrf_token(),
@@ -172,7 +178,9 @@ class GuestSpotStudioInviteAcceptController extends Controller
 
         $user = auth()->user();
         if ($user && ($user->role ?? '') === 'studio') {
-            if (! $alreadyConnected && $stripeConnect->isConfigured()
+            if (! $isDirectInvite
+                && ! $alreadyConnected
+                && $stripeConnect->isConfigured()
                 && (string) ($user->on_boarding ?? '') !== 'yes'
             ) {
                 return redirect()
@@ -436,9 +444,11 @@ class GuestSpotStudioInviteAcceptController extends Controller
     private function assertStudioOwnsPending(Request $request, GuestSpot $guestSpot): void
     {
         abort_unless($request->user() && ($request->user()->role ?? '') === 'studio', 403);
+        $mode = $guestSpot->payout_mode ?: 'direct';
+        $isDirectInvite = $mode === 'direct' && (bool) ($guestSpot->invite_studio ?? false);
         abort_unless(
             ($guestSpot->guest_studio_invite_status ?? null) === GuestSpot::INVITE_PENDING
-            && ($guestSpot->payout_mode ?: 'direct') === 'split',
+            && ($mode === 'split' || $isDirectInvite),
             404
         );
 

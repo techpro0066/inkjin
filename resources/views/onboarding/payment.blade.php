@@ -109,6 +109,12 @@
   @media (max-width:700px){
     .studio-invite-grid{grid-template-columns:1fr!important}
   }
+  #directInviteBox{margin:0 0 10px}
+  #directInviteBox .direct-invite-head{display:flex;gap:12px;align-items:flex-start}
+  #directInviteBox .direct-invite-head .tog{margin-top:2px;cursor:pointer}
+  #directInviteBox .direct-invite-title{font-size:14px;font-weight:700;color:#1A1A1A;line-height:1.35}
+  #directInviteBox .direct-invite-desc{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+  #directInviteFields{margin-top:14px}
 </style>
 @endpush
 
@@ -148,12 +154,64 @@
       </div>
         </label>
 
+        @php
+          $directInviteStudioLabel = $studioDisplayName ?: 'your studio';
+        @endphp
+        <div class="splitbox" id="directInviteBox" @if($payoutKey !== 'artist') hidden @endif>
+          <input type="hidden" name="direct_invite_enabled" id="direct_invite_enabled" value="0">
+          <div class="direct-invite-head">
+            <div class="tog" id="directInviteToggle" role="switch" aria-checked="false" tabindex="0" aria-label="Invite studio to Bookpay"></div>
+            <div style="flex:1;min-width:0">
+              <div class="direct-invite-title">
+                Invite <span id="directInviteStudioLabel">{{ $directInviteStudioLabel }}</span> to Bookpay
+        </div>
+              <div class="direct-invite-desc">
+                Optional. No split: you keep the full payment. Once they join, they can list you on their studio page. They don’t see your bookings, clients or calendar.
+              </div>
+            </div>
+      </div>
+
+          <div id="directInviteFields" hidden>
+            <div class="grid studio-invite-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label class="fl" for="direct_invite_studio_name">Studio name</label>
+                <input
+                  class="in"
+                  type="text"
+                  id="direct_invite_studio_name"
+                  name="direct_invite_studio_name"
+                  value="{{ $studioDisplayName }}"
+                  placeholder="Studio name"
+                  autocomplete="organization"
+                >
+                <div id="direct_invite_studio_name_error" class="err hidden"></div>
+        </div>
+              <div>
+                <label class="fl" for="direct_invite_studio_email">Email</label>
+                <input
+                  class="in"
+                  type="email"
+                  id="direct_invite_studio_email"
+                  name="direct_invite_studio_email"
+                  value=""
+                  placeholder="studio@example.com"
+                  autocomplete="email"
+                >
+                <div id="direct_invite_studio_email_error" class="err hidden"></div>
+              </div>
+            </div>
+            <div class="help" style="margin-top:10px">
+              They get an email to join Bookpay. They don’t need Stripe, because there’s no split. The invite is sent when you confirm or choose Set up later.
+            </div>
+      </div>
+    </div>
+
         <label class="po {{ $payoutKey === 'studio' ? 'sel' : '' }}{{ $payoutOptionLocked && $payoutKey !== 'studio' ? ' locked-out' : '' }}" id="card-studio" style="margin-bottom:0">
           <input type="radio" name="po" value="studio" {{ $payoutKey === 'studio' ? 'checked' : '' }} {{ $payoutOptionLocked && $payoutKey !== 'studio' ? 'disabled' : '' }}>
           <div style="flex:1">
             <b>Invite the studio and set a revenue split</b>
             <div class="d">Your studio will get an invite to join Bookpay. They will need to set up their Stripe account. Once they join and confirm, each payment is split between you.</div>
-        </div>
+          </div>
         </label>
 
         <div class="splitbox" id="splitbox" @if($payoutKey !== 'studio') hidden @endif>
@@ -167,7 +225,7 @@
                     <div>
                       <span class="fl">Studio name</span>
                       <input class="in" type="text" value="{{ $studioDisplayName }}" placeholder="Studio name" readonly tabindex="-1" style="background:var(--tint);color:var(--muted)">
-          </div>
+            </div>
                     <div>
                       <label class="fl" for="studio_email">Email</label>
                       <input class="in" type="email" id="studio_email" name="studio_email" value="{{ $studioEmail }}" placeholder="studio@example.com" autocomplete="email">
@@ -175,7 +233,7 @@
                   </div>
                   <div class="help">They get an email to join Bookpay and set up their Stripe account when you click Save &amp; Send.</div>
                 </div>
-      </div>
+            </div>
 
               <div style="margin-top:16px">
                 @include('onboarding.partials.studio-split-relationship-new', [
@@ -194,8 +252,8 @@
 
               <div style="margin-top:16px">
                 <button type="button" id="payStudioSend" class="btn pri">Save &amp; Send</button>
-      </div>
-    </div>
+              </div>
+            </div>
 
             <div id="studioPayoutNotConnected" class="{{ $studioPayoutStatus !== 'not_connected' ? 'hidden' : '' }}">
               <span class="status-pill a" style="margin-bottom:12px">Not connected</span>
@@ -243,11 +301,11 @@
             <div id="studioPayoutDisconnectWrap" class="{{ $studioPayoutCommitted ? '' : 'hidden' }}" style="padding-top:16px;margin-top:14px;border-top:1px solid #E4D6F5">
               <button type="button" id="disconnectStudioBtn" class="btn ghost" style="color:var(--red);border-color:#F5C2C2">Disconnect studio payout</button>
               <p class="help">Cancel this studio request to invite again, or switch to Artist direct.</p>
-            </div>
+    </div>
 
             <p id="studio_email_error" class="field-err hidden" role="alert"></p>
             <p id="studio_revenue_artist_percent_error" class="field-err hidden" role="alert"></p>
-      </div>
+          </div>
     </div>
           </div>
         </div>
@@ -272,7 +330,7 @@
             @if ($payoutBankCountry && ($payoutBankCountryName ?? null))
                   <p style="margin:8px 0 0">Bank account country: <strong>{{ $payoutBankCountryName }}</strong></p>
             @endif
-          </div>
+        </div>
             <div>
                 <button type="button" id="disconnectStripeBtn" class="btn ghost" style="color:var(--red);border-color:#F5C2C2">Disconnect Stripe</button>
                 <p class="help">Disconnect to reconnect a different account or switch payout options.</p>
@@ -299,7 +357,7 @@
                 </div>
                 <button type="button" id="connectBankAccountBtn" class="btn"><span class="ms">link</span>Connect</button>
               </div>
-            </div>
+        </div>
 
             <div id="payoutStripeStep" class="hidden">
               <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)">
@@ -307,12 +365,12 @@
                 <p id="payoutStripeStepDescription" class="muted" style="font-size:13.5px;margin-top:6px">
                   Add your personal details, upload an identity document (passport or ID).
                 </p>
-              </div>
+          </div>
 
               @if (!($stripeConnectConfigured ?? false))
                 <div class="err-box">
                   Stripe is not configured. You can skip this step for now and finish payout setup later in settings.
-                </div>
+      </div>
               @else
                 <div class="stripe-connect-shell">
                   <div id="stripeConnectMount"></div>
@@ -326,7 +384,7 @@
         @endif
       </div>
     </div>
-        </div>
+  </div>
 
     <p id="payment_type_error" class="field-err hidden" role="alert"></p>
     <div id="payAlert" class="pay-alert err hidden" role="alert"></div>
@@ -338,8 +396,8 @@
         <button type="button" id="payGoDashboard" class="btn pri hidden">Go to dashboard</button>
         <button type="button" id="paySkip" class="btn ghost">Set up later</button>
             </div>
-        </div>
-          </div>
+    </div>
+  </div>
 </form>
 
 <div id="disconnectStripeModal" class="modal-ov" role="dialog" aria-modal="true">
@@ -349,9 +407,9 @@
     <div class="row" style="justify-content:flex-end;gap:10px">
       <button type="button" id="cancelDisconnectStripe" class="btn ghost">Cancel</button>
       <button type="button" id="confirmDisconnectStripeBtn" class="btn" style="background:var(--red)">Disconnect</button>
-      </div>
     </div>
   </div>
+</div>
 
 <div id="disconnectStudioModal" class="modal-ov" role="dialog" aria-modal="true">
   <div class="modal-box">
@@ -737,6 +795,9 @@ function selectPayout(type) {
   var splitbox = document.getElementById('splitbox');
   if (splitbox) splitbox.hidden = type !== 'studio';
 
+  var directInviteBox = document.getElementById('directInviteBox');
+  if (directInviteBox) directInviteBox.hidden = type !== 'artist';
+
   if (typeof window.placePayoutBankSection === 'function') {
     window.placePayoutBankSection(type);
   }
@@ -761,6 +822,72 @@ $(function () {
     selectPayout(type);
   });
 
+  function syncDirectInviteFields() {
+    var on = $('#directInviteToggle').hasClass('on');
+    $('#directInviteToggle').attr('aria-checked', on ? 'true' : 'false');
+    $('#directInviteFields').prop('hidden', !on);
+    $('#direct_invite_enabled').val(on ? '1' : '0');
+    if (!on) {
+      $('#direct_invite_studio_email_error, #direct_invite_studio_name_error').addClass('hidden').text('');
+    }
+  }
+
+  function setDirectInviteStudioLabel(name) {
+    var label = String(name || '').trim() || 'your studio';
+    $('#directInviteStudioLabel').text(label);
+  }
+
+  function isValidDirectInviteEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+  }
+
+  function validateDirectStudioInvite() {
+    var paymentType = ($('#payment_type').val() || '');
+    if (paymentType !== 'artist_account') {
+      return true;
+    }
+    if (!$('#directInviteToggle').hasClass('on')) {
+      return true;
+    }
+    var email = ($('#direct_invite_studio_email').val() || '').trim();
+    $('#direct_invite_studio_email_error').addClass('hidden').text('');
+    if (!email || !isValidDirectInviteEmail(email)) {
+      $('#direct_invite_studio_email_error').text('Enter a valid studio email to send the invite.').removeClass('hidden');
+      if (typeof window.scrollToFirstOnboardingError === 'function') {
+        window.scrollToFirstOnboardingError(document.getElementById('paymentForm'));
+      }
+      return false;
+    }
+    return true;
+  }
+
+  window.validateDirectStudioInvite = validateDirectStudioInvite;
+
+  $('#directInviteToggle').on('click keydown', function (e) {
+    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).toggleClass('on');
+    syncDirectInviteFields();
+  });
+
+  $('#directInviteBox').on('click', function (e) {
+    e.stopPropagation();
+  });
+
+  $('#direct_invite_studio_name').on('input', function () {
+    setDirectInviteStudioLabel($(this).val());
+  });
+
+  $('#direct_invite_studio_email').on('input', function () {
+    $('#direct_invite_studio_email_error').addClass('hidden').text('');
+    if (typeof window.clearOnboardingFieldError === 'function') {
+      window.clearOnboardingFieldError('direct_invite_studio_email');
+    }
+  });
+
+  syncDirectInviteFields();
+
   $('#studio_email').on('input', function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('studio_email');
   });
@@ -772,8 +899,8 @@ $(function () {
     }
     if (digits === '') {
       $input.closest('.studio-revenue-split').find('.js-studio-revenue-studio-gets').text('100');
-      return;
-    }
+    return;
+  }
     var you = parseInt(digits, 10);
     if (!Number.isFinite(you)) {
       you = 0;
@@ -1006,6 +1133,17 @@ $(function () {
     }
 
     return (async function () {
+    if (!validateDirectStudioInvite()) {
+      $skip.prop('disabled', false);
+      if ($goDashboard.length) {
+        $goDashboard.prop('disabled', false).html(originalGoDashboardHtml);
+      }
+      if ($studioSend.length) {
+        $studioSend.prop('disabled', false).html(originalStudioSendHtml);
+      }
+      throw new Error('Enter a valid studio email to send the invite.');
+    }
+
     if (!skipStripePrefetch) {
         if (typeof window.refreshStripeOnboardingStatus === 'function') {
           await window.refreshStripeOnboardingStatus();
@@ -1018,6 +1156,8 @@ $(function () {
       const runAjax = function (attemptOptions) {
         return new Promise(function (resolve, reject) {
     var fd = new FormData(document.getElementById('paymentForm'));
+          // Ensure toggle state is always posted (hidden input synced on toggle).
+          fd.set('direct_invite_enabled', $('#directInviteToggle').hasClass('on') ? '1' : '0');
           if (($('#payment_type').val() || '') === 'studio_account') {
             // After invite, #studio_email is disabled/hidden — FormData omits it. Reuse the shown email.
             var studioEmail = ($('#studio_email').val() || $('#studio_email_not_connected').val() || '').trim();
@@ -1335,6 +1475,11 @@ $(function () {
     var $studioReminder = $('#payStudioReminder');
     var $alertEl = $('#payAlert');
     var originalSkipHtml = $skip.html();
+
+    if (($('#payment_type').val() || '') === 'artist_account' && !validateDirectStudioInvite()) {
+      return;
+    }
+
     $skip.prop('disabled', true);
     if ($studioSend.length) $studioSend.prop('disabled', true);
     if ($studioReminder.length) $studioReminder.prop('disabled', true);
@@ -1343,17 +1488,32 @@ $(function () {
     $.ajax({
       url: @json(route('onboarding.payment.skip')),
       type: 'POST',
-      data: { _token: @json(csrf_token()) },
+      data: {
+        _token: @json(csrf_token()),
+        payment_type: $('#payment_type').val() || 'artist_account',
+        direct_invite_enabled: $('#directInviteToggle').hasClass('on') ? '1' : '0',
+        direct_invite_studio_name: ($('#direct_invite_studio_name').val() || '').trim(),
+        direct_invite_studio_email: ($('#direct_invite_studio_email').val() || '').trim(),
+      },
       headers: { Accept: 'application/json' },
     })
       .done(function (data) {
         if (data.success && data.redirect) {
+          if (data.direct_studio_invite_sent) {
+            try { sessionStorage.setItem('bp-pay-toast', data.message || 'Invite sent to your studio.'); } catch (e) {}
+          }
           window.location.href = data.redirect;
           return;
         }
         $alertEl.attr('class', alertClass('error')).text(data.message || 'Could not skip').removeClass('hidden');
       })
       .fail(function (xhr) {
+        if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+          showPaymentErrors(xhr.responseJSON.errors);
+          var firstError = Object.values(xhr.responseJSON.errors || {})[0];
+          $alertEl.attr('class', alertClass('error')).text((firstError && firstError[0]) || xhr.responseJSON.message || 'Could not skip').removeClass('hidden');
+          return;
+        }
         var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Network error';
         $alertEl.attr('class', alertClass('error')).text(msg).removeClass('hidden');
       })

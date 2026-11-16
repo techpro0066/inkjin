@@ -1,9 +1,10 @@
 @php
-  $artistPercent = (int) ($artistPercent ?? 60);
+  $noSplitInvite = (bool) ($noSplitInvite ?? false);
+  $artistPercent = (int) ($artistPercent ?? ($noSplitInvite ? 100 : 60));
   $studioPercent = (int) ($studioPercent ?? (100 - $artistPercent));
   $studioAlreadyConnected = (bool) ($studioAlreadyConnected ?? false);
   $stripeConnectConfigured = (bool) ($stripeConnectConfigured ?? false);
-  $showStripeFlow = ! $studioAlreadyConnected && $stripeConnectConfigured;
+  $showStripeFlow = ! $noSplitInvite && ! $studioAlreadyConnected && $stripeConnectConfigured;
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -172,24 +173,32 @@
         <div class="box">
           <div class="lbl">What {{ $artistFirst }} proposed</div>
           <div class="kv"><span>Relationship</span><b>Guest</b></div>
-          <div class="kv" style="margin-top:12px"><span>Revenue split</span></div>
-          <div class="split">
-            <div>
-              <small>{{ $artistFirst }} gets</small>
-              <b>{{ $artistPercent }}%</b>
+          @if ($noSplitInvite)
+            <div class="kv" style="margin-top:12px"><span>Payment</span><b>Artist direct — no split</b></div>
+          @else
+            <div class="kv" style="margin-top:12px"><span>Revenue split</span></div>
+            <div class="split">
+              <div>
+                <small>{{ $artistFirst }} gets</small>
+                <b>{{ $artistPercent }}%</b>
+              </div>
+              <div>
+                <small>Your studio gets</small>
+                <b>{{ $studioPercent }}%</b>
+              </div>
             </div>
-            <div>
-              <small>Your studio gets</small>
-              <b>{{ $studioPercent }}%</b>
-            </div>
-          </div>
+          @endif
         </div>
 
         <div class="free">
           <span class="ms" style="font-variation-settings:'FILL' 1">verified</span>
           <div>
             <b>Free for studios. No monthly fee, no setup fee, no commission.</b>
-            <small>Stripe's processing fee is shared with {{ $artistFirst }} by the same split.</small>
+            @if ($noSplitInvite)
+              <small>{{ $artistFirst }} is paid directly. You don’t need Stripe for this invite.</small>
+            @else
+              <small>Stripe's processing fee is shared with {{ $artistFirst }} by the same split.</small>
+            @endif
           </div>
         </div>
 

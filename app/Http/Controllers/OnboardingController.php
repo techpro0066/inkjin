@@ -3078,6 +3078,9 @@ class OnboardingController extends Controller
                     ]);
                     $this->syncStripeRequirementsAfterConnect($userDetail->fresh() ?? $userDetail);
                 }
+
+                // Optional workplace-only studio invite (no revenue split).
+                $this->processArtistDirectStudioInvite($request, $user, $userDetail);
             } elseif ($paymentType === 'studio_account') {
                 $studioName = $userDetail->resolvedStudioName() !== '' ? $userDetail->resolvedStudioName() : 'Studio';
                 $studioEmail = strtolower(trim((string) ($validated['studio_email'] ?? '')));
@@ -3229,6 +3232,25 @@ class OnboardingController extends Controller
 
             $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
             $userDetail->completed_steps = array_unique(array_merge($userDetail->completed_steps ?? [], [6]));
+
+            // Keep artist-direct payout when skipping Stripe; still send optional studio invite.
+            $requestedType = (string) $request->input('payment_type', 'artist_account');
+            if (! in_array($requestedType, ['artist_account', 'studio_account'], true)) {
+                $requestedType = 'artist_account';
+            }
+            if (Schema::hasColumn($userDetail->getTable(), 'payment_type')) {
+                $userDetail->payment_type = $requestedType;
+            }
+
+            $directInviteSent = false;
+            if ($requestedType === 'artist_account') {
+                UserStudio::clearStudioPayout((int) $user->id);
+                $userDetail->fill($this->onlyExistingUserDetailColumns($userDetail, [
+                    'studio_id' => null,
+                ]));
+                $directInviteSent = $this->processArtistDirectStudioInvite($request, $user, $userDetail);
+            }
+
             $userDetail->save();
 
             $user->update(['on_boarding' => 'yes']);
@@ -3241,11 +3263,23 @@ class OnboardingController extends Controller
             app(\App\Services\ArtistReferralRewardService::class)
                 ->markPendingWhenReferredArtistBecomesActive($user);
 
+            $message = __('You can set up payouts later in your dashboard.');
+            if ($directInviteSent) {
+                $message = 'Invite sent to your studio. '.$message;
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => __('You can set up payouts later in your dashboard.'),
+                'message' => $message,
+                'direct_studio_invite_sent' => $directInviteSent,
                 'redirect' => authenticated_home_url(),
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please fix the validation errors',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             Log::error('Error in skipPayment', [
                 'user_id' => $request->user()->id,
@@ -3303,7 +3337,9 @@ class OnboardingController extends Controller
         $isStudioOwner = $studioUserId > 0 && Auth::check() && (int) Auth::id() === $studioUserId;
 
         $stripeSetupSkipped = $studio->hasSkippedStripeSetup();
-        $needsStripeChoice = $studioUserId > 0
+        $workplaceOnlyInvite = (bool) $this->workplaceOnlyInviteLink($userDetail, $studio);
+        $needsStripeChoice = ! $workplaceOnlyInvite
+            && $studioUserId > 0
             && $paymentStatus === 'pending'
             && ! $studioAlreadyConnected
             && ! $stripeSetupSkipped;
@@ -3399,10 +3435,14 @@ class OnboardingController extends Controller
             'other' => 'Other (Contract Artist, Freelancer)',
         ];
         $relationshipType = $pendingJoin?->relationship ?? $userDetail->studio_relationship_type ?? null;
-        $artistPercent = $pendingJoin?->revenue_split !== null
-            ? (int) $pendingJoin->revenue_split
-            : (int) ($userDetail->studio_revenue_artist_percent ?? 50);
-        $artistPercent = max(0, min(100, $artistPercent));
+        if ($workplaceOnlyInvite) {
+            $artistPercent = 100;
+        } else {
+            $artistPercent = $pendingJoin?->revenue_split !== null
+                ? (int) $pendingJoin->revenue_split
+                : (int) ($userDetail->studio_revenue_artist_percent ?? 50);
+            $artistPercent = max(0, min(100, $artistPercent));
+        }
         $locationParts = array_values(array_filter([
             trim((string) ($userDetail->city ?? '')),
             trim((string) ($userDetail->country ?? '')),
@@ -3425,6 +3465,7 @@ class OnboardingController extends Controller
             'artistTattooingSince' => $tattooingSince ? (string) $tattooingSince : null,
             'artistPrimaryStyle' => $primaryStyle ? (string) $primaryStyle : null,
             'artistStyleLabels' => $styleLabels,
+            'workplaceOnlyInvite' => $workplaceOnlyInvite,
             'studioRevenueArtistPercent' => $artistPercent,
             'studioRevenueStudioPercent' => 100 - $artistPercent,
             'studioRelationshipLabel' => $relationshipLabels[$relationshipType] ?? null,
@@ -3918,7 +3959,20 @@ class OnboardingController extends Controller
         }
 
         Auth::login($studioUser);
+
+        $workplaceOnlyInvite = (bool) $this->workplaceOnlyInviteLink($userDetail, $studio);
+
         $this->activatePendingJoinForStudio($userDetail, $studio);
+
+        // Artist-direct workplace invite: no revenue split / Stripe required for the studio.
+        if ($workplaceOnlyInvite) {
+            return response()->json([
+                'success' => true,
+                'csrf_token' => csrf_token(),
+                'redirect' => route('studio.dashboard'),
+                'message' => 'Welcome to Bookpay. You can list this artist on your studio page.',
+            ]);
+        }
 
         if ($studio->hasStripeConnect()) {
             $this->setPayoutStatus($userDetail, UserPayout::STATUS_APPROVED, [
@@ -4788,11 +4842,23 @@ class OnboardingController extends Controller
             return true;
         }
 
+        // No-split workplace invite waiting for studio to join (active workplace + invite sent).
+        $workplaceInvite = $this->workplaceOnlyInviteLink($userDetail, $studio);
+        if ($workplaceInvite
+            && ($workplaceInvite->connection_type ?? '') === UserStudio::CONNECTION_NOT_CONNECTED
+        ) {
+            return true;
+        }
+
         $decision = $this->studioPayoutInviteDecisionStatus($userDetail, $studio);
         if (in_array($decision, ['approved', 'rejected', 'pending'], true)
             && UserStudio::query()
                 ->where('user_id', $userId)
                 ->where('studio_id', (int) $studio->id)
+                ->where(function ($q) {
+                    $q->where('payout', true)
+                        ->orWhere('status', UserStudio::STATUS_JOIN_PENDING);
+                })
                 ->exists()) {
             return true;
         }
@@ -4906,14 +4972,130 @@ class OnboardingController extends Controller
         }
     }
 
+    /**
+     * Optional invite under Artist Direct: workplace listing only (payout=false, no split).
+     * Toggle must be on and email valid — otherwise no-op (or 422 when toggle on + bad email).
+     */
+    private function processArtistDirectStudioInvite(Request $request, User $user, UserDetail $userDetail): bool
+    {
+        $enabled = $request->boolean('direct_invite_enabled')
+            || (int) $request->input('direct_invite_enabled', 0) === 1;
+
+        if (! $enabled) {
+            return false;
+        }
+
+        $email = strtolower(trim((string) $request->input('direct_invite_studio_email', '')));
+        $name = trim((string) $request->input('direct_invite_studio_name', ''));
+
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw ValidationException::withMessages([
+                'direct_invite_studio_email' => ['Enter a valid studio email to send the invite.'],
+            ]);
+        }
+
+        if (User::emailBlockedForStudioInvite($email)) {
+            throw ValidationException::withMessages([
+                'direct_invite_studio_email' => ['This email is already registered with a Bookpay account. Use a different studio email.'],
+            ]);
+        }
+
+        if (! UserStudio::tableReady()) {
+            return false;
+        }
+
+        if (Schema::hasColumn($userDetail->getTable(), 'payment_type')) {
+            $userDetail->payment_type = 'artist_account';
+        }
+
+        $studio = Studio::query()->firstOrCreate(
+            ['email' => $email],
+            ['name' => $name !== '' ? $name : 'Studio']
+        );
+
+        if ($name !== '' && $name !== 'Studio' && (blank($studio->name) || $studio->name === 'Studio')) {
+            $studio->name = $name;
+            $studio->save();
+        } elseif ($name !== '' && blank($studio->email)) {
+            $studio->email = $email;
+            $studio->save();
+        }
+
+        if (empty($studio->email)) {
+            $studio->email = $email;
+            $studio->save();
+        }
+
+        $row = UserStudio::query()
+            ->where('user_id', (int) $user->id)
+            ->where('studio_id', (int) $studio->id)
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $row) {
+            $row = UserStudio::activeForUser((int) $user->id);
+            if ($row && ! empty($row->studio_id) && (int) $row->studio_id !== (int) $studio->id) {
+                $row = null;
+            }
+        }
+
+        if (! $row) {
+            $row = new UserStudio([
+                'user_id' => (int) $user->id,
+            ]);
+        }
+
+        $row->studio_id = $studio->id;
+        $row->studio_name = $name !== '' ? $name : ($studio->name ?: 'Studio');
+        $row->payout = false;
+        $row->revenue_split = null;
+        // Keep workplace active while invite waits (artist keeps working / paid).
+        $row->status = UserStudio::STATUS_ACTIVE;
+        $row->connection_type = UserStudio::CONNECTION_NOT_CONNECTED;
+        if (Schema::hasColumn($row->getTable(), 'joined_via')) {
+            $row->joined_via = UserStudio::JOINED_VIA_INVITE;
+        }
+        $row->save();
+
+        return app(ArtistStudioJoinRequestNotifier::class)->send($user, $row, $studio, false);
+    }
+
+    private function workplaceOnlyInviteLink(UserDetail $userDetail, Studio $studio): ?UserStudio
+    {
+        if (! UserStudio::tableReady()) {
+            return null;
+        }
+
+        return UserStudio::query()
+            ->where('user_id', (int) $userDetail->user_id)
+            ->where('studio_id', (int) $studio->id)
+            ->where('payout', false)
+            ->whereIn('status', [UserStudio::STATUS_ACTIVE, UserStudio::STATUS_JOIN_PENDING])
+            ->where('connection_type', UserStudio::CONNECTION_NOT_CONNECTED)
+            ->orderByDesc('id')
+            ->first();
+    }
+
     private function activatePendingJoinForStudio(UserDetail $userDetail, Studio $studio): void
     {
+        $connectionType = UserStudio::CONNECTION_ON_BOOKPAY;
+        $pending = $this->pendingJoinForPayoutInvite($userDetail);
+        $workplaceOnly = $this->workplaceOnlyInviteLink($userDetail, $studio);
+
+        // Workplace-only invites never need studio Stripe — activate as soon as they join.
+        if ($workplaceOnly) {
+            $workplaceOnly->status = UserStudio::STATUS_ACTIVE;
+            $workplaceOnly->connection_type = $connectionType;
+            $workplaceOnly->payout = false;
+            $workplaceOnly->save();
+
+            return;
+        }
+
         // Revenue split stays pending until the studio can actually receive payouts.
         if (! $studio->hasStripeConnect()) {
             return;
         }
-
-        $connectionType = UserStudio::CONNECTION_ON_BOOKPAY;
 
         // Artist-initiated invite: active payout link (payout=1) — mark accepted here.
         $payoutLink = UserStudio::payoutLinkForUser((int) $userDetail->user_id);
@@ -4923,7 +5105,6 @@ class OnboardingController extends Controller
         }
 
         // Dashboard join invite: pending → active.
-        $pending = $this->pendingJoinForPayoutInvite($userDetail);
         if ($pending && (int) $pending->studio_id === (int) $studio->id) {
             $pending->status = UserStudio::STATUS_ACTIVE;
             $pending->connection_type = $connectionType;

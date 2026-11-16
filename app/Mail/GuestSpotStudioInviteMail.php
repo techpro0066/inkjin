@@ -45,6 +45,7 @@ class GuestSpotStudioInviteMail extends Mailable
                 'studioGreetingName' => $this->studioGreetingName,
                 'dateRangeLabel' => $this->dateRangeLabel,
                 'actionUrl' => $this->actionUrl,
+                'artistPercent' => $this->artistPercent,
             ],
         );
     }

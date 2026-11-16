@@ -66,7 +66,11 @@
                 </tr>
                 <tr>
                   <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 8px 0;">
-                    Your share of each booking is paid to you automatically. Free for studios.
+                    @if($artistPercent !== null)
+                      Your share of each booking is paid to you automatically. Free for studios.
+                    @else
+                      They’re paid directly — there’s no revenue split. Once you join, you can list them on your studio page. Free for studios.
+                    @endif
                   </td>
                 </tr>
 

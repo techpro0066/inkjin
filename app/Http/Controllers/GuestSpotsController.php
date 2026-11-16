@@ -127,6 +127,7 @@ class GuestSpotsController extends Controller
         $previousStatus = (string) ($guestSpot->status ?? '');
         $previousEmail = strtolower(trim((string) ($guestSpot->guest_studio_invite_email ?? '')));
         $previousMode = (string) ($guestSpot->payout_mode ?? 'direct');
+        $previousInviteStudio = (bool) ($guestSpot->invite_studio ?? false);
         $previousStudioId = (int) ($guestSpot->studio_id ?? 0);
         $previousStudioKey = $this->guestStudioIdentityKey($guestSpot);
 
@@ -139,16 +140,26 @@ class GuestSpotsController extends Controller
 
         $newEmail = strtolower(trim((string) ($guestSpot->guest_studio_invite_email ?? '')));
         $newMode = (string) ($guestSpot->payout_mode ?? 'direct');
+        $newInviteStudio = (bool) ($guestSpot->invite_studio ?? false);
         $invitePending = ($guestSpot->guest_studio_invite_status ?? null) === GuestSpot::INVITE_PENDING;
         $newStudioKey = $this->guestStudioIdentityKey($guestSpot);
         // Split: send when newly split, email changed, or still pending (retry after a failed send).
-        // Direct: send when newly direct or the chosen studio identity changed.
+        // Direct + invite: same email-based rules. Direct without invite: match Bookpay studio notify.
         $shouldSend = false;
         $isResend = false;
         if ($newMode === 'split') {
             $shouldSend = $newEmail !== ''
                 && ($previousMode !== 'split' || $previousEmail !== $newEmail || $invitePending);
             $isResend = $previousMode === 'split' && $previousEmail === $newEmail;
+        } elseif ($newMode === 'direct' && $newInviteStudio && $newEmail !== '') {
+            $shouldSend = ! $previousInviteStudio
+                || $previousMode !== 'direct'
+                || $previousEmail !== $newEmail
+                || $invitePending;
+            $isResend = $previousInviteStudio
+                && $previousMode === 'direct'
+                && $previousEmail === $newEmail
+                && $invitePending;
         } elseif ($newMode === 'direct') {
             $guestSpot = app(GuestSpotStudioInviteService::class)->prepareDirectStudioLink($guestSpot);
             $newStudioId = (int) ($guestSpot->studio_id ?? 0);
@@ -256,9 +267,17 @@ class GuestSpotsController extends Controller
             'guest_latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'guest_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'payout_mode' => ['nullable', 'string', Rule::in(['direct', 'split'])],
+            'invite_studio' => ['nullable', 'boolean'],
             'artist_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
             'guest_studio_invite_email' => [
-                Rule::requiredIf(fn () => $request->input('payout_mode') === 'split'),
+                Rule::requiredIf(function () use ($request) {
+                    if ($request->input('payout_mode') === 'split') {
+                        return true;
+                    }
+
+                    return $request->input('payout_mode') !== 'split'
+                        && $request->boolean('invite_studio');
+                }),
                 'nullable',
                 'email',
                 'max:255',
@@ -280,7 +299,7 @@ class GuestSpotsController extends Controller
         $validated = Validator::make($request->all(), $rules, [
             'to_date.after_or_equal' => 'The end date must be on or after the start date.',
             'end_time.after' => 'The ending time must be after the starting time.',
-            'guest_studio_invite_email.required' => 'Enter the guest studio email to invite them for a revenue split.',
+            'guest_studio_invite_email.required' => 'Enter a valid studio email to send the invite.',
             'guest_studio_invite_email.email' => 'Enter a valid guest studio email.',
         ])->validate();
 
@@ -299,15 +318,32 @@ class GuestSpotsController extends Controller
         $validated['response_deadline_unit'] = trim((string) ($validated['response_deadline_unit'] ?? '')) ?: null;
 
         $validated['payout_mode'] = (string) ($validated['payout_mode'] ?? 'direct');
+        $inviteStudio = $request->boolean('invite_studio');
         if ($validated['payout_mode'] !== 'split') {
             $validated['payout_mode'] = 'direct';
             $validated['artist_percent'] = null;
-            $validated['guest_studio_invite_email'] = null;
+            $validated['invite_studio'] = $inviteStudio;
+            if ($inviteStudio) {
+                $validated['guest_studio_invite_email'] = trim((string) ($validated['guest_studio_invite_email'] ?? '')) ?: null;
+                if (User::emailBlockedForStudioInvite((string) ($validated['guest_studio_invite_email'] ?? ''))) {
+                    throw ValidationException::withMessages([
+                        'guest_studio_invite_email' => ['This email is already registered with a Bookpay account. Use a different studio email.'],
+                    ]);
+                }
+            } else {
+                $validated['guest_studio_invite_email'] = null;
+            }
         } else {
+            $validated['invite_studio'] = false;
             $validated['artist_percent'] = isset($validated['artist_percent'])
                 ? max(0, min(100, (int) $validated['artist_percent']))
                 : 60;
             $validated['guest_studio_invite_email'] = trim((string) ($validated['guest_studio_invite_email'] ?? '')) ?: null;
+            if (User::emailBlockedForStudioInvite((string) ($validated['guest_studio_invite_email'] ?? ''))) {
+                throw ValidationException::withMessages([
+                    'guest_studio_invite_email' => ['This email is already registered with a Bookpay account. Use a different studio email.'],
+                ]);
+            }
         }
 
         $validated['show_designs'] = $request->boolean('show_designs');
@@ -414,11 +450,14 @@ class GuestSpotsController extends Controller
         }
 
         $payoutMode = (string) ($validated['payout_mode'] ?? 'direct');
+        $inviteStudio = (bool) ($validated['invite_studio'] ?? false);
         $inviteEmail = $validated['guest_studio_invite_email'] ?? null;
         $inviteStatus = null;
         $inviteToken = $existing?->guest_studio_invite_token;
         $linkedStudioId = $existing?->studio_id;
-        if ($payoutMode === 'split' && $inviteEmail) {
+        $wantsInvite = ($payoutMode === 'split' && $inviteEmail)
+            || ($payoutMode === 'direct' && $inviteStudio && $inviteEmail);
+        if ($wantsInvite) {
             $currentInviteStatus = $existing?->guest_studio_invite_status;
             $emailChanged = $existing
                 && strtolower(trim((string) ($existing->guest_studio_invite_email ?? '')))
@@ -433,10 +472,20 @@ class GuestSpotsController extends Controller
             }
         } else {
             $inviteToken = null;
-            $linkedStudioId = null;
+            $inviteStatus = null;
+            if ($payoutMode !== 'direct') {
+                $linkedStudioId = null;
+            }
+            // Direct without toggle: keep / resolve studio_id via prepareDirectStudioLink later.
+            if ($payoutMode === 'direct' && ! $inviteStudio) {
+                $linkedStudioId = $existing?->studio_id;
+            }
+            if ($payoutMode === 'split') {
+                $linkedStudioId = null;
+            }
         }
 
-        return array_merge($attributes, [
+        $merged = array_merge($attributes, [
             'payout_mode' => $payoutMode,
             'artist_percent' => $validated['artist_percent'] ?? null,
             'guest_studio_invite_email' => $inviteEmail,
@@ -453,6 +502,12 @@ class GuestSpotsController extends Controller
             'banner_path' => $bannerPath,
             'color_scheme' => $validated['color_scheme'] ?? null,
         ]);
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('guest_spots', 'invite_studio')) {
+            $merged['invite_studio'] = $inviteStudio;
+        }
+
+        return $merged;
     }
 
     /**
@@ -657,7 +712,7 @@ class GuestSpotsController extends Controller
     }
 
     /**
-     * Artist-direct guest spot: link a matching Bookpay studio and email them.
+     * Artist-direct guest spot: optional Bookpay invite email, or notify a matched Bookpay studio.
      */
     private function dispatchGuestStudioDirectNotify(GuestSpot $guestSpot, ?User $artist, bool $isResend = false): void
     {
@@ -666,6 +721,32 @@ class GuestSpotsController extends Controller
         }
 
         $invites = app(GuestSpotStudioInviteService::class);
+        $inviteEmail = strtolower(trim((string) ($guestSpot->guest_studio_invite_email ?? '')));
+        $inviteStudio = (bool) ($guestSpot->invite_studio ?? false);
+
+        // Toggle invite (not on Bookpay / join email) — same tokenized invite as split, no revenue %.
+        if ($inviteStudio && $inviteEmail !== '' && filter_var($inviteEmail, FILTER_VALIDATE_EMAIL)) {
+            $guestSpot = $invites->prepareInvite($guestSpot);
+            if ($invites->isStudioOnBookpay($inviteEmail)) {
+                $studio = $invites->findStudioByInviteEmail($inviteEmail)
+                    ?: $invites->matchBookpayStudioFromGuestSpot($guestSpot);
+                if ($studio) {
+                    if ((int) ($guestSpot->studio_id ?? 0) !== (int) $studio->id) {
+                        $guestSpot->studio_id = $studio->id;
+                        $guestSpot->save();
+                    }
+                    $email = app(ArtistStudioJoinRequestNotifier::class)->resolveStudioEmail($studio) ?: $inviteEmail;
+                    $this->sendGuestStudioDirectNotifyEmail($guestSpot, $artist, $studio, $email, $isResend);
+                }
+
+                return;
+            }
+
+            $this->sendGuestStudioInviteEmail($guestSpot, $artist, $isResend, $invites->inviteUrl($guestSpot));
+
+            return;
+        }
+
         $guestSpot = $invites->prepareDirectStudioLink($guestSpot);
         $studio = $invites->matchBookpayStudioFromGuestSpot($guestSpot);
         if (! $studio) {
@@ -704,17 +785,25 @@ class GuestSpotsController extends Controller
         bool $isResend = false,
         ?string $actionUrl = null,
     ): void {
-        if (($guestSpot->payout_mode ?: 'direct') !== 'split') {
-            return;
-        }
-
+        $mode = $guestSpot->payout_mode ?: 'direct';
         $inviteEmail = trim((string) ($guestSpot->guest_studio_invite_email ?? ''));
         if ($inviteEmail === '' || ! filter_var($inviteEmail, FILTER_VALIDATE_EMAIL)) {
             return;
         }
 
+        // Split invites always; direct invites only when invite_studio is on.
+        if ($mode === 'direct' && ! (bool) ($guestSpot->invite_studio ?? false)) {
+            return;
+        }
+        if (! in_array($mode, ['split', 'direct'], true)) {
+            return;
+        }
+
         $profile = $this->guestStudioNotifyArtistProfile($guestSpot, $artist);
         $actionUrl = $actionUrl ?: app(GuestSpotStudioInviteService::class)->inviteUrl($guestSpot);
+        $artistPercent = $mode === 'split' && $guestSpot->artist_percent !== null
+            ? (int) $guestSpot->artist_percent
+            : null;
 
         try {
             Mail::to($inviteEmail)->send(new GuestSpotStudioInviteMail(
@@ -724,7 +813,7 @@ class GuestSpotsController extends Controller
                 studioGreetingName: $profile['studioGreeting'],
                 dateRangeLabel: $profile['dateRangeLabel'],
                 actionUrl: $actionUrl,
-                artistPercent: $guestSpot->artist_percent !== null ? (int) $guestSpot->artist_percent : null,
+                artistPercent: $artistPercent,
                 isResend: $isResend,
                 artistAvatarUrl: $profile['artistAvatarUrl'],
             ));

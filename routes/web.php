@@ -581,6 +581,9 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/settings/studio/cancel-join', [StudioSettingsController::class, 'cancelJoinRequest'])->name('settings.studio.cancel-join');
     Route::post('/settings/studio/leave', [StudioSettingsController::class, 'leaveStudio'])->name('settings.studio.leave');
     Route::post('/settings/studio/resend-join', [StudioSettingsController::class, 'resendJoinRequest'])->name('settings.studio.resend-join');
+    Route::post('/settings/studio/invite-bookpay', [StudioSettingsController::class, 'inviteStudioToBookpay'])->name('settings.studio.invite-bookpay');
+    Route::post('/settings/studio/cancel-workplace-invite', [StudioSettingsController::class, 'cancelWorkplaceInvite'])->name('settings.studio.cancel-workplace-invite');
+    Route::post('/settings/studio/resend-workplace-invite', [StudioSettingsController::class, 'resendWorkplaceInvite'])->name('settings.studio.resend-workplace-invite');
     Route::post('/settings/studio/accept-split', [StudioSettingsController::class, 'acceptSplit'])->name('settings.studio.accept-split');
     Route::post('/settings/studio/decline-split', [StudioSettingsController::class, 'declineSplit'])->name('settings.studio.decline-split');
     Route::post('/settings/studio/invites/{invite}/accept', [StudioSettingsController::class, 'acceptInvite'])->name('settings.studio.accept-invite');

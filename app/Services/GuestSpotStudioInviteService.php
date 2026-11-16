@@ -13,11 +13,13 @@ use Illuminate\Validation\ValidationException;
 class GuestSpotStudioInviteService
 {
     /**
-     * Ensure invite token + linked studio_id for a pending split invite.
+     * Ensure invite token + linked studio_id for a pending split or direct invite.
      */
     public function prepareInvite(GuestSpot $guestSpot): GuestSpot
     {
-        if (($guestSpot->payout_mode ?: 'direct') !== 'split') {
+        $mode = $guestSpot->payout_mode ?: 'direct';
+        $directInvite = $mode === 'direct' && (bool) ($guestSpot->invite_studio ?? false);
+        if ($mode !== 'split' && ! $directInvite) {
             return $guestSpot;
         }
 
@@ -240,9 +242,11 @@ class GuestSpotStudioInviteService
 
     public function accept(GuestSpot $guestSpot, ?User $actor = null, ?string $password = null): GuestSpot
     {
-        if (($guestSpot->payout_mode ?: 'direct') !== 'split') {
+        $mode = $guestSpot->payout_mode ?: 'direct';
+        $isDirectInvite = $mode === 'direct' && (bool) ($guestSpot->invite_studio ?? false);
+        if ($mode !== 'split' && ! $isDirectInvite) {
             throw ValidationException::withMessages([
-                'invite' => 'This invitation is not a revenue-split guest spot.',
+                'invite' => 'This invitation is no longer available.',
             ]);
         }
 

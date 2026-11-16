@@ -222,6 +222,36 @@
                 </div>
               </label>
 
+              <div class="splitbox" id="guestDirectInviteBox" style="margin:0 0 10px">
+                <div class="row" style="gap:12px;align-items:flex-start">
+                  <div class="tog" id="guestDirectInviteToggle" role="switch" aria-checked="false" tabindex="0" aria-label="Invite guest studio to Bookpay"></div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:14px;font-weight:700;color:#1A1A1A;line-height:1.35">
+                      Invite <span id="guestDirectInviteStudioLabel">the guest studio</span> to Bookpay
+                    </div>
+                    <div class="faint" style="font-size:12.5px;margin-top:4px;line-height:1.5">
+                      Optional. No split: you keep the full payment. Once they join, they can list you on their studio page. They don’t see your bookings, clients or calendar.
+                    </div>
+                  </div>
+                </div>
+                <div id="guestDirectInviteFields" hidden style="margin-top:14px">
+                  <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+                    <div>
+                      <span class="fl">Studio name</span>
+                      <input class="in" type="text" id="guest_direct_invite_studio_name" value="" placeholder="Studio name" autocomplete="organization">
+                    </div>
+                    <div>
+                      <span class="fl">Email</span>
+                      <input class="in" type="email" id="guest_direct_invite_studio_email" value="" placeholder="studio@example.com" autocomplete="email">
+                      <p id="guest_direct_invite_studio_email_error" class="text-error hidden"></p>
+                    </div>
+                  </div>
+                  <div class="help" style="margin-top:10px">
+                    They get an email to join Bookpay. They don’t need Stripe, because there’s no split. The invite is sent when you save.
+                  </div>
+                </div>
+              </div>
+
               <label class="po" data-po="split">
                 <input type="radio" name="guest_po" value="split">
                 <div style="flex:1">

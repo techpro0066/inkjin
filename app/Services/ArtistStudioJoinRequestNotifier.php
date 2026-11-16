@@ -144,32 +144,36 @@ class ArtistStudioJoinRequestNotifier
     }
 
     /**
-     * payout-info.show requires payment_type=studio_account.
-     * Studio id lives on user_studios after migration (user_details.studio_id may be dropped).
+     * Revenue-split invites set payment_type=studio_account.
+     * Workplace-only (payout=false) keeps artist_account — signed invite resolves via pending user_studios.
      */
     private function prepareUserDetailForInvite(UserDetail $userDetail, Studio $studio, UserStudio $link): void
     {
         $table = $userDetail->getTable();
+        $isPayoutInvite = (bool) ($link->payout ?? false);
 
-        if (Schema::hasColumn($table, 'payment_type')) {
-            $userDetail->payment_type = 'studio_account';
+        if ($isPayoutInvite) {
+            if (Schema::hasColumn($table, 'payment_type')) {
+                $userDetail->payment_type = 'studio_account';
+            }
+            if (Schema::hasColumn($table, 'payment_status')
+                && (string) ($userDetail->payment_status ?? '') !== 'approved') {
+                $userDetail->payment_status = 'pending';
+            }
+            // Legacy column — only when migration has not dropped it yet.
+            if (Schema::hasColumn($table, 'studio_id')) {
+                $userDetail->setAttribute('studio_id', $studio->id);
+            }
+            if (Schema::hasColumn($table, 'studio_relationship_type') && $link->relationship) {
+                $userDetail->studio_relationship_type = $link->relationship;
+            }
+            if (Schema::hasColumn($table, 'studio_revenue_artist_percent') && $link->revenue_split !== null) {
+                $userDetail->studio_revenue_artist_percent = (int) $link->revenue_split;
+            }
         }
-        if (Schema::hasColumn($table, 'payment_status')
-            && (string) ($userDetail->payment_status ?? '') !== 'approved') {
-            $userDetail->payment_status = 'pending';
-        }
-        // Legacy column — only when migration has not dropped it yet.
-        if (Schema::hasColumn($table, 'studio_id')) {
-            $userDetail->setAttribute('studio_id', $studio->id);
-        }
+
         if (Schema::hasColumn($table, 'studio_name')) {
             $userDetail->studio_name = $studio->name ?: ($link->studio_name ?: $userDetail->studio_name);
-        }
-        if (Schema::hasColumn($table, 'studio_relationship_type') && $link->relationship) {
-            $userDetail->studio_relationship_type = $link->relationship;
-        }
-        if (Schema::hasColumn($table, 'studio_revenue_artist_percent') && $link->revenue_split !== null) {
-            $userDetail->studio_revenue_artist_percent = (int) $link->revenue_split;
         }
 
         if ($userDetail->isDirty()) {
