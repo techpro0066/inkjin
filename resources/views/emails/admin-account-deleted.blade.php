@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Your Inkjin account has been deleted</title>
+  <title>Your Bookpay account was deleted</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
@@ -12,60 +12,48 @@
     body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #fdf7ff; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
-    Your Inkjin account was deleted by an administrator.
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    An administrator deleted your Bookpay account.
   </div>
 
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fdf7ff;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
     <tr>
-      <td align="center" style="padding: 40px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; width: 100%;">
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
           <tr>
-            <td align="center" style="padding: 0 0 32px 0;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="font-size: 28px; font-weight: 800; color: #310f7a; letter-spacing: -0.5px;">
-                    inkjin
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="background-color: #ffffff; border-radius: 16px; padding: 48px 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td align="center" style="padding: 0 0 20px 0; font-size: 40px;">🗑️</td>
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
+                  </td>
                 </tr>
+
                 <tr>
-                  <td align="center" style="font-size: 24px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 12px 0;">
-                    Your account has been deleted
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    Hi {{ $firstName }},
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-size: 16px; color: #494552; line-height: 1.6; padding: 0 0 28px 0; text-align: center;">
-                    Hi {{ $firstName }},<br><br>
-                    An Inkjin administrator has deleted your account. You will no longer be able to sign in or access your bookings, requests, or profile on Inkjin.
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
+                    An administrator deleted your Bookpay account. You can no longer sign in or access your profile.
                   </td>
                 </tr>
+
                 <tr>
-                  <td style="padding: 0 0 8px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #F8F1FB; border-radius: 12px;">
+                  <td style="padding:0 0 18px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
                       <tr>
-                        <td style="padding: 24px;">
+                        <td style="padding:4px 14px;">
                           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                             <tr>
-                              <td style="font-size: 14px; font-weight: 700; color: #310f7a; text-transform: uppercase; letter-spacing: 0.5px; padding: 0 0 16px 0;">
-                                Need help?
-                              </td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Status</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">Deleted</td>
                             </tr>
                             <tr>
-                              <td style="font-size: 15px; color: #1c1b21; line-height: 1.8;">
-                                If you believe this was a mistake or have questions, contact us at
-                                <a href="mailto:{{ $supportEmail }}" style="color: #310f7a; font-weight: 600; text-decoration: none;">{{ $supportEmail }}</a>.
-                              </td>
+                              <td style="padding:9px 0;font-size:14px;color:#6F6874;">Sign in</td>
+                              <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">Not available</td>
                             </tr>
                           </table>
                         </td>
@@ -73,16 +61,17 @@
                     </table>
                   </td>
                 </tr>
-              </table>
-            </td>
-          </tr>
 
-          <tr>
-            <td align="center" style="padding: 32px 0 0 0;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="font-size: 12px; color: #494552; line-height: 1.5; text-align: center;">
-                    &copy; {{ date('Y') }} Inkjin &middot; All rights reserved
+                  <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:0 0 8px 0;">
+                    If you think this was a mistake, contact us at
+                    <a href="mailto:{{ $supportEmail }}" style="color:#3E007C;font-weight:600;text-decoration:none;">{{ $supportEmail }}</a>.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:28px;border-top:1px solid #EEE9F0;">
+                    Bookpay by Inkjin
                   </td>
                 </tr>
               </table>

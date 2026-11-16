@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AdminAccountStatusMail;
 use App\Models\Booking;
 use App\Models\Style;
 use App\Models\User;
@@ -16,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -360,6 +362,8 @@ class UserController extends Controller
         }
 
         $shouldDeactivate = $request->boolean('deactivate', ! $user->isDeactivated());
+        $email = trim((string) $user->email);
+        $firstName = trim((string) ($user->first_name ?: 'there')) ?: 'there';
 
         $user->forceFill([
             'deactivated_at' => $shouldDeactivate ? now() : null,
@@ -370,14 +374,31 @@ class UserController extends Controller
             \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $user->id)->delete();
         }
 
+        if ($email !== '') {
+            try {
+                Mail::to($email)->send(new AdminAccountStatusMail(
+                    firstName: $firstName,
+                    supportEmail: (string) (config('mail.from.address') ?: 'support@inkjin.com'),
+                    deactivated: $shouldDeactivate,
+                    loginUrl: $shouldDeactivate ? '' : route('login'),
+                ));
+            } catch (Throwable $e) {
+                Log::warning('Admin account status email failed', [
+                    'user_id' => $user->id,
+                    'deactivated' => $shouldDeactivate,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         $label = $user->role === 'studio' ? 'Studio' : 'Artist';
 
         return response()->json([
             'success' => true,
             'deactivated' => $user->isDeactivated(),
             'message' => $shouldDeactivate
-                ? $label.' deactivated. Public page is hidden and login is blocked.'
-                : $label.' reactivated. Public page and login are available again.',
+                ? $label.' deactivated. Public page is hidden, login is blocked, and a notification email was sent.'
+                : $label.' activated. Public page and login are available again, and a notification email was sent.',
         ]);
     }
 

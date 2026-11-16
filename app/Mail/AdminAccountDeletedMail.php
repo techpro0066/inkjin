@@ -21,7 +21,7 @@ class AdminAccountDeletedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your Inkjin account has been deleted'
+            subject: 'Your Bookpay account was deleted'
         );
     }
 
