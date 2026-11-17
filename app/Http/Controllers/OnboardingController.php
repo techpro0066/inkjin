@@ -1680,7 +1680,9 @@ class OnboardingController extends Controller
                 'primary_style.required' => 'Please select your primary style.',
             ]);
 
-            $other = array_filter(array_map('trim', explode(',', (string) ($validated['other_styles'] ?? ''))));
+            $other = array_values(array_filter(array_map('trim', explode(',', (string) ($validated['other_styles'] ?? '')))));
+            $primaryStyle = (string) ($validated['primary_style'] ?? '');
+            $other = array_values(array_filter($other, fn ($slug) => $slug !== '' && $slug !== $primaryStyle));
             foreach ($other as $slug) {
                 if (! in_array($slug, $allowedStyles, true)) {
                     throw ValidationException::withMessages([

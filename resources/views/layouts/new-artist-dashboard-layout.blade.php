@@ -69,7 +69,7 @@
     .burger .ms{font-size:26px}
 
     aside nav{
-      margin-top:26px;display:flex;flex-direction:column;gap:3px;
+      margin-top:14px;display:flex;flex-direction:column;gap:3px;
       flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain
     }
     aside nav a,aside nav button.navlink{
@@ -196,8 +196,9 @@
       aside{width:100%;height:auto;min-height:0;padding:12px 16px;position:sticky;top:0;z-index:20;overflow:visible}
       aside .tag{display:none}
       .burger{display:inline-flex}
-      aside nav,.foot{display:none}
+      aside nav,.foot,.navsearch{display:none}
       body.navopen aside nav{display:flex;overflow:visible;flex:none}
+      body.navopen .navsearch{display:block;margin-top:12px}
       body.navopen aside .foot{display:block;margin-top:8px}
       body.navopen aside{max-height:100vh;max-height:100dvh;overflow-y:auto}
       aside nav{margin-top:12px}
@@ -223,6 +224,35 @@
     </div>
     <div class="tag">TATTOO ARTIST PLATFORM<br>BY INKJIN</div>
 
+    @include('layouts.partials.dashboard-nav-search', ['navSearchItems' => [
+        ['label' => 'Home', 'section' => '', 'url' => route('artist.dashboard'), 'keys' => 'dashboard today to do welcome'],
+        ['label' => 'Bookings', 'section' => '', 'url' => route('artist.bookings.index'), 'keys' => 'appointments sessions calendar'],
+        ['label' => 'Requests', 'section' => 'Bookings', 'url' => route('artist.requests.index'), 'keys' => 'custom flash quote reply waiting'],
+        ['label' => 'Payment links', 'section' => 'Bookings', 'url' => route('artist.bookings.payment-links'), 'keys' => 'deposit invoice pay link'],
+        ['label' => 'Schedule', 'section' => '', 'url' => route('availability.index'), 'keys' => 'hours availability working days time off'],
+        ['label' => 'Guest spots', 'section' => 'Schedule', 'url' => route('guest-spots.index'), 'keys' => 'guest studio travel'],
+        ['label' => 'Inbox', 'section' => '', 'url' => route('artist.chat.index'), 'keys' => 'messages chat mail'],
+        ['label' => 'Clients', 'section' => '', 'url' => route('artist.clients.index'), 'keys' => 'customers contacts'],
+        ['label' => 'Money', 'section' => '', 'url' => route('artist.payments.index'), 'keys' => 'earnings balance payout'],
+        ['label' => 'Payouts', 'section' => 'Money', 'url' => route('settings.payment'), 'keys' => 'stripe bank connect direct split'],
+        ['label' => 'Payment preferences', 'section' => 'Money', 'url' => route('settings.preferences'), 'keys' => 'deposit currency'],
+        ['label' => 'My Page', 'section' => '', 'url' => route('personal-page.index'), 'keys' => 'profile booking page about bio'],
+        ['label' => 'Portfolio', 'section' => 'My Page', 'url' => route('portfolio.index'), 'keys' => 'photos work gallery instagram'],
+        ['label' => 'Designs', 'section' => 'My Page', 'url' => route('artist-designs.index'), 'keys' => 'flash available designs pricing'],
+        ['label' => 'FAQ', 'section' => 'My Page', 'url' => route('artist.faq.index'), 'keys' => 'questions answers'],
+        ['label' => 'Policies', 'section' => 'My Page', 'url' => route('personal-page.policies'), 'keys' => 'cancellation deposit policy'],
+        ['label' => 'Appearance', 'section' => 'My Page', 'url' => route('personal-page.appearance'), 'keys' => 'colors theme look'],
+        ['label' => 'Client Flow', 'section' => '', 'url' => route('artist.forms.index', ['tab' => 'booking']), 'keys' => 'booking form questions intake'],
+        ['label' => 'Consent form', 'section' => 'Client Flow', 'url' => route('artist.forms.consent'), 'keys' => 'waiver consent'],
+        ['label' => 'Aftercare', 'section' => 'Client Flow', 'url' => route('artist.aftercare.index'), 'keys' => 'healing instructions'],
+        ['label' => 'Account', 'section' => '', 'url' => route('profile.edit'), 'keys' => 'settings profile name photo'],
+        ['label' => 'Password', 'section' => 'Account', 'url' => route('profile.password'), 'keys' => 'login security'],
+        ['label' => 'Studio', 'section' => 'Account', 'url' => route('settings.studio'), 'keys' => 'workplace invite bookpay split'],
+        ['label' => 'Styles', 'section' => 'Account', 'url' => route('settings.styles'), 'keys' => 'tattoo styles social links'],
+        ['label' => 'Regional', 'section' => 'Account', 'url' => route('settings.regional'), 'keys' => 'country timezone currency date'],
+        ['label' => 'Referrals', 'section' => '', 'url' => route('artist.refer-earn.index'), 'keys' => 'earn invite share'],
+        ['label' => 'Get Help', 'section' => '', 'url' => 'https://help.inkjin.com', 'keys' => 'support help center'],
+      ]])
     <nav>
       <a href="{{ route('artist.dashboard') }}" class="{{ $activeNav === 'home' || request()->routeIs('artist.dashboard') ? 'on' : '' }}">
         <span class="ms">space_dashboard</span>Home

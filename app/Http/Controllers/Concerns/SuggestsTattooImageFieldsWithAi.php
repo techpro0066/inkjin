@@ -33,6 +33,8 @@ trait SuggestsTattooImageFieldsWithAi
             'color' => ['nullable', 'string', 'max:64'],
             'tags' => ['nullable', 'array', 'max:30'],
             'tags.*' => ['string', 'max:64'],
+            'size' => ['nullable', 'string', 'max:64'],
+            'size_unit' => ['nullable', 'string', 'in:cm,in'],
         ]);
 
         if (! $request->hasFile('image') && blank($validated['image_data'] ?? null)) {
@@ -52,6 +54,7 @@ trait SuggestsTattooImageFieldsWithAi
         }
 
         $allowedPlacements = method_exists($this, 'placements') ? $this->placements() : [];
+        $sizeUnit = ($validated['size_unit'] ?? 'cm') === 'in' ? 'in' : 'cm';
 
         try {
             [$binary, $mediaType] = $this->resolveAiImagePayload($request, $validated['image_data'] ?? null);
@@ -60,7 +63,8 @@ trait SuggestsTattooImageFieldsWithAi
                 $mediaType,
                 $this->styles(),
                 $fieldsNeeded,
-                $allowedPlacements
+                $allowedPlacements,
+                $sizeUnit
             );
         } catch (ValidationException $e) {
             throw $e;
@@ -127,6 +131,11 @@ trait SuggestsTattooImageFieldsWithAi
         )));
         if ($tags === []) {
             $needed[] = 'tags';
+        }
+
+        // Only request size when the client included the field (portfolio form).
+        if (array_key_exists('size', $input) && trim((string) ($input['size'] ?? '')) === '') {
+            $needed[] = 'size';
         }
 
         return $needed;

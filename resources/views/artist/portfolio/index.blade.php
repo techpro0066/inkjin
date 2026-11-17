@@ -568,6 +568,29 @@
       #addWorkModal .mf .btn{flex:1}
     }
 
+    #addWorkModal .in{
+      background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 13px;
+      font-family:inherit;font-size:13.5px;font-weight:400;line-height:normal;
+      display:flex;align-items:center;gap:8px;min-height:40px;width:100%;color:var(--ink);outline:none
+    }
+    #addWorkModal .in > input,
+    #addWorkModal .in > input[type="number"],
+    #addWorkModal .in > input[type="text"]{
+      border:0!important;outline:none!important;box-shadow:none!important;
+      background:transparent!important;padding:0!important;margin:0!important;
+      min-height:0!important;height:auto!important;width:100%;min-width:0;
+      font:inherit;font-size:inherit;font-weight:inherit;line-height:inherit;color:inherit;
+      border-radius:0!important;-webkit-appearance:none!important;appearance:textfield!important
+    }
+    #addWorkModal .in > input:focus,
+    #addWorkModal .in > input:focus-visible{
+      border:0!important;outline:none!important;box-shadow:none!important
+    }
+    #addWorkModal .in > input[type="number"]::-webkit-inner-spin-button,
+    #addWorkModal .in > input[type="number"]::-webkit-outer-spin-button{
+      -webkit-appearance:none!important;margin:0
+    }
+
 </style>
 @endsection
 
@@ -717,7 +740,7 @@
 
     <div id="portfolioGrid" class="pgrid">
       @forelse ($portfolios as $portfolio)
-        @include('artist.portfolio._card', ['portfolio' => $portfolio])
+        @include('artist.portfolio._card', ['portfolio' => $portfolio, 'sizeUnit' => $sizeUnit ?? 'cm'])
         @empty
         <div class="col-span-full" id="portfolioEmptyState" style="grid-column:1/-1;padding:48px 22px;text-align:center;border:1px dashed var(--line);border-radius:16px;background:#fff">
           <span class="ms" style="font-size:36px;color:var(--faint)">photo_library</span>
@@ -873,6 +896,20 @@
               <p class="hidden work-field-error" data-error-for="placement"></p>
             </div>
 
+            @php
+              $portfolioSizeUnit = in_array(($sizeUnit ?? 'cm'), ['cm', 'in'], true) ? ($sizeUnit ?? 'cm') : 'cm';
+            @endphp
+            <div class="work-field-section" data-work-field="size" style="margin-top:16px">
+              <div class="row" style="margin-bottom:6px">
+                <label class="fl" for="workSize" style="margin:0">Size<span class="ai"><span class="ms">auto_awesome</span>AI</span></label>
+              </div>
+              <div class="in">
+                <input type="number" id="workSize" name="workSize" placeholder="e.g. {{ $portfolioSizeUnit === 'in' ? '4' : '10' }}" min="1" step="any" inputmode="decimal" autocomplete="off">
+                <span class="faint" id="workSizeUnitLabel" style="margin-left:auto">{{ $portfolioSizeUnit }}</span>
+              </div>
+              <p class="hidden work-field-error" data-error-for="size"></p>
+            </div>
+
             <div class="grid aw-half" style="margin-top:4px">
               <div class="work-field-section" data-work-field="color">
                 <div class="row" style="margin-top:12px;margin-bottom:6px">
@@ -977,6 +1014,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 
 @php
+    $portfolioSizeUnit = in_array(($sizeUnit ?? 'cm'), ['cm', 'in'], true) ? ($sizeUnit ?? 'cm') : 'cm';
     $portfolioEditorData = $portfolios->mapWithKeys(function ($p) {
         return [(string) $p->id => [
             'title' => $p->title,
@@ -985,6 +1023,7 @@
             'primary_style' => $p->primary_style,
             'other_styles' => $p->other_styles ?? [],
             'placement' => $p->placement,
+            'size' => $p->size,
             'color' => $p->color,
             'tags' => $p->tags ?? [],
             'image_url' => asset($p->image),
@@ -998,6 +1037,7 @@
     window.PORTFOLIO_EDITOR_DATA = @json($portfolioEditorData);
     var PORTFOLIO_STYLE_OPTIONS = @json($styles);
     var PORTFOLIO_PLACEMENT_OPTIONS = @json($placements ?? []);
+    var PORTFOLIO_SIZE_UNIT = @json($portfolioSizeUnit ?? 'cm');
     var PORTFOLIO_STORE_URL = @json(route('portfolio.store'));
     var PORTFOLIO_AI_SUGGEST_URL = @json(route('portfolio.ai-suggest'));
     var PORTFOLIO_REORDER_URL = @json(route('portfolio.reorder'));
@@ -1194,6 +1234,7 @@
           primary_style: !($('#workPrimaryStyle').val() || ''),
           other_styles: $('#workOtherStyles option:selected').length === 0,
           placement: !($('#workPlacement').val() || ''),
+          size: !$.trim(String($('#workSize').val() || '')),
           color: !($('#workColors').val() || ''),
           tags: parseWorkTagsInput().length === 0
         };
@@ -1246,6 +1287,9 @@
             syncWorkPlacementsChipsFromSelect();
           }
         }
+        if (emptyAtRequest.size && emptyNow.size && suggestions.size) {
+          $('#workSize').val(suggestions.size);
+        }
         if (emptyAtRequest.color && emptyNow.color && suggestions.color) {
           $('#workColors').val(suggestions.color).trigger('change');
         }
@@ -1259,6 +1303,7 @@
         if (emptyAtRequest.primary_style && suggestions.primary_style) filled++;
         if (emptyAtRequest.other_styles && Array.isArray(suggestions.other_styles) && suggestions.other_styles.length) filled++;
         if (emptyAtRequest.placement && Array.isArray(suggestions.suggested_placements) && suggestions.suggested_placements.length) filled++;
+        if (emptyAtRequest.size && suggestions.size) filled++;
         if (emptyAtRequest.color && suggestions.color) filled++;
         if (emptyAtRequest.tags && Array.isArray(suggestions.tags) && suggestions.tags.length) filled++;
         if (filled > 0) {
@@ -1290,6 +1335,8 @@
         if ($('#workPlacement').val()) {
           fd.append('suggested_placements[]', $('#workPlacement').val());
         }
+        fd.append('size', $.trim(String($('#workSize').val() || '')));
+        fd.append('size_unit', PORTFOLIO_SIZE_UNIT || 'cm');
         parseWorkTagsInput().forEach(function (tag) {
           fd.append('tags[]', tag);
         });
@@ -1560,6 +1607,7 @@
             primary_style: editor.primary_style,
             other_styles: editor.other_styles || [],
             placement: editor.placement || null,
+            size: editor.size || null,
             color: editor.color,
             tags: editor.tags || [],
             image_url: editor.image_url
@@ -1682,7 +1730,7 @@
         }, 300);
       }
 
-      var WORK_FORM_FIELD_ORDER = ['image', 'title', 'description', 'is_active', 'primary_style', 'other_styles', 'placement', 'color', 'tags'];
+      var WORK_FORM_FIELD_ORDER = ['image', 'title', 'description', 'is_active', 'primary_style', 'other_styles', 'placement', 'size', 'color', 'tags'];
 
       function clearWorkFormErrors() {
         $('#workFormBanner').addClass('hidden').empty();
@@ -1812,6 +1860,14 @@
         if (placement && allowedPlacements.indexOf(placement) === -1) {
           errors.placement = 'Please select a valid placement.';
         }
+        var size = $.trim(String($('#workSize').val() || ''));
+        if (!size) {
+          errors.size = 'Please enter a size.';
+        } else if (!/^\d+(?:\.\d+)?$/.test(size) || Number(size) < 1) {
+          errors.size = 'Please enter a valid size.';
+        } else if (Number(size) > 9999) {
+          errors.size = 'Size must be 9999 or less.';
+        }
         var color = $('#workColors').val();
         if (!color) {
           errors.color = 'Please select a color option.';
@@ -1899,6 +1955,7 @@
         $('#workPlacement').val('');
         $('#workPlacementsChips .style-chip').removeClass('is-selected').prop('disabled', false);
         updateWorkPlacementsChipsUI();
+        $('#workSize').val('');
         $('#workToggleVisibility').addClass('active on').attr('aria-checked', 'true');
         $('#workAiFilledPill').prop('hidden', true);
         $('#btnReplaceWorkImage').text('Upload image');
@@ -1921,6 +1978,7 @@
         syncOtherStylesChipsFromSelect();
         $('#workPlacement').val(p.placement || '');
         syncWorkPlacementsChipsFromSelect();
+        $('#workSize').val(p.size || '');
         $('#workToggleVisibility').toggleClass('active', !!p.is_active).toggleClass('on', !!p.is_active).attr('aria-checked', p.is_active ? 'true' : 'false');
         $('#workAiFilledPill').prop('hidden', true);
         $('#btnReplaceWorkImage').text('Replace image');
@@ -1966,6 +2024,7 @@
           fd.append('other_styles[]', $(this).val());
         });
         fd.append('placement', $('#workPlacement').val() || '');
+        fd.append('size', $.trim($('#workSize').val() || ''));
         fd.append('color', $('#workColors').val());
         var rawTags = $('#workTags').val();
         if (rawTags) {

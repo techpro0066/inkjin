@@ -12,6 +12,9 @@
   } elseif (is_array($ts) && array_is_list($ts)) {
     $otherList = $ts;
   }
+  if ($primary) {
+    $otherList = array_values(array_filter($otherList, fn ($style) => (string) $style !== (string) $primary));
+  }
   $sl = $userDetail->social_links ?? [];
   $extraServices = is_array($userDetail->extra_services ?? null) ? $userDetail->extra_services : [];
   $extraServiceList = is_array($extraServices['services'] ?? null) ? $extraServices['services'] : [];
@@ -299,11 +302,25 @@ function toggleStylesDropdown(show) {
   $('#stylesDropdownList').toggleClass('open', !!show);
 }
 
+function currentPrimaryStyle() {
+  return String($('#primary_style').val() || '');
+}
+
+function dropPrimaryFromOtherStyles() {
+  var primary = currentPrimaryStyle();
+  if (primary && selectedStyles.has(primary)) {
+    selectedStyles.delete(primary);
+  }
+}
+
 function filterStyles() {
   var q = $.trim($('#style_search').val()).toLowerCase();
+  var primary = currentPrimaryStyle();
   $('.style-option').each(function () {
+    var val = this.getAttribute('data-value');
     var label = $.trim($(this).find('.style-option-label').text()).toLowerCase();
-    $(this).toggle(!q || label.indexOf(q) !== -1);
+    var matches = !q || label.indexOf(q) !== -1;
+    $(this).toggle(val !== primary && matches);
   });
   toggleStylesDropdown(true);
 }
@@ -318,11 +335,16 @@ function updateOtherCount() {
 
 function syncOptionStates() {
   var atMax = selectedStyles.size >= OTHER_MAX;
+  var primary = currentPrimaryStyle();
+  var q = $.trim($('#style_search').val()).toLowerCase();
   $('.style-option').each(function () {
     var val = this.getAttribute('data-value');
     var on = selectedStyles.has(val);
     var $el = $(this);
     var $icon = $el.find('.ms').first();
+    var label = $.trim($el.find('.style-option-label').text()).toLowerCase();
+    var matches = !q || label.indexOf(q) !== -1;
+    $el.toggle(val !== primary && matches);
     $el.toggleClass('selected', on);
     $el.toggleClass('dim', !on && atMax);
     $icon.text(on ? 'check_box' : 'check_box_outline_blank');
@@ -349,6 +371,7 @@ function renderTags() {
 }
 
 function toggleStyle(value) {
+  if (value && value === currentPrimaryStyle()) return;
   if (selectedStyles.has(value)) {
     selectedStyles.delete(value);
   } else {
@@ -376,6 +399,7 @@ function removeStyle(value) {
 }
 
 $(function () {
+  dropPrimaryFromOtherStyles();
   if (selectedStyles.size > OTHER_MAX) {
     selectedStyles = new Set(Array.from(selectedStyles).slice(0, OTHER_MAX));
   }
@@ -436,6 +460,9 @@ $(function () {
   $('#primary_style').on('change', function () {
     if (typeof window.clearOnboardingFieldError === 'function') window.clearOnboardingFieldError('primary_style');
     else setFieldOutlineError('primary_style', false);
+    dropPrimaryFromOtherStyles();
+    syncOptionStates();
+    renderTags();
   });
 
   $('#stylesForm').on('submit', function (e) {

@@ -48,6 +48,12 @@
     <div class="ptags" style="margin-top:8px">
       <span class="pst">{{ $portfolio->primary_style }}</span>
       <span class="pst">{{ $colorLabel }}</span>
+      @if (filled($portfolio->size))
+        @php
+          $cardSizeUnit = in_array(($sizeUnit ?? 'cm'), ['cm', 'in'], true) ? ($sizeUnit ?? 'cm') : 'cm';
+        @endphp
+        <span class="pst">{{ $portfolio->size }} {{ $cardSizeUnit }}</span>
+      @endif
     </div>
     @if ($tags->isNotEmpty())
       <div class="ptags" style="margin-top:6px">

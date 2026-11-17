@@ -327,7 +327,13 @@ class InstagramController extends Controller
 
             if (! empty($result['portfolio'])) {
                 $portfolio = $result['portfolio'];
-                $payload['card_html'] = view('artist.portfolio._card', ['portfolio' => $portfolio])->render();
+                $sizeUnit = in_array(($user->userDetail?->size_unit ?? 'cm'), ['cm', 'in'], true)
+                    ? ($user->userDetail?->size_unit ?? 'cm')
+                    : 'cm';
+                $payload['card_html'] = view('artist.portfolio._card', [
+                    'portfolio' => $portfolio,
+                    'sizeUnit' => $sizeUnit,
+                ])->render();
                 $payload['editor'] = [
                     'id' => (string) $portfolio->id,
                     'title' => $portfolio->title,
@@ -336,6 +342,7 @@ class InstagramController extends Controller
                     'primary_style' => $portfolio->primary_style,
                     'other_styles' => $portfolio->other_styles ?? [],
                     'placement' => $portfolio->placement,
+                    'size' => $portfolio->size,
                     'color' => $portfolio->color,
                     'tags' => $portfolio->tags ?? [],
                     'image_url' => asset($portfolio->image),

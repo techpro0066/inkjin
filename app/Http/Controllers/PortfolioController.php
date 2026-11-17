@@ -43,6 +43,7 @@ class PortfolioController extends Controller
             'other_styles' => ['nullable', 'array', 'max:2'],
             'other_styles.*' => ['string', Rule::in($styleValues)],
             'placement' => ['nullable', 'string', Rule::in($placementValues)],
+            'size' => ['required', 'numeric', 'min:1', 'max:9999'],
             'color' => ['required', 'string', Rule::in(['color', 'black-grey', 'both'])],
             'tags' => ['nullable', 'array', 'max:30'],
             'tags.*' => ['string', 'max:64'],
@@ -65,6 +66,14 @@ class PortfolioController extends Controller
         $tags = array_values(array_unique(array_filter(array_map('trim', $validated['tags'] ?? []))));
 
         return [$other, $tags];
+    }
+
+    private function normalizeSize(mixed $size): string
+    {
+        $number = (float) $size;
+        $formatted = rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
+
+        return $formatted !== '' ? $formatted : '1';
     }
 
     private function assertOwnsPortfolio(Portfolio $portfolio): void
@@ -126,11 +135,15 @@ class PortfolioController extends Controller
         $user = Auth::user();
         $userDetail = $userDetail ?? UserDetail::create(['user_id' => $user->id]);
         $displayPortfolio = (bool) ($userDetail->display_portfolio ?? true);
+        $sizeUnit = in_array(($userDetail->size_unit ?? 'cm'), ['cm', 'in'], true)
+            ? ($userDetail->size_unit ?? 'cm')
+            : 'cm';
 
         return view('artist.portfolio.index', [
             'portfolios' => $portfolios,
             'styles' => $styles,
             'placements' => $placements,
+            'sizeUnit' => $sizeUnit,
             'instagramConnected' => $instagramConnected,
             'instagramUsername' => $instagramUsername,
             'instagramProfilePictureUrl' => $instagramProfilePictureUrl,
@@ -185,6 +198,7 @@ class PortfolioController extends Controller
             'primary_style' => $validated['primary_style'],
             'other_styles' => $other,
             'placement' => $validated['placement'] ?? null,
+            'size' => $this->normalizeSize($validated['size']),
             'color' => $validated['color'],
             'tags' => $tags,
             'sort_order' => $this->nextSortOrder($userId),
@@ -231,6 +245,7 @@ class PortfolioController extends Controller
             'primary_style' => $validated['primary_style'],
             'other_styles' => $other,
             'placement' => $validated['placement'] ?? null,
+            'size' => $this->normalizeSize($validated['size']),
             'color' => $validated['color'],
             'tags' => $tags,
         ]);

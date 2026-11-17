@@ -19,7 +19,7 @@ class ClaudeDesignAnalysisService
      * Analyze a tattoo design image and suggest listing fields.
      *
      * @param  array<int, string>  $allowedStyles
-     * @param  array<int, string>  $fieldsNeeded  Subset of: title, description, primary_style, other_styles, suggested_placements, color, tags
+     * @param  array<int, string>  $fieldsNeeded  Subset of: title, description, primary_style, other_styles, suggested_placements, color, tags, size
      * @param  array<int, string>  $allowedPlacements
      * @return array{
      *     title?: string,
@@ -28,7 +28,8 @@ class ClaudeDesignAnalysisService
      *     other_styles?: array<int, string>,
      *     suggested_placements?: array<int, string>,
      *     color?: string,
-     *     tags?: array<int, string>
+     *     tags?: array<int, string>,
+     *     size?: string
      * }
      */
     public function suggestFields(
@@ -36,14 +37,15 @@ class ClaudeDesignAnalysisService
         string $mediaType,
         array $allowedStyles,
         array $fieldsNeeded,
-        array $allowedPlacements = []
+        array $allowedPlacements = [],
+        string $sizeUnit = 'cm'
     ): array {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Claude API is not configured.');
         }
 
         $fieldsNeeded = array_values(array_intersect(
-            ['title', 'description', 'primary_style', 'other_styles', 'suggested_placements', 'color', 'tags'],
+            ['title', 'description', 'primary_style', 'other_styles', 'suggested_placements', 'color', 'tags', 'size'],
             $fieldsNeeded
         ));
 
@@ -51,9 +53,11 @@ class ClaudeDesignAnalysisService
             return [];
         }
 
+        $sizeUnit = $sizeUnit === 'in' ? 'in' : 'cm';
+
         [$imageBinary, $mediaType] = $this->normalizeImage($imageBinary, $mediaType);
 
-        $prompt = $this->buildPrompt($allowedStyles, $allowedPlacements, $fieldsNeeded);
+        $prompt = $this->buildPrompt($allowedStyles, $allowedPlacements, $fieldsNeeded, $sizeUnit);
 
         $response = Http::withHeaders([
             'x-api-key' => (string) config('services.claude.api_key'),
@@ -103,7 +107,7 @@ class ClaudeDesignAnalysisService
      * @param  array<int, string>  $allowedPlacements
      * @param  array<int, string>  $fieldsNeeded
      */
-    private function buildPrompt(array $allowedStyles, array $allowedPlacements, array $fieldsNeeded): string
+    private function buildPrompt(array $allowedStyles, array $allowedPlacements, array $fieldsNeeded, string $sizeUnit = 'cm'): string
     {
         $stylesList = $allowedStyles === []
             ? '(no styles available)'
@@ -114,6 +118,8 @@ class ClaudeDesignAnalysisService
             : implode(', ', array_map(fn ($s) => '"'.$s.'"', $allowedPlacements));
 
         $fieldsList = implode(', ', $fieldsNeeded);
+        $sizeUnit = $sizeUnit === 'in' ? 'in' : 'cm';
+        $sizeExample = $sizeUnit === 'in' ? '4' : '10';
 
         return <<<PROMPT
 You are helping a tattoo artist fill listing fields for a portfolio piece or available design image.
@@ -129,6 +135,7 @@ Rules:
 - suggested_placements: array of up to 3 body placements from this list: {$placementsList}. Pick the most likely places this design would be tattooed. Prefer concrete body areas; avoid vague options like "Not Sure" when better options fit. Use [] if none fit.
 - color: exactly one of "color", "black-grey", or "both" (black-grey for monochrome/greywash; color for full color; both if mixed or ambiguous).
 - tags: array of 3-8 short lowercase search tags (single words or short phrases, no #).
+- size: estimate the tattoo's longest dimension as a positive number in {$sizeUnit} only (no unit text, no ranges). Example: {$sizeExample}
 
 If the image is not a tattoo design, still make best-effort guesses based on what you see.
 PROMPT;
@@ -307,7 +314,39 @@ PROMPT;
             }
         }
 
+        if (in_array('size', $fieldsNeeded, true) && isset($parsed['size'])) {
+            $size = $this->normalizeSize($parsed['size']);
+            if ($size !== null) {
+                $out['size'] = $size;
+            }
+        }
+
         return $out;
+    }
+
+    private function normalizeSize(mixed $value): ?string
+    {
+        if (is_array($value)) {
+            $value = $value[0] ?? null;
+        }
+
+        if (is_numeric($value)) {
+            $number = (float) $value;
+        } else {
+            $raw = trim((string) $value);
+            if ($raw === '' || ! preg_match('/(\d+(?:\.\d+)?)/', $raw, $matches)) {
+                return null;
+            }
+            $number = (float) $matches[1];
+        }
+
+        if ($number < 1 || $number > 9999) {
+            return null;
+        }
+
+        $formatted = rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
+
+        return $formatted !== '' ? $formatted : null;
     }
 
     /**

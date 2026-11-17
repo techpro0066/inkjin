@@ -19,6 +19,7 @@ class Portfolio extends Model
         'primary_style',
         'other_styles',
         'placement',
+        'size',
         'color',
         'tags',
         'sort_order',

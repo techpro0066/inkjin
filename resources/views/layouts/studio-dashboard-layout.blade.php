@@ -50,7 +50,7 @@
     .topline{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
     .burger{display:none;border:0;background:none;color:#fff;cursor:pointer;padding:6px;border-radius:8px}
     .burger .ms{font-size:26px}
-    aside nav{margin-top:26px;display:flex;flex-direction:column;gap:3px;flex:1;min-height:0}
+    aside nav{margin-top:14px;display:flex;flex-direction:column;gap:3px;flex:1;min-height:0}
     aside nav a{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px;font-weight:500;font-size:14.5px;color:#DEDEDE;text-decoration:none}
     aside nav a .ms{font-size:21px;color:#DEDEDE}
     aside nav a.on{background:#fff;color:var(--pri);font-weight:600}
@@ -158,8 +158,9 @@
       aside{width:100%;height:auto;min-height:0;padding:12px 16px;position:sticky;top:0;z-index:20;overflow:visible}
       aside .tag{display:none}
       .burger{display:inline-flex}
-      aside nav,.foot{display:none}
+      aside nav,.foot,.navsearch{display:none}
       body.navopen aside nav{display:flex}
+      body.navopen .navsearch{display:block;margin-top:12px}
       body.navopen aside .foot{display:block;margin-top:8px}
       body.navopen aside{max-height:100vh;max-height:100dvh;overflow-y:auto}
       aside nav{margin-top:12px;flex:none}
@@ -182,6 +183,38 @@
       <button class="burger" type="button" aria-label="Open menu" onclick="document.body.classList.toggle('navopen')"><span class="ms">menu</span></button>
     </div>
     <div class="tag">STUDIO DASHBOARD<br>BY INKJIN</div>
+    @php
+        $studioSearch = [
+          ['label' => 'Home', 'section' => '', 'url' => route('studio.dashboard'), 'keys' => 'dashboard'],
+          ['label' => 'Artists', 'section' => '', 'url' => route('studio.artists'), 'keys' => 'residents team members'],
+          ['label' => 'Join requests', 'section' => 'Artists', 'url' => route('studio.artists.join-requests'), 'keys' => 'accept artist request'],
+          ['label' => 'Guest artists', 'section' => 'Artists', 'url' => route('studio.artists.guests'), 'keys' => 'guest spots'],
+          ['label' => 'Invites', 'section' => 'Artists', 'url' => route('studio.artists.invites'), 'keys' => 'invite artist email'],
+          ['label' => 'Bookings', 'section' => '', 'url' => route('studio.bookings'), 'keys' => 'appointments sessions'],
+          ['label' => 'Requests', 'section' => 'Bookings', 'url' => route('studio.bookings.requests'), 'keys' => 'studio requests assign'],
+          ['label' => 'Payment links', 'section' => 'Bookings', 'url' => route('studio.bookings.payment-links'), 'keys' => 'deposit invoice'],
+          ['label' => 'Inbox', 'section' => '', 'url' => route('studio.chat.index'), 'keys' => 'messages chat'],
+          ['label' => 'Money', 'section' => '', 'url' => route('studio.money.earnings'), 'keys' => 'earnings balance'],
+          ['label' => 'Payouts', 'section' => 'Money', 'url' => route('studio.money.payouts'), 'keys' => 'stripe bank connect'],
+          ['label' => 'Account', 'section' => '', 'url' => route('studio.account.profile'), 'keys' => 'profile settings owner'],
+          ['label' => 'Password', 'section' => 'Account', 'url' => route('studio.account.password'), 'keys' => 'login security'],
+          ['label' => 'Studio details', 'section' => 'Account', 'url' => route('studio.account.studio'), 'keys' => 'address name'],
+          ['label' => 'Regional', 'section' => 'Account', 'url' => route('studio.account.regional'), 'keys' => 'country timezone'],
+          ['label' => 'Get Help', 'section' => '', 'url' => 'https://help.inkjin.com', 'keys' => 'support help center'],
+        ];
+        if ($profileComplete) {
+          $studioSearch = array_merge($studioSearch, [
+            ['label' => 'Calendar', 'section' => '', 'url' => route('studio.calendar'), 'keys' => 'schedule artists bookings'],
+            ['label' => 'Studio Page', 'section' => '', 'url' => route('studio.page.about'), 'keys' => 'public page about'],
+            ['label' => 'Page artists', 'section' => 'Studio Page', 'url' => route('studio.page.artists'), 'keys' => 'show artists order'],
+            ['label' => 'Portfolio', 'section' => 'Studio Page', 'url' => route('studio.page.portfolio'), 'keys' => 'photos gallery'],
+            ['label' => 'Look', 'section' => 'Studio Page', 'url' => route('studio.page.look'), 'keys' => 'colors appearance theme'],
+            ['label' => 'Client Flow', 'section' => '', 'url' => route('studio.client-flow.intake'), 'keys' => 'intake questions booking form'],
+            ['label' => 'Consent form', 'section' => 'Client Flow', 'url' => route('studio.client-flow.consent'), 'keys' => 'waiver consent'],
+          ]);
+        }
+    @endphp
+    @include('layouts.partials.dashboard-nav-search', ['navSearchItems' => $studioSearch])
     <nav>
       <a href="{{ route('studio.dashboard') }}" class="{{ $activeNav === 'home' ? 'on' : '' }}"><span class="ms">space_dashboard</span>Home</a>
       <a href="{{ route('studio.artists') }}" class="{{ $activeNav === 'artists' ? 'on' : '' }}"><span class="ms">groups</span>Artists</a>
