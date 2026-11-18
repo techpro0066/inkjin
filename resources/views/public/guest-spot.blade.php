@@ -332,7 +332,9 @@
       @if($canReserve)
         <a class="bbtn pri" id="reserve" href="{{ $reserveUrl }}"><span class="ms">event_available</span>Reserve your guest spot</a>
       @endif
-      <button type="button" class="bbtn sec" id="gnotify" data-act="gwl-next" data-c="{{ $notifyCity }}" data-gs-id="{{ (int) $guestSpot->id }}"><span class="ms">notifications</span>Notify me for the next {{ $city !== '' ? $city : 'guest' }} guest spot</button>
+      @if($plannedSpots && $plannedSpots->count() > 0)
+        <button type="button" class="bbtn sec" id="gnotify" data-act="gwl-next" data-c="{{ $plannedSpots->city }}, {{ $plannedSpots->country }}" data-gs-id="{{ (int) $plannedSpots->id }}"><span class="ms">notifications</span>Notify: Next {{ $plannedSpots->city }}, {{ $plannedSpots->country }} guest spot</button>
+      @endif
     </aside>
   </div>
 </div>

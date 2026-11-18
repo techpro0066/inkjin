@@ -223,5 +223,9 @@ body{position:relative}
 #content-designs, #content-portfolio, #content-guest-spots, #content-policies, #content-faq {
   margin-bottom: 2rem;
 }
+
+.bbtn.sec{
+  text-wrap: balance;
+}
 </style>
 

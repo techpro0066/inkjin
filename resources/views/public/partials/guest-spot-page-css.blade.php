@@ -15,6 +15,7 @@
 .fu-r{display:flex;gap:10px;align-items:flex-start;font-size:14px}.fu-r .ms{color:var(--faint);font-size:19px}.fu-r .sub{color:var(--muted);font-size:13px}
 .fu-dir{margin-top:auto!important}
 .tabbar[hidden]{display:none}
+.bbtn.sec{text-wrap: balance}
 .mcta .bbtn.sec{flex:none;width:52px}.mcta .bbtn.sec.wide,.mcta .bbtn.pri.wide{flex:1;width:auto}
 @media(max-width:780px){.banner{height:150px}.gline{font-size:16px}.fu{grid-template-columns:1fr}.fu-map{min-height:200px;height:200px}.gsec{padding:10px 16px 40px}}
 </style>

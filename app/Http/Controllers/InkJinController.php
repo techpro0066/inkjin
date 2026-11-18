@@ -154,10 +154,10 @@ class InkJinController extends Controller
 
         if (! $guestSpot->containsBookableDate($ymd)) {
             return 'Selected dates must fall within this guest spot ('
-                .$guestSpot->from_date->format('M j, Y')
-                .' – '
-                .$guestSpot->to_date->format('M j, Y')
-                .').';
+                . $guestSpot->from_date->format('M j, Y')
+                . ' – '
+                . $guestSpot->to_date->format('M j, Y')
+                . ').';
         }
 
         return null;
@@ -178,10 +178,12 @@ class InkJinController extends Controller
 
         $hasConsult = (bool) $booking->has_consultation;
 
-        if ($hasConsult && $timing === 'separate'
+        if (
+            $hasConsult && $timing === 'separate'
             && $booking->consultation_date
             && $booking->consultation_start_time_utc
-            && $booking->consultation_end_time_utc) {
+            && $booking->consultation_end_time_utc
+        ) {
             $cd = $booking->consultation_date instanceof \Carbon\CarbonInterface
                 ? $booking->consultation_date->format('Y-m-d')
                 : (string) $booking->consultation_date;
@@ -218,8 +220,8 @@ class InkJinController extends Controller
     private function appendUtcRangeToBusyMap(array &$map, string $ymd, string $startUtc, string $endUtc, string $tz, int $bufferAfterMinutes = 0): void
     {
         try {
-            $startAt = Carbon::parse($ymd.' '.$startUtc, 'UTC')->timezone($tz);
-            $endAt = Carbon::parse($ymd.' '.$endUtc, 'UTC')->timezone($tz);
+            $startAt = Carbon::parse($ymd . ' ' . $startUtc, 'UTC')->timezone($tz);
+            $endAt = Carbon::parse($ymd . ' ' . $endUtc, 'UTC')->timezone($tz);
         } catch (\Throwable) {
             return;
         }
@@ -410,7 +412,7 @@ class InkJinController extends Controller
             'clientName' => $clientName,
             'artistName' => $artistName,
         ], function ($message) use ($email, $otpCode) {
-            $message->to($email)->subject('Your Bookpay code: '.$otpCode);
+            $message->to($email)->subject('Your Bookpay code: ' . $otpCode);
         });
 
         return response()->json([
@@ -623,13 +625,13 @@ class InkJinController extends Controller
         }
 
         $extension = $this->resolveUploadImageExtension($file);
-        $filename = 'q_'.preg_replace('/[^A-Za-z0-9_-]/', '', (string) $validated['question_id'])
-            .'_'.time().'_'.Str::random(8).'.'.$extension;
+        $filename = 'q_' . preg_replace('/[^A-Za-z0-9_-]/', '', (string) $validated['question_id'])
+            . '_' . time() . '_' . Str::random(8) . '.' . $extension;
 
         try {
             // Prefer contents copy — more reliable than move() on some hosts.
             $saved = @file_put_contents(
-                $folder.DIRECTORY_SEPARATOR.$filename,
+                $folder . DIRECTORY_SEPARATOR . $filename,
                 file_get_contents($file->getRealPath() ?: $file->getPathname())
             );
             if ($saved === false) {
@@ -650,7 +652,7 @@ class InkJinController extends Controller
             ], 500);
         }
 
-        if (! is_file($folder.DIRECTORY_SEPARATOR.$filename)) {
+        if (! is_file($folder . DIRECTORY_SEPARATOR . $filename)) {
             Log::error('Booking question image upload: file missing after save', [
                 'folder' => $folder,
                 'filename' => $filename,
@@ -662,7 +664,7 @@ class InkJinController extends Controller
             ], 500);
         }
 
-        $publicPath = '/uploads/booking-questions/'.$filename;
+        $publicPath = '/uploads/booking-questions/' . $filename;
 
         return response()->json([
             'success' => true,
@@ -688,7 +690,12 @@ class InkJinController extends Controller
         $mime = strtolower((string) ($file->getMimeType() ?: ''));
         $ext = strtolower((string) $file->getClientOriginalExtension());
         $allowedMime = [
-            'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/webp', 'image/gif',
+            'image/jpeg',
+            'image/jpg',
+            'image/pjpeg',
+            'image/png',
+            'image/webp',
+            'image/gif',
         ];
         $allowedExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 
@@ -756,27 +763,27 @@ class InkJinController extends Controller
                 $displayDesigns = (bool) ($userDetail->display_designs ?? true);
                 $artistDesigns = $displayDesigns
                     ? $user->artistDesigns()
-                        ->where('is_active', true)
-                        ->withSoldOutState()
-                        ->orderBy('sort_order')
-                        ->orderBy('id')
-                        ->get()
+                    ->where('is_active', true)
+                    ->withSoldOutState()
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get()
                     : collect();
 
                 $displayPortfolio = (bool) ($userDetail->display_portfolio ?? true);
                 $artistPortfolios = $displayPortfolio
                     ? $user->portfolios()
-                        ->where('is_active', true)
-                        ->orderBy('sort_order')
-                        ->orderBy('id')
-                        ->get()
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get()
                     : collect();
 
                 $guestSpots = $userDetail->display_guest_spots
                     ? $user->guestSpots()->orderBy('sort_order')->orderBy('id')->get()
                     : collect();
 
-                $guestSpots->each(fn (\App\Models\GuestSpot $spot) => $spot->ensureCompletedStatus());
+                $guestSpots->each(fn(\App\Models\GuestSpot $spot) => $spot->ensureCompletedStatus());
 
                 $faqs = $userDetail->display_faq
                     ? $user->artistFaqs()->active()->ordered()->get()
@@ -852,7 +859,7 @@ class InkJinController extends Controller
 
                 $name = $detail->publicDisplayName();
                 if ($name === '' || $name === 'Artist') {
-                    $fallback = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
+                    $fallback = trim(($artistUser->first_name ?? '') . ' ' . ($artistUser->last_name ?? ''));
                     $name = $fallback !== '' ? $fallback : (string) ($detail->user_name ?? 'Artist');
                 }
 
@@ -884,7 +891,7 @@ class InkJinController extends Controller
                     'EUR' => '€',
                     'GBP' => '£',
                     'USD' => '$',
-                    default => $currencyCode !== '' ? $currencyCode.' ' : '€',
+                    default => $currencyCode !== '' ? $currencyCode . ' ' : '€',
                 };
 
                 return [
@@ -893,7 +900,7 @@ class InkJinController extends Controller
                     'initials' => $detail->publicDisplayInitials() ?: 'AR',
                     'avatar' => $avatar !== '' ? asset(ltrim($avatar, '/')) : null,
                     'username' => $username,
-                    'handle' => $username !== '' ? '@'.$username : '',
+                    'handle' => $username !== '' ? '@' . $username : '',
                     'relationship' => $relationshipLabels[$link->relationship ?? ''] ?? 'Resident',
                     'styles' => array_slice($styleLabels, 0, 3),
                     'all_styles' => $styleLabels,
@@ -966,7 +973,7 @@ class InkJinController extends Controller
 
             $name = $detail ? $detail->publicDisplayName() : '';
             if ($name === '' || $name === 'Artist') {
-                $fallback = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
+                $fallback = trim(($artistUser->first_name ?? '') . ' ' . ($artistUser->last_name ?? ''));
                 $name = $fallback !== '' ? $fallback : (string) ($detail?->user_name ?? 'Artist');
             }
 
@@ -995,10 +1002,10 @@ class InkJinController extends Controller
 
             $metaParts = [];
             if ($city !== '') {
-                $metaParts[] = 'From '.$city;
+                $metaParts[] = 'From ' . $city;
             }
             if ($spot->from_date && $spot->to_date) {
-                $metaParts[] = $spot->from_date->format('d/m').' – '.$spot->to_date->format('d/m/Y');
+                $metaParts[] = $spot->from_date->format('d/m') . ' – ' . $spot->to_date->format('d/m/Y');
             }
             if ($styleLabels !== []) {
                 $metaParts[] = implode(', ', array_slice($styleLabels, 0, 3));
@@ -1039,11 +1046,11 @@ class InkJinController extends Controller
             }
             $number = number_format((float) $amount, 0, '.', '');
 
-            return $symbol.$number;
+            return $symbol . $number;
         };
 
         if ($showFlash) {
-            $flashArtists = $studioArtists->filter(fn ($a) => ! empty($a['display_designs']) && ! empty($a['username']));
+            $flashArtists = $studioArtists->filter(fn($a) => ! empty($a['display_designs']) && ! empty($a['username']));
             $flashUserIds = $flashArtists->pluck('user_id')->all();
             if ($flashUserIds !== []) {
                 $designs = ArtistDesign::query()
@@ -1072,7 +1079,7 @@ class InkJinController extends Controller
                     $max = $formatMoney($design->max_price, $symbol);
                     $price = $min;
                     if ($max !== '' && $max !== $min) {
-                        $price = $min !== '' ? $min.' – '.$max : $max;
+                        $price = $min !== '' ? $min . ' – ' . $max : $max;
                     }
                     $image = trim((string) ($design->image ?? ''));
 
@@ -1083,7 +1090,7 @@ class InkJinController extends Controller
                         'artist_name' => (string) ($artist['name'] ?? 'Artist'),
                         'artist_initials' => (string) ($artist['initials'] ?? 'AR'),
                         'artist_avatar' => $artist['avatar'] ?? null,
-                        'price_label' => $price !== '' ? $price.' · Flash' : 'Flash',
+                        'price_label' => $price !== '' ? $price . ' · Flash' : 'Flash',
                         'cta_url' => route('public.tattoo.book', ['user_name' => $username, 'tattoo_slug' => $slug]),
                         'cta_label' => 'Book now',
                         'cta_pri' => true,
@@ -1093,7 +1100,7 @@ class InkJinController extends Controller
         }
 
         if ($showPort) {
-            $portArtists = $studioArtists->filter(fn ($a) => ! empty($a['display_portfolio']) && ! empty($a['username']));
+            $portArtists = $studioArtists->filter(fn($a) => ! empty($a['display_portfolio']) && ! empty($a['username']));
             $portUserIds = $portArtists->pluck('user_id')->all();
             if ($portUserIds !== []) {
                 $portfolios = Portfolio::query()
@@ -1139,7 +1146,7 @@ class InkJinController extends Controller
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
-            ->filter(fn ($p) => $p->isVisibleOnPage());
+            ->filter(fn($p) => $p->isVisibleOnPage());
 
         foreach ($studioPieces as $piece) {
             $image = trim((string) ($piece->image ?? ''));
@@ -1197,7 +1204,7 @@ class InkJinController extends Controller
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
-            ->first(fn (\App\Models\GuestSpot $candidate) => $candidate->publicSlug() === $slug);
+            ->first(fn(\App\Models\GuestSpot $candidate) => $candidate->publicSlug() === $slug);
 
         if (! $spot) {
             abort(404, 'Guest spot not found');
@@ -1210,32 +1217,40 @@ class InkJinController extends Controller
 
         $artistDesigns = ($spot->show_designs && $selectedDesignIds !== [])
             ? $userDetail->user->artistDesigns()
-                ->where('is_active', true)
-                ->whereIn('id', $selectedDesignIds)
-                ->withSoldOutState()
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get()
-                ->sortBy(fn ($d) => array_search((int) $d->id, $selectedDesignIds, true))
-                ->values()
+            ->where('is_active', true)
+            ->whereIn('id', $selectedDesignIds)
+            ->withSoldOutState()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->sortBy(fn($d) => array_search((int) $d->id, $selectedDesignIds, true))
+            ->values()
             : collect();
 
         $artistPortfolios = ($spot->show_portfolio && $selectedPortfolioIds !== [])
             ? $userDetail->user->portfolios()
-                ->where('is_active', true)
-                ->whereIn('id', $selectedPortfolioIds)
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get()
-                ->sortBy(fn ($p) => array_search((int) $p->id, $selectedPortfolioIds, true))
-                ->values()
+            ->where('is_active', true)
+            ->whereIn('id', $selectedPortfolioIds)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->sortBy(fn($p) => array_search((int) $p->id, $selectedPortfolioIds, true))
+            ->values()
             : collect();
 
         $faqs = ($spot->show_faq ?? true)
             ? $userDetail->user->artistFaqs()->active()->ordered()->get()
             : collect();
 
+        $plannedSpots = $userDetail->user->guestSpots()
+            ->where('status', 'planned')
+            ->whereDate('from_date', '>=', now()->toDateString())
+            ->orderBy('from_date')
+            ->orderBy('id')
+            ->first();
+
         return view('public.guest-spot', [
+            'plannedSpots' => $plannedSpots,
             'userDetail' => $userDetail,
             'guestSpot' => $spot,
             'artistDesigns' => $artistDesigns,
@@ -1444,7 +1459,7 @@ class InkJinController extends Controller
             ->values()
             ->all();
 
-        if($userDetail->scheduling_type == 'auto'){
+        if ($userDetail->scheduling_type == 'auto') {
 
             $artistTimezone = $userDetail->timezone ?: 'UTC';
             $tattooDurationMinutes = $tattoo->sessionDurationMinutes();
@@ -1538,8 +1553,7 @@ class InkJinController extends Controller
                 'showIrisTab' => false,
                 'vivaRestore' => $vivaRestore,
             ]);
-        }
-        else{
+        } else {
             return view('public.managed-book', [
                 'userDetail' => $userDetail,
                 'tattoo' => $tattoo,
@@ -2087,7 +2101,7 @@ class InkJinController extends Controller
             'studio_id' => $studioId,
             'user_studio_id' => $userStudioLinkId,
             'guest_spot_id' => $guestSpot?->id,
-        ], static fn ($v) => $v !== null && $v !== '');
+        ], static fn($v) => $v !== null && $v !== '');
         if ($consultationRequired) {
             $consultationDetails = array_merge($consultationDetails, [
                 'required' => true,
@@ -2341,7 +2355,7 @@ class InkJinController extends Controller
         }
 
         $payload = $validated['booking_payload'];
-        [$guestSpotCheck, , $guestSpotError] = $this->resolveGuestSpotBookingContext(
+        [$guestSpotCheck,, $guestSpotError] = $this->resolveGuestSpotBookingContext(
             (int) $userDetail->user_id,
             $payload
         );
