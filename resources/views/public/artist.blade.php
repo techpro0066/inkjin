@@ -19,6 +19,7 @@
   <meta name="description" content="{{ $metaDescription }}">
   <link rel="icon" href="{{ asset('design/images/icons/favicon.png') }}">
   @php
+    $sizeUnit = $userDetail->size_unit ?? '';
     $lookState = \App\Support\PageLook::stateFromUserDetail($userDetail);
     $isLookPreview = request()->boolean('preview');
     $lookIsCustom = ($lookState['mode'] ?? '') === 'custom';
@@ -200,7 +201,7 @@
     $hasAnyGuest = $displayGuestSpots && $guestSpots->count() > 0;
     $guestNotifyAny = $displayGuestSpots && ! $nextGuest;
 
-    $portfolioForJs = $artistPortfolios->values()->map(function ($portfolio) {
+    $portfolioForJs = $artistPortfolios->values()->map(function ($portfolio)use ($sizeUnit)  {
         $colorLabel = match ($portfolio->color) {
             'color' => 'Full Color',
             'black-grey' => 'Black & Grey',
@@ -214,6 +215,7 @@
             'desc' => trim((string) ($portfolio->description ?? '')),
             'style' => ucwords(str_replace('-', ' ', $portfolio->primary_style)),
             'placement' => $portfolio->placement_label,
+            'size' => $portfolio->size ? $portfolio->size . ' ' . $sizeUnit : '',
             'colors' => $colorLabel,
             'image' => asset($portfolio->image),
             'tags' => collect($portfolio->tags ?? [])->map(function ($tag) {
@@ -725,6 +727,7 @@
       <div class="facts">
         <div><small>Style</small><b id="portfolioModalStyle"></b></div>
         <div><small>Placement</small><b id="portfolioModalPlacement"></b></div>
+        <div><small>Size</small><b id="portfolioModalSize"></b></div>
         <div><small>Colors</small><b id="portfolioModalColors"></b></div>
           </div>
       <div class="tags" id="portfolioModalTags"></div>
@@ -971,6 +974,7 @@
     }
     $('portfolioModalStyle').textContent = p.style || '';
     $('portfolioModalPlacement').textContent = p.placement || 'Anywhere';
+    $('portfolioModalSize').textContent = p.size || '';
     $('portfolioModalColors').textContent = p.colors || '';
     const tagsEl = $('portfolioModalTags');
     const tags = Array.isArray(p.tags) ? p.tags : [];
