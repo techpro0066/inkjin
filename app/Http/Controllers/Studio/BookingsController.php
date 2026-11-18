@@ -574,7 +574,8 @@ class BookingsController extends Controller
         $paymentLinkModal = StudioPaymentLinkModalData::createGate(
             $profileComplete,
             $studio,
-            $studioArtistsForModal
+            $studioArtistsForModal,
+            (bool) $user?->isDeactivated()
         );
 
         return array_merge($paymentLinkModal, [
@@ -1741,7 +1742,15 @@ class BookingsController extends Controller
 
     private function rejectIfCannotCreateStudioPaymentLinks(Request $request): ?JsonResponse
     {
-        $studio = $this->resolveStudio($request->user());
+        $user = $request->user();
+        if ($user?->isDeactivated()) {
+            return response()->json([
+                'success' => false,
+                'message' => $user->paymentLinkCreationBlockedMessage(),
+            ], 422);
+        }
+
+        $studio = $this->resolveStudio($user);
         if (! $studio) {
             return response()->json([
                 'success' => false,
@@ -1749,7 +1758,6 @@ class BookingsController extends Controller
             ], 422);
         }
 
-        $user = $request->user();
         $profileComplete = (string) ($user->on_boarding ?? '') === 'yes';
         $artists = $this->studioArtists($studio);
 
@@ -1780,6 +1788,16 @@ class BookingsController extends Controller
                 'success' => false,
                 'message' => 'Validation failed',
                 'errors' => ['artist_id' => ['Choose a valid artist.']],
+            ], 422);
+        }
+
+        if ($artist->isDeactivated()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This artist account is deactivated. Existing payment links still work, but you can’t create new ones for them.',
+                'errors' => [
+                    'artist_id' => ['This artist is deactivated and can’t receive new payment links.'],
+                ],
             ], 422);
         }
 

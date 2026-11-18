@@ -365,7 +365,8 @@ class DashboardController extends Controller
         $paymentLinkModal = StudioPaymentLinkModalData::createGate(
             $profileComplete,
             $studio,
-            $studioArtistsForModal
+            $studioArtistsForModal,
+            (bool) $user?->isDeactivated()
         );
 
         $defaultArtistPercent = max(1, min(99, (int) ($studio?->default_revenue_artist_percent ?? 60)));

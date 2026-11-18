@@ -42,9 +42,9 @@
                 <tr>
                   <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
                     @if($deactivated)
-                      An administrator deactivated your Bookpay account. Your public page is hidden from clients and you can’t sign in until it’s activated again.
+                      An administrator deactivated your Bookpay account. Your public page is hidden from clients and you can’t create new payment links. You can still sign in to your dashboard, and existing payment links still work for clients to pay.
                     @else
-                      An administrator activated your Bookpay account. Your public page is visible again and you can sign in.
+                      An administrator activated your Bookpay account. Your public page is visible again and you can create payment links.
                     @endif
                   </td>
                 </tr>
@@ -64,7 +64,11 @@
                               <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $deactivated ? 'Hidden' : 'Visible' }}</td>
                             </tr>
                             <tr>
-                              <td style="padding:9px 0;font-size:14px;color:#6F6874;">Sign in</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Dashboard</td>
+                              <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">Available</td>
+                            </tr>
+                            <tr>
+                              <td style="padding:9px 0;font-size:14px;color:#6F6874;">New payment links</td>
                               <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $deactivated ? 'Blocked' : 'Available' }}</td>
                             </tr>
                           </table>
@@ -74,7 +78,7 @@
                   </td>
                 </tr>
 
-                @if(! $deactivated && !empty($loginUrl))
+                @if(!empty($loginUrl))
                   <tr>
                     <td style="padding:0 0 8px 0;">
                       <a href="{{ $loginUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
@@ -85,7 +89,7 @@
                 @endif
 
                 <tr>
-                  <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:{{ ! $deactivated && !empty($loginUrl) ? '16px' : '0' }} 0 8px 0;">
+                  <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:{{ !empty($loginUrl) ? '16px' : '0' }} 0 8px 0;">
                     If you have questions, contact us at
                     <a href="mailto:{{ $supportEmail }}" style="color:#3E007C;font-weight:600;text-decoration:none;">{{ $supportEmail }}</a>.
                   </td>

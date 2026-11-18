@@ -77,6 +77,79 @@
   }
   .acc-page .acc-layout > *{min-width:0}
   .acc-page .acc-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .acc-deact{margin-top:14px}
+  .acc-deact h3{font-size:14.5px;font-weight:700;margin:0}
+  .acc-deact .acc-deact-copy{font-size:13px;font-weight:400;line-height:1.5;margin-top:8px;color:var(--muted)}
+  .acc-deact .btn-deact{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;
+    background:#fff;color:var(--red);border:1px solid #F0B0B0;border-radius:10px;padding:9px 14px;
+    font-family:inherit;font-weight:600;font-size:13.5px;line-height:normal;cursor:pointer;width:100%
+  }
+  .acc-deact .btn-deact .ms{font-size:18px;color:var(--red)}
+  .acc-deact .btn-deact:hover{background:#FFF5F5}
+  .acc-deact .btn-react{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;
+    background:var(--ink);color:#fff;border:0;border-radius:10px;padding:9px 14px;
+    font-family:inherit;font-weight:600;font-size:13.5px;line-height:normal;cursor:pointer;width:100%
+  }
+  .acc-deact .btn-react .ms{font-size:18px}
+  .acc-deact .btn-react:disabled,.acc-deact .btn-deact:disabled{opacity:.55;cursor:not-allowed}
+  .acc-deact .acc-deact-foot{
+    margin-top:14px;padding-top:12px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--muted);line-height:1.45
+  }
+  .acc-deact .acc-deact-foot a,.acc-deact .acc-deact-foot button.linkish{
+    color:var(--ink);font-weight:700;text-decoration:underline;background:none;border:0;
+    padding:0;font:inherit;cursor:pointer
+  }
+  .acc-deact .acc-deact-email{margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.45}
+  .acc-deact .acc-deact-email a{color:var(--ink);font-weight:700;text-decoration:underline}
+  .acc-deact-modal{
+    position:fixed;inset:0;background:rgba(20,10,30,.45);display:none;align-items:flex-start;justify-content:center;
+    z-index:600;padding:24px 16px;overflow-y:auto
+  }
+  .acc-deact-modal.on{display:flex}
+  .acc-deact-box{
+    background:#fff;border-radius:20px;width:560px;max-width:100%;margin:auto;
+    box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden
+  }
+  .acc-deact-hd{padding:22px 22px 8px;position:relative}
+  .acc-deact-hd .acc-deact-x{
+    position:absolute;top:16px;right:16px;width:34px;height:34px;border:0;border-radius:10px;
+    background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center
+  }
+  .acc-deact-hd .acc-deact-x:hover{background:#F5F2F6;color:var(--ink)}
+  .acc-deact-ico{
+    width:44px;height:44px;border-radius:50%;background:var(--redl);color:var(--red);
+    display:flex;align-items:center;justify-content:center;margin-bottom:14px
+  }
+  .acc-deact-ico .ms{font-size:24px}
+  .acc-deact-hd h2{font-size:20px;font-weight:800;margin:0 0 6px;letter-spacing:-.3px}
+  .acc-deact-hd p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.5;padding-right:28px}
+  .acc-deact-body{padding:8px 22px 6px}
+  .acc-deact-sec{margin:14px 0 6px}
+  .acc-deact-sec .lbl{margin-bottom:10px}
+  .acc-deact-item{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+  .acc-deact-item .ms{font-size:20px;color:var(--ink);flex-shrink:0;margin-top:1px}
+  .acc-deact-item .ms.ok{color:var(--green)}
+  .acc-deact-item div{font-size:13.5px;line-height:1.5;color:var(--ink)}
+  .acc-deact-item b{font-weight:700}
+  .acc-deact-callout{
+    border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;
+    font-size:13px;line-height:1.5;margin-top:10px
+  }
+  .acc-deact-callout .ms{font-size:20px;flex-shrink:0;margin-top:1px}
+  .acc-deact-callout.warn{background:#FFF3DE;color:#7A4A00}
+  .acc-deact-callout.warn .ms{color:#B86E00}
+  .acc-deact-callout.tip{background:#F5F0F8;color:#4A3A55}
+  .acc-deact-callout.tip .ms{color:#7A1FC4}
+  .acc-deact-callout a{color:inherit;font-weight:700;text-decoration:underline}
+  .acc-deact-ft{
+    display:flex;gap:10px;padding:16px 22px;background:#FCF6FE;border-top:1px solid #F0E4F5;flex-wrap:wrap
+  }
+  .acc-deact-ft .btn{flex:1;justify-content:center;min-width:140px}
+  .acc-deact-ft .btn.danger{background:var(--red);color:#fff}
+  .acc-deact-ft .btn.danger .ms{color:#fff}
   @media (max-width:900px){
     .acc-toast{left:16px;right:16px;top:74px}
     .acc-page .acc-layout{grid-template-columns:1fr;gap:14px}
@@ -97,6 +170,18 @@
       $dateFmt !== '' ? $dateFmt : null,
   ])));
   $username = old('user_name', $ud->user_name ?? '');
+  $isDeactivated = $user->isDeactivated();
+  $pageHostPath = $username !== ''
+      ? preg_replace('#^https?://#', '', route('public.artist', ['username' => $username]))
+      : 'inkjin.com/@yourname';
+  $displayName = $ud?->publicDisplayName() ?: trim(($user->first_name ?? '').' '.($user->last_name ?? '')) ?: 'Your page';
+  $upcomingCount = (int) ($upcomingBookingsCount ?? 0);
+  $phpDateFmt = match ($dateFmt) {
+      'MM/DD/YYYY' => 'm/d/Y',
+      'YYYY-MM-DD' => 'Y-m-d',
+      default => 'd/m/Y',
+  };
+  $deactivatedOn = $user->deactivated_at?->format($phpDateFmt);
 @endphp
 
   <div class="acc-page">
@@ -225,6 +310,37 @@
               <span class="ms faint">chevron_right</span>
             </a>
           </div>
+
+          <div class="card pad acc-deact" id="accDeactCard">
+            @if ($isDeactivated)
+              <h3>Your account is deactivated</h3>
+              <p class="acc-deact-copy">
+                @if ($deactivatedOn)
+                  Deactivated on {{ $deactivatedOn }}.
+                @endif
+                Your page is hidden and clients can’t make new bookings. Nothing was deleted.
+              </p>
+              <button type="button" class="btn-react" id="accReactivateBtn">
+                <span class="ms">play_circle</span>Reactivate account
+              </button>
+            @else
+              <h3>Deactivate account</h3>
+              <p class="acc-deact-copy">
+                Turn your account off. Your page is hidden and clients can’t make new bookings. Nothing is deleted, and you can turn it back on any time.
+              </p>
+              <button type="button" class="btn-deact" id="accDeactivateOpenBtn">
+                <span class="ms">pause_circle</span>Deactivate account
+              </button>
+            @endif
+            <div class="acc-deact-foot">
+              To delete your account,
+              <button type="button" class="linkish" id="accDeleteMessageUs" data-intercom-get-help>message us</button>.
+              We do it for you.
+              <div class="acc-deact-email">
+                Or email <a href="mailto:support@inkjin.com">support@inkjin.com</a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -255,6 +371,84 @@
       </div>
     </div>
   </div>
+
+  @unless ($isDeactivated)
+  <div class="acc-deact-modal" id="accDeactModal" role="dialog" aria-modal="true" aria-labelledby="accDeactTitle" hidden>
+    <div class="acc-deact-box">
+      <div class="acc-deact-hd">
+        <button type="button" class="acc-deact-x" id="accDeactClose" aria-label="Close">
+          <span class="ms">close</span>
+        </button>
+        <div class="acc-deact-ico"><span class="ms">pause_circle</span></div>
+        <h2 id="accDeactTitle">Deactivate your account?</h2>
+        <p>This turns your account off. Nothing is deleted, and you can turn it back on any time.</p>
+      </div>
+      <div class="acc-deact-body">
+        <div class="acc-deact-sec">
+          <div class="lbl">What turns off</div>
+          <div class="acc-deact-item">
+            <span class="ms">visibility_off</span>
+            <div>
+              Your page <b>{{ $pageHostPath }}</b> and your guest spot pages are hidden. Clients see “{{ $displayName }} isn’t taking bookings right now.”
+            </div>
+          </div>
+          <div class="acc-deact-item">
+            <span class="ms">event_busy</span>
+            <div>No new bookings or requests. You can’t create new payment links; unpaid links you already sent still work.</div>
+          </div>
+          @if ($studioName !== '')
+          <div class="acc-deact-item">
+            <span class="ms">storefront</span>
+            <div>You come off {{ $studioName }}’s page. They’re told. Your split with them stays.</div>
+          </div>
+          @endif
+          <div class="acc-deact-item">
+            <span class="ms">credit_card_off</span>
+            <div>Plan billing pauses. You aren’t charged while your account is deactivated.</div>
+          </div>
+        </div>
+
+        <div class="acc-deact-sec">
+          <div class="lbl">What stays</div>
+          <div class="acc-deact-item">
+            <span class="ms ok">check_circle</span>
+            <div>You can still log in, see your bookings and message your clients.</div>
+          </div>
+          <div class="acc-deact-item">
+            <span class="ms ok">check_circle</span>
+            <div>Payouts for payments already made arrive as normal.</div>
+          </div>
+        </div>
+
+        @if ($upcomingCount > 0)
+        <div class="acc-deact-callout warn">
+          <span class="ms">calendar_month</span>
+          <div>
+            <b>You have {{ $upcomingCount }} upcoming {{ $upcomingCount === 1 ? 'booking' : 'bookings' }}.</b>
+            They are not cancelled, and you are still responsible for them: do the session or refund the client.
+            Their booking links, consent forms and balance payments keep working.
+            <a href="{{ route('artist.bookings.index') }}">View bookings</a>
+          </div>
+        </div>
+        @endif
+
+        <div class="acc-deact-callout tip">
+          <span class="ms">lightbulb</span>
+          <div>
+            <b>Just need a break?</b> Close your books instead. Your page stays up and clients can join your waitlist.
+            <a href="{{ route('availability.index') }}">Go to Schedule</a>
+          </div>
+        </div>
+      </div>
+      <div class="acc-deact-ft">
+        <button type="button" class="btn ghost" id="accDeactCancel">Cancel</button>
+        <button type="button" class="btn danger" id="accDeactConfirm">
+          <span class="ms">pause_circle</span>Deactivate account
+        </button>
+      </div>
+    </div>
+  </div>
+  @endunless
 @endsection
 
 @section('scripts')
@@ -469,6 +663,119 @@
   @if (session('status') === 'profile-updated')
     showToast('Profile updated');
   @endif
+
+  var deactModal = document.getElementById('accDeactModal');
+  var deactOpen = document.getElementById('accDeactivateOpenBtn');
+  var deactClose = document.getElementById('accDeactClose');
+  var deactCancel = document.getElementById('accDeactCancel');
+  var deactConfirm = document.getElementById('accDeactConfirm');
+  var reactivateBtn = document.getElementById('accReactivateBtn');
+  var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+  function openDeactModal() {
+    if (!deactModal) return;
+    deactModal.hidden = false;
+    deactModal.classList.add('on');
+  }
+
+  function closeDeactModal() {
+    if (!deactModal) return;
+    deactModal.classList.remove('on');
+    deactModal.hidden = true;
+  }
+
+  function postAccountStatus(url, btn, busyLabel) {
+    if (!btn || btn.disabled) return;
+    var original = btn.innerHTML;
+    btn.disabled = true;
+    if (busyLabel) btn.innerHTML = busyLabel;
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': csrf,
+        'Content-Type': 'application/json'
+      },
+      body: '{}'
+    })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok || !result.data || !result.data.success) {
+          throw new Error((result.data && result.data.message) || 'Something went wrong.');
+        }
+        window.location.reload();
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        btn.innerHTML = original;
+        showToast(err.message || 'Something went wrong.');
+      });
+  }
+
+  deactOpen?.addEventListener('click', openDeactModal);
+  deactClose?.addEventListener('click', closeDeactModal);
+  deactCancel?.addEventListener('click', closeDeactModal);
+  deactModal?.addEventListener('click', function (e) {
+    if (e.target === deactModal) closeDeactModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && deactModal && deactModal.classList.contains('on')) {
+      closeDeactModal();
+    }
+  });
+  deactConfirm?.addEventListener('click', function () {
+    postAccountStatus(
+      @json(route('profile.deactivate')),
+      deactConfirm,
+      '<span class="ms">hourglass_empty</span>Deactivating…'
+    );
+  });
+  reactivateBtn?.addEventListener('click', function () {
+    postAccountStatus(
+      @json(route('profile.reactivate')),
+      reactivateBtn,
+      '<span class="ms">hourglass_empty</span>Reactivating…'
+    );
+  });
+
+  document.getElementById('accDeleteMessageUs')?.addEventListener('click', function (e) {
+    // Same empty messenger as Get Help when Intercom is available.
+    if (typeof window.Intercom === 'function' && window.intercomSettings) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    var existing = document.getElementById('bpchat');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    var d = document.createElement('div');
+    d.id = 'bpchat';
+    d.setAttribute('role', 'dialog');
+    d.setAttribute('aria-label', 'Chat with Bookpay support');
+    d.style.cssText = 'position:fixed;right:20px;bottom:20px;width:340px;max-width:calc(100% - 32px);background:#fff;border-radius:16px;box-shadow:0 18px 50px rgba(20,0,40,.28);z-index:2500;overflow:hidden;font-family:inherit';
+    d.innerHTML =
+      '<div style="background:#3E007C;color:#fff;padding:16px 18px;display:flex;align-items:flex-start;gap:10px">' +
+        '<div style="flex:1"><b style="font-size:16px">Hi there 👋</b>' +
+        '<div style="font-size:13px;opacity:.85;margin-top:3px">Ask us anything. We usually reply within a few hours.</div></div>' +
+        '<button type="button" aria-label="Close" style="background:none;border:0;color:#fff;font-size:20px;cursor:pointer;line-height:1" onclick="document.getElementById(&quot;bpchat&quot;).remove()">×</button>' +
+      '</div>' +
+      '<div style="padding:16px 18px;font-size:13px;color:#3F3A45">' +
+        '<div style="background:#F4F0F6;border-radius:12px;padding:10px 12px;margin-bottom:12px">Intercom chat widget (mockup). In the product this is the real Intercom Messenger.</div>' +
+        '<div style="display:flex;gap:8px">' +
+          '<input placeholder="Write a message..." style="flex:1;font:inherit;font-size:13px;padding:9px 12px;border:1px solid #E0D6E6;border-radius:10px">' +
+          '<button type="button" style="background:#3E007C;color:#fff;border:0;border-radius:10px;padding:0 14px;font-weight:700;cursor:pointer">Send</button>' +
+        '</div>' +
+        '<div style="font-size:12px;color:#8F8A95;margin-top:10px">Or email <a href="mailto:support@inkjin.com" style="color:inherit;text-decoration:underline">support@inkjin.com</a></div>' +
+      '</div>';
+    document.body.appendChild(d);
+  });
     })();
   </script>
 @endsection

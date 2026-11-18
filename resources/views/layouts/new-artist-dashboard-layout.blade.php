@@ -190,6 +190,21 @@
     .help-q{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-left:8px;border-radius:50%;color:#9A929E;vertical-align:middle;text-decoration:none;position:relative;top:-2px}
     .help-q .ms{font-size:22px}.help-q:hover{color:#3E007C;background:#F3E8FF}
     .help-q:focus-visible{outline:2px solid #3E007C;outline-offset:2px}
+    .acct-deact-banner{
+      display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+      background:#FFF3DE;border:1px solid #E8C48A;border-radius:14px;
+      padding:14px 16px;margin:0 0 22px
+    }
+    .acct-deact-banner .ico{
+      width:38px;height:38px;border-radius:50%;background:#FFE7BF;color:#B86E00;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0
+    }
+    .acct-deact-banner .ico .ms{font-size:22px}
+    .acct-deact-banner .txt{flex:1;min-width:200px}
+    .acct-deact-banner .txt b{display:block;font-size:14.5px;font-weight:700;color:#7A4A00;margin-bottom:2px}
+    .acct-deact-banner .txt span{display:block;font-size:13px;line-height:1.45;color:#8A5A18}
+    .acct-deact-banner .btn{flex-shrink:0}
+    .acct-deact-banner .btn:disabled{opacity:.55;cursor:not-allowed}
 
     @media (max-width:900px){
       body{flex-direction:column;height:auto;min-height:100vh;min-height:100dvh;overflow:auto}
@@ -332,6 +347,18 @@
 
   <main>
     <div class="wrap">
+      @if ($authUser && $authUser->role === 'artist' && $authUser->isDeactivated())
+        <div class="acct-deact-banner" id="acctDeactBanner" role="status">
+          <div class="ico" aria-hidden="true"><span class="ms">pause_circle</span></div>
+          <div class="txt">
+            <b>Your account is deactivated</b>
+            <span>Your page is hidden and clients can’t make new bookings. The bookings you already have are not changed.</span>
+          </div>
+          <button type="button" class="btn" id="acctDeactBannerReactivate">
+            <span class="ms">play_circle</span>Reactivate account
+          </button>
+        </div>
+      @endif
       @yield('content')
     </div>
   </main>
@@ -342,5 +369,40 @@
   {{-- Badges load after paint (idle) — never computed in this Blade layout. --}}
   <script src="{{ asset('js/artist-nav-badges.js') }}?v=2" defer data-api-url="{{ route('artist.nav-badges') }}"></script>
   <script src="{{ asset('js/chat-unread-badge.js') }}?v=3" defer data-api-base="{{ url('/api/chat') }}"></script>
+  @if ($authUser && $authUser->role === 'artist' && $authUser->isDeactivated())
+  <script>
+    (function () {
+      var btn = document.getElementById('acctDeactBannerReactivate');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        var original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="ms">hourglass_empty</span>Reactivating…';
+        fetch(@json(route('profile.reactivate')), {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            'Content-Type': 'application/json'
+          },
+          body: '{}'
+        })
+          .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+          .then(function (result) {
+            if (!result.ok || !result.data || !result.data.success) {
+              throw new Error((result.data && result.data.message) || 'Could not reactivate.');
+            }
+            window.location.reload();
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.innerHTML = original;
+          });
+      });
+    })();
+  </script>
+  @endif
 </body>
 </html>

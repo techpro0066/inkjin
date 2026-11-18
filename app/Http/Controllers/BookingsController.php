@@ -172,15 +172,18 @@ class BookingsController extends Controller
 
         $bookingsTotalCount = (int) array_sum($filterCounts);
 
-        $userDetail = Auth::user()?->userDetail;
+        $user = Auth::user();
+        $userDetail = $user?->userDetail;
         $payoutService = app(ArtistPayoutService::class);
-        $canCreatePaymentLinks = $userDetail
+        $canCreatePaymentLinks = $user && ! $user->isDeactivated() && $userDetail
             ? $payoutService->canAcceptClientPayments($userDetail)
             : false;
         $isAutoScheduling = ($userDetail?->scheduling_type ?? '') === 'auto';
         $paymentLinksBlockedMessage = $canCreatePaymentLinks || ! $userDetail
             ? null
-            : $payoutService->clientPaymentsBlockedMessage($userDetail);
+            : ($user?->isDeactivated()
+                ? $user->paymentLinkCreationBlockedMessage()
+                : $payoutService->clientPaymentsBlockedMessage($userDetail));
         $currency = '€';
 
         return view('artist.bookings.index', compact(
@@ -292,13 +295,15 @@ class BookingsController extends Controller
                 ->count();
         $paymentLinksCount = $filterCounts['all'];
 
-        $canCreatePaymentLinks = $userDetail
+        $canCreatePaymentLinks = $user && ! $user->isDeactivated() && $userDetail
             ? $payoutService->canAcceptClientPayments($userDetail)
             : false;
         $isAutoScheduling = ($userDetail?->scheduling_type ?? '') === 'auto';
         $paymentLinksBlockedMessage = $canCreatePaymentLinks || ! $userDetail
             ? null
-            : $payoutService->clientPaymentsBlockedMessage($userDetail);
+            : ($user?->isDeactivated()
+                ? $user->paymentLinkCreationBlockedMessage()
+                : $payoutService->clientPaymentsBlockedMessage($userDetail));
         $currency = '€';
         $paymentLinkModalReloadOnDone = true;
 

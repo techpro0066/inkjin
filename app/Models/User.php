@@ -72,6 +72,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Deactivated accounts keep dashboard access but cannot create new payment links.
+     */
+    public function paymentLinkCreationBlockedMessage(): string
+    {
+        return 'Your account is deactivated. You can’t create new payment links, but existing ones still work for clients to pay.';
+    }
+
+    /**
      * Artist/studio accounts that clients can see on public pages.
      */
     public function isPubliclyVisible(): bool

@@ -33,9 +33,11 @@ class ChatController extends Controller
             'canOfferSlots' => $canOfferSlots,
             'canSendQuotes' => $canOfferSlots,
             'quotesBlockedMessage' => $quotesBlockedMessage,
-            'canCreatePaymentLinks' => $canOfferSlots,
+            'canCreatePaymentLinks' => $user && ! $user->isDeactivated() && $canOfferSlots,
             'isAutoScheduling' => ($userDetail?->scheduling_type ?? '') === 'auto',
-            'paymentLinksBlockedMessage' => $quotesBlockedMessage,
+            'paymentLinksBlockedMessage' => $user?->isDeactivated()
+                ? $user->paymentLinkCreationBlockedMessage()
+                : $quotesBlockedMessage,
             'currency' => '€',
         ]);
     }

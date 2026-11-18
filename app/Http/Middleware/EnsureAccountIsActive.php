@@ -10,7 +10,8 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureAccountIsActive
 {
     /**
-     * Auto-logout deleted or deactivated accounts that still have a live session.
+     * Auto-logout deleted accounts that still have a live session.
+     * Deactivated artists/studios may still use the dashboard.
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
@@ -22,9 +23,7 @@ class EnsureAccountIsActive
         }
 
         $deleted = method_exists($user, 'isDeleted') && $user->isDeleted();
-        $deactivated = method_exists($user, 'isDeactivated') && $user->isDeactivated();
-
-        if (! $deleted && ! $deactivated) {
+        if (! $deleted) {
             return $next($request);
         }
 
@@ -32,9 +31,7 @@ class EnsureAccountIsActive
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        $message = $deleted
-            ? 'This account has been deleted.'
-            : 'This account has been deactivated. Contact support if you need access.';
+        $message = 'This account has been deleted.';
 
         if ($request->expectsJson()) {
             return response()->json([

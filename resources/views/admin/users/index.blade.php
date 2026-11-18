@@ -188,7 +188,7 @@
                       </button>
                     </div>
                     @if(in_array($user['role'], ['artist', 'studio'], true))
-                      <button
+                      {{-- <button
                         type="button"
                         class="js-admin-deactivate-user inline-flex items-center justify-center px-3.5 py-2 rounded-xl font-semibold text-xs transition-colors {{ !empty($user['is_deactivated']) ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700' }}"
                         data-user-id="{{ $user['id'] }}"
@@ -198,7 +198,7 @@
                         data-is-deactivated="{{ !empty($user['is_deactivated']) ? '1' : '0' }}"
                       >
                         {{ !empty($user['is_deactivated']) ? 'Activate' : 'Deactivate' }}
-                      </button>
+                      </button> --}}
                     @endif
                   </div>
                 </td>
@@ -263,7 +263,7 @@
                 </button>
               </div>
               @if(in_array($user['role'], ['artist', 'studio'], true))
-                <button
+                {{-- <button
                   type="button"
                   class="js-admin-deactivate-user inline-flex items-center justify-center px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors {{ !empty($user['is_deactivated']) ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700' }}"
                   data-user-id="{{ $user['id'] }}"
@@ -273,7 +273,7 @@
                   data-is-deactivated="{{ !empty($user['is_deactivated']) ? '1' : '0' }}"
                 >
                   {{ !empty($user['is_deactivated']) ? 'Activate' : 'Deactivate' }}
-                </button>
+                </button> --}}
               @endif
             </div>
             <div class="mobile-detail-panel {{ $expanded ? '' : 'hidden' }}" data-mobile-detail-for="{{ $user['id'] }}">

@@ -74,23 +74,6 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        if ($user->isDeactivated()) {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'This account has been deactivated.',
-                    'errors' => ['email' => ['This account has been deactivated. Contact support if you need access.']],
-                ], 422);
-            }
-
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'email' => 'This account has been deactivated. Contact support if you need access.',
-            ]);
-        }
-
         if (! $user->hasVerifiedEmail()) {
             return $this->loginRedirect($request, route('verification.notice'));
         }

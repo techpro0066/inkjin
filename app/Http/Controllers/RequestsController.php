@@ -144,7 +144,8 @@ class RequestsController extends Controller
         $needsReplyCount = $feed->where('needsReply', true)->count();
         $repliedCount = $feed->where('needsReply', false)->count();
 
-        $userDetail = Auth::user()?->userDetail;
+        $user = Auth::user();
+        $userDetail = $user?->userDetail;
         $payoutService = app(ArtistPayoutService::class);
         $canOfferSlots = $userDetail
             ? $payoutService->canAcceptClientPayments($userDetail)
@@ -153,9 +154,11 @@ class RequestsController extends Controller
         $quotesBlockedMessage = $canOfferSlots || ! $userDetail
             ? null
             : $payoutService->clientPaymentsBlockedMessage($userDetail);
-        $canCreatePaymentLinks = $canOfferSlots;
+        $canCreatePaymentLinks = $user && ! $user->isDeactivated() && $canOfferSlots;
         $isAutoScheduling = ($userDetail?->scheduling_type ?? '') === 'auto';
-        $paymentLinksBlockedMessage = $quotesBlockedMessage;
+        $paymentLinksBlockedMessage = $user?->isDeactivated()
+            ? $user->paymentLinkCreationBlockedMessage()
+            : $quotesBlockedMessage;
         $currency = '€';
 
         $today = Carbon::today()->toDateString();

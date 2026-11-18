@@ -59,14 +59,16 @@ class ArtistDashboardController extends Controller
         $dashboard = $this->dashboardService->buildForArtist((int) Auth::id());
         $userDetail = $user?->userDetail;
         $showCustomizePageNotice = $userDetail && ! $userDetail->customize_page_notice_dismissed;
-        $canCreatePaymentLinks = $userDetail
+        $canCreatePaymentLinks = $user && ! $user->isDeactivated() && $userDetail
             ? $this->payoutService->canAcceptClientPayments($userDetail)
             : false;
         $schedulingType = $userDetail?->scheduling_type ?? '';
         $isAutoScheduling = $schedulingType === 'auto';
         $paymentLinksBlockedMessage = $canCreatePaymentLinks || ! $userDetail
             ? null
-            : $this->payoutService->clientPaymentsBlockedMessage($userDetail);
+            : ($user?->isDeactivated()
+                ? $user->paymentLinkCreationBlockedMessage()
+                : $this->payoutService->clientPaymentsBlockedMessage($userDetail));
 
         $artistId = (int) Auth::id();
         $hasPortfolio = Portfolio::query()->where('user_id', $artistId)->exists();
@@ -125,7 +127,15 @@ class ArtistDashboardController extends Controller
 
     private function rejectIfCannotCreatePaymentLinks(): ?JsonResponse
     {
-        $userDetail = Auth::user()?->userDetail;
+        $user = Auth::user();
+        if ($user?->isDeactivated()) {
+            return response()->json([
+                'success' => false,
+                'message' => $user->paymentLinkCreationBlockedMessage(),
+            ], 422);
+        }
+
+        $userDetail = $user?->userDetail;
         if (! $userDetail || $this->payoutService->canAcceptClientPayments($userDetail)) {
             return null;
         }

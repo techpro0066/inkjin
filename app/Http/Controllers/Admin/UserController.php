@@ -380,7 +380,7 @@ class UserController extends Controller
                     firstName: $firstName,
                     supportEmail: (string) (config('mail.from.address') ?: 'support@inkjin.com'),
                     deactivated: $shouldDeactivate,
-                    loginUrl: $shouldDeactivate ? '' : route('login'),
+                    loginUrl: route('login'),
                 ));
             } catch (Throwable $e) {
                 Log::warning('Admin account status email failed', [
@@ -397,8 +397,8 @@ class UserController extends Controller
             'success' => true,
             'deactivated' => $user->isDeactivated(),
             'message' => $shouldDeactivate
-                ? $label.' deactivated. Public page is hidden, login is blocked, and a notification email was sent.'
-                : $label.' activated. Public page and login are available again, and a notification email was sent.',
+                ? $label.' deactivated. Public page is hidden, dashboard login still works, new payment links are blocked, and a notification email was sent.'
+                : $label.' activated. Public page and new payment links are available again, and a notification email was sent.',
         ]);
     }
 

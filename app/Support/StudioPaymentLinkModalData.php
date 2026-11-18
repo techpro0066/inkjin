@@ -69,17 +69,19 @@ class StudioPaymentLinkModalData
      *     paymentLinksBlockedActionLabel: ?string
      * }
      */
-    public static function createGate(bool $profileComplete, ?Studio $studio, Collection $artists): array
+    public static function createGate(bool $profileComplete, ?Studio $studio, Collection $artists, bool $accountDeactivated = false): array
     {
         $hasArtists = $artists->isNotEmpty();
-        $canCreate = $profileComplete && $hasArtists && $studio !== null;
+        $canCreate = ! $accountDeactivated && $profileComplete && $hasArtists && $studio !== null;
 
         $message = null;
         $actionUrl = null;
         $actionLabel = null;
 
         if (! $canCreate) {
-            if (! $profileComplete) {
+            if ($accountDeactivated) {
+                $message = 'Your account is deactivated. You can’t create new payment links, but existing ones still work for clients to pay.';
+            } elseif (! $profileComplete) {
                 $message = 'Complete your studio profile before creating bookings.';
                 $actionUrl = route('studio.onboarding.profile');
                 $actionLabel = 'Complete profile';

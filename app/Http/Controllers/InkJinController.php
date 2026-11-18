@@ -743,44 +743,53 @@ class InkJinController extends Controller
         $key = strtolower(ltrim(trim($userName), '@'));
 
         $userDetail = UserDetail::whereRaw('LOWER(user_name) = ?', [$key])->first();
+        $user = $userDetail?->user;
 
-        if ($userDetail && $userDetail->user && $userDetail->user->isPubliclyVisible() && $userDetail->user->role === 'artist') {
-            $displayDesigns = (bool) ($userDetail->display_designs ?? true);
-            $artistDesigns = $displayDesigns
-                ? $userDetail->user->artistDesigns()
-                    ->where('is_active', true)
-                    ->withSoldOutState()
-                    ->orderBy('sort_order')
-                    ->orderBy('id')
-                    ->get()
-                : collect();
+        if ($userDetail && $user && $user->role === 'artist' && $user->on_boarding === 'yes' && ! $user->isDeleted()) {
+            if ($user->isDeactivated()) {
+                return response()->view('public.artist-deactivated', [
+                    'userDetail' => $userDetail,
+                ]);
+            }
 
-            $displayPortfolio = (bool) ($userDetail->display_portfolio ?? true);
-            $artistPortfolios = $displayPortfolio
-                ? $userDetail->user->portfolios()
-                    ->where('is_active', true)
-                    ->orderBy('sort_order')
-                    ->orderBy('id')
-                    ->get()
-                : collect();
+            if ($user->isPubliclyVisible()) {
+                $displayDesigns = (bool) ($userDetail->display_designs ?? true);
+                $artistDesigns = $displayDesigns
+                    ? $user->artistDesigns()
+                        ->where('is_active', true)
+                        ->withSoldOutState()
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
+                        ->get()
+                    : collect();
 
-            $guestSpots = $userDetail->display_guest_spots
-                ? $userDetail->user->guestSpots()->orderBy('sort_order')->orderBy('id')->get()
-                : collect();
+                $displayPortfolio = (bool) ($userDetail->display_portfolio ?? true);
+                $artistPortfolios = $displayPortfolio
+                    ? $user->portfolios()
+                        ->where('is_active', true)
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
+                        ->get()
+                    : collect();
 
-            $guestSpots->each(fn (\App\Models\GuestSpot $spot) => $spot->ensureCompletedStatus());
+                $guestSpots = $userDetail->display_guest_spots
+                    ? $user->guestSpots()->orderBy('sort_order')->orderBy('id')->get()
+                    : collect();
 
-            $faqs = $userDetail->display_faq
-                ? $userDetail->user->artistFaqs()->active()->ordered()->get()
-                : collect();
+                $guestSpots->each(fn (\App\Models\GuestSpot $spot) => $spot->ensureCompletedStatus());
 
-            return view('public.artist', [
-                'userDetail' => $userDetail,
-                'artistDesigns' => $artistDesigns,
-                'artistPortfolios' => $artistPortfolios,
-                'guestSpots' => $guestSpots,
-                'faqs' => $faqs,
-            ]);
+                $faqs = $userDetail->display_faq
+                    ? $user->artistFaqs()->active()->ordered()->get()
+                    : collect();
+
+                return view('public.artist', [
+                    'userDetail' => $userDetail,
+                    'artistDesigns' => $artistDesigns,
+                    'artistPortfolios' => $artistPortfolios,
+                    'guestSpots' => $guestSpots,
+                    'faqs' => $faqs,
+                ]);
+            }
         }
 
         return $this->publicStudioProfile($key);
@@ -1159,8 +1168,22 @@ class InkJinController extends Controller
     public function publicGuestSpot(string $userName, string $guestSpotSlug)
     {
         $userDetail = UserDetail::where('user_name', $userName)->first();
+        $user = $userDetail?->user;
 
-        if (! $userDetail || ! $userDetail->user || ! $userDetail->user->isPubliclyVisible() || $userDetail->user->role !== 'artist') {
+        if (
+            $userDetail
+            && $user
+            && $user->role === 'artist'
+            && $user->on_boarding === 'yes'
+            && ! $user->isDeleted()
+            && $user->isDeactivated()
+        ) {
+            return response()->view('public.artist-deactivated', [
+                'userDetail' => $userDetail,
+            ]);
+        }
+
+        if (! $userDetail || ! $user || ! $user->isPubliclyVisible() || $user->role !== 'artist') {
             abort(404, 'Artist not found');
         }
 

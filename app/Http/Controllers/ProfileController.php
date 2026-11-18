@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Booking;
 use App\Models\UserDetail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,10 +20,21 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+        $upcomingBookingsCount = 0;
+
+        if ($user && $user->role === 'artist') {
+            $upcomingBookingsCount = Booking::query()
+                ->where('artist_user_id', $user->id)
+                ->upcoming()
+                ->count();
+        }
+
         return view('profile.edit', [
-            'user' => $request->user(),
-            'userDetail' => $request->user()->userDetail,
+            'user' => $user,
+            'userDetail' => $user->userDetail,
             'activeNav' => 'account',
+            'upcomingBookingsCount' => $upcomingBookingsCount,
         ]);
     }
 
@@ -102,6 +114,58 @@ class ProfileController extends Controller
     }
 
     /**
+     * Artist self-service: deactivate public presence (dashboard stays available).
+     */
+    public function deactivate(Request $request): RedirectResponse|JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || $user->role !== 'artist') {
+            return $this->accountStatusResponse($request, false, 'Only artists can deactivate their account.', 403);
+        }
+
+        if ($user->isDeactivated()) {
+            return $this->accountStatusResponse($request, true, 'Your account is already deactivated.', 200, true);
+        }
+
+        $user->forceFill(['deactivated_at' => now()])->save();
+
+        return $this->accountStatusResponse(
+            $request,
+            true,
+            'Account deactivated. Your page is hidden and clients can’t make new bookings.',
+            200,
+            true
+        );
+    }
+
+    /**
+     * Artist self-service: reactivate public presence.
+     */
+    public function reactivate(Request $request): RedirectResponse|JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || $user->role !== 'artist') {
+            return $this->accountStatusResponse($request, false, 'Only artists can reactivate their account.', 403);
+        }
+
+        if (! $user->isDeactivated()) {
+            return $this->accountStatusResponse($request, true, 'Your account is already active.', 200, false);
+        }
+
+        $user->forceFill(['deactivated_at' => null])->save();
+
+        return $this->accountStatusResponse(
+            $request,
+            true,
+            'Account reactivated. Your page and new bookings are available again.',
+            200,
+            false
+        );
+    }
+
+    /**
      * Delete the user's account.
      */
     public function destroy(Request $request): RedirectResponse|JsonResponse
@@ -128,5 +192,31 @@ class ProfileController extends Controller
         }
 
         return Redirect::to('/');
+    }
+
+    private function accountStatusResponse(
+        Request $request,
+        bool $success,
+        string $message,
+        int $status = 200,
+        ?bool $deactivated = null
+    ): RedirectResponse|JsonResponse {
+        if ($request->expectsJson()) {
+            $payload = [
+                'success' => $success,
+                'message' => $message,
+            ];
+            if ($deactivated !== null) {
+                $payload['deactivated'] = $deactivated;
+            }
+
+            return response()->json($payload, $status);
+        }
+
+        $redirect = Redirect::back();
+
+        return $success
+            ? $redirect->with('status', $message)
+            : $redirect->withErrors(['account' => $message]);
     }
 }
