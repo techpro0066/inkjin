@@ -250,7 +250,7 @@
       ],
       [
           'done' => (bool) ($checklist['banner'] ?? false),
-          'label' => 'Upload a banner',
+          'label' => 'Customize appeearance',
           'url' => route('personal-page.appearance'),
       ],
   ];
@@ -607,7 +607,7 @@
     { t: 'Add a flash design', h: @json(route('artist-designs.index')), done: @json((bool) ($wlCheck['flash'] ?? false)) },
     { t: 'Add a tagline and bio', h: @json(route('personal-page.index')), done: @json((bool) ($wlCheck['tagline_bio'] ?? false)) },
     { t: 'Add your FAQs', h: @json(route('artist.faq.index')), done: @json((bool) ($wlCheck['faq'] ?? false)) },
-    { t: 'Upload a banner', h: @json(route('personal-page.appearance')), done: @json((bool) ($wlCheck['banner'] ?? false)) },
+    { t: 'Customize appeearance', h: @json(route('personal-page.appearance')), done: @json((bool) ($wlCheck['banner'] ?? false)) },
   ];
 
   var all = NEED.concat(MORE);
