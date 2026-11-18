@@ -332,7 +332,7 @@
       <p id="workingHoursError" class="text-error hidden" style="padding:0 16px 16px" role="alert"></p>
           </div>
 
-    <div class="card">
+    <div class="card" id="blocked-dates">
       <div class="ch">
                 <div>
           <h3>{{ $multiStudio ? 'Blocked dates & locations' : 'Blocked dates' }}</h3>

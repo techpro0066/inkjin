@@ -57,7 +57,7 @@
     aside{
       width:232px;background:#1A1A1A;color:#DEDEDE;padding:22px 14px 18px;
       display:flex;flex-direction:column;flex-shrink:0;
-      height:100%;min-height:0;overflow:hidden;
+      height:100%;min-height:0;overflow:visible;position:relative;z-index:40;
     }
     .logo{
       font-family:'Space Grotesk',system-ui,sans-serif;font-size:25px;font-weight:700;
@@ -246,35 +246,73 @@
     </div>
     <div class="tag">TATTOO ARTIST PLATFORM<br>BY INKJIN</div>
 
-    @include('layouts.partials.dashboard-nav-search', ['navSearchItems' => [
-        ['label' => 'Home', 'section' => '', 'url' => route('artist.dashboard'), 'keys' => 'dashboard today to do welcome'],
-        ['label' => 'Bookings', 'section' => '', 'url' => route('artist.bookings.index'), 'keys' => 'appointments sessions calendar'],
-        ['label' => 'Requests', 'section' => 'Bookings', 'url' => route('artist.requests.index'), 'keys' => 'custom flash quote reply waiting'],
-        ['label' => 'Payment links', 'section' => 'Bookings', 'url' => route('artist.bookings.payment-links'), 'keys' => 'deposit invoice pay link'],
-        ['label' => 'Schedule', 'section' => '', 'url' => route('availability.index'), 'keys' => 'hours availability working days time off'],
-        ['label' => 'Guest spots', 'section' => 'Schedule', 'url' => route('guest-spots.index'), 'keys' => 'guest studio travel'],
-        ['label' => 'Inbox', 'section' => '', 'url' => route('artist.chat.index'), 'keys' => 'messages chat mail'],
-        ['label' => 'Clients', 'section' => '', 'url' => route('artist.clients.index'), 'keys' => 'customers contacts'],
-        ['label' => 'Money', 'section' => '', 'url' => route('artist.payments.index'), 'keys' => 'earnings balance payout'],
-        ['label' => 'Payouts', 'section' => 'Money', 'url' => route('settings.payment'), 'keys' => 'stripe bank connect direct split'],
-        ['label' => 'Payment preferences', 'section' => 'Money', 'url' => route('settings.preferences'), 'keys' => 'deposit currency'],
-        ['label' => 'My Page', 'section' => '', 'url' => route('personal-page.index'), 'keys' => 'profile booking page about bio'],
-        ['label' => 'Portfolio', 'section' => 'My Page', 'url' => route('portfolio.index'), 'keys' => 'photos work gallery instagram'],
-        ['label' => 'Designs', 'section' => 'My Page', 'url' => route('artist-designs.index'), 'keys' => 'flash available designs pricing'],
-        ['label' => 'FAQ', 'section' => 'My Page', 'url' => route('artist.faq.index'), 'keys' => 'questions answers'],
-        ['label' => 'Policies', 'section' => 'My Page', 'url' => route('personal-page.policies'), 'keys' => 'cancellation deposit policy'],
-        ['label' => 'Appearance', 'section' => 'My Page', 'url' => route('personal-page.appearance'), 'keys' => 'colors theme look'],
-        ['label' => 'Client Flow', 'section' => '', 'url' => route('artist.forms.index', ['tab' => 'booking']), 'keys' => 'booking form questions intake'],
-        ['label' => 'Consent form', 'section' => 'Client Flow', 'url' => route('artist.forms.consent'), 'keys' => 'waiver consent'],
-        ['label' => 'Aftercare', 'section' => 'Client Flow', 'url' => route('artist.aftercare.index'), 'keys' => 'healing instructions'],
-        ['label' => 'Account', 'section' => '', 'url' => route('profile.edit'), 'keys' => 'settings profile name photo'],
-        ['label' => 'Password', 'section' => 'Account', 'url' => route('profile.password'), 'keys' => 'login security'],
-        ['label' => 'Studio', 'section' => 'Account', 'url' => route('settings.studio'), 'keys' => 'workplace invite bookpay split'],
-        ['label' => 'Styles', 'section' => 'Account', 'url' => route('settings.styles'), 'keys' => 'tattoo styles social links'],
-        ['label' => 'Regional', 'section' => 'Account', 'url' => route('settings.regional'), 'keys' => 'country timezone currency date'],
-        ['label' => 'Referrals', 'section' => '', 'url' => route('artist.refer-earn.index'), 'keys' => 'earn invite share'],
-        ['label' => 'Get Help', 'section' => '', 'url' => 'https://help.inkjin.com', 'keys' => 'support help center'],
-      ]])
+    @php
+      $artistPublicUsername = trim((string) ($authUser?->userDetail?->user_name ?? ''));
+      $artistPublicUrl = $artistPublicUsername !== ''
+        ? route('public.artist', ['username' => $artistPublicUsername])
+        : route('personal-page.index');
+      $artistSearchTry = [
+        ['label' => 'Day off', 'section' => 'Schedule › Availability', 'url' => route('availability.index').'#blocked-dates', 'icon' => 'arrow_forward', 'type' => 'action'],
+        ['label' => 'Deposit', 'section' => 'Money › Deposits & rates', 'url' => route('settings.preferences'), 'icon' => 'arrow_forward', 'type' => 'action'],
+        ['label' => 'Consent form', 'section' => 'Client Flow', 'url' => route('artist.forms.consent'), 'icon' => 'badge', 'type' => 'page'],
+      ];
+      $artistSearchItems = [
+        // Pages / settings — keywords aligned with account-state.js
+        ['label' => 'Home', 'section' => 'Home', 'url' => route('artist.dashboard'), 'keys' => 'dashboard overview start today', 'type' => 'page', 'icon' => 'space_dashboard'],
+        ['label' => 'Requests', 'section' => 'Bookings', 'url' => route('artist.requests.index'), 'keys' => 'enquiries inquiries new request custom pending approve decline quote', 'type' => 'page', 'icon' => 'inbox'],
+        ['label' => 'Bookings', 'section' => 'Bookings', 'url' => route('artist.bookings.index'), 'keys' => 'appointments sessions upcoming past confirmed cancel reschedule booking number', 'type' => 'page', 'icon' => 'calendar_month'],
+        ['label' => 'Payment links', 'section' => 'Bookings', 'url' => route('artist.bookings.payment-links'), 'keys' => 'pay link send invoice charge balance take payment', 'type' => 'page', 'icon' => 'link', 'when' => 'account_active'],
+        ['label' => 'Availability', 'section' => 'Schedule', 'url' => route('availability.index'), 'keys' => 'hours working days open times weekly schedule opening', 'type' => 'page', 'icon' => 'schedule'],
+        ['label' => 'Blocked dates', 'section' => 'Schedule › Availability', 'url' => route('availability.index').'#blocked-dates', 'keys' => 'day off holiday vacation time off closed away leave sick block date', 'type' => 'setting', 'icon' => 'event_busy'],
+        ['label' => 'Guest spots', 'section' => 'Schedule', 'url' => route('guest-spots.index'), 'keys' => 'guest spot travel visit another studio guesting add guest spot', 'type' => 'page', 'icon' => 'flight'],
+        ['label' => 'Calendar sync', 'section' => 'Schedule', 'url' => route('schedule.calendar-sync'), 'keys' => 'google calendar apple ical outlook connect sync', 'type' => 'page', 'icon' => 'sync'],
+        ['label' => 'Booking rules', 'section' => 'Schedule', 'url' => route('schedule.booking-rules'), 'keys' => 'rules notice minimum advance cancellation window lead time max per day buffer close books books closed', 'type' => 'page', 'icon' => 'rule'],
+        ['label' => 'Inbox', 'section' => 'Inbox', 'url' => route('artist.chat.index'), 'keys' => 'messages emails chat replies client messages mail', 'type' => 'page', 'icon' => 'mail'],
+        ['label' => 'Clients', 'section' => 'Clients', 'url' => route('artist.clients.index'), 'keys' => 'customers people list contacts history notes', 'type' => 'page', 'icon' => 'group'],
+        ['label' => 'Waitlist', 'section' => 'Clients', 'url' => route('artist.clients.index', ['tab' => 'waitlist']), 'keys' => 'waitlist waiting list queue cancellations fill gaps', 'type' => 'page', 'icon' => 'hourglass_empty'],
+        ['label' => 'Earnings', 'section' => 'Money', 'url' => route('artist.payments.index'), 'keys' => 'income revenue sales totals tax report how much earned money', 'type' => 'page', 'icon' => 'payments'],
+        ['label' => 'Deposits & rates', 'section' => 'Money', 'url' => route('settings.preferences'), 'keys' => 'price prices pricing rates hourly day rate deposit percent fixed amount charge cost fee', 'type' => 'page', 'icon' => 'payments'],
+        ['label' => 'Payouts', 'section' => 'Money', 'url' => route('settings.payment'), 'keys' => 'stripe bank account transfer paid out when do i get paid payout schedule iban', 'type' => 'page', 'icon' => 'account_balance'],
+        ['label' => 'About', 'section' => 'My Page', 'url' => route('personal-page.index'), 'keys' => 'bio profile photo name handle instagram link location my public page', 'type' => 'page', 'icon' => 'folder_open'],
+        ['label' => 'Designs', 'section' => 'My Page', 'url' => route('artist-designs.index'), 'keys' => 'flash available designs sheets prints shop upload design', 'type' => 'page', 'icon' => 'palette'],
+        ['label' => 'Portfolio', 'section' => 'My Page', 'url' => route('portfolio.index'), 'keys' => 'gallery photos work images tattoos healed', 'type' => 'page', 'icon' => 'photo_library'],
+        ['label' => 'FAQ', 'section' => 'My Page', 'url' => route('artist.faq.index'), 'keys' => 'questions answers common questions', 'type' => 'page', 'icon' => 'quiz'],
+        ['label' => 'Policies', 'section' => 'My Page', 'url' => route('personal-page.policies'), 'keys' => 'refund cancellation policy rules terms touch up no show late', 'type' => 'page', 'icon' => 'policy'],
+        ['label' => 'Look & feel', 'section' => 'My Page', 'url' => route('personal-page.appearance'), 'keys' => 'appearance colours colors theme layout cover banner font design of my page look feel', 'type' => 'page', 'icon' => 'palette'],
+        ['label' => 'Intake forms', 'section' => 'Client Flow', 'url' => route('artist.forms.index', ['tab' => 'booking']), 'keys' => 'questionnaire booking form questions what clients fill in request form fields', 'type' => 'page', 'icon' => 'edit_note'],
+        ['label' => 'Consent form', 'section' => 'Client Flow', 'url' => route('artist.forms.consent'), 'keys' => 'waiver release agreement sign signature legal age id health form', 'type' => 'page', 'icon' => 'badge'],
+        ['label' => 'Aftercare', 'section' => 'Client Flow', 'url' => route('artist.aftercare.index'), 'keys' => 'healing care instructions after tattoo email follow up', 'type' => 'page', 'icon' => 'healing'],
+        ['label' => 'Profile', 'section' => 'Account', 'url' => route('profile.edit'), 'keys' => 'my details name email phone photo deactivate account delete account close account pause', 'type' => 'page', 'icon' => 'person'],
+        ['label' => 'Deactivate account', 'section' => 'Account › Profile', 'url' => route('profile.edit').'#accDeactCard', 'keys' => 'turn off pause close stop bookings hide page leave stop taking bookings', 'type' => 'action', 'icon' => 'pause_circle', 'when' => 'account_active'],
+        ['label' => 'Reactivate account', 'section' => 'Account › Profile', 'url' => route('profile.edit').'#accDeactCard', 'keys' => 'turn back on reopen account come back reactivate', 'type' => 'action', 'icon' => 'play_circle', 'when' => 'account_deactivated'],
+        ['label' => 'Password', 'section' => 'Account', 'url' => route('profile.password'), 'keys' => 'change password login security sign in forgot two factor', 'type' => 'page', 'icon' => 'lock'],
+        ['label' => 'Studio', 'section' => 'Account', 'url' => route('settings.studio'), 'keys' => 'my studio workstation rent revenue split invite studio change studio leave studio', 'type' => 'page', 'icon' => 'storefront'],
+        ['label' => 'Regional', 'section' => 'Account', 'url' => route('settings.regional'), 'keys' => 'currency language time zone timezone country date format euro pound dollar vat', 'type' => 'page', 'icon' => 'public'],
+        ['label' => 'Styles', 'section' => 'Account', 'url' => route('settings.styles'), 'keys' => 'tattoo styles social links', 'type' => 'page', 'icon' => 'brush'],
+        ['label' => 'Referrals', 'section' => 'Referrals', 'url' => route('artist.refer-earn.index'), 'keys' => 'invite friends earn 20 refer artist reward', 'type' => 'page', 'icon' => 'redeem'],
+        // Actions
+        ['label' => 'New payment link', 'section' => 'Action', 'url' => route('artist.bookings.payment-links'), 'keys' => 'create send charge take payment', 'type' => 'action', 'icon' => 'bolt', 'when' => 'account_active'],
+        ['label' => 'Add guest spot', 'section' => 'Action', 'url' => route('guest-spots.index'), 'keys' => 'new guest spot travel', 'type' => 'action', 'icon' => 'bolt'],
+        ['label' => 'Close books', 'section' => 'Action', 'url' => route('schedule.booking-rules'), 'keys' => 'stop taking bookings books closed open books pause bookings rules', 'type' => 'action', 'icon' => 'bolt'],
+        ['label' => 'Add a day off', 'section' => 'Action', 'url' => route('availability.index').'#blocked-dates', 'keys' => 'block a date holiday vacation day off', 'type' => 'action', 'icon' => 'bolt'],
+        ['label' => 'Change my deposit', 'section' => 'Action', 'url' => route('settings.preferences'), 'keys' => 'deposit amount percent', 'type' => 'action', 'icon' => 'bolt'],
+        ['label' => 'Edit consent form', 'section' => 'Action', 'url' => route('artist.forms.consent'), 'keys' => 'waiver change wording', 'type' => 'action', 'icon' => 'bolt'],
+        ['label' => 'Open my page', 'section' => 'Action', 'url' => $artistPublicUrl, 'keys' => 'public page link copy link qr code share preview', 'type' => 'action', 'icon' => 'bolt'],
+        ['label' => 'Add work', 'section' => 'Action', 'url' => route('portfolio.index'), 'keys' => 'upload photo add tattoo portfolio piece add work', 'type' => 'action', 'icon' => 'bolt'],
+        // Help
+        ['label' => 'How do I refund a client?', 'section' => 'Help', 'url' => 'https://help.inkjin.com', 'keys' => 'refund money back return', 'type' => 'help', 'icon' => 'help'],
+        ['label' => 'When do I get paid?', 'section' => 'Help', 'url' => 'https://help.inkjin.com', 'keys' => 'payout paid stripe days', 'type' => 'help', 'icon' => 'help'],
+        ['label' => 'How do I change my deposit?', 'section' => 'Help', 'url' => route('settings.preferences'), 'keys' => 'deposit', 'type' => 'help', 'icon' => 'help'],
+        ['label' => 'How do I take a day off?', 'section' => 'Help', 'url' => route('availability.index').'#blocked-dates', 'keys' => 'day off holiday vacation', 'type' => 'help', 'icon' => 'help'],
+        ['label' => 'Get Help', 'section' => '', 'url' => 'https://help.inkjin.com', 'keys' => 'support help center ask us contact', 'type' => 'page', 'icon' => 'help'],
+      ];
+    @endphp
+    @include('layouts.partials.dashboard-nav-search', [
+      'navSearchItems' => $artistSearchItems,
+      'navSearchTry' => $artistSearchTry,
+      'navSearchRecentKey' => 'bp-artist-nav-search-recent',
+      'navSearchAccountDeactivated' => (bool) ($authUser && $authUser->isDeactivated()),
+    ])
     <nav>
       <a href="{{ route('artist.dashboard') }}" class="{{ $activeNav === 'home' || request()->routeIs('artist.dashboard') ? 'on' : '' }}">
         <span class="ms">space_dashboard</span>Home

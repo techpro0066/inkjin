@@ -44,13 +44,13 @@
     html{height:100%}
     body{margin:0;height:100vh;height:100dvh;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:14px;display:flex}
     .ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;vertical-align:middle}
-    aside{width:232px;background:#1A1A1A;color:#DEDEDE;padding:22px 14px 18px;display:flex;flex-direction:column;flex-shrink:0;height:100%;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+    aside{width:232px;background:#1A1A1A;color:#DEDEDE;padding:22px 14px 18px;display:flex;flex-direction:column;flex-shrink:0;height:100%;min-height:0;overflow:visible;position:relative;z-index:40}
     .logo{font-family:'Space Grotesk',system-ui,sans-serif;font-size:25px;font-weight:700;letter-spacing:-.055em;color:#fff;text-decoration:none;padding-left:6px;display:block}
     .tag{font-size:8.5px;letter-spacing:1.4px;margin-top:2px;line-height:1.35;color:#8C8C8C;padding-left:6px}
     .topline{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
     .burger{display:none;border:0;background:none;color:#fff;cursor:pointer;padding:6px;border-radius:8px}
     .burger .ms{font-size:26px}
-    aside nav{margin-top:14px;display:flex;flex-direction:column;gap:3px;flex:1;min-height:0}
+    aside nav{margin-top:14px;display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
     aside nav a{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px;font-weight:500;font-size:14.5px;color:#DEDEDE;text-decoration:none}
     aside nav a .ms{font-size:21px;color:#DEDEDE}
     aside nav a.on{background:#fff;color:var(--pri);font-weight:600}
@@ -191,37 +191,50 @@
     </div>
     <div class="tag">STUDIO DASHBOARD<br>BY INKJIN</div>
     @php
+        $studioSearchTry = [
+          ['label' => 'Invite an artist', 'section' => 'Artists', 'url' => route('studio.artists.invites'), 'icon' => 'arrow_forward', 'type' => 'action'],
+          ['label' => 'New booking', 'section' => 'Bookings', 'url' => route('studio.bookings.payment-links'), 'icon' => 'arrow_forward', 'type' => 'action'],
+          ['label' => 'Consent form', 'section' => 'Client Flow', 'url' => $profileComplete ? route('studio.client-flow.consent') : route('studio.account.profile'), 'icon' => 'badge', 'type' => 'page'],
+        ];
         $studioSearch = [
-          ['label' => 'Home', 'section' => '', 'url' => route('studio.dashboard'), 'keys' => 'dashboard'],
-          ['label' => 'Artists', 'section' => '', 'url' => route('studio.artists'), 'keys' => 'residents team members'],
-          ['label' => 'Join requests', 'section' => 'Artists', 'url' => route('studio.artists.join-requests'), 'keys' => 'accept artist request'],
-          ['label' => 'Guest artists', 'section' => 'Artists', 'url' => route('studio.artists.guests'), 'keys' => 'guest spots'],
-          ['label' => 'Invites', 'section' => 'Artists', 'url' => route('studio.artists.invites'), 'keys' => 'invite artist email'],
-          ['label' => 'Bookings', 'section' => '', 'url' => route('studio.bookings'), 'keys' => 'appointments sessions'],
-          ['label' => 'Requests', 'section' => 'Bookings', 'url' => route('studio.bookings.requests'), 'keys' => 'studio requests assign'],
-          ['label' => 'Payment links', 'section' => 'Bookings', 'url' => route('studio.bookings.payment-links'), 'keys' => 'deposit invoice'],
-          ['label' => 'Inbox', 'section' => '', 'url' => route('studio.chat.index'), 'keys' => 'messages chat'],
-          ['label' => 'Money', 'section' => '', 'url' => route('studio.money.earnings'), 'keys' => 'earnings balance'],
-          ['label' => 'Payouts', 'section' => 'Money', 'url' => route('studio.money.payouts'), 'keys' => 'stripe bank connect'],
-          ['label' => 'Account', 'section' => '', 'url' => route('studio.account.profile'), 'keys' => 'profile settings owner'],
-          ['label' => 'Password', 'section' => 'Account', 'url' => route('studio.account.password'), 'keys' => 'login security'],
-          ['label' => 'Studio details', 'section' => 'Account', 'url' => route('studio.account.studio'), 'keys' => 'address name'],
-          ['label' => 'Regional', 'section' => 'Account', 'url' => route('studio.account.regional'), 'keys' => 'country timezone'],
-          ['label' => 'Get Help', 'section' => '', 'url' => 'https://help.inkjin.com', 'keys' => 'support help center'],
+          ['label' => 'Home', 'section' => '', 'url' => route('studio.dashboard'), 'keys' => 'dashboard overview start today', 'type' => 'page', 'icon' => 'space_dashboard'],
+          ['label' => 'Artists', 'section' => '', 'url' => route('studio.artists'), 'keys' => 'team staff tattooers who works here residents apprentices relationship how they are paid split rent workstation', 'type' => 'page', 'icon' => 'groups'],
+          ['label' => 'Join requests', 'section' => 'Artists', 'url' => route('studio.artists.join-requests'), 'keys' => 'artists asking to join approve decline request to join', 'type' => 'page', 'icon' => 'person_add'],
+          ['label' => 'Invites', 'section' => 'Artists', 'url' => route('studio.artists.invites'), 'keys' => 'invitation sent waiting pending resend cancel invite', 'type' => 'page', 'icon' => 'mail'],
+          ['label' => 'Guest artists', 'section' => 'Artists', 'url' => route('studio.artists.guests'), 'keys' => 'guest spot visiting artists confirm split decline guest dates', 'type' => 'page', 'icon' => 'flight'],
+          ['label' => 'Invite an artist', 'section' => 'Artists', 'url' => route('studio.artists.invites'), 'keys' => 'add artist new artist invite tattooer email username', 'type' => 'action', 'icon' => 'arrow_forward'],
+          ['label' => 'Revenue split', 'section' => 'Artists', 'url' => route('studio.artists'), 'keys' => 'split percent artist studio share how artists are paid change split workstation rent direct payment', 'type' => 'setting', 'icon' => 'percent'],
+          ['label' => 'Bookings', 'section' => '', 'url' => route('studio.bookings'), 'keys' => 'appointments sessions clients list upcoming past export studio share', 'type' => 'page', 'icon' => 'event_note'],
+          ['label' => 'Requests', 'section' => 'Bookings', 'url' => route('studio.bookings.requests'), 'keys' => 'studio requests assign any available artist', 'type' => 'page', 'icon' => 'inbox'],
+          ['label' => 'Payment links', 'section' => 'Bookings', 'url' => route('studio.bookings.payment-links'), 'keys' => 'deposit invoice payment link', 'type' => 'page', 'icon' => 'link'],
+          ['label' => 'New booking', 'section' => 'Bookings', 'url' => route('studio.bookings.payment-links'), 'keys' => 'create booking payment link walk in walk-in qr code pick artist', 'type' => 'action', 'icon' => 'arrow_forward'],
+          ['label' => 'Inbox', 'section' => '', 'url' => route('studio.chat.index'), 'keys' => 'messages chat mail', 'type' => 'page', 'icon' => 'forum'],
+          ['label' => 'Earnings', 'section' => 'Money', 'url' => route('studio.money.earnings'), 'keys' => 'income revenue studio share split earned history export totals money', 'type' => 'page', 'icon' => 'payments'],
+          ['label' => 'Payouts', 'section' => 'Money', 'url' => route('studio.money.payouts'), 'keys' => 'stripe bank account payout when do i get paid iban disconnect currency', 'type' => 'page', 'icon' => 'account_balance'],
+          ['label' => 'Profile', 'section' => 'Account', 'url' => route('studio.account.profile'), 'keys' => 'my details name email phone owner username profile', 'type' => 'page', 'icon' => 'person'],
+          ['label' => 'Password', 'section' => 'Account', 'url' => route('studio.account.password'), 'keys' => 'change password login security sign in forgot', 'type' => 'page', 'icon' => 'lock'],
+          ['label' => 'Studio details', 'section' => 'Account', 'url' => route('studio.account.studio'), 'keys' => 'address name studio details', 'type' => 'page', 'icon' => 'storefront'],
+          ['label' => 'Regional', 'section' => 'Account', 'url' => route('studio.account.regional'), 'keys' => 'country time zone timezone date format currency language units', 'type' => 'page', 'icon' => 'public'],
+          ['label' => 'How do I add an artist?', 'section' => 'Help', 'url' => 'https://help.inkjin.com', 'keys' => 'add artist invite team staff how', 'type' => 'help', 'icon' => 'help'],
+          ['label' => 'Get Help', 'section' => '', 'url' => 'https://help.inkjin.com', 'keys' => 'support help center ask us contact', 'type' => 'page', 'icon' => 'help'],
         ];
         if ($profileComplete) {
           $studioSearch = array_merge($studioSearch, [
-            ['label' => 'Calendar', 'section' => '', 'url' => route('studio.calendar'), 'keys' => 'schedule artists bookings'],
-            ['label' => 'Studio Page', 'section' => '', 'url' => route('studio.page.about'), 'keys' => 'public page about'],
-            ['label' => 'Page artists', 'section' => 'Studio Page', 'url' => route('studio.page.artists'), 'keys' => 'show artists order'],
-            ['label' => 'Portfolio', 'section' => 'Studio Page', 'url' => route('studio.page.portfolio'), 'keys' => 'photos gallery'],
-            ['label' => 'Look', 'section' => 'Studio Page', 'url' => route('studio.page.look'), 'keys' => 'colors appearance theme'],
-            ['label' => 'Client Flow', 'section' => '', 'url' => route('studio.client-flow.intake'), 'keys' => 'intake questions booking form'],
-            ['label' => 'Consent form', 'section' => 'Client Flow', 'url' => route('studio.client-flow.consent'), 'keys' => 'waiver consent'],
+            ['label' => 'Calendar', 'section' => '', 'url' => route('studio.calendar'), 'keys' => 'diary agenda all artists month week busy availability schedule', 'type' => 'page', 'icon' => 'calendar_month'],
+            ['label' => 'Studio Page', 'section' => '', 'url' => route('studio.page.about'), 'keys' => 'public page about studio page', 'type' => 'page', 'icon' => 'storefront'],
+            ['label' => 'Artists on my page', 'section' => 'Studio Page', 'url' => route('studio.page.artists'), 'keys' => 'show artists order page artists', 'type' => 'page', 'icon' => 'groups'],
+            ['label' => 'Portfolio', 'section' => 'Studio Page', 'url' => route('studio.page.portfolio'), 'keys' => 'gallery photos work images tattoos', 'type' => 'page', 'icon' => 'photo_library'],
+            ['label' => 'Appearance', 'section' => 'Studio Page', 'url' => route('studio.page.look'), 'keys' => 'colours colors appearance theme look', 'type' => 'page', 'icon' => 'palette'],
+            ['label' => 'Intake form', 'section' => 'Client Flow', 'url' => route('studio.client-flow.intake'), 'keys' => 'questionnaire booking form questions what clients fill in request form fields intake', 'type' => 'page', 'icon' => 'edit_note'],
+            ['label' => 'Consent form', 'section' => 'Client Flow', 'url' => route('studio.client-flow.consent'), 'keys' => 'waiver release agreement sign signature legal age id health form artists own consent', 'type' => 'page', 'icon' => 'badge'],
           ]);
         }
     @endphp
-    @include('layouts.partials.dashboard-nav-search', ['navSearchItems' => $studioSearch])
+    @include('layouts.partials.dashboard-nav-search', [
+      'navSearchItems' => $studioSearch,
+      'navSearchTry' => $studioSearchTry,
+      'navSearchRecentKey' => 'bp-studio-nav-search-recent',
+    ])
     <nav>
       <a href="{{ route('studio.dashboard') }}" class="{{ $activeNav === 'home' ? 'on' : '' }}"><span class="ms">space_dashboard</span>Home</a>
       <a href="{{ route('studio.artists') }}" class="{{ $activeNav === 'artists' ? 'on' : '' }}"><span class="ms">groups</span>Artists</a>
