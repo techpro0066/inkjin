@@ -24,6 +24,13 @@
   .navsearch-results small{display:block;color:#6F6874;font-size:11.5px;margin-top:1px}
   .navsearch-empty{padding:10px;color:#6F6874;font-size:13px}
   aside nav a.nav-hide,aside nav button.navlink.nav-hide{display:none!important}
+  @media (max-width:900px){
+    .navsearch{z-index:30}
+    .navsearch-results{
+      position:static;margin-top:8px;max-height:min(240px,42vh);
+      box-shadow:none;border:1px solid #E8E1EC;z-index:auto
+    }
+  }
 </style>
 <script>
 (function () {

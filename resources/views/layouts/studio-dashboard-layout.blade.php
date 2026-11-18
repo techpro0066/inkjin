@@ -155,14 +155,21 @@
     }
     @media (max-width:900px){
       body{flex-direction:column;height:auto;min-height:100vh;min-height:100dvh;overflow:auto}
-      aside{width:100%;height:auto;min-height:0;padding:12px 16px;position:sticky;top:0;z-index:20;overflow:visible}
+      aside{width:100%;height:auto;min-height:0;padding:12px 16px;position:sticky;top:0;z-index:30;overflow:visible;background:#1A1A1A}
       aside .tag{display:none}
       .burger{display:inline-flex}
       aside nav,.foot,.navsearch{display:none}
+      body.navopen{overflow:hidden;height:100vh;height:100dvh}
+      body.navopen aside{
+        position:fixed;inset:0;width:100%;height:100vh;height:100dvh;
+        max-height:none;min-height:100vh;min-height:100dvh;
+        overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+        z-index:40;isolation:isolate;background:#1A1A1A
+      }
       body.navopen aside nav{display:flex}
       body.navopen .navsearch{display:block;margin-top:12px}
       body.navopen aside .foot{display:block;margin-top:8px}
-      body.navopen aside{max-height:100vh;max-height:100dvh;overflow-y:auto}
+      body.navopen main{visibility:hidden;pointer-events:none}
       aside nav{margin-top:12px;flex:none}
       main{height:auto;overflow:visible;padding:22px 16px 48px}
       h1{font-size:25px}
