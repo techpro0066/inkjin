@@ -9,6 +9,7 @@ use App\Models\StudioInvite;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserNotRegistered;
+use App\Services\LocationPreferencesService;
 use App\Services\StudioArtistInviteService;
 use App\Rules\NotBotGmailPattern;
 use App\Support\StripeConnectCountries;
@@ -75,7 +76,10 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse|JsonResponse
+    public function store(
+        Request $request,
+        LocationPreferencesService $locationPreferences
+    ): RedirectResponse|JsonResponse
     {
         $registrationCodes = array_map(
             fn (array $country) => $country['code'],
@@ -160,8 +164,13 @@ class RegisteredUserController extends Controller
 
         $user = User::create($userData);
 
+        $regionalPreferences = $locationPreferences->preferencesForCountryCode($countryCode);
+
         $userDetail = UserDetail::create([
             'user_id' => $user->id,
+            'timezone' => $regionalPreferences['timezone'],
+            'date_time_format' => $regionalPreferences['date_time_format'],
+            'size_unit' => $regionalPreferences['size_unit'],
         ]);
 
         \App\Models\UserPayout::upsertActiveForUser($user->id, [

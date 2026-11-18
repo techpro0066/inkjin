@@ -1886,15 +1886,7 @@ class OnboardingController extends Controller
                 'completed_steps' => array_unique(array_merge($userDetail->completed_steps ?? [], [3])),
             ]);
 
-            $userDetail->update(array_merge(
-                $studioData,
-                $this->resolveLocationPreferences(
-                    $validated['country'],
-                    isset($validated['latitude']) ? (float) $validated['latitude'] : null,
-                    isset($validated['longitude']) ? (float) $validated['longitude'] : null,
-                    $validated['studio_address']
-                )
-            ));
+            $userDetail->update($studioData);
 
             // Manual setup during onboarding: dismiss pending invite card going forward.
             $inviteService->markSkippedInOnboarding();
