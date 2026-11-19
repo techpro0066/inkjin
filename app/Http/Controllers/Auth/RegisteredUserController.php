@@ -12,6 +12,7 @@ use App\Models\UserNotRegistered;
 use App\Services\LocationPreferencesService;
 use App\Services\StudioArtistInviteService;
 use App\Rules\NotBotGmailPattern;
+use App\Support\PageLook;
 use App\Support\StripeConnectCountries;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
@@ -166,12 +167,14 @@ class RegisteredUserController extends Controller
 
         $regionalPreferences = $locationPreferences->preferencesForCountryCode($countryCode);
 
-        $userDetail = UserDetail::create([
+        $appearanceDefaults = $validated['role'] === 'artist' ? PageLook::NEW_ARTIST_DEFAULTS : [];
+
+        $userDetail = UserDetail::create(array_merge([
             'user_id' => $user->id,
             'timezone' => $regionalPreferences['timezone'],
             'date_time_format' => $regionalPreferences['date_time_format'],
             'size_unit' => $regionalPreferences['size_unit'],
-        ]);
+        ], $appearanceDefaults));
 
         \App\Models\UserPayout::upsertActiveForUser($user->id, [
             'status' => \App\Models\UserPayout::STATUS_DRAFT,

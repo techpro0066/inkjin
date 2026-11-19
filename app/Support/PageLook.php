@@ -9,6 +9,19 @@ class PageLook
 {
     public const DEFAULT_SCHEME = '#1A1A2E,#3A3A5C,#ECEBF3';
 
+    /** @var array<string, string|int> */
+    public const NEW_ARTIST_DEFAULTS = [
+        'page_look_mode' => 'custom',
+        'page_look_scheme' => self::DEFAULT_SCHEME,
+        'page_box_color' => '#FFFFFF',
+        'page_box_effect' => 'solid',
+        'page_box_opacity' => 100,
+        'page_title_mode' => 'auto',
+        'page_text_mode' => 'auto',
+        'page_button_mode' => 'auto',
+        'page_box_radius' => 'l',
+    ];
+
     /** @var array<string, string> */
     public const LEGACY_COLOR_TO_SCHEME = [
         'default' => '#4B0F8F,#7B3FC4,#F3E8FF',
@@ -227,6 +240,12 @@ class PageLook
      */
     public static function buttonTextColorFromState(array $state): string
     {
+        if (($state['mode'] ?? 'standard') !== 'custom') {
+            [$primary] = self::schemeParts($state['scheme'] ?? self::DEFAULT_SCHEME);
+
+            return self::contrastPick(self::relativeLuminance($primary));
+        }
+
         $style = self::boxStyleFromState($state);
 
         return $style['btn'];
