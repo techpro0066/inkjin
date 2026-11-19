@@ -1081,12 +1081,13 @@ class InkJinController extends Controller
                     if ($max !== '' && $max !== $min) {
                         $price = $min !== '' ? $min . ' – ' . $max : $max;
                     }
-                    $image = trim((string) ($design->image ?? ''));
+                    $image = trim((string) ($design->display_image ?? ''));
 
                     $items->push([
                         'kind' => 'flash',
                         'title' => (string) ($design->title ?: 'Untitled'),
                         'image' => $image !== '' ? asset(ltrim($image, '/')) : null,
+                        'image_fit' => $design->display_image_fit,
                         'artist_name' => (string) ($artist['name'] ?? 'Artist'),
                         'artist_initials' => (string) ($artist['initials'] ?? 'AR'),
                         'artist_avatar' => $artist['avatar'] ?? null,

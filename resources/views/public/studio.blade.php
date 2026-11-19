@@ -357,7 +357,7 @@
         <div class="wg" id="workGrid">
           @foreach($workItems as $item)
             <div class="wk" data-k="{{ $item['kind'] }}">
-              <span class="wi" @if(! empty($item['image'])) style="background-image:url('{{ $item['image'] }}')" @endif></span>
+              <span class="wi" @if(! empty($item['image'])) style="background-image:url('{{ $item['image'] }}');background-size:{{ $item['image_fit'] ?? 'cover' }};background-position:center;background-repeat:no-repeat;background-color:#fff" @endif></span>
               <span class="wt">
                 <b>{{ $item['title'] }}</b>
                 <span class="wb">

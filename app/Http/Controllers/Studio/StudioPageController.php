@@ -877,15 +877,16 @@ class StudioPageController extends Controller
             ->where('is_active', true)
             ->orderByDesc('id')
             ->limit(12)
-            ->get(['id', 'user_id', 'title', 'image']);
+            ->get(['id', 'user_id', 'title', 'image', 'original_image', 'image_display_mode']);
 
         foreach ($designs as $design) {
             $name = $byUser[(int) $design->user_id]['name'] ?? 'Artist';
-            $image = trim((string) ($design->image ?? ''));
+            $image = trim((string) ($design->display_image ?? ''));
             $items->push([
                 'title' => (string) ($design->title ?: 'Untitled'),
                 'subtitle' => 'by '.$name.' · Flash',
                 'image' => $image !== '' ? asset(ltrim($image, '/')) : null,
+                'image_fit' => $design->display_image_fit,
             ]);
         }
 

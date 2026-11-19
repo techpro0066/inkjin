@@ -480,7 +480,7 @@
       position: relative;
       aspect-ratio: 4 / 5;
       height: auto;
-      background: #F3F0F5 center/contain no-repeat;
+      background: #fff center/contain no-repeat;
     }
     .mp-dg .dcard-img .pill {
       position: absolute;
@@ -651,17 +651,19 @@
 
     .design-field-section.scroll-mt-6 { scroll-margin-top: 1.5rem; }
 
-    /* New design upload: template ratio 4:5 */
+    /* Design preview stays 4:5; the source image is not altered in whole mode. */
     .design-image-upload-slot {
       aspect-ratio: 4 / 5;
-      max-height: 20rem;
       width: 100%;
       position: relative;
     }
-    .design-image-upload-slot.has-preview {
-      aspect-ratio: var(--design-preview-ar, 4 / 5);
-      max-height: min(20rem, min(70vw, 85vh));
-    }
+    .design-image-mode{display:grid;gap:8px;margin-top:12px}
+    .design-image-mode label{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;cursor:pointer;font-size:12.5px}
+    .design-image-mode label.selected{border-color:var(--pri);box-shadow:0 0 0 1px var(--pri)}
+    .design-image-mode input{margin:2px 0 0;accent-color:var(--pri)}
+    .design-image-mode b{display:block;font-size:13px}
+    .design-image-mode small{display:block;color:var(--muted);margin-top:2px}
+    .design-image-mode .nd-replace{justify-self:start;margin-left:28px}
     .design-ai-overlay {
       display: none;
       position: absolute;
@@ -719,8 +721,9 @@
     #newDesignModal .nd-img-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;text-align:center}
     #newDesignModal .nd-img-empty .ms{font-size:36px;color:var(--faint)}
     #newDesignModal .nd-img-empty b{font-size:14px}
-    #newDesignModal .nd-img-frame{aspect-ratio:4/5;background:#EEE;position:relative;overflow:hidden;border-radius:14px}
-    #newDesignModal .nd-img-frame img{width:100%;height:100%;object-fit:cover;display:block}
+    #newDesignModal .nd-img-frame{aspect-ratio:4/5;background:#fff;position:relative;overflow:hidden;border-radius:14px}
+    #newDesignModal .nd-img-frame img{width:100%;height:100%;object-fit:contain;display:block}
+    #newDesignModal .nd-img-frame.is-crop img{object-fit:cover}
     #newDesignModal .nd-ai-pill{position:absolute;left:10px;bottom:10px;background:#fff;color:#6A2BB8;z-index:2}
     #newDesignModal .nd-ai-pill .ms{font-size:14px}
     #newDesignModal .nd-img-meta{justify-content:space-between;margin-top:10px}
@@ -1111,7 +1114,7 @@
           data-max-price="{{ (int) $design->max_price }}"
           data-search="{{ e($searchBlob) }}"
         >
-          <div class="dcard-img" style="background-image:url('{{ asset($design->image) }}')">
+          <div class="dcard-img" style="background-image:url('{{ asset($design->display_image) }}');background-size:{{ $design->display_image_fit }};background-position:center;background-repeat:no-repeat;background-color:#fff">
             <span class="pill {{ $statusPill }} design-status-pill">{{ $statusLabel }}</span>
             <button type="button" class="design-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
               <span class="ms">drag_indicator</span>
@@ -1205,7 +1208,7 @@
                 <span class="faint">or click to browse · PNG, JPG up to 10MB</span>
                 </div>
               <div id="designImageUploadPreview" class="hidden">
-                <div class="nd-img-frame">
+                <div id="designImagePreviewFrame" class="nd-img-frame">
                   <img id="designImagePreviewImg" src="" alt="Design preview">
                   <span id="designAiFilledPill" class="pill nd nd-ai-pill" hidden>
                     <span class="ms">auto_awesome</span><span id="designAiFilledText">AI filled</span>
@@ -1218,11 +1221,23 @@
               </div>
             </div>
             <div class="row nd-img-meta">
-              <span class="faint" style="font-size:12px">1080 × 1350 · 4:5</span>
+              <span class="faint" style="font-size:12px">Preview frame · 4:5</span>
               <button type="button" class="nd-replace" id="btnReplaceDesignImage">Upload image</button>
+            </div>
+            <div id="designImageModeOptions" class="design-image-mode hidden" role="radiogroup" aria-label="How the design image is shown">
+              <label>
+                <input type="radio" name="design_display_mode_choice" value="whole" checked>
+                <span><b>Show whole design</b><small>Fit the full image inside the frame on white.</small></span>
+              </label>
+              <label>
+                <input type="radio" name="design_display_mode_choice" value="crop">
+                <span><b>Crop to fill</b><small>Choose the area shown in the 4:5 frame.</small></span>
+              </label>
+              <button type="button" class="nd-replace hidden" id="btnAdjustDesignCrop">Adjust crop</button>
             </div>
             <input type="file" id="designImage" name="designImage" accept="image/*" class="hidden">
             <input type="hidden" id="designImageData" name="designImageData" value="">
+            <input type="hidden" id="designImageDisplayMode" name="image_display_mode" value="whole">
             <p class="hidden design-field-error" data-error-for="image"></p>
           </div>
 
@@ -1441,8 +1456,8 @@
     <div class="crop-modal-inner">
       <div class="mh">
         <div>
-          <h2>Crop image</h2>
-          <div class="muted" style="font-size:13px;margin-top:4px">Output <b style="color:var(--ink);font-weight:700">1080 × 1350 px</b> · ratio 4:5</div>
+          <h2>Crop to fill</h2>
+          <div class="muted" style="font-size:13px;margin-top:4px">The crop is saved separately. Your original image stays unchanged.</div>
         </div>
         <button type="button" class="mx" id="btnDesignCropClose" aria-label="Close cropper"><span class="ms">close</span></button>
       </div>
@@ -1490,7 +1505,9 @@
             'id' => $d->id,
             'title' => $d->title,
             'description' => $d->description,
-            'image_url' => asset($d->image),
+            'image_url' => asset($d->display_image),
+            'original_image_url' => asset($d->original_image ?: $d->image),
+            'image_display_mode' => $d->image_display_mode ?: 'whole',
             'is_active' => (bool) $d->is_active,
             'is_visible' => (bool) $d->is_visible,
             'is_repeatable' => (bool) $d->is_repeatable,
@@ -1573,6 +1590,8 @@
       var $designCropperImg = $('#designCropperImg');
       var designCropper = null;
       var pendingOriginalImageFile = null;
+      var currentDesignOriginalUrl = '';
+      var savedImageDisplayMode = 'whole';
       var CROP_OUT_W = 1080;
       var CROP_OUT_H = 1350;
       var CROP_RATIO = 4 / 5;
@@ -2322,24 +2341,59 @@
         $designCropModal.removeClass('is-open').attr('aria-hidden', 'true');
       }
 
-      function openDesignCropModalWithFile(file) {
-        if (!file || !/^image\//.test(file.type)) {
-          alert('Please choose an image file (PNG or JPG).');
+      function syncDesignImageDisplayMode(mode, previewUrl) {
+        mode = mode === 'crop' ? 'crop' : 'whole';
+        $('#designImageDisplayMode').val(mode);
+        $('#designImageModeOptions input[name="design_display_mode_choice"]').prop('checked', false)
+          .filter('[value="' + mode + '"]').prop('checked', true);
+        $('#designImageModeOptions label').removeClass('selected').has('input:checked').addClass('selected');
+        $('#designImagePreviewFrame').toggleClass('is-crop', mode === 'crop');
+        $('#btnAdjustDesignCrop').toggleClass('hidden', mode !== 'crop' || !currentDesignOriginalUrl);
+        if (previewUrl !== undefined) {
+          $('#designImagePreviewImg').attr('src', previewUrl || '');
+        }
+      }
+
+      function showDesignImagePreview(url, mode) {
+        if (!url) return;
+        var $slot = $('#designImageUpload');
+        $('#designImageUploadEmpty').addClass('hidden');
+        $('#designImageUploadPreview').removeClass('hidden');
+        $slot.removeClass('design-image-upload--empty').addClass('design-image-upload--has-image has-preview');
+        $('#btnReplaceDesignImage').text('Replace image');
+        $('#designImageModeOptions').removeClass('hidden');
+        syncDesignImageDisplayMode(mode, url);
+      }
+
+      function setDesignOriginalImageSource(url, file) {
+        if (currentDesignOriginalUrl.indexOf('blob:') === 0) {
+          URL.revokeObjectURL(currentDesignOriginalUrl);
+        }
+        currentDesignOriginalUrl = url || '';
+        pendingOriginalImageFile = file || null;
+      }
+
+      function openDesignCropModal(source) {
+        if (!source) return;
+        if (typeof source !== 'string' && (!source.type || !/^image\/(jpeg|png|webp)$/i.test(source.type))) {
+          alert('Please choose a PNG, JPG or WebP image.');
           return;
         }
-        if (file.size > MAX_FILE_BYTES) {
+        if (typeof source !== 'string' && source.size > MAX_FILE_BYTES) {
           alert('Image must be 10MB or smaller.');
           return;
         }
         if (typeof Cropper === 'undefined') {
           alert('Cropper failed to load. Refresh the page and try again.');
+          syncDesignImageDisplayMode($('#designImageDisplayMode').val() || 'whole');
           return;
         }
-        pendingOriginalImageFile = file;
         destroyDesignCropper();
         revokeDesignCropBlob();
-        var url = URL.createObjectURL(file);
-        $designCropperImg.data('blob-url', url);
+        var url = typeof source === 'string' ? source : URL.createObjectURL(source);
+        if (typeof source !== 'string') {
+          $designCropperImg.data('blob-url', url);
+        }
         $designCropModal.addClass('is-open').attr('aria-hidden', 'false');
 
         function initCropperOnImg() {
@@ -2373,6 +2427,7 @@
         $designCropperImg.on('error.designcrop', function () {
           $designCropperImg.off('load.designcrop error.designcrop');
           closeDesignCropModal();
+          syncDesignImageDisplayMode($('#designImageDisplayMode').val());
           alert('Could not open that image. Try another file.');
         });
         $designCropperImg.attr('src', url);
@@ -2387,8 +2442,7 @@
         var canvas = designCropper.getCroppedCanvas({
           width: CROP_OUT_W,
           height: CROP_OUT_H,
-          // Flatten transparent areas onto light grey (avoids black JPEG fill).
-          fillColor: '#e8e8e8',
+          fillColor: '#ffffff',
           imageSmoothingEnabled: true,
           imageSmoothingQuality: 'high'
         });
@@ -2398,21 +2452,10 @@
         }
         var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         $('#designImageData').val(dataUrl);
-        var $slot = $('#designImageUpload');
-        var w = canvas.width || CROP_OUT_W;
-        var h = canvas.height || CROP_OUT_H;
-        if (w > 0 && h > 0) {
-          $slot.addClass('has-preview')[0].style.setProperty('--design-preview-ar', w + ' / ' + h);
-        }
-        $('#designImagePreviewImg').attr('src', dataUrl);
-        $('#designImageUploadEmpty').addClass('hidden');
-        $('#designImageUploadPreview').removeClass('hidden');
-        $slot.removeClass('design-image-upload--empty').addClass('design-image-upload--has-image');
-        $('#btnReplaceDesignImage').text('Replace image');
+        showDesignImagePreview(dataUrl, 'crop');
         $('#designAiFilledPill').prop('hidden', true);
         closeDesignCropModal();
         $('#designImage').val('');
-        requestDesignAiSuggestions(dataUrl);
       }
 
       var designAiSuggestXhr = null;
@@ -2559,23 +2602,75 @@
         });
       }
 
+      function requestDesignAiSuggestionsFromFile(file) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          if (pendingOriginalImageFile !== file) return;
+          var image = new Image();
+          image.onload = function () {
+            if (pendingOriginalImageFile !== file) return;
+            var scale = Math.min(1, 1350 / Math.max(image.naturalWidth, image.naturalHeight));
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            var context = canvas.getContext('2d');
+            if (!context) {
+              mpToast('Could not prepare the image for AI suggestions. You can still enter details manually.');
+              return;
+            }
+            context.fillStyle = '#fff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            requestDesignAiSuggestions(canvas.toDataURL('image/jpeg', 0.84));
+          };
+          image.onerror = function () {
+            mpToast('Could not read the image for AI suggestions. You can still enter details manually.');
+          };
+          image.src = String(reader.result || '');
+        };
+        reader.onerror = function () {
+          mpToast('Could not read the image for AI suggestions. You can still enter details manually.');
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function handleDesignImageFile(file) {
+        if (!file || !/^image\/(jpeg|png|webp)$/i.test(file.type || '')) {
+          alert('Please choose a PNG, JPG or WebP image.');
+          return;
+        }
+        if (file.size > MAX_FILE_BYTES) {
+          alert('Image must be 10MB or smaller.');
+          return;
+        }
+        setDesignOriginalImageSource(URL.createObjectURL(file), file);
+        savedImageDisplayMode = 'whole';
+        $('#designImageData').val('');
+        showDesignImagePreview(currentDesignOriginalUrl, 'whole');
+        $('#designAiFilledPill').prop('hidden', true);
+        requestDesignAiSuggestionsFromFile(file);
+        $('#designImage').val('');
+      }
+
       function resetDesignImageState() {
         closeDesignCropModal();
         if (designAiSuggestXhr && designAiSuggestXhr.readyState !== 4) {
           try { designAiSuggestXhr.abort(); } catch (e) { /* ignore */ }
         }
         setDesignAiBusy(false);
-        pendingOriginalImageFile = null;
+        setDesignOriginalImageSource('', null);
+        savedImageDisplayMode = 'whole';
         $('#designImageData').val('');
         $('#designImagePreviewImg').attr('src', '');
         var slot = document.getElementById('designImageUpload');
         if (slot) {
           slot.classList.remove('has-preview', 'design-image-upload--has-image');
           slot.classList.add('design-image-upload--empty');
-          slot.style.removeProperty('--design-preview-ar');
         }
         $('#designImageUploadEmpty').removeClass('hidden');
         $('#designImageUploadPreview').addClass('hidden');
+        $('#designImageModeOptions').addClass('hidden');
+        syncDesignImageDisplayMode('whole', '');
         $('#btnReplaceDesignImage').text('Upload image');
         $('#designAiFilledPill').prop('hidden', true);
         $('#designImage').val('');
@@ -2775,28 +2870,11 @@
         suppressSmartPricingAutofill = false;
       }
 
-      function applyExistingDesignImagePreview(url) {
+      function applyExistingDesignImagePreview(url, originalUrl, mode) {
         $('#designImageData').val('');
-        var $slot = $('#designImageUpload');
-        $slot.removeClass('has-preview');
-        if ($slot[0]) {
-          $slot[0].style.removeProperty('--design-preview-ar');
-        }
-        var $img = $('#designImagePreviewImg');
-        $img.off('load.designpref').on('load.designpref', function () {
-          $img.off('load.designpref');
-          var w = this.naturalWidth;
-          var h = this.naturalHeight;
-          if (w > 0 && h > 0 && $slot[0]) {
-            $slot.addClass('has-preview');
-            $slot[0].style.setProperty('--design-preview-ar', w + ' / ' + h);
-          }
-        });
-        $img.attr('src', url || '');
-        $('#designImageUploadEmpty').addClass('hidden');
-        $('#designImageUploadPreview').removeClass('hidden');
-        $slot.removeClass('design-image-upload--empty').addClass('design-image-upload--has-image');
-        $('#btnReplaceDesignImage').text('Replace image');
+        setDesignOriginalImageSource(originalUrl || url || '', null);
+        savedImageDisplayMode = mode === 'crop' ? 'crop' : 'whole';
+        showDesignImagePreview(url || originalUrl || '', savedImageDisplayMode);
         $('#designAiFilledPill').prop('hidden', true);
         $('#designImage').val('');
       }
@@ -2811,7 +2889,7 @@
         $('#designModalTitle').text('Edit design');
         $('#btnSaveDesign').html('<span class="ms">save</span>Save design');
         populateDesignFormFromPayload(d);
-        applyExistingDesignImagePreview(d.image_url);
+        applyExistingDesignImagePreview(d.image_url, d.original_image_url, d.image_display_mode);
         openNewDesignModal();
       }
 
@@ -2822,8 +2900,12 @@
         var blob = dataUrl ? dataUrlToBlob(dataUrl) : null;
         var previewSrc = ($('#designImagePreviewImg').attr('src') || '').trim();
         var hasExistingPreview = !!editingId && !!previewSrc && !$('#designImageUploadPreview').hasClass('hidden');
-        if (!blob && !hasExistingPreview) {
-          errors.image = 'Please add and crop an image.';
+        var imageMode = $('#designImageDisplayMode').val() || 'whole';
+        if (!pendingOriginalImageFile && !hasExistingPreview) {
+          errors.image = 'Please upload a design image.';
+        } else if (imageMode === 'crop' && !blob
+          && !(hasExistingPreview && savedImageDisplayMode === 'crop')) {
+          errors.image = 'Apply a crop before choosing “Crop to fill”.';
         }
         var title = $.trim($('#designTitle').val());
         if (!title) {
@@ -3131,14 +3213,16 @@
         var editId = $newDesignModal.data('editingDesignId');
         var dataUrl = $('#designImageData').val();
         var blob = dataUrl ? dataUrlToBlob(dataUrl) : null;
+        var imageMode = $('#designImageDisplayMode').val() || 'whole';
         var fd = new FormData();
-        if (blob) {
+        if (blob && imageMode === 'crop') {
           fd.append('image', blob, 'design.jpg');
         }
         if (pendingOriginalImageFile) {
           var originalName = pendingOriginalImageFile.name || 'design-original.jpg';
           fd.append('original_image', pendingOriginalImageFile, originalName);
         }
+        fd.append('image_display_mode', imageMode);
         fd.append('title', $.trim($('#designTitle').val()));
         fd.append('description', $.trim($('#designDescription').val()));
         fd.append('is_visible', $('#toggleVisibility').hasClass('active') ? '1' : '0');
@@ -3469,7 +3553,25 @@
       $('#designImage').on('change', function () {
         var file = this.files && this.files[0];
         if (file) {
-          openDesignCropModalWithFile(file);
+          handleDesignImageFile(file);
+        }
+      });
+      $('#designImageModeOptions').on('change', 'input[name="design_display_mode_choice"]', function () {
+        var mode = $(this).val();
+        if (mode === 'whole') {
+          $('#designImageData').val('');
+          syncDesignImageDisplayMode('whole', currentDesignOriginalUrl);
+          return;
+        }
+        if (!currentDesignOriginalUrl) {
+          syncDesignImageDisplayMode($('#designImageDisplayMode').val() || 'whole');
+          return;
+        }
+        openDesignCropModal(currentDesignOriginalUrl);
+      });
+      $('#btnAdjustDesignCrop').on('click', function () {
+        if (currentDesignOriginalUrl) {
+          openDesignCropModal(currentDesignOriginalUrl);
         }
       });
 
@@ -3487,19 +3589,21 @@
         .on('drop', function (e) {
           var file = e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.files[0];
           if (file) {
-            openDesignCropModalWithFile(file);
+            handleDesignImageFile(file);
           }
         });
 
       $('#btnDesignCropApply').on('click', applyDesignCrop);
       $('#btnDesignCropCancel, #btnDesignCropClose').on('click', function () {
         closeDesignCropModal();
+        syncDesignImageDisplayMode($('#designImageDisplayMode').val() || 'whole');
         $('#designImage').val('');
       });
 
       $designCropModal.on('click', function (e) {
         if (e.target === this) {
           closeDesignCropModal();
+          syncDesignImageDisplayMode($('#designImageDisplayMode').val() || 'whole');
           $('#designImage').val('');
         }
       });
@@ -3540,6 +3644,7 @@
         if (e.key !== 'Escape') return;
         if ($designCropModal.hasClass('is-open')) {
           closeDesignCropModal();
+          syncDesignImageDisplayMode($('#designImageDisplayMode').val() || 'whole');
           $('#designImage').val('');
           return;
         }

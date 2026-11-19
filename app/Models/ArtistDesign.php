@@ -17,6 +17,7 @@ class ArtistDesign extends Model
         'description',
         'image',
         'original_image',
+        'image_display_mode',
         'is_active',
         'is_deleted',
         'is_visible',
@@ -52,6 +53,24 @@ class ArtistDesign extends Model
             'suggested_placements' => 'array',
             'tags' => 'array',
         ];
+    }
+
+    protected $attributes = [
+        'image_display_mode' => 'whole',
+    ];
+
+    public function getDisplayImageAttribute(): ?string
+    {
+        if ($this->image_display_mode === 'crop' && filled($this->image)) {
+            return $this->image;
+        }
+
+        return $this->original_image ?: $this->image;
+    }
+
+    public function getDisplayImageFitAttribute(): string
+    {
+        return $this->image_display_mode === 'crop' ? 'cover' : 'contain';
     }
 
     protected static function booted(): void

@@ -86,7 +86,7 @@
         'tattoo_slug' => $tattoo->slug,
         'guest_spot' => $guestSpotId ?: null,
     ]));
-    $imageUrl = asset($tattoo->image);
+    $imageUrl = asset($tattoo->display_image);
   @endphp
   <style>
     :root{
@@ -118,7 +118,7 @@
     .btn:disabled,.btn[aria-disabled=true]{background:#C9B6DA;cursor:not-allowed;pointer-events:none}
     .warn{border:1px solid rgba(255,191,0,.45);background:rgba(255,191,0,.12);color:#8B6914;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:500;margin-bottom:16px}
     .dp{display:grid;grid-template-columns:260px 1fr;gap:20px}
-    .dp .img{aspect-ratio:4/5;border-radius:8px;background:#111 center/cover no-repeat}
+    .dp .img{aspect-ratio:4/5;border-radius:8px;background:#fff center/contain no-repeat}
     .dp h1{font-size:22px;margin:0 0 6px;letter-spacing:-.3px}
     .by{display:flex;gap:6px;align-items:center;font-size:12px}
     .by i{width:20px;height:20px;border-radius:50%;background:var(--p);color:#fff;font-style:normal;font-size:8.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
@@ -146,7 +146,7 @@
     .incl div:before{content:'+';color:var(--p);font-weight:800;margin-right:6px}
     .more{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
     .mc{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;text-align:left;display:block;text-decoration:none}
-    .mc .i{aspect-ratio:1;background:#222 center/cover no-repeat}
+    .mc .i{aspect-ratio:4/5;background:#fff center/contain no-repeat}
     .mc .t{padding:8px 10px;font-size:11.5px}
     .mc .t b{display:block}
     .tag{display:inline-block;background:var(--pl);color:var(--p);border-radius:999px;font-size:9.5px;padding:1px 7px;margin:3px 0}
@@ -156,7 +156,7 @@
     .ft a:hover{color:var(--p)}
     @media (max-width:720px){
       .dp{grid-template-columns:1fr}
-      .dp .img{aspect-ratio:1}
+      .dp .img{aspect-ratio:4/5}
       .facts{grid-template-columns:1fr 1fr}
       .more{grid-template-columns:1fr 1fr}
     }
@@ -177,7 +177,7 @@
     @endif
 
     <div class="dp">
-      <div class="img" style="background-image:url('{{ $imageUrl }}')" role="img" aria-label="{{ $tattoo->title }}"></div>
+      <div class="img" style="background-image:url('{{ $imageUrl }}');background-size:{{ $tattoo->display_image_fit }};background-color:#fff" role="img" aria-label="{{ $tattoo->title }}"></div>
       <div class="dpr">
         <h1>{{ $tattoo->title }}</h1>
         <a class="by" href="{{ $artistUrl }}"><i>{{ $artistInitials }}</i>by <b>{{ $artistName }}</b></a>
@@ -274,7 +274,7 @@
                 : $relClaimed.'/'.$relLimit.' booked · <b>Not available</b>');
           @endphp
           <a class="mc" href="{{ route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $related->slug]) }}">
-            <div class="i" style="background-image:url('{{ asset($related->image) }}')"></div>
+            <div class="i" style="background-image:url('{{ asset($related->display_image) }}');background-size:{{ $related->display_image_fit }};background-color:#fff"></div>
             <div class="t">
               <b>{{ $related->title }}</b>
               @if($relStyle !== '')

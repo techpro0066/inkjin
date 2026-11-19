@@ -58,11 +58,12 @@ class GuestSpotsController extends Controller
             ->orderBy('sort_order')
             ->orderBy('id')
             ->limit(24)
-            ->get(['id', 'title', 'image', 'is_active'])
+            ->get(['id', 'title', 'image', 'original_image', 'image_display_mode', 'is_active'])
             ->map(fn ($d) => [
                 'id' => $d->id,
                 'title' => $d->title ?: 'Design',
-                'image_url' => $d->image ? asset($d->image) : null,
+                'image_url' => $d->display_image ? asset($d->display_image) : null,
+                'image_fit' => $d->display_image_fit,
                 'badge' => $d->is_active ? null : 'Unavailable',
             ]);
 

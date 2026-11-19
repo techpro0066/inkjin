@@ -320,7 +320,7 @@
                 <div class="pfg" id="gsDesignsGrid">
                   @foreach($gsDesigns as $design)
                     <button type="button" class="pfp dsp" data-id="{{ $design['id'] }}" aria-pressed="false" title="{{ $design['title'] }}"
-                      @if(!empty($design['image_url'])) style="background-image:url('{{ $design['image_url'] }}')" @endif>
+                      @if(!empty($design['image_url'])) style="background-image:url('{{ $design['image_url'] }}');background-size:{{ $design['image_fit'] ?? 'cover' }};background-position:center;background-repeat:no-repeat;background-color:#fff" @endif>
                       @if(!empty($design['badge']))
                         <span class="dsl">{{ $design['badge'] }}</span>
                       @endif

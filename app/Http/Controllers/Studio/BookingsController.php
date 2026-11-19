@@ -988,8 +988,8 @@ class BookingsController extends Controller
         };
 
         $imageUrl = null;
-        if ($booking->tattoo && ! empty($booking->tattoo->image)) {
-            $imgRaw = (string) $booking->tattoo->image;
+        if ($booking->tattoo && ! empty($booking->tattoo->display_image)) {
+            $imgRaw = (string) $booking->tattoo->display_image;
             $imageUrl = str_starts_with($imgRaw, 'http://') || str_starts_with($imgRaw, 'https://')
                 ? $imgRaw
                 : asset(ltrim($imgRaw, '/'));

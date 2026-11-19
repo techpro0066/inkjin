@@ -96,8 +96,8 @@ class BookingsController extends Controller
         $ud = $artist?->userDetail;
 
         $image = '';
-        if ($tattoo && $tattoo->image) {
-            $raw = (string) $tattoo->image;
+        if ($tattoo && $tattoo->display_image) {
+            $raw = (string) $tattoo->display_image;
             $image = str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://')
                 ? $raw
                 : asset($raw);

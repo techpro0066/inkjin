@@ -798,7 +798,7 @@ class BookingRequest extends Model
 
     public function designImageUrl(): ?string
     {
-        $image = (string) ($this->tattoo?->image ?? '');
+        $image = (string) ($this->tattoo?->display_image ?? '');
         if ($image === '') {
             return null;
         }

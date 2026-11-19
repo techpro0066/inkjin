@@ -241,9 +241,9 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             @foreach($artistDesigns as $artistDesign)
             <div class="design-card bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/50 cursor-pointer" onclick="window.location.href='design-detail.html?design=5'">
-                <div class="aspect-4-5 bg-gradient-to-br from-violet-100 via-violet-200 to-violet-300 relative">
+                <div class="aspect-4-5 bg-white relative">
                     <div class="absolute inset-0 flex items-center justify-center">
-                        <img src="{{ asset($artistDesign->image) }}" alt="Design" class="w-full h-full object-cover">
+                        <img src="{{ asset($artistDesign->display_image) }}" alt="Design" class="w-full h-full" style="object-fit:{{ $artistDesign->display_image_fit }}">
                     </div>
                 </div>
                 <div class="p-4">

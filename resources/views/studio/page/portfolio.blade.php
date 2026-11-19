@@ -197,7 +197,7 @@
       <div class="spg" id="artistWorkPreview">
         @forelse ($artistWorkPreview as $item)
           <div class="spf">
-            <div class="spi" @if($item['image']) style="background-image:url('{{ $item['image'] }}')" @endif></div>
+            <div class="spi" @if($item['image']) style="background-image:url('{{ $item['image'] }}');background-size:{{ $item['image_fit'] ?? 'cover' }};background-position:center;background-repeat:no-repeat;background-color:#fff" @endif></div>
             <div class="spc">
               <b>{{ $item['title'] }}</b>
               <div class="faint" style="font-size:11.5px">{{ $item['subtitle'] }}</div>

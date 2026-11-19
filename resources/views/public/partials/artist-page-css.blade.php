@@ -79,7 +79,7 @@ h1{font-size:38px;font-weight:800;letter-spacing:-1.2px;line-height:1.1;margin-t
 .dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;width:100%;min-width:0}
 .dc{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;width:100%;min-width:0;max-width:none;transition:box-shadow .2s,transform .2s}
 .dc:hover{box-shadow:0 14px 34px rgba(30,15,45,.10);transform:translateY(-2px)}
-.dimg{aspect-ratio:1;background:#F3F0F5 center/cover no-repeat;position:relative;border-bottom:1px solid var(--line)}
+.dimg{aspect-ratio:4/5;background:#fff center/contain no-repeat;position:relative;border-bottom:1px solid var(--line)}
 .dimg .pill{position:absolute;top:12px;left:12px}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:20px;padding:3px 10px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .pill.g{color:var(--green)}.pill.k{color:var(--muted)}.pill.r{color:#C62828}

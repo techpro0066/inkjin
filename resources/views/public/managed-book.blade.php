@@ -274,7 +274,7 @@
 
     {{-- Design card — match client-book dcard() for flash --}}
     <div class="dc">
-      <div class="im" style="background-image:url('{{ asset($tattoo->image) }}')" role="img" aria-label="{{ $tattoo->title }}"></div>
+      <div class="im" style="background-image:url('{{ asset($tattoo->display_image) }}');background-size:{{ $tattoo->display_image_fit }};background-position:center;background-repeat:no-repeat;background-color:#fff" role="img" aria-label="{{ $tattoo->title }}"></div>
       <div>
         <h2 class="cc-designTitle">{{ $tattoo->title }}</h2>
         <div class="m">

@@ -364,7 +364,7 @@
         <div class="dgrid">
           @foreach($artistDesigns as $artistDesign)
             @php
-              $designImage = $artistDesign->image ? asset($artistDesign->image) : null;
+              $designImage = $artistDesign->display_image ? asset($artistDesign->display_image) : null;
               $isSold = (bool) ($artistDesign->is_sold_out ?? false);
               $designUrl = route('public.tattoo', [
                   'user_name' => $userDetail->user_name,
@@ -378,7 +378,7 @@
                   : ($priceMin !== '' ? $priceMin : $priceMax);
             @endphp
             <article class="dc {{ $isSold ? 'off' : '' }}">
-              <div class="dimg" style="{{ $designImage ? "background-image:url('".e($designImage)."')" : '' }}">
+              <div class="dimg" style="{{ $designImage ? "background-image:url('".e($designImage)."');background-size:".$artistDesign->display_image_fit.";background-position:center;background-repeat:no-repeat;background-color:#fff" : '' }}">
                 <span class="pill {{ $isSold ? 'r' : 'g' }}">{{ $isSold ? 'Sold' : 'Available' }}</span>
               </div>
               <div class="db">

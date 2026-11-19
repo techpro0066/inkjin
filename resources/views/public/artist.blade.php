@@ -557,7 +557,7 @@
             $priceMax = $formatRate($artistDesign->max_price);
           @endphp
           <article class="dc {{ $designSoldOut ? 'off' : '' }}">
-            <div class="dimg" style="background-image:url('{{ asset($artistDesign->image) }}')">
+            <div class="dimg" style="background-image:url('{{ asset($artistDesign->display_image) }}');background-size:{{ $artistDesign->display_image_fit }};background-position:center;background-repeat:no-repeat;background-color:#fff">
                         @if($designSoldOut)
                 <span class="pill r">Sold out</span>
               @elseif($remaining > 0 && $remaining <= 2)

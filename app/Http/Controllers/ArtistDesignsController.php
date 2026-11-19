@@ -77,11 +77,22 @@ class ArtistDesignsController extends Controller
             'min_size' => ['required', 'integer', 'min:1'],
             'max_sessions' => ['nullable', 'integer', 'min:1'],
             'session_duration' => ['required', 'string', Rule::in($this->sessionDurations())],
+            'image_display_mode' => ['required', Rule::in(['whole', 'crop'])],
         ];
-        $rules['image'] = $requireImage
-            ? ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240']
-            : ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240'];
-        $rules['original_image'] = ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240'];
+        $rules['image'] = [
+            Rule::requiredIf(fn () => $requireImage && $request->input('image_display_mode') === 'crop'),
+            'nullable',
+            'image',
+            'mimes:jpeg,jpg,png,webp',
+            'max:10240',
+        ];
+        $rules['original_image'] = [
+            Rule::requiredIf($requireImage),
+            'nullable',
+            'image',
+            'mimes:jpeg,jpg,png,webp',
+            'max:10240',
+        ];
 
         return $rules;
     }
@@ -253,8 +264,10 @@ class ArtistDesignsController extends Controller
         [$other, $tags, $placements] = $this->normalizeArrays($validated);
         [$minSessions, $maxSessions] = $this->normalizedSessionCounts($request);
         $minSize = $this->normalizedMinSize($validated);
-        $imagePath = $this->storeUploadedImage($request);
         $originalImagePath = $this->storeUploadedOriginalImage($request);
+        $imagePath = $validated['image_display_mode'] === 'crop'
+            ? $this->storeUploadedImage($request)
+            : $originalImagePath;
         $repeatLimit = $this->normalizedRepeatLimit($request);
         $userId = (int) Auth::id();
 
@@ -264,6 +277,7 @@ class ArtistDesignsController extends Controller
             'description' => trim((string) ($validated['description'] ?? '')),
             'image' => $imagePath,
             'original_image' => $originalImagePath,
+            'image_display_mode' => $validated['image_display_mode'],
             'is_active' => $request->boolean('is_active'),
             'is_visible' => $request->boolean('is_visible'),
             'is_repeatable' => $request->boolean('is_repeatable'),
@@ -302,14 +316,27 @@ class ArtistDesignsController extends Controller
         $repeatLimit = $this->normalizedRepeatLimit($request, $artistDesign);
 
         $imagePath = $artistDesign->image;
-        $originalImagePath = $artistDesign->original_image;
-        if ($request->hasFile('image')) {
-            $this->deleteUploadIfSafe($artistDesign->image);
-            $imagePath = $this->storeUploadedImage($request);
+        $oldImagePath = $artistDesign->image;
+        $oldOriginalImagePath = $artistDesign->original_image;
+        $displayMode = $validated['image_display_mode'];
+        if ($displayMode === 'crop'
+            && ! $request->hasFile('image')
+            && ($artistDesign->image_display_mode !== 'crop' || $request->hasFile('original_image'))) {
+            throw ValidationException::withMessages([
+                'image' => ['Apply a crop before choosing “Crop to fill”.'],
+            ]);
         }
+
+        $originalImagePath = $oldOriginalImagePath ?: $oldImagePath;
         if ($request->hasFile('original_image')) {
-            $this->deleteUploadIfSafe($artistDesign->original_image);
             $originalImagePath = $this->storeUploadedOriginalImage($request);
+        }
+        if ($displayMode === 'crop') {
+            if ($request->hasFile('image')) {
+                $imagePath = $this->storeUploadedImage($request);
+            }
+        } else {
+            $imagePath = $originalImagePath ?: $oldImagePath;
         }
 
         $artistDesign->update([
@@ -317,6 +344,7 @@ class ArtistDesignsController extends Controller
             'description' => trim((string) ($validated['description'] ?? '')),
             'image' => $imagePath,
             'original_image' => $originalImagePath,
+            'image_display_mode' => $displayMode,
             'is_active' => $request->boolean('is_active'),
             'is_visible' => $request->boolean('is_visible'),
             'is_repeatable' => $request->boolean('is_repeatable'),
@@ -336,6 +364,11 @@ class ArtistDesignsController extends Controller
             'session_duration' => $validated['session_duration'],
             'slug' => Str::slug($validated['title']),
         ]);
+        foreach (array_unique(array_filter([$oldImagePath, $oldOriginalImagePath])) as $oldPath) {
+            if ($oldPath !== $imagePath && $oldPath !== $originalImagePath) {
+                $this->deleteUploadIfSafe($oldPath);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -660,8 +693,9 @@ class ArtistDesignsController extends Controller
             ]);
         }
 
-        $this->deleteUploadIfSafe($artistDesign->image);
-        $this->deleteUploadIfSafe($artistDesign->original_image);
+        foreach (array_unique(array_filter([$artistDesign->image, $artistDesign->original_image])) as $imagePath) {
+            $this->deleteUploadIfSafe($imagePath);
+        }
         $artistDesign->delete();
 
         return response()->json([
