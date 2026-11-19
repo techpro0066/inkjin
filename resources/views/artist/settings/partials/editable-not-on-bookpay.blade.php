@@ -39,7 +39,7 @@
           </div>
           <div class="help">Start typing and pick from Google suggestions to fill the fields below.</div>
         </div>
-        <div class="grid" style="grid-template-columns:1fr 2fr;gap:12px">
+        <div class="grid st-address-grid" style="grid-template-columns:1fr 2fr;gap:12px">
           <div>
             <span class="fl">Street number <span style="color:#C62828">*</span></span>
             <input class="in" name="street_number" value="{{ old('street_number', $card['street_number'] ?? '') }}" placeholder="">
@@ -49,7 +49,7 @@
             <input class="in" name="street_name" value="{{ old('street_name', $card['street_name'] ?? '') }}" placeholder="">
           </div>
         </div>
-        <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+        <div class="grid st-location-grid" style="grid-template-columns:1fr 1fr;gap:12px">
           <div>
             <span class="fl">City <span style="color:#C62828">*</span></span>
             <input class="in" name="city" value="{{ old('city', $card['city'] ?? '') }}" placeholder="">

@@ -29,7 +29,12 @@
 .results{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;margin-top:8px}
 .result{display:flex;gap:12px;align-items:center;padding:9px 10px;border-radius:9px;cursor:pointer;text-decoration:none;color:inherit;border:0;background:none;width:100%;text-align:left;font:inherit}
 .result:hover,.result.hl{background:#F8F0FC}
-@media (max-width:700px){.tgrid{grid-template-columns:1fr}}
+@media (max-width:700px){
+  .tgrid{grid-template-columns:1fr}
+  .st-address-grid,.st-location-grid{grid-template-columns:minmax(0,1fr)!important}
+}
+.grid>*{min-width:0}
+.in input{min-width:0}
 .hsteps{display:flex;gap:6px;margin:0 0 18px;flex-wrap:wrap}.hsteps span{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--faint);padding:6px 12px;border-radius:20px;background:#F5F1F6}
 .hsteps span i{font-style:normal;width:18px;height:18px;border-radius:50%;background:#DDD3E2;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center}
 .hsteps span.on{background:#F3E8FF;color:#3E007C}.hsteps span.on i,.hsteps span.done i{background:#3E007C}.hsteps span.done{color:#3E007C}
@@ -186,11 +191,11 @@
               <div class="in"><span class="ms">location_on</span><input id="csManAddress" type="text" placeholder="Start typing your address" autocomplete="off" style="border:0;outline:0;font:inherit;flex:1;background:none"></div>
               <div class="help">Start typing and pick from Google suggestions to fill the fields below.</div>
             </div>
-            <div class="grid" style="grid-template-columns:1fr 2fr;gap:12px">
+            <div class="grid st-address-grid" style="grid-template-columns:1fr 2fr;gap:12px">
               <div><span class="fl">Street number <span style="color:#C62828">*</span></span><input class="in" id="csManStreetNo" type="text"></div>
               <div><span class="fl">Street name <span style="color:#C62828">*</span></span><input class="in" id="csManStreet" type="text"></div>
             </div>
-            <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+            <div class="grid st-location-grid" style="grid-template-columns:1fr 1fr;gap:12px">
               <div><span class="fl">City <span style="color:#C62828">*</span></span><input class="in" id="csManCity" type="text"></div>
               <div><span class="fl">State / Province <span style="color:#C62828">*</span></span><input class="in" id="csManState" type="text"></div>
               <div><span class="fl">Postal code <span style="color:#C62828">*</span></span><input class="in" id="csManPostal" type="text"></div>
@@ -241,11 +246,11 @@
               <div class="in"><span class="ms">location_on</span><input id="csOwnAddress" type="text" placeholder="Start typing your address" autocomplete="off" style="border:0;outline:0;font:inherit;flex:1;background:none"></div>
               <div class="help">Start typing and pick from Google suggestions to fill the fields below.</div>
             </div>
-            <div class="grid" style="grid-template-columns:1fr 2fr;gap:12px">
+            <div class="grid st-address-grid" style="grid-template-columns:1fr 2fr;gap:12px">
               <div><span class="fl">Street number <span style="color:#C62828">*</span></span><input class="in" id="csOwnStreetNo" type="text"></div>
               <div><span class="fl">Street name <span style="color:#C62828">*</span></span><input class="in" id="csOwnStreet" type="text"></div>
             </div>
-            <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+            <div class="grid st-location-grid" style="grid-template-columns:1fr 1fr;gap:12px">
               <div><span class="fl">City <span style="color:#C62828">*</span></span><input class="in" id="csOwnCity" type="text"></div>
               <div><span class="fl">State / Province <span style="color:#C62828">*</span></span><input class="in" id="csOwnState" type="text"></div>
               <div><span class="fl">Postal code <span style="color:#C62828">*</span></span><input class="in" id="csOwnPostal" type="text"></div>
