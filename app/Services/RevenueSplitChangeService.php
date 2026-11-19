@@ -7,6 +7,7 @@ use App\Mail\ArtistRevenueSplitRequestMail;
 use App\Models\Studio;
 use App\Models\User;
 use App\Models\UserStudio;
+use App\Support\ArtistNotificationPreferences;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -159,6 +160,12 @@ class RevenueSplitChangeService
         $link->loadMissing(['user', 'studio']);
         $email = trim((string) ($link->user?->email ?? ''));
         if ($email === '') {
+            return;
+        }
+        if (! ArtistNotificationPreferences::allows(
+            $link->user,
+            ArtistNotificationPreferences::STUDIO_ANSWERS
+        )) {
             return;
         }
 

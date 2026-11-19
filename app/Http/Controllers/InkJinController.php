@@ -33,6 +33,7 @@ use App\Services\GoogleCalendarBookingSyncService;
 use App\Exceptions\GoogleCalendarEventRequiredException;
 use App\Services\ArtistPayoutService;
 use App\Services\BookingCheckoutPricingService;
+use App\Support\ArtistNotificationPreferences;
 use App\Models\UserDetail;
 use App\Models\GuestSpot;
 use App\Models\Studio;
@@ -1944,7 +1945,10 @@ class InkJinController extends Controller
             }
         }
 
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $userDetail->user,
+            ArtistNotificationPreferences::NEW_BOOKINGS
+        )) {
             try {
                 Mail::to($artistEmail)->send(new BookingConfirmationMail($booking, true, []));
             } catch (\Throwable $e) {
@@ -2143,7 +2147,10 @@ class InkJinController extends Controller
         }
 
         $artistEmail = (string) ($userDetail->user->email ?? '');
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $userDetail->user,
+            ArtistNotificationPreferences::NEW_REQUESTS
+        )) {
             try {
                 $bookingRequest->load(['user', 'tattoo']);
                 Mail::to($artistEmail)->send(new ManagedBookingRequestArtistMail(

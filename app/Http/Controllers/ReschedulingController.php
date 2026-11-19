@@ -7,6 +7,7 @@ use App\Models\Availability;
 use App\Models\User;
 use App\Services\BookingCalendarAvailabilityService;
 use App\Services\ReschedulingService;
+use App\Support\ArtistNotificationPreferences;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Mail\RescheduleRequestMail;
 use App\Mail\RescheduleConfirmationMail;
@@ -403,7 +404,10 @@ class ReschedulingController extends Controller
                     Mail::to($booking->artist->email)->send(
                         new RescheduleConfirmationMail($booking, true)
                     );
-                } else {
+                } elseif (! $isArtistRequested && ArtistNotificationPreferences::allows(
+                    $booking->artist,
+                    ArtistNotificationPreferences::NEW_REQUESTS
+                )) {
                     Mail::to($booking->artist->email)->send(
                         new RescheduleToArtistMail($booking, $request->reason)
                     );

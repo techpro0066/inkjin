@@ -649,6 +649,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::redirect('/settings/other', '/settings/regional', 301);
     Route::get('/settings/regional', [OtherSettingsController::class, 'edit'])->name('settings.regional');
     Route::post('/settings/regional', [OtherSettingsController::class, 'update'])->name('settings.regional.update');
+    Route::get('/settings/notifications', [OtherSettingsController::class, 'notifications'])->name('settings.notifications');
+    Route::post('/settings/notifications', [OtherSettingsController::class, 'updateNotifications'])->name('settings.notifications.update');
 
     // Availability routes (for artists)
     Route::get('/availability', [\App\Http\Controllers\AvailabilityController::class, 'index'])->name('availability.index');

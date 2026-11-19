@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\ConsentAnswer;
 use App\Models\ConsentFormSetting;
 use App\Models\User;
+use App\Support\ArtistNotificationPreferences;
 use App\Support\PhoneCountryCodes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -307,6 +308,10 @@ class BookingConsentService
         $artist = $consent->artist;
         $email = trim((string) ($artist?->email ?? ''));
         if (! $artist || $email === '') {
+            return;
+        }
+
+        if (! ArtistNotificationPreferences::allows($artist, ArtistNotificationPreferences::CONSENT_FORM_SIGNED)) {
             return;
         }
 

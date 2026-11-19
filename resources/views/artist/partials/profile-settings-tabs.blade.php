@@ -11,4 +11,5 @@
   <a href="{{ route('profile.password') }}" class="{{ $activeProfileTab === 'password' ? 'on' : '' }}">Password</a>
   <a href="{{ route('settings.studio') }}" class="{{ $activeProfileTab === 'studio' || request()->routeIs('settings.studio') ? 'on' : '' }}">Studio</a>
   <a href="{{ route('settings.regional') }}" class="{{ $activeProfileTab === 'regional' || request()->routeIs('settings.regional') ? 'on' : '' }}">Regional</a>
+  <a href="{{ route('settings.notifications') }}" class="{{ $activeProfileTab === 'notifications' || request()->routeIs('settings.notifications') ? 'on' : '' }}">Notifications</a>
 </div>

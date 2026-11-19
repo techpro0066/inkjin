@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ConsentFormSetting;
 use App\Models\UserDetail;
 use App\Services\LocationPreferencesService;
+use App\Support\ArtistNotificationPreferences;
 use App\Support\StripeConnectCountries;
 use DateTimeZone;
 use Illuminate\Contracts\View\View;
@@ -76,6 +77,42 @@ class OtherSettingsController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Regional settings updated successfully.',
+        ]);
+    }
+
+    public function notifications(Request $request): View
+    {
+        $userDetail = $request->user()->userDetail
+            ?? UserDetail::create(['user_id' => $request->user()->id]);
+        $notAllowedNotifications = array_values(array_intersect(
+            ArtistNotificationPreferences::KEYS,
+            is_array($userDetail->not_allowed_notification) ? $userDetail->not_allowed_notification : []
+        ));
+
+        return view('artist.settings.notifications', [
+            'notAllowedNotifications' => $notAllowedNotifications,
+            'activeNav' => 'account',
+        ]);
+    }
+
+    public function updateNotifications(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'not_allowed_notification' => ['present', 'array'],
+            'not_allowed_notification.*' => ['required', 'string', Rule::in(ArtistNotificationPreferences::KEYS)],
+        ]);
+
+        $user = $request->user();
+        $userDetail = $user->userDetail
+            ?? UserDetail::create(['user_id' => $user->id]);
+        $userDetail->not_allowed_notification = array_values(array_unique(
+            $validated['not_allowed_notification']
+        ));
+        $userDetail->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Notification preferences saved.',
         ]);
     }
 }

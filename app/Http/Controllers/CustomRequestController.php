@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\Waitlist;
 use App\Services\PublicBookingEmailVerificationService;
+use App\Support\ArtistNotificationPreferences;
 use App\Support\ArtistStudioChoices;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -361,7 +362,10 @@ class CustomRequestController extends Controller
 
         $artistEmail = (string) ($userDetail->user->email ?? '');
         // Waitlist joins stay on Clients > Waitlist until the artist notifies them.
-        if ($artistEmail !== '' && ! $isWaitlistJoin) {
+        if ($artistEmail !== '' && ! $isWaitlistJoin && ArtistNotificationPreferences::allows(
+            $userDetail->user,
+            ArtistNotificationPreferences::NEW_REQUESTS
+        )) {
             try {
                 $customRequest->load(['user', 'artist']);
                 Mail::to($artistEmail)->send(new CustomRequestSubmittedArtistMail(

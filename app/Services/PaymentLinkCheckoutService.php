@@ -13,6 +13,7 @@ use App\Models\PendingVivaPayment;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Support\PaymentMethods;
+use App\Support\ArtistNotificationPreferences;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -613,7 +614,10 @@ class PaymentLinkCheckoutService
             }
         }
 
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $userDetail->user,
+            ArtistNotificationPreferences::NEW_BOOKINGS
+        )) {
             try {
                 Mail::to($artistEmail)->send(new PaymentLinkArtistBookedMail(
                     $booking,

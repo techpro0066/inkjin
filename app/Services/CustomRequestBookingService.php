@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\CustomRequest;
 use App\Models\StudioRequest;
 use App\Services\CancellationService;
+use App\Support\ArtistNotificationPreferences;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -479,7 +480,10 @@ class CustomRequestBookingService
             }
         }
 
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $booking->artist,
+            ArtistNotificationPreferences::NEW_BOOKINGS
+        )) {
             try {
                 Mail::to($artistEmail)->send(new BookingConfirmationMail($booking, true, []));
             } catch (\Throwable $e) {

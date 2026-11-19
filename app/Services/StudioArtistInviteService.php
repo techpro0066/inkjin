@@ -8,6 +8,7 @@ use App\Models\StudioInvite;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserStudio;
+use App\Support\ArtistNotificationPreferences;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -551,9 +552,15 @@ class StudioArtistInviteService
 
     private function sendEmail(StudioInvite $invite, bool $isResend = false): void
     {
-        // Always email — existing Bookpay artists also get the invite (plus in-app).
         try {
             $invite->loadMissing(['studio', 'user']);
+            if (! ArtistNotificationPreferences::allows(
+                $invite->user,
+                ArtistNotificationPreferences::STUDIO_ANSWERS
+            )) {
+                return;
+            }
+
             Mail::to($invite->email)->send(new StudioArtistInviteMail(
                 invite: $invite,
                 isResend: $isResend,

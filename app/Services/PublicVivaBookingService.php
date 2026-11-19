@@ -11,6 +11,7 @@ use App\Models\PendingVivaPayment;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Support\ArtistStudioChoices;
+use App\Support\ArtistNotificationPreferences;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -237,7 +238,10 @@ class PublicVivaBookingService
             }
         }
 
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $userDetail->user,
+            ArtistNotificationPreferences::NEW_BOOKINGS
+        )) {
             try {
                 Mail::to($artistEmail)->send(new BookingConfirmationMail($booking, true, []));
             } catch (\Throwable $e) {

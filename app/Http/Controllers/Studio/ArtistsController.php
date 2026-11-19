@@ -12,6 +12,7 @@ use App\Models\UserStudio;
 use App\Services\GuestSpotStudioInviteService;
 use App\Services\RevenueSplitChangeService;
 use App\Services\StudioArtistInviteService;
+use App\Support\ArtistNotificationPreferences;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -842,6 +843,12 @@ class ArtistsController extends Controller
     ): void {
         $email = trim((string) ($link->user?->email ?? ''));
         if ($email === '') {
+            return;
+        }
+        if (! ArtistNotificationPreferences::allows(
+            $link->user,
+            ArtistNotificationPreferences::STUDIO_ANSWERS
+        )) {
             return;
         }
 

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\NewMessageFromArtistMail;
 use App\Mail\NewMessageToArtistMail;
 use App\Models\ChatChannel;
+use App\Support\ArtistNotificationPreferences;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -234,7 +235,17 @@ class ChatMessageEmailService
                     'artist_email_send_after' => null,
                 ]);
 
-            if ($cleared !== 1 || ! $artist || ! $sender || $email === '' || $text === '') {
+            if (
+                $cleared !== 1
+                || ! $artist
+                || ! $sender
+                || $email === ''
+                || $text === ''
+                || (! $fromStudio && ! ArtistNotificationPreferences::allows(
+                    $artist,
+                    ArtistNotificationPreferences::NEW_MESSAGES
+                ))
+            ) {
                 continue;
             }
 

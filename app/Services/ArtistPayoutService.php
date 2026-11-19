@@ -8,6 +8,7 @@ use App\Models\ArtistPayout;
 use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\UserDetail;
+use App\Support\ArtistNotificationPreferences;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -799,6 +800,9 @@ class ArtistPayoutService
         $artist = $userDetail->user;
         $email = trim((string) ($artist?->email ?? ''));
         if (! $artist || $email === '') {
+            return;
+        }
+        if (! ArtistNotificationPreferences::allows($artist, ArtistNotificationPreferences::PAYOUTS_SENT)) {
             return;
         }
 

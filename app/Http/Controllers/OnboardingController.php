@@ -35,6 +35,7 @@ use App\Services\StripeCountrySpecService;
 use App\Services\StripeRequirementSyncService;
 use App\Support\SocialLinks;
 use App\Support\StripeConnectCountries;
+use App\Support\ArtistNotificationPreferences;
 use Stripe\Exception\ApiErrorException;
 
 class OnboardingController extends Controller
@@ -4690,6 +4691,13 @@ class OnboardingController extends Controller
         string $studioName,
         ?string $message = null,
     ): void {
+        if (! ArtistNotificationPreferences::allows(
+            $artistUser,
+            ArtistNotificationPreferences::STUDIO_ANSWERS
+        )) {
+            return;
+        }
+
         $artistName = trim(($artistUser->first_name ?? '').' '.($artistUser->last_name ?? ''));
         if ($artistName === '') {
             $artistName = $artistUser->user_name ?? $artistUser->email ?? 'Artist';

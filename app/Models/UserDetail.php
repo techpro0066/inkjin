@@ -107,6 +107,7 @@ class UserDetail extends Model
         'design_whats_included_is_active',
         'aftercare_send_automatically',
         'aftercare_content',
+        'not_allowed_notification',
         'consent_questions_seeded_at',
     ];
 
@@ -124,6 +125,7 @@ class UserDetail extends Model
         'aftercare_send_automatically' => 'boolean',
         'guest_waitlist_auto_notify' => 'boolean',
         'aftercare_content' => 'array',
+        'not_allowed_notification' => 'array',
         'consent_questions_seeded_at' => 'datetime',
         'color_percent' => 'float',
         'customize_page_notice_dismissed' => 'boolean',

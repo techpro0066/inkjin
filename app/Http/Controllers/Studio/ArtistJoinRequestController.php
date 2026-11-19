@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Studio;
 use App\Http\Controllers\Controller;
 use App\Mail\ArtistStudioJoinRequestAnsweredMail;
 use App\Models\UserStudio;
+use App\Support\ArtistNotificationPreferences;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -123,6 +124,12 @@ class ArtistJoinRequestController extends Controller
     ): void {
         $email = trim((string) ($userStudio->user?->email ?? ''));
         if ($email === '') {
+            return;
+        }
+        if (! ArtistNotificationPreferences::allows(
+            $userStudio->user,
+            ArtistNotificationPreferences::STUDIO_ANSWERS
+        )) {
             return;
         }
 

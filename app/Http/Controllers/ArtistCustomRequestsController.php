@@ -10,6 +10,7 @@ use App\Mail\CustomRequestQuoteUserMail;
 use App\Models\CustomRequest;
 use App\Models\User;
 use App\Services\ArtistPayoutService;
+use App\Support\ArtistNotificationPreferences;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -181,7 +182,10 @@ class ArtistCustomRequestsController extends Controller
         }
 
         $artistEmail = trim((string) ($customRequest->artist?->email ?? ''));
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $customRequest->artist,
+            ArtistNotificationPreferences::NEW_REQUESTS
+        )) {
             try {
                 Mail::to($artistEmail)->send(new CustomRequestDeclinedArtistMail(
                     $customRequest,
@@ -225,7 +229,10 @@ class ArtistCustomRequestsController extends Controller
         }
 
         $artistEmail = trim((string) ($customRequest->artist?->email ?? ''));
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $customRequest->artist,
+            ArtistNotificationPreferences::NEW_REQUESTS
+        )) {
             try {
                 Mail::to($artistEmail)->send(new CustomRequestQuoteArtistMail(
                     $customRequest,

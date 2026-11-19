@@ -15,6 +15,7 @@ use App\Models\PaymentLink;
 use App\Models\StudioRequest;
 use App\Services\ArtistNavBadgeService;
 use App\Services\ArtistPayoutService;
+use App\Support\ArtistNotificationPreferences;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -701,7 +702,10 @@ class RequestsController extends Controller
         }
 
         $artistEmail = trim((string) ($bookingRequest->artist?->email ?? ''));
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $bookingRequest->artist,
+            ArtistNotificationPreferences::NEW_REQUESTS
+        )) {
             try {
                 Mail::to($artistEmail)->send(new ManagedBookingDeclinedArtistMail(
                     $bookingRequest,
@@ -741,7 +745,10 @@ class RequestsController extends Controller
         }
 
         $artistEmail = trim((string) ($bookingRequest->artist?->email ?? ''));
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $bookingRequest->artist,
+            ArtistNotificationPreferences::NEW_REQUESTS
+        )) {
             try {
                 Mail::to($artistEmail)->send(new ManagedBookingSlotsOfferedArtistMail(
                     $bookingRequest,

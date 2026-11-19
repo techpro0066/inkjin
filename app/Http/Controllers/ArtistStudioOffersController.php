@@ -9,6 +9,7 @@ use App\Models\StudioRequest;
 use App\Models\User;
 use App\Services\ArtistPayoutService;
 use App\Support\ArtistSessionSlots;
+use App\Support\ArtistNotificationPreferences;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -251,7 +252,10 @@ class ArtistStudioOffersController extends Controller
         }
 
         $artistEmail = trim((string) ($customRequest->artist?->email ?? ''));
-        if ($artistEmail !== '') {
+        if ($artistEmail !== '' && ArtistNotificationPreferences::allows(
+            $customRequest->artist,
+            ArtistNotificationPreferences::NEW_REQUESTS
+        )) {
             try {
                 Mail::to($artistEmail)->send(new CustomRequestQuoteArtistMail(
                     $customRequest,

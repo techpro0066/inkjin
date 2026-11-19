@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\ArtistClientFeedbackMail;
 use App\Models\ArtistClientFeedback;
 use App\Models\Booking;
+use App\Support\ArtistNotificationPreferences;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -67,6 +68,9 @@ class ArtistClientFeedbackService
         }
 
         if (! $feedback) {
+            return false;
+        }
+        if (! ArtistNotificationPreferences::allows($artist, ArtistNotificationPreferences::SESSION_FEEDBACK)) {
             return false;
         }
 
