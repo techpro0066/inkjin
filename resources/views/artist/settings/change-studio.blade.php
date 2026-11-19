@@ -10,6 +10,14 @@
 .po input{accent-color:#3E007C;width:18px;height:18px;margin-top:2px;flex-shrink:0}
 .po b{font-size:14.5px}.po .d{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.5}
 .splitbox{background:#FBF7FF;border:1px solid #E4D6F5;border-radius:14px;padding:18px;margin:4px 0 10px}
+.direct-invite-head{display:flex;gap:12px;align-items:flex-start}
+.direct-invite-head .tog{width:42px;height:24px;border-radius:20px;background:#D9D3DC;position:relative;cursor:pointer;flex:none;transition:background .15s}
+.direct-invite-head .tog:after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .15s}
+.direct-invite-head .tog.on{background:#3E007C}
+.direct-invite-head .tog.on:after{transform:translateX(18px)}
+.direct-invite-head .tog:focus-visible{outline:2px solid #3E007C;outline-offset:3px}
+.direct-invite-title{font-size:14px;font-weight:700;color:#1A1A1A;line-height:1.35}
+.direct-invite-desc{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5}
 .stepn{width:26px;height:26px;border-radius:50%;background:#1A1A1A;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .pct{display:flex;align-items:center;gap:8px}.pct input{width:80px;text-align:center}
 .lockbar{display:flex;gap:8px;align-items:center;background:#F0EDF2;color:var(--muted);border-radius:10px;padding:9px 12px;font-size:12.5px}
@@ -308,7 +316,26 @@
       <div class="card" style="margin-bottom:14px">
         <div class="ch"><div><h3 id="csPayManTitle">How you get paid</h3><div class="faint" style="font-size:12.5px;margin-top:2px" id="csPayManSub"></div></div></div>
         <div style="padding:18px 22px">
-          <label class="po sel"><input type="radio" name="po_manual" value="direct" checked><div style="flex:1"><b>Artist - Direct payment</b><div class="d">The full payment goes to your own Stripe account. Nothing is sent to the studio. Choose this option if you’re renting a workstation. You settle rent or fees with them outside Bookpay.</div></div></label>
+          <label class="po sel"><input type="radio" name="po_manual" value="direct" checked><div style="flex:1"><b>Artist - Direct payment</b><div class="d">The full payment goes to your own Stripe account. There’s no revenue split. You settle rent or fees with the studio outside Bookpay.</div></div></label>
+          @if($isAdd)
+            <div class="splitbox" id="directInviteBoxManual">
+              <div class="direct-invite-head">
+                <div class="tog" id="directInviteToggleManual" role="switch" aria-checked="false" aria-label="Invite studio to Bookpay" tabindex="0"></div>
+                <div style="flex:1;min-width:0">
+                  <div class="direct-invite-title">Invite <span id="directInviteStudioLabelManual">the studio</span> to Bookpay</div>
+                  <div class="direct-invite-desc">Optional. No split: you keep the full payment. Once they join, they can list you on their studio page. They don’t see your bookings, clients or calendar.</div>
+                </div>
+              </div>
+              <div id="directInviteFieldsManual" hidden>
+                <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+                  <div><label class="fl" for="directInviteNameManual">Studio name</label><input class="in" id="directInviteNameManual" type="text" autocomplete="organization"></div>
+                  <div><label class="fl" for="directInviteEmailManual">Email</label><input class="in" id="directInviteEmailManual" type="email" placeholder="studio@example.com" autocomplete="email"></div>
+                </div>
+                <div class="cs-err" id="directInviteEmailErrorManual" hidden></div>
+                <div class="help" style="margin-top:10px">They get an email to join Bookpay. They don’t need Stripe, because there’s no split. The invite is sent when you confirm.</div>
+              </div>
+            </div>
+          @endif
           <label class="po"><input type="radio" name="po_manual" value="split"><div style="flex:1"><b>Invite the studio and set a revenue split</b><div class="d">Your studio will get an invite to join Bookpay. They will need to set up their Stripe account. Once they join and confirm, each payment is split between you.</div></div></label>
           <div class="splitbox" id="splitbox_manual" hidden>
             <div class="row" style="gap:12px;align-items:flex-start">
@@ -411,6 +438,7 @@
     manual: {},
     own: {},
     invite: { name: '', email: '' },
+    directInvite: { enabled: false, name: '', email: '' },
   };
 
   var panels = {
@@ -475,6 +503,8 @@
         }
         if (r.name === 'po_manual') {
           document.getElementById('splitbox_manual').hidden = r.value !== 'split';
+          var directInviteBox = document.getElementById('directInviteBoxManual');
+          if (directInviteBox) directInviteBox.hidden = r.value !== 'direct';
           state.payout_mode = r.value;
         }
       });
@@ -568,7 +598,10 @@
     }
     if (state.path === 'found') return 'Send join request';
     if (mode === 'add') {
-      if (state.path === 'not_on_bookpay' && state.payout_mode === 'split') return 'Add studio and send invitation';
+      if (state.path === 'not_on_bookpay'
+        && (state.payout_mode === 'split' || (state.payout_mode === 'direct' && state.directInvite.enabled))) {
+        return 'Add studio and send invitation';
+      }
       return 'Add studio';
     }
     return 'Change studio';
@@ -600,6 +633,23 @@
       document.getElementById('csInviteName').value = state.invite.name || sn;
       state.payout_mode = selectedRadio('po_manual') || 'direct';
       document.getElementById('splitbox_manual').hidden = state.payout_mode !== 'split';
+      var directInviteBox = document.getElementById('directInviteBoxManual');
+      var directInviteToggle = document.getElementById('directInviteToggleManual');
+      var directInviteFields = document.getElementById('directInviteFieldsManual');
+      if (directInviteBox) directInviteBox.hidden = state.payout_mode !== 'direct';
+      if (directInviteToggle) {
+        directInviteToggle.classList.toggle('on', state.directInvite.enabled);
+        directInviteToggle.setAttribute('aria-checked', state.directInvite.enabled ? 'true' : 'false');
+      }
+      if (directInviteFields) directInviteFields.hidden = !state.directInvite.enabled;
+      var directInviteName = document.getElementById('directInviteNameManual');
+      var directInviteEmail = document.getElementById('directInviteEmailManual');
+      if (directInviteName && !directInviteName.value) directInviteName.value = state.directInvite.name || sn;
+      if (directInviteEmail && !directInviteEmail.value) directInviteEmail.value = state.directInvite.email;
+      var directInviteLabel = document.getElementById('directInviteStudioLabelManual');
+      if (directInviteLabel) directInviteLabel.textContent = directInviteName && directInviteName.value.trim()
+        ? directInviteName.value.trim()
+        : sn;
       var ym = document.getElementById('you_manual');
       if (state.payout_mode === 'split') {
         state.revenue_split = Math.max(0, Math.min(100, parseInt(ym.value || '50', 10)));
@@ -648,6 +698,9 @@
       html += '<div class="kv"><span>Relationship</span><span>' + escapeHtml(relLabels[state.relationship] || '—') + '</span></div>';
     }
     html += '<div class="kv"><span>How you get paid</span><span>' + escapeHtml(payoutLabel()) + '</span></div>';
+    if (mode === 'add' && state.path === 'not_on_bookpay' && state.payout_mode === 'direct' && state.directInvite.enabled) {
+      html += '<div class="kv"><span>Bookpay invite</span><span>' + escapeHtml(state.directInvite.email) + '</span></div>';
+    }
     document.getElementById('csSummary').innerHTML = html;
 
     document.getElementById('csPauseWarn').hidden = state.path !== 'no_studio';
@@ -669,6 +722,9 @@
       items = [currentName + ' stays one of your studios. Nothing changes there.'];
       if (state.path === 'found') {
         items.push('We\'ll send a join request. ' + currentName + ' stays one of your studios.');
+      }
+      if (state.path === 'not_on_bookpay' && state.payout_mode === 'direct' && state.directInvite.enabled) {
+        items.push('We\'ll email ' + (state.manual.studio_name || 'the studio') + ' an invite to join Bookpay. You keep the full payment; there is no split.');
       }
       items.push('Your page will show both places. Clients see where you work.');
     } else if (state.path === 'found') {
@@ -809,6 +865,14 @@
         return false;
       }
     }
+    if (mode === 'add' && state.payout_mode === 'direct' && state.directInvite.enabled) {
+      state.directInvite.name = val('directInviteNameManual');
+      state.directInvite.email = val('directInviteEmailManual');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.directInvite.email)) {
+        setErr('directInviteEmailErrorManual', 'Enter a valid studio email to send the invite.');
+        return false;
+      }
+    }
     return true;
   }
 
@@ -868,6 +932,13 @@
       Object.assign(data, state.manual);
       data.invite_studio_name = state.invite.name;
       data.invite_studio_email = state.invite.email;
+      if (mode === 'add' && state.payout_mode === 'direct') {
+        data.direct_invite_enabled = state.directInvite.enabled ? 1 : 0;
+        if (state.directInvite.enabled) {
+          data.direct_invite_studio_name = state.directInvite.name;
+          data.direct_invite_studio_email = state.directInvite.email;
+        }
+      }
     }
     if (state.path === 'own_space') Object.assign(data, state.own);
     return data;
@@ -1017,6 +1088,30 @@
     var n = Math.max(0, Math.min(100, parseInt(this.value || '0', 10)));
     state.revenue_split = n;
     document.getElementById('them_manual').textContent = (100 - n) + '%';
+  });
+  var directInviteToggle = document.getElementById('directInviteToggleManual');
+  if (directInviteToggle) {
+    directInviteToggle.addEventListener('click', function () {
+      state.directInvite.enabled = !state.directInvite.enabled;
+      document.getElementById('directInviteFieldsManual').hidden = !state.directInvite.enabled;
+      directInviteToggle.classList.toggle('on', state.directInvite.enabled);
+      directInviteToggle.setAttribute('aria-checked', state.directInvite.enabled ? 'true' : 'false');
+      setErr('directInviteEmailErrorManual');
+    });
+    directInviteToggle.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      directInviteToggle.click();
+    });
+  }
+  document.getElementById('directInviteNameManual')?.addEventListener('input', function () {
+    state.directInvite.name = this.value.trim();
+    var label = document.getElementById('directInviteStudioLabelManual');
+    if (label) label.textContent = state.directInvite.name || state.manual.studio_name || val('csManName') || 'the studio';
+  });
+  document.getElementById('directInviteEmailManual')?.addEventListener('input', function () {
+    state.directInvite.email = this.value.trim();
+    setErr('directInviteEmailErrorManual');
   });
 
   nextBtn.addEventListener('click', goNext);

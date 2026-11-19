@@ -30,7 +30,10 @@
               <div class="faint" style="font-size:12.5px;margin-top:3px">{{ $card['multi_subtitle'] }}</div>
             </div>
             <div class="row" style="gap:8px;flex-wrap:wrap">
-              @if(!empty($card['dashed']) && ($card['status'] ?? null) === \App\Models\UserStudio::STATUS_JOIN_PENDING)
+              @if(!empty($card['workplace_invite_pending']))
+                <button type="button" class="btn sm ghost js-studio-resend-workplace-invite" data-user-studio-id="{{ $card['id'] }}">Resend email</button>
+                <button type="button" class="btn sm ghost js-studio-cancel-workplace-invite" data-user-studio-id="{{ $card['id'] }}" style="color:#C62828;border-color:#F3C9C9">Cancel request</button>
+              @elseif(!empty($card['dashed']) && ($card['status'] ?? null) === \App\Models\UserStudio::STATUS_JOIN_PENDING)
                 <button type="button" class="btn sm ghost js-studio-resend-join" data-user-studio-id="{{ $card['id'] }}">Resend email</button>
                 <button type="button" class="btn sm ghost js-studio-cancel-join" data-user-studio-id="{{ $card['id'] }}" style="color:#C62828;border-color:#F3C9C9">Cancel request</button>
               @else

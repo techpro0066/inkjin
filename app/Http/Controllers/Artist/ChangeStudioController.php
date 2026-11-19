@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserStudio;
 use App\Services\ArtistStudioJoinRequestNotifier;
+use App\Services\ArtistDirectStudioInviteService;
 use App\Services\StudioPayoutInviteNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -268,6 +269,17 @@ class ChangeStudioController extends Controller
             'revenue_split' => ['nullable', 'integer', 'min:0', 'max:100'],
             'invite_studio_name' => ['nullable', 'string', 'max:255'],
             'invite_studio_email' => ['nullable', 'email', 'max:255'],
+            'direct_invite_enabled' => ['nullable', 'boolean'],
+            'direct_invite_studio_name' => ['nullable', 'string', 'max:255'],
+            'direct_invite_studio_email' => [
+                'nullable',
+                'email',
+                'max:255',
+                Rule::requiredIf(fn () => $mode === 'add'
+                    && $request->input('path') === 'not_on_bookpay'
+                    && $request->input('payout_mode') === 'direct'
+                    && $request->boolean('direct_invite_enabled')),
+            ],
         ]);
 
         if (($validated['payout_mode'] ?? null) === 'split'
@@ -275,6 +287,16 @@ class ChangeStudioController extends Controller
             && User::emailBlockedForStudioInvite((string) $validated['invite_studio_email'])) {
             throw ValidationException::withMessages([
                 'invite_studio_email' => ['This email is already registered with a Bookpay account. Use a different studio email.'],
+            ]);
+        }
+
+        if ($mode === 'add'
+            && ($validated['path'] ?? null) === 'not_on_bookpay'
+            && ($validated['payout_mode'] ?? null) === 'direct'
+            && (bool) ($validated['direct_invite_enabled'] ?? false)
+            && User::emailBlockedForStudioInvite((string) ($validated['direct_invite_studio_email'] ?? ''))) {
+            throw ValidationException::withMessages([
+                'direct_invite_studio_email' => ['This email is already registered with a Bookpay account. Use a different studio email.'],
             ]);
         }
 
@@ -567,25 +589,41 @@ class ChangeStudioController extends Controller
                 $row = UserStudio::syncWorkplace((int) $user->id, $workplace, false, true);
             }
             if ($row) {
-                $previousStudioId = (int) ($row->studio_id ?? 0);
-                $matched = $this->matchBookpayStudioFromWorkplace($workplace);
-                if ($matched) {
-                    $row->studio_id = $matched->id;
-                    $row->payout = false;
-                    $row->connection_type = UserStudio::CONNECTION_ON_BOOKPAY;
-                    $row->status = UserStudio::STATUS_JOIN_PENDING;
-                    $row->studio_name = $matched->name ?: $row->studio_name;
-                    $row->save();
+                $sendDirectInvite = $mode === 'add'
+                    && $payoutMode === 'direct'
+                    && (bool) ($validated['direct_invite_enabled'] ?? false);
 
-                    if ($previousStudioId !== (int) $matched->id) {
-                        $invited = app(ArtistStudioJoinRequestNotifier::class)->send($user, $row, $matched, false);
-                    }
+                if ($sendDirectInvite) {
+                    $invited = app(ArtistDirectStudioInviteService::class)->send(
+                        $user,
+                        $userDetail,
+                        (string) ($validated['direct_invite_studio_name'] ?? $workplace['studio_name'] ?? ''),
+                        (string) ($validated['direct_invite_studio_email'] ?? ''),
+                        $row,
+                        false,
+                        true
+                    );
                 } else {
-                    $row->studio_id = null;
-                    $row->payout = false;
-                    $row->connection_type = UserStudio::CONNECTION_NOT_ON_BOOKPAY;
-                    $row->status = UserStudio::STATUS_ACTIVE;
-                    $row->save();
+                    $previousStudioId = (int) ($row->studio_id ?? 0);
+                    $matched = $this->matchBookpayStudioFromWorkplace($workplace);
+                    if ($matched) {
+                        $row->studio_id = $matched->id;
+                        $row->payout = false;
+                        $row->connection_type = UserStudio::CONNECTION_ON_BOOKPAY;
+                        $row->status = UserStudio::STATUS_JOIN_PENDING;
+                        $row->studio_name = $matched->name ?: $row->studio_name;
+                        $row->save();
+
+                        if ($previousStudioId !== (int) $matched->id) {
+                            $invited = app(ArtistStudioJoinRequestNotifier::class)->send($user, $row, $matched, false);
+                        }
+                    } else {
+                        $row->studio_id = null;
+                        $row->payout = false;
+                        $row->connection_type = UserStudio::CONNECTION_NOT_ON_BOOKPAY;
+                        $row->status = UserStudio::STATUS_ACTIVE;
+                        $row->save();
+                    }
                 }
             }
         }

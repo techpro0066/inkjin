@@ -776,8 +776,12 @@ class StudioSettingsController extends Controller
             $card = $this->presentLink($link);
             $waitingInvite = (bool) $link->payout
                 && ($link->connection_type ?? '') === UserStudio::CONNECTION_NOT_CONNECTED;
-            $card['dashed'] = $waitingInvite;
-            $card['status_pill'] = $waitingInvite
+            $workplaceInvitePending = ! (bool) $link->payout
+                && ($link->connection_type ?? '') === UserStudio::CONNECTION_NOT_CONNECTED
+                && ! empty($link->studio_id);
+            $card['workplace_invite_pending'] = $workplaceInvitePending;
+            $card['dashed'] = $waitingInvite || $workplaceInvitePending;
+            $card['status_pill'] = $card['dashed']
                 ? ['class' => 'a', 'label' => 'Invitation sent']
                 : ['class' => 'g', 'label' => 'Accepted'];
             $card['update_url'] = route('settings.studio.change', array_filter([

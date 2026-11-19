@@ -14,6 +14,7 @@ use App\Mail\ArtistWelcomeMail;
 use App\Mail\StudioPayoutDeclinedArtistMail;
 use App\Mail\StudioPayoutInfoRequestMail;
 use App\Services\ArtistStudioJoinRequestNotifier;
+use App\Services\ArtistDirectStudioInviteService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -4994,64 +4995,14 @@ class OnboardingController extends Controller
             ]);
         }
 
-        if (! UserStudio::tableReady()) {
-            return false;
-        }
-
-        if (Schema::hasColumn($userDetail->getTable(), 'payment_type')) {
-            $userDetail->payment_type = 'artist_account';
-        }
-
-        $studio = Studio::query()->firstOrCreate(
-            ['email' => $email],
-            ['name' => $name !== '' ? $name : 'Studio']
+        return app(ArtistDirectStudioInviteService::class)->send(
+            $user,
+            $userDetail,
+            $name,
+            $email,
+            null,
+            true
         );
-
-        if ($name !== '' && $name !== 'Studio' && (blank($studio->name) || $studio->name === 'Studio')) {
-            $studio->name = $name;
-            $studio->save();
-        } elseif ($name !== '' && blank($studio->email)) {
-            $studio->email = $email;
-            $studio->save();
-        }
-
-        if (empty($studio->email)) {
-            $studio->email = $email;
-            $studio->save();
-        }
-
-        $row = UserStudio::query()
-            ->where('user_id', (int) $user->id)
-            ->where('studio_id', (int) $studio->id)
-            ->orderByDesc('id')
-            ->first();
-
-        if (! $row) {
-            $row = UserStudio::activeForUser((int) $user->id);
-            if ($row && ! empty($row->studio_id) && (int) $row->studio_id !== (int) $studio->id) {
-                $row = null;
-            }
-        }
-
-        if (! $row) {
-            $row = new UserStudio([
-                'user_id' => (int) $user->id,
-            ]);
-        }
-
-        $row->studio_id = $studio->id;
-        $row->studio_name = $name !== '' ? $name : ($studio->name ?: 'Studio');
-        $row->payout = false;
-        $row->revenue_split = null;
-        // Keep workplace active while invite waits (artist keeps working / paid).
-        $row->status = UserStudio::STATUS_ACTIVE;
-        $row->connection_type = UserStudio::CONNECTION_NOT_CONNECTED;
-        if (Schema::hasColumn($row->getTable(), 'joined_via')) {
-            $row->joined_via = UserStudio::JOINED_VIA_INVITE;
-        }
-        $row->save();
-
-        return app(ArtistStudioJoinRequestNotifier::class)->send($user, $row, $studio, false);
     }
 
     private function workplaceOnlyInviteLink(UserDetail $userDetail, Studio $studio): ?UserStudio
