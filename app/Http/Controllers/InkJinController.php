@@ -1195,10 +1195,6 @@ class InkJinController extends Controller
             abort(404, 'Artist not found');
         }
 
-        if (! (bool) ($userDetail->display_guest_spots ?? false)) {
-            abort(404, 'Guest spot not found');
-        }
-
         $slug = Str::lower(trim($guestSpotSlug));
 
         $spot = $userDetail->user->guestSpots()
