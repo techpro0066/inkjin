@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\StyleController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ReferralsController as AdminReferralsController;
+use App\Http\Controllers\Admin\PlatformFeeController as AdminPlatformFeeController;
 use App\Http\Controllers\QuestionsController;
 
 use App\Http\Controllers\UserController\BookingsController;
@@ -509,6 +510,8 @@ Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')-
     Route::get('/settings/password', [AdminSettingsController::class, 'password'])->name('admin.settings.password');
     Route::get('/revenue', [AdminFinancialController::class, 'revenue'])->name('admin.revenue.index');
     Route::get('/fees', [AdminFinancialController::class, 'fees'])->name('admin.fees.index');
+    Route::get('/platform-fees', [AdminPlatformFeeController::class, 'index'])->name('admin.platform-fees.index');
+    Route::put('/platform-fees', [AdminPlatformFeeController::class, 'update'])->name('admin.platform-fees.update');
     Route::get('/payouts', [AdminFinancialController::class, 'payouts'])->name('admin.payouts.index');
     Route::get('/stripe-accounts', [AdminStripeConnectedAccountsController::class, 'index'])->name('admin.stripe-accounts.index');
 

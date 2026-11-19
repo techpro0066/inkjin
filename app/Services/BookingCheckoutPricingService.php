@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\UserDetail;
+use App\Models\PlatformFee;
 use App\Support\EuVat;
 
 class BookingCheckoutPricingService
@@ -35,7 +36,7 @@ class BookingCheckoutPricingService
      */
     public function resolveBookingFeeWithoutReferralWaiver(UserDetail $userDetail): array
     {
-        $baseFee = 10.00;
+        $baseFee = PlatformFee::amountForCurrency($userDetail->currency);
         $feeType = (string) ($userDetail->booking_fee_type ?: 'client');
         if (! in_array($feeType, ['client', 'artist', 'split'], true)) {
             $feeType = 'client';
