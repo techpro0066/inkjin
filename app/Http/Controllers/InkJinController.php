@@ -1242,15 +1242,7 @@ class InkJinController extends Controller
             ? $userDetail->user->artistFaqs()->active()->ordered()->get()
             : collect();
 
-        $plannedSpots = $userDetail->user->guestSpots()
-            ->where('status', 'planned')
-            ->whereDate('from_date', '>=', now()->toDateString())
-            ->orderBy('from_date')
-            ->orderBy('id')
-            ->first();
-
         return view('public.guest-spot', [
-            'plannedSpots' => $plannedSpots,
             'userDetail' => $userDetail,
             'guestSpot' => $spot,
             'artistDesigns' => $artistDesigns,
