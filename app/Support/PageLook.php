@@ -250,7 +250,7 @@ class PageLook
         $opacity = $effect === 'solid' ? 1.0 : ($op / 100);
         $radiusKey = in_array($c['radius'] ?? '', ['none', 's', 'm', 'l'], true) ? $c['radius'] : 'l';
         $radiusMap = ['none' => 0, 's' => 10, 'm' => 18, 'l' => 28];
-        $radius = ($radiusMap[$radiusKey] ?? 28).'px';
+        $radius = ($radiusMap[$radiusKey] ?? 28) . 'px';
 
         $boxLum = self::relativeLuminance($boxHex);
         $hasBg = filled($c['bgD'] ?? null) || filled($c['bgM'] ?? null);
@@ -286,7 +286,7 @@ class PageLook
         };
 
         $rgb = self::hexToRgb($boxHex);
-        $bg = 'rgba('.$rgb[0].','.$rgb[1].','.$rgb[2].','.$opacity.')';
+        $bg = 'rgba(' . $rgb[0] . ',' . $rgb[1] . ',' . $rgb[2] . ',' . $opacity . ')';
         $isWhiteText = strtoupper($text) === '#FFFFFF';
 
         $bgD = trim((string) ($c['bgD'] ?? ''));
@@ -322,7 +322,7 @@ class PageLook
     {
         $hex = ltrim(self::normalizeHex($hex) ?: '#000000', '#');
         if (strlen($hex) === 3) {
-            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
         }
 
         return [
@@ -373,7 +373,7 @@ class PageLook
         }
         if (preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $value)) {
             return strtoupper(strlen($value) === 4
-                ? '#'.$value[1].$value[1].$value[2].$value[2].$value[3].$value[3]
+                ? '#' . $value[1] . $value[1] . $value[2] . $value[2] . $value[3] . $value[3]
                 : $value);
         }
         if (preg_match('/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i', $value, $m)) {

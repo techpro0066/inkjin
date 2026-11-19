@@ -28,8 +28,18 @@ class PersonalPageController extends Controller
     ];
 
     private const STYLE_FALLBACK_SLUGS = [
-        'traditional', 'neo-traditional', 'japanese', 'realism', 'blackwork',
-        'minimalist', 'geometric', 'watercolor', 'tribal', 'dotwork', 'new-school', 'illustrative',
+        'traditional',
+        'neo-traditional',
+        'japanese',
+        'realism',
+        'blackwork',
+        'minimalist',
+        'geometric',
+        'watercolor',
+        'tribal',
+        'dotwork',
+        'new-school',
+        'illustrative',
     ];
 
     private function deleteBackgroundImageIfSafe(?string $relativePath): void
@@ -77,22 +87,22 @@ class PersonalPageController extends Controller
             }
             $this->deleteBackgroundImageIfSafe($currentPath);
 
-            $filename = $prefix.'_'.time().'_'.uniqid('', true).'.'.$ext;
+            $filename = $prefix . '_' . time() . '_' . uniqid('', true) . '.' . $ext;
             $destination = public_path('uploads/personal-pages');
             if (! File::exists($destination)) {
                 File::makeDirectory($destination, 0755, true);
             }
-            File::put($destination.DIRECTORY_SEPARATOR.$filename, $binary);
+            File::put($destination . DIRECTORY_SEPARATOR . $filename, $binary);
 
-            return ['uploads/personal-pages/'.$filename, null];
+            return ['uploads/personal-pages/' . $filename, null];
         }
 
         // Absolute URL for an already-stored upload → keep relative path
         $appUrl = rtrim((string) config('app.url'), '/');
         $assetBase = rtrim(asset('uploads/personal-pages'), '/');
-        foreach ([$appUrl.'/uploads/personal-pages/', $assetBase.'/'] as $base) {
+        foreach ([$appUrl . '/uploads/personal-pages/', $assetBase . '/'] as $base) {
             if ($base !== '' && str_starts_with($incoming, $base)) {
-                $rel = 'uploads/personal-pages/'.ltrim(substr($incoming, strlen($base)), '/');
+                $rel = 'uploads/personal-pages/' . ltrim(substr($incoming, strlen($base)), '/');
                 if (str_starts_with($rel, 'uploads/personal-pages/') && ! str_contains($rel, '..')) {
                     return [$rel, null];
                 }
@@ -333,9 +343,9 @@ class PersonalPageController extends Controller
         ]);
 
         $items = array_values(array_filter(array_map(
-            fn ($item) => trim((string) $item),
+            fn($item) => trim((string) $item),
             $validated['design_whats_included'] ?? []
-        ), fn (string $item) => $item !== ''));
+        ), fn(string $item) => $item !== ''));
 
         $userDetail->update([
             'design_whats_included_is_active' => $request->boolean('design_whats_included_is_active'),
@@ -425,7 +435,7 @@ class PersonalPageController extends Controller
             'personal_page_description' => ['nullable', 'string', 'max:500'],
             'display_tagline' => ['sometimes', 'boolean'],
             'display_bio' => ['sometimes', 'boolean'],
-            'tattooing_since' => ['nullable', 'integer', 'min:1970', 'max:'.$maxYear],
+            'tattooing_since' => ['nullable', 'integer', 'min:1970', 'max:' . $maxYear],
             'primary_style' => ['nullable', 'string', Rule::in($allowedStyles)],
             'other_styles' => ['nullable', 'array'],
             'other_styles.*' => ['string', Rule::in($allowedStyles)],
@@ -453,7 +463,7 @@ class PersonalPageController extends Controller
         ))));
         $primary = $validated['primary_style'] ?? null;
         if ($primary) {
-            $other = array_values(array_filter($other, fn ($s) => $s !== $primary));
+            $other = array_values(array_filter($other, fn($s) => $s !== $primary));
         }
 
         $social = SocialLinks::normalize($validated['social_links'] ?? []);
@@ -467,13 +477,13 @@ class PersonalPageController extends Controller
                     File::delete(public_path($avatarPath));
                 }
                 $extension = strtolower((string) $file->getClientOriginalExtension()) ?: 'jpg';
-                $filename = time().'_'.uniqid('', true).'.'.$extension;
+                $filename = time() . '_' . uniqid('', true) . '.' . $extension;
                 $destination = public_path('uploads/avatars');
                 if (! File::exists($destination)) {
                     File::makeDirectory($destination, 0755, true);
                 }
                 $file->move($destination, $filename);
-                $avatarPath = 'uploads/avatars/'.$filename;
+                $avatarPath = 'uploads/avatars/' . $filename;
             }
         }
 
@@ -485,7 +495,7 @@ class PersonalPageController extends Controller
             'tattooing_since' => $validated['tattooing_since'] ?? null,
             'primary_style' => $primary,
             'other_styles' => $other ?: null,
-        ], fn ($v) => $v !== null && $v !== [] && $v !== '');
+        ], fn($v) => $v !== null && $v !== [] && $v !== '');
 
         $userDetail->update([
             'avatar' => $avatarPath,
@@ -550,13 +560,13 @@ class PersonalPageController extends Controller
             if ($extension === '') {
                 $extension = 'jpg';
             }
-            $filename = time().'_'.uniqid('', true).'.'.$extension;
+            $filename = time() . '_' . uniqid('', true) . '.' . $extension;
             $destination = public_path('uploads/personal-pages');
             if (! File::exists($destination)) {
                 File::makeDirectory($destination, 0755, true);
             }
             $file->move($destination, $filename);
-            $backgroundPath = 'uploads/personal-pages/'.$filename;
+            $backgroundPath = 'uploads/personal-pages/' . $filename;
         }
 
         $data = [
@@ -762,8 +772,8 @@ class PersonalPageController extends Controller
             'field' => $field,
             'enabled' => $enabled,
             'message' => $enabled
-                ? $label.' will be shown on your public page.'
-                : $label.' is hidden from your public page.',
+                ? $label . ' will be shown on your public page.'
+                : $label . ' is hidden from your public page.',
         ]);
     }
 }
