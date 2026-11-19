@@ -405,11 +405,12 @@
               <div class="card" style="margin-bottom:14px">
                 <div class="ch">
                   <div>
-                    <h3>Header banner</h3>
-                    <div class="faint" style="font-size:12.5px;margin-top:2px">Keep faces, logos and text in the safe area. The bottom third is covered by your profile photo and booking card.</div>
+                    <h3>Banner image</h3>
+                    <div class="faint" style="font-size:12.5px;margin-top:2px">The wide image at the top of your page</div>
                   </div>
                 </div>
                 <div style="padding:18px 22px">
+                  <div class="help" style="margin:0 0 12px">Use an image 1500 x 500 px or larger. Keep faces, logos and text in the middle. The bottom third is covered by your profile photo and the booking card.</div>
                   <div id="gsBannerHas" class="bnprev" hidden>
                     <div class="bnimg" id="gsBannerImg">
                       <div class="gs-banner-covered" aria-hidden="true"></div>
@@ -425,13 +426,14 @@
                     </div>
                   </div>
                   <button type="button" id="gsBannerNone" class="bnup">
-                    <span class="ms">photo_camera</span>
+                    <span class="ms">cloud_upload</span>
                     <span>
-                      <b>Upload banner</b>
-                      <small>1500 × 500 px or larger · 3:1 crop. Without one, the page uses your color.</small>
+                      <b>Drop an image here, or click to browse</b>
+                      <small>1500 × 500 px or larger</small>
                     </span>
                   </button>
                   <div id="gsBannerError" class="gs-banner-error" role="alert" hidden></div>
+                  <div class="help" style="margin:8px 0 0">JPG, PNG or WebP · maximum 5 MB · at least 1500 × 500 px. The image is center-cropped to 3:1.</div>
                   <input type="file" id="gsBannerFile" accept="image/jpeg,image/png,image/webp" hidden>
                 </div>
               </div>

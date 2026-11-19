@@ -191,7 +191,7 @@
 
 @section('scripts')
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
-<script src="{{ asset('new-ui-design-assets/look.js') }}?v=9"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v=11"></script>
 <script>
 (function () {
   var cfg = @json($lookCfg);
@@ -308,8 +308,8 @@
       if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
       cropObjectUrl = URL.createObjectURL(file);
       cropImage.onload = function () {
-        if (kind === 'banner' && cropImage.naturalWidth < 1500) {
-          finishCrop(new Error('This image is ' + cropImage.naturalWidth + ' px wide. Use an image at least 1500 px wide.'), true);
+        if (kind === 'banner' && (cropImage.naturalWidth < 1500 || cropImage.naturalHeight < 500)) {
+          finishCrop(new Error('This image is ' + cropImage.naturalWidth + ' × ' + cropImage.naturalHeight + ' px. Use an image at least 1500 × 500 px.'), true);
           return;
         }
         if (cropper) cropper.destroy();

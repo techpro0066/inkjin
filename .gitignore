@@ -23,3 +23,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /public
+/public/*
+!/public/new-ui-design-assets
+!/public/js

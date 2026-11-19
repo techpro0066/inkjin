@@ -207,8 +207,12 @@
   }
   #guestSpotFormCard .bnup{
     width:100%;height:auto;min-height:120px;aspect-ratio:3/1;border:1.5px dashed #D6C9DB;border-radius:12px;display:flex;align-items:center;
-    justify-content:center;gap:10px;color:#6F6874;background:#FDFAFD;font:inherit;cursor:pointer;text-align:left
+    justify-content:center;gap:10px;color:#6F6874;background:#FDFAFD;font:inherit;cursor:pointer;text-align:left;
+    transition:border-color .15s,background .15s,box-shadow .15s
   }
+  #guestSpotFormCard .bnup.is-dragover,#guestSpotFormCard .bnprev.is-dragover{border-color:#3E007C;background-color:#F7F0FF;box-shadow:0 0 0 3px rgba(62,0,124,.12)}
+  #guestSpotFormCard .bnprev.is-dragover{border-radius:12px}
+  #guestSpotFormCard .bnprev{border:1.5px solid transparent;transition:border-color .15s,box-shadow .15s}
   #guestSpotFormCard .bnup .ms{font-size:28px;color:#9A929E}
   #guestSpotFormCard .bnup b{display:block;color:#1A1A1A;font-size:13.5px}
   #guestSpotFormCard .bnup small{font-size:12px;display:block;margin-top:2px;line-height:1.4}
@@ -943,7 +947,7 @@ function selectGuestStatus(card) {
   var GS_BANNER_W = 1500;
   var GS_BANNER_H = 500;
   var GS_BANNER_RATIO = 3;
-  var GS_BANNER_MAX_BYTES = 10 * 1024 * 1024;
+  var GS_BANNER_MAX_BYTES = 5 * 1024 * 1024;
   var $gsBannerCropModal = $('#gsBannerCropModal');
   var $gsBannerCropperImg = $('#gsBannerCropperImg');
   var gsBannerCropGuide = document.getElementById('gsBannerCropGuide');
@@ -1040,7 +1044,7 @@ function selectGuestStatus(card) {
       return;
     }
     if (file.size > GS_BANNER_MAX_BYTES) {
-      showGuestBannerError('Image must be 10 MB or smaller.');
+      showGuestBannerError('Image must be 5 MB or smaller.');
       return;
     }
     if (typeof Cropper === 'undefined') {
@@ -1367,6 +1371,23 @@ function selectGuestStatus(card) {
   $('#gsBannerNone, #gsBannerChange').on('click', function () {
     $('#gsBannerFile').trigger('click');
   });
+
+  $('#gsBannerNone, #gsBannerHas')
+    .on('dragenter dragover', function (e) {
+      e.preventDefault();
+      e.originalEvent.dataTransfer.dropEffect = 'copy';
+      $(this).addClass('is-dragover');
+    })
+    .on('dragleave', function (e) {
+      if (e.relatedTarget && this.contains(e.relatedTarget)) return;
+      $(this).removeClass('is-dragover');
+    })
+    .on('drop', function (e) {
+      e.preventDefault();
+      $(this).removeClass('is-dragover');
+      var file = e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.files[0];
+      if (file) openGuestBannerCropModal(file);
+    });
 
   $('#gsBannerRemove').on('click', function () {
     clearGuestBannerObjectUrl();
