@@ -84,6 +84,7 @@
       'bio' => $bio,
       'cta' => 'Request custom tattoo',
       'bookLine' => 'Hourly rate · Deposit to book',
+      'handle' => $username !== '' ? '@'.$username : '',
       'pageUrl' => $publicPageUrl,
   ];
 @endphp
@@ -108,7 +109,10 @@
   .mp-look .crop-ov.open{display:flex}
   .mp-look .crop-box{width:100%;max-width:640px;background:#fff;border-radius:16px;padding:20px 22px;border:1px solid var(--line)}
   .mp-look .crop-box.tall{max-width:420px}
-  .mp-look .crop-stage{width:100%;height:360px;background:#F7F2F8;border-radius:12px;overflow:hidden}
+  .mp-look .crop-stage{width:100%;height:360px;background:#F7F2F8;border-radius:12px;overflow:hidden;position:relative}
+  .mp-look .crop-banner-guide{display:none;position:absolute;z-index:20;pointer-events:none;overflow:hidden}
+  .mp-look .crop-banner-covered{position:absolute;left:0;right:0;bottom:0;height:33.333%;background:repeating-linear-gradient(135deg,rgba(255,255,255,.24) 0 7px,transparent 7px 14px),rgba(17,17,17,.24)}
+  .mp-look .crop-banner-safe{position:absolute;left:18.33%;top:18%;width:63.34%;height:50%;box-sizing:border-box;border:2px dashed rgba(255,255,255,.95);box-shadow:0 0 0 999px rgba(0,0,0,.16),inset 0 0 0 1px rgba(0,0,0,.25)}
   .mp-look .crop-box.tall .crop-stage{height:min(520px,70vh)}
   .mp-look .crop-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
   @media (max-width:900px){.mp-look .mp-toast{left:16px;right:16px;top:74px}.mp-look .crop-stage{height:280px}.mp-look .crop-box.tall .crop-stage{height:min(420px,60vh)}}
@@ -171,6 +175,10 @@
       <p class="sub" id="lookCropSub" style="margin-bottom:14px">Drag to reposition. Scroll or pinch to zoom.</p>
       <div class="crop-stage">
         <img id="lookCropImage" src="" alt="">
+        <div id="lookCropBannerGuide" class="crop-banner-guide" aria-hidden="true">
+          <div class="crop-banner-covered"></div>
+          <div class="crop-banner-safe"></div>
+        </div>
       </div>
       <div class="crop-actions">
         <button id="lookCancelCropBtn" type="button" class="btn ghost">Cancel</button>
@@ -183,7 +191,7 @@
 
 @section('scripts')
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
-<script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v=9"></script>
 <script>
 (function () {
   var cfg = @json($lookCfg);
@@ -196,6 +204,7 @@
   var cropModal = document.getElementById('lookCropperModal');
   var cropBox = document.getElementById('lookCropBox');
   var cropImage = document.getElementById('lookCropImage');
+  var cropBannerGuide = document.getElementById('lookCropBannerGuide');
   var cropTitle = document.getElementById('lookCropTitle');
   var cropSub = document.getElementById('lookCropSub');
   var cropper = null;
@@ -207,10 +216,10 @@
   var CROP_PRESETS = {
     banner: {
       title: 'Crop banner',
-      sub: 'Recommended 1600 × 230 · keep the main subject near the centre.',
-      aspect: 1600 / 230,
-      width: 1600,
-      height: 230,
+    sub: 'Use an image 1500 x 500 px or larger. Keep faces, logos and text in the middle. The bottom third is covered by your profile photo and the booking card.',
+      aspect: 3,
+      width: 1500,
+      height: 500,
       tall: false
     },
     bgD: {
@@ -237,6 +246,7 @@
       cropper = null;
     }
     if (cropModal) cropModal.classList.remove('open');
+    if (cropBannerGuide) cropBannerGuide.style.display = 'none';
     if (cropImage) {
       cropImage.onload = null;
       cropImage.src = '';
@@ -246,6 +256,20 @@
       cropObjectUrl = '';
     }
     document.body.style.overflow = '';
+  }
+
+  function syncCropBannerGuide() {
+    if (!cropper || !cropBannerGuide || cropKind !== 'banner') {
+      if (cropBannerGuide) cropBannerGuide.style.display = 'none';
+      return;
+    }
+
+    var box = cropper.getCropBoxData();
+    cropBannerGuide.style.left = box.left + 'px';
+    cropBannerGuide.style.top = box.top + 'px';
+    cropBannerGuide.style.width = box.width + 'px';
+    cropBannerGuide.style.height = box.height + 'px';
+    cropBannerGuide.style.display = 'block';
   }
 
   function finishCrop(result, isError) {
@@ -284,6 +308,10 @@
       if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
       cropObjectUrl = URL.createObjectURL(file);
       cropImage.onload = function () {
+        if (kind === 'banner' && cropImage.naturalWidth < 1500) {
+          finishCrop(new Error('This image is ' + cropImage.naturalWidth + ' px wide. Use an image at least 1500 px wide.'), true);
+          return;
+        }
         if (cropper) cropper.destroy();
         cropper = new Cropper(cropImage, {
           aspectRatio: preset.aspect,
@@ -295,8 +323,11 @@
           movable: true,
           zoomable: true,
           scalable: false,
-          rotatable: false
+          rotatable: false,
+          ready: syncCropBannerGuide,
+          crop: syncCropBannerGuide
         });
+        setTimeout(syncCropBannerGuide, 0);
       };
       cropImage.src = cropObjectUrl;
       cropModal.classList.add('open');

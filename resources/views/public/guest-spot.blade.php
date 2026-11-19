@@ -210,7 +210,7 @@
 </head>
 <body>
 @if($hasBannerImage)
-  <div class="banner img" id="banner" style="background-image:url('{{ $bannerUrl }}');background-size:cover;background-position:center;"></div>
+  <div class="banner img" id="banner" style="background-image:url('{{ $bannerUrl }}');background-size:cover;background-position:center center;background-repeat:no-repeat;"></div>
 @else
   <div class="banner" id="banner" style="background:linear-gradient(120deg,var(--a1),var(--a2))">
     <svg class="sky" viewBox="0 0 1200 230" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g fill="#fff" opacity=".16"><path d="M0 230V170h60v-30h40v30h30v-60h50v60h40v-20h30v-50l25-30 25 30v70h40v-90h20v-30h10v30h20v90h50V120h20l10-40 10 40h20v110h40v-70h60v-40h30v40h40v70h30V90h15l15-35 15 35h15v140h40v-60h50v60h40v-100l40-40 40 40v100h50v-50h40v50h40v-80h60v80h50V230z"/></g><g fill="#fff" opacity=".28"><rect x="610" y="40" width="10" height="190"/><path d="M590 230v-70h50v70z"/><circle cx="615" cy="34" r="9"/></g></svg>

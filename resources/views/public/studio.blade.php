@@ -145,11 +145,11 @@
     if ($bannerUrl) {
         $bannerStyle = 'background-color:'.$escAttr($schemePrimary)
             .';background-image:url('.$escAttr($bannerUrl).')'
-            .';background-position:center top;background-size:cover;background-repeat:no-repeat';
+            .';background-position:center center;background-size:cover;background-repeat:no-repeat';
     } else {
         $bannerStyle = 'background-color:'.$escAttr($schemePrimary)
             .';background-image:linear-gradient(120deg,'.$escAttr($schemePrimary).','.$escAttr($schemeMid).')'
-            .';background-position:center top;background-size:cover;background-repeat:no-repeat';
+            .';background-position:center center;background-size:cover;background-repeat:no-repeat';
     }
 
     $logoStyle = $logoUrl
@@ -213,7 +213,7 @@
     document.documentElement.classList.add('look-pending');
     try { sessionStorage.setItem('bp-look-studio', @json($lookState)); } catch (e) {}
   </script>
-  <script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=9"></script>
   @endif
 </head>
 <body class="{{ trim(($lookIsCustom ? 'cst ' : '').($isLookPreview ? 'bp-prev' : '')) }}" data-look-who="studio">
@@ -462,7 +462,7 @@
   </div>
 
   @if(! $lookIsCustom)
-  <script src="{{ asset('new-ui-design-assets/look.js') }}"></script>
+  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=9"></script>
   @endif
   <script>
     (function () {
@@ -523,14 +523,14 @@
             if (mode === 'standard' && S && S.banner) {
               b.style.backgroundColor = (BPLook.parseScheme ? BPLook.parseScheme(S.scheme)[0] : String(S.scheme || '').split(',')[0]) || '#1A1A2E';
               b.style.backgroundImage = "url('" + BPLook.res(S.banner, '') + "')";
-              b.style.backgroundPosition = 'center top';
+              b.style.backgroundPosition = 'center center';
               b.style.backgroundSize = 'cover';
               b.style.backgroundRepeat = 'no-repeat';
             } else if (mode === 'standard') {
               const g = BPLook.parseScheme(S && S.scheme);
               b.style.backgroundColor = g[0] || '#1A1A2E';
               b.style.backgroundImage = 'linear-gradient(120deg,' + (g[0] || '#1A1A2E') + ',' + (g[1] || g[0] || '#3A3A5C') + ')';
-              b.style.backgroundPosition = 'center top';
+              b.style.backgroundPosition = 'center center';
               b.style.backgroundSize = 'cover';
               b.style.backgroundRepeat = 'no-repeat';
             }
@@ -555,7 +555,7 @@
           var b = document.querySelector('.sp-ban');
           b.style.backgroundColor = BPLook.parseScheme(LOOK.state.scheme)[0] || '#1A1A2E';
           b.style.backgroundImage = "url('" + BPLook.res(LOOK.state.banner, '') + "')";
-          b.style.backgroundPosition = 'center top';
+          b.style.backgroundPosition = 'center center';
           b.style.backgroundSize = 'cover';
           b.style.backgroundRepeat = 'no-repeat';
         }

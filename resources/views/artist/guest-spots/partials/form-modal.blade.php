@@ -406,24 +406,32 @@
                 <div class="ch">
                   <div>
                     <h3>Header banner</h3>
-                    <div class="faint" style="font-size:12.5px;margin-top:2px">The wide image at the top of this guest spot’s page</div>
+                    <div class="faint" style="font-size:12.5px;margin-top:2px">Keep faces, logos and text in the safe area. The bottom third is covered by your profile photo and booking card.</div>
                   </div>
                 </div>
                 <div style="padding:18px 22px">
                   <div id="gsBannerHas" class="bnprev" hidden>
-                    <div class="bnimg" id="gsBannerImg"></div>
+                    <div class="bnimg" id="gsBannerImg">
+                      <div class="gs-banner-covered" aria-hidden="true"></div>
+                      <div class="gs-banner-safe" aria-hidden="true"></div>
+                    </div>
                     <div class="row" style="gap:8px;margin-top:10px">
                       <button type="button" class="btn sm ghost" id="gsBannerChange"><span class="ms" style="font-size:16px">upload</span>Change banner</button>
                       <button type="button" class="btn sm ghost" id="gsBannerRemove"><span class="ms" style="font-size:16px">delete</span>Remove</button>
+                    </div>
+                    <div class="gs-banner-legend">
+                      <span><i class="gs-safe-key" aria-hidden="true"></i>Safe area: keep faces, logos and text inside</span>
+                      <span><i class="gs-covered-key" aria-hidden="true"></i>Covered by your profile photo and the booking card</span>
                     </div>
                   </div>
                   <button type="button" id="gsBannerNone" class="bnup">
                     <span class="ms">photo_camera</span>
                     <span>
                       <b>Upload banner</b>
-                      <small>1600 × 230 recommended. Without one, the page uses your color.</small>
+                      <small>1500 × 500 px or larger · 3:1 crop. Without one, the page uses your color.</small>
                     </span>
                   </button>
+                  <div id="gsBannerError" class="gs-banner-error" role="alert" hidden></div>
                   <input type="file" id="gsBannerFile" accept="image/jpeg,image/png,image/webp" hidden>
                 </div>
               </div>

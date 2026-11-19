@@ -1,6 +1,6 @@
 <style>
 
-.banner{height:276px}.banner.img{background:linear-gradient(180deg,#0B0B0D,#1C1C20)}.banner.img:after{display:none}.banner .sky{position:absolute;left:0;right:0;bottom:0;width:100%;height:100%}
+.banner{height:320px}.banner.img{background:linear-gradient(180deg,#0B0B0D,#1C1C20)}.banner.img:after{display:none}.banner .sky{position:absolute;left:0;right:0;bottom:0;width:100%;height:100%}
 .gstat{margin-top:10px}.status.closed{background:#F1EEF3;color:var(--muted)}
 .gline{display:flex;gap:8px;align-items:center;font-size:18px;font-weight:700;letter-spacing:-.2px;margin-top:14px}.gline .ms{color:var(--acc);font-size:22px}
 .gbox{margin-top:0;display:flex;flex-direction:column;gap:12px;background:var(--accl);border-radius:14px;padding:14px}

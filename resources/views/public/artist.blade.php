@@ -238,11 +238,11 @@
     if ($bannerUrl) {
         $bannerStyle = 'background-color:'.$escAttr($schemePrimary)
             .';background-image:url('.$escAttr($bannerUrl).')'
-            .';background-position:center top;background-size:cover;background-repeat:no-repeat';
+            .';background-position:center center;background-size:cover;background-repeat:no-repeat';
     } else {
         $bannerStyle = 'background-color:'.$escAttr($schemePrimary)
             .';background-image:linear-gradient(120deg,'.$escAttr($schemePrimary).','.$escAttr($schemeMid).')'
-            .';background-position:center top;background-size:cover;background-repeat:no-repeat';
+            .';background-position:center center;background-size:cover;background-repeat:no-repeat';
     }
 
     $boxHtmlAvatar = $avatarUrl
@@ -330,7 +330,7 @@
     document.documentElement.classList.add('look-pending');
     try { sessionStorage.setItem('bp-look-artist', @json($lookState)); } catch (e) {}
   </script>
-  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=3"></script>
+  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=8"></script>
   @endif
 </head>
 <body class="{{ trim(($lookIsCustom ? 'cst ' : '').($isLookPreview ? 'bp-prev' : '')) }}" data-books="{{ $booksClosed ? 'closed' : 'open' }}" data-look-who="artist"><div class="banner" id="banner" style="{{ $bannerStyle }}"></div>
@@ -784,7 +784,7 @@
 @include('partials.bookpay-public-api')
 <script src="{{ asset('new-ui-design-assets/guest-waitlist.js') }}"></script>
 @if(! $lookIsCustom)
-<script src="{{ asset('new-ui-design-assets/look.js') }}?v=3"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v=8"></script>
 @endif
   <script>
 (function () {
@@ -1175,7 +1175,7 @@
           var b = $('banner');
           b.style.backgroundColor = (BPLook.parseScheme ? BPLook.parseScheme(S.scheme)[0] : String(S.scheme || '').split(',')[0]) || '#1A1A2E';
           b.style.backgroundImage = "url('" + BPLook.res(S.banner, '') + "')";
-          b.style.backgroundPosition = 'center top';
+          b.style.backgroundPosition = 'center center';
           b.style.backgroundSize = 'cover';
           b.style.backgroundRepeat = 'no-repeat';
         } else if (mode === 'standard') {
@@ -1183,7 +1183,7 @@
           var b = $('banner');
           b.style.backgroundColor = g[0] || '#1A1A2E';
           b.style.backgroundImage = 'linear-gradient(120deg,' + (g[0] || '#1A1A2E') + ',' + (g[1] || g[0] || '#3A3A5C') + ')';
-          b.style.backgroundPosition = 'center top';
+          b.style.backgroundPosition = 'center center';
           b.style.backgroundSize = 'cover';
           b.style.backgroundRepeat = 'no-repeat';
         }
@@ -1207,7 +1207,7 @@
       var b = $('banner');
       b.style.backgroundColor = BPLook.parseScheme(LOOK.state.scheme)[0] || '#1A1A2E';
       b.style.backgroundImage = "url('" + BPLook.res(LOOK.state.banner, '') + "')";
-      b.style.backgroundPosition = 'center top';
+      b.style.backgroundPosition = 'center center';
       b.style.backgroundSize = 'cover';
       b.style.backgroundRepeat = 'no-repeat';
     }

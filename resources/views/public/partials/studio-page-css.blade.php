@@ -14,7 +14,7 @@ body{margin:0!important;padding:0!important;font-family:'PJS',system-ui,sans-ser
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 a{color:inherit;text-decoration:none}
 .ms{font-family:'MS';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;letter-spacing:normal;text-transform:none;white-space:nowrap;-webkit-font-feature-settings:'liga';font-feature-settings:'liga'}
-.sp-ban{height:276px;background:linear-gradient(120deg,var(--a1),var(--a2));position:relative;background-position:center top;background-size:cover;background-repeat:no-repeat}
+.sp-ban{height:320px;background:linear-gradient(120deg,var(--a1),var(--a2));position:relative;background-position:center center;background-size:cover;background-repeat:no-repeat}
 .sp-wrap{max-width:1080px;margin:0 auto;padding:0 24px}
 .sp-logo{width:108px;height:108px;border-radius:24px;background:#3E007C;color:#fff;font-weight:800;font-size:30px;display:flex;align-items:center;justify-content:center;border:5px solid var(--bg);flex-shrink:0;background-position:center;background-size:cover;background-repeat:no-repeat}
 .sp-desc{max-width:62ch;color:var(--muted);line-height:1.65;margin-top:14px}

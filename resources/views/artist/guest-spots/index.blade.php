@@ -202,17 +202,40 @@
     font-weight:700;padding:2px 8px;color:#6F6874
   }
   #guestSpotFormCard .bnprev .bnimg{
-    height:96px;border-radius:12px;position:relative;overflow:hidden;
-    background:linear-gradient(180deg,#0B0B0D,#1C1C20) center/cover no-repeat
+    aspect-ratio:3/1;min-height:120px;border-radius:12px;position:relative;overflow:hidden;
+    background:linear-gradient(180deg,#0B0B0D,#1C1C20) center center/cover no-repeat
   }
   #guestSpotFormCard .bnup{
-    width:100%;height:96px;border:1.5px dashed #D6C9DB;border-radius:12px;display:flex;align-items:center;
+    width:100%;height:auto;min-height:120px;aspect-ratio:3/1;border:1.5px dashed #D6C9DB;border-radius:12px;display:flex;align-items:center;
     justify-content:center;gap:10px;color:#6F6874;background:#FDFAFD;font:inherit;cursor:pointer;text-align:left
   }
   #guestSpotFormCard .bnup .ms{font-size:28px;color:#9A929E}
   #guestSpotFormCard .bnup b{display:block;color:#1A1A1A;font-size:13.5px}
   #guestSpotFormCard .bnup small{font-size:12px;display:block;margin-top:2px;line-height:1.4}
   #guestSpotFormCard .bnup[hidden],#guestSpotFormCard .bnprev[hidden]{display:none!important}
+  #guestSpotFormCard .gs-banner-covered{
+    position:absolute;z-index:2;left:0;right:0;bottom:0;height:33.333%;
+    background:repeating-linear-gradient(135deg,rgba(255,255,255,.24) 0 7px,transparent 7px 14px),rgba(17,17,17,.24);
+    pointer-events:none
+  }
+  #guestSpotFormCard .gs-banner-safe{
+    position:absolute;z-index:3;left:18.33%;top:18%;width:63.34%;height:50%;box-sizing:border-box;
+    border:2px dashed rgba(255,255,255,.95);box-shadow:0 0 0 999px rgba(0,0,0,.16),inset 0 0 0 1px rgba(0,0,0,.25);
+    pointer-events:none
+  }
+  #guestSpotFormCard .gs-banner-legend{
+    display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#5E5763
+  }
+  #guestSpotFormCard .gs-banner-legend>span{display:inline-flex;align-items:center;gap:7px}
+  #guestSpotFormCard .gs-safe-key,#guestSpotFormCard .gs-covered-key{
+    display:inline-block;width:26px;height:16px;box-sizing:border-box;border-radius:3px;flex:none
+  }
+  #guestSpotFormCard .gs-safe-key{border:2px dashed #3E007C}
+  #guestSpotFormCard .gs-covered-key{
+    background:repeating-linear-gradient(135deg,rgba(17,17,17,.28) 0 5px,rgba(17,17,17,.08) 5px 10px),#D9D9D9
+  }
+  #guestSpotFormCard .gs-banner-error{margin-top:8px;color:#C62828;font-size:12px;font-weight:600}
+  #guestSpotFormCard .gs-banner-error[hidden]{display:none!important}
   #guestSpotFormCard .lfgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   #guestSpotFormCard .lf{
     border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;padding:0;
@@ -240,7 +263,7 @@
     height:84px;position:relative;overflow:hidden;
     background:linear-gradient(120deg,var(--g1,#4B0F8F),var(--g2,#7B3FC4))
   }
-  #guestSpotFormCard .gpvb.img{background-size:cover;background-position:center;background-repeat:no-repeat}
+  #guestSpotFormCard .gpvb.img{background-size:cover;background-position:center center;background-repeat:no-repeat}
   #guestSpotFormCard .gsky{position:absolute;inset:0;width:100%;height:100%}
   #guestSpotFormCard .gpva{
     width:52px;height:52px;border-radius:50%;background:#C9B7A6;border:3px solid #FBF9FC;
@@ -315,7 +338,16 @@
   #gsBannerCropModal .mf .btn{min-width:120px;justify-content:center}
   #gsBannerCropModal .cropper-stage-wrap{
     flex:1;min-height:200px;max-height:min(52vh,480px);background:#1a1a1a;
-    border-radius:12px;overflow:hidden;margin:12px 16px
+    border-radius:12px;overflow:hidden;margin:12px 16px;position:relative
+  }
+  #gsBannerCropModal .gs-crop-guide{display:none;position:absolute;z-index:20;pointer-events:none;overflow:hidden}
+  #gsBannerCropModal .gs-banner-covered{
+    position:absolute;left:0;right:0;bottom:0;height:33.333%;
+    background:repeating-linear-gradient(135deg,rgba(255,255,255,.24) 0 7px,transparent 7px 14px),rgba(17,17,17,.24)
+  }
+  #gsBannerCropModal .gs-banner-safe{
+    position:absolute;left:18.33%;top:18%;width:63.34%;height:50%;box-sizing:border-box;
+    border:2px dashed rgba(255,255,255,.95);box-shadow:0 0 0 999px rgba(0,0,0,.16),inset 0 0 0 1px rgba(0,0,0,.25)
   }
   #gsBannerCropModal .cropper-stage-wrap img{max-height:min(52vh,480px);display:block;max-width:100%}
   #gsBannerCropModal .cropper-stage-wrap .cropper-container,
@@ -510,18 +542,22 @@
     </div>
   </div>
 
-  <!-- Banner crop (same as personal-page appearance: 1600 × 230) -->
+  <!-- Banner crop -->
   <div id="gsBannerCropModal" class="crop-modal-backdrop" aria-hidden="true">
     <div class="crop-modal-inner" onclick="event.stopPropagation()">
       <div class="mh">
         <div>
           <h2>Crop banner</h2>
-          <div class="muted" style="font-size:13px;margin-top:4px">Recommended <b style="color:var(--ink);font-weight:700">1600 × 230</b> · keep the main subject near the centre.</div>
+          <div class="muted" style="font-size:13px;margin-top:4px">Use an image <b style="color:var(--ink);font-weight:700">1500 × 500 px or larger</b>. Keep faces, logos and text in the safe area; the bottom third is covered by your profile photo and booking card.</div>
         </div>
         <button type="button" class="mx" id="gsBannerCropClose" aria-label="Close cropper"><span class="ms">close</span></button>
       </div>
       <div class="cropper-stage-wrap">
         <img id="gsBannerCropperImg" src="" alt="">
+        <div id="gsBannerCropGuide" class="gs-crop-guide" aria-hidden="true">
+          <div class="gs-banner-covered"></div>
+          <div class="gs-banner-safe"></div>
+        </div>
       </div>
       <div class="mf">
         <button type="button" class="btn ghost" id="gsBannerCropCancel">Cancel</button>
@@ -904,12 +940,13 @@ function selectGuestStatus(card) {
   var gsRemoveBanner = false;
   var gsColorScheme = GS_DEFAULT_SCHEME;
   var gsBannerCropper = null;
-  var GS_BANNER_W = 1600;
-  var GS_BANNER_H = 230;
-  var GS_BANNER_RATIO = 1600 / 230;
+  var GS_BANNER_W = 1500;
+  var GS_BANNER_H = 500;
+  var GS_BANNER_RATIO = 3;
   var GS_BANNER_MAX_BYTES = 10 * 1024 * 1024;
   var $gsBannerCropModal = $('#gsBannerCropModal');
   var $gsBannerCropperImg = $('#gsBannerCropperImg');
+  var gsBannerCropGuide = document.getElementById('gsBannerCropGuide');
 
   function applyGuestScheme(scheme) {
     gsColorScheme = String(scheme || GS_DEFAULT_SCHEME);
@@ -948,6 +985,10 @@ function selectGuestStatus(card) {
     }
   }
 
+  function showGuestBannerError(message) {
+    $('#gsBannerError').text(message || '').prop('hidden', !message);
+  }
+
   function clearGuestBannerObjectUrl() {
     if (gsBannerObjectUrl) {
       try { URL.revokeObjectURL(gsBannerObjectUrl); } catch (e) {}
@@ -974,23 +1015,39 @@ function selectGuestStatus(card) {
     destroyGuestBannerCropper();
     revokeGuestBannerCropBlob();
     $gsBannerCropperImg.attr('src', '');
+    if (gsBannerCropGuide) gsBannerCropGuide.style.display = 'none';
     $gsBannerCropModal.removeClass('is-open').attr('aria-hidden', 'true');
     $('#gsBannerCropApply').prop('disabled', false);
   }
 
+  function syncGuestBannerCropGuide() {
+    if (!gsBannerCropper || !gsBannerCropGuide) {
+      if (gsBannerCropGuide) gsBannerCropGuide.style.display = 'none';
+      return;
+    }
+
+    var box = gsBannerCropper.getCropBoxData();
+    gsBannerCropGuide.style.left = box.left + 'px';
+    gsBannerCropGuide.style.top = box.top + 'px';
+    gsBannerCropGuide.style.width = box.width + 'px';
+    gsBannerCropGuide.style.height = box.height + 'px';
+    gsBannerCropGuide.style.display = 'block';
+  }
+
   function openGuestBannerCropModal(file) {
-    if (!file || !/^image\//.test(file.type || '')) {
-      alert('Please choose an image file (JPG, PNG or WebP).');
+    if (!file || !/^image\/(jpeg|png|webp)$/i.test(file.type || '')) {
+      showGuestBannerError('Use a JPG, PNG or WebP image.');
       return;
     }
     if (file.size > GS_BANNER_MAX_BYTES) {
-      alert('Image must be 10MB or smaller.');
+      showGuestBannerError('Image must be 10 MB or smaller.');
       return;
     }
     if (typeof Cropper === 'undefined') {
       alert('Cropper failed to load. Refresh the page and try again.');
       return;
     }
+    showGuestBannerError('');
     destroyGuestBannerCropper();
     revokeGuestBannerCropBlob();
     var url = URL.createObjectURL(file);
@@ -1015,15 +1072,29 @@ function selectGuestStatus(card) {
         movable: true,
         zoomable: true,
         scalable: false,
-        rotatable: false
+        rotatable: false,
+        ready: syncGuestBannerCropGuide,
+        crop: syncGuestBannerCropGuide
       });
+      setTimeout(syncGuestBannerCropGuide, 0);
     }
 
     var cropInitDone = false;
     function startCropperOnce() {
       if (cropInitDone) return;
+      var img = $gsBannerCropperImg[0];
+      if (!img) return;
       cropInitDone = true;
       $gsBannerCropperImg.off('load.gsbcrop error.gsbcrop');
+      var naturalWidth = img.naturalWidth;
+      var naturalHeight = img.naturalHeight;
+      if (naturalWidth < GS_BANNER_W || naturalHeight < GS_BANNER_H) {
+        closeGuestBannerCropModal();
+        showGuestBannerError(
+          'This image is ' + naturalWidth + ' × ' + naturalHeight + ' px. Use an image at least 1500 × 500 px.'
+        );
+        return;
+      }
       initCropperOnImg();
     }
 
@@ -1032,7 +1103,7 @@ function selectGuestStatus(card) {
     $gsBannerCropperImg.on('error.gsbcrop', function () {
       $gsBannerCropperImg.off('load.gsbcrop error.gsbcrop');
       closeGuestBannerCropModal();
-      alert('Could not open that image. Try another file.');
+      showGuestBannerError('Could not open that image. Try another file.');
     });
     $gsBannerCropperImg.attr('src', url);
     var imgEl = $gsBannerCropperImg[0];
@@ -1068,6 +1139,7 @@ function selectGuestStatus(card) {
       gsBannerObjectUrl = URL.createObjectURL(blob);
       gsBannerDataUrl = dataUrl;
       gsRemoveBanner = false;
+      showGuestBannerError('');
       setGuestBannerPreview(gsBannerObjectUrl);
       closeGuestBannerCropModal();
       $('#gsBannerFile').val('');
@@ -1079,6 +1151,7 @@ function selectGuestStatus(card) {
     clearGuestBannerObjectUrl();
     gsBannerDataUrl = null;
     gsRemoveBanner = false;
+    showGuestBannerError('');
     $('#gsBannerFile').val('');
     setGuestBannerPreview(null);
     applyGuestScheme(GS_DEFAULT_SCHEME);
@@ -1299,6 +1372,7 @@ function selectGuestStatus(card) {
     clearGuestBannerObjectUrl();
     gsBannerDataUrl = null;
     gsRemoveBanner = true;
+    showGuestBannerError('');
     $('#gsBannerFile').val('');
     setGuestBannerPreview(null);
   });

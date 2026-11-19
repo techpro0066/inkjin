@@ -1203,6 +1203,12 @@ class StudioPageController extends Controller
             if (strlen($binary) > 10 * 1024 * 1024) {
                 return [null, 'This image is over 10 MB. Use a smaller one.'];
             }
+            if ($prefix === 'banner') {
+                $dimensions = @getimagesizefromstring($binary);
+                if ($dimensions === false || $dimensions[0] !== 1500 || $dimensions[1] !== 500) {
+                    return [null, 'Crop the banner to 1500 × 500 before saving.'];
+                }
+            }
 
             $ext = strtolower($m[1]) === 'jpg' ? 'jpg' : strtolower($m[1]);
             if ($ext === 'jpeg') {

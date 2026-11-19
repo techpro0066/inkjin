@@ -531,6 +531,10 @@ class GuestSpotsController extends Controller
             if (strlen($binary) > 10 * 1024 * 1024) {
                 return [null, 'This banner is over 10 MB. Use a smaller one.'];
             }
+            $imageInfo = @getimagesizefromstring($binary);
+            if ($imageInfo === false || $imageInfo[0] !== 1500 || $imageInfo[1] !== 500) {
+                return [null, 'Crop the banner to 1500 × 500 before saving.'];
+            }
 
             $ext = strtolower($m[1]) === 'jpg' ? 'jpg' : strtolower($m[1]);
             if ($ext === 'jpeg') {
