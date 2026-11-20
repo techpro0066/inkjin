@@ -23,6 +23,7 @@ class BookingRequest extends Model
         'avoid_dates',
         'how_much_flexible',
         'urgency',
+        'currency',
         'reason_decline',
         'artist_session_slots',
         'artist_consultation_slots',
@@ -669,19 +670,35 @@ class BookingRequest extends Model
         return $style !== '' ? ucwords(str_replace('-', ' ', $style)) : '—';
     }
 
+    /**
+     * Currency linked to this request (snapshotted at create; falls back to booking / artist).
+     */
+    public function currencyCode(): string
+    {
+        $this->loadMissing(['booking', 'artist.userDetail']);
+
+        return \App\Support\MoneyCurrency::code(
+            $this->currency
+                ?: $this->booking?->currency
+                ?: $this->artist?->userDetail?->currency
+        );
+    }
+
     public function priceLabel(): string
     {
         $tattoo = $this->tattoo;
         if (!$tattoo) {
             return '—';
         }
+        $currency = $this->currencyCode();
         $min = (float) ($tattoo->min_price ?? 0);
         $max = (float) ($tattoo->max_price ?? 0);
         if ($min > 0 && $max > 0 && $max > $min) {
-            return '€' . number_format($min, 0) . ' – €' . number_format($max, 0);
+            return \App\Support\MoneyCurrency::format($min, $currency, true)
+                .' – '.\App\Support\MoneyCurrency::format($max, $currency, true);
         }
         if ($min > 0) {
-            return '€' . number_format($min, 0);
+            return \App\Support\MoneyCurrency::format($min, $currency, true);
         }
 
         return '—';
@@ -922,6 +939,8 @@ class BookingRequest extends Model
             'designTitle' => (string) ($this->tattoo?->title ?? 'Design'),
             'designStyle' => $this->designStyleLabel(),
             'priceLabel' => $this->priceLabel(),
+            'currencyCode' => $this->currencyCode(),
+            'currencySymbol' => \App\Support\MoneyCurrency::symbol($this->currencyCode()),
             'schedulingLabel' => $this->schedulingLabel(),
             'consultationLabel' => $this->consultationTypeLabel(),
             'placement' => $this->placementLabel(),
@@ -975,6 +994,8 @@ class BookingRequest extends Model
             'designTitle' => (string) ($this->tattoo?->title ?? 'Design'),
             'designStyle' => $this->designStyleLabel(),
             'priceLabel' => $this->priceLabel(),
+            'currencyCode' => $this->currencyCode(),
+            'currencySymbol' => \App\Support\MoneyCurrency::symbol($this->currencyCode()),
             'schedulingLabel' => $this->schedulingLabel(),
             'consultationLabel' => $this->consultationTypeLabel(),
             'placement' => $this->placementLabel(),

@@ -516,8 +516,8 @@
               <div class="row"><span class="k">How they found you</span><span class="v" id="cl-m-found">Not recorded</span></div>
               <div class="row"><span class="k">Next booking</span><span class="v strong" id="cl-m-next">None yet</span></div>
               <div class="row"><span class="k">Last booking</span><span class="v" id="cl-m-last">None yet</span></div>
-              <div class="row"><span class="k">Deposits paid</span><span class="v" id="cl-m-deposits">€0.00</span></div>
-              <div class="row"><span class="k">Outstanding</span><span class="v due" id="cl-m-outstanding">€0.00</span></div>
+              <div class="row"><span class="k">Deposits paid</span><span class="v" id="cl-m-deposits">{{ $currencySymbol }}0.00</span></div>
+              <div class="row"><span class="k">Outstanding</span><span class="v due" id="cl-m-outstanding">{{ $currencySymbol }}0.00</span></div>
             </div>
       </div>
 
@@ -537,7 +537,7 @@
             <div class="cl-kpi"><b id="cl-m-completed" style="color:#00A650">0</b><span>Completed</span></div>
             <div class="cl-kpi"><b id="cl-m-cancelled" style="color:#C62828">0</b><span>Cancelled</span></div>
             <div class="cl-kpi"><b id="cl-m-noshows">0</b><span>No-shows</span></div>
-            <div class="cl-kpi"><b id="cl-m-spent">€0</b><span>Total paid</span></div>
+            <div class="cl-kpi"><b id="cl-m-spent">{{ $currencySymbol }}0</b><span>Total paid</span></div>
       </div>
 
           <div class="cl-hist">

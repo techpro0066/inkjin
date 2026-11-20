@@ -6,6 +6,7 @@ use App\Models\ArtistPayout;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Support\MoneyCurrency;
 
 class ArtistPaymentsService
 {
@@ -34,31 +35,39 @@ class ArtistPaymentsService
 
         $payments = [];
         $availableBalance = 0.0;
-        $pendingTotal = 0.0;
         $pendingCount = 0;
-        $totalEarned = 0.0;
         $firstPaidAt = null;
-
         $pendingSchedule = [];
+        $availableSchedule = [];
+        $earnedByCurrency = [];
+        $pendingByCurrency = [];
+        $availableByCurrency = [];
 
         foreach ($bookings as $booking) {
             $payment = $this->formatPayment($booking, $userDetail);
             $payments[] = $payment;
+            $currencyCode = (string) ($payment['currency'] ?? MoneyCurrency::code($booking->currency ?: $userDetail?->currency));
 
             if ($userDetail && $payment['status'] === 'Pending') {
                 $pendingInfo = $this->payoutService->payoutPendingInfo($booking, $userDetail);
                 if ($pendingInfo) {
+                    $pendingAmount = (float) $pendingInfo['amount'];
                     $pendingSchedule[] = [
                         'booking_id' => $booking->id,
                         'reference' => $booking->referenceLabel(),
                         'client' => $payment['client'],
                         'service' => $payment['service'],
-                        'amount' => $pendingInfo['amount'],
+                        'amount' => $pendingAmount,
+                        'amount_label' => MoneyCurrency::format($pendingAmount, $currencyCode),
+                        'currency' => $currencyCode,
+                        'currency_symbol' => MoneyCurrency::symbol($currencyCode),
                         'available_at' => $pendingInfo['available_at'],
                         'available_label' => $pendingInfo['available_label'],
                         'reason' => $pendingInfo['reason'],
                         'sort_key' => $pendingInfo['sort_key'],
                     ];
+                    $pendingByCurrency[$currencyCode] = ($pendingByCurrency[$currencyCode] ?? 0) + $pendingAmount;
+                    $pendingCount++;
                 }
             }
 
@@ -67,19 +76,36 @@ class ArtistPaymentsService
             }
 
             if (in_array($payment['status'], ['Completed', 'Pending', 'Available'], true)) {
-                $totalEarned += $payment['net'];
-            }
-
-            if ($payment['status'] === 'Available') {
-                $availableBalance += $payment['remaining'];
-            } elseif ($payment['status'] === 'Pending') {
-                $pendingTotal += $payment['remaining'] > 0 ? $payment['remaining'] : $payment['net'];
-                $pendingCount++;
+                $earnedByCurrency[$currencyCode] = ($earnedByCurrency[$currencyCode] ?? 0) + (float) $payment['net'];
             }
         }
 
-        // Prefer service calculation so Available matches request-payout eligibility.
+        // Available / next payout: list each eligible booking in its own currency.
         if ($userDetail) {
+            foreach ($this->payoutService->eligibleBookingsForArtist($artistUserId) as $booking) {
+                $remaining = $this->payoutService->remainingPayoutAmount($booking, $userDetail);
+                if ($remaining < 0.01) {
+                    continue;
+                }
+                $currencyCode = MoneyCurrency::code($booking->currency ?: $userDetail->currency);
+                $clientName = trim(($booking->user?->first_name ?? '').' '.($booking->user?->last_name ?? ''));
+                if ($clientName === '') {
+                    $clientName = 'Client #'.($booking->user_id ?? '');
+                }
+                $availableSchedule[] = [
+                    'booking_id' => $booking->id,
+                    'reference' => $booking->referenceLabel(),
+                    'client' => $clientName,
+                    'service' => $booking->displayTitle(),
+                    'amount' => round($remaining, 2),
+                    'amount_label' => MoneyCurrency::format($remaining, $currencyCode),
+                    'currency' => $currencyCode,
+                    'currency_symbol' => MoneyCurrency::symbol($currencyCode),
+                ];
+                $availableByCurrency[$currencyCode] = ($availableByCurrency[$currencyCode] ?? 0) + $remaining;
+            }
+
+            // Request-payout max stays in the artist's current payout currency only.
             $availableBalance = $this->payoutService->availableBalanceForArtist($artistUserId, $userDetail);
         }
 
@@ -105,14 +131,15 @@ class ArtistPaymentsService
             ? 'Studio payouts'
             : 'Artist payouts';
 
+        $hasAvailable = $availableSchedule !== [];
         $nextPayoutMeta = $payoutMode === 'automatic'
             ? 'Paid automatically to your bank'
-            : ($availableBalance > 0.009
+            : ($hasAvailable
                 ? 'Ready to withdraw to your bank'
                 : 'No balance ready to withdraw yet');
 
         $nextArrivalLabel = null;
-        if ($availableBalance > 0.009) {
+        if ($hasAvailable) {
             $nextArrivalLabel = $payoutMode === 'automatic'
                 ? 'Paid out automatically when funds become available'
                 : 'Available now · request a payout when you want';
@@ -124,16 +151,23 @@ class ArtistPaymentsService
             ? $this->payoutService->outstandingArtistPlatformFee($artistUserId, $userDetail)
             : 0.0;
 
+        $payoutCurrency = MoneyCurrency::code($userDetail?->currency);
+
         return [
             'payments' => $payments,
             'stats' => [
                 'available_balance' => round($availableBalance, 2),
-                'pending_total' => round($pendingTotal, 2),
+                'available_schedule' => $availableSchedule,
+                'available_by_currency' => $this->formatCurrencyTotals($availableByCurrency),
+                'pending_total' => round(array_sum($pendingByCurrency), 2),
                 'pending_count' => $pendingCount,
                 'pending_schedule' => $pendingSchedule,
-                'total_earned' => round($totalEarned, 2),
+                'pending_by_currency' => $this->formatCurrencyTotals($pendingByCurrency),
+                'total_earned' => round(array_sum($earnedByCurrency), 2),
+                'earned_by_currency' => $this->formatCurrencyTotals($earnedByCurrency),
                 'since_label' => $sinceLabel,
-                'currency_symbol' => '€',
+                'currency' => $payoutCurrency,
+                'currency_symbol' => MoneyCurrency::symbol($payoutCurrency),
                 'payout_account_connected' => $payoutAccountConnected,
                 'payout_mode' => $payoutMode,
                 'payout_type_label' => $payoutTypeLabel,
@@ -142,6 +176,30 @@ class ArtistPaymentsService
                 'outstanding_artist_fee' => round($outstandingArtistFee, 2),
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, float>  $totals
+     * @return list<array{currency: string, symbol: string, amount: float, label: string}>
+     */
+    private function formatCurrencyTotals(array $totals): array
+    {
+        ksort($totals);
+        $rows = [];
+        foreach ($totals as $code => $amount) {
+            $amount = round((float) $amount, 2);
+            if ($amount < 0.01) {
+                continue;
+            }
+            $rows[] = [
+                'currency' => MoneyCurrency::code($code),
+                'symbol' => MoneyCurrency::symbol($code),
+                'amount' => $amount,
+                'label' => MoneyCurrency::format($amount, $code),
+            ];
+        }
+
+        return $rows;
     }
 
     /**
@@ -207,7 +265,7 @@ class ArtistPaymentsService
         $collectedKind = $this->collectedKindLabel($breakdown);
         $balanceDue = max(0, round((float) ($breakdown['balance_pending'] ?? 0), 2));
         if ($balanceDue > 0.009) {
-            $collectedKind .= ' · €'.number_format($balanceDue, 2).' due';
+            $collectedKind .= ' · '.MoneyCurrency::format($balanceDue, $booking->currency ?: $userDetail?->currency).' due';
         }
 
         $moneyUi = $this->payoutService->bookingDetailsMoneyBreakdown($booking, $userDetail);
@@ -215,9 +273,28 @@ class ArtistPaymentsService
         // Listing columns: Stripe fee (artist share) + You get after Stripe/fees.
         $tableStripeFee = round((float) ($moneyUi['your_stripe_amount'] ?? $moneyUi['stripe_fee_amount'] ?? 0), 2);
         $tableYouGet = round((float) ($moneyUi['you_get_amount'] ?? $net), 2);
+        $tableStudioGets = $hasSplitDisplay
+            ? round((float) ($moneyUi['studio_gets_amount'] ?? $studioGets), 2)
+            : 0.0;
         if ($payout && $payout->isCompleted() && $booking->pay_artist) {
-            // Actual transfer wins once paid out.
-            $tableYouGet = round((float) $payout->amount, 2);
+            $tableYouGet = $this->payoutService->recordedArtistPayoutAmount($payout);
+            $tableStudioGets = max(0, round((float) ($payout->studio_amount ?? 0), 2));
+            $hasSplitDisplay = $tableStudioGets > 0.009;
+            $tableStripeFee = $hasSplitDisplay
+                ? round((float) ($moneyUi['stripe_fee_amount'] ?? 0) * ($artistPercent / 100), 2)
+                : round((float) ($moneyUi['stripe_fee_amount'] ?? 0), 2);
+            $moneyUi['your_stripe_amount'] = $tableStripeFee;
+            $moneyUi['your_stripe'] = '-'.MoneyCurrency::format(
+                $tableStripeFee,
+                $booking->currency ?: $userDetail?->currency
+            );
+            $moneyUi['you_get_amount'] = $tableYouGet;
+            $moneyUi['you_get'] = MoneyCurrency::format(
+                $tableYouGet,
+                $booking->currency ?: $userDetail?->currency
+            );
+            $moneyUi['studio_gets_amount'] = $tableStudioGets;
+            $moneyUi['has_split'] = $hasSplitDisplay;
             $net = $tableYouGet;
         } else {
             $net = $tableYouGet;
@@ -230,10 +307,7 @@ class ArtistPaymentsService
             artistFee: round($fee, 2),
         );
 
-        // Artist-direct: Studio gets is —. Split rows keep studio share.
-        $tableStudioGets = $hasSplitDisplay
-            ? round((float) ($moneyUi['studio_gets_amount'] ?? $studioGets), 2)
-            : 0.0;
+        $currencyCode = MoneyCurrency::code($booking->currency ?: $userDetail?->currency);
 
         return [
             'id' => $booking->id,
@@ -242,6 +316,8 @@ class ArtistPaymentsService
             'service' => $booking->displayTitle(),
             'reference' => $booking->referenceLabel(),
             'date' => $paidAt,
+            'currency' => $currencyCode,
+            'currency_symbol' => MoneyCurrency::symbol($currencyCode),
             'amount' => round($amount, 2),
             'fee' => $tableStripeFee,
             'studio_gets' => $tableStudioGets,

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Services\BookingCalendarAvailabilityService;
 use App\Services\ReschedulingService;
+use App\Support\MoneyCurrency;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -162,6 +163,7 @@ class BookingsController extends Controller
             'totalPaid' => round($totalPaid, 2),
             'remainingBalance' => $remaining,
             'designMinPrice' => round($minPrice, 2),
+            'currency' => MoneyCurrency::code($booking->currency ?: $ud?->currency),
             'consultation' => $consultation,
             'completionCode' => $completionCode,
             'completionCodeUsed' => (bool) $booking->completion_code_entered_at,

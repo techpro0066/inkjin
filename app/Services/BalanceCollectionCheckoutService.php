@@ -8,6 +8,7 @@ use App\Models\PendingVivaPayment;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Support\PaymentMethods;
+use App\Support\MoneyCurrency;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -24,7 +25,7 @@ class BalanceCollectionCheckoutService
 
     public function amountCents(BalanceCollection $collection): int
     {
-        return (int) round(((float) $collection->amount) * 100);
+        return MoneyCurrency::toStripeAmount((float) $collection->amount, $this->currency($collection));
     }
 
     public function assertPayable(BalanceCollection $collection): void
@@ -64,7 +65,7 @@ class BalanceCollectionCheckoutService
         try {
             $intent = PaymentIntent::create([
                 'amount' => $amountCents,
-                'currency' => strtolower((string) ($collection->currency ?: 'eur')) ?: 'eur',
+                'currency' => strtolower($this->currency($collection)),
                 'automatic_payment_methods' => [
                     'enabled' => true,
                     'allow_redirects' => 'always',
@@ -102,13 +103,19 @@ class BalanceCollectionCheckoutService
         }
 
         Stripe::setApiKey($stripeSecret);
-        $intent = PaymentIntent::retrieve($paymentIntentId);
+        $intent = PaymentIntent::retrieve($paymentIntentId, [
+            'expand' => ['latest_charge.balance_transaction'],
+        ]);
         if (! $intent || $intent->status !== 'succeeded') {
             throw new RuntimeException('Payment is not completed.');
         }
 
         if ((int) $intent->amount !== $this->amountCents($collection)) {
             throw new RuntimeException('Payment amount does not match this link.');
+        }
+
+        if (strtolower((string) $intent->currency) !== strtolower($this->currency($collection))) {
+            throw new RuntimeException('Payment currency does not match this link.');
         }
 
         $metadata = $intent->metadata;
@@ -129,6 +136,7 @@ class BalanceCollectionCheckoutService
             vivaTransactionId: null,
             paymentMethod: $paymentMethod,
             paymentProvider: 'stripe',
+            processingFee: app(StripeProcessingFeeService::class)->amountForPaymentIntent($intent),
         );
     }
 
@@ -143,6 +151,10 @@ class BalanceCollectionCheckoutService
         $clientPhone = PaymentMethods::checkoutPhoneForIris(null, $client->phone_number);
         if (! PaymentMethods::showIrisTab($userDetail, $clientPhone)) {
             throw new RuntimeException('IRIS payment is not available for this checkout.');
+        }
+
+        if ($this->currency($collection) !== 'EUR') {
+            throw new RuntimeException('IRIS payments are only available in EUR.');
         }
 
         $amountCents = $this->amountCents($collection);
@@ -194,7 +206,7 @@ class BalanceCollectionCheckoutService
             'artist_user_id' => $collection->artist_user_id,
             'client_user_id' => $client->id,
             'amount_cents' => $amountCents,
-            'currency' => strtoupper((string) ($collection->currency ?: 'EUR')) ?: 'EUR',
+            'currency' => $this->currency($collection),
             'merchant_trns' => $merchantTrns,
             'status' => PendingVivaPayment::STATUS_PENDING,
             'metadata' => [
@@ -298,6 +310,7 @@ class BalanceCollectionCheckoutService
         ?string $vivaTransactionId,
         string $paymentMethod,
         string $paymentProvider,
+        ?float $processingFee = null,
     ): Booking {
         return DB::transaction(function () use (
             $collection,
@@ -306,6 +319,7 @@ class BalanceCollectionCheckoutService
             $vivaTransactionId,
             $paymentMethod,
             $paymentProvider,
+            $processingFee,
         ) {
             /** @var BalanceCollection $locked */
             $locked = BalanceCollection::query()
@@ -332,6 +346,9 @@ class BalanceCollectionCheckoutService
             ]);
 
             $booking = $this->booking($locked);
+            if ($processingFee !== null) {
+                $booking->increment('processing_fee', $processingFee);
+            }
             $this->completePaidBooking($booking, (float) $locked->amount);
 
             return $booking->fresh() ?? $booking;
@@ -415,5 +432,14 @@ class BalanceCollectionCheckoutService
         }
 
         return $detail;
+    }
+
+    private function currency(BalanceCollection $collection): string
+    {
+        return MoneyCurrency::code(
+            $collection->currency
+                ?: $collection->booking?->currency
+                ?: $this->artistDetail($collection)->currency
+        );
     }
 }

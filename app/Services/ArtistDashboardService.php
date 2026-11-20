@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\Waitlist;
+use App\Support\MoneyCurrency;
 use Carbon\Carbon;
 
 class ArtistDashboardService
@@ -89,7 +90,8 @@ class ArtistDashboardService
                 'revenue_change_percent' => $revenueChangePercent,
                 'waitlist_count' => $waitlistCount,
                 'show_waitlist_notify_button' => $waitlistCount > 0 && $booksOpen,
-                'currency_symbol' => '€',
+                'currency' => MoneyCurrency::code($userDetail?->currency),
+                'currency_symbol' => MoneyCurrency::symbol($userDetail?->currency),
             ],
             'recent_bookings' => $recentBookings,
         ];

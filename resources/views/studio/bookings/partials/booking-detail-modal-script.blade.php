@@ -68,6 +68,9 @@
     text('sbdmMoneyDepositLabel', data.deposit_money_label || 'Client paid · deposit');
     text('sbdmMoneyDeposit', data.deposit_money);
     text('sbdmStripeFee', data.stripe_fee);
+    if (data.stripe_fee_note) {
+      text('sbdmStripeFeeHint', data.stripe_fee_note);
+    }
 
     if (data.booking_fee) {
       show('sbdmBookingFeeRow', true);

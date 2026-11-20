@@ -1115,7 +1115,8 @@ class OnboardingController extends Controller
             'connected_at' => $clearStripe ? null : ($payout?->connected_at),
         ], fn ($v) => true));
 
-        $currencySync = StripeConnectCountries::syncCurrencyFromBankCountry($userDetail->fresh() ?? $userDetail);
+        $userDetail = $userDetail->fresh() ?? $userDetail;
+        $currencySync = StripeConnectCountries::syncCurrencyFromBankCountry($userDetail);
         $userDetail->save();
 
         return response()->json([
@@ -1239,7 +1240,8 @@ class OnboardingController extends Controller
         if ($currency !== null) {
             $userDetail->currency = $currency;
         } else {
-            StripeConnectCountries::syncCurrencyFromBankCountry($userDetail->fresh() ?? $userDetail);
+            $userDetail = $userDetail->fresh() ?? $userDetail;
+            StripeConnectCountries::syncCurrencyFromBankCountry($userDetail);
         }
         $userDetail->save();
 
@@ -1297,7 +1299,8 @@ class OnboardingController extends Controller
             $user->save();
         }
 
-        $currencySync = StripeConnectCountries::syncCurrencyFromBankCountry($userDetail->fresh() ?? $userDetail);
+        $userDetail = $userDetail->fresh() ?? $userDetail;
+        $currencySync = StripeConnectCountries::syncCurrencyFromBankCountry($userDetail);
         $userDetail->save();
 
         if ($stripeConnect->isConfigured() && filled($payout->stripe_account_id)) {
@@ -2289,16 +2292,10 @@ class OnboardingController extends Controller
                     return redirect()->back()->with('error', $msg);
                 }
 
-                UserPayout::upsertActiveForUser((int) $user->id, [
-                    'stripe_account_id' => null,
-                    'status' => UserPayout::STATUS_DISCONNECTED,
-                    'stripe_requirement' => false,
-                    'stripe_requirement_email_sent_at' => null,
-                    'connected_at' => null,
-                    'disconnected_at' => now(),
-                ]);
+                // Keep stripe_account_id so the artist can activate this account again later.
+                UserPayout::deactivateActiveForUser((int) $user->id);
 
-                $msg = 'Stripe payout disconnected. You can now switch payout options or connect again.';
+                $msg = 'Stripe payout disconnected. You can activate it again or connect a new account.';
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json(['success' => true, 'message' => $msg]);
                 }
@@ -2952,18 +2949,12 @@ class OnboardingController extends Controller
                     return response()->json(['success' => false, 'message' => 'No connected Stripe payout to disconnect.'], 422);
                 }
 
-                UserPayout::upsertActiveForUser((int) $user->id, [
-                    'stripe_account_id' => null,
-                    'status' => UserPayout::STATUS_DISCONNECTED,
-                    'stripe_requirement' => false,
-                    'stripe_requirement_email_sent_at' => null,
-                    'connected_at' => null,
-                    'disconnected_at' => now(),
-                ]);
+                // Keep stripe_account_id so the artist can activate this account again later.
+                UserPayout::deactivateActiveForUser((int) $user->id);
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Stripe payout disconnected. You can now switch payout options or connect again.',
+                    'message' => 'Stripe payout disconnected. You can activate it again or connect a new account.',
                 ]);
             }
 

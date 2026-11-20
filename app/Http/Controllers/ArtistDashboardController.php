@@ -22,6 +22,7 @@ use App\Services\BookingCalendarAvailabilityService;
 use App\Services\PaymentLinkCheckoutService;
 use App\Services\PublicBookingEmailVerificationService;
 use App\Support\ArtistPolicyCopy;
+use App\Support\MoneyCurrency;
 use App\Support\PaymentMethods;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -185,10 +186,11 @@ class ArtistDashboardController extends Controller
         }
 
         $payload = $this->normalizedPaymentLinkData($request);
+        $currencyCode = MoneyCurrency::code(Auth::user()?->userDetail?->currency);
         $code = $this->generatePaymentLinkCode();
         $url = route('public.payment-link', ['code' => $code]);
         $displayUrl = preg_replace('#^https?://#', '', $url) ?? $url;
-        $clientMessage = $this->buildClientMessage($payload, $url);
+        $clientMessage = $this->buildClientMessage($payload, $url, $currencyCode);
 
         $paymentLink = PaymentLink::query()->create([
             'artist_id' => Auth::id(),
@@ -208,7 +210,7 @@ class ArtistDashboardController extends Controller
             'scheduling_type' => $payload['scheduling_type'],
         ]);
 
-        $summaryParts = [$this->formatEuro((float) $payload['amount'])];
+        $summaryParts = [MoneyCurrency::format((float) $payload['amount'], $currencyCode)];
         if ($payload['date_time_formatted']) {
             $summaryParts[] = $payload['date_time_formatted'];
         }
@@ -223,7 +225,7 @@ class ArtistDashboardController extends Controller
                 'url' => $url,
                 'display_url' => $displayUrl,
                 'client_message' => $clientMessage,
-                'amount_formatted' => $this->formatEuro((float) $payload['amount']),
+                'amount_formatted' => MoneyCurrency::format((float) $payload['amount'], $currencyCode),
                 'expires' => $payload['expires'],
             ],
         ]);
@@ -253,10 +255,11 @@ class ArtistDashboardController extends Controller
         $durationMinutes = $this->paymentLinkDurationMinutes((string) $paymentLink->session_duration);
         $durationLabel = $this->paymentLinkDurationLabel((string) $paymentLink->session_duration);
         $isDeposit = $paymentLink->payment_type === 'deposit';
-        $amountFormatted = $this->formatEuro((float) $paymentLink->amount);
-        $dueFormatted = $isDeposit ? $this->formatEuro((float) $paymentLink->due_amount) : null;
+        $currencyCode = MoneyCurrency::code($userDetail?->currency);
+        $amountFormatted = MoneyCurrency::format((float) $paymentLink->amount, $currencyCode);
+        $dueFormatted = $isDeposit ? MoneyCurrency::format((float) $paymentLink->due_amount, $currencyCode) : null;
         $totalFormatted = ($isDeposit && $paymentLink->total_price !== null)
-            ? $this->formatEuro((float) $paymentLink->total_price)
+            ? MoneyCurrency::format((float) $paymentLink->total_price, $currencyCode)
             : null;
 
         $dateLine = null;
@@ -322,7 +325,7 @@ class ArtistDashboardController extends Controller
         $checkoutTotals = $userDetail
             ? $checkout->checkoutTotals($paymentLink, $paymentLink->booking?->user, $checkoutPhone)
             : null;
-        $checkoutDisplay = $this->paymentLinkCheckoutDisplay($checkoutTotals);
+        $checkoutDisplay = $this->paymentLinkCheckoutDisplay($checkoutTotals, $currencyCode);
 
         $checkoutStep = 'booking';
         if ($isPaid) {
@@ -342,6 +345,7 @@ class ArtistDashboardController extends Controller
             'verifiedCheckout' => $verifiedCheckout,
             'artistHeader' => $artistHeader,
             'userDetail' => $userDetail,
+            'currencyCode' => $currencyCode,
             'policyCopy' => $policyCopy,
             'policyPossessive' => $policyPossessive,
             'showIrisTab' => $showIrisTab,
@@ -895,7 +899,8 @@ class ArtistDashboardController extends Controller
         $client = $collection->client ?: $booking?->user;
         $userDetail = $artist?->userDetail;
         $isPaid = $collection->isPaid();
-        $amountFormatted = $this->formatEuro((float) $collection->amount);
+        $currencyCode = MoneyCurrency::code($collection->currency ?: $booking?->currency ?: $userDetail?->currency);
+        $amountFormatted = MoneyCurrency::format((float) $collection->amount, $currencyCode);
         $title = trim((string) ($booking?->displayTitle() ?? ''));
         if ($title === '') {
             $title = 'Remaining balance';
@@ -957,6 +962,7 @@ class ArtistDashboardController extends Controller
             ],
             'artistHeader' => $artistHeader,
             'userDetail' => $userDetail,
+            'currencyCode' => $currencyCode,
             'policyCopy' => $policyCopy,
             'policyPossessive' => $policyPossessive,
             'showIrisTab' => $showIrisTab,
@@ -1270,15 +1276,17 @@ class ArtistDashboardController extends Controller
         return [
             'title' => $payload['title'],
             'payment_type' => $payload['payment_type'],
-            'amount_formatted' => $this->formatEuro($payload['amount']),
-            'due_formatted' => $isDeposit ? $this->formatEuro((float) $payload['due_amount']) : null,
+            'amount_formatted' => MoneyCurrency::format($payload['amount'], Auth::user()?->userDetail?->currency),
+            'due_formatted' => $isDeposit
+                ? MoneyCurrency::format((float) $payload['due_amount'], Auth::user()?->userDetail?->currency)
+                : null,
             'expires' => $payload['expires'],
             'session_duration_label' => $payload['session_duration_label'],
             'date_time_formatted' => $payload['date_time_formatted'],
         ];
     }
 
-    private function buildClientMessage(array $payload, string $displayUrl): string
+    private function buildClientMessage(array $payload, string $displayUrl, string $currencyCode): string
     {
         $kind = $payload['payment_type'] === 'deposit' ? 'deposit' : 'payment';
 
@@ -1286,7 +1294,7 @@ class ArtistDashboardController extends Controller
             "Here's your secure %s link for %s — %s, valid %s: %s",
             $kind,
             $payload['title'],
-            $this->formatEuro((float) $payload['amount']),
+            MoneyCurrency::format((float) $payload['amount'], $currencyCode),
             $payload['expires'],
             $displayUrl
         );
@@ -1323,16 +1331,6 @@ class ArtistDashboardController extends Controller
         return now()->addDays(7);
     }
 
-    private function formatEuro(float $value): string
-    {
-        $rounded = round($value, 2);
-        if (fmod($rounded, 1.0) === 0.0) {
-            return '€'.(string) (int) $rounded;
-        }
-
-        return '€'.number_format($rounded, 2, '.', '');
-    }
-
     /**
      * @param  array<string, mixed>|null  $totals
      * @return array{
@@ -1347,12 +1345,13 @@ class ArtistDashboardController extends Controller
      *     amount_cents: int
      * }|null
      */
-    private function paymentLinkCheckoutDisplay(?array $totals): ?array
+    private function paymentLinkCheckoutDisplay(?array $totals, ?string $currency = null): ?array
     {
         if (! is_array($totals)) {
             return null;
         }
 
+        $currencyCode = MoneyCurrency::code($currency);
         $fee = (float) ($totals['platform_fee'] ?? 0);
         $tax = (float) ($totals['tax_amount'] ?? 0);
         $total = (float) ($totals['total_due'] ?? 0);
@@ -1364,16 +1363,16 @@ class ArtistDashboardController extends Controller
         }
 
         return [
-            'base' => $this->formatEuro((float) ($totals['base_amount'] ?? 0)),
-            'fee' => $this->formatEuro($fee),
-            'tax' => $this->formatEuro($tax),
-            'total' => $this->formatEuro($total),
+            'base' => MoneyCurrency::format((float) ($totals['base_amount'] ?? 0), $currencyCode),
+            'fee' => MoneyCurrency::format($fee, $currencyCode),
+            'tax' => MoneyCurrency::format($tax, $currencyCode),
+            'total' => MoneyCurrency::format($total, $currencyCode),
             'show_fee' => $fee > 0,
             'show_tax' => $tax > 0,
             'tax_label' => (string) ($totals['tax_label'] ?: 'VAT on booking fee (24%)'),
             'fee_name' => $feeType === 'split' ? 'Booking fee (your share)' : 'Booking fee',
             'fee_type' => $feeType,
-            'amount_cents' => (int) round($total * 100),
+            'amount_cents' => MoneyCurrency::toStripeAmount($total, $currencyCode),
         ];
     }
 
@@ -1389,7 +1388,8 @@ class ArtistDashboardController extends Controller
         }
 
         $totals = app(PaymentLinkCheckoutService::class)->checkoutTotals($link, null, $phone);
-        $display = $this->paymentLinkCheckoutDisplay($totals);
+        $currencyCode = MoneyCurrency::code($userDetail->currency);
+        $display = $this->paymentLinkCheckoutDisplay($totals, $currencyCode);
         if (! $display) {
             return [];
         }
@@ -1401,12 +1401,12 @@ class ArtistDashboardController extends Controller
         $feeType = (string) ($display['fee_type'] ?? 'client');
 
         $receiptHtml = "You'll receive a receipt from Inkjin on behalf of the artist for your "
-            .'<strong>€'.number_format($depositAmt, 2).'</strong> deposit';
+            .'<strong>'.e(MoneyCurrency::format($depositAmt, $currencyCode)).'</strong> deposit';
         if ($feeAmt > 0) {
             $receiptHtml .= ', and a separate Inkjin invoice for the '
-                .'<strong>€'.number_format($feeAmt, 2).'</strong>';
+                .'<strong>'.e(MoneyCurrency::format($feeAmt, $currencyCode)).'</strong>';
             if ($taxAmt > 0) {
-                $receiptHtml .= ' + <strong>€'.number_format($taxAmt, 2).'</strong> VAT';
+                $receiptHtml .= ' + <strong>'.e(MoneyCurrency::format($taxAmt, $currencyCode)).'</strong> VAT';
             }
             $receiptHtml .= ' booking fee';
         }
@@ -1424,6 +1424,7 @@ class ArtistDashboardController extends Controller
             'show_tax' => $display['show_tax'],
             'show_iris' => PaymentMethods::showIrisTab($userDetail, $phone),
             'amount_cents' => $display['amount_cents'],
+            'currency' => strtolower($currencyCode),
             'receipt_html' => $receiptHtml,
             'artist_covers' => $feeType === 'artist',
             'fee_note' => $feeType === 'artist'

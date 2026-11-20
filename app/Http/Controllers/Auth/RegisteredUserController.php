@@ -182,7 +182,7 @@ class RegisteredUserController extends Controller
             'payout_mode' => 'automatic',
         ]);
 
-        StripeConnectCountries::syncCurrencyFromBankCountry($userDetail->fresh() ?? $userDetail);
+        StripeConnectCountries::syncCurrencyFromBankCountry($userDetail);
         $userDetail->save();
 
         $this->createArtistReferralIfValid($user, $validated['referrer_user_id'] ?? null);

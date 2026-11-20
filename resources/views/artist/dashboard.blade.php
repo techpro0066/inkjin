@@ -97,7 +97,7 @@
   $user = Auth::user();
   $ud = $user?->userDetail;
       $stats = $dashboardStats ?? [];
-      $currency = $stats['currency_symbol'] ?? '€';
+      $currency = $stats['currency_symbol'] ?? \App\Support\MoneyCurrency::symbol($ud?->currency);
       $todayTotal = (int) ($stats['today_bookings_total'] ?? 0);
       $todayConfirmed = (int) ($stats['today_bookings_confirmed'] ?? 0);
       $todayPending = (int) ($stats['today_bookings_pending'] ?? 0);

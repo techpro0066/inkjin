@@ -352,9 +352,15 @@
   const customPaymentSettingsUrl = @json(route('settings.payment'));
   const customDeclineRequestUrlTemplate = @json(route('artist.custom-requests.decline', ['customRequest' => 0]));
   const sendQuoteUrlTemplate = @json(route('artist.custom-requests.send-quote', ['customRequest' => 0]));
+  const defaultQuoteCurrencySymbol = @json($currency ?? \App\Support\MoneyCurrency::symbol(auth()->user()?->userDetail?->currency));
   let customCurrentStatusFilter = 'all';
   let customDeclineRequestId = null;
   let activeCustomRequestId = null;
+
+  function requestCurrencySymbol(req) {
+    if (req && req.currencySymbol) return String(req.currencySymbol);
+    return defaultQuoteCurrencySymbol;
+  }
 
   function escapeHtml(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -1208,7 +1214,7 @@
         : 'Fill in all fields to send your quote to the client.') + '</div>' +
       guestFullBanner +
       '<div class="d01-quote-grid">' +
-        quoteFieldBlock('estimated_price', 'Estimated price (€)',
+        quoteFieldBlock('estimated_price', 'Estimated price (' + requestCurrencySymbol(req).trim() + ')',
           '<input type="text" class="in" id="quoteEstimatedPrice" name="estimated_price" inputmode="decimal" autocomplete="off" placeholder="e.g. 350" value="' + escapeHtml(price) + '"' + dis + '>') +
         quoteFieldBlock('estimated_time', 'Duration',
           '<input type="text" class="in" id="quoteEstimatedDuration" name="estimated_time" placeholder="e.g. 3–4 hours" value="' + duration + '"' + dis + '>') +
@@ -1231,7 +1237,7 @@
 
   function buildQuoteReadOnlyHtml(req) {
     var priceLabel = req.estimatedPrice != null && parseFloat(req.estimatedPrice) > 0
-      ? '€' + parseFloat(req.estimatedPrice).toFixed(2)
+      ? requestCurrencySymbol(req) + parseFloat(req.estimatedPrice).toFixed(2)
       : '—';
 
     return '<div class="tint" style="padding:18px">' +
@@ -1441,15 +1447,20 @@
     return getCustomSendQuoteUrl(numericId);
   }
 
-  function parseQuotePrice(raw) {
-    var cleaned = String(raw || '').trim().replace(/€/g, '').replace(/\s+/g, '').replace(',', '.');
+  function parseQuotePrice(raw, req) {
+    var symbol = requestCurrencySymbol(req);
+    var cleaned = String(raw || '').trim()
+      .replace(symbol || '', '')
+      .replace(/€|£|\$/g, '')
+      .replace(/\s+/g, '')
+      .replace(',', '.');
     if (!cleaned || !/^\d+(\.\d{1,2})?$/.test(cleaned)) return NaN;
     return parseFloat(cleaned);
   }
 
-  function collectQuoteForm() {
+  function collectQuoteForm(req) {
     return {
-      estimated_price: parseQuotePrice(document.getElementById('quoteEstimatedPrice')?.value),
+      estimated_price: parseQuotePrice(document.getElementById('quoteEstimatedPrice')?.value, req),
       estimated_time: String(document.getElementById('quoteEstimatedDuration')?.value || '').trim(),
       number_of_sessions: String(document.getElementById('quoteNumberOfSessions')?.value || '').trim(),
       message_for_client: String(document.getElementById('quoteMessageForClient')?.value || '').trim(),
@@ -1525,7 +1536,7 @@
     const id = activeCustomRequestId;
     if (!id) return;
     const req = customRequestsById[id] || customRequestsById[String(id)];
-    const payload = collectQuoteForm();
+    const payload = collectQuoteForm(req);
     const validationErrors = getQuoteValidationErrors(payload);
     if (hasQuoteValidationErrors(validationErrors)) {
       setQuoteFieldErrors(validationErrors);

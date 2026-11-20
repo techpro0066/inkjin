@@ -285,7 +285,7 @@ class DashboardController extends Controller
                     $row = $bookings->dashboardBookingRow($booking);
                     $share = (string) ($row['share'] ?? '');
                     if (strcasecmp($share, 'Direct') === 0) {
-                        $share = '€0 · direct';
+                        $share = \App\Support\MoneyCurrency::format(0, $booking->currency, true).' · direct';
                     }
 
                     $bt = $booking->booking_time;
@@ -391,7 +391,8 @@ class DashboardController extends Controller
             'profileComplete' => $profileComplete,
             'activeNav' => 'home',
             'studioArtistsForModal' => $studioArtistsForModal,
-            'currencySymbol' => '€',
+            'currencySymbol' => \App\Support\MoneyCurrency::symbol($studio?->currency),
+            'currencyCode' => \App\Support\MoneyCurrency::code($studio?->currency),
             'paymentLinkModalReloadOnDone' => false,
             'publicPageUrl' => $publicPageUrl,
             'publicPageHost' => $publicPageHost,
@@ -406,12 +407,12 @@ class DashboardController extends Controller
             'bookingsThisMonth' => $bookingsThisMonth,
             'bookingsMeta' => $bookingsMeta,
             'earnedThisMonth' => $earnedThisMonth,
-            'earnedThisMonthLabel' => $this->formatEuro($earnedThisMonth),
+            'earnedThisMonthLabel' => $this->formatMoney($earnedThisMonth, $studio?->currency),
             'monthDeltaLabel' => (string) ($earnings['month_delta_label'] ?? ''),
             'activeArtistCount' => $activeArtistCount,
             'artistsMeta' => $artistsMeta,
             'nextPayout' => $nextPayout,
-            'nextPayoutLabel' => $this->formatEuro($nextPayout),
+            'nextPayoutLabel' => $this->formatMoney($nextPayout, $studio?->currency),
             'nextPayoutMeta' => $nextPayoutMeta,
             'upcomingBookings' => $upcoming,
             'relationshipOptions' => $relationshipLabels,
@@ -456,13 +457,9 @@ class DashboardController extends Controller
         return $name;
     }
 
-    private function formatEuro(float $amount): string
+    private function formatMoney(float $amount, ?string $currency = null): string
     {
-        if (abs($amount - round($amount)) < 0.005) {
-            return '€'.number_format($amount, 0);
-        }
-
-        return '€'.number_format($amount, 2);
+        return \App\Support\MoneyCurrency::format($amount, $currency, true);
     }
 
     private function to24h(string $t): string

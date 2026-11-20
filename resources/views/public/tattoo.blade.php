@@ -23,17 +23,10 @@
         '#3E007C,#5A238E,#F5ECFB'
     );
 
-    $currencyCode = strtoupper(trim((string) ($userDetail->currency ?? 'EUR')));
-    $currencySymbol = match ($currencyCode) {
-        'EUR' => '€',
-        'GBP' => '£',
-        'USD', 'CAD', 'AUD', 'NZD', 'SGD' => '$',
-        default => $currencyCode !== '' ? $currencyCode.' ' : '€',
-    };
-    $formatMoney = static function ($amount) use ($currencySymbol): string {
-        $number = rtrim(rtrim(number_format((float) $amount, 2, '.', ''), '0'), '.');
-
-        return $currencySymbol.$number;
+    $currencyCode = \App\Support\MoneyCurrency::code($userDetail->currency);
+    $currencySymbol = \App\Support\MoneyCurrency::symbol($currencyCode);
+    $formatMoney = static function ($amount) use ($currencyCode): string {
+        return \App\Support\MoneyCurrency::format((float) $amount, $currencyCode, true);
     };
     $priceRange = $formatMoney($tattoo->min_price).' – '.$formatMoney($tattoo->max_price);
 
@@ -41,7 +34,7 @@
     $depositAmountRaw = (float) ($userDetail->minimum_deposit_amount ?? 30);
     $depositAmountLabel = rtrim(rtrim(number_format(max(0, $depositAmountRaw), 2, '.', ''), '0'), '.');
     $depositLabel = $depositType === 'amount'
-        ? $currencySymbol.$depositAmountLabel
+        ? \App\Support\MoneyCurrency::format($depositAmountRaw, $currencyCode, true)
         : $depositAmountLabel.'%';
 
     $cwRaw = strtolower(trim((string) ($userDetail->cancellation_window ?? '48h')));

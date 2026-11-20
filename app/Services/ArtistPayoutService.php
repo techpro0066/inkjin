@@ -8,7 +8,10 @@ use App\Models\ArtistPayout;
 use App\Models\BalanceCollection;
 use App\Models\Booking;
 use App\Models\UserDetail;
+use App\Models\UserPayout;
 use App\Support\ArtistNotificationPreferences;
+use App\Support\MoneyCurrency;
+use App\Support\StripeConnectCountries;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -46,7 +49,7 @@ class ArtistPayoutService
             ->where('pay_artist', false)
             ->whereNotNull('deposit_amount')
             ->where('deposit_amount', '>', 0)
-            ->with(['artist.userDetail.studio', 'artistPayout'])
+            ->with(['artist.userDetail.studio', 'artistPayout', 'balanceCollections'])
             ->orderBy('id')
             ->chunkById(100, function ($bookings) use (&$stats) {
                 foreach ($bookings as $booking) {
@@ -239,7 +242,8 @@ class ArtistPayoutService
             ]);
         }
 
-        $amount = round($amount, 2);
+        $currency = MoneyCurrency::code($userDetail->currency);
+        $amount = MoneyCurrency::round($amount, $currency);
         if ($amount < 0.01) {
             throw ValidationException::withMessages([
                 'amount' => ['Enter an amount greater than zero.'],
@@ -254,7 +258,6 @@ class ArtistPayoutService
             ]);
         }
 
-        $currency = 'EUR';
         if (! $this->payoutAlert->hasSufficientPlatformBalance($amount, $currency)) {
             $this->notifyLowPlatformBalance(
                 amount: $amount,
@@ -325,8 +328,12 @@ class ArtistPayoutService
             return 0.0;
         }
 
+        $payoutCurrency = MoneyCurrency::code($userDetail->currency);
         $total = 0.0;
         foreach ($this->eligibleBookingsForArtist($artistUserId) as $booking) {
+            if (MoneyCurrency::code($booking->currency ?: $userDetail->currency) !== $payoutCurrency) {
+                continue;
+            }
             $total += $this->remainingPayoutAmount($booking, $userDetail);
         }
 
@@ -345,7 +352,7 @@ class ArtistPayoutService
             ->where('pay_artist', false)
             ->whereNotNull('deposit_amount')
             ->where('deposit_amount', '>', 0)
-            ->with(['artistPayout', 'balanceCollections'])
+            ->with(['artistPayout', 'balanceCollections', 'user', 'tattoo'])
             ->orderBy('id')
             ->get()
             ->filter(fn (Booking $booking) => $this->isBookingPayoutEligible($booking))
@@ -498,27 +505,12 @@ class ArtistPayoutService
             return $this->markSettledIfNothingOwed($booking, $userDetail);
         }
 
-        $artistAccountId = null;
-        $studioAccountId = null;
-
-        if ($artistSlice >= 0.01) {
-            $artistAccountId = $this->resolveArtistConnectedAccountId($userDetail);
-            if (! $artistAccountId) {
-                return false;
-            }
-        }
-
-        if ($studioSlice >= 0.01) {
-            $studioAccountId = $this->resolveStudioConnectedAccountId($userDetail);
-            if (! $studioAccountId) {
-                return false;
-            }
-        }
-
-        $currency = strtoupper((string) ($booking->currency ?: 'EUR'));
-        $artistCents = (int) round($artistSlice * 100);
-        $studioCents = (int) round($studioSlice * 100);
-        $totalTransferAmount = round($artistSlice + $studioSlice, 2);
+        // Booking currency is the ledger; Stripe transfer currency may differ when the
+        // platform settles charges into another currency (e.g. GBP charge → EUR balance).
+        $bookingCurrency = MoneyCurrency::code($booking->currency ?: $userDetail->currency);
+        $currency = $bookingCurrency;
+        $transferArtistSlice = $artistSlice;
+        $transferStudioSlice = $studioSlice;
 
         $locked = DB::transaction(function () use ($booking, $userDetail, $artistSlice, $studioSlice) {
             $lockedBooking = Booking::query()
@@ -556,19 +548,46 @@ class ArtistPayoutService
 
         $artistTransfer = null;
         $studioTransfer = null;
+        $artistAccountId = null;
+        $studioAccountId = null;
+        $sourceChargeId = null;
+        $artistCents = 0;
+        $studioCents = 0;
+        $totalTransferAmount = 0.0;
 
         try {
-            // Full single-booking auto payouts can link to the Stripe charge.
-            // Partial / multi-request manual payouts transfer from platform balance.
-            $sourceChargeId = null;
-            if (
-                $alreadyReleasedArtist < 0.01
-                && $alreadyReleasedStudio < 0.01
-                && $fullyPaid
-                && ($locked->payment_provider ?? 'stripe') !== 'viva_iris'
-            ) {
-                $sourceChargeId = $this->stripeConnect->resolveChargeIdFromPaymentIntent($locked->payment_intent_id);
+            [
+                'source_charge_id' => $sourceChargeId,
+                'transfer_currency' => $currency,
+                'artist_slice' => $transferArtistSlice,
+                'studio_slice' => $transferStudioSlice,
+            ] = $this->resolveTransferSettlement(
+                booking: $locked,
+                bookingCurrency: $bookingCurrency,
+                artistSlice: $artistSlice,
+                studioSlice: $studioSlice,
+                fullyPaid: $fullyPaid,
+                alreadyReleasedArtist: $alreadyReleasedArtist,
+                alreadyReleasedStudio: $alreadyReleasedStudio,
+            );
+
+            // Prefer the Connect account that matches the booking currency (account used when booked).
+            if ($artistSlice >= 0.01) {
+                $artistAccountId = $this->resolveArtistConnectedAccountId($userDetail, $bookingCurrency);
+                if (! $artistAccountId) {
+                    return false;
+                }
             }
+            if ($studioSlice >= 0.01) {
+                $studioAccountId = $this->resolveStudioConnectedAccountId($userDetail);
+                if (! $studioAccountId) {
+                    return false;
+                }
+            }
+
+            $artistCents = MoneyCurrency::toStripeAmount($transferArtistSlice, $currency);
+            $studioCents = MoneyCurrency::toStripeAmount($transferStudioSlice, $currency);
+            $totalTransferAmount = MoneyCurrency::round($transferArtistSlice + $transferStudioSlice, $currency);
 
             $this->guardPlatformBalanceForTransfer(
                 amount: $totalTransferAmount,
@@ -579,7 +598,10 @@ class ArtistPayoutService
                 userDetail: $userDetail,
             );
 
-            $idempotencyBase = 'payout_booking_'.$locked->id.'_a'.(int) round($newArtistTotal * 100).'_s'.(int) round($newStudioTotal * 100);
+            $idempotencyBase = 'payout_booking_'.$locked->id
+                .'_a'.MoneyCurrency::toStripeAmount($newArtistTotal, $bookingCurrency)
+                .'_s'.MoneyCurrency::toStripeAmount($newStudioTotal, $bookingCurrency)
+                .'_'.$currency;
 
             if ($artistCents >= 1 && $artistAccountId) {
                 $artistTransfer = $this->stripeConnect->transferToConnectedAccount(
@@ -876,12 +898,14 @@ class ArtistPayoutService
     }
 
     /**
-     * A02 booking-details money section (display estimates; Stripe = 1.5% + €0.25).
+     * A02 booking-details money section.
      *
      * @return array<string, mixed>
      */
     public function bookingDetailsMoneyBreakdown(Booking $booking, ?UserDetail $userDetail = null): array
     {
+        $currency = MoneyCurrency::code($booking->currency ?: $userDetail?->currency);
+        $formatMoney = static fn (float $amount): string => MoneyCurrency::format($amount, $currency);
         $deposit = max(0, round((float) ($booking->deposit_amount ?? 0), 2));
         $balanceDue = max(0, round((float) $booking->remainingBalanceAmount(), 2));
         // When deposit already covers the quote minimum, still project the upper estimated balance.
@@ -899,10 +923,25 @@ class ArtistPayoutService
             ? max(0, round(app(ArtistReferralFeeWaiverService::class)->artistFeeForBooking($booking, $userDetail), 2))
             : 0.0;
 
-        $stripeFee = $this->estimateStripeFee($deposit);
+        // Include payment-link / platform balance so YOU GET matches deposit + balance collected.
+        $platformBalance = $this->platformCollectedBalanceAmount($booking);
+        $clientPaid = round($deposit + $platformBalance, 2);
+        $stripeFee = $this->stripeFeesForBooking($booking);
         $artistPercent = $this->resolvePayoutArtistPercent($booking, $userDetail);
         $paymentType = $this->resolvePayoutPaymentType($booking, $userDetail);
-        $hasSplit = $paymentType === 'studio_account' && $artistPercent < 100;
+        $configuredSplit = $paymentType === 'studio_account' && $artistPercent < 100;
+        $studioShareFallsToArtist = $configuredSplit
+            && $userDetail
+            && $this->shouldFallbackStudioShareToArtist($userDetail, $booking);
+        $payout = $booking->relationLoaded('artistPayout')
+            ? $booking->artistPayout
+            : $booking->artistPayout()->first();
+        $hasRecordedPayout = $booking->pay_artist
+            && $payout?->isCompleted();
+        $hasSplit = $configuredSplit && ! $studioShareFallsToArtist;
+        if ($hasRecordedPayout) {
+            $hasSplit = (float) ($payout->studio_amount ?? 0) > 0.009;
+        }
 
         $studioName = trim((string) ($booking->studio?->name ?? ''));
         if ($studioName === '' && $userDetail) {
@@ -925,25 +964,27 @@ class ArtistPayoutService
         $yourBookingFee = 0.0;
         $studioBookingFee = 0.0;
         if ($hasSplit) {
-            $yourShare = round($deposit * ($artistPercent / 100), 2);
+            $yourShare = round($clientPaid * ($artistPercent / 100), 2);
             $yourStripe = round($stripeFee * ($artistPercent / 100), 2);
             $yourBookingFee = round($artistSideFee * ($artistPercent / 100), 2);
             $studioBookingFee = round($artistSideFee - $yourBookingFee, 2);
             $youGet = max(0, round($yourShare - $yourStripe - $yourBookingFee, 2));
             $studioGets = max(0, round(
-                ($deposit * ($studioPercent / 100)) - ($stripeFee * ($studioPercent / 100)) - $studioBookingFee,
+                ($clientPaid * ($studioPercent / 100)) - ($stripeFee * ($studioPercent / 100)) - $studioBookingFee,
                 2
             ));
         } else {
-            // Artist direct: Stripe estimate shown; You get = client paid − Stripe − any artist booking fee.
-            $yourShare = $deposit;
+            // Artist direct: deduct the recorded Stripe fee and any artist booking fee.
+            $yourShare = $clientPaid;
             $yourStripe = $stripeFee;
             $yourBookingFee = $artistSideFee;
-            $youGet = max(0, round($deposit - $stripeFee - $artistSideFee, 2));
+            $youGet = max(0, round($clientPaid - $stripeFee - $artistSideFee, 2));
             $studioGets = 0.0;
         }
 
-        $depositLabel = 'Client paid · deposit';
+        $depositLabel = $platformBalance > 0.009
+            ? 'Client paid · deposit + balance'
+            : 'Client paid · deposit';
         if ($paidAt) {
             $depositLabel .= ', '.$paidAt;
         }
@@ -951,10 +992,10 @@ class ArtistPayoutService
         $bookingFeeLabel = null;
         $bookingFeeNote = null;
         if ($clientFee > 0.009) {
-            $bookingFeeLabel = $this->formatEuro($clientFee);
+            $bookingFeeLabel = $formatMoney($clientFee);
             $bookingFeeNote = 'paid by the client, goes to Bookpay';
         } elseif ($artistSideFee > 0.009) {
-            $bookingFeeLabel = $this->formatEuro($artistSideFee);
+            $bookingFeeLabel = $formatMoney($artistSideFee);
             if ($hasSplit) {
                 $bookingFeeNote = $debtRecovered > 0.009
                     ? 'shared by your split (includes prior fee balance)'
@@ -981,7 +1022,10 @@ class ArtistPayoutService
             }
         }
         if ($hasSplit && $studioGets > 0.009) {
-            $footnote .= ' '.$studioName.' gets '.$this->formatEuro($studioGets).'.';
+            $footnote .= ' '.$studioName.' gets '.$formatMoney($studioGets).'.';
+        }
+        if ($studioShareFallsToArtist && ! $hasRecordedPayout) {
+            $footnote .= ' The studio payout account is not ready, so its share is currently paid to you.';
         }
 
         $balanceNoteHtml = null;
@@ -990,24 +1034,21 @@ class ArtistPayoutService
             && ! $booking->full_amount_paid
             && ! in_array($stKey, ['cancelled', 'completed', 'declined'], true);
         if ($showBalanceTint) {
-            $balStripe = $this->estimateStripeFee($balanceDue);
-            if ($hasSplit) {
-                $balYou = max(0, round($balanceDue * ($artistPercent / 100) - $balStripe * ($artistPercent / 100), 2));
-                $balStudio = max(0, round(($balanceDue - $balStripe) * ($studioPercent / 100), 2));
-                $balanceNoteHtml = 'When the '.$this->formatEuro($balanceDue).' balance is paid: Stripe fee '
-                    .$this->formatEuro($balStripe).', you get <b>'.$this->formatEuro($balYou).'</b>, '
-                    .$studioName.' gets '.$this->formatEuro($balStudio).'.';
-            } else {
-                $balYou = max(0, round($balanceDue - $balStripe, 2));
-                $balanceNoteHtml = 'When the '.$this->formatEuro($balanceDue).' balance is paid: Stripe fee '
-                    .$this->formatEuro($balStripe).', you get <b>'.$this->formatEuro($balYou).'</b>.';
-            }
+            $balanceNoteHtml = 'The Stripe fee will be shown after the balance is paid.';
+        }
+
+        if ($hasRecordedPayout) {
+            $youGet = $this->recordedArtistPayoutAmount($payout);
+            $studioGets = max(0, round((float) ($payout->studio_amount ?? 0), 2));
+            $yourStripe = $hasSplit
+                ? round($stripeFee * ($artistPercent / 100), 2)
+                : $stripeFee;
         }
 
         $yourBookingFeeLabel = null;
         $yourBookingFeeNote = null;
         if ($hasSplit && $yourBookingFee > 0.009) {
-            $yourBookingFeeLabel = '-'.$this->formatEuro($yourBookingFee);
+            $yourBookingFeeLabel = '-'.$formatMoney($yourBookingFee);
             $yourBookingFeeNote = $artistPercent.'%';
         }
 
@@ -1026,28 +1067,28 @@ class ArtistPayoutService
             'pill' => $pill,
             'pill_class' => $pillClass,
             'deposit_label' => $depositLabel,
-            'deposit' => $this->formatEuro($deposit),
+            'deposit' => $formatMoney($clientPaid),
             'booking_fee' => $bookingFeeLabel,
             'booking_fee_note' => $bookingFeeNote,
-            'stripe_fee' => $stripeFee > 0.009 ? '-'.$this->formatEuro($stripeFee) : null,
-            'stripe_fee_note' => $stripeFee > 0.009 ? '1.5% + €0.25' : null,
+            'stripe_fee' => $stripeFee > 0.009 ? '-'.$formatMoney($stripeFee) : null,
+            'stripe_fee_note' => null,
             'has_split' => $hasSplit,
             'split_label' => $hasSplit ? 'Split with '.$studioName : 'Split',
             'split_value' => $hasSplit
                 ? 'You '.$artistPercent.'% · Studio '.$studioPercent.'%'
                 : 'None',
             'your_share_label' => 'Your share',
-            'your_share_note' => $hasSplit ? $artistPercent.'% of '.$this->formatEuro($deposit) : null,
-            'your_share' => $this->formatEuro($yourShare),
-            'your_stripe_label' => 'Your part of the Stripe fee',
-            'your_stripe_note' => $hasSplit ? $artistPercent.'%' : null,
-            'your_stripe' => '-'.$this->formatEuro($yourStripe),
+            'your_share_note' => $hasSplit ? $artistPercent.'% of '.$formatMoney($clientPaid) : null,
+            'your_share' => $formatMoney($yourShare),
+            'your_stripe_label' => 'Stripe fee',
+            'your_stripe_note' => null,
+            'your_stripe' => '-'.$formatMoney($yourStripe),
             'your_booking_fee' => $yourBookingFeeLabel,
             'your_booking_fee_note' => $yourBookingFeeNote,
-            'you_get' => $this->formatEuro($youGet),
+            'you_get' => $formatMoney($youGet),
             'footnote' => $footnote,
             'balance_note_html' => $balanceNoteHtml,
-            'deposit_amount' => $deposit,
+            'deposit_amount' => $clientPaid,
             'stripe_fee_amount' => $stripeFee,
             'your_stripe_amount' => $yourStripe,
             'artist_side_fee_amount' => $artistSideFee,
@@ -1056,6 +1097,11 @@ class ArtistPayoutService
             'you_get_amount' => $youGet,
             'studio_gets_amount' => $studioGets,
         ];
+    }
+
+    public function stripeFeesForBooking(Booking $booking): float
+    {
+        return max(0, round((float) ($booking->processing_fee ?? 0), 2));
     }
 
     public function estimateStripeFee(float $amount): float
@@ -1068,9 +1114,20 @@ class ArtistPayoutService
         return round($amount * 0.015 + 0.25, 2);
     }
 
-    private function formatEuro(float $amount): string
+    public function recordedArtistPayoutAmount(?ArtistPayout $payout): float
     {
-        return '€'.number_format(max(0, round($amount, 2)), 2, '.', '');
+        if (! $payout) {
+            return 0.0;
+        }
+
+        if ($payout->artist_amount !== null) {
+            return max(0, round((float) $payout->artist_amount, 2));
+        }
+
+        $amount = (float) $payout->amount;
+        $studioAmount = max(0, (float) ($payout->studio_amount ?? 0));
+
+        return max(0, round($studioAmount > 0 ? $amount - $studioAmount : $amount, 2));
     }
 
     /**
@@ -1120,8 +1177,9 @@ class ArtistPayoutService
 
         $artistFee = app(ArtistReferralFeeWaiverService::class)
             ->artistFeeForBooking($booking, $userDetail);
+        $stripeFee = $this->stripeFeesForBooking($booking);
 
-        return max(0, round($this->collectedGrossForArtist($booking) - $artistFee, 2));
+        return max(0, round($this->collectedGrossForArtist($booking) - $artistFee - $stripeFee, 2));
     }
 
     /**
@@ -1165,12 +1223,14 @@ class ArtistPayoutService
         foreach ($bookings as $booking) {
             $gross = $this->collectedGrossForArtist($booking);
             $fee = max(0, round($referralWaiver->artistFeeForBooking($booking, $userDetail), 2));
+            $stripeFee = $this->stripeFeesForBooking($booking);
             $ownApplied = min($gross, $fee);
             $shortfall = round($fee - $ownApplied, 2);
             $surplus = round($gross - $ownApplied, 2);
             $recovered = min($surplus, $debt);
             $debt = round($debt + $shortfall - $recovered, 2);
-            $net = round($surplus - $recovered, 2);
+            // Stripe processing fees come out of the transferable pot (artist pays them).
+            $net = max(0, round($surplus - $recovered - $stripeFee, 2));
             $bookingId = (int) $booking->id;
 
             $nets[$bookingId] = $net;
@@ -1179,6 +1239,7 @@ class ArtistPayoutService
                 'fee' => $fee,
                 'fee_applied' => round($ownApplied + $recovered, 2),
                 'debt_recovered' => round($recovered, 2),
+                'stripe_fee' => $stripeFee,
                 'net' => $net,
             ];
         }
@@ -1301,11 +1362,7 @@ class ArtistPayoutService
             return 0.0;
         }
 
-        if ($payout->artist_amount !== null) {
-            return (float) $payout->artist_amount;
-        }
-
-        return (float) $payout->amount;
+        return $this->recordedArtistPayoutAmount($payout);
     }
 
     private function releasedStudioAmount(Booking $booking): float
@@ -1943,9 +2000,150 @@ class ArtistPayoutService
         return null;
     }
 
-    public function resolveArtistConnectedAccountId(UserDetail $userDetail): ?string
+    /**
+     * Resolve the artist Connect account for a payout.
+     * When $preferredCurrency is set, prefer the payout row (active or disconnected)
+     * whose bank country matches that currency — i.e. the account used when the booking was paid.
+     */
+    public function resolveArtistConnectedAccountId(UserDetail $userDetail, ?string $preferredCurrency = null): ?string
     {
+        $preferredCurrency = $preferredCurrency !== null && $preferredCurrency !== ''
+            ? MoneyCurrency::code($preferredCurrency)
+            : null;
+
+        if ($preferredCurrency !== null) {
+            $candidates = [];
+            $active = $userDetail->activePayout();
+            if ($active && filled($active->stripe_account_id)) {
+                $candidates[] = $active;
+            }
+            foreach (UserPayout::disconnectedForUser((int) $userDetail->user_id) as $payout) {
+                $candidates[] = $payout;
+            }
+
+            foreach ($candidates as $payout) {
+                $country = strtoupper(trim((string) ($payout->payout_bank_country ?? '')));
+                if ($country === '') {
+                    continue;
+                }
+                $accountCurrency = StripeConnectCountries::currencyForCountry($country);
+                if ($accountCurrency && MoneyCurrency::code($accountCurrency) === $preferredCurrency) {
+                    $accountId = trim((string) $payout->stripe_account_id);
+                    if ($accountId !== '') {
+                        return $accountId;
+                    }
+                }
+            }
+        }
+
         return $this->artistStripeAccountId($userDetail);
+    }
+
+    /**
+     * Align Stripe transfer currency with platform settlement.
+     * GBP charges on an EUR platform leave EUR balance_transactions; source_transaction
+     * transfers must use that settlement currency (and FX-converted amounts).
+     *
+     * @return array{source_charge_id: ?string, transfer_currency: string, artist_slice: float, studio_slice: float}
+     */
+    private function resolveTransferSettlement(
+        Booking $booking,
+        string $bookingCurrency,
+        float $artistSlice,
+        float $studioSlice,
+        bool $fullyPaid,
+        float $alreadyReleasedArtist,
+        float $alreadyReleasedStudio,
+    ): array {
+        $bookingCurrency = MoneyCurrency::code($bookingCurrency);
+        $transferCurrency = $bookingCurrency;
+        $fxRate = 1.0;
+        $sourceChargeId = null;
+
+        if (($booking->payment_provider ?? 'stripe') === 'viva_iris') {
+            return [
+                'source_charge_id' => null,
+                'transfer_currency' => $transferCurrency,
+                'artist_slice' => $artistSlice,
+                'studio_slice' => $studioSlice,
+            ];
+        }
+
+        $chargeIds = $this->platformChargeIdsForBooking($booking);
+        $canLinkSource = $chargeIds !== []
+            && count($chargeIds) === 1
+            && $alreadyReleasedArtist < 0.01
+            && $alreadyReleasedStudio < 0.01
+            && $fullyPaid;
+
+        $balanceTx = null;
+        if ($chargeIds !== []) {
+            $balanceTx = $this->stripeConnect->resolveChargeBalanceTransaction($chargeIds[0]);
+        }
+
+        if ($balanceTx) {
+            $settlementCurrency = MoneyCurrency::code($balanceTx['currency'] ?? null);
+            if ($settlementCurrency !== $bookingCurrency) {
+                $fxRate = (float) ($balanceTx['exchange_rate'] ?? 0);
+                if ($fxRate <= 0) {
+                    $fxRate = 1.0;
+                }
+                $transferCurrency = $settlementCurrency;
+            }
+        }
+
+        if ($canLinkSource) {
+            $sourceChargeId = $chargeIds[0];
+            // source_transaction requires transfer currency = balance_transaction currency.
+            if ($balanceTx) {
+                $transferCurrency = MoneyCurrency::code($balanceTx['currency'] ?? $transferCurrency);
+                if ($transferCurrency !== $bookingCurrency) {
+                    $fxRate = (float) ($balanceTx['exchange_rate'] ?? $fxRate);
+                    if ($fxRate <= 0) {
+                        $fxRate = 1.0;
+                    }
+                }
+            }
+        } elseif ($transferCurrency !== $bookingCurrency) {
+            // Multi-charge / partial: pull from platform balance in settlement currency.
+            $sourceChargeId = null;
+        }
+
+        if (abs($fxRate - 1.0) > 0.000001) {
+            $artistSlice = MoneyCurrency::round($artistSlice * $fxRate, $transferCurrency);
+            $studioSlice = MoneyCurrency::round($studioSlice * $fxRate, $transferCurrency);
+        }
+
+        return [
+            'source_charge_id' => $sourceChargeId,
+            'transfer_currency' => $transferCurrency,
+            'artist_slice' => $artistSlice,
+            'studio_slice' => $studioSlice,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function platformChargeIdsForBooking(Booking $booking): array
+    {
+        $ids = [];
+        $depositCharge = $this->stripeConnect->resolveChargeIdFromPaymentIntent($booking->payment_intent_id);
+        if ($depositCharge) {
+            $ids[] = $depositCharge;
+        }
+
+        foreach ($this->balanceCollectionsForBooking($booking) as $collection) {
+            if (! $this->isPlatformCollectedBalance($collection)) {
+                continue;
+            }
+            $chargeId = $this->stripeConnect->resolveChargeIdFromPaymentIntent($collection->payment_intent_id ?? null);
+            if ($chargeId && ! in_array($chargeId, $ids, true)) {
+                $ids[] = $chargeId;
+            }
+        }
+
+        return $ids;
     }
 
     public function resolveStudioConnectedAccountId(UserDetail $userDetail): ?string

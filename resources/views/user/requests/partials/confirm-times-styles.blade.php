@@ -46,8 +46,11 @@
     font-size: 0.72rem;
   }
   .cal-day.fully-booked-day {
-    color: #494552;
-    background: #ece8f0;
+    color: #ba1a1a;
+    background: #fff1f1;
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+    text-decoration-color: #ba1a1a;
     cursor: default;
     pointer-events: none;
     font-weight: 600;

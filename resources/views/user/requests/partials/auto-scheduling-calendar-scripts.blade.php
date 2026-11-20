@@ -59,11 +59,46 @@
     try {
       return new Intl.DateTimeFormat('en-CA', { timeZone: artistTimezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(dateObj);
     } catch (e) {
-      var y = dateObj.getFullYear();
-      var m = String(dateObj.getMonth() + 1).padStart(2, '0');
-      var d = String(dateObj.getDate()).padStart(2, '0');
-      return y + '-' + m + '-' + d;
+      return formatYmdFromParts(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
     }
+  }
+
+  /** Calendar-grid YMD (same as public book) — do not convert local midnight through artist TZ. */
+  function formatYmdFromParts(year, monthIndex, day) {
+    return year + '-' + String(monthIndex + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+  }
+
+  function weekdayKeyFromYmd(ymd) {
+    var parts = String(ymd || '').split('-');
+    if (parts.length !== 3) return weekdayKeys[0];
+    var date = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 12, 0, 0));
+    return weekdayKeys[date.getUTCDay()];
+  }
+
+  function artistNowMinutes() {
+    try {
+      var parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: artistTimezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).formatToParts(new Date());
+      var hour = 0;
+      var minute = 0;
+      parts.forEach(function(part) {
+        if (part.type === 'hour') hour = parseInt(part.value, 10);
+        if (part.type === 'minute') minute = parseInt(part.value, 10);
+      });
+      return (hour * 60) + minute;
+    } catch (e) {
+      var now = new Date();
+      return (now.getHours() * 60) + now.getMinutes();
+    }
+  }
+
+  function ymdForDateObj(dateObj) {
+    if (!(dateObj instanceof Date)) return '';
+    return formatYmdFromParts(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
   }
 
   function rangesForSelectedStudio(dayRanges) {
@@ -177,20 +212,20 @@
     return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
   }
 
-  function getSlotsForDate(dateObj, requiredMinutes) {
+  function getSlotsForDate(dateObj, requiredMinutes, ymdArtist) {
     if (!(dateObj instanceof Date)) return [];
     var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
     if (dayStart < todayStart) return [];
-    var ymdArtist = formatYmdArtistLocal(dateObj);
+    if (!ymdArtist) ymdArtist = ymdForDateObj(dateObj);
     if (ymdArtist && isDateOutsideAllowedRange(ymdArtist)) return [];
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
-    var weekdayKey = weekdayKeys[dateObj.getDay()];
+    var weekdayKey = weekdayKeyFromYmd(ymdArtist);
     var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
     if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
     var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
-    if (dayStart.getTime() === todayStart.getTime()) {
-      var now = new Date();
-      var nowMinutes = now.getHours() * 60 + now.getMinutes();
+    var todayYmdArtist = formatYmdArtistLocal(new Date());
+    if (ymdArtist === todayYmdArtist) {
+      var nowMinutes = artistNowMinutes();
       slots = slots.filter(function(slot) {
         return parseTime12hToMinutes(slot.time) > nowMinutes;
       });
@@ -205,20 +240,20 @@
     return slots;
   }
 
-  function getHypotheticalSlotsForDate(dateObj, requiredMinutes) {
+  function getHypotheticalSlotsForDate(dateObj, requiredMinutes, ymdArtist) {
     if (!(dateObj instanceof Date)) return [];
     var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
     if (dayStart < todayStart) return [];
-    var ymdArtist = formatYmdArtistLocal(dateObj);
+    if (!ymdArtist) ymdArtist = ymdForDateObj(dateObj);
     if (ymdArtist && isDateOutsideAllowedRange(ymdArtist)) return [];
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
-    var weekdayKey = weekdayKeys[dateObj.getDay()];
+    var weekdayKey = weekdayKeyFromYmd(ymdArtist);
     var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
     if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
     var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
-    if (dayStart.getTime() === todayStart.getTime()) {
-      var now = new Date();
-      var nowMinutes = now.getHours() * 60 + now.getMinutes();
+    var todayYmdArtist = formatYmdArtistLocal(new Date());
+    if (ymdArtist === todayYmdArtist) {
+      var nowMinutes = artistNowMinutes();
       slots = slots.filter(function(slot) {
         return parseTime12hToMinutes(slot.time) > nowMinutes;
       });
@@ -226,15 +261,15 @@
     return slots;
   }
 
-  function isDateFullyBookedOut(dateObj, requiredMinutes) {
+  function isDateFullyBookedOut(dateObj, requiredMinutes, ymdArtist) {
     if (!(dateObj instanceof Date)) return false;
     var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
     if (dayStart < todayStart) return false;
-    var ymd = formatYmdArtistLocal(dateObj);
+    var ymd = ymdArtist || ymdForDateObj(dateObj);
     if (ymd && (isDateOutsideAllowedRange(ymd) || isArtistDateBlocked(ymd))) return false;
-    var hypo = getHypotheticalSlotsForDate(dateObj, requiredMinutes);
+    var hypo = getHypotheticalSlotsForDate(dateObj, requiredMinutes, ymd);
     if (!hypo.length) return false;
-    return getSlotsForDate(dateObj, requiredMinutes).length === 0;
+    return getSlotsForDate(dateObj, requiredMinutes, ymd).length === 0;
   }
 
   function canNavigateToMonth(year, month) {
@@ -264,7 +299,7 @@
     var ok = selectedDate && selectedTime;
     if (ok) {
       bar.classList.remove('hidden');
-      var ymd = formatYmdArtistLocal(selectedDate);
+      var ymd = ymdForDateObj(selectedDate);
       var startM = parseTime12hToMinutes(selectedTime);
       document.getElementById('confirmSummary').textContent = selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ' · ' + selectedTime;
       document.getElementById('inputSessionDate').value = ymd;
@@ -351,13 +386,14 @@
         var dt = new Date(calYear, calMonth, day);
         var div = document.createElement('div');
         div.textContent = day;
-        var ymdCell = formatYmdArtistLocal(dt);
+        var ymdCell = formatYmdFromParts(calYear, calMonth, day);
         var isOutsideAllowed = !!(ymdCell && isDateOutsideAllowedRange(ymdCell));
         var isBlockedDay = !!(ymdCell && isArtistDateBlocked(ymdCell));
-        var isAvail = !isOutsideAllowed && getSlotsForDate(dt, tattooDurationMinutes).length > 0;
         var isToday = dt.toDateString() === today.toDateString();
         var isFuture = dt > today;
-        var isFullyBooked = !isAvail && !isOutsideAllowed && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, tattooDurationMinutes);
+        var isAvail = !isOutsideAllowed && getSlotsForDate(dt, tattooDurationMinutes, ymdCell).length > 0;
+        var isFullyBooked = !isAvail && !isOutsideAllowed && !isBlockedDay && (isFuture || isToday)
+          && isDateFullyBookedOut(dt, tattooDurationMinutes, ymdCell);
         var isSel = selectedDate && dt.toDateString() === selectedDate.toDateString();
         var cls = 'cal-day';
         if (isSel) cls += ' selected';
@@ -370,7 +406,7 @@
           div.title = 'Artist unavailable';
         } else if (isFullyBooked) {
           cls += ' fully-booked-day';
-          div.title = 'Fully booked';
+          div.title = 'Fully booked / calendar busy';
         } else if (isFuture || isToday) cls += ' unavailable-future';
         else cls += ' unavailable';
         if (isToday && !isSel) cls += ' today';

@@ -270,6 +270,7 @@ class RequestsController extends Controller
     {
         $amount = (float) ($item->tattoo?->min_price ?? 0);
         $deposit = (float) ($item->booking?->deposit_amount ?? 0);
+        $currency = $item->currencyCode();
 
         return [
             'created_at_sort' => optional($item->created_at)->timestamp ?? 0,
@@ -285,6 +286,7 @@ class RequestsController extends Controller
             'type_key' => 'flash',
             'status' => $item->filterStatusLabel(),
             'status_key' => (string) $item->status,
+            'currency' => $currency,
             'deposit' => $deposit > 0 ? $deposit : null,
             'amount' => $amount > 0 ? $amount : null,
         ];
@@ -297,6 +299,7 @@ class RequestsController extends Controller
     {
         $amount = (float) ($item->estimated_price ?? 0);
         $deposit = (float) ($item->booking?->deposit_amount ?? 0);
+        $currency = $item->currencyCode();
 
         return [
             'created_at_sort' => optional($item->created_at)->timestamp ?? 0,
@@ -312,6 +315,7 @@ class RequestsController extends Controller
             'type_key' => 'custom',
             'status' => $item->filterStatusLabel(),
             'status_key' => (string) $item->status,
+            'currency' => $currency,
             'deposit' => $deposit > 0 ? $deposit : null,
             'amount' => $amount > 0 ? $amount : null,
         ];

@@ -80,24 +80,21 @@
       $clientPhone = trim((string) ($booking->user?->userDetail?->mobile_number ?? ''));
   }
   $questionsAnswersData = is_array($booking->questions_answers ?? null) ? $booking->questions_answers : [];
+  $artistUserDetail = $artistUserDetail ?? auth()->user()?->userDetail;
   $balanceLabel = $booking->estimatedBalanceLabel();
   $balanceDue = $booking->remainingBalanceAmount();
+  $currencyCode = \App\Support\MoneyCurrency::code($booking->currency ?: $artistUserDetail?->currency);
   $showBalanceDue = $balanceDue > 0
       && ! $booking->remaining_amount_released
       && ! $booking->full_amount_paid
       && ! in_array($stKey, ['cancelled', 'completed', 'declined'], true);
-  $balanceDueRounded = round($balanceDue, 2);
-  $balanceDueLabel = fmod($balanceDueRounded, 1.0) === 0.0
-      ? '€'.(string) (int) $balanceDueRounded
-      : '€'.number_format($balanceDueRounded, 2, '.', '');
-  $paidRounded = round((float) ($booking->deposit_amount ?? 0), 2);
-  $paidLabel = fmod($paidRounded, 1.0) === 0.0
-      ? '€'.(string) (int) $paidRounded
-      : '€'.number_format($paidRounded, 2, '.', '');
-  $totalRounded = round($paidRounded + $balanceDue, 2);
-  $totalLabel = fmod($totalRounded, 1.0) === 0.0
-      ? '€'.(string) (int) $totalRounded
-      : '€'.number_format($totalRounded, 2, '.', '');
+  $balanceDueLabel = \App\Support\MoneyCurrency::format($balanceDue, $currencyCode, true);
+  $paidLabel = \App\Support\MoneyCurrency::format((float) ($booking->deposit_amount ?? 0), $currencyCode, true);
+  $totalLabel = \App\Support\MoneyCurrency::format(
+      (float) ($booking->deposit_amount ?? 0) + $balanceDue,
+      $currencyCode,
+      true
+  );
   $unsettledCollection = $booking->latestBalanceCollection;
   $isUnsettledReminder = $unsettledCollection && $unsettledCollection->isUnsettledOpen();
   $expectedPhrase = $isUnsettledReminder ? $unsettledCollection->expectedDuePhrase() : '';
@@ -169,7 +166,6 @@
 
   $dateMeta = trim(($startEnd !== '—' ? $startEnd : '').($durationShort !== '' ? ' · '.$durationShort : ''));
 
-  $artistUserDetail = $artistUserDetail ?? auth()->user()?->userDetail;
   $moneyBreakdown = app(\App\Services\ArtistPayoutService::class)
       ->bookingDetailsMoneyBreakdown($booking, $artistUserDetail);
   $moneyBreakdownAttr = base64_encode(json_encode($moneyBreakdown, JSON_THROW_ON_ERROR));
@@ -221,6 +217,7 @@
         data-client-initials="{{ e($clientInitials) }}"
         data-booking-ref="{{ e($bookingRef) }}"
         data-balance-label="{{ e($balanceDueLabel) }}"
+        data-currency="{{ $currencyCode }}"
         data-paid-label="{{ e($paidLabel) }}"
         data-total-label="{{ e($totalLabel) }}"
         data-date-display="{{ e($booking->booking_date?->format('D, M j') ?? $dateShort) }}"
@@ -256,7 +253,8 @@
         data-status-label="{{ e($label) }}"
         data-status-badge-class="{{ e($badgeCls) }}"
         data-booking-type="{{ e(ucfirst((string) ($booking->booking_type ?? ''))) }}"
-        data-deposit="{{ e('€' . number_format((float) ($booking->deposit_amount ?? 0), 2)) }}"
+        data-deposit="{{ e($paidLabel) }}"
+        data-currency="{{ $currencyCode }}"
         data-balance="{{ e($balanceLabel) }}"
         data-questions='@json($questionsAnswersData)'
         data-design-image="{{ e($designImage) }}"
@@ -344,7 +342,8 @@
           data-status-label="{{ e($label) }}"
           data-status-badge-class="{{ e($badgeCls) }}"
           data-booking-type="{{ e(ucfirst((string) ($booking->booking_type ?? ''))) }}"
-          data-deposit="{{ e('€' . number_format((float) ($booking->deposit_amount ?? 0), 2)) }}"
+          data-deposit="{{ e($paidLabel) }}"
+          data-currency="{{ $currencyCode }}"
           data-balance="{{ e($balanceLabel) }}"
           data-questions='@json($questionsAnswersData)'
           data-design-image="{{ e($designImage) }}"

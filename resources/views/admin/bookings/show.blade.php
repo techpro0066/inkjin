@@ -77,20 +77,24 @@
         ],
       ])
 
+      @php
+        $payCurrency = \App\Support\MoneyCurrency::code($booking->currency);
+        $money = fn (float $amount): string => \App\Support\MoneyCurrency::format($amount, $payCurrency);
+      @endphp
       @include('admin.partials.detail-card', [
         'title' => 'Payment',
         'rows' => [
-          ['label' => 'Deposit', 'value' => $booking->deposit_amount !== null ? '€'.number_format((float) $booking->deposit_amount, 2) : null],
-          ['label' => 'Quoted amount', 'value' => $booking->quoteAmount() > 0 ? '€'.number_format($booking->quoteAmount(), 2) : null],
-          ['label' => 'Total paid', 'value' => $booking->total_amount_paid !== null ? '€'.number_format((float) $booking->total_amount_paid, 2) : null],
-          ['label' => 'Platform fee', 'value' => $booking->platform_fee !== null ? '€'.number_format((float) $booking->platform_fee, 2) : null],
-          ['label' => 'Tax', 'value' => $booking->tax_amount !== null ? '€'.number_format((float) $booking->tax_amount, 2).($booking->tax_label ? ' ('.$booking->tax_label.')' : '') : null],
-          ['label' => 'Currency', 'value' => strtoupper((string) ($booking->currency ?: 'EUR'))],
+          ['label' => 'Deposit', 'value' => $booking->deposit_amount !== null ? $money((float) $booking->deposit_amount) : null],
+          ['label' => 'Quoted amount', 'value' => $booking->quoteAmount() > 0 ? $money($booking->quoteAmount()) : null],
+          ['label' => 'Total paid', 'value' => $booking->total_amount_paid !== null ? $money((float) $booking->total_amount_paid) : null],
+          ['label' => 'Platform fee', 'value' => $booking->platform_fee !== null ? $money((float) $booking->platform_fee) : null],
+          ['label' => 'Tax', 'value' => $booking->tax_amount !== null ? $money((float) $booking->tax_amount).($booking->tax_label ? ' ('.$booking->tax_label.')' : '') : null],
+          ['label' => 'Currency', 'value' => $payCurrency],
           ['label' => 'Provider', 'value' => $booking->payment_provider],
           ['label' => 'Payment intent', 'value' => $booking->payment_intent_id],
           ['label' => 'Viva order', 'value' => $booking->viva_order_code],
           ['label' => 'Full amount paid', 'value' => $booking->full_amount_paid ? 'Yes' : 'No'],
-          ['label' => 'Balance due', 'value' => '€'.number_format($booking->remainingBalanceAmount(), 2)],
+          ['label' => 'Balance due', 'value' => $money($booking->remainingBalanceAmount())],
         ],
       ])
     </div>
@@ -102,11 +106,11 @@
           'rows' => array_values(array_filter([
             ['label' => 'Title', 'value' => $booking->displayTitle()],
             $booking->tattoo ? ['label' => 'Design ID', 'value' => $booking->tattoo_id] : null,
-            $booking->tattoo ? ['label' => 'Design price range', 'value' => '€'.number_format((float) ($booking->tattoo->min_price ?? 0), 2).' – €'.number_format((float) ($booking->tattoo->max_price ?? 0), 2)] : null,
+            $booking->tattoo ? ['label' => 'Design price range', 'value' => $money((float) ($booking->tattoo->min_price ?? 0)).' – '.$money((float) ($booking->tattoo->max_price ?? 0))] : null,
             isset($details['payment_link_id']) ? ['label' => 'Payment link ID', 'value' => $details['payment_link_id']] : null,
             isset($details['custom_request_id']) ? ['label' => 'Custom request ID', 'value' => $details['custom_request_id']] : null,
             isset($details['reference']) ? ['label' => 'Reference', 'value' => $details['reference']] : null,
-            isset($details['estimated_price']) ? ['label' => 'Estimated price', 'value' => '€'.number_format((float) $details['estimated_price'], 2)] : null,
+            isset($details['estimated_price']) ? ['label' => 'Estimated price', 'value' => $money((float) $details['estimated_price'])] : null,
             isset($details['estimated_time']) ? ['label' => 'Estimated time', 'value' => $details['estimated_time']] : null,
             isset($details['number_of_sessions']) ? ['label' => 'Sessions', 'value' => $details['number_of_sessions']] : null,
           ])),

@@ -8,9 +8,14 @@
   $feeType = $ud->booking_fee_type ?? 'client';
   $locked = $lockedCurrency ?? ['code' => 'EUR', 'symbol' => '€', 'country_name' => 'your country', 'label' => 'EUR (€)'];
   $currency = $locked['code'] ?? 'EUR';
-  $currencySymbol = $locked['symbol'] ?? '€';
+  $currencySymbol = $locked['symbol'] ?? \App\Support\MoneyCurrency::symbol($currency);
   $currencyLabel = $locked['label'] ?? ($currency.' ('.$currencySymbol.')');
   $currencyCountry = $locked['country_name'] ?? 'your country';
+  $platformFeeLabel = \App\Support\MoneyCurrency::format(
+      \App\Models\PlatformFee::amountForCurrency($currency),
+      $currency,
+      true
+  );
   $fmtRate = function ($v) {
     if ($v === null || $v === '') return '';
     return rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
@@ -138,7 +143,7 @@
       <div style="padding:18px 22px">
         <div class="grid pay-grid-3" style="grid-template-columns:1fr 1fr 1fr;gap:10px" id="feeCards">
           @foreach ([
-            'client' => ['Client pays', 'The '.$currencySymbol.'10 fee is added to the client\'s total'],
+            'client' => ['Client pays', 'The '.$platformFeeLabel.' fee is added to the client\'s total'],
             'artist' => ['Artist pays', 'The fee is taken from your payout'],
             'split' => ['Split', 'Shared between client and artist'],
           ] as $val => $meta)

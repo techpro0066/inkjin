@@ -7,6 +7,7 @@ use App\Models\BookingRequest;
 use App\Models\ChatChannel;
 use App\Models\CustomRequest;
 use App\Models\User;
+use App\Support\MoneyCurrency;
 use Carbon\Carbon;
 use GetStream\StreamChat\StreamException;
 use Illuminate\Support\Collection;
@@ -66,6 +67,10 @@ class UserDashboardService
 
         $totalSpent = round((float) $paidBookings->sum(fn (Booking $b) => (float) $b->total_amount_paid), 2);
         $sessionCount = $paidBookings->count();
+        $spentCurrency = MoneyCurrency::code(
+            $paidBookings->firstWhere(fn (Booking $b) => filled($b->currency))?->currency
+                ?: $upcomingBookings->first()?->currency
+        );
 
         $unread = $this->streamChat->getUnreadSummaryForUser($user);
         $unreadTotal = (int) ($unread['total'] ?? 0);
@@ -88,11 +93,12 @@ class UserDashboardService
                     ? ($unreadTotal === 1 ? '1 unread conversation' : $unreadTotal.' unread')
                     : 'All caught up',
                 'total_spent' => $totalSpent,
-                'total_spent_label' => '€'.number_format($totalSpent, $totalSpent == floor($totalSpent) ? 0 : 2),
+                'total_spent_label' => MoneyCurrency::format($totalSpent, $spentCurrency, true),
                 'sessions_subtitle' => $sessionCount > 0
                     ? 'Across '.$sessionCount.' '.($sessionCount === 1 ? 'session' : 'sessions')
                     : 'No payments yet',
-                'currency_symbol' => '€',
+                'currency' => $spentCurrency,
+                'currency_symbol' => MoneyCurrency::symbol($spentCurrency),
             ],
             'upcoming_bookings' => $upcomingBookings
                 ->map(fn (Booking $booking) => $this->formatUpcomingBooking($booking))

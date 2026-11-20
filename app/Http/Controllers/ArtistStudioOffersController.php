@@ -96,6 +96,10 @@ class ArtistStudioOffersController extends Controller
 
                 $answers = is_array($studioRequest->questions_answers) ? $studioRequest->questions_answers : [];
 
+                $artistCurrency = \App\Support\MoneyCurrency::code(
+                    auth()->user()?->userDetail?->currency
+                );
+
                 $custom = CustomRequest::create([
                     'user_id' => $studioRequest->user_id,
                     'artist_id' => $artistId,
@@ -115,6 +119,7 @@ class ArtistStudioOffersController extends Controller
                     'avoid_dates' => $studioRequest->avoid_dates,
                     'how_much_flexible' => $studioRequest->how_much_flexible,
                     'urgency' => $studioRequest->urgency,
+                    'currency' => $artistCurrency,
                 ]);
 
                 $studioRequest->forceFill([

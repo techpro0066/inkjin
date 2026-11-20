@@ -11,6 +11,7 @@ use App\Models\CustomRequest;
 use App\Services\BookingCalendarAvailabilityService;
 use App\Services\BookingCheckoutPricingService;
 use App\Support\PaymentMethods;
+use App\Support\MoneyCurrency;
 use App\Services\CustomRequestBookingService;
 use App\Services\GoogleCalendarBookingSyncService;
 use App\Services\VivaCheckoutService;
@@ -196,7 +197,9 @@ class CustomRequestsController extends Controller
             'sessionsLabel' => trim((string) ($customRequest->number_of_sessions ?? '')) ?: '—',
             'priceEstimateLabel' => $customRequest->estimatedPriceLabel(),
             'depositLabel' => $customRequest->checkoutDepositLabel($totals['deposit_meta']),
-            'balanceLabel' => '€'.number_format($balance, 2),
+            'balanceLabel' => MoneyCurrency::format($balance, $customRequest->currencyCode()),
+            'currencyCode' => $customRequest->currencyCode(),
+            'currencySymbol' => MoneyCurrency::symbol($customRequest->currencyCode()),
         ]);
     }
 
@@ -237,7 +240,8 @@ class CustomRequestsController extends Controller
         }
 
         $totals = $this->pricing->checkoutTotals($userDetail, $customRequest->checkoutPriceAmount(), Auth::user()?->phone_number);
-        $amountCents = (int) round($totals['total_due'] * 100);
+        $currencyCode = $customRequest->currencyCode();
+        $amountCents = MoneyCurrency::toStripeAmount((float) $totals['total_due'], $currencyCode);
 
         if ($amountCents < 50) {
             return response()->json(['message' => 'Payment amount is too small.'], 422);
@@ -248,7 +252,7 @@ class CustomRequestsController extends Controller
 
             $intent = PaymentIntent::create([
                 'amount' => $amountCents,
-                'currency' => 'eur',
+                'currency' => strtolower($currencyCode),
                 'automatic_payment_methods' => [
                     'enabled' => true,
                     'allow_redirects' => 'always',
@@ -268,7 +272,7 @@ class CustomRequestsController extends Controller
                 'client_secret' => $intent->client_secret,
                 'payment_intent_id' => $intent->id,
                 'amount_cents' => $amountCents,
-                'currency' => 'eur',
+                'currency' => strtolower($currencyCode),
             ]);
         } catch (ApiErrorException $e) {
             return response()->json([

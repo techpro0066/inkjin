@@ -901,13 +901,8 @@
           ? ($pricingType ?? 'manual')
           : 'manual';
         $pricingUnit = in_array(($sizeUnit ?? 'cm'), ['cm', 'in'], true) ? ($sizeUnit ?? 'cm') : 'cm';
-        $pricingCurrencyCode = strtoupper((string) ($currencyCode ?? 'EUR'));
-        $pricingCurrencySymbol = match ($pricingCurrencyCode) {
-            'EUR' => '€',
-            'USD' => '$',
-            'GBP' => '£',
-            default => $pricingCurrencyCode.' ',
-        };
+        $pricingCurrencyCode = \App\Support\MoneyCurrency::code($currencyCode ?? null);
+        $pricingCurrencySymbol = \App\Support\MoneyCurrency::symbol($pricingCurrencyCode);
         $smartColorPercentLabel = rtrim(rtrim(number_format((float) ($smartPricingColorPercent ?? 20), 2, '.', ''), '0'), '.');
         $pricingClosedSummary = 'Choose how price, sessions and duration are set for new designs.';
         $pricingClosedBadge = $currentPricingType === 'smart' ? 'Smart pricing' : 'Manual pricing';
@@ -1184,7 +1179,7 @@
   @php
     $modalPricingType = in_array(($pricingType ?? 'manual'), ['manual', 'smart'], true) ? ($pricingType ?? 'manual') : 'manual';
     $modalSizeUnit = in_array(($sizeUnit ?? 'cm'), ['cm', 'in'], true) ? ($sizeUnit ?? 'cm') : 'cm';
-    $modalCurrency = $pricingCurrencySymbol ?? '€';
+    $modalCurrency = $pricingCurrencySymbol ?? \App\Support\MoneyCurrency::symbol($pricingCurrencyCode ?? null);
   @endphp
 
   <!-- New Design Modal (C01 / C02) -->
@@ -1599,7 +1594,7 @@
 
       // Pricing type cards + dynamic size-range rows
       var SMART_PRICING_UNIT = @json($pricingUnit ?? 'cm');
-      var SMART_PRICING_CURRENCY = @json($pricingCurrencySymbol ?? '€');
+      var SMART_PRICING_CURRENCY = @json($pricingCurrencySymbol ?? \App\Support\MoneyCurrency::symbol($pricingCurrencyCode ?? null));
       var pricingTypeSaving = false;
       var storedPricingType = String($('#pricingSettingsPanel').data('pricing-type') || 'manual');
       var currentPricingType = storedPricingType;

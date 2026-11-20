@@ -85,7 +85,7 @@
         <p class="text-sm text-error hidden mb-3" id="klarnaFormError"></p>
 
         <button type="button" id="btnConfirmPay" disabled class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-container transition-all text-base shadow-lg shadow-primary/20">
-          Confirm &amp; Pay <span id="btnPayTotalAmount">€{{ number_format($totals['total_due'], 2) }}</span>
+          Confirm &amp; Pay <span id="btnPayTotalAmount">{{ \App\Support\MoneyCurrency::format((float) $totals['total_due'], $currencyCode) }}</span>
         </button>
         <button type="button" id="btnConfirmKlarna" class="hidden w-full py-4 rounded-xl font-bold text-[#17120F] bg-[#FFB3C7] hover:bg-[#FF9CB8] transition-colors text-base shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
           Pay with Klarna
@@ -97,6 +97,7 @@
             'platform_fee' => $totals['platform_fee'] ?? 0,
             'tax_amount' => $totals['tax_amount'] ?? 0,
           ],
+          'currencyCode' => $currencyCode,
         ])
         </div>
       </div>
@@ -115,6 +116,8 @@
           'priceEstimateLabel' => $priceEstimateLabel,
           'depositLabel' => $depositLabel,
           'balanceLabel' => $balanceLabel,
+          'currencyCode' => $currencyCode,
+          'userDetail' => $userDetail,
           'totals' => $totals,
         ])
       </div>
@@ -136,7 +139,7 @@
   window.vivaStatusUrl = @json(route('user.custom-requests.payment.viva.status', $customRequest));
   window.vivaCsrfToken = csrfToken;
   window.vivaOrderBody = function () { return {}; };
-  var payButtonLabel = @json('€' . number_format($totals['total_due'], 2));
+  var payButtonLabel = @json(\App\Support\MoneyCurrency::format((float) $totals['total_due'], $currencyCode));
   var stripe = null, stripeElements = null, stripeCardNumber = null, stripeCardExpiry = null, stripeCardCvc = null;
   var cardComplete = { number: false, expiry: false, cvc: false };
 
@@ -232,10 +235,10 @@
 
   window.checkoutStripeWalletConfig = {
     country: @json(strtoupper($userDetail->payout_bank_country ?? 'GR')),
-    currency: 'eur',
+    currency: @json(strtolower($currencyCode)),
     label: @json('Custom request #' . $customRequest->id),
     getAmountCents: function () {
-      return Math.round(@json($totals['total_due']) * 100);
+      return @json(\App\Support\MoneyCurrency::toStripeAmount((float) $totals['total_due'], $currencyCode));
     },
     isPolicyAccepted: function () {
       return document.getElementById('agreePolicy').checked;
@@ -269,13 +272,13 @@
   };
 
   window.checkoutKlarnaConfig = {
-    currency: 'eur',
+    currency: @json(strtolower($currencyCode)),
     getStripe: function () {
       mountStripe();
       return stripe;
     },
     getAmountCents: function () {
-      return Math.round(@json($totals['total_due']) * 100);
+      return @json(\App\Support\MoneyCurrency::toStripeAmount((float) $totals['total_due'], $currencyCode));
     },
     isPolicyAccepted: function () {
       return document.getElementById('agreePolicy').checked;

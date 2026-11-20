@@ -140,6 +140,12 @@ class ArtistCustomRequestsController extends Controller
             'message_for_client' => $payload['message_for_client'],
         ];
 
+        if (trim((string) ($customRequest->currency ?? '')) === '') {
+            $update['currency'] = \App\Support\MoneyCurrency::code(
+                $userDetail->currency ?? auth()->user()?->userDetail?->currency
+            );
+        }
+
         if ($customRequest->isGuestRequest()) {
             $update['guest_spot_held'] = (bool) $customRequest->guest_spot_held;
             $update['guest_hold_expires_at'] = $customRequest->guest_hold_expires_at;

@@ -8,7 +8,7 @@
   const reloadOnDone = @json((bool) ($paymentLinkModalReloadOnDone ?? true));
   const validateUrl = @json(route('studio.bookings.payment-links.validate'));
   const storeUrl = @json(route('studio.bookings.payment-links.store'));
-  const cur = @json($currencySymbol ?? '€');
+  const cur = @json($currencySymbol ?? \App\Support\MoneyCurrency::symbol($currencyCode ?? ($studio->currency ?? null)));
 
   const totalWrap = document.getElementById('pl-totw');
   const sumEl = document.getElementById('pl-sum');

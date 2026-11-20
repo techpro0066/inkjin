@@ -9,7 +9,7 @@
   const reloadOnDone = @json((bool) ($paymentLinkModalReloadOnDone ?? false));
   const validateUrl = @json(route('artist.payment-link.validate'));
   const storeUrl = @json(route('artist.payment-link.store'));
-  const cur = @json(($currencySymbol ?? $currency ?? ($dashboardStats['currency_symbol'] ?? '€')));
+  const cur = @json(($currencySymbol ?? $currency ?? ($dashboardStats['currency_symbol'] ?? \App\Support\MoneyCurrency::symbol(auth()->user()?->userDetail?->currency))));
 
   const totalWrap = document.getElementById('pl-totw');
   const sumEl = document.getElementById('pl-sum');

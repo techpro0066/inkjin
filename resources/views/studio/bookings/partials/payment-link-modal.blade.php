@@ -1,6 +1,7 @@
 {{-- Studio New booking → payment link modal --}}
 @php
-  $currencySymbol = $currencySymbol ?? '€';
+  $currencySymbol = $currencySymbol
+      ?? \App\Support\MoneyCurrency::symbol($currencyCode ?? ($studio->currency ?? null));
   $canPayLinks = ! empty($canCreatePaymentLinks);
   $studioArtistsForModal = $studioArtistsForModal ?? collect();
   $studioNameForModal = $studioName ?? 'your studio';

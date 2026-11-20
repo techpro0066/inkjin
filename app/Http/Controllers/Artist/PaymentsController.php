@@ -64,8 +64,10 @@ class PaymentsController extends Controller
             ], 422);
         }
 
-        $symbol = '€';
-        $formatted = $symbol.number_format($result['amount'], 2);
+        $formatted = \App\Support\MoneyCurrency::format(
+            (float) $result['amount'],
+            $result['currency'] ?? $userDetail->currency
+        );
 
         return response()->json([
             'success' => true,

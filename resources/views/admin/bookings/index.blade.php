@@ -100,6 +100,7 @@
                 $typeKey = $booking->adminTypeKey();
                 $amount = $booking->quoteAmount();
                 $deposit = (float) ($booking->deposit_amount ?? 0);
+                $rowCurrency = \App\Support\MoneyCurrency::code($booking->currency);
               @endphp
               <tr class="hover:bg-surface-container-low/50">
                 <td class="px-5 py-4 text-on-surface-variant whitespace-nowrap">
@@ -125,10 +126,10 @@
                   <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold {{ $statusClasses[$booking->status] ?? 'bg-gray-100 text-gray-700' }}">{{ str_replace('_', ' ', ucfirst((string) $booking->status)) }}</span>
                 </td>
                 <td class="px-5 py-4 font-semibold whitespace-nowrap">
-                  {{ $deposit > 0 ? '€'.number_format($deposit, 2) : '—' }}
+                  {{ $deposit > 0 ? \App\Support\MoneyCurrency::format($deposit, $rowCurrency) : '—' }}
                 </td>
                 <td class="px-5 py-4 font-semibold whitespace-nowrap">
-                  {{ $amount > 0 ? '€'.number_format($amount, 2) : '—' }}
+                  {{ $amount > 0 ? \App\Support\MoneyCurrency::format($amount, $rowCurrency) : '—' }}
                 </td>
                 <td class="px-5 py-4 text-right">
                   <a href="{{ route('admin.bookings.show', $booking) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">

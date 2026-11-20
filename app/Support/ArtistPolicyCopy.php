@@ -11,13 +11,8 @@ class ArtistPolicyCopy
      */
     public static function for(?UserDetail $userDetail): array
     {
-        $currencyCode = strtoupper(trim((string) ($userDetail?->currency ?? 'EUR')));
-        $currencySymbol = match ($currencyCode) {
-            'EUR' => '€',
-            'GBP' => '£',
-            'USD', 'CAD', 'AUD', 'NZD', 'SGD' => '$',
-            default => $currencyCode !== '' ? $currencyCode.' ' : '€',
-        };
+        $currencyCode = MoneyCurrency::code($userDetail?->currency);
+        $currencySymbol = MoneyCurrency::symbol($currencyCode);
 
         $depositType = strtolower((string) ($userDetail?->minimum_deposit_type ?? 'percentage'));
         $depositAmountRaw = (float) ($userDetail?->minimum_deposit_amount ?? 30);

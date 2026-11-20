@@ -9,13 +9,11 @@
   $feeType = in_array(($ud->booking_fee_type ?? 'client'), ['client', 'artist', 'split'], true)
     ? ($ud->booking_fee_type ?? 'client')
     : 'client';
-  $currencyCode = strtoupper(trim((string) ($ud->currency ?? 'EUR'))) ?: 'EUR';
-  $currencySymbol = match ($currencyCode) {
-    'EUR' => '€',
-    'GBP' => '£',
-    'USD', 'CAD', 'AUD', 'NZD', 'SGD' => '$',
-    default => $currencyCode.' ',
-  };
+  $currencyCode = \App\Support\MoneyCurrency::code($ud->currency ?? null);
+  $currencySymbol = \App\Support\MoneyCurrency::symbol($currencyCode);
+  $platformFeeAmount = \App\Models\PlatformFee::amountForCurrency($currencyCode);
+  $platformFeeLabel = \App\Support\MoneyCurrency::format($platformFeeAmount, $currencyCode, true);
+  $platformFeeHalfLabel = \App\Support\MoneyCurrency::format($platformFeeAmount / 2, $currencyCode, true);
   $fmtRate = static function ($v) {
       if ($v === null || $v === '') {
           return '';
@@ -157,7 +155,7 @@
     <div class="ch">
           <div>
         <h3>Service fee</h3>
-        <div class="faint" style="font-size:12.5px;margin-top:2px">How the €10 Bookpay booking fee is handled</div>
+        <div class="faint" style="font-size:12.5px;margin-top:2px">How the {{ $platformFeeLabel }} Bookpay booking fee is handled</div>
                 </div>
               </div>
     <div style="padding:18px 22px">
@@ -168,7 +166,7 @@
             <span class="ms radio">{{ $feeType === 'client' ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
                 </div>
           <b style="display:block;margin-top:12px;font-size:14.5px">Client pays</b>
-          <div class="faint" style="font-size:12.5px;margin-top:3px;line-height:1.45">€10 is added to the client's total</div>
+          <div class="faint" style="font-size:12.5px;margin-top:3px;line-height:1.45">{{ $platformFeeLabel }} is added to the client's total</div>
               </div>
         <div class="card fee-card {{ $feeType === 'artist' ? 'on' : '' }}" data-fee="artist" role="button" tabindex="0">
           <div class="row" style="justify-content:space-between">
@@ -176,7 +174,7 @@
             <span class="ms radio">{{ $feeType === 'artist' ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
                 </div>
           <b style="display:block;margin-top:12px;font-size:14.5px">Artist pays</b>
-          <div class="faint" style="font-size:12.5px;margin-top:3px;line-height:1.45">€10 is taken from your payout</div>
+          <div class="faint" style="font-size:12.5px;margin-top:3px;line-height:1.45">{{ $platformFeeLabel }} is taken from your payout</div>
               </div>
         <div class="card fee-card {{ $feeType === 'split' ? 'on' : '' }}" data-fee="split" role="button" tabindex="0">
           <div class="row" style="justify-content:space-between">
@@ -184,7 +182,7 @@
             <span class="ms radio">{{ $feeType === 'split' ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
           </div>
           <b style="display:block;margin-top:12px;font-size:14.5px">Split</b>
-          <div class="faint" style="font-size:12.5px;margin-top:3px;line-height:1.45">Client pays €5 and you pay €5</div>
+          <div class="faint" style="font-size:12.5px;margin-top:3px;line-height:1.45">Client pays {{ $platformFeeHalfLabel }} and you pay {{ $platformFeeHalfLabel }}</div>
         </div>
       </div>
       <p id="booking_fee_type_error" class="field-err"></p>

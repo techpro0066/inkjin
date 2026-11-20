@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\ArtistDesign;
+use App\Support\MoneyCurrency;
 
 class Booking extends Model
 {
@@ -38,6 +39,7 @@ class Booking extends Model
         'deposit_amount',
         'full_amount_paid',
         'platform_fee',
+        'processing_fee',
         'tax_amount',
         'tax_rate',
         'tax_country',
@@ -109,6 +111,7 @@ class Booking extends Model
         'rescheduled_at' => 'datetime',
         'deposit_amount' => 'decimal:2',
         'platform_fee' => 'decimal:2',
+        'processing_fee' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'tax_rate' => 'decimal:2',
         'total_amount_paid' => 'decimal:2',
@@ -750,14 +753,14 @@ class Booking extends Model
             $maxPrice = (float) ($this->tattoo->max_price ?? 0);
 
             return [
-                'min' => max(0, round($minPrice - $deposit, 2)),
-                'max' => max(0, round($maxPrice - $deposit, 2)),
+                'min' => MoneyCurrency::round(max(0, $minPrice - $deposit), $this->currency),
+                'max' => MoneyCurrency::round(max(0, $maxPrice - $deposit), $this->currency),
             ];
         }
 
         $details = is_array($this->custom_tattoo_details) ? $this->custom_tattoo_details : [];
         $price = max(0, (float) ($details['estimated_price'] ?? 0));
-        $balance = max(0, round($price - $deposit, 2));
+        $balance = MoneyCurrency::round(max(0, $price - $deposit), $this->currency);
 
         return ['min' => $balance, 'max' => $balance];
     }
@@ -765,7 +768,7 @@ class Booking extends Model
     public function estimatedBalanceLabel(): string
     {
         $range = $this->estimatedBalanceRange();
-        $format = static fn (float $amount): string => '€'.number_format($amount, 2);
+        $format = fn (float $amount): string => MoneyCurrency::format($amount, $this->currency);
 
         if ($range['min'] === $range['max']) {
             return $format($range['min']);
@@ -776,7 +779,10 @@ class Booking extends Model
 
     public function remainingBalanceAmount(): float
     {
-        return max(0, round($this->quoteAmount() - (float) ($this->deposit_amount ?? 0), 2));
+        return MoneyCurrency::round(
+            max(0, $this->quoteAmount() - (float) ($this->deposit_amount ?? 0)),
+            $this->currency
+        );
     }
 
     // Accessor methods for booking and consultation times

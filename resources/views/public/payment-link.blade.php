@@ -934,7 +934,7 @@
     var csrfToken = @json(csrf_token());
     var stripePublishableKey = @json($stripePublishableKey ?? '');
     var payAmountLabel = @json($checkoutDisplay['total'] ?? $summary['amount'] ?? '');
-    var amountCents = {{ (int) ($checkoutDisplay['amount_cents'] ?? round(((float) $paymentLink->amount) * 100)) }};
+    var amountCents = {{ (int) ($checkoutDisplay['amount_cents'] ?? \App\Support\MoneyCurrency::toStripeAmount((float) $paymentLink->amount, $currencyCode ?? $userDetail?->currency)) }};
     var intentUrl = @json(route('public.payment-link.payment-intent', ['code' => $paymentLink->code]));
     var confirmUrl = @json(route('public.payment-link.payment.confirm', ['code' => $paymentLink->code]));
     var stripe = null;
@@ -1174,7 +1174,7 @@
 
     window.checkoutStripeWalletConfig = {
       country: @json(strtoupper($userDetail?->payout_bank_country ?? 'GR')),
-      currency: 'eur',
+      currency: @json(strtolower($currencyCode ?? $userDetail?->currency ?? 'EUR')),
       label: @json($summary['title'] ?? 'Bookpay'),
       getAmountCents: function () { return amountCents; },
       isPolicyAccepted: function () {
@@ -1223,7 +1223,7 @@
     };
 
     window.checkoutKlarnaConfig = {
-      currency: 'eur',
+      currency: @json(strtolower($currencyCode ?? $userDetail?->currency ?? 'EUR')),
       getStripe: function () {
         if (!stripe) mountStripeElements();
         return stripe;

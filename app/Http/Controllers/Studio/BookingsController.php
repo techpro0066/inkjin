@@ -594,7 +594,8 @@ class BookingsController extends Controller
             'requestsCount' => $requestsCount,
             'paymentLinksCount' => $paymentLinksCount,
             'studioArtistsForModal' => $studioArtistsForModal,
-            'currencySymbol' => '€',
+            'currencySymbol' => \App\Support\MoneyCurrency::symbol($studio?->currency),
+            'currencyCode' => \App\Support\MoneyCurrency::code($studio?->currency),
             'paymentLinkModalReloadOnDone' => true,
         ]);
     }
@@ -613,7 +614,7 @@ class BookingsController extends Controller
             ->with(['artist.userDetail', 'booking.user'])
             ->orderByDesc('id')
             ->get()
-            ->map(function (PaymentLink $link) use ($now) {
+            ->map(function (PaymentLink $link) use ($now, $studio) {
                 $status = $link->listStatus();
                 if ($status !== 'paid' && $status !== 'expired') {
                     $status = 'open';
@@ -641,6 +642,12 @@ class BookingsController extends Controller
                         : 'Artist';
                 }
 
+                $currencyCode = \App\Support\MoneyCurrency::code(
+                    $link->booking?->currency
+                        ?: $artist?->userDetail?->currency
+                        ?: $studio->currency
+                );
+
                 return (object) [
                     'id' => $link->id,
                     'title' => (string) $link->title,
@@ -648,6 +655,8 @@ class BookingsController extends Controller
                     'client' => $clientName,
                     'deposit' => $link->depositAmount(),
                     'total' => $link->totalAmount(),
+                    'currency' => $currencyCode,
+                    'currency_symbol' => \App\Support\MoneyCurrency::symbol($currencyCode),
                     'status' => $status,
                     'created_at' => $link->created_at,
                     'url' => $link->publicUrl(),
@@ -838,9 +847,7 @@ class BookingsController extends Controller
             && ! in_array($status, ['cancelled', 'completed', 'no_show'], true);
 
         $paidAmount = (float) ($booking->total_amount_paid ?? $booking->deposit_amount ?? 0);
-        $currencyPrefix = strtoupper((string) ($booking->currency ?? 'EUR')) === 'EUR'
-            ? '€'
-            : strtoupper((string) ($booking->currency ?? 'EUR')).' ';
+        $currencyPrefix = \App\Support\MoneyCurrency::symbol($booking->currency);
 
         return [
             'id' => $booking->id,
@@ -889,7 +896,8 @@ class BookingsController extends Controller
         $money = $payout->bookingDetailsMoneyBreakdown($booking, $userDetail);
 
         $deposit = max(0, round((float) ($booking->deposit_amount ?? 0), 2));
-        $stripeFee = (float) ($money['stripe_fee_amount'] ?? $payout->estimateStripeFee($deposit));
+        $clientPaid = max(0, round((float) ($money['deposit_amount'] ?? $deposit), 2));
+        $stripeFee = (float) ($money['stripe_fee_amount'] ?? $payout->stripeFeesForBooking($booking));
         $artistPercent = $payout->resolvePayoutArtistPercent($booking, $userDetail);
         $paymentType = $payout->resolvePayoutPaymentType($booking, $userDetail);
         $hasSplit = $paymentType === 'studio_account' && $artistPercent < 100;
@@ -901,20 +909,20 @@ class BookingsController extends Controller
         $artistBookingFee = 0.0;
         $studioBookingFee = 0.0;
         if ($hasSplit) {
-            $artistShare = round($deposit * ($artistPercent / 100), 2);
+            $artistShare = round($clientPaid * ($artistPercent / 100), 2);
             $artistStripe = round($stripeFee * ($artistPercent / 100), 2);
             $artistBookingFee = max(0, round((float) ($money['your_booking_fee_amount'] ?? round($artistSideFee * ($artistPercent / 100), 2)), 2));
             $studioBookingFee = max(0, round((float) ($money['studio_booking_fee_amount'] ?? round($artistSideFee - $artistBookingFee, 2)), 2));
-            $artistGets = max(0, round($artistShare - $artistStripe - $artistBookingFee, 2));
-            $studioShare = round($deposit * ($studioPercent / 100), 2);
+            $artistGets = max(0, round((float) ($money['you_get_amount'] ?? ($artistShare - $artistStripe - $artistBookingFee)), 2));
+            $studioShare = round($clientPaid * ($studioPercent / 100), 2);
             $studioStripe = round($stripeFee * ($studioPercent / 100), 2);
-            $studioGets = max(0, round($studioShare - $studioStripe - $studioBookingFee, 2));
+            $studioGets = max(0, round((float) ($money['studio_gets_amount'] ?? ($studioShare - $studioStripe - $studioBookingFee)), 2));
             $splitValue = $firstName.' '.$artistPercent.'% · Studio '.$studioPercent.'%';
         } else {
-            $artistShare = $deposit;
+            $artistShare = $clientPaid;
             $artistStripe = $stripeFee;
             $artistBookingFee = $artistSideFee;
-            $artistGets = max(0, round($deposit - $stripeFee - $artistSideFee, 2));
+            $artistGets = max(0, round((float) ($money['you_get_amount'] ?? ($clientPaid - $stripeFee - $artistSideFee)), 2));
             $studioShare = 0.0;
             $studioStripe = 0.0;
             $studioGets = 0.0;
@@ -935,7 +943,7 @@ class BookingsController extends Controller
         }
 
         $paidAt = $booking->created_at?->timezone(config('app.timezone'))->format('d/m');
-        $depositMoneyLabel = 'Client paid · deposit'.($paidAt ? ', '.$paidAt : '');
+        $depositMoneyLabel = (string) ($money['deposit_label'] ?? ('Client paid · deposit'.($paidAt ? ', '.$paidAt : '')));
 
         $footnote = (string) ($money['footnote'] ?? '');
         // Studio-facing footnote: bank timing for studio share.
@@ -1051,7 +1059,7 @@ class BookingsController extends Controller
             'artist_first' => $firstName,
             'service' => $booking->displayTitle(),
             'through' => $through,
-            'deposit' => $this->formatMoney($deposit, $booking),
+            'deposit' => $this->formatMoney($clientPaid, $booking),
             'date' => $dateLabel,
             'time' => $timeLabel,
             'duration' => $duration,
@@ -1060,10 +1068,11 @@ class BookingsController extends Controller
             'money_pill' => (string) ($money['pill'] ?? 'Pending'),
             'money_pill_class' => (string) ($money['pill_class'] ?? 'a'),
             'deposit_money_label' => $depositMoneyLabel,
-            'deposit_money' => $this->formatMoney($deposit, $booking),
+            'deposit_money' => $this->formatMoney($clientPaid, $booking),
             'booking_fee' => $bookingFeeLabel,
             'booking_fee_note' => $bookingFeeNote,
             'stripe_fee' => '−'.$this->formatMoney($stripeFee, $booking),
+            'stripe_fee_note' => null,
             'has_split' => $hasSplit,
             'split_value' => $splitValue,
             'artist_gets_label' => $firstName.' gets',
@@ -1072,7 +1081,7 @@ class BookingsController extends Controller
                 : 'after his part of the Stripe fee',
             'artist_gets' => $this->formatMoney($artistGets, $booking),
             'studio_share_label' => 'Studio share',
-            'studio_share_note' => $hasSplit ? $studioPercent.'% of '.$this->formatMoney($deposit, $booking) : null,
+            'studio_share_note' => $hasSplit ? $studioPercent.'% of '.$this->formatMoney($clientPaid, $booking) : null,
             'studio_share' => $this->formatMoney($studioShare, $booking),
             'studio_stripe' => '−'.$this->formatMoney($studioStripe, $booking),
             'studio_stripe_note' => $hasSplit ? (string) $studioPercent.'%' : null,
@@ -1195,13 +1204,7 @@ class BookingsController extends Controller
 
     private function formatMoney(float $amount, Booking $booking): string
     {
-        $currency = strtoupper((string) ($booking->currency ?? 'EUR'));
-        $formatted = number_format(max(0, round($amount, 2)), 2, '.', '');
-        if ($currency === 'EUR') {
-            return '€'.$formatted;
-        }
-
-        return $currency.' '.$formatted;
+        return \App\Support\MoneyCurrency::format(max(0, $amount), $booking->currency);
     }
 
     /**
@@ -1439,16 +1442,12 @@ class BookingsController extends Controller
 
         $studioPct = max(0, 100 - (int) $artistPct);
         if ($paid <= 0) {
-            return '€0 so far';
+            return \App\Support\MoneyCurrency::format(0, $booking->currency, true).' so far';
         }
 
         $share = round($paid * ($studioPct / 100), 0);
-        $currency = strtoupper((string) ($booking->currency ?? 'EUR'));
-        if ($currency === 'EUR') {
-            return '€'.$share;
-        }
 
-        return $currency.' '.$share;
+        return \App\Support\MoneyCurrency::format($share, $booking->currency, true);
     }
 
     /**
@@ -2022,14 +2021,9 @@ class BookingsController extends Controller
         };
     }
 
-    private function formatEuro(float $value): string
+    private function formatEuro(float $value, ?string $currency = null): string
     {
-        $rounded = round($value, 2);
-        if (fmod($rounded, 1.0) === 0.0) {
-            return '€'.(string) (int) $rounded;
-        }
-
-        return '€'.number_format($rounded, 2, '.', '');
+        return \App\Support\MoneyCurrency::format($value, $currency, true);
     }
 
     private function parseMoney(?string $value): ?float

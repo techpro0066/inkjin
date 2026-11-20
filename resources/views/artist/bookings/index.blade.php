@@ -854,7 +854,7 @@
           <div class="abdm-kv" style="padding:8px 0;border-bottom:1px solid #F3EEF4"><span id="abdmMoneyDepositLabel">Client paid · deposit</span><span id="abdmMoneyDeposit" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmPaidRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Paid</span><span id="abdmPaid" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmBookingFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Service Booking Fee <span id="abdmBookingFeeNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmBookingFee" style="font-weight:600">—</span></div>
-          <div class="abdm-kv" id="abdmStripeFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Stripe fee <span class="abdm-faint" style="font-size:12px">1.5% + €0.25</span></span><span id="abdmStripeFee" style="font-weight:600">—</span></div>
+          <div class="abdm-kv" id="abdmStripeFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Stripe fee</span><span id="abdmStripeFee" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmSplitRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span id="abdmSplitLabel">Split</span><span id="abdmSplitValue" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmYourShareRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your share <span id="abdmYourShareNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourShare" style="font-weight:600">—</span></div>
           <div class="abdm-kv" id="abdmYourStripeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Your part of the Stripe fee <span id="abdmYourStripeNote" class="abdm-faint" style="font-size:12px"></span></span><span id="abdmYourStripe" style="font-weight:600">—</span></div>
@@ -973,7 +973,7 @@
     <div class="p-5 space-y-4">
       <div class="rounded-xl border border-green-200 bg-green-50/80 p-4 text-sm">
         <p id="acbmRefundLead" class="font-semibold text-green-900">Full refund will be given to the user.</p>
-        <p id="acbmRefundSub" class="text-green-900/80 mt-1">Refund amount: €0.00</p>
+        <p id="acbmRefundSub" class="text-green-900/80 mt-1">Refund amount: —</p>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         <div class="rounded-lg bg-surface-container-low px-3 py-2">
@@ -1231,7 +1231,7 @@
                   <span class="rpm-option-label">Client will pay by link</span>
                 </button>
                 <div id="rpmLinkAmountWrap" class="rpm-amount-chip">
-                  <span id="rpmLinkSettleAmountDisplay" class="amt">€ 0</span>
+                  <span id="rpmLinkSettleAmountDisplay" class="amt">—</span>
                   <input id="rpmLinkSettleAmountInput" type="text" inputmode="decimal" class="hidden" aria-label="Payment link amount">
                   <button type="button" id="rpmLinkSettleAmountEdit" class="edit">edit</button>
                 </div>
@@ -1245,7 +1245,7 @@
                   <span class="rpm-option-label">Paid in cash</span>
                 </button>
                 <div id="rpmCashAmountWrap" class="rpm-amount-chip hidden">
-                  <span id="rpmCashAmountDisplay" class="amt">€ 0</span>
+                  <span id="rpmCashAmountDisplay" class="amt">—</span>
                   <input id="rpmCashAmountInput" type="text" inputmode="decimal" class="hidden" aria-label="Cash amount">
                   <button type="button" id="rpmCashAmountEdit" class="edit">edit</button>
                 </div>
@@ -1327,7 +1327,7 @@
         <p id="rpmLinkTotalsLine">—</p>
       </div>
       <p class="rpm-muted">Amount</p>
-      <div class="rpm-box"><b id="rpmLinkAmountDisplay">€ 0</b></div>
+      <div class="rpm-box"><b id="rpmLinkAmountDisplay">—</b></div>
       <p class="rpm-muted">Message for your client</p>
       <div id="rpmLinkMessage" class="rpm-msg"></div>
       <div class="rpm-link-actions">
@@ -2344,8 +2344,11 @@
     var v = parseFloat(n);
     if (isNaN(v)) v = 0;
     var cc = (currency || 'EUR').toUpperCase();
-    var symbol = cc === 'EUR' ? '€' : (cc === 'USD' ? '$' : cc + ' ');
-    return symbol + v.toFixed(2);
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: cc }).format(v);
+    } catch (e) {
+      return cc + ' ' + v.toFixed(2);
+    }
   }
 
   function showError(msg) {
@@ -2776,7 +2779,7 @@
       if (stripeFeeRow && stripeFeeEl) {
         if (money.stripe_fee) {
           stripeFeeRow.style.display = '';
-          stripeFeeEl.textContent = String(money.stripe_fee || '—').replace(/^-€/, '−€');
+          stripeFeeEl.textContent = String(money.stripe_fee || '—').replace(/^-/, '−');
         } else {
           stripeFeeRow.style.display = 'none';
         }
@@ -2798,7 +2801,7 @@
       if (yourStripeRow && yourStripeEl) {
         if (hasSplit) {
           yourStripeRow.style.display = '';
-          yourStripeEl.textContent = String(money.your_stripe || '—').replace(/^-€/, '−€');
+          yourStripeEl.textContent = String(money.your_stripe || '—').replace(/^-/, '−');
           if (yourStripeNote) yourStripeNote.textContent = money.your_stripe_note || '';
         } else {
           yourStripeRow.style.display = 'none';
@@ -2807,7 +2810,7 @@
       if (yourBookingFeeRow && yourBookingFeeEl) {
         if (hasSplit && money.your_booking_fee) {
           yourBookingFeeRow.style.display = '';
-          yourBookingFeeEl.textContent = String(money.your_booking_fee || '—').replace(/^-€/, '−€');
+          yourBookingFeeEl.textContent = String(money.your_booking_fee || '—').replace(/^-/, '−');
           if (yourBookingFeeNote) yourBookingFeeNote.textContent = money.your_booking_fee_note || '';
         } else {
           yourBookingFeeRow.style.display = 'none';
@@ -2841,7 +2844,7 @@
         if (ds.bookingStatus === 'completed' || ds.fullAmountPaid === '1') {
           moneyPill.textContent = 'Settled';
           moneyPill.className = 'abdm-pill g';
-        } else if ((ds.balanceDueLabel || '').trim() && ds.balanceDueLabel !== '€0') {
+        } else if ((ds.balanceDueLabel || '').trim() && !/^([^\d]*)0([.,]0+)?$/.test(String(ds.balanceDueLabel).replace(/\s/g, ''))) {
           moneyPill.textContent = 'Pending';
           moneyPill.className = 'abdm-pill a';
         } else {
@@ -2869,8 +2872,8 @@
     }
     if (paidRow && paidEl) {
       if (ds.bookingStatus === 'completed') {
-        var dep = (money && money.deposit) || ds.deposit || '€0';
-        var bal = ds.balanceDueLabel || '€0';
+        var dep = (money && money.deposit) || ds.deposit || '0';
+        var bal = ds.balanceDueLabel || '0';
         var fullPaid = ds.fullAmountPaid === '1';
         paidRow.style.display = '';
         paidEl.textContent = dep + ' deposit, ' + bal + ' balance' + (fullPaid ? '' : ' (cash)');
@@ -3063,7 +3066,8 @@
   var reminderModal = document.getElementById('artistUnsettledReminderModal');
   var reminderCollectBtn = document.getElementById('urmCollectBtn');
   var reminderSourceBtn = null;
-  var currentAmountLabel = '€ 0';
+  var currentAmountLabel = '—';
+  var currentCurrencyCode = @json(\App\Support\MoneyCurrency::code(auth()->user()?->userDetail?->currency));
   var currentOption = 'link';
   var currentWhenValue = '3-days';
   var currentStoreUrl = '';
@@ -3072,8 +3076,8 @@
     clientName: '',
     firstName: 'there',
     bookingRef: '',
-    paidLabel: '€0',
-    totalLabel: '€0',
+    paidLabel: '—',
+    totalLabel: '—',
     service: 'session',
     linkUrl: 'bookpay.ink/p/x7Kq2mPa'
   };
@@ -3133,7 +3137,7 @@
   }
 
   function compactEuro(amountLabel) {
-    return String(amountLabel || '€0').replace(/^€\s*/, '€');
+    return String(amountLabel || '');
   }
 
   function parseAmountValue(label) {
@@ -3494,12 +3498,17 @@
     var cleaned = String(raw || '').replace(/[^\d.,]/g, '').replace(',', '.');
     var amount = parseFloat(cleaned);
     if (!isFinite(amount) || amount < 0) return currentAmountLabel;
-    var rounded = Math.round(amount * 100) / 100;
-    return rounded % 1 === 0 ? '€ ' + String(Math.round(rounded)) : '€ ' + rounded.toFixed(2);
+    var formatter = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currentCurrencyCode
+    });
+    var digits = formatter.resolvedOptions().maximumFractionDigits;
+    var scale = Math.pow(10, digits);
+    return formatter.format(Math.round(amount * scale) / scale);
   }
 
   function outstandingLabel(amountLabel) {
-    return 'Outstanding balance: ' + String(amountLabel || '—').replace(/^€\s*/, '€');
+    return 'Outstanding balance: ' + String(amountLabel || '—');
   }
 
   function setOutstandingBalance(amountLabel) {
@@ -3522,7 +3531,7 @@
     input.classList.toggle('hidden', !editing);
     editBtn.classList.toggle('hidden', editing);
     if (editing) {
-      input.value = currentAmountLabel.replace(/^€\s*/, '');
+      input.value = String(parseAmountValue(currentAmountLabel));
       input.focus();
       input.select();
     }
@@ -3581,6 +3590,7 @@
     var client = (ds.clientName || '').trim() || 'the client';
     var first = firstNameFrom(ds.clientName);
     var line = [client, service].filter(Boolean).join(' · ');
+    currentCurrencyCode = (ds.currency || 'EUR').toUpperCase();
     currentAmountLabel = formatCashAmount(ds.balanceLabel || '0');
     currentStoreUrl = ds.storeUrl || '';
     currentBookingId = ds.bookingId || '';
@@ -3588,8 +3598,8 @@
       clientName: (ds.clientName || '').trim(),
       firstName: first,
       bookingRef: (ds.bookingRef || '').trim(),
-      paidLabel: (ds.paidLabel || '€0').trim() || '€0',
-      totalLabel: (ds.totalLabel || '€0').trim() || '€0',
+      paidLabel: (ds.paidLabel || '—').trim() || '—',
+      totalLabel: (ds.totalLabel || '—').trim() || '—',
       service: (ds.service || '').trim() || 'session',
       linkUrl: 'bookpay.ink/p/x7Kq2mPa'
     };

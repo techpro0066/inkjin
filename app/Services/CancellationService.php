@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Support\MoneyCurrency;
 use App\Models\CustomRequest;
 use App\Models\GuestSpot;
 use Carbon\Carbon;
@@ -215,7 +216,7 @@ class CancellationService
             // Create refund via Stripe
             $refund = Refund::create([
                 'payment_intent' => $paymentIntentId,
-                'amount' => (int)($refundAmount * 100), // Convert to cents
+                'amount' => MoneyCurrency::toStripeAmount($refundAmount, $booking->currency),
                 'reason' => 'requested_by_customer',
                 'metadata' => [
                     'booking_id' => $booking->id,

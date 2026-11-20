@@ -110,20 +110,13 @@
     $spotsLeftLabel = $showSpots ? ($remaining.' of '.$capacity.' spots left') : null;
     $spotsBarPct = $showSpots ? round((($capacity - $remaining) / max(1, $capacity)) * 100) : 0;
 
-    $currencyCode = strtoupper(trim((string) ($userDetail->currency ?? 'EUR')));
-    $currencySymbol = match ($currencyCode) {
-        'EUR' => '€',
-        'GBP' => '£',
-        'USD', 'CAD', 'AUD', 'NZD', 'SGD' => '$',
-        default => $currencyCode !== '' ? $currencyCode.' ' : '€',
-    };
-    $formatRate = static function ($amount) use ($currencySymbol): string {
+    $currencyCode = \App\Support\MoneyCurrency::code($userDetail->currency);
+    $formatRate = static function ($amount) use ($currencyCode): string {
         if ($amount === null || $amount === '') {
             return '';
         }
-        $number = rtrim(rtrim(number_format((float) $amount, 2, '.', ''), '0'), '.');
 
-        return $currencySymbol.$number;
+        return \App\Support\MoneyCurrency::format((float) $amount, $currencyCode, true);
     };
     $hourlyRateLabel = $formatRate($userDetail->hourly_rate);
     $halfDayRateLabel = $formatRate($userDetail->half_day_rate);
@@ -133,9 +126,11 @@
 
     $depositType = strtolower((string) ($userDetail->minimum_deposit_type ?? 'percentage'));
     $depositAmountRaw = (float) ($userDetail->minimum_deposit_amount ?? 30);
-    $depositAmountLabel = rtrim(rtrim(number_format(max(0, $depositAmountRaw), 2, '.', ''), '0'), '.');
+    $depositAmountLabel = $depositType === 'amount'
+        ? \App\Support\MoneyCurrency::format($depositAmountRaw, $currencyCode, true)
+        : rtrim(rtrim(number_format(max(0, $depositAmountRaw), 2, '.', ''), '0'), '.');
     $depositShort = $depositType === 'amount'
-        ? $currencySymbol.$depositAmountLabel.' deposit to book. It comes off your final price.'
+        ? $depositAmountLabel.' deposit to book. It comes off your final price.'
         : $depositAmountLabel.'% deposit to book. It comes off your final price.';
 
     $showPolicies = (bool) ($guestSpot->show_policies ?? true);

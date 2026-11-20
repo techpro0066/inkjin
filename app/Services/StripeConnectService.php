@@ -7,6 +7,7 @@ use App\Models\StudioPayout;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\UserPayout;
+use App\Support\MoneyCurrency;
 use App\Support\StripeConnectCountries;
 use Illuminate\Support\Facades\Log;
 use Stripe\Account;
@@ -1241,6 +1242,59 @@ class StripeConnectService
         return null;
     }
 
+    /**
+     * Platform settlement details for a charge (currency may differ from the charge currency).
+     *
+     * @return array{charge_id: string, charge_currency: string, charge_amount: int, currency: string, amount: int, net: int, exchange_rate: float}|null
+     */
+    public function resolveChargeBalanceTransaction(?string $chargeId): ?array
+    {
+        $chargeId = trim((string) $chargeId);
+        if ($chargeId === '' || ! str_starts_with($chargeId, 'ch_')) {
+            return null;
+        }
+
+        $this->initialize();
+
+        try {
+            $charge = \Stripe\Charge::retrieve([
+                'id' => $chargeId,
+                'expand' => ['balance_transaction'],
+            ]);
+            $bt = $charge->balance_transaction ?? null;
+            if (! is_object($bt)) {
+                return null;
+            }
+
+            $chargeAmount = (int) ($charge->amount ?? 0);
+            $btAmount = (int) ($bt->amount ?? 0);
+            $exchangeRate = (float) ($bt->exchange_rate ?? 0);
+            if ($exchangeRate <= 0 && $chargeAmount > 0 && $btAmount > 0) {
+                $exchangeRate = $btAmount / $chargeAmount;
+            }
+            if ($exchangeRate <= 0) {
+                $exchangeRate = 1.0;
+            }
+
+            return [
+                'charge_id' => $chargeId,
+                'charge_currency' => MoneyCurrency::code($charge->currency ?? null),
+                'charge_amount' => $chargeAmount,
+                'currency' => MoneyCurrency::code($bt->currency ?? null),
+                'amount' => $btAmount,
+                'net' => (int) ($bt->net ?? $btAmount),
+                'exchange_rate' => $exchangeRate,
+            ];
+        } catch (ApiErrorException $e) {
+            Log::warning('Could not resolve Stripe charge balance transaction', [
+                'charge_id' => $chargeId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
+    }
+
     private function forceIndividualBusinessType(): bool
     {
         return (bool) config('services.stripe.connect.force_individual', true);
@@ -1536,8 +1590,8 @@ class StripeConnectService
             }
 
             return [
-                'available' => round($available, 2),
-                'pending' => round($pending, 2),
+                'available' => MoneyCurrency::round($available, $currency),
+                'pending' => MoneyCurrency::round($pending, $currency),
                 'currency' => $currency,
                 'configured' => true,
                 'error' => null,
@@ -1570,7 +1624,7 @@ class StripeConnectService
                 continue;
             }
 
-            $total += ((int) ($item->amount ?? 0)) / 100;
+            $total += MoneyCurrency::fromStripeAmount((int) ($item->amount ?? 0), $currency);
         }
 
         return $total;
@@ -1592,7 +1646,8 @@ class StripeConnectService
                     continue;
                 }
 
-                $totals[$currency] = ($totals[$currency] ?? 0.0) + (((int) ($item->amount ?? 0)) / 100);
+                $totals[$currency] = ($totals[$currency] ?? 0.0)
+                    + MoneyCurrency::fromStripeAmount((int) ($item->amount ?? 0), $currency);
             }
         }
 
@@ -1605,18 +1660,22 @@ class StripeConnectService
         $availableTotal = 0.0;
         foreach ($available as $item) {
             if (strtoupper((string) ($item->currency ?? '')) === $currency) {
-                $availableTotal += ((int) ($item->amount ?? 0)) / 100;
+                $availableTotal += MoneyCurrency::fromStripeAmount((int) ($item->amount ?? 0), $currency);
             }
         }
 
         $pendingTotal = 0.0;
         foreach ($pending as $item) {
             if (strtoupper((string) ($item->currency ?? '')) === $currency) {
-                $pendingTotal += ((int) ($item->amount ?? 0)) / 100;
+                $pendingTotal += MoneyCurrency::fromStripeAmount((int) ($item->amount ?? 0), $currency);
             }
         }
 
-        return [$currency, round($availableTotal, 2), round($pendingTotal, 2)];
+        return [
+            $currency,
+            MoneyCurrency::round($availableTotal, $currency),
+            MoneyCurrency::round($pendingTotal, $currency),
+        ];
     }
 
     /**

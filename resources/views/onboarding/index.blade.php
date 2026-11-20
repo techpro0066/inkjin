@@ -473,23 +473,29 @@
                 </div>
                 
                     <div class="col-12">
+                      @php
+                        $obCurrency = \App\Support\MoneyCurrency::code($userDetail->currency ?? null);
+                        $obFee = \App\Models\PlatformFee::amountForCurrency($obCurrency);
+                        $obFeeLabel = \App\Support\MoneyCurrency::format($obFee, $obCurrency, true);
+                        $obHalfFeeLabel = \App\Support\MoneyCurrency::format($obFee / 2, $obCurrency, true);
+                      @endphp
                       <label class="form-label">Inkjin Booking Fee <span class="text-danger">*</span></label>
                       <div class="form-check mb-2">
                         <input class="form-check-input" type="radio" name="booking_fee_type" id="booking_fee_client" value="client" {{ ($userDetail->booking_fee_type ?? '') == 'client' ? 'checked' : '' }}>
                         <label class="form-check-label" for="booking_fee_client">
-                          <strong>Client pays</strong> – 10€ will be added to the client's total
+                          <strong>Client pays</strong> – {{ $obFeeLabel }} will be added to the client's total
                         </label>
                       </div>
                       <div class="form-check mb-2">
                         <input class="form-check-input" type="radio" name="booking_fee_type" id="booking_fee_artist" value="artist" {{ ($userDetail->booking_fee_type ?? '') == 'artist' ? 'checked' : '' }}>
                         <label class="form-check-label" for="booking_fee_artist">
-                          <strong>Artist pays</strong> – 10€ will be deducted from your payout
+                          <strong>Artist pays</strong> – {{ $obFeeLabel }} will be deducted from your payout
                         </label>
                       </div>
                       <div class="form-check">
                         <input class="form-check-input" type="radio" name="booking_fee_type" id="booking_fee_split" value="split" {{ ($userDetail->booking_fee_type ?? '') == 'split' ? 'checked' : '' }}>
                         <label class="form-check-label" for="booking_fee_split">
-                          <strong>Split</strong> – Evenly split between you and the client. 5€ will be added to your client's total and 5€ will be deducted from your payout.
+                          <strong>Split</strong> – Evenly split between you and the client. {{ $obHalfFeeLabel }} will be added to your client's total and {{ $obHalfFeeLabel }} will be deducted from your payout.
                         </label>
                       </div>
                       <p class="text-danger mt-1 mb-0" id="booking_fee_type_error" style="display: none; font-size: 0.875rem;"></p>

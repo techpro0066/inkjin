@@ -13,6 +13,7 @@ use App\Services\ArtistNavBadgeService;
 use App\Services\ArtistPayoutService;
 use App\Services\BookingConsentService;
 use App\Support\ArtistBookingDetailPresenter;
+use App\Support\MoneyCurrency;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\JsonResponse;
@@ -184,7 +185,7 @@ class BookingsController extends Controller
             : ($user?->isDeactivated()
                 ? $user->paymentLinkCreationBlockedMessage()
                 : $payoutService->clientPaymentsBlockedMessage($userDetail));
-        $currency = '€';
+        $currency = MoneyCurrency::symbol($userDetail?->currency);
 
         return view('artist.bookings.index', compact(
             'bookings',
@@ -234,7 +235,7 @@ class BookingsController extends Controller
         }
         $search = trim((string) $request->input('q', ''));
 
-        $rows = $this->artistPaymentLinkRows($artistId);
+        $rows = $this->artistPaymentLinkRows($artistId, MoneyCurrency::code($userDetail?->currency));
 
         $filterCounts = [
             'all' => $rows->count(),
@@ -304,7 +305,7 @@ class BookingsController extends Controller
             : ($user?->isDeactivated()
                 ? $user->paymentLinkCreationBlockedMessage()
                 : $payoutService->clientPaymentsBlockedMessage($userDetail));
-        $currency = '€';
+        $currency = MoneyCurrency::symbol($userDetail?->currency);
         $paymentLinkModalReloadOnDone = true;
 
         return view('artist.bookings.payment-links', compact(
@@ -342,9 +343,10 @@ class BookingsController extends Controller
     /**
      * @return Collection<int, object>
      */
-    private function artistPaymentLinkRows(int $artistId): Collection
+    private function artistPaymentLinkRows(int $artistId, ?string $artistCurrency = null): Collection
     {
         $now = now();
+        $fallbackCurrency = MoneyCurrency::code($artistCurrency);
 
         $standalone = PaymentLink::query()
             ->where('artist_id', $artistId)
@@ -352,7 +354,7 @@ class BookingsController extends Controller
             ->with(['booking.user'])
             ->orderByDesc('id')
             ->get()
-            ->map(function (PaymentLink $link) use ($now) {
+            ->map(function (PaymentLink $link) use ($now, $fallbackCurrency) {
                 $status = $link->listStatus();
                 if ($status === 'pending') {
                     $status = 'open';
@@ -376,6 +378,8 @@ class BookingsController extends Controller
                     $clientName = 'Not used yet';
                 }
 
+                $currency = MoneyCurrency::code($link->booking?->currency ?: $fallbackCurrency);
+
                 return (object) [
                     'source' => 'standalone',
                     'id' => $link->id,
@@ -383,6 +387,7 @@ class BookingsController extends Controller
                     'client' => $clientName,
                     'deposit' => $link->depositAmount(),
                     'total' => $link->totalAmount(),
+                    'currency' => $currency,
                     'status' => $status,
                     'created_at' => $link->created_at,
                     'url' => $link->publicUrl(),
@@ -400,7 +405,7 @@ class BookingsController extends Controller
             ->with(['booking.tattoo', 'booking.user', 'client'])
             ->orderByDesc('id')
             ->get()
-            ->map(function (BalanceCollection $collection) {
+            ->map(function (BalanceCollection $collection) use ($fallbackCurrency) {
                 $booking = $collection->booking;
                 $sessionTitle = trim((string) ($booking?->displayTitle() ?? ''));
                 $title = $sessionTitle !== ''
@@ -429,6 +434,12 @@ class BookingsController extends Controller
                     $url = url('/p/'.$collection->payment_link_code);
                 }
 
+                $currency = MoneyCurrency::code(
+                    $collection->currency
+                        ?: $booking?->currency
+                        ?: $fallbackCurrency
+                );
+
                 return (object) [
                     'source' => 'booking',
                     'id' => $collection->id,
@@ -436,6 +447,7 @@ class BookingsController extends Controller
                     'client' => $clientName,
                     'deposit' => $amount,
                     'total' => $bookingTotal > 0 ? $bookingTotal : $amount,
+                    'currency' => $currency,
                     'status' => $status,
                     'created_at' => $collection->created_at,
                     'url' => $url,
@@ -942,8 +954,8 @@ class BookingsController extends Controller
             }
         }
 
-        $amount = round((float) $request->input('amount'), 2);
-        $currency = strtoupper((string) ($booking->currency ?: 'EUR'));
+        $currency = MoneyCurrency::code($booking->currency ?: $booking->artist?->userDetail?->currency);
+        $amount = MoneyCurrency::round((float) $request->input('amount'), $currency);
         $payload = [
             'booking_id' => $booking->id,
             'artist_user_id' => (int) $booking->artist_user_id,
@@ -963,7 +975,7 @@ class BookingsController extends Controller
                 $firstName = 'there';
             }
             $title = $booking->displayTitle();
-            $amountLabel = $this->formatBalanceEuro($amount);
+            $amountLabel = MoneyCurrency::format($amount, $currency);
             $payload['payment_link_code'] = $code;
             $payload['payment_link_url'] = $url;
             $payload['client_message'] = sprintf(
@@ -1056,7 +1068,7 @@ class BookingsController extends Controller
                 'id' => $record->id,
                 'collection_type' => $record->collection_type,
                 'amount' => (float) $record->amount,
-                'amount_label' => $this->formatBalanceEuro((float) $record->amount),
+                'amount_label' => MoneyCurrency::format((float) $record->amount, $record->currency ?: $currency),
                 'payment_link_code' => $record->payment_link_code,
                 'payment_link_url' => $record->payment_link_url,
                 'client_message' => $record->client_message,
@@ -1069,7 +1081,7 @@ class BookingsController extends Controller
                 'nudge' => $type === BalanceCollection::TYPE_NOT_SETTLED_YET
                     ? $record->reminderNudge(
                         trim((string) strtok((string) ($booking->user?->first_name ?? ''), ' ')),
-                        $this->formatBalanceEuro((float) $record->amount)
+                        MoneyCurrency::format((float) $record->amount, $record->currency ?: $currency)
                     )
                     : null,
             ],
@@ -1166,14 +1178,5 @@ class BookingsController extends Controller
         return $code;
     }
 
-    private function formatBalanceEuro(float $value): string
-    {
-        $rounded = round($value, 2);
-        if (fmod($rounded, 1.0) === 0.0) {
-            return '€'.(string) (int) $rounded;
-        }
-
-        return '€'.number_format($rounded, 2, '.', '');
-    }
 }
 

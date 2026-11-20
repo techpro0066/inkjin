@@ -7,18 +7,19 @@
   $feeAmt = is_array($checkoutReceiptTotals) ? (float) ($checkoutReceiptTotals['platform_fee'] ?? 0) : 0.0;
   $taxAmt = is_array($checkoutReceiptTotals) ? (float) ($checkoutReceiptTotals['tax_amount'] ?? 0) : 0.0;
   $hasAmounts = is_array($checkoutReceiptTotals);
+  $currencyCode = \App\Support\MoneyCurrency::code($currencyCode ?? $userDetail?->currency ?? 'EUR');
 
   $receiptHtml = '';
   if ($hasAmounts) {
       $receiptHtml = "You'll receive a receipt from Inkjin on behalf of the artist for your "
-          .'<strong>€'.number_format($depositAmt, 2).'</strong> deposit';
+          .'<strong>'.e(\App\Support\MoneyCurrency::format($depositAmt, $currencyCode)).'</strong> deposit';
 
       if ($feeAmt > 0) {
           $receiptHtml .= ', and a separate Inkjin invoice for the '
-              .'<strong>€'.number_format($feeAmt, 2).'</strong>';
+              .'<strong>'.e(\App\Support\MoneyCurrency::format($feeAmt, $currencyCode)).'</strong>';
 
           if ($taxAmt > 0) {
-              $receiptHtml .= ' + <strong>€'.number_format($taxAmt, 2).'</strong> VAT';
+              $receiptHtml .= ' + <strong>'.e(\App\Support\MoneyCurrency::format($taxAmt, $currencyCode)).'</strong> VAT';
           }
 
           $receiptHtml .= ' booking fee';

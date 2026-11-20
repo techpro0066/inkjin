@@ -289,6 +289,7 @@
     display:flex;align-items:center;justify-content:space-between;gap:10px;
     padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer
   }
+  .pay-ov .pc-cs-o[hidden]{display:none}
   .pay-ov .pc-cs-o:hover,.pay-ov .pc-cs-o.kb{background:#F3E8FF}
   .pay-ov .pc-cs-o.sel{background:#3E007C;color:#fff}
   .pay-ov .pc-cs-o small{color:#9A929E;font-weight:600}
@@ -1314,6 +1315,11 @@ async function maybeFinalizeArtistStripeConnect() {
   stopStripeStatusPolling();
 
   const changing = !!window.changingPayoutAccount && !!window.pendingChangePayoutId;
+  if (changing && typeof window.prepareChangePayoutAccountClosing === 'function') {
+    // Drop Stripe UI immediately so the user is not stuck waiting on the success screen.
+    window.prepareChangePayoutAccountClosing();
+  }
+
   if (!changing) {
     const countryName = document.getElementById('payoutBankCountryName')?.textContent?.trim() || initialPayoutBankCountryName;
     showArtistStripeConnectedUi(countryName, stripeStatusNeedsAction(status));
@@ -1332,9 +1338,10 @@ async function maybeFinalizeArtistStripeConnect() {
 
 function startStripeStatusPolling() {
   stopStripeStatusPolling();
+  const changing = !!window.changingPayoutAccount;
   stripeStatusPollTimer = setInterval(() => {
     maybeFinalizeArtistStripeConnect().catch(() => {});
-  }, 2000);
+  }, changing ? 1000 : 2000);
 }
 
 async function tryAutoSaveArtistStripe() {
@@ -1396,7 +1403,10 @@ async function tryAutoSaveArtistStripe() {
     if (changing) {
       window.changingPayoutAccount = false;
       window.pendingChangePayoutId = null;
-    window.location.reload();
+      if (typeof window.closeChangePayoutAccountModal === 'function') {
+        window.closeChangePayoutAccountModal();
+      }
+      window.location.reload();
     }
   } catch (err) {
     autoSaveArtistStripeInProgress = false;
@@ -1411,7 +1421,7 @@ async function tryAutoSaveArtistStripe() {
 }
 
 async function handleStripeOnboardingExit() {
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  // Finalize right away — no artificial delay that leaves the Stripe modal open.
   await maybeFinalizeArtistStripeConnect();
 }
 
@@ -1498,9 +1508,7 @@ async function mountStripeOnboarding(options = {}) {
     });
     accountOnboarding.setOnExit(handleStripeOnboardingExit);
     accountOnboarding.setOnStepChange(() => {
-      setTimeout(() => {
-        maybeFinalizeArtistStripeConnect().catch(() => {});
-      }, 800);
+      maybeFinalizeArtistStripeConnect().catch(() => {});
     });
 
     container.innerHTML = '';
@@ -2839,6 +2847,24 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
       var trigger = modal.querySelector('.pc-cs-b');
       if (trigger) trigger.focus();
     }
+    function prepareClosing() {
+      if (typeof window.resetStripeMount === 'function') {
+        window.resetStripeMount();
+      } else if (typeof window.stopStripeStatusPolling === 'function') {
+        window.stopStripeStatusPolling();
+      }
+      modal.classList.remove('pay-modal-stripe');
+      if (footer) footer.classList.add('hidden');
+      if (body) {
+        body.innerHTML =
+          '<div class="pc-wait" role="status">' +
+            '<div class="pc-spin"></div>' +
+            '<b style="color:var(--ink)">Saving your payout connection…</b>' +
+            '<span style="font-size:13px">This only takes a moment.</span>' +
+          '</div>';
+      }
+    }
+
     function close() {
       // Closing mid-flow keeps the current payout active; pending draft stays inactive until finished.
       if (window.changingPayoutAccount) {
@@ -2853,6 +2879,8 @@ window.getStripeSessionAccountId = function () { return stripeSessionData?.accou
       modal.classList.add('hidden');
       showStep1();
     }
+    window.closeChangePayoutAccountModal = close;
+    window.prepareChangePayoutAccountClosing = prepareClosing;
 
     btn.addEventListener('click', function (e) {
       e.preventDefault();

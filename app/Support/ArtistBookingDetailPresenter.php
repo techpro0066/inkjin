@@ -69,10 +69,8 @@ class ArtistBookingDetailPresenter
         $questionsAnswersData = is_array($booking->questions_answers ?? null) ? $booking->questions_answers : [];
         $balanceLabel = $booking->estimatedBalanceLabel();
         $balanceDue = $booking->remainingBalanceAmount();
-        $balanceDueRounded = round($balanceDue, 2);
-        $balanceDueLabel = fmod($balanceDueRounded, 1.0) === 0.0
-            ? '€'.(string) (int) $balanceDueRounded
-            : '€'.number_format($balanceDueRounded, 2, '.', '');
+        $currencyCode = MoneyCurrency::code($booking->currency ?: $artistUserDetail?->currency);
+        $balanceDueLabel = MoneyCurrency::format($balanceDue, $currencyCode, true);
 
         $moneyBreakdown = app(ArtistPayoutService::class)
             ->bookingDetailsMoneyBreakdown($booking, $artistUserDetail);
@@ -91,8 +89,9 @@ class ArtistBookingDetailPresenter
             'location' => trim((string) $booking->whereLabelForClient()),
             'status_label' => $label,
             'booking_type' => ucfirst((string) ($booking->booking_type ?? '')),
-            'deposit' => '€'.number_format((float) ($booking->deposit_amount ?? 0), 2),
+            'deposit' => MoneyCurrency::format((float) ($booking->deposit_amount ?? 0), $currencyCode),
             'balance' => $balanceLabel,
+            'currency' => $currencyCode,
             'questions' => $questionsAnswersData,
             'design_image' => $designImage,
             'booking_status' => $stKey,

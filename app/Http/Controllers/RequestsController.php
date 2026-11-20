@@ -16,6 +16,7 @@ use App\Models\StudioRequest;
 use App\Services\ArtistNavBadgeService;
 use App\Services\ArtistPayoutService;
 use App\Support\ArtistNotificationPreferences;
+use App\Support\MoneyCurrency;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -160,7 +161,7 @@ class RequestsController extends Controller
         $paymentLinksBlockedMessage = $user?->isDeactivated()
             ? $user->paymentLinkCreationBlockedMessage()
             : $quotesBlockedMessage;
-        $currency = '€';
+        $currency = MoneyCurrency::symbol($userDetail?->currency);
 
         $today = Carbon::today()->toDateString();
         $bookingsTotalCount = Booking::query()
@@ -472,6 +473,8 @@ class RequestsController extends Controller
             'estimatedTime' => null,
             'numberOfSessions' => null,
             'messageForClient' => null,
+            'currencyCode' => MoneyCurrency::code(Auth::user()?->userDetail?->currency),
+            'currencySymbol' => MoneyCurrency::symbol(Auth::user()?->userDetail?->currency),
             'isPending' => true,
             'canDecline' => false,
             'isBooked' => false,

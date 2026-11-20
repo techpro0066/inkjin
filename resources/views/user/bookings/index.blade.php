@@ -59,7 +59,7 @@
   .rsm-cal-day.unavailable { color: #cac4d3; }
   .rsm-cal-day.unavailable-future { color: #ba1a1a; background: #fff1f1; text-decoration: line-through; font-size: 0.7rem; }
   .rsm-cal-day.blocked-by-artist { color: #5c4033; background: #f4ebe4; font-size: 0.68rem; }
-  .rsm-cal-day.fully-booked-day { color: #494552; background: #ece8f0; font-size: 0.68rem; }
+  .rsm-cal-day.fully-booked-day { color: #ba1a1a; background: #fff1f1; text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: #ba1a1a; font-size: 0.68rem; }
   .rsm-cal-day.selected { background: #310f7a; color: #fff; }
   .rsm-cal-day.today { border: 2px solid #310f7a; }
   .rsm-cal-day.empty { pointer-events: none; background: transparent; }
@@ -173,8 +173,8 @@
                                 </a>
                             </div>
                             <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-on-surface-variant mb-3">
-                            <span><strong class="text-on-surface">Deposit paid:</strong> €{{ $booking->deposit_amount }}</span>
-                            <span><strong class="text-on-surface">Remaining:</strong> €{{ number_format($booking->remainingBalanceAmount(), 2) }}</span>
+                            <span><strong class="text-on-surface">Deposit paid:</strong> {{ \App\Support\MoneyCurrency::format((float) $booking->deposit_amount, $booking->currency) }}</span>
+                            <span><strong class="text-on-surface">Remaining:</strong> {{ \App\Support\MoneyCurrency::format((float) $booking->remainingBalanceAmount(), $booking->currency) }}</span>
                             @if (filled($booking->completion_code))
                               <span class="w-full"><strong class="text-on-surface">Completion code:</strong> <span class="font-mono font-semibold tracking-wide text-on-surface">{{ $booking->completion_code }}</span> <span class="text-on-surface-variant">(Share this with your artist after your session so they can mark the booking completed.)</span></span>
                             @endif
@@ -203,6 +203,7 @@
                                     <button type="button"
                                         class="js-user-cancel-open w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all active:scale-[0.98] {{ $canFullRefund ? 'bg-white text-error border border-red-200/90 shadow-sm hover:bg-red-50 hover:border-red-300' : 'bg-white text-on-surface border border-outline-variant/50 shadow-sm hover:bg-surface-container-highest hover:border-outline-variant' }}"
                                         data-booking-id="{{ $booking->id }}"
+                                        data-currency="{{ \App\Support\MoneyCurrency::code($booking->currency) }}"
                                         data-can-full-refund="{{ $canFullRefund ? '1' : '0' }}"
                                         data-window-human="{{ e($cancelWindowHuman) }}">
                                         <span class="material-symbols-outlined text-[20px]">event_busy</span>
@@ -290,11 +291,11 @@
                                 @endif
                             </div>
                             <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-on-surface-variant mb-3">
-                                <span><strong class="text-on-surface">Total paid:</strong> €{{ number_format($totalPaid, 2) }}</span>
+                                <span><strong class="text-on-surface">Total paid:</strong> {{ \App\Support\MoneyCurrency::format((float) $totalPaid, $booking->currency) }}</span>
                                 @if ($booking->full_amount_paid)
                                     <span class="text-green-700 font-medium">Paid in full</span>
                                 @elseif ($booking->remainingBalanceAmount() > 0.009)
-                                    <span><strong class="text-on-surface">Remaining:</strong> €{{ number_format($booking->remainingBalanceAmount(), 2) }}</span>
+                                    <span><strong class="text-on-surface">Remaining:</strong> {{ \App\Support\MoneyCurrency::format((float) $booking->remainingBalanceAmount(), $booking->currency) }}</span>
                                 @endif
                                 @if (filled($booking->completion_code))
                                   <span class="w-full"><strong class="text-on-surface">Completion code:</strong> <span class="font-mono font-semibold tracking-wide text-on-surface">{{ $booking->completion_code }}</span> <span class="text-on-surface-variant">(Share this with your artist after your session so they can mark the booking completed.)</span></span>
@@ -368,7 +369,7 @@
                                 </p>
                                 @if ($refundAmt > 0.009)
                                     <p class="mt-1.5 text-on-surface">
-                                        Refund: <strong class="tabular-nums">€{{ number_format($refundAmt, 2) }}</strong>
+                                        Refund: <strong class="tabular-nums">{{ \App\Support\MoneyCurrency::format($refundAmt, $booking->currency) }}</strong>
                                         @if ($booking->refund_status)
                                             <span class="text-on-surface-variant font-normal text-xs">({{ $booking->refund_status }})</span>
                                         @endif
@@ -376,7 +377,7 @@
                                 @else
                                     <p class="mt-1.5 text-on-surface-variant leading-snug">No refund was issued for the amount you paid, based on the cancellation policy and timing.</p>
                                     @if ($forfeited > 0.009)
-                                        <p class="mt-1 text-xs text-on-surface-variant">Deposit not refunded: <strong class="text-on-surface tabular-nums">€{{ number_format($forfeited, 2) }}</strong></p>
+                                        <p class="mt-1 text-xs text-on-surface-variant">Deposit not refunded: <strong class="text-on-surface tabular-nums">{{ \App\Support\MoneyCurrency::format($forfeited, $booking->currency) }}</strong></p>
                                     @endif
                                 @endif
                                 @if ($booking->cancelled_at)
@@ -850,10 +851,14 @@ window.filterBookings = function (clickedBtn, mode) {
   var modal = document.getElementById('bookingDetailModal');
   if (!modal) return;
 
-  function fmtEUR(n) {
+  function fmtCurrency(n, currency) {
     var v = parseFloat(n);
     if (isNaN(v)) v = 0;
-    return '€' + v.toFixed(2);
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency || 'EUR' }).format(v);
+    } catch (e) {
+      return (currency || 'EUR') + ' ' + v.toFixed(2);
+    }
   }
 
   function openBookingDetail(id) {
@@ -925,11 +930,11 @@ window.filterBookings = function (clickedBtn, mode) {
       }
     }
 
-    document.getElementById('bdmMinPrice').textContent = fmtEUR(d.designMinPrice);
-    document.getElementById('bdmDeposit').textContent = fmtEUR(d.deposit);
-    document.getElementById('bdmFee').textContent = fmtEUR(d.platformFee);
-    document.getElementById('bdmTotal').textContent = fmtEUR(d.totalPaid);
-    document.getElementById('bdmRemaining').textContent = fmtEUR(d.remainingBalance);
+    document.getElementById('bdmMinPrice').textContent = fmtCurrency(d.designMinPrice, d.currency);
+    document.getElementById('bdmDeposit').textContent = fmtCurrency(d.deposit, d.currency);
+    document.getElementById('bdmFee').textContent = fmtCurrency(d.platformFee, d.currency);
+    document.getElementById('bdmTotal').textContent = fmtCurrency(d.totalPaid, d.currency);
+    document.getElementById('bdmRemaining').textContent = fmtCurrency(d.remainingBalance, d.currency);
 
     modal.setAttribute('aria-hidden', 'false');
     requestAnimationFrame(function () {
@@ -981,11 +986,16 @@ window.filterBookings = function (clickedBtn, mode) {
   var fetchErr = document.getElementById('ucmFetchError');
   var refundAmt = document.getElementById('ucmRefundAmount');
   var refundSub = document.getElementById('ucmRefundSub');
+  var cancelCurrency = 'EUR';
 
-  function fmtEUR(n) {
+  function fmtCancelCurrency(n) {
     var v = parseFloat(n);
     if (isNaN(v)) v = 0;
-    return '€' + v.toFixed(2);
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: cancelCurrency }).format(v);
+    } catch (e) {
+      return cancelCurrency + ' ' + v.toFixed(2);
+    }
   }
 
   function csrfToken() {
@@ -1016,6 +1026,7 @@ window.filterBookings = function (clickedBtn, mode) {
 
   function openUserCancel(btn) {
     var id = btn.getAttribute('data-booking-id');
+    cancelCurrency = btn.getAttribute('data-currency') || 'EUR';
     var canFull = btn.getAttribute('data-can-full-refund') === '1';
     var winHuman = btn.getAttribute('data-window-human') || '';
     var leadFull = document.getElementById('ucmLeadFull');
@@ -1114,7 +1125,7 @@ window.filterBookings = function (clickedBtn, mode) {
           }
           var d = res.body.data;
           var amt = parseFloat(d.estimated_refund && d.estimated_refund.amount != null ? d.estimated_refund.amount : 0);
-          if (refundAmt) refundAmt.textContent = fmtEUR(amt);
+          if (refundAmt) refundAmt.textContent = fmtCancelCurrency(amt);
           if (refundSub) {
             if (amt < 0.005) {
               refundSub.textContent = 'No refund will be issued for this cancellation based on policy and how close you are to the appointment.';

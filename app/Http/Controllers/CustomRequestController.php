@@ -323,6 +323,7 @@ class CustomRequestController extends Controller
             'avoid_dates' => $storeAvailability ? (trim((string) ($payload['avoid_dates'] ?? '')) ?: null) : null,
             'how_much_flexible' => $storeAvailability ? trim((string) ($payload['how_much_flexible'] ?? '')) : null,
             'urgency' => $storeAvailability ? trim((string) ($payload['urgency'] ?? '')) : null,
+            'currency' => \App\Support\MoneyCurrency::code($userDetail->currency),
         ]);
 
         if ($isWaitlistJoin) {

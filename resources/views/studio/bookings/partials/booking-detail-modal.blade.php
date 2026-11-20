@@ -45,7 +45,7 @@
           </div>
           <div class="sbdm-kv" style="padding:8px 0;border-bottom:1px solid #F3EEF4"><span id="sbdmMoneyDepositLabel">Client paid · deposit</span><span id="sbdmMoneyDeposit">—</span></div>
           <div class="sbdm-kv" id="sbdmBookingFeeRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Service Booking Fee <span id="sbdmBookingFeeNote" class="sbdm-faint" style="font-size:12px"></span></span><span id="sbdmBookingFee">—</span></div>
-          <div class="sbdm-kv" style="padding:8px 0;border-bottom:1px solid #F3EEF4"><span>Stripe fee <span class="sbdm-faint" style="font-size:12px">1.5% + €0.25</span></span><span id="sbdmStripeFee">—</span></div>
+          <div class="sbdm-kv" style="padding:8px 0;border-bottom:1px solid #F3EEF4"><span>Stripe fee <span class="sbdm-faint" style="font-size:12px" id="sbdmStripeFeeHint">1.5% + fixed fee</span></span><span id="sbdmStripeFee">—</span></div>
           <div class="sbdm-kv" id="sbdmSplitRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Split</span><span id="sbdmSplitValue">—</span></div>
           <div class="sbdm-kv" id="sbdmArtistGetsRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span><span id="sbdmArtistGetsLabel">Artist gets</span> <span id="sbdmArtistGetsNote" class="sbdm-faint" style="font-size:12px"></span></span><span id="sbdmArtistGets">—</span></div>
           <div class="sbdm-kv" id="sbdmStudioShareRow" style="padding:8px 0;border-bottom:1px solid #F3EEF4;display:none"><span>Studio share <span id="sbdmStudioShareNote" class="sbdm-faint" style="font-size:12px"></span></span><span id="sbdmStudioShare">—</span></div>

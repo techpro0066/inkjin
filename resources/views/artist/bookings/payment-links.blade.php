@@ -7,6 +7,9 @@
   $filter = $filter ?? 'all';
   $search = $search ?? '';
   $filterCounts = $filterCounts ?? ['all' => 0, 'open' => 0, 'paid' => 0, 'expired' => 0];
+  $currencyCode = \App\Support\MoneyCurrency::code(
+      $currencyCode ?? (strlen((string) ($currency ?? '')) === 3 ? $currency : auth()->user()?->userDetail?->currency)
+  );
 @endphp
 
 @section('styles')
@@ -223,10 +226,13 @@
               $badge = trim((string) ($link->badge ?? ''));
               $depositAmt = (float) ($link->deposit ?? 0);
               $totalAmt = (float) ($link->total ?? 0);
+              $linkCurrency = \App\Support\MoneyCurrency::code($link->currency ?? ($currencyCode ?? null));
               $amountKind = ($link->source ?? '') === 'booking'
                 ? 'balance'
                 : (abs($depositAmt - $totalAmt) < 0.009 ? 'full payment' : 'deposit');
-              $amountLabel = '€'.number_format($depositAmt, $depositAmt == floor($depositAmt) ? 0 : 2).' '.$amountKind;
+              $amountLabel = \App\Support\MoneyCurrency::format($depositAmt, $linkCurrency, true).' '.$amountKind;
+              $depositLabel = \App\Support\MoneyCurrency::format($depositAmt, $linkCurrency);
+              $totalLabel = \App\Support\MoneyCurrency::format($totalAmt, $linkCurrency);
             @endphp
             <tr data-plid="{{ $link->source }}-{{ $link->id }}">
               <td data-label="TITLE">
@@ -236,8 +242,8 @@
                 @endif
               </td>
               <td class="muted" data-label="CLIENT">{{ $link->client }}</td>
-              <td data-label="DEPOSIT">€{{ number_format($depositAmt, 2) }}</td>
-              <td data-label="TOTAL"><b style="font-weight:600">€{{ number_format($totalAmt, 2) }}</b></td>
+              <td data-label="DEPOSIT">{{ $depositLabel }}</td>
+              <td data-label="TOTAL"><b style="font-weight:600">{{ $totalLabel }}</b></td>
               <td data-label="STATUS"><span class="pill {{ $pillClass }}">{{ $statusLabel }}</span></td>
               <td class="muted" data-label="CREATED">{{ $createdLabel }}</td>
               <td data-label="ACTIONS">
@@ -257,8 +263,8 @@
                     data-link="{{ e($publicUrl) }}"
                     data-title="{{ e($link->title) }}"
                     data-amount="{{ e($amountLabel) }}"
-                    data-deposit="€{{ number_format($depositAmt, 2) }}"
-                    data-total="€{{ number_format($totalAmt, 2) }}"
+                    data-deposit="{{ e($depositLabel) }}"
+                    data-total="{{ e($totalLabel) }}"
                     data-created="{{ e($createdLabel) }}"
                     data-status="{{ $status }}"
                     data-booking="{{ $bookingId ?: '' }}">

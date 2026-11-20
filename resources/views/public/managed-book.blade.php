@@ -279,7 +279,7 @@
         <h2 class="cc-designTitle">{{ $tattoo->title }}</h2>
         <div class="m">
           <span><span class="material-symbols-outlined ms">brush</span><span class="cc-designStyle">{{ ucwords(str_replace('-', ' ', $tattoo->primary_style)) }}</span></span>
-          <span class="cc-designPrice">€{{ $tattoo->min_price }} – €{{ $tattoo->max_price }}</span>
+          <span class="cc-designPrice">{{ \App\Support\MoneyCurrency::format((float) $tattoo->min_price, $currencyCode ?? $userDetail->currency, true) }} – {{ \App\Support\MoneyCurrency::format((float) $tattoo->max_price, $currencyCode ?? $userDetail->currency, true) }}</span>
           <span><span class="material-symbols-outlined ms">schedule</span><span class="cc-designTime">{{ $tattoo->sessionDurationLabel() }}</span></span>
         </div>
         <div class="w"><i class="cc-artistAvatar">{{ $userDetail->publicDisplayInitials() }}</i>with <b class="cc-artistName">{{ $userDetail->publicDisplayName() }}</b> at <b class="cc-studioName">{{ $userDetail->studio_name }}</b></div>
@@ -327,7 +327,8 @@
           $guestPrefDateMax = null;
       }
       $artistInitials = $userDetail->publicDisplayInitials();
-      $designPriceLabel = '€' . $tattoo->min_price . ' — €' . $tattoo->max_price;
+      $designPriceLabel = \App\Support\MoneyCurrency::format((float) $tattoo->min_price, $currencyCode ?? $userDetail->currency, true)
+          .' — '.\App\Support\MoneyCurrency::format((float) $tattoo->max_price, $currencyCode ?? $userDetail->currency, true);
     @endphp
 
     <!-- STEP 2: MANAGED (no consultation) -->

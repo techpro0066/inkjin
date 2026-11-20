@@ -38,7 +38,7 @@ class ChatController extends Controller
             'paymentLinksBlockedMessage' => $user?->isDeactivated()
                 ? $user->paymentLinkCreationBlockedMessage()
                 : $quotesBlockedMessage,
-            'currency' => '€',
+            'currency' => \App\Support\MoneyCurrency::symbol($userDetail?->currency),
         ]);
     }
 }

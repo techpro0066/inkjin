@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\PaymentLink;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Support\MoneyCurrency;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -77,16 +78,22 @@ class PaymentLinkArtistBookedMail extends Mailable
 
     private function paidAmount(): string
     {
-        return $this->formatEuro((float) $this->paymentLink->amount);
+        return MoneyCurrency::format(
+            (float) $this->paymentLink->amount,
+            $this->booking->currency ?: $this->userDetail->currency
+        );
     }
 
     private function dueAmount(): string
     {
         if ($this->paymentLink->payment_type !== 'deposit') {
-            return $this->formatEuro(0);
+            return MoneyCurrency::format(0, $this->booking->currency ?: $this->userDetail->currency);
         }
 
-        return $this->formatEuro((float) $this->paymentLink->due_amount);
+        return MoneyCurrency::format(
+            (float) $this->paymentLink->due_amount,
+            $this->booking->currency ?: $this->userDetail->currency
+        );
     }
 
     private function durationLabel(): string
@@ -136,13 +143,4 @@ class PaymentLinkArtistBookedMail extends Mailable
         return $start ? $start->format('H:i') : '';
     }
 
-    private function formatEuro(float $value): string
-    {
-        $rounded = round($value, 2);
-        if (fmod($rounded, 1.0) === 0.0) {
-            return '€'.(string) (int) $rounded;
-        }
-
-        return '€'.number_format($rounded, 2, '.', '');
-    }
 }

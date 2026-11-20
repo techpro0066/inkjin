@@ -111,11 +111,45 @@
     try {
       return new Intl.DateTimeFormat('en-CA', { timeZone: artistTimezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(dateObj);
     } catch (e) {
-      var y = dateObj.getFullYear();
-      var mo = String(dateObj.getMonth() + 1).padStart(2, '0');
-      var d = String(dateObj.getDate()).padStart(2, '0');
-      return y + '-' + mo + '-' + d;
+      return formatYmdFromParts(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
     }
+  }
+
+  function formatYmdFromParts(year, monthIndex, day) {
+    return year + '-' + String(monthIndex + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+  }
+
+  function weekdayKeyFromYmd(ymd) {
+    var parts = String(ymd || '').split('-');
+    if (parts.length !== 3) return weekdayKeys[0];
+    var date = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 12, 0, 0));
+    return weekdayKeys[date.getUTCDay()];
+  }
+
+  function artistNowMinutes() {
+    try {
+      var parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: artistTimezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).formatToParts(new Date());
+      var hour = 0;
+      var minute = 0;
+      parts.forEach(function (part) {
+        if (part.type === 'hour') hour = parseInt(part.value, 10);
+        if (part.type === 'minute') minute = parseInt(part.value, 10);
+      });
+      return (hour * 60) + minute;
+    } catch (e) {
+      var now = new Date();
+      return (now.getHours() * 60) + now.getMinutes();
+    }
+  }
+
+  function ymdForDateObj(dateObj) {
+    if (!(dateObj instanceof Date)) return '';
+    return formatYmdFromParts(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
   }
 
   function rangesForSelectedStudio(dayRanges) {
@@ -205,19 +239,19 @@
     return slots;
   }
 
-  function getSlotsForDate(dateObj, requiredMinutes) {
+  function getSlotsForDate(dateObj, requiredMinutes, ymdArtist) {
     if (!(dateObj instanceof Date)) return [];
     var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
     if (dayStart < todayStart) return [];
-    var ymdArtist = formatYmdArtistLocal(dateObj);
+    if (!ymdArtist) ymdArtist = ymdForDateObj(dateObj);
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
-    var weekdayKey = weekdayKeys[dateObj.getDay()];
+    var weekdayKey = weekdayKeyFromYmd(ymdArtist);
     var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
     if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
     var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
-    if (dayStart.getTime() === todayStart.getTime()) {
-      var now = new Date();
-      var nowMinutes = now.getHours() * 60 + now.getMinutes();
+    var todayYmdArtist = formatYmdArtistLocal(new Date());
+    if (ymdArtist === todayYmdArtist) {
+      var nowMinutes = artistNowMinutes();
       slots = slots.filter(function (slot) {
         return parseTime12hToMinutes(slot.time) > nowMinutes;
       });
@@ -232,19 +266,19 @@
     return slots;
   }
 
-  function getHypotheticalSlotsForDate(dateObj, requiredMinutes) {
+  function getHypotheticalSlotsForDate(dateObj, requiredMinutes, ymdArtist) {
     if (!(dateObj instanceof Date)) return [];
     var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
     if (dayStart < todayStart) return [];
-    var ymdArtist = formatYmdArtistLocal(dateObj);
+    if (!ymdArtist) ymdArtist = ymdForDateObj(dateObj);
     if (ymdArtist && isArtistDateBlocked(ymdArtist)) return [];
-    var weekdayKey = weekdayKeys[dateObj.getDay()];
+    var weekdayKey = weekdayKeyFromYmd(ymdArtist);
     var dayRanges = rangesForSelectedStudio(artistAvailabilitySchedule[weekdayKey]);
     if (!Array.isArray(dayRanges) || !dayRanges.length) return [];
     var slots = buildSlotsFromRanges(dayRanges, requiredMinutes);
-    if (dayStart.getTime() === todayStart.getTime()) {
-      var now = new Date();
-      var nowMinutes = now.getHours() * 60 + now.getMinutes();
+    var todayYmdArtist = formatYmdArtistLocal(new Date());
+    if (ymdArtist === todayYmdArtist) {
+      var nowMinutes = artistNowMinutes();
       slots = slots.filter(function (slot) {
         return parseTime12hToMinutes(slot.time) > nowMinutes;
       });
@@ -252,15 +286,15 @@
     return slots;
   }
 
-  function isDateFullyBookedOut(dateObj, requiredMinutes) {
+  function isDateFullyBookedOut(dateObj, requiredMinutes, ymdArtist) {
     if (!(dateObj instanceof Date)) return false;
     var dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
     if (dayStart < todayStart) return false;
-    var ymd = formatYmdArtistLocal(dateObj);
+    var ymd = ymdArtist || ymdForDateObj(dateObj);
     if (ymd && isArtistDateBlocked(ymd)) return false;
-    var hypo = getHypotheticalSlotsForDate(dateObj, requiredMinutes);
+    var hypo = getHypotheticalSlotsForDate(dateObj, requiredMinutes, ymd);
     if (!hypo.length) return false;
-    return getSlotsForDate(dateObj, requiredMinutes).length === 0;
+    return getSlotsForDate(dateObj, requiredMinutes, ymd).length === 0;
   }
 
   function getMainRequiredMinutes() {
@@ -332,20 +366,25 @@
         var dt = new Date(year, month, day);
         var div = document.createElement('div');
         div.textContent = day;
-        var ymdCell = formatYmdArtistLocal(dt);
+        var ymdCell = formatYmdFromParts(year, month, day);
         var isBlockedDay = !!(ymdCell && isArtistDateBlocked(ymdCell));
         var isSel = selectedDateObj && dt.toDateString() === selectedDateObj.toDateString();
         var isToday = dt.toDateString() === today.toDateString();
         var isFuture = dt > today;
         var isBeforeMin = minDay && dt < minDay;
-        var isAvail = getSlotsForDate(dt, requiredMinutes).length > 0;
-        var isFullyBooked = !isBeforeMin && !isAvail && !isBlockedDay && (isFuture || isToday) && isDateFullyBookedOut(dt, requiredMinutes);
+        var isAvail = getSlotsForDate(dt, requiredMinutes, ymdCell).length > 0;
+        var isFullyBooked = !isBeforeMin && !isAvail && !isBlockedDay && (isFuture || isToday)
+          && isDateFullyBookedOut(dt, requiredMinutes, ymdCell);
         var cls = 'rsm-cal-day';
         if (isSel) cls += ' selected';
         else if (isAvail && !isBeforeMin) cls += ' available';
-        else if (!isBeforeMin && isBlockedDay && (isFuture || isToday)) cls += ' blocked-by-artist';
-        else if (isFullyBooked) cls += ' fully-booked-day';
-        else if (isFuture || isToday) cls += ' unavailable-future';
+        else if (!isBeforeMin && isBlockedDay && (isFuture || isToday)) {
+          cls += ' blocked-by-artist';
+          div.title = 'Artist unavailable';
+        } else if (isFullyBooked) {
+          cls += ' fully-booked-day';
+          div.title = 'Fully booked / calendar busy';
+        } else if (isFuture || isToday) cls += ' unavailable-future';
         else cls += ' unavailable';
         if (isToday && !isSel) cls += ' today';
         div.className = cls;
@@ -608,12 +647,12 @@
       if (!rsmBookingId) return;
       var body = { reason: '' };
       if (consultationRequired && consultationTiming === 'separate' && !bookingHasLinkedConsult) {
-        body.new_date = formatYmdArtistLocal(tatSelDate);
+        body.new_date = ymdForDateObj(tatSelDate);
         body.new_start_local = tatSelTime;
-        body.consultation_date = formatYmdArtistLocal(ccSelDate);
+        body.consultation_date = ymdForDateObj(ccSelDate);
         body.consultation_start_local = ccSelTime;
       } else {
-        body.new_date = formatYmdArtistLocal(mainSelDate);
+        body.new_date = ymdForDateObj(mainSelDate);
         body.new_start_local = mainSelTime;
       }
       submitBtn.disabled = true;

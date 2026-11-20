@@ -1,6 +1,9 @@
 {{-- Payment link create modal markup (shared: home + payment links) --}}
 @php
-  $currencySymbol = $currencySymbol ?? $currency ?? ($dashboardStats['currency_symbol'] ?? '€');
+  $currencySymbol = $currencySymbol
+      ?? $currency
+      ?? ($dashboardStats['currency_symbol'] ?? null)
+      ?? \App\Support\MoneyCurrency::symbol(auth()->user()?->userDetail?->currency ?? ($studio->currency ?? null));
   $isAuto = ! empty($isAutoScheduling);
   $canPayLinks = ! empty($canCreatePaymentLinks);
 @endphp

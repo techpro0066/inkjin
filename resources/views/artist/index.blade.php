@@ -252,7 +252,7 @@
                         <span class="text-xs px-2 py-0.5 rounded-full bg-secondary-container text-secondary font-medium">{{ ucwords(str_replace('-', ' ', $artistDesign->primary_style)) }}</span>
                         <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">{{ $artistDesign->color == 'color' ? 'Full Color' : ($artistDesign->color == 'black-grey' ? 'Black & Grey' : ($artistDesign->color == 'both' ? 'Black & Color' : $artistDesign->color)) }}</span>
                     </div>
-                    <p class="text-sm font-semibold text-primary mb-3">€{{ $artistDesign->min_price }} — €{{ $artistDesign->max_price }}</p>
+                    <p class="text-sm font-semibold text-primary mb-3">{{ \App\Support\MoneyCurrency::format((float) $artistDesign->min_price, $userDetail->currency, true) }} — {{ \App\Support\MoneyCurrency::format((float) $artistDesign->max_price, $userDetail->currency, true) }}</p>
                     <a href="design-detail.html?design=5" onclick="event.stopPropagation()" class="block w-full py-2 bg-primary text-on-primary rounded-full text-sm font-semibold hover:bg-primary-container transition-colors text-center">
                         Get This Tattoo
                         </a>

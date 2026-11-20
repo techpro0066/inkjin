@@ -695,9 +695,9 @@ class MoneyController extends Controller
             return null;
         }
 
-        $deposit = max(0, round((float) ($booking->deposit_amount ?? 0), 2));
-        $stripeFee = $payout->estimateStripeFee($deposit);
-        $studioShare = round($deposit * ($studioPercent / 100), 2);
+        $clientPaid = $payout->collectedGrossForArtist($booking);
+        $stripeFee = $payout->stripeFeesForBooking($booking);
+        $studioShare = round($clientPaid * ($studioPercent / 100), 2);
         $studioStripe = round($stripeFee * ($studioPercent / 100), 2);
 
         // Artist-paid booking fee is shared by the same split % (client-paid fee is not).
@@ -783,13 +783,16 @@ class MoneyController extends Controller
             'date_sort' => $date?->timestamp ?? 0,
             'booking_label' => $bookingLabel,
             'artist' => $artistName,
-            'client_paid' => $deposit,
+            'client_paid' => $clientPaid,
             'studio_share' => $studioShare,
             'studio_percent' => $studioPercent,
             'studio_stripe' => $studioStripe,
             'studio_booking_fee' => $studioBookingFee,
             'studio_fee' => $studioFee,
             'studio_gets' => $studioGets,
+            'currency' => \App\Support\MoneyCurrency::code(
+                $booking->currency ?: $userDetail?->currency
+            ),
             'status_key' => $statusKey,
             'status_label' => $statusLabel,
             'status_pill' => $statusPill,

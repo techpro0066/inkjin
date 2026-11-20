@@ -71,7 +71,7 @@
       @endif
       <div class="flex justify-between">
         <span class="text-on-surface-variant">{{ $depositLabel ?: 'Artist Deposit' }}</span>
-        <span class="font-semibold">€{{ number_format($totals['deposit'], 2) }}</span>
+        <span class="font-semibold">{{ \App\Support\MoneyCurrency::format((float) $totals['deposit'], $currencyCode ?? $userDetail->currency) }}</span>
       </div>
       <div class="flex justify-between items-center gap-2">
         <span class="text-on-surface-variant flex items-center gap-1">
@@ -81,18 +81,18 @@
             <span class="tooltip-text" style="width:260px;text-align:left;">Inkjin's fee for booking, payment processing, and platform support — separate from the artist's price for the tattoo.@if($vatApplies) VAT ({{ $vatRateLabel }}%) applies to this fee.@endif</span>
           </span>
         </span>
-        <span class="font-semibold">€{{ number_format($totals['platform_fee'], 2) }}</span>
+        <span class="font-semibold">{{ \App\Support\MoneyCurrency::format((float) $totals['platform_fee'], $currencyCode ?? $userDetail->currency) }}</span>
       </div>
       @if($vatApplies)
         <div class="flex justify-between">
           <span class="text-on-surface-variant">{{ $totals['tax_label'] ?? 'VAT on booking fee ('.$vatRateLabel.'%)' }}</span>
-          <span class="font-semibold">€{{ number_format($totals['tax_amount'], 2) }}</span>
+          <span class="font-semibold">{{ \App\Support\MoneyCurrency::format((float) $totals['tax_amount'], $currencyCode ?? $userDetail->currency) }}</span>
         </div>
       @endif
       <hr class="border-outline-variant/20">
       <div class="flex justify-between">
         <span class="font-bold text-on-surface">Total Due Now</span>
-        <span class="font-bold text-primary text-lg">€{{ number_format($totals['total_due'], 2) }}</span>
+        <span class="font-bold text-primary text-lg">{{ \App\Support\MoneyCurrency::format((float) $totals['total_due'], $currencyCode ?? $userDetail->currency) }}</span>
       </div>
     </div>
   </div>

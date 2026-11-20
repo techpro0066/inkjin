@@ -102,8 +102,11 @@
       font-size: 0.72rem;
     }
     .cal-day.fully-booked-day {
-      color: #494552;
-      background: #ece8f0;
+      color: #ba1a1a;
+      background: #fff1f1;
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+      text-decoration-color: #ba1a1a;
       cursor: default;
       pointer-events: none;
       font-weight: 600;
@@ -413,7 +416,7 @@
         <h2 class="cc-designTitle">{{ $tattoo->title }}</h2>
         <div class="m">
           <span><span class="material-symbols-outlined ms">brush</span><span class="cc-designStyle">{{ ucwords(str_replace('-', ' ', $tattoo->primary_style)) }}</span></span>
-          <span class="cc-designPrice">€{{ $tattoo->min_price }} – €{{ $tattoo->max_price }}</span>
+          <span class="cc-designPrice">{{ \App\Support\MoneyCurrency::format((float) $tattoo->min_price, $currencyCode ?? $userDetail->currency, true) }} – {{ \App\Support\MoneyCurrency::format((float) $tattoo->max_price, $currencyCode ?? $userDetail->currency, true) }}</span>
           <span><span class="material-symbols-outlined ms">schedule</span><span class="cc-designTime">{{ $tattoo->sessionDurationLabel() }}</span></span>
         </div>
         <div class="w"><i class="cc-artistAvatar">{{ $userDetail->publicDisplayInitials() }}</i>with <b class="cc-artistName">{{ $userDetail->publicDisplayName() }}</b> at <b class="cc-studioName">{{ $studioNameDisplay }}</b></div>
@@ -894,10 +897,10 @@
             @include('partials.checkout-policy-agree', ['agreeOnChange' => 'checkPayReady()'])
             <p class="text-sm text-error hidden mb-3" id="formError"></p>
             <p class="text-sm text-error hidden mb-3" id="klarnaFormError"></p>
-            <button id="btnConfirmPay" disabled onclick="confirmBooking()" class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all text-base shadow-lg shadow-primary/20">Confirm & Pay <span id="btnPayTotalAmount">€250</span></button>
+            <button id="btnConfirmPay" disabled onclick="confirmBooking()" class="w-full py-4 rounded-xl font-bold text-white bg-primary disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all text-base shadow-lg shadow-primary/20">Confirm & Pay <span id="btnPayTotalAmount">{{ \App\Support\MoneyCurrency::format(0, $currencyCode ?? $userDetail->currency) }}</span></button>
             <button type="button" id="btnConfirmKlarna" class="hidden w-full py-4 rounded-xl font-bold text-[#17120F] bg-[#FFB3C7] hover:bg-[#FF9CB8] transition-colors text-base shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">Pay with Klarna</button>
             <p id="klarnaRedirectHint" class="hidden text-[10px] text-on-surface-variant text-center mt-2">You'll be redirected to Klarna to complete your payment</p>
-            @include('partials.checkout-receipt-note')
+            @include('partials.checkout-receipt-note', ['currencyCode' => $currencyCode ?? $userDetail->currency])
             </div>
           </div>
         </div>
@@ -1042,7 +1045,11 @@
     var stripePublishableKey = @json($stripePublishableKey ?? '');
     var minimumDepositType = @json($minimumDepositType ?? 'percentage');
     var minimumDepositAmount = parseFloat(@json($minimumDepositAmount ?? 30)) || 0;
-    var bookingFeeType = @json($bookingFeeType ?? 'client');
+    var bookingFeeClient = parseFloat(@json($bookingFeeClient ?? 10)) || 0;
+    var bookingCurrencyCode = @json(\App\Support\MoneyCurrency::code($currencyCode ?? $userDetail->currency ?? null));
+    var bookingCurrencySymbol = @json($currencySymbol ?? \App\Support\MoneyCurrency::symbol($currencyCode ?? $userDetail->currency ?? null));
+    var bookingCurrencyDigits = @json(\App\Support\MoneyCurrency::decimalPlaces($currencyCode ?? $userDetail->currency));
+    var bookingCurrencyScale = Math.pow(10, bookingCurrencyDigits);
     var bookingArtistUsername = @json($userDetail->user_name ?? '');
     var bookingTattooSlug = @json($tattoo->slug ?? '');
     var designDetailUrl = @json(route('public.tattoo', ['user_name' => $userDetail->user_name, 'tattoo_slug' => $tattoo->slug]));
@@ -1265,10 +1272,10 @@
     function getBookingDeposit() {
       var minPrice = parseFloat(@json($tattoo->min_price ?? 0)) || 0;
       if (minimumDepositType === 'amount') {
-        return Math.min(minPrice, Math.max(0, minimumDepositAmount));
+        return roundCurrency(Math.min(minPrice, Math.max(0, minimumDepositAmount)));
       }
       var percentage = Math.max(0, minimumDepositAmount);
-      return Math.round((minPrice * (percentage / 100)) * 100) / 100;
+      return roundCurrency(minPrice * (percentage / 100));
     }
 
     function getDepositLabel() {
@@ -1276,10 +1283,7 @@
     }
 
     function getBookingFee() {
-      var baseFee = 10.00;
-      if (bookingFeeType === 'artist') return 0.00;
-      if (bookingFeeType === 'split') return baseFee / 2;
-      return baseFee;
+      return roundCurrency(bookingFeeClient);
     }
 
     // EU VAT on booking fee only — mirrors App\Support\EuVat (flat 24% for all EU countries)
@@ -1336,7 +1340,7 @@
         return { amount: 0, label: null, rate: 0, country: null, isEu: false };
       }
       var rate = euVatRate;
-      var amount = Math.round((fee * (rate / 100)) * 100) / 100;
+      var amount = roundCurrency(fee * (rate / 100));
       return {
         amount: amount,
         label: 'VAT on booking fee (' + rate + '%)',
@@ -1439,14 +1443,14 @@
     function updateCheckoutReceiptNote(deposit, fee, tax) {
       var $note = $('#checkoutReceiptNote');
       if (!$note.length) return;
-      var depositText = formatEUR(deposit || 0);
+      var depositText = formatCurrency(deposit || 0);
       var feeAmt = Number(fee || 0);
       var taxAmt = Number(tax || 0);
       var html = "You'll receive a receipt from Inkjin on behalf of the artist for your <strong>" + depositText + '</strong> deposit';
       if (feeAmt > 0) {
-        html += ', and a separate Inkjin invoice for the <strong>' + formatEUR(feeAmt) + '</strong>';
+        html += ', and a separate Inkjin invoice for the <strong>' + formatCurrency(feeAmt) + '</strong>';
         if (taxAmt > 0) {
-          html += ' + <strong>' + formatEUR(taxAmt) + '</strong> VAT';
+          html += ' + <strong>' + formatCurrency(taxAmt) + '</strong> VAT';
         }
         html += ' booking fee';
       }
@@ -1455,16 +1459,31 @@
     }
 
     function getSubtotalDueNow() {
-      return Math.round((getBookingDeposit() + getBookingFee()) * 100) / 100;
+      return roundCurrency(getBookingDeposit() + getBookingFee());
     }
 
     function getDueNow() {
       var vat = getBookingFeeVat();
-      return Math.round((getSubtotalDueNow() + (vat.amount || 0)) * 100) / 100;
+      return roundCurrency(getSubtotalDueNow() + (vat.amount || 0));
     }
 
-    function formatEUR(amount) {
-      return '€' + Number(amount || 0).toFixed(2);
+    function roundCurrency(amount) {
+      return Math.round((Number(amount) || 0) * bookingCurrencyScale) / bookingCurrencyScale;
+    }
+
+    function toStripeAmount(amount) {
+      return Math.round((Number(amount) || 0) * bookingCurrencyScale);
+    }
+
+    function formatCurrency(amount) {
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: 'currency',
+          currency: bookingCurrencyCode
+        }).format(roundCurrency(amount));
+      } catch (e) {
+        return bookingCurrencySymbol + roundCurrency(amount).toFixed(bookingCurrencyDigits);
+      }
     }
 
     function formatDateTimeLabel(dateObj, timeLabel) {
@@ -1539,7 +1558,7 @@
       var total = getDueNow();
       var minBalance = Math.max(0, minPrice - deposit);
       var maxBalance = Math.max(0, maxPrice - deposit);
-      var balanceLabel = formatEUR(minBalance) + ' - ' + formatEUR(maxBalance);
+      var balanceLabel = formatCurrency(minBalance) + ' - ' + formatCurrency(maxBalance);
       var artistName = @json($userDetail->publicDisplayName());
       var selectedStudio = (typeof resolveSelectedStudio === 'function') ? resolveSelectedStudio() : null;
       var studioName = String((selectedStudio && selectedStudio.name) || @json($studioNamePlain) || 'Studio');
@@ -1588,25 +1607,25 @@
       $('#payPlacement').text(placement || 'To be confirmed');
       $('#paySize').text(sizeLabel);
       $('#payLocation').text(locationLabel || '—');
-      $('#payPriceEstimate').text(formatEUR(minPrice) + ' - ' + formatEUR(maxPrice));
+      $('#payPriceEstimate').text(formatCurrency(minPrice) + ' - ' + formatCurrency(maxPrice));
       $('#payDepositLabel').text(getDepositLabel());
-      $('#payDeposit').text(formatEUR(deposit));
-      $('#payBookingFee').text(formatEUR(fee));
-      $('#paySubtotal').text(formatEUR(subtotal));
+      $('#payDeposit').text(formatCurrency(deposit));
+      $('#payBookingFee').text(formatCurrency(fee));
+      $('#paySubtotal').text(formatCurrency(subtotal));
       $('#paySubtotalRow').addClass('hidden');
       var vatApplies = vat.amount > 0;
       $('#payFeeVatNote').text(bookingFeeVatNoteText(vatApplies));
       $('#payBookingFeeTooltip').text(bookingFeeTooltipText(vatApplies));
       if (vatApplies && vat.label) {
         $('#payTaxLabel').text(vat.label);
-        $('#payTax').text(formatEUR(vat.amount));
+        $('#payTax').text(formatCurrency(vat.amount));
         $('#payTaxRow').removeClass('hidden');
       } else {
         $('#payTaxRow').addClass('hidden');
       }
-      $('#payTotal').text(formatEUR(total));
+      $('#payTotal').text(formatCurrency(total));
       $('#payBalance').text(balanceLabel);
-      $('#btnPayTotalAmount').text(formatEUR(total));
+      $('#btnPayTotalAmount').text(formatCurrency(total));
       updateCheckoutReceiptNote(deposit, fee, vat.amount || 0);
       if (typeof window.checkoutUpdateWalletAmounts === 'function') {
         window.checkoutUpdateWalletAmounts();
@@ -1617,7 +1636,7 @@
       $('#confDesign').text(@json($tattoo->title ?? '—'));
       $('#confDateTime').text(confWhen);
       $('#confWhere').text(locationLabel || '—');
-      $('#confPaidNow').text(formatEUR(total));
+      $('#confPaidNow').text(formatCurrency(total));
       var confEmail = String(bookingConnectedEmail || $('#bdEmail').val() || '').trim();
       if (confEmail) $('#confEmail').text(confEmail);
       $('#payManagedArtist, #confManagedArtist').text(artistName);
@@ -1953,7 +1972,7 @@
         goToStep(4);
         $('#formError').removeClass('hidden').text(error.message || 'Payment failed. Please try again.');
       } finally {
-        $('#btnConfirmPay').prop('disabled', false).html('Confirm & Pay <span id="btnPayTotalAmount">' + formatEUR(getDueNow()) + '</span>');
+        $('#btnConfirmPay').prop('disabled', false).html('Confirm & Pay <span id="btnPayTotalAmount">' + formatCurrency(getDueNow()) + '</span>');
         checkPayReady();
       }
     }
@@ -2849,7 +2868,7 @@
             div.title = 'Artist unavailable';
           } else if (isFullyBooked) {
             cls += ' fully-booked-day';
-            div.title = 'Fully booked';
+            div.title = 'Fully booked / calendar busy';
           } else if (isFuture || isToday) cls += ' unavailable-future';
           else cls += ' unavailable';
           if (isToday && !isSel) cls += ' today';
@@ -2962,7 +2981,7 @@
             div.title = 'Artist unavailable';
           } else if (isFullyBooked) {
             cls += ' fully-booked-day';
-            div.title = 'Fully booked';
+            div.title = 'Fully booked / calendar busy';
           } else if (isFuture || isToday) cls += ' unavailable-future';
         else cls += ' unavailable';
         if (isToday && !isSel) cls += ' today';
@@ -3768,10 +3787,10 @@
   <script>
     window.checkoutStripeWalletConfig = {
       country: @json(strtoupper($userDetail->payout_bank_country ?? 'GR')),
-      currency: 'eur',
+      currency: bookingCurrencyCode.toLowerCase(),
       label: 'InkJin booking',
       getAmountCents: function () {
-        return Math.round(getDueNow() * 100);
+        return toStripeAmount(getDueNow());
       },
       isPolicyAccepted: function () {
         return $('#agreePolicy').is(':checked');
@@ -3837,13 +3856,13 @@
     }
 
     window.checkoutKlarnaConfig = {
-      currency: 'eur',
+      currency: bookingCurrencyCode.toLowerCase(),
       getStripe: function () {
         if (!stripe && typeof mountStripeElements === 'function') mountStripeElements();
         return stripe;
       },
       getAmountCents: function () {
-        return Math.round((getDueNow() || 0) * 100);
+        return toStripeAmount(getDueNow() || 0);
       },
       isPolicyAccepted: function () {
         return !!$('#agreePolicy').is(':checked');

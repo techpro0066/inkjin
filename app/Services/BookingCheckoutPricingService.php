@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\UserDetail;
 use App\Models\PlatformFee;
 use App\Support\EuVat;
+use App\Support\MoneyCurrency;
 
 class BookingCheckoutPricingService
 {
@@ -36,7 +37,8 @@ class BookingCheckoutPricingService
      */
     public function resolveBookingFeeWithoutReferralWaiver(UserDetail $userDetail): array
     {
-        $baseFee = PlatformFee::amountForCurrency($userDetail->currency);
+        $currency = MoneyCurrency::code($userDetail->currency);
+        $baseFee = MoneyCurrency::round(PlatformFee::amountForCurrency($currency), $currency);
         $feeType = (string) ($userDetail->booking_fee_type ?: 'client');
         if (! in_array($feeType, ['client', 'artist', 'split'], true)) {
             $feeType = 'client';
@@ -49,7 +51,8 @@ class BookingCheckoutPricingService
             $clientFee = $baseFee / 2;
         }
 
-        $artistFee = max(0, $baseFee - $clientFee);
+        $clientFee = MoneyCurrency::round($clientFee, $currency);
+        $artistFee = MoneyCurrency::round(max(0, $baseFee - $clientFee), $currency);
 
         return [
             'base_fee' => $baseFee,
@@ -78,7 +81,7 @@ class BookingCheckoutPricingService
         }
 
         return [
-            'deposit' => round($deposit, 2),
+            'deposit' => MoneyCurrency::round($deposit, $userDetail->currency),
             'type' => $type,
             'amount' => $amount,
             'label' => $label,
@@ -127,14 +130,14 @@ class BookingCheckoutPricingService
      */
     public function totalsForAmount(UserDetail $userDetail, float $baseAmount, ?string $clientPhone = null): array
     {
-        $baseAmount = round(max(0, $baseAmount), 2);
+        $baseAmount = MoneyCurrency::round(max(0, $baseAmount), $userDetail->currency);
         $bookingFee = $this->resolveBookingFee($userDetail);
         $platformFee = (float) $bookingFee['client_fee'];
-        $subtotal = round($baseAmount + $platformFee, 2);
+        $subtotal = MoneyCurrency::round($baseAmount + $platformFee, $userDetail->currency);
 
         $vat = EuVat::taxOnBookingFee($platformFee, $clientPhone);
-        $taxAmount = (float) $vat['tax_amount'];
-        $totalDue = round($subtotal + $taxAmount, 2);
+        $taxAmount = MoneyCurrency::round((float) $vat['tax_amount'], $userDetail->currency);
+        $totalDue = MoneyCurrency::round($subtotal + $taxAmount, $userDetail->currency);
 
         return [
             'base_amount' => $baseAmount,

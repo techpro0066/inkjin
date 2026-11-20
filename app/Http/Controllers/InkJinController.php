@@ -47,6 +47,7 @@ use App\Models\Placement;
 use App\Models\Style;
 use App\Models\UserQuestion;
 use App\Support\ArtistStudioChoices;
+use App\Support\MoneyCurrency;
 use App\Support\PaymentMethods;
 use App\Models\PendingVivaPayment;
 use App\Services\VivaCheckoutService;
@@ -887,13 +888,8 @@ class InkJinController extends Controller
                 $displayPortfolio = (bool) ($detail->display_portfolio ?? true);
                 $hasDesigns = $displayDesigns && in_array($detail->availability_status, ['design_custom', 'design_only'], true);
 
-                $currencyCode = strtoupper(trim((string) ($detail->currency ?? $studio->currency ?? 'EUR')));
-                $currencySymbol = match ($currencyCode) {
-                    'EUR' => '€',
-                    'GBP' => '£',
-                    'USD' => '$',
-                    default => $currencyCode !== '' ? $currencyCode . ' ' : '€',
-                };
+                $currencyCode = \App\Support\MoneyCurrency::code($detail->currency ?? $studio->currency);
+                $currencySymbol = \App\Support\MoneyCurrency::symbol($currencyCode);
 
                 return [
                     'user_id' => (int) $artistUser->id,
@@ -1448,6 +1444,9 @@ class InkJinController extends Controller
             ->pluck('name')
             ->values()
             ->all();
+        $currencyCode = MoneyCurrency::code($userDetail->currency);
+        $bookingFeeClient = app(BookingCheckoutPricingService::class)
+            ->resolveBookingFee($userDetail)['client_fee'];
 
         if ($userDetail->scheduling_type == 'auto') {
 
@@ -1539,6 +1538,9 @@ class InkJinController extends Controller
                 'minimumDepositType' => $userDetail->minimum_deposit_type ?: 'percentage',
                 'minimumDepositAmount' => (float) ($userDetail->minimum_deposit_amount ?? 30),
                 'bookingFeeType' => $userDetail->booking_fee_type ?: 'client',
+                'bookingFeeClient' => $bookingFeeClient,
+                'currencyCode' => $currencyCode,
+                'currencySymbol' => MoneyCurrency::symbol($currencyCode),
                 'artistSupportsIris' => PaymentMethods::isGreekArtist($userDetail),
                 'showIrisTab' => false,
                 'vivaRestore' => $vivaRestore,
@@ -1553,6 +1555,8 @@ class InkJinController extends Controller
                 'studioChoices' => $studioChoices,
                 'guestSpotId' => $guestSpot?->id,
                 'guestSpot' => $guestSpot,
+                'currencyCode' => $currencyCode,
+                'currencySymbol' => MoneyCurrency::symbol($currencyCode),
                 'hiddenStyleOptions' => $hiddenStyleOptions,
                 'hiddenPlacementOptions' => $hiddenPlacementOptions,
                 'artistConsultationSettings' => [
@@ -1621,7 +1625,8 @@ class InkJinController extends Controller
         $platformFee = (float) $totals['platform_fee'];
         $taxAmount = (float) $totals['tax_amount'];
         $totalDueNow = (float) $totals['total_due'];
-        $amountCents = (int) round($totalDueNow * 100);
+        $currencyCode = MoneyCurrency::code($userDetail->currency);
+        $amountCents = MoneyCurrency::toStripeAmount($totalDueNow, $currencyCode);
         $vat = [
             'tax_amount' => $taxAmount,
             'rate' => $totals['tax_rate'],
@@ -1637,7 +1642,7 @@ class InkJinController extends Controller
 
             $payload = [
                 'amount' => $amountCents,
-                'currency' => 'eur',
+                'currency' => strtolower($currencyCode),
                 'automatic_payment_methods' => [
                     'enabled' => true,
                     'allow_redirects' => 'always',
@@ -1669,7 +1674,7 @@ class InkJinController extends Controller
                 'client_secret' => $intent->client_secret,
                 'payment_intent_id' => $intent->id,
                 'amount_cents' => $amountCents,
-                'currency' => 'eur',
+                'currency' => strtolower($currencyCode),
                 'payout_type' => $payoutPreference,
                 'tax_amount' => $vat['tax_amount'],
                 'tax_label' => $vat['label'],
@@ -1738,7 +1743,9 @@ class InkJinController extends Controller
         }
 
         Stripe::setApiKey($stripeSecret);
-        $intent = PaymentIntent::retrieve($validated['payment_intent_id']);
+        $intent = PaymentIntent::retrieve($validated['payment_intent_id'], [
+            'expand' => ['latest_charge.balance_transaction'],
+        ]);
         if (!$intent || $intent->status !== 'succeeded') {
             return response()->json(['message' => 'Payment is not completed.'], 422);
         }
@@ -1756,6 +1763,10 @@ class InkJinController extends Controller
                     : null,
                 'consent_url' => $this->bookingConsentPublicUrl($existingByIntent),
             ]);
+        }
+
+        if (strtolower((string) $intent->currency) !== strtolower(MoneyCurrency::code($userDetail->currency))) {
+            return response()->json(['message' => 'Payment currency does not match this artist.'], 422);
         }
 
         $bookingEmail = mb_strtolower(trim((string) ($payload['email'] ?? '')));
@@ -1855,6 +1866,8 @@ class InkJinController extends Controller
         $totals = $pricing->checkoutTotals($userDetail, (float) $design->min_price, $payload['phone'] ?? null);
         $depositAmount = (float) $totals['deposit'];
         $platformFee = (float) $totals['platform_fee'];
+        $processingFee = app(\App\Services\StripeProcessingFeeService::class)
+            ->amountForPaymentIntent($intent);
         $taxAmount = (float) $totals['tax_amount'];
         $totalPaid = (float) $totals['total_due'];
 
@@ -1893,6 +1906,7 @@ class InkJinController extends Controller
             'payment_status' => 'paid',
             'deposit_amount' => $depositAmount,
             'platform_fee' => $platformFee,
+            'processing_fee' => $processingFee,
             'tax_amount' => $taxAmount,
             'tax_rate' => $totals['tax_rate'],
             'tax_country' => $totals['tax_country'],
@@ -2117,6 +2131,7 @@ class InkJinController extends Controller
             'avoid_dates' => trim((string) ($payload['avoid_dates'] ?? '')) ?: null,
             'how_much_flexible' => (string) ($payload['how_much_flexible'] ?? ''),
             'urgency' => $consultationRequired ? null : (string) ($payload['urgency'] ?? ''),
+            'currency' => \App\Support\MoneyCurrency::code($userDetail->currency),
         ]);
 
         app(\App\Services\MailcoachSubscriberService::class)
@@ -2378,7 +2393,7 @@ class InkJinController extends Controller
 
         $pricing = app(BookingCheckoutPricingService::class);
         $totals = $pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, $clientPhone);
-        $amountCents = (int) round(((float) $totals['total_due']) * 100);
+        $amountCents = MoneyCurrency::toStripeAmount((float) $totals['total_due'], $userDetail->currency);
 
         try {
             $order = $vivaCheckout->createOrReuseOrderForPublicBooking(

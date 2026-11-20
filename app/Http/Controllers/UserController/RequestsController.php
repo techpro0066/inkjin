@@ -9,6 +9,7 @@ use App\Models\Booking;
 use App\Models\BookingRequest;
 use App\Models\CustomRequest;
 use App\Support\PaymentMethods;
+use App\Support\MoneyCurrency;
 use App\Services\ManagedRequestBookingService;
 use App\Services\BookingCheckoutPricingService;
 use App\Services\GoogleCalendarBookingSyncService;
@@ -188,7 +189,10 @@ class RequestsController extends Controller
             'sizeLabel' => $bookingRequest->checkoutSizeLabel(),
             'priceEstimateLabel' => $bookingRequest->priceLabel(),
             'depositLabel' => $bookingRequest->checkoutDepositLabel($totals['deposit_meta']),
-            'balanceLabel' => '€'.number_format($minBalance, 2).' - €'.number_format($maxBalance, 2),
+            'balanceLabel' => MoneyCurrency::format($minBalance, $bookingRequest->currencyCode())
+                .' - '.MoneyCurrency::format($maxBalance, $bookingRequest->currencyCode()),
+            'currencyCode' => $bookingRequest->currencyCode(),
+            'currencySymbol' => MoneyCurrency::symbol($bookingRequest->currencyCode()),
         ]);
     }
 
@@ -224,7 +228,8 @@ class RequestsController extends Controller
         }
 
         $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, Auth::user()?->phone_number);
-        $amountCents = (int) round($totals['total_due'] * 100);
+        $currencyCode = $bookingRequest->currencyCode();
+        $amountCents = MoneyCurrency::toStripeAmount((float) $totals['total_due'], $currencyCode);
 
         if ($amountCents < 50) {
             return response()->json(['message' => 'Payment amount is too small.'], 422);
@@ -235,7 +240,7 @@ class RequestsController extends Controller
 
             $intent = PaymentIntent::create([
                 'amount' => $amountCents,
-                'currency' => 'eur',
+                'currency' => strtolower($currencyCode),
                 'automatic_payment_methods' => [
                     'enabled' => true,
                     'allow_redirects' => 'always',
@@ -256,7 +261,7 @@ class RequestsController extends Controller
                 'client_secret' => $intent->client_secret,
                 'payment_intent_id' => $intent->id,
                 'amount_cents' => $amountCents,
-                'currency' => 'eur',
+                'currency' => strtolower($currencyCode),
             ]);
         } catch (ApiErrorException $e) {
             return response()->json([

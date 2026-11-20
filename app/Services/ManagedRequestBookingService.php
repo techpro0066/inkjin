@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\CancellationService;
 use App\Support\ArtistStudioChoices;
 use App\Support\ArtistNotificationPreferences;
+use App\Support\MoneyCurrency;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -227,6 +228,10 @@ class ManagedRequestBookingService
             throw new \RuntimeException('Booking request is missing required relations.');
         }
 
+        if (strtolower((string) $intent->currency) !== strtolower($bookingRequest->currencyCode())) {
+            throw new \RuntimeException('Payment currency does not match this request.');
+        }
+
         app(GoogleCalendarBookingSyncService::class)->assertReadyForPayment($userDetail);
 
         $artistTimezone = $userDetail->timezone ?: 'UTC';
@@ -288,6 +293,8 @@ class ManagedRequestBookingService
 
         $clientPhone = $bookingRequest->user?->phone_number;
         $totals = $this->pricing->checkoutTotals($userDetail, (float) $tattoo->min_price, $clientPhone);
+        $processingFee = app(StripeProcessingFeeService::class)
+            ->amountForPaymentIntent($intent);
         $workplaceDetails = $this->workplaceDetailsForRequest($bookingRequest, $studioId);
 
         $booking = Booking::create([
@@ -313,6 +320,7 @@ class ManagedRequestBookingService
             'payment_status' => 'paid',
             'deposit_amount' => $totals['deposit'],
             'platform_fee' => $totals['platform_fee'],
+            'processing_fee' => $processingFee,
             'tax_amount' => $totals['tax_amount'],
             'tax_rate' => $totals['tax_rate'],
             'tax_country' => $totals['tax_country'],

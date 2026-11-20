@@ -9,6 +9,7 @@ use App\Models\GuestSpot;
 use App\Models\Waitlist;
 use App\Services\ArtistClientService;
 use App\Services\ArtistNavBadgeService;
+use App\Support\MoneyCurrency;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -41,7 +42,7 @@ class ClientsController extends Controller
             'waitlist' => $payload['waitlist'],
             'guestWaitlist' => $payload['guest_waitlist'],
             'stats' => $payload['stats'],
-            'currencySymbol' => '€',
+            'currencySymbol' => MoneyCurrency::symbol($userDetail?->currency),
             'booksOpen' => $booksOpen,
             'waitlistSignupMode' => $signupMode,
             'guestWaitlistAutoNotify' => $guestAutoNotify,

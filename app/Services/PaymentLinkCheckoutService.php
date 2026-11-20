@@ -13,6 +13,7 @@ use App\Models\PendingVivaPayment;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Support\PaymentMethods;
+use App\Support\MoneyCurrency;
 use App\Support\ArtistNotificationPreferences;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -61,7 +62,12 @@ class PaymentLinkCheckoutService
 
     public function amountCents(PaymentLink $link, ?User $client = null, ?string $phone = null): int
     {
-        return (int) round(((float) $this->checkoutTotals($link, $client, $phone)['total_due']) * 100);
+        $userDetail = $this->artistDetail($link);
+
+        return MoneyCurrency::toStripeAmount(
+            (float) $this->checkoutTotals($link, $client, $phone)['total_due'],
+            $userDetail->currency
+        );
     }
 
     /**
@@ -71,6 +77,7 @@ class PaymentLinkCheckoutService
     {
         $this->assertPayable($link);
         $userDetail = $this->artistDetail($link);
+        $currencyCode = MoneyCurrency::code($userDetail->currency);
         $this->calendarSync->assertReadyForPayment($userDetail);
 
         $amountCents = $this->amountCents($link, $client);
@@ -89,7 +96,7 @@ class PaymentLinkCheckoutService
         try {
             $intent = PaymentIntent::create([
                 'amount' => $amountCents,
-                'currency' => 'eur',
+                'currency' => strtolower($currencyCode),
                 'automatic_payment_methods' => [
                     'enabled' => true,
                     'allow_redirects' => 'always',
@@ -118,7 +125,7 @@ class PaymentLinkCheckoutService
             'client_secret' => (string) $intent->client_secret,
             'payment_intent_id' => (string) $intent->id,
             'amount_cents' => $amountCents,
-            'currency' => 'eur',
+            'currency' => strtolower($currencyCode),
         ];
     }
 
@@ -130,7 +137,9 @@ class PaymentLinkCheckoutService
         }
 
         Stripe::setApiKey($stripeSecret);
-        $intent = PaymentIntent::retrieve($paymentIntentId);
+        $intent = PaymentIntent::retrieve($paymentIntentId, [
+            'expand' => ['latest_charge.balance_transaction'],
+        ]);
         if (! $intent || $intent->status !== 'succeeded') {
             throw new RuntimeException('Payment is not completed.');
         }
@@ -149,6 +158,14 @@ class PaymentLinkCheckoutService
             throw new RuntimeException('Payment amount does not match this link.');
         }
 
+        $expectedCurrency = MoneyCurrency::code($this->artistDetail($link)->currency);
+        if (strtolower((string) $intent->currency) !== strtolower($expectedCurrency)) {
+            throw new RuntimeException('Payment currency does not match this link.');
+        }
+
+        $processingFee = app(StripeProcessingFeeService::class)
+            ->amountForPaymentIntent($intent);
+
         return $this->createConfirmedBooking(
             $link,
             $client,
@@ -156,7 +173,8 @@ class PaymentLinkCheckoutService
             vivaOrderCode: null,
             vivaTransactionId: null,
             paymentMethod: $paymentMethod,
-            currency: strtoupper((string) ($intent->currency ?: 'eur')),
+            currency: $expectedCurrency,
+            processingFee: $processingFee,
         );
     }
 
@@ -172,6 +190,10 @@ class PaymentLinkCheckoutService
         $clientPhone = PaymentMethods::checkoutPhoneForIris($link->payer_phone, $client->phone_number);
         if (! PaymentMethods::showIrisTab($userDetail, $clientPhone)) {
             throw new RuntimeException('IRIS payment is not available for this checkout.');
+        }
+
+        if (MoneyCurrency::code($userDetail->currency) !== 'EUR') {
+            throw new RuntimeException('IRIS payments are only available in EUR.');
         }
 
         $amountCents = $this->amountCents($link, $client);
@@ -330,6 +352,7 @@ class PaymentLinkCheckoutService
         ?string $vivaTransactionId,
         string $paymentMethod,
         string $currency = 'EUR',
+        ?float $processingFee = null,
     ): Booking {
         $userDetail = $this->artistDetail($link);
         $this->calendarSync->assertReadyForPayment($userDetail);
@@ -344,7 +367,8 @@ class PaymentLinkCheckoutService
             $vivaOrderCode,
             $vivaTransactionId,
             $paymentMethod,
-            $currency
+            $currency,
+            $processingFee
         ) {
             /** @var PaymentLink $locked */
             $locked = PaymentLink::query()->whereKey($link->id)->lockForUpdate()->firstOrFail();
@@ -412,6 +436,7 @@ class PaymentLinkCheckoutService
                 'deposit_amount' => $amount,
                 'full_amount_paid' => $isFullPayment,
                 'platform_fee' => $totals['platform_fee'],
+                'processing_fee' => $processingFee ?? 0,
                 'tax_amount' => $totals['tax_amount'],
                 'tax_rate' => $totals['tax_rate'],
                 'tax_country' => $totals['tax_country'],

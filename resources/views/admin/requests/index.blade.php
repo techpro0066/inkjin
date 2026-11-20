@@ -114,10 +114,10 @@
                   <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold {{ $statusClasses[$row['status_key']] ?? 'bg-gray-100 text-gray-700' }}">{{ $row['status'] }}</span>
                 </td>
                 <td class="px-5 py-4 font-semibold whitespace-nowrap">
-                  {{ $row['deposit'] !== null ? '€'.number_format($row['deposit'], 2) : '—' }}
+                  {{ $row['deposit'] !== null ? \App\Support\MoneyCurrency::format((float) $row['deposit'], $row['currency'] ?? null) : '—' }}
                 </td>
                 <td class="px-5 py-4 font-semibold whitespace-nowrap">
-                  {{ $row['amount'] !== null ? '€'.number_format($row['amount'], 2) : '—' }}
+                  {{ $row['amount'] !== null ? \App\Support\MoneyCurrency::format((float) $row['amount'], $row['currency'] ?? null) : '—' }}
                 </td>
                 <td class="px-5 py-4 text-right">
                   <a href="{{ $row['view_url'] }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">

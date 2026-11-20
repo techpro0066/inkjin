@@ -111,7 +111,7 @@
           'title' => 'Quote & details',
           'rows' => [
             ['label' => 'Request type', 'value' => ucfirst((string) ($panel['type'] ?? 'auto'))],
-            ['label' => 'Estimated price', 'value' => $panel['estimatedPriceLabel'] ?? (($panel['estimatedPrice'] ?? null) ? '€'.number_format((float) $panel['estimatedPrice'], 2) : null)],
+            ['label' => 'Estimated price', 'value' => $panel['estimatedPriceLabel'] ?? (($panel['estimatedPrice'] ?? null) ? \App\Support\MoneyCurrency::format((float) $panel['estimatedPrice'], $panel['currency'] ?? null) : null)],
             ['label' => 'Estimated time', 'value' => $panel['estimatedTime'] ?? null],
             ['label' => 'Sessions', 'value' => $panel['numberOfSessions'] ?? null],
             ['label' => 'Message for client', 'value' => $panel['messageForClient'] ?? null],

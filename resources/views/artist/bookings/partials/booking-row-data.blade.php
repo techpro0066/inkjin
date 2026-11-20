@@ -56,18 +56,13 @@
       && ! $booking->remaining_amount_released
       && ! $booking->full_amount_paid
       && ! in_array($stKey, ['cancelled', 'completed', 'declined'], true);
+  $currencyCode = \App\Support\MoneyCurrency::code($booking->currency ?: ($artistUserDetail->currency ?? null));
   $balanceDueRounded = round($balanceDue, 2);
-  $balanceDueLabel = fmod($balanceDueRounded, 1.0) === 0.0
-      ? '€'.(string) (int) $balanceDueRounded
-      : '€'.number_format($balanceDueRounded, 2, '.', '');
+  $balanceDueLabel = \App\Support\MoneyCurrency::format($balanceDueRounded, $currencyCode, true);
   $paidRounded = round((float) ($booking->deposit_amount ?? 0), 2);
-  $paidLabel = fmod($paidRounded, 1.0) === 0.0
-      ? '€'.(string) (int) $paidRounded
-      : '€'.number_format($paidRounded, 2, '.', '');
+  $paidLabel = \App\Support\MoneyCurrency::format($paidRounded, $currencyCode, true);
   $totalRounded = round($paidRounded + $balanceDue, 2);
-  $totalLabel = fmod($totalRounded, 1.0) === 0.0
-      ? '€'.(string) (int) $totalRounded
-      : '€'.number_format($totalRounded, 2, '.', '');
+  $totalLabel = \App\Support\MoneyCurrency::format($totalRounded, $currencyCode, true);
   $unsettledCollection = $booking->latestBalanceCollection;
   $isUnsettledReminder = $unsettledCollection && $unsettledCollection->isUnsettledOpen();
   $expectedPhrase = $isUnsettledReminder ? $unsettledCollection->expectedDuePhrase() : '';

@@ -4,14 +4,31 @@
 
 @php
   $activeNav = 'money';
-  $currency = $stats['currency_symbol'] ?? '€';
+  $currencyCode = \App\Support\MoneyCurrency::code($stats['currency'] ?? auth()->user()?->userDetail?->currency);
+  $currency = $stats['currency_symbol'] ?? \App\Support\MoneyCurrency::symbol($currencyCode);
+  $platformFeeLabel = \App\Support\MoneyCurrency::format(
+      \App\Models\PlatformFee::amountForCurrency($currencyCode),
+      $currencyCode,
+      true
+  );
   $payoutConnected = (bool) ($stats['payout_account_connected'] ?? false);
   $payoutMode = in_array(($stats['payout_mode'] ?? 'automatic'), ['manual', 'automatic'], true)
     ? ($stats['payout_mode'] ?? 'automatic')
     : 'automatic';
   $availableBalance = (float) ($stats['available_balance'] ?? 0);
+  $availableSchedule = $stats['available_schedule'] ?? [];
+  $hasAvailableSchedule = count($availableSchedule) > 0;
+  $availableByCurrency = $stats['available_by_currency'] ?? [];
+  $availableCurrencyPreview = array_slice($availableByCurrency, 0, 2);
+  $availableHasMoreCurrencies = count($availableByCurrency) > 2;
   $pendingSchedule = $stats['pending_schedule'] ?? [];
   $hasPendingSchedule = count($pendingSchedule) > 0;
+  $pendingByCurrency = $stats['pending_by_currency'] ?? [];
+  $pendingCurrencyPreview = array_slice($pendingByCurrency, 0, 2);
+  $pendingHasMoreCurrencies = count($pendingByCurrency) > 2;
+  $earnedByCurrency = $stats['earned_by_currency'] ?? [];
+  $earnedPreview = array_slice($earnedByCurrency, 0, 2);
+  $earnedHasMoreCurrencies = count($earnedByCurrency) > 2;
   $payoutTypeLabel = (string) ($stats['payout_type_label'] ?? 'Artist payouts');
   $nextPayoutMeta = (string) ($stats['next_payout_meta'] ?? 'Paid automatically to your bank');
   $nextArrivalLabel = $stats['next_arrival_label'] ?? null;
@@ -112,10 +129,23 @@
   <div class="grid" style="grid-template-columns:1.2fr 1fr 1fr">
     <div class="card pad kpi-dark">
       <div class="lbl">{{ $payoutMode === 'automatic' ? 'Next payout' : 'Available' }}</div>
-      <div style="font-size:34px;font-weight:800;margin:8px 0 4px;letter-spacing:-.6px">
-        {{ $currency }}{{ number_format($payoutConnected ? $availableBalance : 0, 2) }}
-      </div>
-      <div style="font-size:12.5px;color:#bdbdbd">{{ $nextPayoutMeta }}</div>
+      @if($payoutConnected && count($availableByCurrency) > 0)
+        <div style="margin:8px 0 4px;display:flex;flex-direction:column;gap:4px">
+          @foreach($availableCurrencyPreview as $row)
+            <div style="font-size:{{ count($availableByCurrency) === 1 ? '34px' : '22px' }};font-weight:800;letter-spacing:-.6px">{{ $row['label'] }}</div>
+          @endforeach
+        </div>
+        @if($availableHasMoreCurrencies)
+          <button type="button" class="stat-click" id="openAvailableCurrenciesBtn" style="width:auto;margin-top:4px;color:#fff;font-weight:700;font-size:13px">
+            View details →
+          </button>
+        @endif
+      @else
+        <div style="font-size:34px;font-weight:800;margin:8px 0 4px;letter-spacing:-.6px">
+          {{ \App\Support\MoneyCurrency::format(0, $currencyCode) }}
+        </div>
+      @endif
+      <div style="font-size:12.5px;color:#bdbdbd;margin-top:8px">{{ $nextPayoutMeta }}</div>
       @if($nextArrivalLabel)
         <div class="row kpi-meta">
           <span class="ms">event</span>
@@ -130,7 +160,7 @@
       @if($outstandingArtistFee > 0.009)
         <div class="row kpi-meta">
           <span class="ms">receipt_long</span>
-          <span>{{ $currency }}{{ number_format($outstandingArtistFee, 2) }} booking fee balance will be deducted from future payouts</span>
+          <span>{{ \App\Support\MoneyCurrency::format($outstandingArtistFee, $currencyCode) }} booking fee balance will be deducted from future payouts</span>
         </div>
       @endif
       @if($payoutConnected && $payoutMode === 'manual' && $availableBalance > 0.009)
@@ -145,17 +175,32 @@
     </div>
 
     <div class="card pad">
-      <button type="button" class="stat-click" id="openPendingScheduleBtn" @if(! $hasPendingSchedule) disabled @endif aria-label="View pending earnings">
-        <div class="row" style="justify-content:space-between">
-          <div class="lbl">Pending</div>
-          <span class="ms" style="color:#B86E00">schedule</span>
+      <div class="row" style="justify-content:space-between">
+        <div class="lbl">Pending</div>
+        <span class="ms" style="color:#B86E00">schedule</span>
+      </div>
+      @if($hasPendingSchedule)
+        <div style="margin:8px 0 4px;display:flex;flex-direction:column;gap:4px">
+          @foreach($pendingCurrencyPreview as $row)
+            <div style="font-size:{{ count($pendingByCurrency) === 1 ? '30px' : '22px' }};font-weight:800;letter-spacing:-.3px">{{ $row['label'] }}</div>
+          @endforeach
         </div>
-        <div style="font-size:30px;font-weight:800;margin:8px 0 4px">{{ $currency }}{{ number_format($stats['pending_total'], 2) }}</div>
         <div class="faint" style="font-size:12.5px">Released after each session, then paid out</div>
-        <div style="margin-top:16px;font-weight:600;font-size:13px;color:{{ $hasPendingSchedule ? 'var(--pri)' : 'var(--muted)' }}">
-          {{ $hasPendingSchedule ? 'View by booking →' : 'No pending payouts' }}
+        <div style="margin-top:12px;display:flex;flex-direction:column;align-items:flex-start;gap:6px">
+          <button type="button" class="stat-click" id="openPendingScheduleBtn" style="width:auto;color:var(--pri);font-weight:600;font-size:13px">
+            View by booking →
+          </button>
+          @if($pendingHasMoreCurrencies)
+            <button type="button" class="stat-click" id="openPendingCurrenciesBtn" style="width:auto;color:var(--pri);font-weight:700;font-size:13px">
+              View details →
+            </button>
+          @endif
         </div>
-      </button>
+      @else
+        <div style="font-size:30px;font-weight:800;margin:8px 0 4px">{{ \App\Support\MoneyCurrency::format(0, $currencyCode) }}</div>
+        <div class="faint" style="font-size:12.5px">Released after each session, then paid out</div>
+        <div style="margin-top:16px;font-weight:600;font-size:13px;color:var(--muted)">No pending payouts</div>
+      @endif
     </div>
 
     <div class="card pad">
@@ -163,8 +208,21 @@
         <div class="lbl">Total earned</div>
         <span class="ms" style="color:#7A1FC4">trending_up</span>
       </div>
-      <div style="font-size:30px;font-weight:800;margin:8px 0 4px">{{ $currency }}{{ number_format($stats['total_earned'], 2) }}</div>
-      <div class="faint" style="font-size:12.5px">{{ $stats['since_label'] }}</div>
+      @if(count($earnedByCurrency) > 0)
+        <div style="margin:8px 0 4px;display:flex;flex-direction:column;gap:4px">
+          @foreach($earnedPreview as $row)
+            <div style="font-size:{{ count($earnedByCurrency) === 1 ? '30px' : '22px' }};font-weight:800;letter-spacing:-.3px">{{ $row['label'] }}</div>
+          @endforeach
+        </div>
+        @if($earnedHasMoreCurrencies)
+          <button type="button" class="stat-click" id="openEarnedMoreBtn" style="width:auto;margin-top:8px;color:var(--pri);font-weight:700;font-size:13px">
+            View details →
+          </button>
+        @endif
+      @else
+        <div style="font-size:30px;font-weight:800;margin:8px 0 4px">{{ \App\Support\MoneyCurrency::format(0, $currencyCode) }}</div>
+      @endif
+      <div class="faint" style="font-size:12.5px;margin-top:8px">{{ $stats['since_label'] }}</div>
     </div>
   </div>
 
@@ -240,7 +298,7 @@
     </table>
     <div id="paymentsMobileCards" hidden></div>
     <div class="help" style="margin:0;padding:12px 16px;border-top:1px solid #F3EEF4">
-      Stripe charges 1.5% + €0.25 per payment (EU cards; other cards cost more). You pay it. With a studio split, you and the studio each pay your own part, and the Stripe fee column shows yours. The €10 Service Booking Fee is paid by the client and goes to Bookpay, so it isn't in these amounts. Tap a row to see the breakdown.
+      The Stripe fee column shows the actual processing fee recorded for each booking. With a studio split, your share follows the saved split. The {{ $platformFeeLabel }} Service Booking Fee is paid by the client and goes to Bookpay, so it isn't in these amounts. Tap a row to see the breakdown.
     </div>
   </div>
 
@@ -277,8 +335,8 @@
       <p class="muted" style="margin:0 0 16px;font-size:13.5px;line-height:1.5">Enter how much you want to withdraw from your available balance.</p>
       <form id="requestPayoutForm" novalidate>
         <div class="card pad" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-          <span class="lbl" style="margin:0">Available</span>
-          <b>{{ $currency }}{{ number_format($availableBalance, 2) }}</b>
+          <span class="lbl" style="margin:0">Available ({{ $currencyCode }})</span>
+          <b>{{ \App\Support\MoneyCurrency::format($availableBalance, $currencyCode) }}</b>
         </div>
         <label class="fl" for="requestPayoutAmount">Amount</label>
         <div class="in" style="padding-left:12px">
@@ -286,7 +344,7 @@
           <input type="number" id="requestPayoutAmount" name="amount" inputmode="decimal" min="0.01" step="0.01" max="{{ number_format($availableBalance, 2, '.', '') }}" placeholder="0.00" style="border:0;outline:0;width:100%;font:inherit;background:transparent">
         </div>
         <div class="row" style="justify-content:space-between;margin-top:8px">
-          <span class="help" style="margin:0">Max {{ $currency }}{{ number_format($availableBalance, 2) }}</span>
+          <span class="help" style="margin:0">Max {{ \App\Support\MoneyCurrency::format($availableBalance, $currencyCode) }}</span>
           <button type="button" id="requestPayoutMaxBtn" class="btn sm ghost" style="padding:4px 10px">Withdraw all</button>
         </div>
         <p id="requestPayoutError" class="help" style="margin-top:10px;color:var(--red);display:none"></p>
@@ -310,10 +368,17 @@
       <button type="button" class="bdm-x" id="closePendingScheduleBtn" aria-label="Close"><span class="ms">close</span></button>
     </div>
     <div class="bdm-b">
-      <div class="card pad" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-        <span class="lbl" style="margin:0">Total pending</span>
-        <b>{{ $currency }}{{ number_format($stats['pending_total'], 2) }}</b>
-      </div>
+      @if(! empty($stats['pending_by_currency']))
+        <div class="card pad" style="margin-bottom:14px">
+          <div class="lbl" style="margin:0 0 8px">Total pending</div>
+          @foreach($stats['pending_by_currency'] as $row)
+            <div class="row" style="justify-content:space-between;gap:12px;padding:2px 0">
+              <span class="muted" style="font-size:12.5px">{{ $row['currency'] }}</span>
+              <b>{{ $row['label'] }}</b>
+            </div>
+          @endforeach
+        </div>
+      @endif
       @if($hasPendingSchedule)
         <div class="card" style="overflow:hidden">
           @foreach($pendingSchedule as $item)
@@ -324,7 +389,7 @@
                   <div class="faint" style="font-size:12.5px">{{ $item['service'] }}</div>
                   <div class="faint" style="font-size:11.5px">{{ $item['reference'] }}</div>
                 </div>
-                <b style="font-size:13.5px;white-space:nowrap">{{ $currency }}{{ number_format($item['amount'], 2) }}</b>
+                <b style="font-size:13.5px;white-space:nowrap">{{ $item['amount_label'] }}</b>
               </div>
               <div class="row" style="justify-content:space-between;margin-top:8px;gap:10px;font-size:12.5px">
                 <span class="muted">{{ $item['reason'] }}</span>
@@ -337,6 +402,90 @@
         <p class="muted" style="text-align:center;padding:28px 0">No pending earnings right now.</p>
       @endif
       <button type="button" id="dismissPendingScheduleBtn" class="btn" style="width:100%;justify-content:center;margin-top:14px">Close</button>
+    </div>
+  </div>
+</div>
+
+{{-- Available / next payout currencies modal (when more than 2) --}}
+<div id="availableCurrenciesModal" class="bdm" role="dialog" aria-modal="true" aria-labelledby="availableCurrenciesTitle" hidden>
+  <div class="bdm-box" style="width:420px">
+    <div class="bdm-h">
+      <div style="flex:1">
+        <h2 id="availableCurrenciesTitle">{{ $payoutMode === 'automatic' ? 'Next payout' : 'Available' }}</h2>
+        <p class="faint" style="font-size:13px;margin-top:4px">Totals by booking currency</p>
+      </div>
+      <button type="button" class="bdm-x" id="closeAvailableCurrenciesBtn" aria-label="Close"><span class="ms">close</span></button>
+    </div>
+    <div class="bdm-b">
+      @if(count($availableByCurrency) > 0)
+        <div class="card" style="overflow:hidden">
+          @foreach($availableByCurrency as $row)
+            <div class="row" style="justify-content:space-between;gap:12px;padding:14px;border-bottom:1px solid #F3EEF4">
+              <span class="muted">{{ $row['currency'] }}</span>
+              <b style="font-size:16px">{{ $row['label'] }}</b>
+            </div>
+          @endforeach
+        </div>
+      @else
+        <p class="muted" style="text-align:center;padding:28px 0">Nothing ready to pay out yet.</p>
+      @endif
+      <button type="button" id="dismissAvailableCurrenciesBtn" class="btn" style="width:100%;justify-content:center;margin-top:14px">Close</button>
+    </div>
+  </div>
+</div>
+
+{{-- Total earned modal --}}
+<div id="earnedTotalsModal" class="bdm" role="dialog" aria-modal="true" aria-labelledby="earnedTotalsTitle" hidden>
+  <div class="bdm-box" style="width:420px">
+    <div class="bdm-h">
+      <div style="flex:1">
+        <h2 id="earnedTotalsTitle">Total earned</h2>
+        <p class="faint" style="font-size:13px;margin-top:4px">{{ $stats['since_label'] }} · totals by booking currency</p>
+      </div>
+      <button type="button" class="bdm-x" id="closeEarnedTotalsBtn" aria-label="Close"><span class="ms">close</span></button>
+    </div>
+    <div class="bdm-b">
+      @if(count($earnedByCurrency) > 0)
+        <div class="card" style="overflow:hidden">
+          @foreach($earnedByCurrency as $row)
+            <div class="row" style="justify-content:space-between;gap:12px;padding:14px;border-bottom:1px solid #F3EEF4">
+              <span class="muted">{{ $row['currency'] }}</span>
+              <b style="font-size:16px">{{ $row['label'] }}</b>
+            </div>
+          @endforeach
+        </div>
+      @else
+        <p class="muted" style="text-align:center;padding:28px 0">No earnings yet.</p>
+      @endif
+      <button type="button" id="dismissEarnedTotalsBtn" class="btn" style="width:100%;justify-content:center;margin-top:14px">Close</button>
+    </div>
+  </div>
+</div>
+
+{{-- Pending currencies modal (when more than 2) --}}
+<div id="pendingCurrenciesModal" class="bdm" role="dialog" aria-modal="true" aria-labelledby="pendingCurrenciesTitle" hidden>
+  <div class="bdm-box" style="width:420px">
+    <div class="bdm-h">
+      <div style="flex:1">
+        <h2 id="pendingCurrenciesTitle">Pending</h2>
+        <p class="faint" style="font-size:13px;margin-top:4px">Totals by booking currency</p>
+      </div>
+      <button type="button" class="bdm-x" id="closePendingCurrenciesBtn" aria-label="Close"><span class="ms">close</span></button>
+    </div>
+    <div class="bdm-b">
+      @if(count($pendingByCurrency) > 0)
+        <div class="card" style="overflow:hidden">
+          @foreach($pendingByCurrency as $row)
+            <div class="row" style="justify-content:space-between;gap:12px;padding:14px;border-bottom:1px solid #F3EEF4">
+              <span class="muted">{{ $row['currency'] }}</span>
+              <b style="font-size:16px">{{ $row['label'] }}</b>
+            </div>
+          @endforeach
+        </div>
+      @else
+        <p class="muted" style="text-align:center;padding:28px 0">No pending earnings right now.</p>
+      @endif
+      <button type="button" id="dismissPendingCurrenciesBtn" class="btn" style="width:100%;justify-content:center;margin-top:14px">Close</button>
     </div>
   </div>
 </div>
@@ -460,33 +609,43 @@
 </script>
 <script>
   (function () {
-    const openBtn = document.getElementById('openPendingScheduleBtn');
-    const modal = document.getElementById('pendingScheduleModal');
-    const closeBtn = document.getElementById('closePendingScheduleBtn');
-    const dismissBtn = document.getElementById('dismissPendingScheduleBtn');
-    if (!openBtn || !modal) return;
+    function wireModal(openIds, modalId, closeIds) {
+      const modal = document.getElementById(modalId);
+      if (!modal) return;
+      const openers = openIds.map(function (id) { return document.getElementById(id); }).filter(Boolean);
+      const closers = closeIds.map(function (id) { return document.getElementById(id); }).filter(Boolean);
+      if (!openers.length) return;
 
-    function openModal() {
-      modal.hidden = false;
-      modal.classList.add('open');
-    }
-    function closeModal() {
-      modal.classList.remove('open');
-      modal.hidden = true;
+      function openModal() {
+        modal.hidden = false;
+        modal.classList.add('open');
+      }
+      function closeModal() {
+        modal.classList.remove('open');
+        modal.hidden = true;
+      }
+
+      openers.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (btn.disabled) return;
+          openModal();
+        });
+      });
+      closers.forEach(function (btn) {
+        btn.addEventListener('click', closeModal);
+      });
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) closeModal();
+      });
     }
 
-    openBtn.addEventListener('click', function () {
-      if (openBtn.disabled) return;
-      openModal();
-    });
-    closeBtn?.addEventListener('click', closeModal);
-    dismissBtn?.addEventListener('click', closeModal);
-    modal.addEventListener('click', function (e) {
-      if (e.target === modal) closeModal();
-    });
+    wireModal(['openPendingScheduleBtn'], 'pendingScheduleModal', ['closePendingScheduleBtn', 'dismissPendingScheduleBtn']);
+    wireModal(['openPendingCurrenciesBtn'], 'pendingCurrenciesModal', ['closePendingCurrenciesBtn', 'dismissPendingCurrenciesBtn']);
+    wireModal(['openAvailableCurrenciesBtn'], 'availableCurrenciesModal', ['closeAvailableCurrenciesBtn', 'dismissAvailableCurrenciesBtn']);
+    wireModal(['openEarnedMoreBtn'], 'earnedTotalsModal', ['closeEarnedTotalsBtn', 'dismissEarnedTotalsBtn']);
   })();
 </script>
-<script src="{{ asset('js/artist-payments.js') }}?v=7"></script>
+<script src="{{ asset('js/artist-payments.js') }}?v=8"></script>
 <style>
   @media(max-width:900px){
     .money-page .money-filters{grid-template-columns:1fr 1fr!important}

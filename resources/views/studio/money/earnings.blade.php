@@ -11,6 +11,7 @@
     'earned_this_month' => 0,
     'month_delta_label' => 'No earnings yet this month',
   ];
+  $studioCurrency = \App\Support\MoneyCurrency::code($studio->currency ?? null);
 @endphp
 
 @push('styles')
@@ -56,17 +57,17 @@
   <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px">
     <div class="card pad">
       <div class="lbl">Next payout</div>
-      <div style="font-size:26px;font-weight:800;margin-top:6px">€{{ number_format((float) $summary['next_payout'], ((float) $summary['next_payout']) == floor((float) $summary['next_payout']) ? 0 : 2) }}</div>
+      <div style="font-size:26px;font-weight:800;margin-top:6px">{{ \App\Support\MoneyCurrency::format((float) $summary['next_payout'], $studioCurrency, true) }}</div>
       <div class="faint" style="font-size:12px">{{ $summary['next_payout_meta'] }}</div>
     </div>
     <div class="card pad">
       <div class="lbl">Held (cancellation window)</div>
-      <div style="font-size:26px;font-weight:800;margin-top:6px">€{{ number_format((float) $summary['held'], ((float) $summary['held']) == floor((float) $summary['held']) ? 0 : 2) }}</div>
+      <div style="font-size:26px;font-weight:800;margin-top:6px">{{ \App\Support\MoneyCurrency::format((float) $summary['held'], $studioCurrency, true) }}</div>
       <div class="faint" style="font-size:12px">Sent when each window ends</div>
     </div>
     <div class="card pad">
       <div class="lbl">Earned this month</div>
-      <div style="font-size:26px;font-weight:800;margin-top:6px">€{{ number_format((float) $summary['earned_this_month'], ((float) $summary['earned_this_month']) == floor((float) $summary['earned_this_month']) ? 0 : 2) }}</div>
+      <div style="font-size:26px;font-weight:800;margin-top:6px">{{ \App\Support\MoneyCurrency::format((float) $summary['earned_this_month'], $studioCurrency, true) }}</div>
       <div class="faint" style="font-size:12px">{{ $summary['month_delta_label'] }}</div>
     </div>
   </div>
@@ -101,17 +102,24 @@
         </thead>
         <tbody>
           @foreach ($earningsRows as $row)
+            @php
+              $rowCurrency = \App\Support\MoneyCurrency::code($row['currency'] ?? $studioCurrency);
+              $clientPaidLabel = \App\Support\MoneyCurrency::format((float) $row['client_paid'], $rowCurrency);
+              $studioShareLabel = \App\Support\MoneyCurrency::format((float) $row['studio_share'], $rowCurrency);
+              $studioFeeLabel = \App\Support\MoneyCurrency::format((float) $row['studio_fee'], $rowCurrency);
+              $studioGetsLabel = \App\Support\MoneyCurrency::format((float) $row['studio_gets'], $rowCurrency);
+            @endphp
             <tr>
               <td data-label="Date">{{ $row['date'] }}</td>
               <td data-label="Booking"><b style="font-weight:600">{{ $row['booking_label'] }}</b></td>
               <td data-label="Artist">{{ $row['artist'] }}</td>
-              <td data-label="Paid by client">€{{ number_format($row['client_paid'], 2) }}</td>
+              <td data-label="Paid by client">{{ $clientPaidLabel }}</td>
               <td data-label="Studio share">
-                €{{ number_format($row['studio_share'], 2) }}
-                <div class="faint" style="font-size:11.5px">{{ $row['studio_percent'] }}% of €{{ number_format($row['client_paid'], 2) }}</div>
+                {{ $studioShareLabel }}
+                <div class="faint" style="font-size:11.5px">{{ $row['studio_percent'] }}% of {{ $clientPaidLabel }}</div>
               </td>
-              <td data-label="Fee" class="muted">−€{{ number_format($row['studio_fee'], 2) }}</td>
-              <td data-label="Studio gets"><b>€{{ number_format($row['studio_gets'], 2) }}</b></td>
+              <td data-label="Fee" class="muted">−{{ $studioFeeLabel }}</td>
+              <td data-label="Studio gets"><b>{{ $studioGetsLabel }}</b></td>
               <td data-label="Status"><span class="pill {{ $row['status_pill'] }}">{{ $row['status_label'] }}</span></td>
             </tr>
           @endforeach
@@ -120,7 +128,7 @@
     @endif
   </div>
   <div class="help" style="margin-top:12px">
-    Artists on direct payment don't appear here. Each booking keeps the split it was made with. Fee is your part of the Stripe fee (1.5% + €0.25 on EU cards) plus your part of any artist-paid booking fee, shared by the same split %. When the client pays the booking fee, that goes to Bookpay and isn't taken from your share.
+    Artists on direct payment don't appear here. Each booking keeps the split it was made with. The Stripe fee is allocated from the actual processing fee recorded for that booking, plus your part of any artist-paid booking fee, shared by the same split %. When the client pays the booking fee, that goes to Bookpay and isn't taken from your share.
   </div>
 </div>
 @endsection

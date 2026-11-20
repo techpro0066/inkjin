@@ -185,15 +185,18 @@
               $createdLabel = optional($link->created_at)->format('d/m') ?? '—';
               $depositAmt = (float) ($link->deposit ?? 0);
               $totalAmt = (float) ($link->total ?? 0);
+              $linkCurrency = \App\Support\MoneyCurrency::code($link->currency ?? ($currencyCode ?? null));
               $amountKind = abs($depositAmt - $totalAmt) < 0.009 ? 'full payment' : 'deposit';
-              $amountLabel = '€'.number_format($depositAmt, $depositAmt == floor($depositAmt) ? 0 : 2).' '.$amountKind;
+              $amountLabel = \App\Support\MoneyCurrency::format($depositAmt, $linkCurrency, true).' '.$amountKind;
+              $depositLabel = \App\Support\MoneyCurrency::format($depositAmt, $linkCurrency, true);
+              $totalLabel = \App\Support\MoneyCurrency::format($totalAmt, $linkCurrency, true);
             @endphp
             <tr>
               <td data-label="TITLE"><b style="font-weight:600">{{ $link->title }}</b></td>
               <td data-label="ARTIST">{{ $link->artist }}</td>
               <td class="muted" data-label="CLIENT">{{ $link->client }}</td>
-              <td data-label="DEPOSIT">€{{ number_format($depositAmt, $depositAmt == floor($depositAmt) ? 0 : 2) }}</td>
-              <td data-label="TOTAL"><b style="font-weight:600">€{{ number_format($totalAmt, $totalAmt == floor($totalAmt) ? 0 : 2) }}</b></td>
+              <td data-label="DEPOSIT">{{ $depositLabel }}</td>
+              <td data-label="TOTAL"><b style="font-weight:600">{{ $totalLabel }}</b></td>
               <td data-label="STATUS"><span class="pill {{ $pillClass }}">{{ $statusLabel }}</span></td>
               <td class="muted" data-label="CREATED">{{ $createdLabel }}</td>
               <td data-label="ACTIONS">
@@ -212,8 +215,8 @@
                     data-link="{{ e($publicUrl) }}"
                     data-title="{{ e($link->title) }}"
                     data-amount="{{ e($amountLabel) }}"
-                    data-deposit="€{{ number_format($depositAmt, 2) }}"
-                    data-total="€{{ number_format($totalAmt, 2) }}"
+                    data-deposit="{{ e($depositLabel) }}"
+                    data-total="{{ e($totalLabel) }}"
                     data-created="{{ e($createdLabel) }}"
                     data-status="{{ $status }}"
                     data-booking="{{ $link->booking_id ?: '' }}">

@@ -137,7 +137,10 @@ class RequestReceivedEmailPresenter
                 $depositMeta = app(\App\Services\BookingCheckoutPricingService::class)
                     ->resolveDepositForTattoo($customRequest->artist->userDetail, $price);
                 $deposit = max(0, round((float) ($depositMeta['deposit'] ?? 0), 2));
-                $depositLabel = '€'.number_format($deposit, 2, '.', ',');
+                $depositLabel = MoneyCurrency::format(
+                    $deposit,
+                    $customRequest->currencyCode()
+                );
             }
         } catch (\Throwable) {
             $depositLabel = '—';

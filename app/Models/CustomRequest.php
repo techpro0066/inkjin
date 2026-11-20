@@ -29,6 +29,7 @@ class CustomRequest extends Model
         'avoid_dates',
         'how_much_flexible',
         'urgency',
+        'currency',
         'estimated_price',
         'estimated_time',
         'number_of_sessions',
@@ -789,6 +790,20 @@ class CustomRequest extends Model
         return $name !== '' ? $name : (string) ($artist->email ?? 'Artist');
     }
 
+    /**
+     * Currency linked to this request (snapshotted at create/quote; falls back to booking / artist).
+     */
+    public function currencyCode(): string
+    {
+        $this->loadMissing(['booking', 'artist.userDetail']);
+
+        return \App\Support\MoneyCurrency::code(
+            $this->currency
+                ?: $this->booking?->currency
+                ?: $this->artist?->userDetail?->currency
+        );
+    }
+
     public function estimatedPriceLabel(): string
     {
         $price = $this->estimated_price;
@@ -796,7 +811,7 @@ class CustomRequest extends Model
             return '—';
         }
 
-        return '€'.number_format((float) $price, 2, '.', ',');
+        return \App\Support\MoneyCurrency::format((float) $price, $this->currencyCode());
     }
 
     public function hasQuote(): bool
@@ -907,6 +922,8 @@ class CustomRequest extends Model
             'reasonDecline' => $this->reason_decline,
             'estimatedPrice' => $this->estimated_price,
             'estimatedPriceLabel' => $this->estimatedPriceLabel(),
+            'currencyCode' => $this->currencyCode(),
+            'currencySymbol' => \App\Support\MoneyCurrency::symbol($this->currencyCode()),
             'estimatedTime' => $this->estimated_time,
             'numberOfSessions' => $this->number_of_sessions,
             'messageForClient' => $this->message_for_client,
@@ -962,6 +979,8 @@ class CustomRequest extends Model
             'images' => $this->artistPanelImageUrls(),
             'reasonDecline' => $this->reason_decline,
             'estimatedPrice' => $this->estimated_price,
+            'currencyCode' => $this->currencyCode(),
+            'currencySymbol' => \App\Support\MoneyCurrency::symbol($this->currencyCode()),
             'estimatedTime' => $this->estimated_time,
             'numberOfSessions' => $this->number_of_sessions,
             'messageForClient' => $this->message_for_client,

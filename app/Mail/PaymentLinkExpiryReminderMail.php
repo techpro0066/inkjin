@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\PaymentLink;
 use App\Models\UserDetail;
+use App\Support\MoneyCurrency;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -55,11 +56,6 @@ class PaymentLinkExpiryReminderMail extends Mailable
 
     private function paidAmount(): string
     {
-        $rounded = round((float) $this->paymentLink->amount, 2);
-        if (fmod($rounded, 1.0) === 0.0) {
-            return '€'.(string) (int) $rounded;
-        }
-
-        return '€'.number_format($rounded, 2, '.', '');
+        return MoneyCurrency::format((float) $this->paymentLink->amount, $this->userDetail->currency);
     }
 }
