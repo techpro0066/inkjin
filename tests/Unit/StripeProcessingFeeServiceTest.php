@@ -33,7 +33,7 @@ class StripeProcessingFeeServiceTest extends TestCase
     {
         $intent = PaymentIntent::constructFrom([
             'id' => 'pi_test',
-            'latest_charge' => ['id' => ''],
+            'latest_charge' => ['id' => 'ch_test'],
         ]);
 
         $this->expectException(RuntimeException::class);

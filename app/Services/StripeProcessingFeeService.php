@@ -22,13 +22,6 @@ class StripeProcessingFeeService
         }
 
         $balanceTransaction = $charge->balance_transaction ?? null;
-        if (! $balanceTransaction && ! empty($charge->id)) {
-            $charge = Charge::retrieve((string) $charge->id, [
-                'expand' => ['balance_transaction'],
-            ]);
-            $balanceTransaction = $charge->balance_transaction ?? null;
-        }
-
         if (is_string($balanceTransaction)) {
             $balanceTransaction = BalanceTransaction::retrieve($balanceTransaction);
         }
