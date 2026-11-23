@@ -1,161 +1,122 @@
 <!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Welcome to Inkjin BookPay!</title>
-  <style type="text/css">
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
-    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
-  </style>
+  <title>Welcome to Bookpay, {{ $artistFirstName }}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #fdf7ff; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
-    You're all set! Your Inkjin BookPay profile is live. Here's what you can do next.
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    Welcome to Bookpay, {{ $artistFirstName }}. Your account is ready.
   </div>
 
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fdf7ff;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
     <tr>
-      <td align="center" style="padding: 40px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; width: 100%;">
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
           <tr>
-            <td align="center" style="padding: 0 0 32px 0;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="font-size: 28px; font-weight: 800; color: #310f7a; letter-spacing: -0.5px;">
-                    inkjin
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="background-color: #ffffff; border-radius: 16px; padding: 48px 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td align="center" style="font-size: 24px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 12px 0;">
-                    Welcome to Inkjin BookPay!
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-size: 16px; color: #494552; line-height: 1.6; padding: 0 0 28px 0; text-align: center;">
-                    Congrats, your artist profile is set up and ready to go. You're now part of a platform built to make bookings, payments, and client communication effortless.
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    Hi {{ $artistFirstName }},
                   </td>
                 </tr>
-
                 <tr>
-                  <td style="padding: 0 0 28px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #F8F1FB; border-radius: 12px;">
-                      <tr>
-                        <td style="padding: 24px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                            <tr>
-                              <td style="font-size: 14px; font-weight: 700; color: #310f7a; text-transform: uppercase; letter-spacing: 0.5px; padding: 0 0 16px 0;">
-                                Here's what you can do
-                              </td>
-                            </tr>
-                            <tr>
-                              <td style="font-size: 15px; color: #1c1b21; line-height: 2;">
-                                - Accept bookings from clients<br>
-                                - Manage custom tattoo requests<br>
-                                - Get paid securely through the platform<br>
-                                - Share your personal booking page
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
+                    Your Bookpay account is ready. Do {{ $remainingLabel }} and clients can start booking you.
                   </td>
                 </tr>
 
+                @if(!empty($showPayoutStep) || !empty($showWorkingHoursStep) || !empty($showOpenBooksStep))
+                  <tr>
+                    <td style="padding:0 0 8px 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                        <tr>
+                          <td style="padding:4px 14px;">
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                              @php $step = 1; @endphp
+                              @if(!empty($showPayoutStep))
+                                <tr>
+                                  <td style="width:36px;padding:12px 0;border-bottom:1px solid #F3EEF4;vertical-align:top;">
+                                    <div style="width:24px;height:24px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:12.5px;line-height:24px;text-align:center;">{{ $step++ }}</div>
+                                  </td>
+                                  <td style="padding:12px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#1A1A1A;">
+                                    <strong>Finish payouts</strong><br>
+                                    <span style="color:#6F6874;font-size:13px;">Connect Stripe so clients can pay deposits and you get paid.</span>
+                                  </td>
+                                </tr>
+                              @endif
+                              @if(!empty($showWorkingHoursStep))
+                                <tr>
+                                  <td style="width:36px;padding:12px 0;@if(!empty($showOpenBooksStep))border-bottom:1px solid #F3EEF4;@endif vertical-align:top;">
+                                    <div style="width:24px;height:24px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:12.5px;line-height:24px;text-align:center;">{{ $step++ }}</div>
+                                  </td>
+                                  <td style="padding:12px 0;@if(!empty($showOpenBooksStep))border-bottom:1px solid #F3EEF4;@endif font-size:14px;color:#1A1A1A;">
+                                    <strong>Set your working hours</strong><br>
+                                    <span style="color:#6F6874;font-size:13px;">The days and times clients can book you.</span>
+                                  </td>
+                                </tr>
+                              @endif
+                              @if(!empty($showOpenBooksStep))
+                                <tr>
+                                  <td style="width:36px;padding:12px 0;vertical-align:top;">
+                                    <div style="width:24px;height:24px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:12.5px;line-height:24px;text-align:center;">{{ $step++ }}</div>
+                                  </td>
+                                  <td style="padding:12px 0;font-size:14px;color:#1A1A1A;">
+                                    <strong>Open your books</strong><br>
+                                    <span style="color:#6F6874;font-size:13px;">Your books start closed. Open them when you&rsquo;re ready to take bookings.</span>
+                                  </td>
+                                </tr>
+                              @endif
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                @endif
+
+                @if(!empty($publicPageUrl))
+                  <tr>
+                    <td style="margin-top:18px;padding:12px 14px;border:1px dashed #D9CCE0;border-radius:12px;font-size:14px;color:#3d3942;">
+                      Then share your link everywhere:<br>
+                      <strong style="color:#3E007C;">{{ $publicPageUrl }}</strong>
+                    </td>
+                  </tr>
+                @endif
+
+                @if(!empty($showFounding))
+                  <tr>
+                    <td style="padding:14px 16px;border-radius:12px;background:#F3E8FF;color:#3E007C;font-size:14px;line-height:1.5;">
+                      <strong>You&rsquo;re a Founding artist</strong><br>
+                      You joined before 31 December, so you pay no subscription and no commission for as long as your account is active. Your clients pay a small booking fee.
+                    </td>
+                  </tr>
+                @endif
+
                 <tr>
-                  <td align="center" style="padding: 0 0 36px 0;">
-                    <a href="{{ $dashboardUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 12px; line-height: 1;">
-                      Go to Dashboard &rarr;
+                  <td style="padding:16px 0 8px 0;">
+                    <a href="{{ $dashboardUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                      Finish setting up
                     </a>
                   </td>
                 </tr>
-
                 <tr>
-                  <td style="font-size: 18px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 10px 0;">
-                    Get updates on Instagram
+                  <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:4px 0 28px 0;">
+                    Need help? Email us at <a href="mailto:support@inkjin.com" style="color:#3E007C;font-weight:700;text-decoration:none;">support@inkjin.com</a> or click Get Help in your dashboard to chat with us.
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-size: 15px; color: #494552; line-height: 1.7; padding: 0 0 20px 0;">
-                    Join the Bookpay Broadcast Channel on Instagram, just for artists using the platform. Early looks at new features, quick booking and pricing tips, and the occasional artist spotlight. Nothing spammy, just useful stuff.
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="padding: 0 0 36px 0;">
-                    <a href="{{ $instagramChannelUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; line-height: 1;">
-                      Join the channel &rarr;
-                    </a>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td style="font-size: 18px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 10px 0;">
-                    Need help? Jump on our weekly call
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-size: 15px; color: #494552; line-height: 1.7; padding: 0 0 20px 0;">
-                    Every Tuesday at 10am GMT we host a call open for Bookpay artists, ask us anything, get help setting things up, or just tell us what you want to see next.
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="padding: 0 0 36px 0;">
-                    <a href="{{ $weeklyCallUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; line-height: 1;">
-                      Join the call &rarr;
-                    </a>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td style="padding: 0 0 28px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #FFF8E8; border-radius: 12px; border: 1px solid #F5E0A8;">
-                      <tr>
-                        <td style="padding: 24px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                            <tr>
-                              <td style="font-size: 16px; font-weight: 700; color: #1c1b21; line-height: 1.3; padding: 0 0 10px 0;">
-                                Important note: Set up your payouts
-                              </td>
-                            </tr>
-                            <tr>
-                              <td style="font-size: 15px; color: #494552; line-height: 1.7; padding: 0 0 20px 0;">
-                                If you haven't set up your payouts yet, know that without it you can't collect deposits, confirm bookings, or sell any flash designs you upload. It only takes a couple minutes.
-                              </td>
-                            </tr>
-                            <tr>
-                              <td align="center">
-                                <a href="{{ $payoutsUrl }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #310f7a 0%, #482d91 100%); color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; line-height: 1;">
-                                  Set up payouts &rarr;
-                                </a>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td align="center" style="padding: 32px 0 0 0;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="font-size: 12px; color: #494552; line-height: 1.5; text-align: center;">
-                    &copy; {{ date('Y') }} Inkjin &middot; All rights reserved
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
+                    You got this email because you created a Bookpay account.<br>
+                    Bookpay by Inkjin
                   </td>
                 </tr>
               </table>

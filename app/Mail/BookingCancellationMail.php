@@ -73,6 +73,7 @@ class BookingCancellationMail extends Mailable
     private function artistEmailData(): array
     {
         $booking = $this->booking;
+        $booking->loadMissing(['artist.userDetail', 'user']);
         $artist = $booking->artist;
         $customer = $booking->user;
 
@@ -91,11 +92,22 @@ class BookingCancellationMail extends Mailable
 
         $symbol = $this->currencySymbol((string) ($booking->currency ?? 'EUR'));
 
+        $artistName = $artist?->userDetail?->publicDisplayName()
+            ?: trim(($artist->first_name ?? '').' '.($artist->last_name ?? ''));
+        if ($artistName === '') {
+            $artistName = 'Artist';
+        }
+
+        $customerName = trim(($customer->first_name ?? '').' '.($customer->last_name ?? ''));
+        if ($customerName === '') {
+            $customerName = 'Customer';
+        }
+
         return [
             'bookingId' => $booking->id,
             'tattooTitle' => $booking->displayTitle(),
-            'artistName' => $artist->name ?? 'Artist',
-            'customerName' => $customer->name ?? 'Customer',
+            'artistName' => $artistName,
+            'customerName' => $customerName,
             'customerEmail' => $customer->email ?? '',
             'bookingDate' => $bookingDate,
             'bookingTime' => $bookingTime,

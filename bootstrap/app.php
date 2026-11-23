@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('payment-links:send-expiry-reminders')->hourly();
         $schedule->command('consents:send-due')->everyFifteenMinutes();
         $schedule->command('bookings:send-appointment-reminders')->everyFifteenMinutes();
+        $schedule->command('bookings:send-cancellation-window-reminders')->everyFifteenMinutes();
         $schedule->command('chat:send-message-emails')->everyMinute();
         $schedule->command('guest-spots:expire-holds')->everyFiveMinutes();
         $schedule->command('stripe:sync-requirements')->everyFiveMinutes();

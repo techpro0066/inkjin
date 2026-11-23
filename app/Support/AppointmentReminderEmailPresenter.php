@@ -74,6 +74,8 @@ class AppointmentReminderEmailPresenter
             ['user' => $client->id, 'booking' => $booking->id]
         );
 
+        $policyNote = self::cancellationPolicyNote($booking, $userDetail, $startLocal);
+
         return [
             'clientFirstName' => $clientFirst,
             'artistName' => $artistName,
@@ -91,8 +93,52 @@ class AppointmentReminderEmailPresenter
             'consentUrl' => $consentUrl,
             'viewBookingUrl' => $viewBookingUrl,
             'subject' => $subject,
-            'policyNote' => 'Need to move it? Rescheduling is free until 24 hours before. Cancelling now means the deposit isn’t refunded.',
+            'policyNote' => $policyNote,
         ];
+    }
+
+    private static function cancellationPolicyNote(
+        Booking $booking,
+        UserDetail $userDetail,
+        ?Carbon $startLocal,
+    ): string {
+        $artistName = trim((string) $userDetail->publicDisplayName()) ?: 'your artist';
+        $windowHours = self::cancellationWindowHours($userDetail->cancellation_window ?? null);
+        $startUtc = $booking->sessionStartUtc();
+
+        if (! $startUtc || ! $startLocal) {
+            return 'Need to move it? Ask '.$artistName.' to reschedule from your booking.';
+        }
+
+        $deadlineLocal = $startUtc->copy()
+            ->subHours($windowHours)
+            ->timezone($startLocal->getTimezone());
+
+        $deadlineLabel = $deadlineLocal->format('D j M').' at '.$deadlineLocal->format('H:i');
+
+        if (now()->gte($deadlineLocal)) {
+            return 'Need to move it? Ask '.$artistName.' to reschedule from your booking. Free cancellation ended on '.$deadlineLabel.', so cancelling now means the deposit isn’t refunded.';
+        }
+
+        return 'Need to move it? Ask '.$artistName.' to reschedule from your booking. You can cancel for a full refund until '.$deadlineLabel.'.';
+    }
+
+    private static function cancellationWindowHours(?string $window): int
+    {
+        $raw = strtolower(trim((string) ($window ?? '48h')));
+        if (str_contains($raw, 'w')) {
+            preg_match('/(\d+)/', $raw, $match);
+
+            return (int) (($match[1] ?? 1) * 168);
+        }
+        if (str_contains($raw, 'day')) {
+            preg_match('/(\d+)/', $raw, $match);
+
+            return (int) (($match[1] ?? 1) * 24);
+        }
+        preg_match('/(\d+)/', $raw, $match);
+
+        return (int) ($match[1] ?? 48);
     }
 
     private static function subject(

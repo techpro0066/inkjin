@@ -4352,6 +4352,7 @@ class OnboardingController extends Controller
                 new ArtistWelcomeMail(
                     url(authenticated_home_url($user)),
                     route('settings.payment'),
+                    artist: $user,
                 )
             );
         } catch (\Throwable $e) {

@@ -11,6 +11,17 @@
         $value = $row['value'] ?? null;
         if ($value === null || $value === '') {
           $value = '—';
+        } elseif (is_array($value)) {
+          $items = [];
+          foreach ($value as $item) {
+            if (is_array($item)) {
+              $item = $item['label'] ?? $item['dateLabel'] ?? $item['date'] ?? $item['name'] ?? null;
+            }
+            if ($item !== null && trim((string) $item) !== '') {
+              $items[] = trim((string) $item);
+            }
+          }
+          $value = $items === [] ? '—' : implode(', ', $items);
         }
       @endphp
       <div class="flex justify-between gap-4 py-2.5 {{ ! $loop->last ? 'border-b border-outline-variant/10' : '' }}">

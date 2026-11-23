@@ -20,6 +20,9 @@ class ArtistStudioJoinRequestMail extends Mailable
         public ?string $relationshipLabel = null,
         public ?int $artistPercent = null,
         public bool $isResend = false,
+        public string $artistInitials = '',
+        public string $artistMeta = '',
+        public ?string $artistAvatarUrl = null,
     ) {
     }
 

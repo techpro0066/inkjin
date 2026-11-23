@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Custom request update — Inkjin</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Custom request update — Bookpay</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-    body { margin: 0; padding: 0; width: 100% !important; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   @php
     $artistName = $customRequest->artistDisplayName();
     $reference = $customRequest->referenceLabel();
@@ -22,50 +23,76 @@
     {{ $artistName }} was unable to move forward with your custom tattoo request.
   </div>
 
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf7ff;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
     <tr>
       <td align="center" style="padding:40px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
           <tr>
-            <td align="center" style="padding:0 0 32px 0;font-size:28px;font-weight:800;color:#310f7a;">inkjin</td>
-          </tr>
-          <tr>
-            <td style="background-color:#ffffff;border-radius:16px;padding:48px 40px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr><td align="center" style="padding:0 0 16px 0;font-size:36px;">📭</td></tr>
-                <tr><td align="center" style="font-size:22px;font-weight:700;color:#1c1b21;padding:0 0 16px 0;">Request not accepted</td></tr>
                 <tr>
-                  <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 24px 0;text-align:center;">
-                    @if(trim($clientName) !== '' && $clientName !== 'Client #'.$customRequest->user_id)
-                      Hi {{ $clientName }},<br><br>
-                    @endif
-                    <strong>{{ $artistName }}</strong> is unable to proceed with your custom tattoo request ({{ $reference }}).
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
                   </td>
                 </tr>
-                @if($reason !== '')
                 <tr>
-                  <td style="padding:0 0 24px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fef2f2;border-radius:12px;border:1px solid #fecaca;">
-                      <tr><td style="padding:20px;font-size:14px;color:#1c1b21;line-height:1.6;">
-                        <strong style="color:#b91c1c;">Message from the artist:</strong><br><br>
-                        {{ $reason }}
-                      </td></tr>
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    @if(trim($clientName) !== '' && $clientName !== 'Client #'.$customRequest->user_id)
+                      Hi {{ $clientName }},
+                    @else
+                      Hi,
+                    @endif
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
+                    <strong>{{ $artistName }}</strong> is unable to proceed with your custom tattoo request.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 8px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                      <tr>
+                        <td style="padding:4px 14px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                              <td style="padding:9px 0;@if(!empty($reason))border-bottom:1px solid #F3EEF4;@endif font-size:14px;color:#6F6874;">Request</td>
+                              <td style="padding:9px 0;@if(!empty($reason))border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $reference }}</td>
+                            </tr>
+                            @if(!empty($reason))
+                              <tr>
+                                <td style="padding:9px 0;font-size:14px;color:#6F6874;">Message from artist</td>
+                                <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $reason }}</td>
+                              </tr>
+                            @endif
+                          </table>
+                        </td>
+                      </tr>
                     </table>
                   </td>
                 </tr>
-                @endif
                 @if(!empty($dashboardUrl))
+                  <tr>
+                    <td style="padding:16px 0 8px 0;">
+                      <a href="{{ $dashboardUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                        Open your dashboard
+                      </a>
+                    </td>
+                  </tr>
+                @endif
                 <tr>
-                  <td align="center" style="padding:0 0 8px 0;">
-                    <a href="{{ $dashboardUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(135deg,#310f7a 0%,#482d91 100%);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:12px;">Open your dashboard</a>
+                  <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:4px 0 28px 0;">
+                    You can explore other artists on Bookpay anytime.
                   </td>
                 </tr>
-                @endif
-                <tr><td style="font-size:13px;color:#7a7583;text-align:center;padding-top:8px;">You can explore other artists on Inkjin anytime.</td></tr>
+                <tr>
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
+                    Bookpay by Inkjin
+                  </td>
+                </tr>
               </table>
             </td>
           </tr>
-          <tr><td align="center" style="padding:24px 0 0 0;font-size:12px;color:#494552;">© {{ date('Y') }} Inkjin</td></tr>
         </table>
       </td>
     </tr>

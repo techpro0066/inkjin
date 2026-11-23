@@ -38,6 +38,44 @@
 
       return implode("\n", array_filter($lines)) ?: '—';
   };
+
+  $formatPreferredDates = static function (mixed $dates): ?string {
+      if (! is_array($dates) || $dates === []) {
+          return null;
+      }
+
+      $labels = [];
+      foreach ($dates as $date) {
+          if (is_array($date)) {
+              $label = trim((string) ($date['dateLabel'] ?? $date['date'] ?? ''));
+          } else {
+              $label = trim((string) $date);
+          }
+          if ($label !== '') {
+              $labels[] = $label;
+          }
+      }
+
+      return $labels === [] ? null : implode(', ', $labels);
+  };
+
+  $formatScalarOrList = static function (mixed $value): ?string {
+      if ($value === null || $value === '') {
+          return null;
+      }
+      if (is_array($value)) {
+          $items = array_values(array_filter(array_map(
+              static fn (mixed $item): string => is_array($item)
+                  ? trim((string) ($item['label'] ?? $item['dateLabel'] ?? $item['date'] ?? $item['name'] ?? ''))
+                  : trim((string) $item),
+              $value
+          )));
+
+          return $items === [] ? null : implode(', ', $items);
+      }
+
+      return trim((string) $value) ?: null;
+  };
 @endphp
 <main class="main-content flex-1 min-h-screen">
   <div class="p-6 md:p-10 lg:p-12 max-w-5xl">
@@ -126,10 +164,10 @@
       @include('admin.partials.detail-card', [
         'title' => 'Availability preferences',
         'rows' => [
-          ['label' => 'Preferred dates', 'value' => !empty($availability['preferredDates']) ? implode(', ', (array) $availability['preferredDates']) : null],
-          ['label' => 'Preferred days', 'value' => !empty($availability['preferredDays']) ? implode(', ', (array) $availability['preferredDays']) : null],
-          ['label' => 'Flexibility', 'value' => $availability['flexibility'] ?? null],
-          ['label' => 'Urgency', 'value' => $availability['urgency'] ?? null],
+          ['label' => 'Preferred dates', 'value' => $formatPreferredDates($availability['preferredDates'] ?? null)],
+          ['label' => 'Preferred days', 'value' => $formatScalarOrList($availability['preferredDays'] ?? null)],
+          ['label' => 'Flexibility', 'value' => $formatScalarOrList($availability['flexibility'] ?? null)],
+          ['label' => 'Urgency', 'value' => $formatScalarOrList($availability['urgency'] ?? null)],
           ['label' => 'Avoid dates', 'value' => $availability['avoidDates'] ?? null],
           ['label' => 'Session gap', 'value' => $availability['sessionGap'] ?? null],
         ],

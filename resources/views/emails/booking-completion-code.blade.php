@@ -1,31 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking Completion Code</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Your booking completion code — Bookpay</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+  </style>
 </head>
-<body style="font-family: Arial, sans-serif; background:#f5f6fb; padding:24px; color:#1f2937;">
-    <div style="max-width:560px; margin:0 auto; background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
-        <div style="padding:20px 24px; border-bottom:1px solid #e5e7eb;">
-            <h2 style="margin:0; font-size:20px;">Your Completion Code</h2>
-        </div>
-        <div style="padding:24px;">
-            <p style="margin-top:0;">
-                Your artist will ask for this code when marking your booking as completed.
-            </p>
-            <div style="font-size:28px; letter-spacing:4px; font-weight:700; text-align:center; padding:16px; border:1px dashed #9ca3af; border-radius:10px; background:#f9fafb;">
-                {{ $code }}
-            </div>
-            <p style="margin:18px 0 0;">
-                Booking reference:
-                <strong>#INK-{{ str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT) }}</strong>
-            </p>
-            <p style="margin:8px 0 0; color:#6b7280; font-size:13px;">
-                Do not share this code with anyone except your artist during your session completion.
-            </p>
-        </div>
-    </div>
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    Your booking completion code is {{ $code }}.
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
+          <tr>
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    Hi,
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
+                    Your artist will ask for this code when marking your booking as completed.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="margin:20px 0 4px;font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;letter-spacing:12px;text-align:center;color:#3E007C;background:#F3E8FF;border-radius:12px;padding:14px 0 14px 12px;">
+                    {{ $code }}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:18px 0 8px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                      <tr>
+                        <td style="padding:4px 14px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                              <td style="padding:9px 0;font-size:14px;color:#6F6874;">Booking reference</td>
+                              <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">
+                                #INK-{{ str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT) }}
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:4px 0 28px 0;">
+                    Do not share this code with anyone except your artist during booking completion.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
+                    Bookpay by Inkjin
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
-

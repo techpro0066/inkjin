@@ -3,14 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>{{ !empty($hasStudioAccount) ? 'Join request' : 'Studio invitation' }} — Bookpay</title>
   <style type="text/css">
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-    body { margin: 0; padding: 0; width: 100% !important; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
     @if(!empty($hasStudioAccount))
       {{ $artistName }} asked to join {{ $studioName }} on Bookpay.
@@ -19,93 +21,131 @@
     @endif
   </div>
 
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf7ff;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
     <tr>
       <td align="center" style="padding:40px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
           <tr>
-            <td align="center" style="padding:0 0 32px 0;font-size:28px;font-weight:800;color:#310f7a;">bookpay</td>
-          </tr>
-          <tr>
-            <td style="background-color:#ffffff;border-radius:16px;padding:48px 40px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:0 0 20px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                      <tr>
+                        <td style="padding:12px;width:44px;vertical-align:middle;">
+                          @if(!empty($artistAvatarUrl))
+                            <img src="{{ $artistAvatarUrl }}" alt="{{ $artistName }}" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:50%;object-fit:cover;">
+                          @else
+                            <div style="width:44px;height:44px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-weight:800;font-size:14px;line-height:44px;text-align:center;">
+                              {{ $artistInitials }}
+                            </div>
+                          @endif
+                        </td>
+                        <td style="padding:12px 12px 12px 0;vertical-align:middle;">
+                          <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $artistName }}</div>
+                          @if(!empty($artistMeta))
+                            <div style="font-size:13px;color:#6F6874;margin-top:2px;">{{ $artistMeta }}</div>
+                          @endif
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
                     Hi {{ $studioName }},
                   </td>
                 </tr>
 
                 @if(!empty($hasStudioAccount))
                   <tr>
-                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
-                      <strong>{{ $artistName }}</strong> wants to join your studio on Bookpay
-                      @if(!empty($relationshipLabel))
-                        as a <strong>{{ $relationshipLabel }}</strong>
-                      @endif.
+                    <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
+                      {{ $artistName }} asked to join your studio.
                     </td>
                   </tr>
-                  @if($artistPercent !== null)
-                    <tr>
-                      <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
-                        They proposed a revenue split of <strong>You {{ 100 - (int) $artistPercent }}% · Artist {{ (int) $artistPercent }}%</strong>.
-                        You can confirm or suggest a different split when you accept them.
-                      </td>
-                    </tr>
-                  @else
-                    <tr>
-                      <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
-                        They’ll be paid directly to their own Stripe account. There’s no revenue split to confirm.
-                      </td>
-                    </tr>
-                  @endif
+
                   <tr>
-                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 28px 0;">
-                      Open your Bookpay studio dashboard to review and accept this request.
+                    <td style="padding:0 0 8px 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                        <tr>
+                          <td style="padding:4px 14px;">
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                              @if(!empty($relationshipLabel))
+                                <tr>
+                                  <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;color:#6F6874;">Relationship</td>
+                                  <td style="padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $relationshipLabel }}</td>
+                                </tr>
+                              @endif
+                              <tr>
+                                <td style="padding:9px 0;@if($artistPercent !== null)border-bottom:1px solid #F3EEF4;@endif font-size:14px;color:#6F6874;">How they want to be paid</td>
+                                <td style="padding:9px 0;@if($artistPercent !== null)border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">
+                                  {{ $artistPercent !== null ? 'Revenue split' : 'Direct payment' }}
+                                </td>
+                              </tr>
+                              @if($artistPercent !== null)
+                                <tr>
+                                  <td style="padding:9px 0;font-size:14px;color:#6F6874;">Split</td>
+                                  <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">{{ $artistName }} {{ (int) $artistPercent }}% · Studio {{ 100 - (int) $artistPercent }}%</td>
+                                </tr>
+                              @endif
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding:16px 0 8px 0;">
+                      <a href="{{ $actionUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                        Review request
+                      </a>
                     </td>
                   </tr>
                   <tr>
-                    <td align="center" style="padding:0 0 16px 0;">
-                      <a href="{{ $actionUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(135deg,#310f7a 0%,#482d91 100%);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:12px;">Open studio dashboard</a>
+                    <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:4px 0 28px 0;">
+                      Nothing changes until you accept.
                     </td>
                   </tr>
                 @else
                   <tr>
-                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
-                      <strong>{{ $artistName }}</strong> invited your studio to Bookpay
-                      @if(!empty($relationshipLabel))
-                        as their <strong>{{ $relationshipLabel }}</strong>
-                      @endif.
-                    </td>
-                  </tr>
-                  @if($artistPercent !== null)
-                    <tr>
-                      <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 20px 0;">
-                        They proposed a revenue split of <strong>You {{ 100 - (int) $artistPercent }}% · Artist {{ (int) $artistPercent }}%</strong>.
-                      </td>
-                    </tr>
-                  @endif
-                  <tr>
-                    <td style="font-size:16px;color:#494552;line-height:1.6;padding:0 0 28px 0;">
-                      Accept the invitation to review the request and get set up on Bookpay. Free for studios.
+                    <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 10px 0;">
+                      {{ $artistName }} invited your studio to Bookpay as their {{ strtolower((string) ($relationshipLabel ?: 'resident')) }}.
                     </td>
                   </tr>
                   <tr>
-                    <td align="center" style="padding:0 0 16px 0;">
-                      <a href="{{ $actionUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(135deg,#310f7a 0%,#482d91 100%);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:12px;">Accept invitation</a>
+                    <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
+                      @if($artistPercent !== null)
+                        Your share of each booking is paid to you automatically. Free for studios.
+                      @else
+                        {{ $artistName }} rents a workstation at your studio, so there&rsquo;s no split and nothing to set up for payments. Join to list {{ $artistName }} on your studio page. Free for studios.
+                      @endif
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:16px 0 8px 0;">
+                      <a href="{{ $actionUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                        See the invitation
+                      </a>
                     </td>
                   </tr>
                 @endif
 
                 <tr>
-                  <td style="font-size:13px;color:#7a7583;line-height:1.5;word-break:break-all;">
-                    If the button does not work, copy and paste this URL into your browser:<br>{{ $actionUrl }}
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
+                    You can change which emails you get in Account &gt; Notifications.<br>
+                    Bookpay by Inkjin
                   </td>
                 </tr>
               </table>
             </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:24px 0 0 0;font-size:12px;color:#494552;">© {{ date('Y') }} Bookpay by Inkjin</td>
           </tr>
         </table>
       </td>

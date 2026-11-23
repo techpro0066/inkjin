@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Email: Welcome (artist) | Bookpay</title>
+<style>
+@font-face{font-family:'Plus Jakarta Sans';font-weight:400;font-display:swap;src:url('../assets/pjs-400.woff2') format('woff2')}
+@font-face{font-family:'Plus Jakarta Sans';font-weight:600;font-display:swap;src:url('../assets/pjs-600.woff2') format('woff2')}
+@font-face{font-family:'Plus Jakarta Sans';font-weight:800;font-display:swap;src:url('../assets/pjs-800.woff2') format('woff2')}
+@font-face{font-family:'Space Grotesk';font-weight:700;font-display:swap;src:url('../assets/space-grotesk-700.woff2') format('woff2')}
+:root{--bg:#FFF6FF;--card:#FFFFFF;--line:#E8DFEA;--ink:#1A1A1A;--muted:#6F6874;--accent:#3E007C;--accentbg:#F3E8FF;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.55 'Plus Jakarta Sans',system-ui,sans-serif;padding:0 16px}
+.w{max-width:640px;margin:0 auto;padding-block:28px 56px;display:flex;flex-direction:column;gap:16px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.top a{color:var(--accent);font-weight:600;text-decoration:none}
+.tag{display:inline-flex;align-items:center;gap:6px;background:var(--accentbg);color:var(--accent);font-weight:700;font-size:12px;border-radius:999px;padding:3px 10px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.mail{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.mh{padding:16px 20px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:64px minmax(0,1fr);gap:4px 10px;font-size:13px}
+.mh dt{color:var(--muted)}.mh dd{margin:0;overflow-wrap:anywhere}
+.mh .s{font-weight:800;font-size:16px}
+.eb{background:#F7F5F8;padding:28px 16px}
+.e{max-width:520px;margin:0 auto;background:#fff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0}
+.brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px;letter-spacing:-.055em;margin:0 0 22px}
+.who{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EEE9F0;border-radius:12px;margin:0 0 20px}
+.av{width:44px;height:44px;border-radius:50%;background:var(--accentbg);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+.who b{display:block;font-size:15px}.who span{font-size:13px;color:var(--muted)}
+.e p{margin:0}.e .mt{margin-top:10px;color:#3d3942}
+.btn{display:inline-block;margin-top:24px;background:#1A1A1A;color:#fff;text-decoration:none;font-weight:600;padding:13px 22px;border-radius:12px}
+.btn:focus-visible,.top a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.e .foot{margin-top:28px;padding-top:16px;border-top:1px solid #EEE9F0;font-size:12px;color:var(--muted)}
+.cond{background:#FFF3C4;border-radius:4px;padding:0 3px}
+.condnote{font-size:12px;color:var(--muted);margin-top:8px!important}
+.who .av.img{background:#EEE center/cover}
+.kv{margin:18px 0 0;border:1px solid #EEE9F0;border-radius:12px;padding:4px 14px}
+.kv div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #F3EEF4;font-size:14px}
+.kv div:last-child{border-bottom:0}
+.kv span{color:var(--muted)}.kv b{text-align:right;font-weight:600}
+.kv .tot{font-weight:800}.kv .tot span{color:var(--ink);font-weight:800}
+.code{margin:20px 0 4px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:34px;letter-spacing:12px;text-align:center;background:#F3E8FF;color:#3E007C;border-radius:12px;padding:14px 0 14px 12px}
+.quote{margin:16px 0 0;padding:12px 14px;border-left:3px solid #3E007C;background:#FBF7FD;border-radius:0 10px 10px 0;font-size:14px;color:#3d3942}
+.quote small{display:block;margin-top:6px;color:var(--muted);font-size:12px}
+.lst{margin:12px 0 0;padding-left:20px;font-size:14px;color:#3d3942}
+.lst li{margin:3px 0}
+.h3{font-weight:800;font-size:15px;margin-top:20px!important}
+.btn2{display:inline-block;margin:12px 0 0 8px;color:var(--accent);font-weight:700;text-decoration:none;padding:13px 6px}
+.sm{font-size:12.5px;color:var(--muted);margin-top:12px!important}
+.ok{display:flex;gap:10px;align-items:center;margin-top:16px;padding:10px 12px;border-radius:10px;background:#E7F6EC;color:#1F6B3E;font-size:13.5px;font-weight:600}
+.warn{display:flex;gap:10px;align-items:center;margin-top:16px;padding:10px 12px;border-radius:10px;background:#FFF3DC;color:#6B4A00;font-size:13.5px}
+.dark{margin:18px -26px 0;background:#1A1A1A;color:#fff;padding:18px 26px}
+.dark b{display:block;font-size:17px}.dark span{font-size:12.5px;opacity:.75}
+.help{margin-top:16px;padding:12px 14px;background:#FFF3DC;border-radius:10px;font-size:13px;line-height:1.5}
+.var{margin-top:12px;font-size:12.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px}
+@media(max-width:480px){.e{padding:22px 16px}.dark{margin:18px -16px 0;padding:16px}.code{font-size:28px;letter-spacing:8px}.btn2{margin-left:0}}
+</style><style>.steps{margin:18px 0 0;border:1px solid #EEE9F0;border-radius:12px;padding:4px 14px}
+.st{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #F3EEF4;font-size:14px;align-items:flex-start}.st:last-child{border-bottom:0}
+.st i{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:#F3E8FF;color:#3E007C;font-style:normal;font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.st b{display:block;font-weight:700}.st span{color:var(--muted);font-size:13px}
+.st.done{opacity:.55}.st.done i{background:#E7F6EC;color:#1F6B3E}.st.done b{text-decoration:line-through}
+.fnd{margin-top:18px;padding:14px 16px;border-radius:12px;background:#F3E8FF;color:#3E007C;font-size:14px;line-height:1.5}.fnd b{display:block;margin-bottom:2px}
+.lnk{margin-top:16px;padding:12px 14px;border:1px dashed #D9CCE0;border-radius:12px;font-size:14px}.lnk b{color:#3E007C}
+</style></head><body><div class="w">
+<div class="top"><a href="../index.html">&larr; All screens</a><span class="tag">Email · mockup</span></div>
+<p class="note"><b style="color:var(--ink)">Welcome (artist).</b> Sent right after the artist finishes onboarding (&ldquo;Finish setup&rdquo;). Once per account. The steps match the Home &ldquo;Complete your profile&rdquo; card, and steps already done are left out.</p>
+<article class="mail">
+<dl class="mh"><dt>From</dt><dd>Bookpay</dd><dt>To</dt><dd>julian@julianink.com</dd><dt>Subject</dt><dd class="s">Welcome to Bookpay, Julian</dd></dl>
+<div class="eb"><div class="e">
+<p class="brand">bookpay</p>
+<p>Hi Julian,</p>
+<p class="mt">Your Bookpay account is ready. Do these three things and clients can start booking you.</p>
+<div class="steps"><div class="st"><i>1</i><div><b>Finish payouts</b><span>Connect Stripe so clients can pay deposits and you get paid.</span></div></div><div class="st"><i>2</i><div><b>Set your working hours</b><span>The days and times clients can book you.</span></div></div><div class="st"><i>3</i><div><b>Open your books</b><span>Your books start closed. Open them when you&rsquo;re ready to take bookings.</span></div></div></div>
+<div class="lnk">Then share your link everywhere: <b>inkjin.com/@julianink</b></div>
+<div class="fnd"><b>You&rsquo;re a Founding artist</b>You joined before 31 December, so you pay no subscription and no commission for as long as your account is active. Your clients pay a small booking fee.</div>
+<a class="btn" href="../01-home.html#welcome">Finish setting up</a>
+<p class="sm">Need help? Email us at <a href="mailto:support@inkjin.com" style="color:var(--accent);font-weight:700">support@inkjin.com</a> or click Get Help in your dashboard to chat with us.</p>
+<p class="var">The Founding box shows only for accounts on the Founding plan. Without it, the email ends after the link. If Stripe was connected in onboarding, step 1 is left out and the intro says &ldquo;two things&rdquo;.</p>
+<p class="foot">You got this email because you created a Bookpay account.<br>Bookpay by Inkjin</p>
+</div></div></article></div></body></html>

@@ -1,47 +1,95 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>You received your referral reward</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#fdf7ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#fdf7ff;">
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    Thanks for referring another artist. Your referral reward has been sent.
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
     <tr>
       <td align="center" style="padding:40px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;background:#fff;border-radius:16px;padding:40px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
           <tr>
-            <td style="font-size:24px;font-weight:800;color:#310f7a;padding-bottom:24px;">inkjin</td>
-          </tr>
-          <tr>
-            <td style="font-size:18px;font-weight:700;color:#1c1b21;padding-bottom:12px;">
-              You got a reward!
-            </td>
-          </tr>
-          <tr>
-            <td style="font-size:15px;color:#494552;line-height:1.7;padding-bottom:24px;">
-              Thanks for referring another artist to Inkjin. Your referral reward has been sent.
-            </td>
-          </tr>
-          <tr>
-            <td style="background:#f8f1fb;border-radius:12px;padding:20px;font-size:14px;color:#1c1b21;line-height:1.8;">
-              <strong>Reward amount:</strong> ${{ number_format((float) $referral->reward_amount, 2) }}<br>
-              <strong>Referred artist:</strong> {{ \App\Services\ArtistReferralRewardService::displayName($referral->referred) }}<br>
-              @if($referral->qualifiedBooking)
-                <strong>Qualified booking:</strong> {{ $referral->qualifiedBooking->referenceLabel() }}
-              @endif
-            </td>
-          </tr>
-          <tr>
-            <td style="font-size:14px;color:#494552;line-height:1.7;padding-top:24px;padding-bottom:28px;">
-              You can view your referrals anytime from your dashboard.
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <a href="{{ $referEarnUrl }}" style="display:inline-block;background:#310f7a;color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 20px;border-radius:999px;">
-                View Refer &amp; Earn
-              </a>
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.055em;color:#1A1A1A;padding:0 0 22px 0;">
+                    bookpay
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.55;padding:0 0 10px 0;">
+                    Hi,
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 18px 0;">
+                    Thanks for referring another artist to Bookpay. Your referral reward has been sent.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 8px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #EEE9F0;border-radius:12px;">
+                      <tr>
+                        <td style="padding:4px 14px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                              <td style="padding:9px 0;@if(!empty($referral->referred))border-bottom:1px solid #F3EEF4;@endif font-size:14px;color:#6F6874;">Reward amount</td>
+                              <td style="padding:9px 0;@if(!empty($referral->referred))border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:800;color:#1A1A1A;text-align:right;">
+                                ${{ number_format((float) $referral->reward_amount, 2) }}
+                              </td>
+                            </tr>
+                            @if(!empty($referral->referred))
+                              <tr>
+                                <td style="padding:9px 0;@if(!empty($referral->qualifiedBooking))border-bottom:1px solid #F3EEF4;@endif font-size:14px;color:#6F6874;">Referred artist</td>
+                                <td style="padding:9px 0;@if(!empty($referral->qualifiedBooking))border-bottom:1px solid #F3EEF4;@endif font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">
+                                  {{ \App\Services\ArtistReferralRewardService::displayName($referral->referred) }}
+                                </td>
+                              </tr>
+                            @endif
+                            @if(!empty($referral->qualifiedBooking))
+                              <tr>
+                                <td style="padding:9px 0;font-size:14px;color:#6F6874;">Qualified booking</td>
+                                <td style="padding:9px 0;font-size:14px;font-weight:600;color:#1A1A1A;text-align:right;">
+                                  {{ $referral->qualifiedBooking->referenceLabel() }}
+                                </td>
+                              </tr>
+                            @endif
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:12.5px;color:#6F6874;line-height:1.5;padding:12px 0 8px 0;">
+                    You can view your referrals anytime from your dashboard.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 0 8px 0;">
+                    <a href="{{ $referEarnUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">
+                      View Refer &amp; Earn
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px;color:#6F6874;line-height:1.5;padding-top:16px;border-top:1px solid #EEE9F0;">
+                    Bookpay by Inkjin
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
         </table>

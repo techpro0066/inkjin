@@ -51,6 +51,23 @@ class ArtistStudioJoinRequestNotifier
             ? (int) $link->revenue_split
             : null;
 
+        $artistDetail = $artist->userDetail;
+        $artistInitials = $artistDetail
+            ? $artistDetail->publicDisplayInitials()
+            : $this->initialsForName($artistName);
+        $handle = trim((string) ($artistDetail?->user_name ?? ''));
+        if ($handle !== '' && ! str_starts_with($handle, '@')) {
+            $handle = '@'.$handle;
+        }
+        $city = trim((string) ($artistDetail?->city ?? ''));
+        $artistMeta = implode(' · ', array_values(array_filter([$handle, $city])));
+        $avatarPath = trim((string) ($artistDetail?->avatar ?? ''));
+        $artistAvatarUrl = $avatarPath === ''
+            ? null
+            : (str_starts_with($avatarPath, 'http://') || str_starts_with($avatarPath, 'https://')
+                ? $avatarPath
+                : asset(ltrim($avatarPath, '/')));
+
         $hasStudioAccount = $this->studioHasAccount($studio, $email);
         $actionUrl = $hasStudioAccount
             ? route('studio.dashboard')
@@ -69,6 +86,9 @@ class ArtistStudioJoinRequestNotifier
                 relationshipLabel: $relationshipLabel,
                 artistPercent: $artistPercent,
                 isResend: $isResend,
+                artistInitials: $artistInitials,
+                artistMeta: $artistMeta,
+                artistAvatarUrl: $artistAvatarUrl,
             ));
 
             return true;
@@ -104,6 +124,17 @@ class ArtistStudioJoinRequestNotifier
             ->whereRaw('LOWER(email) = ?', [$email])
             ->where('role', 'studio')
             ->exists();
+    }
+
+    private function initialsForName(string $name): string
+    {
+        $parts = preg_split('/\s+/', trim($name)) ?: [];
+        $initials = strtoupper(
+            mb_substr($parts[0] ?? '', 0, 1).
+            mb_substr($parts[1] ?? '', 0, 1)
+        );
+
+        return $initials !== '' ? $initials : 'AR';
     }
 
     public function resolveStudioEmail(Studio $studio): ?string

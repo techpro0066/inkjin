@@ -67,6 +67,7 @@ class BookingObserver
             $booking->forceFill([
                 'reminder_72h_sent_at' => null,
                 'reminder_24h_sent_at' => null,
+                'cancellation_window_reminder_sent_at' => null,
             ])->saveQuietly();
         }
 
