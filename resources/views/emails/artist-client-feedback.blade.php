@@ -57,7 +57,7 @@
 
                 <tr>
                   <td align="center" style="padding:24px 0 8px 0;">
-                    <a href="{{ $feedbackUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:12px;">
+                    <a href="{{ $feedbackUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:13px 22px;border-radius:12px;">
                       Submit feedback
                     </a>
                   </td>

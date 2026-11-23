@@ -12,39 +12,39 @@
     body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#fdf7ff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<body style="margin:0;padding:0;background-color:#FFF6FF;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
     Quick reminder — your session with {{ $artistName }} is {{ $dayName }} at {{ $sessionTime }}.
   </div>
 
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf7ff;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;">
     <tr>
       <td align="center" style="padding:40px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;width:100%;">
           <tr>
-            <td align="center" style="padding:0 0 32px 0;font-size:22px;font-weight:700;color:#1c1b21;letter-spacing:-0.3px;font-family:'Space Grotesk','Plus Jakarta Sans',sans-serif;">
+            <td align="left" style="padding:0 0 22px 0;font-size:26px;font-weight:700;color:#1A1A1A;letter-spacing:-0.055em;font-family:'Space Grotesk',system-ui,sans-serif;">
               bookpay
             </td>
           </tr>
 
           <tr>
-            <td style="background-color:#ffffff;border-radius:16px;padding:48px 40px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <td style="background-color:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #EEE9F0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td style="font-size:16px;color:#1c1b21;line-height:1.6;padding:0 0 16px 0;">
+                  <td style="font-size:15px;color:#1A1A1A;line-height:1.6;padding:0 0 16px 0;">
                     Hi {{ $clientFirst }},
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-size:16px;color:#494552;line-height:1.7;padding:0 0 20px 0;">
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 20px 0;">
                     Quick reminder — your session is coming up:
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:0 0 28px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f4efe8;border-radius:12px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6FF;border-radius:12px;border:1px solid #EEE9F0;">
                       <tr>
-                        <td style="padding:20px 24px;font-size:15px;color:#1c1b21;line-height:1.8;">
+                        <td style="padding:20px 24px;font-size:15px;color:#1A1A1A;line-height:1.8;">
                           <strong>{{ $title }}</strong><br>
                           {{ $sessionDate }}@if($sessionTime !== '') at {{ $sessionTime }}@endif
                           @if($locationLine !== '') · {{ $locationLine }}@endif<br>
@@ -56,42 +56,45 @@
                 </tr>
                 @if(!empty($intakeIncomplete) && !empty($sessionDetailsUrl))
                 <tr>
-                  <td style="font-size:15px;color:#494552;line-height:1.7;padding:0 0 20px 0;">
+                  <td style="font-size:15px;color:#3d3942;line-height:1.7;padding:0 0 20px 0;">
                     One thing before {{ $dayName }}: {{ $artistName }} is still missing {{ $intakeCount }} quick answers from you.
                   </td>
                 </tr>
                 <tr>
                   <td align="center" style="padding:0 0 28px 0;">
-                    <a href="{{ $sessionDetailsUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#1c1b21;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:12px;line-height:1;">
+                    <a href="{{ $sessionDetailsUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:13px 22px;border-radius:12px;line-height:1;">
                       Finish session details — 1 minute
                     </a>
                   </td>
                 </tr>
                 @endif
                 <tr>
-                  <td style="font-size:15px;color:#494552;line-height:1.7;padding:0 0 28px 0;">
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 24px 0;">
                     A few tips for the day: eat beforehand, stay hydrated, and wear something that keeps the {{ $placement }} easy to reach.
                   </td>
                 </tr>
                 <tr>
                   <td align="center" style="padding:0 0 28px 0;">
-                    <a href="{{ $viewBookingUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#1c1b21;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:12px;line-height:1;">
+                    <a href="{{ $viewBookingUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#1A1A1A;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:13px 22px;border-radius:12px;line-height:1;">
                       View my booking
                     </a>
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-size:15px;color:#494552;line-height:1.7;padding:0 0 24px 0;">
+                  <td style="font-size:15px;color:#3d3942;line-height:1.55;padding:0 0 24px 0;">
                     See you {{ $dayName }}!
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-size:14px;color:#7a7583;line-height:1.6;">
+                  <td style="font-size:14px;color:#6F6874;line-height:1.6;">
                     — Bookpay, on behalf of {{ $artistName }}
                   </td>
                 </tr>
               </table>
             </td>
+          </tr>
+          <tr>
+            <td align="left" style="padding:16px 0 0 0;border-top:1px solid #EEE9F0;font-size:12px;color:#6F6874;">© {{ date('Y') }} Bookpay by Inkjin</td>
           </tr>
         </table>
       </td>
