@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ReferralsController as AdminReferralsController;
 use App\Http\Controllers\Admin\PlatformFeeController as AdminPlatformFeeController;
+use App\Http\Controllers\Admin\PlansController as AdminPlansController;
 use App\Http\Controllers\QuestionsController;
 
 use App\Http\Controllers\UserController\BookingsController;
@@ -501,6 +502,10 @@ Route::middleware(['auth', 'onboarding', 'client_password'])->group(function () 
 // Admin routes
 Route::middleware(['auth', 'verified', 'onboarding', 'admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/plans', [AdminPlansController::class, 'index'])->name('admin.plans.index');
+    Route::post('/plans', [AdminPlansController::class, 'store'])->name('admin.plans.store');
+    Route::post('/plans/features', [AdminPlansController::class, 'storeFeature'])->name('admin.plans.features.store');
+    Route::put('/plans/{plan}', [AdminPlansController::class, 'update'])->name('admin.plans.update');
     Route::get('/bookings', [AdminBookingsController::class, 'index'])->name('admin.bookings.index');
     Route::get('/bookings/{booking}', [AdminBookingsController::class, 'show'])->name('admin.bookings.show');
     Route::get('/requests', [AdminRequestsController::class, 'index'])->name('admin.requests.index');
