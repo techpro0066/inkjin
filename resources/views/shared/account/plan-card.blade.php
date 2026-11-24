@@ -17,6 +17,8 @@
       <div class="account-plan-term"><strong>No commission</strong><span>0% per booking</span></div>
       @if(auth()->user()->role === 'artist')
         <div class="account-plan-term"><strong>€10 booking fee</strong><span>Paid by your client</span></div>
+      @elseif(auth()->user()->role === 'studio')
+        <div class="account-plan-term"><strong>Artists</strong><span>Up to 6 artists · plus guests</span></div>
       @endif
       <div class="account-plan-term"><strong>Card fees</strong><span>Stripe’s fees, paid by you</span></div>
     </div>
