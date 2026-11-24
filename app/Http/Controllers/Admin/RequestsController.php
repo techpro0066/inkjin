@@ -66,6 +66,8 @@ class RequestsController extends Controller
         $customRequest->load(['user', 'artist', 'booking']);
 
         $panel = $customRequest->toArtistPanelArray();
+        $panel['clientEmail'] = (string) ($customRequest->user?->email ?? '');
+        $panel['clientPhone'] = (string) ($customRequest->contactPhone() ?? $customRequest->user?->phone_number ?? '');
         $panel['estimatedPriceLabel'] = $customRequest->estimatedPriceLabel();
         $panel['clientSessionSlots'] = $customRequest->normalizedArtistSlots($customRequest->client_session_slots);
         $panel['clientConsultationSlots'] = $customRequest->normalizedArtistSlots($customRequest->client_consultation_slots);
