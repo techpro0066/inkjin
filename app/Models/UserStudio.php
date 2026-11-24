@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\StudioArtistLimit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Schema;
@@ -77,6 +78,38 @@ class UserStudio extends Model
         'show_on_page' => 'boolean',
         'page_sort_order' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $link): void {
+            if (empty($link->studio_id) || (int) $link->status !== self::STATUS_ACTIVE || empty($link->user_id)) {
+                return;
+            }
+
+            $alreadyActiveAtStudio = $link->exists
+                && (int) $link->getRawOriginal('status') === self::STATUS_ACTIVE
+                && (int) $link->getRawOriginal('studio_id') === (int) $link->studio_id
+                && (int) $link->getRawOriginal('user_id') === (int) $link->user_id;
+            if ($alreadyActiveAtStudio) {
+                return;
+            }
+
+            $isArtist = User::query()
+                ->whereKey($link->user_id)
+                ->where('role', 'artist')
+                ->exists();
+            if (! $isArtist) {
+                return;
+            }
+
+            app(StudioArtistLimit::class)->ensureCanLink(
+                (int) $link->studio_id,
+                (int) $link->user_id,
+                'studio',
+                $link->getKey(),
+            );
+        });
+    }
 
     /**
      * Open artist→studio renegotiation on an active revenue-split link.

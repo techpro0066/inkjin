@@ -19,7 +19,7 @@
       <div class="account-plan-term"><strong>Card fees</strong><span>Stripe’s fees, paid by you</span></div>
     </div>
 
-    <p class="account-plan-note">You keep the Founding artist badge whatever plan you choose. Try Pro free for 60 days, no card needed. If you don’t add a card, you go back to Founding automatically.</p>
+    <p class="account-plan-note">You're a Founding {{auth()->user()->role}}. You'll always have access to this plan, whatever plans we add may later.</p>
   </section>
 @else
   <section class="account-plan-card account-plan-empty" aria-labelledby="accountPlanTitle">

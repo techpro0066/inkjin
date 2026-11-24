@@ -12,6 +12,7 @@ use App\Models\UserStudio;
 use App\Services\GuestSpotStudioInviteService;
 use App\Services\RevenueSplitChangeService;
 use App\Services\StudioArtistInviteService;
+use App\Services\StudioArtistLimit;
 use App\Support\ArtistNotificationPreferences;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +29,7 @@ class ArtistsController extends Controller
         private readonly StudioArtistInviteService $inviteService,
         private readonly GuestSpotStudioInviteService $guestSpotInvites,
         private readonly RevenueSplitChangeService $splitChanges,
+        private readonly StudioArtistLimit $artistLimit,
     ) {
     }
 
@@ -443,6 +445,21 @@ class ArtistsController extends Controller
 
         if (! $link) {
             return $this->actionFailed($request, 'Join request not found.', 404);
+        }
+
+        try {
+            $this->artistLimit->ensureCanLink(
+                (int) $studio->id,
+                (int) $link->user_id,
+                'artist',
+                (int) $link->id,
+            );
+        } catch (ValidationException $e) {
+            return $this->actionFailed(
+                $request,
+                collect($e->errors())->flatten()->first() ?: 'This studio has reached its artist limit.',
+                422,
+            );
         }
 
         if (! empty($validated['relationship'])) {

@@ -17,6 +17,11 @@ use Throwable;
 
 class StudioArtistInviteService
 {
+    public function __construct(
+        private readonly StudioArtistLimit $artistLimit,
+    ) {
+    }
+
     /**
      * @return array{0: ?User, 1: string} [matchedUser, normalizedEmail]
      */
@@ -107,6 +112,12 @@ class StudioArtistInviteService
                     'identifier' => 'That artist already has a join request waiting for you.',
                 ]);
             }
+
+            $this->artistLimit->ensureCanLink(
+                (int) $studio->id,
+                $user?->id,
+                'identifier',
+            );
         }
 
         $payoutMode = ($terms['payout_mode'] ?? 'split') === 'direct' ? 'direct' : 'split';
@@ -161,6 +172,12 @@ class StudioArtistInviteService
                 'invite' => 'This invitation is no longer pending.',
             ]);
         }
+
+        $this->artistLimit->ensureCanLink(
+            (int) $invite->studio_id,
+            $invite->user_id ? (int) $invite->user_id : null,
+            'invite',
+        );
 
         $invite->token = StudioInvite::newToken();
         $invite->expires_at = now()->addDays(30);
@@ -230,6 +247,12 @@ class StudioArtistInviteService
         }
 
         $studio = $invite->studio;
+        $this->artistLimit->ensureCanLink(
+            (int) $invite->studio_id,
+            (int) $artist->id,
+            'invite',
+        );
+
         $link = UserStudio::findReusableForUser((int) $artist->id, null, (int) $invite->studio_id)
             ?? new UserStudio(['user_id' => $artist->id]);
 
