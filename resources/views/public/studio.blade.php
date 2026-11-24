@@ -13,6 +13,9 @@
     $studioUsername = trim((string) ($studio->username ?? ''));
     $studioHandle = $studioUsername !== '' ? '@'.$studioUsername : '';
     $studioInitials = strtoupper(substr(preg_replace('/\s+/', '', $studioName) ?: 'ST', 0, 2));
+    $foundingStudioBadge = ($isFoundingStudio ?? false)
+        ? '<div class="founding-studio-badge"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false"><g stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 3.5v17"></path><path d="M4.6 7.75l14.8 8.5"></path><path d="M4.6 16.25l14.8-8.5"></path></g></svg><span>Founding studio</span></div>'
+        : '';
 
     $lookState = \App\Support\PageLook::stateFromStudio($studio);
     $isLookPreview = request()->boolean('preview');
@@ -165,6 +168,7 @@
             ? '<button type="button" class="cst-av sq" data-photo aria-label="Open '.e($studioName).'\'s logo" style="background-color:#fff;background-image:url(\''.e($logoUrl).'\')"></button>'
             : '<button type="button" class="cst-av sq" data-photo aria-label="Open '.e($studioName).'\'s logo" style="background:linear-gradient(135deg,'.e($schemePrimary).','.e($schemeMid).');display:flex;align-items:center;justify-content:center;font-weight:800;font-size:40px;color:#fff">'.e($studioInitials).'</button>')
         .'<h1>'.e($studioName).'</h1>'
+        .$foundingStudioBadge
         .($studioHandle !== '' ? '<div class="cst-tag">'.e($studioHandle).'</div>' : '')
         .($boxHtmlStyles !== '' ? '<div class="cst-sty">'.$boxHtmlStyles.'</div>' : '')
         .($extraServicesLine !== '' ? '<div class="cst-svc"><b>Also:</b> '.e($extraServicesLine).'</div>' : '')
@@ -224,6 +228,7 @@
       <div>
         <div class="sp-logo" data-photo role="button" tabindex="0" aria-label="Open {{ $studioName }}'s logo" style="{{ $logoStyle }}">@if(! $logoUrl){{ $studioInitials }}@endif</div>
         <h1 class="sp-name">{{ $studioName }}</h1>
+        {!! $foundingStudioBadge !!}
         @if($studioHandle !== '')
           <div class="sp-handle">{{ $studioHandle }}</div>
         @endif

@@ -282,6 +282,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/', [\App\Http\Controllers\Studio\AccountController::class, 'updateProfile'])->name('profile.update');
         Route::get('/password', [\App\Http\Controllers\Studio\AccountController::class, 'password'])->name('password');
         Route::get('/studio', [\App\Http\Controllers\Studio\AccountController::class, 'studio'])->name('studio');
+        Route::get('/plans', function (\Illuminate\Http\Request $request) {
+            $createdAt = $request->user()->created_at;
+            $isFounding = $createdAt !== null
+                && $createdAt->lt(\Carbon\Carbon::create(2027, 1, 1));
+
+            return view('studio.account.plans', compact('isFounding'));
+        })->name('plans');
         Route::post('/studio', [\App\Http\Controllers\Studio\AccountController::class, 'updateStudio'])->name('studio.update');
         Route::get('/regional', [\App\Http\Controllers\Studio\AccountController::class, 'regional'])->name('regional');
         Route::post('/regional', [\App\Http\Controllers\Studio\AccountController::class, 'updateRegional'])->name('regional.update');
@@ -582,6 +589,14 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/settings/styles', [OnboardingController::class, 'updateStylesSocial'])->name('settings.styles.update');
 
     Route::get('/settings/studio', [StudioSettingsController::class, 'show'])->name('settings.studio');
+
+    Route::get('/settings/plans', function (\Illuminate\Http\Request $request) {
+        $createdAt = $request->user()->created_at;
+        $isFounding = $createdAt !== null
+            && $createdAt->lt(\Carbon\Carbon::create(2027, 1, 1));
+
+        return view('artist.settings.plans', compact('isFounding'));
+    })->name('settings.plans');
 
     Route::get('/settings/studio/change', [ChangeStudioController::class, 'show'])->name('settings.studio.change');
     Route::get('/settings/studio/change/search', [ChangeStudioController::class, 'search'])->name('settings.studio.change.search');

@@ -4,6 +4,7 @@
 
 @section('styles')
   <style>
+    html, body { overflow-x: clip; }
     .plans-page { max-width: 1440px; padding: 32px; }
     .plans-page, .plans-page * { box-sizing: border-box; }
     .plans-page { color: #24202b; }
@@ -77,7 +78,7 @@
     .plans-savebar { position: fixed; z-index: 20; left: 260px; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 28px; background: rgba(255,255,255,.96); border-top: 1px solid #e8e3ec; box-shadow: 0 -5px 18px #24143a0d; }
     .plans-savebar span { color: #77707f; font-size: 12px; }
     .plans-savebar button { border: 0; border-radius: 9px; background: #310f7a; color: #fff; padding: 10px 18px; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
-    .plans-main { background: #f6f2f8; }
+    .plans-main { background: #f6f2f8; overflow: visible; }
     .plans-page { max-width: none; padding: 28px 32px 110px; color: #1d1a21; font-size: 14px; }
     .plans-heading { margin-bottom: 18px; }
     .plans-heading h1 { margin: 0; font-size: 28px; letter-spacing: -.02em; }
@@ -466,13 +467,30 @@
         });
       }
 
-      function amountFor(plan, currency) {
-        if (plan.prices[currency] !== undefined) return Number(plan.prices[currency]) || 0;
+      function convertedAmountFor(plan, currency) {
         var amount = (Number(plan.prices.EUR) || 0) * (rates[currency] || 1);
         if (currency === 'HUF') return Math.round(amount / 100) * 100;
         if (currency === 'CZK') return Math.round(amount / 10) * 10;
         return Math.round(amount);
       }
+
+      function amountFor(plan, currency) {
+        if (plan.prices[currency] !== undefined) return Number(plan.prices[currency]) || 0;
+        return convertedAmountFor(plan, currency);
+      }
+
+      function removeLegacyConvertedPrices(plan) {
+        currencies.forEach(function (currency) {
+          if (currency === 'EUR' || plan.prices[currency] === undefined || plan.prices[currency] === '') return;
+          if (Number(plan.prices[currency]) === convertedAmountFor(plan, currency)) {
+            delete plan.prices[currency];
+          }
+        });
+      }
+
+      planOrder.forEach(function (key) {
+        removeLegacyConvertedPrices(plans[key]);
+      });
 
       function money(amount, currency) {
         var value = Number(amount) || 0;
@@ -727,9 +745,11 @@
         }).filter(function (term) {
           return term.label !== '';
         });
-        var prices = {};
+        var prices = { EUR: amountFor(plan, 'EUR') };
         currencies.forEach(function (currency) {
-          prices[currency] = amountFor(plan, currency);
+          if (currency !== 'EUR' && plan.prices[currency] !== undefined && plan.prices[currency] !== '') {
+            prices[currency] = amountFor(plan, currency);
+          }
         });
 
         return {

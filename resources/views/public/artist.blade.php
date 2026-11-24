@@ -103,6 +103,9 @@
     $showTagline = ($userDetail->display_tagline ?? true) && $tagline !== '';
     $artistPublicName = $userDetail->publicDisplayName();
     $artistHandle = '@'.$userDetail->user_name;
+    $foundingArtistBadge = ($isFoundingArtist ?? false)
+        ? '<div class="founding-artist-badge"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false"><g stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 3.5v17"></path><path d="M4.6 7.75l14.8 8.5"></path><path d="M4.6 16.25l14.8-8.5"></path></g></svg><span>Founding artist</span></div>'
+        : '';
     $avatarUrl = ($userDetail->avatar && $userDetail->avatar !== '') ? asset($userDetail->avatar) : null;
     $bannerUrl = ($userDetail->personal_page_background_image && $userDetail->personal_page_background_image !== '')
         ? asset($userDetail->personal_page_background_image)
@@ -274,6 +277,7 @@
     }
     $lookBoxHtml = $boxHtmlAvatar
         .'<h1>'.e($artistPublicName).'</h1>'
+        .$foundingArtistBadge
         .$boxHtmlTag
         .'<div class="cst-meta" style="position:relative">'.$boxHtmlStudio.$boxHtmlLoc.$boxHtmlSince.'<div class="cst-pop" id="cstpop" hidden></div></div>'
         .($boxHtmlStyles !== '' ? '<div class="cst-sty">'.$boxHtmlStyles.'</div>' : '')
@@ -324,7 +328,7 @@
     document.documentElement.classList.add('look-pending');
     try { sessionStorage.setItem('bp-look-artist', @json($lookState)); } catch (e) {}
   </script>
-  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=8"></script>
+  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=9"></script>
   @endif
 </head>
 <body class="{{ trim(($lookIsCustom ? 'cst ' : '').($isLookPreview ? 'bp-prev' : '')) }}" data-books="{{ $booksClosed ? 'closed' : 'open' }}" data-look-who="artist"><div class="banner" id="banner" style="{{ $bannerStyle }}"></div>
@@ -338,6 +342,7 @@
         <div class="av av-initials" data-photo role="button" tabindex="0" aria-label="Open {{ $artistPublicName }}'s profile photo" style="cursor:pointer">{{ $userDetail->publicDisplayInitials() }}</div>
           @endif
       <h1>{{ $artistPublicName }}</h1>
+          {!! $foundingArtistBadge !!}
       <div class="handle">{{ $artistHandle }}</div>
       @if($showTagline)
         <div class="tagline" id="tagline">{{ $tagline }}</div>
@@ -778,7 +783,7 @@
 @include('partials.bookpay-public-api')
 <script src="{{ asset('new-ui-design-assets/guest-waitlist.js') }}"></script>
 @if(! $lookIsCustom)
-<script src="{{ asset('new-ui-design-assets/look.js') }}?v=8"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v=9"></script>
 @endif
   <script>
 (function () {

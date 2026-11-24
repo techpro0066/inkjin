@@ -797,6 +797,8 @@ class InkJinController extends Controller
                     'artistPortfolios' => $artistPortfolios,
                     'guestSpots' => $guestSpots,
                     'faqs' => $faqs,
+                    'isFoundingArtist' => $user->created_at !== null
+                        && $user->created_at->lt(\Carbon\Carbon::create(2027, 1, 1)),
                 ]);
             }
         }
@@ -923,6 +925,8 @@ class InkJinController extends Controller
             'guestArtists' => $guestArtists,
             'showFlash' => $showFlash,
             'showPort' => $showPort,
+            'isFoundingStudio' => $studio->user->created_at !== null
+                && $studio->user->created_at->lt(\Carbon\Carbon::create(2027, 1, 1)),
         ]);
     }
 

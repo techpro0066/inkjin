@@ -47,6 +47,8 @@ a{color:inherit;text-decoration:none}
 .sp-hero{display:grid;grid-template-columns:1fr 340px;gap:40px;align-items:start}
 .sp-hero .sp-logo{margin-top:-54px;position:relative;box-shadow:0 8px 24px rgba(20,10,30,.18)}
 .sp-name{font-size:36px;font-weight:800;letter-spacing:-1.1px;line-height:1.1;margin:14px 0 0}
+.founding-studio-badge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;border-radius:999px;background:#F0E8FF;color:#3E007C;padding:5px 11px;font-size:13px;font-weight:700;line-height:1.4}
+.founding-studio-badge svg{flex:none}
 .sp-handle{color:var(--faint);font-weight:600;font-size:14px;margin-top:4px}
 .sp-hero .sp-desc{margin-top:14px}
 .sp-mi-list{display:flex;flex-direction:column;gap:10px;margin-top:22px}

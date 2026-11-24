@@ -783,7 +783,7 @@ class MoneyController extends Controller
             'date_sort' => $date?->timestamp ?? 0,
             'booking_label' => $bookingLabel,
             'artist' => $artistName,
-            'client_paid' => $deposit,
+            'client_paid' => $clientPaid,
             'studio_share' => $studioShare,
             'studio_percent' => $studioPercent,
             'studio_stripe' => $studioStripe,
