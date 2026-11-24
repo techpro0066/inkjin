@@ -37,18 +37,25 @@ class StudioArtistLimit
             }
         }
 
-        $artistCount = UserStudio::query()
+        if ($this->countLinkedArtists($studioId, $exceptUserStudioId) >= self::MAX_LINKED_ARTISTS) {
+            throw ValidationException::withMessages([
+                $errorField => 'This studio can link up to 6 artists. Guest artists do not count toward this limit.',
+            ]);
+        }
+    }
+
+    public function countLinkedArtists(int $studioId, ?int $exceptUserStudioId = null): int
+    {
+        if (! UserStudio::tableReady()) {
+            return 0;
+        }
+
+        return (int) UserStudio::query()
             ->where('studio_id', $studioId)
             ->where('status', UserStudio::STATUS_ACTIVE)
             ->whereHas('user', fn ($query) => $query->where('role', 'artist'))
             ->when($exceptUserStudioId !== null, fn ($query) => $query->where('id', '!=', $exceptUserStudioId))
             ->distinct()
             ->count('user_id');
-
-        if ($artistCount >= self::MAX_LINKED_ARTISTS) {
-            throw ValidationException::withMessages([
-                $errorField => 'This studio can link up to 6 artists. Guest artists do not count toward this limit.',
-            ]);
-        }
     }
 }

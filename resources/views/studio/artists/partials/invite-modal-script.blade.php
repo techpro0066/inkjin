@@ -9,7 +9,7 @@
       btn.disabled = true;
       btn.innerHTML = '<span class="ms">hourglass_top</span>Sending...';
     } else {
-      btn.disabled = false;
+      btn.disabled = btn.getAttribute('data-limit-reached') === 'true';
       if (btn.dataset.idleHtml) btn.innerHTML = btn.dataset.idleHtml;
     }
   }

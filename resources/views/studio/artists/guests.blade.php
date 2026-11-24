@@ -42,10 +42,11 @@
       <h1>Artists<a class="help-q" href="https://help.inkjin.com/en/articles/17338266-studio-dashboard-artists-guest-artists" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page"><span class="ms">help</span></a></h1>
       <div class="sub">Who works at {{ $studioName }}, how they're paid, and requests to join.</div>
     </div>
-    <button type="button" class="btn" data-open="m-invite"><span class="ms">person_add</span>Invite artist</button>
+    <button type="button" class="btn" @if($artistLimitReached) disabled title="Artist limit reached" @else data-open="m-invite" @endif><span class="ms">person_add</span>Invite artist</button>
   </div>
 
   @include('studio.artists.partials.tabs')
+  @include('studio.artists.partials.artist-limit-notice')
 
   <div class="faint" style="font-size:13px;margin-bottom:12px">Artists who set up a guest spot at your studio. They choose your studio in their own Guest spots. A guest spot never changes their home studio.</div>
 

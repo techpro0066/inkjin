@@ -56,7 +56,7 @@
     </div>
     <div class="smf">
       <button type="button" class="btn ghost" data-close>Cancel</button>
-      <button type="button" class="btn" id="inv-send"><span class="ms">send</span>Send invite</button>
+      <button type="button" class="btn" id="inv-send" data-limit-reached="{{ ($artistLimitReached ?? false) ? 'true' : 'false' }}" @disabled($artistLimitReached ?? false)><span class="ms">send</span>Send invite</button>
     </div>
   </div>
 </div>

@@ -676,6 +676,9 @@ class ArtistsController extends Controller
         }
 
         $artistCount = 0;
+        $linkedArtistCount = $studio
+            ? $this->artistLimit->countLinkedArtists((int) $studio->id)
+            : 0;
         $joinRequestCount = 0;
         $inviteCount = 0;
         $guestCount = 0;
@@ -715,6 +718,11 @@ class ArtistsController extends Controller
             'ownerAvatarUrl' => ($imagePath = trim((string) ($studio?->image_url ?? ''))) !== ''
                 ? asset(ltrim($imagePath, '/'))
                 : null,
+            'linkedArtistCount' => $linkedArtistCount,
+            'artistLimit' => StudioArtistLimit::MAX_LINKED_ARTISTS,
+            'artistLimitReached' => $linkedArtistCount >= StudioArtistLimit::MAX_LINKED_ARTISTS,
+            'isFounding' => $user->created_at !== null
+                && $user->created_at->lt(\Carbon\Carbon::create(2027, 1, 1)),
             'artistCount' => $artistCount,
             'joinRequestCount' => $joinRequestCount,
             'inviteCount' => $inviteCount,

@@ -52,10 +52,11 @@
       <h1>Artists<a class="help-q" href="https://help.inkjin.com/en/articles/17338255-studio-dashboard-artists-invites" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page"><span class="ms">help</span></a></h1>
       <div class="sub">Who works at {{ $studioName }}, how they're paid, and requests to join.</div>
     </div>
-    <button type="button" class="btn" data-open="m-invite"><span class="ms">person_add</span>Invite artist</button>
+    <button type="button" class="btn" @if($artistLimitReached) disabled title="Artist limit reached" @else data-open="m-invite" @endif><span class="ms">person_add</span>Invite artist</button>
   </div>
 
   @include('studio.artists.partials.tabs')
+  @include('studio.artists.partials.artist-limit-notice')
 
   <div class="card" style="overflow:hidden">
     <table>
@@ -82,7 +83,7 @@
             <td data-label="Status"><span class="pill a">{{ $invite['status'] }}</span></td>
             <td>
               <div class="row" style="gap:6px;justify-content:flex-end">
-                <button type="button" class="btn ghost sm" data-resend="{{ $invite['id'] }}">Resend</button>
+                <button type="button" class="btn ghost sm" data-resend="{{ $invite['id'] }}" data-limit-reached="{{ $artistLimitReached ? 'true' : 'false' }}" @disabled($artistLimitReached) @if($artistLimitReached) title="Artist limit reached" @endif>Resend</button>
                 <button type="button" class="btn ghost sm" data-cancel="{{ $invite['id'] }}">Cancel</button>
               </div>
             </td>
@@ -153,7 +154,7 @@
         .catch(function (err) {
           if (window.bpToast) window.bpToast(err.message || 'Could not resend', true);
         })
-        .finally(function () { t.disabled = false; });
+        .finally(function () { t.disabled = t.getAttribute('data-limit-reached') === 'true'; });
       return;
     }
     if ((t = e.target.closest('[data-cancel]'))) {

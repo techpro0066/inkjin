@@ -43,10 +43,11 @@
       <h1>Artists<a class="help-q" href="https://help.inkjin.com/en/articles/17338194-studio-dashboard-artists-artists" target="_blank" rel="noopener" title="Help with this page" aria-label="Help with this page"><span class="ms">help</span></a></h1>
       <div class="sub">Who works at {{ $studioName }}, how they're paid, and requests to join.</div>
     </div>
-    <button type="button" class="btn" data-open="m-invite"><span class="ms">person_add</span>Invite artist</button>
+    <button type="button" class="btn" @if($artistLimitReached) disabled title="Artist limit reached" @else data-open="m-invite" @endif><span class="ms">person_add</span>Invite artist</button>
   </div>
 
   @include('studio.artists.partials.tabs')
+  @include('studio.artists.partials.artist-limit-notice')
 
   <div class="faint" style="font-size:13px;margin-bottom:12px">Artists who asked to join {{ $studioName }}. Nothing changes for them until you accept.</div>
 
@@ -118,7 +119,7 @@
     </div>
     <div class="smf">
       <button type="button" class="btn ghost" data-close>Cancel</button>
-      <button type="button" class="btn" id="rv-accept">Accept artist</button>
+      <button type="button" class="btn" id="rv-accept" data-limit-reached="{{ $artistLimitReached ? 'true' : 'false' }}" @disabled($artistLimitReached) @if($artistLimitReached) title="Artist limit reached" @endif>Accept artist</button>
     </div>
   </div>
 </div>
@@ -276,7 +277,7 @@
       try { sessionStorage.setItem('bp-toast', res.data.message || 'Artist accepted'); } catch (e) {}
       location.reload();
     }).catch(function (err) {
-      btn.disabled = false;
+      btn.disabled = btn.getAttribute('data-limit-reached') === 'true';
       if (window.bpToast) window.bpToast(err.message || 'Could not accept request', true);
     });
   });
