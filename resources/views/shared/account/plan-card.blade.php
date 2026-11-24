@@ -5,7 +5,7 @@
         <p class="account-plan-eyebrow">Your plan</p>
         <div class="account-plan-title-row">
           <h2 id="accountPlanTitle">Founding</h2>
-          <span class="account-plan-badge"><svg class="fmark-i" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false"><g stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 3.5v17"></path><path d="M4.6 7.75l14.8 8.5"></path><path d="M4.6 16.25l14.8-8.5"></path></g></svg>Founding artist</span>
+          <span class="account-plan-badge"><svg class="fmark-i" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false"><g stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 3.5v17"></path><path d="M4.6 7.75l14.8 8.5"></path><path d="M4.6 16.25l14.8-8.5"></path></g></svg>Founding {{auth()->user()->role}}</span>
           <span class="account-plan-current">Current plan</span>
         </div>
         <p class="account-plan-description">Today’s terms, for as long as your account is active.</p>
@@ -15,7 +15,9 @@
     <div class="account-plan-terms" aria-label="Founding plan terms">
       <div class="account-plan-term"><strong>No subscription</strong><span>€0/month</span></div>
       <div class="account-plan-term"><strong>No commission</strong><span>0% per booking</span></div>
-      <div class="account-plan-term"><strong>€10 booking fee</strong><span>Paid by your client</span></div>
+      @if(auth()->user()->role === 'artist')
+        <div class="account-plan-term"><strong>€10 booking fee</strong><span>Paid by your client</span></div>
+      @endif
       <div class="account-plan-term"><strong>Card fees</strong><span>Stripe’s fees, paid by you</span></div>
     </div>
 
