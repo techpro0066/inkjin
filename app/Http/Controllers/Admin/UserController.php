@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -260,12 +261,25 @@ class UserController extends Controller
                             ->orWhere('country', 'like', "%{$search}%");
                     })
                     ->orWhereHas('userDetail', function ($detailQuery) use ($search) {
-                        $detailQuery->where('user_name', 'like', "%{$search}%")
-                            ->orWhere('studio_name', 'like', "%{$search}%")
-                            ->orWhere('city', 'like', "%{$search}%")
-                            ->orWhere('country', 'like', "%{$search}%")
+                        $detailQuery->where(function ($detailFields) use ($search) {
+                            $detailFields->where('user_name', 'like', "%{$search}%")
+                                ->orWhere('city', 'like', "%{$search}%")
+                                ->orWhere('country', 'like', "%{$search}%");
+                            // Legacy column — dropped after workplaces migration on some DBs.
+                            if (Schema::hasColumn('user_details', 'studio_name')) {
+                                $detailFields->orWhere('studio_name', 'like', "%{$search}%");
+                            }
+                        })->orWhereHas('studio', function ($studioQuery) use ($search) {
+                            $studioQuery->where('name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->orWhereHas('userStudios', function ($linkQuery) use ($search) {
+                        $linkQuery->where('studio_name', 'like', "%{$search}%")
                             ->orWhereHas('studio', function ($studioQuery) use ($search) {
-                                $studioQuery->where('name', 'like', "%{$search}%");
+                                $studioQuery->where('name', 'like', "%{$search}%")
+                                    ->orWhere('username', 'like', "%{$search}%")
+                                    ->orWhere('city', 'like', "%{$search}%")
+                                    ->orWhere('country', 'like', "%{$search}%");
                             });
                     });
             });
