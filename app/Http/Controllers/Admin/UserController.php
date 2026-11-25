@@ -221,10 +221,13 @@ class UserController extends Controller
         $booksFilter = strtolower(trim((string) $request->get('books', 'all')));
         $payoutsFilter = strtolower(trim((string) $request->get('payouts', 'all')));
 
+        $userDetailWith = Schema::hasColumn('user_details', 'studio_id')
+            ? ['userDetail.studio']
+            : ['userDetail'];
+
         $query = User::query()
             ->notDeleted()
-            ->with([
-                'userDetail.studio',
+            ->with(array_merge($userDetailWith, [
                 'consentFormSetting',
                 'userStudios' => fn ($q) => $q->where('status', UserStudio::STATUS_ACTIVE)
                     ->with('studio')
@@ -240,7 +243,7 @@ class UserController extends Controller
                         ->orderByRaw('CASE status WHEN '.UserStudio::STATUS_ACTIVE.' THEN 0 WHEN '.UserStudio::STATUS_SPLIT_PROPOSED.' THEN 1 ELSE 2 END')
                         ->orderBy('id'),
                 ]),
-            ])
+            ]))
             ->withCount(['artistDesigns', 'portfolios', 'availabilities'])
             ->where('role', '!=', 'admin');
 
@@ -262,25 +265,37 @@ class UserController extends Controller
                     })
                     ->orWhereHas('userDetail', function ($detailQuery) use ($search) {
                         $detailQuery->where(function ($detailFields) use ($search) {
-                            $detailFields->where('user_name', 'like', "%{$search}%")
-                                ->orWhere('city', 'like', "%{$search}%")
-                                ->orWhere('country', 'like', "%{$search}%");
-                            // Legacy column — dropped after workplaces migration on some DBs.
+                            $detailFields->where('user_name', 'like', "%{$search}%");
+                            if (Schema::hasColumn('user_details', 'city')) {
+                                $detailFields->orWhere('city', 'like', "%{$search}%");
+                            }
+                            if (Schema::hasColumn('user_details', 'country')) {
+                                $detailFields->orWhere('country', 'like', "%{$search}%");
+                            }
+                            // Legacy columns — dropped after workplaces migration on some DBs.
                             if (Schema::hasColumn('user_details', 'studio_name')) {
                                 $detailFields->orWhere('studio_name', 'like', "%{$search}%");
                             }
-                        })->orWhereHas('studio', function ($studioQuery) use ($search) {
-                            $studioQuery->where('name', 'like', "%{$search}%");
                         });
+                        // Legacy FK user_details.studio_id — may be removed on live.
+                        if (Schema::hasColumn('user_details', 'studio_id')) {
+                            $detailQuery->orWhereHas('studio', function ($studioQuery) use ($search) {
+                                $studioQuery->where('name', 'like', "%{$search}%");
+                            });
+                        }
                     })
                     ->orWhereHas('userStudios', function ($linkQuery) use ($search) {
-                        $linkQuery->where('studio_name', 'like', "%{$search}%")
-                            ->orWhereHas('studio', function ($studioQuery) use ($search) {
+                        $linkQuery->where(function ($linkOrStudio) use ($search) {
+                            if (Schema::hasColumn('user_studios', 'studio_name')) {
+                                $linkOrStudio->where('studio_name', 'like', "%{$search}%");
+                            }
+                            $linkOrStudio->orWhereHas('studio', function ($studioQuery) use ($search) {
                                 $studioQuery->where('name', 'like', "%{$search}%")
                                     ->orWhere('username', 'like', "%{$search}%")
                                     ->orWhere('city', 'like', "%{$search}%")
                                     ->orWhere('country', 'like', "%{$search}%");
                             });
+                        });
                     });
             });
         }
