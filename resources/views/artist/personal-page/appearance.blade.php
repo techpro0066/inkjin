@@ -95,8 +95,10 @@
 <style>
   .mp-look .look-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:280px;padding:36px 20px;border:1px solid #E8DFEA;border-radius:16px;background:#fff;color:#6B6470;text-align:center}
   .mp-look .look-loading .ms{font-size:28px;color:#3E007C;animation:lookSpin 1s linear infinite}
+  .mp-look .look-loading.is-error .ms{color:#B3261E;animation:none}
   .mp-look .look-loading b{display:block;font-size:15px;font-weight:700;color:#1A1A1A;margin-bottom:2px}
   .mp-look .look-loading span{font-size:13px;line-height:1.45}
+  .mp-look .look-loading .look-reload{margin-top:6px;display:inline-flex;align-items:center;gap:6px;border:0;border-radius:10px;background:#3E007C;color:#fff;font:inherit;font-weight:600;font-size:13.5px;padding:10px 14px;cursor:pointer}
   @keyframes lookSpin{to{transform:rotate(360deg)}}
   .mp-look .mp-toast{position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));transition:opacity .25s,transform .35s;pointer-events:none}
   .mp-look .mp-toast.on{opacity:1;transform:none}
@@ -204,7 +206,7 @@
 
 @section('scripts')
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
-<script src="{{ asset('new-ui-design-assets/look.js') }}?v=11"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v=12"></script>
 <script>
 (function () {
   var cfg = @json($lookCfg);
@@ -212,7 +214,22 @@
   var saveUrl = @json(route('personal-page.appearance.update'));
   var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   var host = document.getElementById('lookfeel');
-  if (!host || !window.BPLook) return;
+
+  function showLookLoadError(message) {
+    if (!host) return;
+    host.innerHTML =
+      '<div class="look-loading is-error" role="alert">' +
+        '<span class="ms">error</span>' +
+        '<div><b>Couldn’t load appearance</b><span>' + (message || 'Please refresh and try again.') + '</span></div>' +
+        '<button type="button" class="look-reload" onclick="location.reload()"><span class="ms">refresh</span>Reload page</button>' +
+      '</div>';
+  }
+
+  if (!host) return;
+  if (!window.BPLook) {
+    showLookLoadError('The appearance editor didn’t load. Check your connection, then reload.');
+    return;
+  }
 
   var cropModal = document.getElementById('lookCropperModal');
   var cropBox = document.getElementById('lookCropBox');
@@ -449,7 +466,12 @@
     });
   };
 
-  BPLook.editor(host, cfg);
+  try {
+    BPLook.editor(host, cfg);
+  } catch (err) {
+    showLookLoadError((err && err.message) || 'Something went wrong while opening the editor.');
+    return;
+  }
 
   var toastEl = document.getElementById('mpToast');
   var toastText = document.getElementById('mpToastText');
