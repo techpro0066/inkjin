@@ -246,7 +246,8 @@ class ArtistPaymentsService
         $payout = $booking->artistPayout;
 
         $remaining = 0.0;
-        if ($userDetail && $booking->payment_status === 'paid' && ! $booking->pay_artist) {
+        if ($userDetail && $booking->payment_status === 'paid') {
+            $this->payoutService->reopenPayoutIfNewPlatformFunds($booking, $userDetail);
             $remaining = $this->payoutService->remainingPayoutAmount($booking, $userDetail);
         }
 
@@ -503,15 +504,17 @@ class ArtistPaymentsService
             return 'Failed';
         }
 
-        if ($booking->pay_artist) {
-            return 'Completed';
-        }
-
         if ($booking->payment_status === 'paid' && $userDetail) {
             if ($remaining > 0 && $this->payoutService->isBookingPayoutEligible($booking)) {
                 return 'Available';
             }
+        }
 
+        if ($booking->pay_artist && $remaining < 0.01) {
+            return 'Completed';
+        }
+
+        if ($booking->payment_status === 'paid' && $userDetail) {
             return 'Pending';
         }
 

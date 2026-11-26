@@ -9,7 +9,7 @@ class ProcessArtistPayoutsCommand extends Command
 {
     protected $signature = 'artist-payouts:process';
 
-    protected $description = 'Queue artist payout records for bookings past the cancellation deadline with a ready Stripe account';
+    protected $description = 'Transfer artist/studio payouts for paid bookings past the cancellation deadline (completion not required)';
 
     public function handle(ArtistPayoutService $artistPayoutService): int
     {

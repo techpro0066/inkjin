@@ -723,8 +723,16 @@ class MoneyController extends Controller
             ? (float) ($payoutRow->studio_amount ?? 0)
             : 0.0;
 
+        if ($userDetail) {
+            $payout->reopenPayoutIfNewPlatformFunds($booking, $userDetail);
+        }
+
+        $studioRemaining = $userDetail
+            ? $payout->remainingStudioPayoutAmount($booking, $userDetail)
+            : 0.0;
+
         // Share already fell through to the artist (studio wasn't Connect-ready).
-        if ($booking->pay_artist && $releasedStudio < 0.01) {
+        if ($booking->pay_artist && $releasedStudio < 0.01 && $studioRemaining < 0.01) {
             return null;
         }
 
@@ -735,13 +743,13 @@ class MoneyController extends Controller
         $statusPill = 'a';
         $statusDate = null;
 
-        if ($releasedStudio >= 0.01) {
+        if ($releasedStudio >= 0.01 && $studioRemaining < 0.01) {
             $statusKey = 'paid';
             $statusPill = 'g';
             $paidAt = $payoutRow?->updated_at ?? $booking->deposit_released_at ?? $booking->updated_at;
             $statusDate = $paidAt?->timezone($tz);
             $statusLabel = 'Paid'.($statusDate ? ' '.$statusDate->format('d/m') : '');
-        } elseif (($booking->status ?? '') === 'completed' && $payout->hasPassedCancellationDeadline($booking)) {
+        } elseif ($payout->isBookingPayoutEligible($booking) && $studioRemaining >= 0.01) {
             $statusKey = 'on_its_way';
             $statusPill = 'b';
             $statusLabel = 'On its way';

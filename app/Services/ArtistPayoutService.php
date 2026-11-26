@@ -44,11 +44,22 @@ class ArtistPayoutService
         $stats = ['processed' => 0, 'skipped' => 0, 'failed' => 0];
 
         Booking::query()
-            ->whereIn('status', ['completed'])
             ->where('payment_status', 'paid')
-            ->where('pay_artist', false)
+            ->where(function ($q) {
+                // Still open, or closed after deposit but balance may have been collected later.
+                $q->where('pay_artist', false)
+                    ->orWhere('full_amount_paid', true);
+            })
             ->whereNotNull('deposit_amount')
             ->where('deposit_amount', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('refunded_at')
+                    ->where(function ($q2) {
+                        $q2->whereNull('refund_amount')
+                            ->orWhere('refund_amount', '<=', 0);
+                    });
+            })
+            ->whereNotIn('status', ['declined'])
             ->with(['artist.userDetail.studio', 'artistPayout', 'balanceCollections'])
             ->orderBy('id')
             ->chunkById(100, function ($bookings) use (&$stats) {
@@ -82,11 +93,7 @@ class ArtistPayoutService
 
     public function processBooking(Booking $booking, bool $allowManualRequest = false): bool
     {
-        $booking->loadMissing(['artist.userDetail.studio', 'artistPayout']);
-
-        if ($booking->pay_artist) {
-            return false;
-        }
+        $booking->loadMissing(['artist.userDetail.studio', 'artistPayout', 'balanceCollections']);
 
         if (! $this->isBookingPayoutEligible($booking)) {
             return false;
@@ -94,6 +101,13 @@ class ArtistPayoutService
 
         $userDetail = $booking->artist?->userDetail;
         if (! $userDetail) {
+            return false;
+        }
+
+        // Deposit may have been marked paid out before a later payment-link balance arrived.
+        $this->reopenPayoutIfNewPlatformFunds($booking, $userDetail);
+
+        if ($booking->pay_artist) {
             return false;
         }
 
@@ -190,6 +204,11 @@ class ArtistPayoutService
                 return false;
             }
 
+            // More platform money may still arrive (payment-link balance) — keep the booking open.
+            if ($this->mayReceiveMorePlatformFunds($locked)) {
+                return false;
+            }
+
             $releasedArtist = $this->releasedArtistAmount($locked);
             $releasedStudio = $this->releasedStudioAmount($locked);
             $payout = $locked->artistPayout()->first();
@@ -214,7 +233,7 @@ class ArtistPayoutService
             $locked->update([
                 'pay_artist' => true,
                 'deposit_released' => true,
-                'deposit_released_at' => now(),
+                'deposit_released_at' => $locked->deposit_released_at ?: now(),
             ]);
 
             return true;
@@ -347,21 +366,50 @@ class ArtistPayoutService
     {
         return Booking::query()
             ->where('artist_user_id', $artistUserId)
-            ->where('status', 'completed')
             ->where('payment_status', 'paid')
-            ->where('pay_artist', false)
+            ->where(function ($q) {
+                $q->where('pay_artist', false)
+                    ->orWhere('full_amount_paid', true);
+            })
             ->whereNotNull('deposit_amount')
             ->where('deposit_amount', '>', 0)
-            ->with(['artistPayout', 'balanceCollections', 'user', 'tattoo'])
+            ->where(function ($q) {
+                $q->whereNull('refunded_at')
+                    ->where(function ($q2) {
+                        $q2->whereNull('refund_amount')
+                            ->orWhere('refund_amount', '<=', 0);
+                    });
+            })
+            ->whereNotIn('status', ['declined'])
+            ->with(['artistPayout', 'balanceCollections', 'user', 'tattoo', 'artist.userDetail'])
             ->orderBy('id')
             ->get()
-            ->filter(fn (Booking $booking) => $this->isBookingPayoutEligible($booking))
+            ->filter(function (Booking $booking) {
+                if (! $this->isBookingPayoutEligible($booking)) {
+                    return false;
+                }
+
+                $userDetail = $booking->artist?->userDetail
+                    ?? UserDetail::query()->where('user_id', $booking->artist_user_id)->first();
+                if (! $userDetail) {
+                    return false;
+                }
+
+                $this->reopenPayoutIfNewPlatformFunds($booking, $userDetail);
+
+                return ! $booking->pay_artist
+                    && (
+                        $this->remainingPayoutAmount($booking, $userDetail) >= 0.01
+                        || $this->remainingStudioPayoutAmount($booking, $userDetail) >= 0.01
+                    );
+            })
             ->values();
     }
 
     /**
      * Whether a paid booking's artist share can be withdrawn or auto-paid out.
-     * Requires the booking to be completed and the cancellation window to have passed.
+     * Requires the cancellation window to have passed (completion is not required).
+     * Later payment-link balances increase remaining and can be paid on a later run.
      */
     public function isBookingPayoutEligible(Booking $booking): bool
     {
@@ -369,23 +417,103 @@ class ArtistPayoutService
             return false;
         }
 
-        if ($booking->pay_artist) {
+        if ($this->isBookingRefundedForPayout($booking)) {
             return false;
         }
 
-        if (($booking->status ?? '') !== 'completed') {
+        if (strtolower((string) ($booking->status ?? '')) === 'declined') {
             return false;
         }
 
         return $this->hasPassedCancellationDeadline($booking);
     }
 
-    public function remainingPayoutAmount(Booking $booking, UserDetail $userDetail): float
+    /**
+     * True when more platform-collected money may still arrive (e.g. payment-link balance).
+     * In that case we must not close the booking with pay_artist after the deposit payout.
+     */
+    public function mayReceiveMorePlatformFunds(Booking $booking): bool
     {
-        if ($booking->pay_artist) {
-            return 0.0;
+        if ($this->pendingPlatformBalanceAmount($booking) >= 0.01) {
+            return true;
         }
 
+        if ($booking->full_amount_paid || $booking->remaining_amount_released) {
+            return false;
+        }
+
+        // Quote balance still outstanding — may be collected via payment link later.
+        return max(0, round((float) $booking->remainingBalanceAmount(), 2)) >= 0.01;
+    }
+
+    /**
+     * If deposit was marked paid out and a later payment-link balance increased the ledger,
+     * reopen so the remaining share can transfer.
+     */
+    public function reopenPayoutIfNewPlatformFunds(Booking $booking, UserDetail $userDetail): bool
+    {
+        if (! $booking->pay_artist) {
+            return false;
+        }
+
+        $artistRemaining = $this->remainingPayoutAmount($booking, $userDetail);
+        $studioRemaining = $this->remainingStudioPayoutAmount($booking, $userDetail);
+        if ($artistRemaining < 0.01 && $studioRemaining < 0.01) {
+            return false;
+        }
+
+        $booking->forceFill(['pay_artist' => false])->saveQuietly();
+        $booking->pay_artist = false;
+
+        return true;
+    }
+
+    private function pendingPlatformBalanceAmount(Booking $booking): float
+    {
+        $total = 0.0;
+
+        foreach ($this->balanceCollectionsForBooking($booking) as $collection) {
+            if ($collection->collection_type !== BalanceCollection::TYPE_PAYMENT_LINK) {
+                continue;
+            }
+            if ($collection->isPaid()) {
+                continue;
+            }
+            $total += max(0, round((float) $collection->amount, 2));
+        }
+
+        return round($total, 2);
+    }
+
+    /**
+     * Skip payouts when the client was refunded (deposit no longer held for the artist).
+     */
+    private function isBookingRefundedForPayout(Booking $booking): bool
+    {
+        if (strtolower((string) ($booking->payment_status ?? '')) === 'refunded') {
+            return true;
+        }
+
+        if ($booking->refunded_at !== null) {
+            return true;
+        }
+
+        return (float) ($booking->refund_amount ?? 0) > 0.009;
+    }
+
+    public function remainingPayoutAmount(Booking $booking, UserDetail $userDetail): float
+    {
+        // Ledger-based: ignore pay_artist so later payment-link balances can still pay out.
+        return $this->remainingPayoutAmountIgnoringSettledFlag($booking, $userDetail);
+    }
+
+    public function remainingStudioPayoutAmount(Booking $booking, UserDetail $userDetail): float
+    {
+        return $this->remainingStudioPayoutAmountIgnoringSettledFlag($booking, $userDetail);
+    }
+
+    private function remainingPayoutAmountIgnoringSettledFlag(Booking $booking, UserDetail $userDetail): float
+    {
         // Studio not connected yet: artist can receive the full remaining platform net.
         if ($this->shouldFallbackStudioShareToArtist($userDetail, $booking)) {
             $platformNet = $this->computePlatformNetPayoutAmount($booking, $userDetail);
@@ -403,12 +531,8 @@ class ArtistPayoutService
         return max(0, round($net - $released, 2));
     }
 
-    public function remainingStudioPayoutAmount(Booking $booking, UserDetail $userDetail): float
+    private function remainingStudioPayoutAmountIgnoringSettledFlag(Booking $booking, UserDetail $userDetail): float
     {
-        if ($booking->pay_artist) {
-            return 0.0;
-        }
-
         // Studio share is paid to the artist until the studio Connect account is ready.
         if ($this->shouldFallbackStudioShareToArtist($userDetail, $booking)) {
             return 0.0;
@@ -436,14 +560,16 @@ class ArtistPayoutService
         bool $allowManualRequest = true,
         bool $studioOnly = false,
     ): bool {
-        $booking->loadMissing(['artist.userDetail.studio', 'artistPayout']);
+        $booking->loadMissing(['artist.userDetail.studio', 'artistPayout', 'balanceCollections']);
         $userDetail->loadMissing(['studio']);
 
-        if ($booking->pay_artist) {
+        if (! $this->isBookingPayoutEligible($booking)) {
             return false;
         }
 
-        if (! $this->isBookingPayoutEligible($booking)) {
+        $this->reopenPayoutIfNewPlatformFunds($booking, $userDetail);
+
+        if ($booking->pay_artist) {
             return false;
         }
 
@@ -544,7 +670,9 @@ class ArtistPayoutService
         $platformNet = $this->computePlatformNetPayoutAmount($locked, $userDetail);
         // Fully paid once the whole platform net has been released (artist and/or studio),
         // including the fallback case where the artist received the studio share.
-        $fullyPaid = round($newArtistTotal + $newStudioTotal, 2) >= round($platformNet, 2) - 0.001;
+        // Do not close while a payment-link balance may still arrive.
+        $fullyPaid = round($newArtistTotal + $newStudioTotal, 2) >= round($platformNet, 2) - 0.001
+            && ! $this->mayReceiveMorePlatformFunds($locked);
 
         $artistTransfer = null;
         $studioTransfer = null;
@@ -743,6 +871,8 @@ class ArtistPayoutService
             $artistTransfer,
             $studioTransfer,
             $fullyPaid,
+            $artistSlice,
+            $studioSlice,
             &$completed
         ) {
             $booking = Booking::query()
@@ -788,11 +918,17 @@ class ArtistPayoutService
             }
 
             if ($fullyPaid) {
-            $booking->update([
-                'pay_artist' => true,
-                'deposit_released' => true,
-                'deposit_released_at' => now(),
-            ]);
+                $booking->update([
+                    'pay_artist' => true,
+                    'deposit_released' => true,
+                    'deposit_released_at' => $booking->deposit_released_at ?: now(),
+                ]);
+            } elseif ($artistSlice >= 0.01 || $studioSlice >= 0.01) {
+                // Partial payout (e.g. deposit only) — keep open for later balance.
+                $booking->update([
+                    'deposit_released' => true,
+                    'deposit_released_at' => $booking->deposit_released_at ?: now(),
+                ]);
             }
 
             $completed = true;
@@ -1525,7 +1661,17 @@ class ArtistPayoutService
      */
     public function payoutPendingInfo(Booking $booking, UserDetail $userDetail): ?array
     {
-        if (($booking->payment_status ?? '') !== 'paid' || $booking->pay_artist) {
+        if (($booking->payment_status ?? '') !== 'paid') {
+            return null;
+        }
+
+        if ($this->isBookingRefundedForPayout($booking)) {
+            return null;
+        }
+
+        $this->reopenPayoutIfNewPlatformFunds($booking, $userDetail);
+
+        if ($booking->pay_artist) {
             return null;
         }
 
@@ -1538,34 +1684,10 @@ class ArtistPayoutService
             return null;
         }
 
-        $isCompleted = ($booking->status ?? '') === 'completed';
         $deadline = $this->cancellationDeadlineAt($booking);
-        $cancellationPassed = $this->hasPassedCancellationDeadline($booking);
         $tz = $booking->timezone ?: config('app.timezone', 'UTC');
 
-        if ($isCompleted && ! $cancellationPassed && $deadline) {
-            $label = $deadline->copy()->timezone($tz)->format('M j, Y g:i A');
-
-            return [
-                'amount' => round($amount, 2),
-                'available_at' => $deadline->toIso8601String(),
-                'available_label' => $label,
-                'reason' => 'Cancellation window ends',
-                'sort_key' => $deadline->format('Y-m-d H:i:s'),
-            ];
-        }
-
-        if (! $isCompleted && $cancellationPassed) {
-            return [
-                'amount' => round($amount, 2),
-                'available_at' => null,
-                'available_label' => 'After completion',
-                'reason' => 'Mark booking as completed',
-                'sort_key' => '9999-after-completion',
-            ];
-        }
-
-        if (! $isCompleted && $deadline) {
+        if ($deadline && ! $this->hasPassedCancellationDeadline($booking)) {
             $label = $deadline->copy()->timezone($tz)->format('M j, Y g:i A');
 
             return [

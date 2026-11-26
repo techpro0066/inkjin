@@ -375,12 +375,17 @@ class BalanceCollectionCheckoutService
             'remaining_amount_released' => true,
             'remaining_amount_released_at' => $booking->remaining_amount_released_at ?: now(),
             'full_amount_paid' => true,
+            // Deposit may already have been paid out; reopen so the balance share can transfer.
+            'pay_artist' => false,
             'completion_code_entered_at' => $booking->completion_code_entered_at ?: now(),
         ];
 
-        if (! $alreadyCompleted && $amount > 0) {
+        if ($amount > 0) {
             $alreadyPaid = (float) ($booking->total_amount_paid ?? $booking->deposit_amount ?? 0);
-            $payload['total_amount_paid'] = round($alreadyPaid + $amount, 2);
+            // Avoid double-counting when markPaid retries an already-completed booking.
+            if (! $alreadyCompleted || ! $booking->full_amount_paid) {
+                $payload['total_amount_paid'] = round($alreadyPaid + $amount, 2);
+            }
         }
 
         $booking->update($payload);
