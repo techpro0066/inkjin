@@ -93,6 +93,11 @@
 <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
 @include('partials.page-quick-links-styles')
 <style>
+  .mp-look .look-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:280px;padding:36px 20px;border:1px solid #E8DFEA;border-radius:16px;background:#fff;color:#6B6470;text-align:center}
+  .mp-look .look-loading .ms{font-size:28px;color:#3E007C;animation:lookSpin 1s linear infinite}
+  .mp-look .look-loading b{display:block;font-size:15px;font-weight:700;color:#1A1A1A;margin-bottom:2px}
+  .mp-look .look-loading span{font-size:13px;line-height:1.45}
+  @keyframes lookSpin{to{transform:rotate(360deg)}}
   .mp-look .mp-toast{position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));transition:opacity .25s,transform .35s;pointer-events:none}
   .mp-look .mp-toast.on{opacity:1;transform:none}
   .mp-look .mp-toast .ms{color:#3DD68C;font-size:20px}
@@ -149,7 +154,15 @@
     'faqCount' => $faqCount ?? 0,
   ])
 
-  <div id="lookfeel"></div>
+  <div id="lookfeel">
+    <div class="look-loading" role="status" aria-live="polite">
+      <span class="ms">progress_activity</span>
+      <div>
+        <b>Loading appearance</b>
+        <span>Please wait a moment…</span>
+      </div>
+    </div>
+  </div>
   <div class="mp-toast" id="mpToast" role="status"><span class="ms">check_circle</span><span id="mpToastText">Saved</span></div>
 
   <div class="mp-leave" id="mpLeave" role="dialog" aria-modal="true" aria-labelledby="mpLeaveTitle">

@@ -10,6 +10,11 @@
   .studio-page .btn.lk-save{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:10px;padding:10px 16px}
   .studio-page .btn.lk-save .ms{font-size:18px}
   .studio-page .btn.lk-save:disabled{cursor:default}
+  .studio-page .look-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:280px;padding:36px 20px;border:1px solid #E8DFEA;border-radius:16px;background:#fff;color:#6B6470;text-align:center}
+  .studio-page .look-loading .ms{font-size:28px;color:#3E007C;animation:lookSpin 1s linear infinite}
+  .studio-page .look-loading b{display:block;font-size:15px;font-weight:700;color:#1A1A1A;margin-bottom:2px}
+  .studio-page .look-loading span{font-size:13px;line-height:1.45}
+  @keyframes lookSpin{to{transform:rotate(360deg)}}
   .studio-page .sp-toast{position:fixed;top:22px;right:24px;background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:10px;align-items:center;opacity:0;transform:translateX(calc(100% + 40px));transition:opacity .25s,transform .35s;pointer-events:none}
   .studio-page .sp-toast.on{opacity:1;transform:none}
   .studio-page .sp-toast .ms{color:#3DD68C;font-size:20px}
@@ -71,7 +76,15 @@
 
   @include('studio.page.partials.tabs', ['pageTab' => 'look'])
 
-  <div id="lookfeel"></div>
+  <div id="lookfeel">
+    <div class="look-loading" role="status" aria-live="polite">
+      <span class="ms">progress_activity</span>
+      <div>
+        <b>Loading appearance</b>
+        <span>Please wait a moment…</span>
+      </div>
+    </div>
+  </div>
   <div class="sp-toast" id="spToast" role="status"><span class="ms">check_circle</span><span id="spToastText">Saved</span></div>
 
   <div class="sp-leave" id="spLeave" role="dialog" aria-modal="true" aria-labelledby="spLeaveTitle">
