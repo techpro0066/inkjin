@@ -209,8 +209,8 @@
 <script src="{{ asset('new-ui-design-assets/look.js') }}?v=13"></script>
 <script>
 (function () {
-  var cfg = @json($lookCfg);
-  var lookState = @json($lookState);
+  var cfg = @json($lookCfg, 15 | JSON_INVALID_UTF8_SUBSTITUTE);
+  var lookState = @json($lookState, 15 | JSON_INVALID_UTF8_SUBSTITUTE);
   var saveUrl = @json(route('personal-page.appearance.update'));
   var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   var host = document.getElementById('lookfeel');
