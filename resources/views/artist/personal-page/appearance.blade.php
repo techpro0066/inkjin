@@ -206,7 +206,7 @@
 
 @section('scripts')
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
-<script src="{{ asset('new-ui-design-assets/look.js') }}?v=13"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v=14"></script>
 <script>
 (function () {
   var cfg = @json($lookCfg, 15 | JSON_INVALID_UTF8_SUBSTITUTE);

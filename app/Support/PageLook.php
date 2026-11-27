@@ -72,8 +72,8 @@ class PageLook
                 'bgD' => $bgD,
                 'bgM' => $bgM,
                 'bgLum' => $detail->page_bg_lum !== null ? (float) $detail->page_bg_lum : 0.093,
-                'bgAvg' => $detail->page_bg_avg ?: '#A32724',
-                'box' => $detail->page_box_color ?: '#FFFFFF',
+                'bgAvg' => self::normalizeHex($detail->page_bg_avg) ?: '#A32724',
+                'box' => self::normalizeHex($detail->page_box_color) ?: '#FFFFFF',
                 'effect' => in_array($detail->page_box_effect, ['solid', 'see', 'glass'], true)
                     ? $detail->page_box_effect
                     : 'glass',
@@ -81,15 +81,15 @@ class PageLook
                 'title' => in_array($detail->page_title_mode, ['auto', 'black', 'white', 'custom'], true)
                     ? $detail->page_title_mode
                     : 'auto',
-                'titleC' => $detail->page_title_color ?: '#FFFFFF',
+                'titleC' => self::normalizeHex($detail->page_title_color) ?: '#FFFFFF',
                 'text' => in_array($detail->page_text_mode, ['auto', 'black', 'white', 'custom'], true)
                     ? $detail->page_text_mode
                     : 'auto',
-                'textC' => $detail->page_text_color ?: '#FFFFFF',
+                'textC' => self::normalizeHex($detail->page_text_color) ?: '#FFFFFF',
                 'btn' => in_array($detail->page_button_mode, ['auto', 'black', 'white', 'custom'], true)
                     ? $detail->page_button_mode
                     : 'auto',
-                'btnC' => $detail->page_button_color ?: '#FFFFFF',
+                'btnC' => self::normalizeHex($detail->page_button_color) ?: '#FFFFFF',
                 'radius' => in_array($detail->page_box_radius, ['none', 's', 'm', 'l'], true)
                     ? $detail->page_box_radius
                     : 'l',
@@ -120,8 +120,8 @@ class PageLook
                 'bgD' => self::publicUrl($studio->page_bg_desktop),
                 'bgM' => self::publicUrl($studio->page_bg_mobile),
                 'bgLum' => $studio->page_bg_lum !== null ? (float) $studio->page_bg_lum : 0.093,
-                'bgAvg' => $studio->page_bg_avg ?: '#A32724',
-                'box' => $studio->page_box_color ?: '#FFFFFF',
+                'bgAvg' => self::normalizeHex($studio->page_bg_avg) ?: '#A32724',
+                'box' => self::normalizeHex($studio->page_box_color) ?: '#FFFFFF',
                 'effect' => in_array($studio->page_box_effect, ['solid', 'see', 'glass'], true)
                     ? $studio->page_box_effect
                     : 'glass',
@@ -129,15 +129,15 @@ class PageLook
                 'title' => in_array($studio->page_title_mode, ['auto', 'black', 'white', 'custom'], true)
                     ? $studio->page_title_mode
                     : 'auto',
-                'titleC' => $studio->page_title_color ?: '#FFFFFF',
+                'titleC' => self::normalizeHex($studio->page_title_color) ?: '#FFFFFF',
                 'text' => in_array($studio->page_text_mode, ['auto', 'black', 'white', 'custom'], true)
                     ? $studio->page_text_mode
                     : 'auto',
-                'textC' => $studio->page_text_color ?: '#FFFFFF',
+                'textC' => self::normalizeHex($studio->page_text_color) ?: '#FFFFFF',
                 'btn' => in_array($studio->page_button_mode, ['auto', 'black', 'white', 'custom'], true)
                     ? $studio->page_button_mode
                     : 'auto',
-                'btnC' => $studio->page_button_color ?: '#FFFFFF',
+                'btnC' => self::normalizeHex($studio->page_button_color) ?: '#FFFFFF',
                 'radius' => in_array($studio->page_box_radius, ['none', 's', 'm', 'l'], true)
                     ? $studio->page_box_radius
                     : 'l',
