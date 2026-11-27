@@ -562,6 +562,87 @@ class StudioPageController extends Controller
         ]));
     }
 
+    /**
+     * Upload a studio look image as multipart (avoids huge base64 JSON payloads on mobile).
+     */
+    public function uploadLookImage(Request $request): JsonResponse
+    {
+        $studio = $this->resolveStudio($request->user());
+        if (! $studio) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Studio not found.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'kind' => ['required', 'in:banner,bgD,bgM'],
+            'image' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
+        ], [
+            'image.mimes' => 'Use a JPG, PNG or WebP image.',
+            'image.max' => 'This image is over 10 MB. Use a smaller one.',
+        ]);
+
+        $kind = $validated['kind'];
+        $prefix = match ($kind) {
+            'banner' => 'banner',
+            'bgD' => 'bgd',
+            default => 'bgm',
+        };
+
+        $file = $request->file('image');
+        if (! $file || ! $file->isValid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This image could not be read.',
+            ], 422);
+        }
+
+        if ($kind === 'banner') {
+            $dimensions = @getimagesize($file->getRealPath() ?: $file->getPathname());
+            if ($dimensions === false || (int) $dimensions[0] !== 1500 || (int) $dimensions[1] !== 500) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Crop the banner to 1500 × 500 before saving.',
+                ], 422);
+            }
+        }
+
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        if ($ext === 'jpeg') {
+            $ext = 'jpg';
+        }
+        if (! in_array($ext, ['jpg', 'png', 'webp'], true)) {
+            $mime = strtolower((string) $file->getMimeType());
+            $ext = match (true) {
+                str_contains($mime, 'png') => 'png',
+                str_contains($mime, 'webp') => 'webp',
+                default => 'jpg',
+            };
+        }
+
+        $current = match ($kind) {
+            'banner' => $studio->page_banner,
+            'bgD' => $studio->page_bg_desktop,
+            default => $studio->page_bg_mobile,
+        };
+        $this->deleteLookImageIfSafe($current);
+
+        $filename = $prefix.'_'.time().'_'.uniqid('', true).'.'.$ext;
+        $destination = public_path('uploads/studio-pages');
+        if (! File::exists($destination)) {
+            File::makeDirectory($destination, 0755, true);
+        }
+        $file->move($destination, $filename);
+        $path = 'uploads/studio-pages/'.$filename;
+
+        return response()->json([
+            'success' => true,
+            'path' => $path,
+            'url' => asset($path),
+        ]);
+    }
+
     public function updateLook(Request $request): JsonResponse
     {
         $studio = $this->resolveStudio($request->user());

@@ -265,6 +265,72 @@ class PersonalPageController extends Controller
         ], $this->myPageTabCounts($user->id)));
     }
 
+    /**
+     * Upload a look image as multipart (avoids huge base64 JSON payloads on mobile).
+     */
+    public function uploadAppearanceImage(Request $request)
+    {
+        $user = Auth::user();
+        $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
+
+        $validated = $request->validate([
+            'kind' => ['required', 'in:banner,bgD,bgM'],
+            'image' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
+        ], [
+            'image.mimes' => 'Use a JPG, PNG or WebP image.',
+            'image.max' => 'This image is over 10 MB. Use a smaller one.',
+        ]);
+
+        $kind = $validated['kind'];
+        $prefix = match ($kind) {
+            'banner' => 'banner',
+            'bgD' => 'bgd',
+            default => 'bgm',
+        };
+
+        $file = $request->file('image');
+        if (! $file || ! $file->isValid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This image could not be read.',
+            ], 422);
+        }
+
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        if ($ext === 'jpeg') {
+            $ext = 'jpg';
+        }
+        if (! in_array($ext, ['jpg', 'png', 'webp'], true)) {
+            $mime = strtolower((string) $file->getMimeType());
+            $ext = match (true) {
+                str_contains($mime, 'png') => 'png',
+                str_contains($mime, 'webp') => 'webp',
+                default => 'jpg',
+            };
+        }
+
+        $current = match ($kind) {
+            'banner' => $userDetail->personal_page_background_image,
+            'bgD' => $userDetail->page_bg_desktop,
+            default => $userDetail->page_bg_mobile,
+        };
+        $this->deleteBackgroundImageIfSafe($current);
+
+        $filename = $prefix.'_'.time().'_'.uniqid('', true).'.'.$ext;
+        $destination = public_path('uploads/personal-pages');
+        if (! File::exists($destination)) {
+            File::makeDirectory($destination, 0755, true);
+        }
+        $file->move($destination, $filename);
+        $path = 'uploads/personal-pages/'.$filename;
+
+        return response()->json([
+            'success' => true,
+            'path' => $path,
+            'url' => asset($path),
+        ]);
+    }
+
     public function updateAppearanceLook(Request $request)
     {
         $user = Auth::user();

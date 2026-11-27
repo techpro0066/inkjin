@@ -193,6 +193,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/studio/page/look', [\App\Http\Controllers\Studio\StudioPageController::class, 'updateLook'])
         ->middleware('studio')
         ->name('studio.page.look.update');
+    Route::post('/studio/page/look/upload-image', [\App\Http\Controllers\Studio\StudioPageController::class, 'uploadLookImage'])
+        ->middleware('studio')
+        ->name('studio.page.look.upload-image');
     Route::post('/studio/page/look/client-error', [\App\Http\Controllers\Studio\StudioPageController::class, 'logClientError'])
         ->middleware('studio')
         ->name('studio.page.look.client-error');
@@ -693,6 +696,7 @@ Route::middleware(['auth', 'verified', 'onboarding', 'artist'])->prefix('artist'
     Route::post('/policies', [\App\Http\Controllers\PersonalPageController::class, 'updatePolicies'])->name('personal-page.policies.update');
     Route::get('/appearance', [\App\Http\Controllers\PersonalPageController::class, 'appearance'])->name('personal-page.appearance');
     Route::post('/appearance', [\App\Http\Controllers\PersonalPageController::class, 'updateAppearanceLook'])->name('personal-page.appearance.update');
+    Route::post('/appearance/upload-image', [\App\Http\Controllers\PersonalPageController::class, 'uploadAppearanceImage'])->name('personal-page.appearance.upload-image');
     Route::post('/personal-page/client-error', [\App\Http\Controllers\PersonalPageController::class, 'logClientError'])->name('personal-page.client-error');
     Route::post('/personal-page/display-policies', [\App\Http\Controllers\PersonalPageController::class, 'updateDisplayPolicies'])->name('personal-page.display-policies');
     Route::post('/personal-page/display-guest-spots', [\App\Http\Controllers\PersonalPageController::class, 'updateDisplayGuestSpots'])->name('personal-page.display-guest-spots');

@@ -128,16 +128,17 @@
 
 @push('scripts')
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
-<script src="{{ asset('new-ui-design-assets/look.js') }}?v=15"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v=16"></script>
 <script>
 (function () {
   var cfg = @json($lookCfg);
   var lookState = @json($lookState);
   var saveUrl = @json($updateLookUrl ?? route('studio.page.look.update'));
+  var uploadUrl = @json(route('studio.page.look.upload-image'));
   var logUrl = @json(route('studio.page.look.client-error'));
   var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   var host = document.getElementById('lookfeel');
-  var LOOK_JS_VERSION = '15';
+  var LOOK_JS_VERSION = '16';
 
   function colorProbe(value) {
     var raw = String(value == null ? '' : value);
@@ -441,25 +442,109 @@
 
   cfg.onDirty = function (d) { setDirty(d); };
 
-  cfg.onSave = function (state) {
-    return fetch(saveUrl, {
+  function parseJsonResponse(r) {
+    return r.text().then(function (text) {
+      var j = null;
+      if (text) {
+        try { j = JSON.parse(text); } catch (e) {
+          throw new Error(
+            r.status === 413 || r.status === 502
+              ? 'Image is too large to upload on this connection. Try a smaller image.'
+              : ('Save failed (HTTP ' + r.status + '). Please try again.')
+          );
+        }
+      } else {
+        throw new Error(
+          r.status === 413
+            ? 'Image is too large to upload on this connection. Try a smaller image.'
+            : ('Save failed (HTTP ' + (r.status || 0) + '). Please try again.')
+        );
+      }
+      return { r: r, j: j, text: text };
+    });
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    return fetch(dataUrl).then(function (res) { return res.blob(); });
+  }
+
+  function uploadLookImage(kind, blob) {
+    var type = (blob && blob.type) || 'image/jpeg';
+    var ext = type.indexOf('png') >= 0 ? 'png' : (type.indexOf('webp') >= 0 ? 'webp' : 'jpg');
+    var fd = new FormData();
+    fd.append('kind', kind);
+    fd.append('image', blob, 'look-' + kind + '.' + ext);
+    return fetch(uploadUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
         'X-CSRF-TOKEN': csrf,
         'X-Requested-With': 'XMLHttpRequest'
       },
-      body: JSON.stringify(state)
-    }).then(function (r) {
-      return r.json().then(function (j) {
-        if (!r.ok || !j.success) throw new Error(j.message || 'Could not save');
-        if (j.look) {
-          try { BPLook.save(cfg.who, j.look); } catch (x) {}
-          return j.look;
-        }
-        return state;
+      body: fd
+    }).then(parseJsonResponse).then(function (pack) {
+      if (!pack.r.ok || !pack.j || !pack.j.success) {
+        throw new Error((pack.j && pack.j.message) || 'Could not upload image.');
+      }
+      return pack.j.path || pack.j.url;
+    });
+  }
+
+  function prepareStateImages(state) {
+    var next = JSON.parse(JSON.stringify(state));
+    var files = cfg._lookFiles || {};
+    var jobs = [];
+
+    function queue(kind, current, file) {
+      var needs = !!file || (typeof current === 'string' && current.indexOf('data:') === 0);
+      if (!needs) return;
+      jobs.push(
+        Promise.resolve(file || null)
+          .then(function (blob) {
+            if (blob) return blob;
+            return dataUrlToBlob(current);
+          })
+          .then(function (blob) { return uploadLookImage(kind, blob); })
+          .then(function (url) {
+            if (kind === 'banner') next.banner = url;
+            else {
+              next.c = next.c || {};
+              next.c[kind] = url;
+            }
+            if (cfg._lookFiles) delete cfg._lookFiles[kind];
+            if (kind === 'banner') cfg.bannerFile = null;
+          })
+      );
+    }
+
+    queue('banner', next.banner, files.banner || null);
+    queue('bgD', next.c && next.c.bgD, files.bgD || null);
+    queue('bgM', next.c && next.c.bgM, files.bgM || null);
+
+    return Promise.all(jobs).then(function () { return next; });
+  }
+
+  cfg.onSave = function (state) {
+    return prepareStateImages(state).then(function (prepared) {
+      state = prepared;
+      return fetch(saveUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': csrf,
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(prepared)
       });
+    }).then(parseJsonResponse).then(function (pack) {
+      var j = pack.j;
+      if (!pack.r.ok || !j || !j.success) throw new Error((j && j.message) || 'Could not save');
+      if (j.look) {
+        try { BPLook.save(cfg.who, j.look); } catch (x) {}
+        return j.look;
+      }
+      return state;
     }).then(function (result) {
       if (leaveAfterSave) {
         leaveAfterSave = false;
