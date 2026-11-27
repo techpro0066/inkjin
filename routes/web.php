@@ -193,6 +193,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/studio/page/look', [\App\Http\Controllers\Studio\StudioPageController::class, 'updateLook'])
         ->middleware('studio')
         ->name('studio.page.look.update');
+    Route::post('/studio/page/look/client-error', [\App\Http\Controllers\Studio\StudioPageController::class, 'logClientError'])
+        ->middleware('studio')
+        ->name('studio.page.look.client-error');
     Route::get('/studio/client-flow', fn () => redirect()->route('studio.client-flow.intake'))
         ->middleware('studio')
         ->name('studio.client-flow');

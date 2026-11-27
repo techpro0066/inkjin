@@ -17,8 +17,10 @@ use App\Support\SocialLinks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -625,6 +627,50 @@ class StudioPageController extends Controller
             'message' => 'Changes saved',
             'look' => PageLook::stateFromStudio($studio->fresh()),
         ]);
+    }
+
+    /**
+     * Client-side appearance diagnostics (color picker / upload / render failures).
+     */
+    public function logClientError(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'stage' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'integer'],
+            'message' => ['nullable', 'string', 'max:2000'],
+            'stack' => ['nullable', 'string', 'max:8000'],
+            'response_snippet' => ['nullable', 'string', 'max:4000'],
+            'url' => ['nullable', 'string', 'max:500'],
+            'user_agent' => ['nullable', 'string', 'max:500'],
+            'look_js_version' => ['nullable', 'string', 'max:40'],
+            'who' => ['nullable', 'string', 'max:40'],
+            'mode' => ['nullable', 'string', 'max:40'],
+            'scheme' => ['nullable', 'string', 'max:120'],
+            'colors' => ['nullable', 'array'],
+            'colors.*' => ['nullable', 'string', 'max:64'],
+            'color_probe' => ['nullable', 'array'],
+            'context' => ['nullable', 'array'],
+        ]);
+
+        Log::warning('Studio appearance client error', [
+            'user_id' => Auth::id(),
+            'stage' => $payload['stage'] ?? null,
+            'status' => $payload['status'] ?? null,
+            'message' => $payload['message'] ?? null,
+            'stack' => $payload['stack'] ?? null,
+            'response_snippet' => $payload['response_snippet'] ?? null,
+            'url' => $payload['url'] ?? null,
+            'look_js_version' => $payload['look_js_version'] ?? null,
+            'who' => $payload['who'] ?? 'studio',
+            'mode' => $payload['mode'] ?? null,
+            'scheme' => $payload['scheme'] ?? null,
+            'colors' => $payload['colors'] ?? null,
+            'color_probe' => $payload['color_probe'] ?? null,
+            'context' => $payload['context'] ?? null,
+            'user_agent' => $payload['user_agent'] ?? $request->userAgent(),
+        ]);
+
+        return response()->json(['success' => true]);
     }
 
     public function updateAbout(Request $request): JsonResponse

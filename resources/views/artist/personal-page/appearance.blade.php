@@ -206,14 +206,80 @@
 
 @section('scripts')
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
-<script src="{{ asset('new-ui-design-assets/look.js') }}?v=14"></script>
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v=15"></script>
 <script>
 (function () {
   var cfg = @json($lookCfg, 15 | JSON_INVALID_UTF8_SUBSTITUTE);
   var lookState = @json($lookState, 15 | JSON_INVALID_UTF8_SUBSTITUTE);
   var saveUrl = @json(route('personal-page.appearance.update'));
+  var logUrl = @json(route('personal-page.client-error'));
   var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   var host = document.getElementById('lookfeel');
+  var LOOK_JS_VERSION = '15';
+
+  function colorProbe(value) {
+    var raw = String(value == null ? '' : value);
+    var result = { raw: raw, ok: false, error: null, normalized: null };
+    try {
+      result.normalized = window.BPLook && BPLook.colorVal ? BPLook.colorVal(raw, '#000000') : raw;
+      var probe = document.createElement('input');
+      probe.type = 'color';
+      probe.value = result.normalized || '#000000';
+      result.ok = true;
+    } catch (e) {
+      result.error = (e && e.message) || String(e);
+    }
+    return result;
+  }
+
+  function reportLookError(payload) {
+    payload = payload || {};
+    var colors = payload.colors || {
+      scheme: lookState && lookState.scheme,
+      box: lookState && lookState.c && lookState.c.box,
+      titleC: lookState && lookState.c && lookState.c.titleC,
+      textC: lookState && lookState.c && lookState.c.textC,
+      btnC: lookState && lookState.c && lookState.c.btnC,
+      bgAvg: lookState && lookState.c && lookState.c.bgAvg
+    };
+    var body = {
+      stage: payload.stage || 'unknown',
+      message: payload.message || '',
+      stack: payload.stack || '',
+      url: location.href,
+      look_js_version: LOOK_JS_VERSION,
+      who: (cfg && cfg.who) || 'artist',
+      mode: payload.mode || (lookState && lookState.mode) || '',
+      scheme: payload.scheme || (colors && colors.scheme) || '',
+      colors: colors,
+      color_probe: payload.color_probe || {
+        scheme0: colorProbe(String((colors && colors.scheme) || '').split(',')[0] || ''),
+        box: colorProbe(colors && colors.box),
+        titleC: colorProbe(colors && colors.titleC),
+        textC: colorProbe(colors && colors.textC),
+        btnC: colorProbe(colors && colors.btnC),
+        bgAvg: colorProbe(colors && colors.bgAvg)
+      },
+      context: payload.context || {},
+      user_agent: navigator.userAgent || ''
+    };
+    try { console.warn('[appearance-debug]', body); } catch (e) {}
+    try {
+      fetch(logUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': csrf,
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(body),
+        keepalive: true
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
+  cfg.onClientLog = reportLookError;
 
   function showLookLoadError(message) {
     if (!host) return;
@@ -227,9 +293,29 @@
 
   if (!host) return;
   if (!window.BPLook) {
+    reportLookError({ stage: 'bplook_missing', message: 'BPLook missing' });
     showLookLoadError('The appearance editor didn’t load. Check your connection, then reload.');
     return;
   }
+
+  reportLookError({ stage: 'appearance_boot', message: 'editor boot', mode: lookState && lookState.mode });
+
+  window.addEventListener('error', function (ev) {
+    reportLookError({
+      stage: 'window_error',
+      message: (ev && ev.message) || 'window error',
+      stack: (ev && ev.error && ev.error.stack) || '',
+      context: { filename: ev && ev.filename, lineno: ev && ev.lineno, colno: ev && ev.colno }
+    });
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    var reason = ev && ev.reason;
+    reportLookError({
+      stage: 'unhandledrejection',
+      message: (reason && reason.message) || String(reason || 'rejection'),
+      stack: reason && reason.stack
+    });
+  });
 
   var cropModal = document.getElementById('lookCropperModal');
   var cropBox = document.getElementById('lookCropBox');
@@ -462,6 +548,21 @@
       return result;
     }).catch(function (err) {
       leaveAfterSave = false;
+      reportLookError({
+        stage: 'save',
+        message: (err && err.message) || 'save failed',
+        stack: err && err.stack,
+        mode: state && state.mode,
+        scheme: state && state.scheme,
+        colors: state && state.c ? {
+          scheme: state.scheme,
+          box: state.c.box,
+          titleC: state.c.titleC,
+          textC: state.c.textC,
+          btnC: state.c.btnC,
+          bgAvg: state.c.bgAvg
+        } : null
+      });
       throw err;
     });
   };
@@ -469,6 +570,12 @@
   try {
     BPLook.editor(host, cfg);
   } catch (err) {
+    reportLookError({
+      stage: 'editor_init',
+      message: (err && err.message) || 'editor init failed',
+      stack: err && err.stack,
+      mode: lookState && lookState.mode
+    });
     showLookLoadError((err && err.message) || 'Something went wrong while opening the editor.');
     return;
   }
