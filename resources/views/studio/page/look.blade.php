@@ -128,7 +128,8 @@
 
 @push('scripts')
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
-<script src="{{ asset('new-ui-design-assets/look.js') }}?v=16"></script>
+@php($lookJsVer = file_exists(public_path('new-ui-design-assets/look.js')) ? (string) filemtime(public_path('new-ui-design-assets/look.js')) : '17')
+<script src="{{ asset('new-ui-design-assets/look.js') }}?v={{ $lookJsVer }}"></script>
 <script>
 (function () {
   var cfg = @json($lookCfg);
@@ -138,7 +139,7 @@
   var logUrl = @json(route('studio.page.look.client-error'));
   var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   var host = document.getElementById('lookfeel');
-  var LOOK_JS_VERSION = '16';
+  var LOOK_JS_VERSION = @json($lookJsVer);
 
   function colorProbe(value) {
     var raw = String(value == null ? '' : value);
@@ -265,19 +266,65 @@
       title: 'Crop desktop background',
       sub: '16:9 · keep the subject away from the left and right edges.',
       aspect: 16 / 9,
-      width: 1920,
-      height: 1080,
+      width: 1600,
+      height: 900,
       tall: false
     },
     bgM: {
       title: 'Crop phone background',
       sub: '9:16 · keep the main subject in the upper third.',
       aspect: 9 / 16,
-      width: 1080,
-      height: 1920,
+      width: 900,
+      height: 1600,
       tall: true
     }
   };
+
+  var LOOK_MAX_UPLOAD_BYTES = 1200 * 1024;
+
+  function canvasToCompressedFile(canvas, kind, maxBytes) {
+    maxBytes = maxBytes || LOOK_MAX_UPLOAD_BYTES;
+    var qualities = [0.72, 0.6, 0.48, 0.36, 0.28];
+    return new Promise(function (resolve, reject) {
+      var lastBlob = null;
+      function tryAt(i) {
+        if (i >= qualities.length) {
+          if (lastBlob) {
+            resolve(new File([lastBlob], 'look-' + kind + '.jpg', { type: 'image/jpeg' }));
+            return;
+          }
+          reject(new Error('Could not compress this image. Try a smaller photo.'));
+          return;
+        }
+        canvas.toBlob(function (blob) {
+          if (!blob) {
+            reject(new Error('Could not crop this image. Try another one.'));
+            return;
+          }
+          lastBlob = blob;
+          if (blob.size <= maxBytes || i === qualities.length - 1) {
+            resolve(new File([blob], 'look-' + kind + '.jpg', { type: 'image/jpeg' }));
+            return;
+          }
+          tryAt(i + 1);
+        }, 'image/jpeg', qualities[i]);
+      }
+      tryAt(0);
+    });
+  }
+
+  function recompressBlob(blob, kind, maxW, maxH) {
+    if (!blob || blob.size <= LOOK_MAX_UPLOAD_BYTES) return Promise.resolve(blob);
+    return createImageBitmap(blob).then(function (bmp) {
+      var scale = Math.min(1, maxW / bmp.width, maxH / bmp.height);
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(bmp.width * scale));
+      c.height = Math.max(1, Math.round(bmp.height * scale));
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      try { bmp.close(); } catch (e) {}
+      return canvasToCompressedFile(c, kind);
+    }).catch(function () { return blob; });
+  }
 
   function cleanupCropperUi() {
     if (cropper) { cropper.destroy(); cropper = null; }
@@ -393,7 +440,9 @@
     var canvas = cropper.getCroppedCanvas({
       width: preset.width,
       height: preset.height,
-      imageSmoothingQuality: 'high',
+      maxWidth: 4096,
+      maxHeight: 4096,
+      imageSmoothingQuality: 'medium',
       fillColor: '#ffffff'
     });
     if (!canvas) {
@@ -401,14 +450,13 @@
       finishCrop(new Error('Could not crop this image. Try another one.'), true);
       return;
     }
-    canvas.toBlob(function (blob) {
+    canvasToCompressedFile(canvas, cropKind).then(function (file) {
       btn.disabled = false;
-      if (!blob) {
-        finishCrop(new Error('Could not crop this image. Try another one.'), true);
-        return;
-      }
-      finishCrop(new File([blob], 'look-' + cropKind + '.jpg', { type: 'image/jpeg' }), false);
-    }, 'image/jpeg', 0.9);
+      finishCrop(file, false);
+    }).catch(function (err) {
+      btn.disabled = false;
+      finishCrop(err instanceof Error ? err : new Error('Could not crop this image. Try another one.'), true);
+    });
   });
 
   try { BPLook.save(cfg.who, lookState); } catch (e) {}
@@ -442,23 +490,32 @@
 
   cfg.onDirty = function (d) { setDirty(d); };
 
-  function parseJsonResponse(r) {
+  function httpFailMessage(status) {
+    if (status === 413 || status === 502) {
+      return 'Upload was blocked (file still too large after compress). Try a smaller photo, or refresh this page and try again.';
+    }
+    if (!status) return 'Upload failed (network). Check your connection and try again.';
+    return 'Save failed (HTTP ' + status + '). Please try again.';
+  }
+
+  function parseJsonResponse(r, meta) {
+    meta = meta || {};
     return r.text().then(function (text) {
       var j = null;
       if (text) {
         try { j = JSON.parse(text); } catch (e) {
-          throw new Error(
-            r.status === 413 || r.status === 502
-              ? 'Image is too large to upload on this connection. Try a smaller image.'
-              : ('Save failed (HTTP ' + r.status + '). Please try again.')
-          );
+          var err = new Error(httpFailMessage(r.status));
+          err.status = r.status;
+          err.responseSnippet = String(text).slice(0, 500);
+          err.uploadMeta = meta;
+          throw err;
         }
       } else {
-        throw new Error(
-          r.status === 413
-            ? 'Image is too large to upload on this connection. Try a smaller image.'
-            : ('Save failed (HTTP ' + (r.status || 0) + '). Please try again.')
-        );
+        var emptyErr = new Error(httpFailMessage(r.status));
+        emptyErr.status = r.status;
+        emptyErr.responseSnippet = '';
+        emptyErr.uploadMeta = meta;
+        throw emptyErr;
       }
       return { r: r, j: j, text: text };
     });
@@ -471,6 +528,7 @@
   function uploadLookImage(kind, blob) {
     var type = (blob && blob.type) || 'image/jpeg';
     var ext = type.indexOf('png') >= 0 ? 'png' : (type.indexOf('webp') >= 0 ? 'webp' : 'jpg');
+    var meta = { kind: kind, bytes: blob && blob.size, type: type };
     var fd = new FormData();
     fd.append('kind', kind);
     fd.append('image', blob, 'look-' + kind + '.' + ext);
@@ -482,11 +540,26 @@
         'X-Requested-With': 'XMLHttpRequest'
       },
       body: fd
-    }).then(parseJsonResponse).then(function (pack) {
+    }).then(function (r) { return parseJsonResponse(r, meta); }).then(function (pack) {
       if (!pack.r.ok || !pack.j || !pack.j.success) {
-        throw new Error((pack.j && pack.j.message) || 'Could not upload image.');
+        var fail = new Error((pack.j && pack.j.message) || 'Could not upload image.');
+        fail.status = pack.r.status;
+        fail.responseSnippet = String(pack.text || '').slice(0, 500);
+        fail.uploadMeta = meta;
+        throw fail;
       }
       return pack.j.path || pack.j.url;
+    }).catch(function (err) {
+      reportLookError({
+        stage: 'upload_image',
+        status: err && err.status,
+        message: (err && err.message) || 'upload failed',
+        response_snippet: err && err.responseSnippet,
+        banner_blob_size: meta.bytes,
+        banner_blob_type: meta.type,
+        context: meta
+      });
+      throw err;
     });
   }
 
@@ -494,16 +567,19 @@
     var next = JSON.parse(JSON.stringify(state));
     var files = cfg._lookFiles || {};
     var jobs = [];
+    var dims = { banner: [1500, 500], bgD: [1600, 900], bgM: [900, 1600] };
 
     function queue(kind, current, file) {
       var needs = !!file || (typeof current === 'string' && current.indexOf('data:') === 0);
       if (!needs) return;
+      var wh = dims[kind] || [1600, 900];
       jobs.push(
         Promise.resolve(file || null)
           .then(function (blob) {
             if (blob) return blob;
             return dataUrlToBlob(current);
           })
+          .then(function (blob) { return recompressBlob(blob, kind, wh[0], wh[1]); })
           .then(function (blob) { return uploadLookImage(kind, blob); })
           .then(function (url) {
             if (kind === 'banner') next.banner = url;
@@ -556,8 +632,12 @@
       leaveAfterSave = false;
       reportLookError({
         stage: 'save',
+        status: err && err.status,
         message: (err && err.message) || 'save failed',
         stack: err && err.stack,
+        response_snippet: err && err.responseSnippet,
+        banner_blob_size: err && err.uploadMeta && err.uploadMeta.bytes,
+        banner_blob_type: err && err.uploadMeta && err.uploadMeta.type,
         mode: state && state.mode,
         scheme: state && state.scheme,
         colors: state && state.c ? {
@@ -567,7 +647,8 @@
           textC: state.c.textC,
           btnC: state.c.btnC,
           bgAvg: state.c.bgAvg
-        } : null
+        } : null,
+        context: err && err.uploadMeta ? err.uploadMeta : null
       });
       throw err;
     });

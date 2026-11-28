@@ -575,6 +575,36 @@ class StudioPageController extends Controller
             ], 404);
         }
 
+        $upload = $request->file('image');
+        Log::info('Studio look image upload attempt', [
+            'user_id' => $request->user()?->id,
+            'studio_id' => $studio->id,
+            'kind' => $request->input('kind'),
+            'has_file' => (bool) $upload,
+            'bytes' => $upload ? $upload->getSize() : null,
+            'mime' => $upload ? $upload->getMimeType() : null,
+            'content_length' => $request->header('Content-Length'),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        if (
+            empty($request->all())
+            && (int) ($request->header('Content-Length') ?? 0) > 0
+        ) {
+            Log::warning('Studio look image upload: empty body with Content-Length (likely post_max_size)', [
+                'user_id' => $request->user()?->id,
+                'studio_id' => $studio->id,
+                'content_length' => $request->header('Content-Length'),
+                'post_max_size' => ini_get('post_max_size'),
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Image is too large for the server upload limit. Try a smaller photo.',
+            ], 413);
+        }
+
         $validated = $request->validate([
             'kind' => ['required', 'in:banner,bgD,bgM'],
             'image' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
@@ -722,6 +752,8 @@ class StudioPageController extends Controller
             'stack' => ['nullable', 'string', 'max:8000'],
             'response_snippet' => ['nullable', 'string', 'max:4000'],
             'url' => ['nullable', 'string', 'max:500'],
+            'banner_blob_size' => ['nullable', 'integer'],
+            'banner_blob_type' => ['nullable', 'string', 'max:100'],
             'user_agent' => ['nullable', 'string', 'max:500'],
             'look_js_version' => ['nullable', 'string', 'max:40'],
             'who' => ['nullable', 'string', 'max:40'],
@@ -741,6 +773,8 @@ class StudioPageController extends Controller
             'stack' => $payload['stack'] ?? null,
             'response_snippet' => $payload['response_snippet'] ?? null,
             'url' => $payload['url'] ?? null,
+            'banner_blob_size' => $payload['banner_blob_size'] ?? null,
+            'banner_blob_type' => $payload['banner_blob_type'] ?? null,
             'look_js_version' => $payload['look_js_version'] ?? null,
             'who' => $payload['who'] ?? 'studio',
             'mode' => $payload['mode'] ?? null,

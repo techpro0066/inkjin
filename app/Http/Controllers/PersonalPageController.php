@@ -273,6 +273,34 @@ class PersonalPageController extends Controller
         $user = Auth::user();
         $userDetail = $user->userDetail ?? UserDetail::create(['user_id' => $user->id]);
 
+        $upload = $request->file('image');
+        Log::info('Appearance image upload attempt', [
+            'user_id' => $user->id,
+            'kind' => $request->input('kind'),
+            'has_file' => (bool) $upload,
+            'bytes' => $upload ? $upload->getSize() : null,
+            'mime' => $upload ? $upload->getMimeType() : null,
+            'content_length' => $request->header('Content-Length'),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        if (
+            empty($request->all())
+            && (int) ($request->header('Content-Length') ?? 0) > 0
+        ) {
+            Log::warning('Appearance image upload: empty body with Content-Length (likely post_max_size)', [
+                'user_id' => $user->id,
+                'content_length' => $request->header('Content-Length'),
+                'post_max_size' => ini_get('post_max_size'),
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Image is too large for the server upload limit. Try a smaller photo.',
+            ], 413);
+        }
+
         $validated = $request->validate([
             'kind' => ['required', 'in:banner,bgD,bgM'],
             'image' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
