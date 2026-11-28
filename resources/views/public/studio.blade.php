@@ -14,7 +14,7 @@
     $studioHandle = $studioUsername !== '' ? '@'.$studioUsername : '';
     $studioInitials = strtoupper(substr(preg_replace('/\s+/', '', $studioName) ?: 'ST', 0, 2));
     $foundingStudioBadge = ($isFoundingStudio ?? false)
-        ? '<div class="founding-studio-badge"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false"><g stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 3.5v17"></path><path d="M4.6 7.75l14.8 8.5"></path><path d="M4.6 16.25l14.8-8.5"></path></g></svg><span>Founding studio</span></div>'
+        ? '<div class="founding-studio-badge"><svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true" focusable="false"><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3.5v17"></path><path d="M4.6 7.75l14.8 8.5"></path><path d="M4.6 16.25l14.8-8.5"></path></g></svg><span>Founding studio</span></div>'
         : '';
 
     $lookState = \App\Support\PageLook::stateFromStudio($studio);
@@ -217,7 +217,7 @@
     document.documentElement.classList.add('look-pending');
     try { sessionStorage.setItem('bp-look-studio', @json($lookState)); } catch (e) {}
   </script>
-  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=9"></script>
+  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=18"></script>
   @endif
 </head>
 <body class="{{ trim(($lookIsCustom ? 'cst ' : '').($isLookPreview ? 'bp-prev' : '')) }}" data-look-who="studio">
@@ -467,7 +467,7 @@
   </div>
 
   @if(! $lookIsCustom)
-  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=9"></script>
+  <script src="{{ asset('new-ui-design-assets/look.js') }}?v=18"></script>
   @endif
   <script>
     (function () {

@@ -278,7 +278,7 @@
         ['label' => 'Portfolio', 'section' => 'My Page', 'url' => route('portfolio.index'), 'keys' => 'gallery photos work images tattoos healed', 'type' => 'page', 'icon' => 'photo_library'],
         ['label' => 'FAQ', 'section' => 'My Page', 'url' => route('artist.faq.index'), 'keys' => 'questions answers common questions', 'type' => 'page', 'icon' => 'quiz'],
         ['label' => 'Policies', 'section' => 'My Page', 'url' => route('personal-page.policies'), 'keys' => 'refund cancellation policy rules terms touch up no show late', 'type' => 'page', 'icon' => 'policy'],
-        ['label' => 'Look & feel', 'section' => 'My Page', 'url' => route('personal-page.appearance'), 'keys' => 'appearance colours colors theme layout cover banner font design of my page look feel', 'type' => 'page', 'icon' => 'palette'],
+        ['label' => 'Appearance', 'section' => 'My Page', 'url' => route('personal-page.appearance'), 'keys' => 'appearance colours colors theme layout cover banner font design of my page look feel', 'type' => 'page', 'icon' => 'palette'],
         ['label' => 'Intake forms', 'section' => 'Client Flow', 'url' => route('artist.forms.index', ['tab' => 'booking']), 'keys' => 'questionnaire booking form questions what clients fill in request form fields', 'type' => 'page', 'icon' => 'edit_note'],
         ['label' => 'Consent form', 'section' => 'Client Flow', 'url' => route('artist.forms.consent'), 'keys' => 'waiver release agreement sign signature legal age id health form', 'type' => 'page', 'icon' => 'badge'],
         ['label' => 'Aftercare', 'section' => 'Client Flow', 'url' => route('artist.aftercare.index'), 'keys' => 'healing care instructions after tattoo email follow up', 'type' => 'page', 'icon' => 'healing'],

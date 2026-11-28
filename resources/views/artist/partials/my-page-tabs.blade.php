@@ -7,7 +7,7 @@
 <div class="tabs">
   <a href="{{ route('personal-page.index') }}" class="{{ $myPageTab === 'about' ? 'on' : '' }}">About</a>
   <a href="{{ route('artist-designs.index') }}" class="{{ $myPageTab === 'designs' ? 'on' : '' }}">
-    Designs<span class="n{{ $designsCount === 0 ? ' zero' : '' }}">{{ $designsCount }}</span>
+    Available designs<span class="n{{ $designsCount === 0 ? ' zero' : '' }}">{{ $designsCount }}</span>
   </a>
   <a href="{{ route('portfolio.index') }}" class="{{ $myPageTab === 'portfolio' ? 'on' : '' }}">
     Portfolio<span class="n{{ $portfolioCount === 0 ? ' zero' : '' }}">{{ $portfolioCount }}</span>

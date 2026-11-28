@@ -28,8 +28,9 @@ a{color:inherit;text-decoration:none}
 .hero{display:grid;grid-template-columns:1fr 360px;gap:40px;align-items:start}
 .av{width:124px;height:124px;border-radius:50%;border:5px solid var(--bg);background:#fff center/cover;margin-top:-62px;position:relative;box-shadow:0 8px 24px rgba(20,10,30,.18)}
 h1{font-size:38px;font-weight:800;letter-spacing:-1.2px;line-height:1.1;margin-top:14px}
-.founding-artist-badge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;border-radius:999px;background:#F0E8FF;color:#3E007C;padding:5px 11px;font-size:13px;font-weight:700;line-height:1.4}
-.founding-artist-badge svg{flex:none}
+.founding-artist-badge{display:inline-flex;align-items:center;gap:5px;margin-top:10px;border-radius:999px;background:transparent;color:var(--ink);border:1px solid currentColor;padding:3px 9px;font-size:11.5px;font-weight:700;line-height:1.3}
+.founding-artist-badge svg{flex:none;width:10px;height:10px}
+body.cst .founding-artist-badge{color:var(--bxt)}
 .handle{color:var(--faint);font-weight:600;font-size:14px;margin-top:4px}
 .tagline{font-size:18px;font-weight:600;margin-top:14px;letter-spacing:-.2px}
 .bio{color:var(--muted);margin-top:8px;max-width:60ch;line-height:1.65}
